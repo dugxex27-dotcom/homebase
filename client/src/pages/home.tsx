@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Users, Package, Calendar } from "lucide-react";
+import { Users, Package, Calendar, Search, MapPin } from "lucide-react";
 import Header from "@/components/header";
 import HeroSection from "@/components/hero-section";
 import ProductCard from "@/components/product-card";
+import Logo from "@/components/logo";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { Product } from "@shared/schema";
 import { Link } from "wouter";
 
@@ -68,47 +70,111 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Featured Products Section */}
+      {/* Tab Content Section */}
       <section className="bg-muted py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10">
-            <h2 className="text-3xl font-bold text-foreground mb-4">
-              Featured DIY Products
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              Quality tools and materials for your next project
-            </p>
-          </div>
+          {activeTab === 'products' && (
+            <>
+              <div className="text-center mb-10">
+                <h2 className="text-3xl font-bold text-foreground mb-4">
+                  Featured DIY Products
+                </h2>
+                <p className="text-lg text-muted-foreground">
+                  Quality tools and materials for your next project
+                </p>
+              </div>
 
-          {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="bg-card rounded-xl shadow-sm border border-border p-4 animate-pulse">
-                  <div className="w-full h-48 bg-gray-200 rounded-lg mb-4"></div>
-                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                  <div className="h-4 bg-gray-200 rounded mb-3 w-3/4"></div>
-                  <div className="flex justify-between items-center">
-                    <div className="h-6 bg-gray-200 rounded w-20"></div>
-                    <div className="h-8 bg-gray-200 rounded w-24"></div>
-                  </div>
+              {isLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="bg-card rounded-xl shadow-sm border border-border p-4 animate-pulse">
+                      <div className="w-full h-48 bg-gray-200 rounded-lg mb-4"></div>
+                      <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                      <div className="h-4 bg-gray-200 rounded mb-3 w-3/4"></div>
+                      <div className="flex justify-between items-center">
+                        <div className="h-6 bg-gray-200 rounded w-20"></div>
+                        <div className="h-8 bg-gray-200 rounded w-24"></div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {featuredProducts?.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {featuredProducts?.map((product) => (
+                    <ProductCard key={product.id} product={product} />
+                  ))}
+                </div>
+              )}
+
+              <div className="text-center mt-8">
+                <Link href="/products">
+                  <Button className="bg-primary text-white px-6 py-3 hover:bg-blue-700">
+                    View All Products
+                  </Button>
+                </Link>
+              </div>
+            </>
+          )}
+
+          {activeTab === 'maintenance' && (
+            <div className="text-center">
+              <h2 className="text-3xl font-bold text-foreground mb-4">
+                Seasonal Maintenance Schedule
+              </h2>
+              <p className="text-lg text-muted-foreground mb-6">
+                Keep your home in top condition with our location-based maintenance recommendations
+              </p>
+              <Link href="/maintenance">
+                <Button className="bg-primary text-white px-8 py-3 hover:bg-primary/90">
+                  View Maintenance Schedule
+                </Button>
+              </Link>
             </div>
           )}
 
-          <div className="text-center mt-8">
-            <Link href="/products">
-              <Button className="bg-primary text-white px-6 py-3 hover:bg-blue-700">
-                View All Products
-              </Button>
-            </Link>
-          </div>
+          {activeTab === 'contractors' && (
+            <div className="max-w-4xl mx-auto">
+              <div className="bg-card rounded-2xl shadow-lg p-6 border border-border">
+                <h2 className="text-3xl font-bold text-foreground mb-6 text-center">
+                  Find Trusted Contractors
+                </h2>
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      What do you need help with?
+                    </label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-3 text-muted-foreground h-4 w-4" />
+                      <Input
+                        type="text"
+                        placeholder="Gutter cleaning, drywall repair, custom cabinetry..."
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Location
+                    </label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-3 text-muted-foreground h-4 w-4" />
+                      <Input
+                        type="text"
+                        placeholder="City, State or ZIP code"
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                  <Link href="/contractors">
+                    <Button className="bg-primary text-primary-foreground px-8 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors flex items-center justify-center self-end">
+                      <Search className="mr-2 h-4 w-4" />
+                      Search
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
@@ -140,9 +206,8 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
-              <div className="flex items-center mb-4">
-                <Package className="text-primary text-2xl mr-3 h-6 w-6" />
-                <h3 className="text-xl font-bold">HomeConnect</h3>
+              <div className="mb-4">
+                <Logo className="h-8 w-auto text-primary" />
               </div>
               <p className="text-gray-400 mb-4">
                 Connecting homeowners with trusted contractors and quality DIY products for all your home improvement needs.

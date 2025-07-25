@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
-import { Home, Users, Package, User } from "lucide-react";
+import { Users, Package, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Logo from "@/components/logo";
 
 export default function Header() {
   const [location] = useLocation();
@@ -10,9 +11,8 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
-            <Home className="text-primary text-2xl mr-3 h-6 w-6" />
             <Link href="/">
-              <h1 className="text-xl font-bold text-foreground cursor-pointer">Home Base</h1>
+              <Logo className="h-10 w-auto text-primary cursor-pointer" />
             </Link>
           </div>
           
