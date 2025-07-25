@@ -17,14 +17,15 @@ export default function HeroSection() {
   };
 
   return (
-    <section className="bg-gradient-to-br from-blue-50 to-white py-16">
+    <section className="bg-gradient-to-br from-accent to-background py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-10">
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-            Find Trusted Contractors for Your Home Projects
+          <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
+            Your <span className="text-primary">Home Base</span> for Every Project
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Connect with vetted, licensed contractors in your area or discover quality DIY products for your next project
+          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+            Connect with skilled contractors specializing in gutters, drywall, custom work, 
+            and more. Plus find quality DIY products and seasonal maintenance guidance.
           </p>
         </div>
 
@@ -39,7 +40,7 @@ export default function HeroSection() {
                   <Search className="absolute left-3 top-3 text-gray-400 h-4 w-4" />
                   <Input
                     type="text"
-                    placeholder="Kitchen remodel, plumbing, electrical..."
+                    placeholder="Gutter cleaning, drywall repair, custom cabinetry..."
                     className="pl-10"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -63,7 +64,7 @@ export default function HeroSection() {
               </div>
               <Button 
                 onClick={handleSearch}
-                className="bg-primary text-white px-8 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center self-end"
+                className="bg-primary text-primary-foreground px-8 py-3 rounded-lg font-medium hover:bg-primary/90 transition-colors flex items-center justify-center self-end"
               >
                 <Search className="mr-2 h-4 w-4" />
                 Search

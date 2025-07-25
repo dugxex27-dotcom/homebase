@@ -12,7 +12,7 @@ export default function Header() {
           <div className="flex items-center">
             <Home className="text-primary text-2xl mr-3 h-6 w-6" />
             <Link href="/">
-              <h1 className="text-xl font-bold text-gray-900 cursor-pointer">HomeConnect</h1>
+              <h1 className="text-xl font-bold text-foreground cursor-pointer">Home Base</h1>
             </Link>
           </div>
           
@@ -26,6 +26,11 @@ export default function Header() {
               location === '/products' ? 'text-primary font-medium' : ''
             }`}>
               DIY Products
+            </Link>
+            <Link href="/maintenance" className={`text-gray-700 hover:text-primary transition-colors ${
+              location === '/maintenance' ? 'text-primary font-medium' : ''
+            }`}>
+              Maintenance Schedule
             </Link>
             <a href="#contractor-cta" className="text-gray-700 hover:text-primary transition-colors">
               For Contractors

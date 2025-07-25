@@ -13,7 +13,6 @@ interface FilterSidebarProps {
 export default function FilterSidebar({ onFiltersChange }: FilterSidebarProps) {
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [minRating, setMinRating] = useState<number | undefined>();
-  const [availableThisWeek, setAvailableThisWeek] = useState(false);
   const [hasEmergencyServices, setHasEmergencyServices] = useState(false);
   const [maxDistance, setMaxDistance] = useState<number | undefined>();
 
@@ -25,7 +24,13 @@ export default function FilterSidebar({ onFiltersChange }: FilterSidebarProps) {
     "Roofing",
     "HVAC",
     "Flooring",
-    "Painting"
+    "Painting",
+    "Drywall Installation",
+    "Drywall Repair",
+    "Gutter Installation",
+    "Gutter Cleaning",
+    "Custom Cabinetry",
+    "Smart Home Installation"
   ];
 
   const handleServiceChange = (service: string, checked: boolean) => {
@@ -40,7 +45,6 @@ export default function FilterSidebar({ onFiltersChange }: FilterSidebarProps) {
     onFiltersChange({
       services: selectedServices.length > 0 ? selectedServices : undefined,
       minRating,
-      availableThisWeek: availableThisWeek || undefined,
       hasEmergencyServices: hasEmergencyServices || undefined,
       maxDistance,
     });
@@ -117,20 +121,10 @@ export default function FilterSidebar({ onFiltersChange }: FilterSidebarProps) {
             </RadioGroup>
           </div>
 
-          {/* Availability Filter */}
+          {/* Emergency Services Filter */}
           <div>
-            <Label className="text-sm font-medium text-gray-700 mb-3 block">Availability</Label>
+            <Label className="text-sm font-medium text-gray-700 mb-3 block">Services</Label>
             <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="available-week"
-                  checked={availableThisWeek}
-                  onCheckedChange={(checked) => setAvailableThisWeek(checked === true)}
-                />
-                <Label htmlFor="available-week" className="text-sm text-gray-700">
-                  Available this week
-                </Label>
-              </div>
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id="emergency-services"
@@ -138,7 +132,7 @@ export default function FilterSidebar({ onFiltersChange }: FilterSidebarProps) {
                   onCheckedChange={(checked) => setHasEmergencyServices(checked === true)}
                 />
                 <Label htmlFor="emergency-services" className="text-sm text-gray-700">
-                  Emergency services
+                  Emergency services available
                 </Label>
               </div>
             </div>

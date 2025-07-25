@@ -26,16 +26,16 @@ export default function Home() {
       <HeroSection />
       
       {/* Category Tabs */}
-      <section className="bg-white py-8 border-b border-gray-200">
+      <section className="bg-card py-8 border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-center">
-            <div className="flex bg-gray-100 rounded-xl p-1">
+            <div className="flex bg-muted rounded-xl p-1">
               <button
                 onClick={() => setActiveTab('contractors')}
                 className={`px-6 py-3 rounded-lg text-sm font-medium flex items-center transition-colors ${
                   activeTab === 'contractors'
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-card text-card-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 <Users className="mr-2 h-4 w-4" />
@@ -45,8 +45,8 @@ export default function Home() {
                 onClick={() => setActiveTab('products')}
                 className={`px-6 py-3 rounded-lg text-sm font-medium flex items-center transition-colors ${
                   activeTab === 'products'
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-card text-card-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 <Package className="mr-2 h-4 w-4" />
@@ -58,13 +58,13 @@ export default function Home() {
       </section>
 
       {/* Featured Products Section */}
-      <section className="bg-gray-50 py-12">
+      <section className="bg-muted py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl font-bold text-foreground mb-4">
               Featured DIY Products
             </h2>
-            <p className="text-lg text-gray-600">
+            <p className="text-lg text-muted-foreground">
               Quality tools and materials for your next project
             </p>
           </div>
@@ -72,7 +72,7 @@ export default function Home() {
           {isLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 animate-pulse">
+                <div key={i} className="bg-card rounded-xl shadow-sm border border-border p-4 animate-pulse">
                   <div className="w-full h-48 bg-gray-200 rounded-lg mb-4"></div>
                   <div className="h-4 bg-gray-200 rounded mb-2"></div>
                   <div className="h-4 bg-gray-200 rounded mb-3 w-3/4"></div>

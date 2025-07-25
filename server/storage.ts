@@ -7,7 +7,6 @@ export interface IStorage {
     services?: string[];
     location?: string;
     minRating?: number;
-    availableThisWeek?: boolean;
     hasEmergencyServices?: boolean;
     maxDistance?: number;
   }): Promise<Contractor[]>;
@@ -50,14 +49,13 @@ export class MemStorage implements IStorage {
         rating: "4.9",
         reviewCount: 127,
         experience: 15,
-        services: ["Kitchen Remodeling", "Bathroom Renovation", "Flooring"],
+        services: ["Kitchen Remodeling", "Bathroom Renovation", "Flooring", "Custom Cabinetry"],
         phone: "(206) 555-0123",
         email: "mike@thompsonllc.com",
         licenseNumber: "THOMC*123AB",
         insuranceProvider: "Liberty Mutual",
         isLicensed: true,
         isInsured: true,
-        isAvailableThisWeek: true,
         hasEmergencyServices: false,
         profileImage: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=150&h=150"
       },
@@ -70,14 +68,13 @@ export class MemStorage implements IStorage {
         rating: "5.0",
         reviewCount: 89,
         experience: 12,
-        services: ["Electrical", "Panel Upgrades", "Emergency Repairs"],
+        services: ["Electrical", "Panel Upgrades", "Emergency Repairs", "Smart Home Installation"],
         phone: "(206) 555-0456",
         email: "sarah@martinezelectric.com",
         licenseNumber: "MARTI*456CD",
         insuranceProvider: "State Farm",
         isLicensed: true,
         isInsured: true,
-        isAvailableThisWeek: false,
         hasEmergencyServices: true,
         profileImage: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=150&h=150"
       },
@@ -90,14 +87,13 @@ export class MemStorage implements IStorage {
         rating: "4.8",
         reviewCount: 203,
         experience: 20,
-        services: ["Plumbing", "Water Heaters", "HVAC"],
+        services: ["Plumbing", "Water Heaters", "HVAC", "Drain Cleaning"],
         phone: "(206) 555-0789",
         email: "david@chenplumbing.com",
         licenseNumber: "CHEND*789EF",
         insuranceProvider: "Allstate",
         isLicensed: true,
         isInsured: true,
-        isAvailableThisWeek: true,
         hasEmergencyServices: true,
         profileImage: "https://images.unsplash.com/photo-1560250097-0b93528c311a?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=150&h=150"
       },
@@ -110,16 +106,53 @@ export class MemStorage implements IStorage {
         rating: "4.7",
         reviewCount: 156,
         experience: 18,
-        services: ["Roofing", "Gutters", "Storm Damage"],
+        services: ["Roofing", "Gutters", "Storm Damage", "Gutter Guards"],
         phone: "(206) 555-0321",
         email: "emily@rodriguezroofing.com",
         licenseNumber: "RODRI*321GH",
         insuranceProvider: "Farmers Insurance",
         isLicensed: true,
         isInsured: true,
-        isAvailableThisWeek: false,
         hasEmergencyServices: false,
         profileImage: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=150&h=150"
+      },
+      {
+        name: "Marcus Johnson",
+        company: "Perfect Drywall Solutions",
+        bio: "Specialized drywall contractor offering seamless installations, repairs, and finishing work. Expert in texture matching and custom finishes for residential and commercial properties.",
+        location: "Seattle, WA",
+        distance: "2.7",
+        rating: "4.6",
+        reviewCount: 98,
+        experience: 14,
+        services: ["Drywall Installation", "Drywall Repair", "Texture Matching", "Finishing Work"],
+        phone: "(206) 555-0987",
+        email: "marcus@perfectdrywall.com",
+        licenseNumber: "JOHNS*987IJ",
+        insuranceProvider: "Progressive",
+        isLicensed: true,
+        isInsured: true,
+        hasEmergencyServices: false,
+        profileImage: "https://images.unsplash.com/photo-1558618739-ace2d1e8de4c?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=150&h=150"
+      },
+      {
+        name: "Rachel Green",
+        company: "Gutter Pro Seattle",  
+        bio: "Professional gutter installation and maintenance specialist. Complete gutter systems, cleaning, repairs, and leaf protection solutions for Pacific Northwest homes.",
+        location: "Seattle, WA",
+        distance: "1.9",
+        rating: "4.8",
+        reviewCount: 142,
+        experience: 11,
+        services: ["Gutter Installation", "Gutter Cleaning", "Gutter Repair", "Leaf Protection"],
+        phone: "(206) 555-0654",
+        email: "rachel@gutterpro.com",
+        licenseNumber: "GREEN*654KL",
+        insuranceProvider: "GEICO",
+        isLicensed: true,
+        isInsured: true,
+        hasEmergencyServices: true,
+        profileImage: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=150&h=150"
       }
     ];
 
@@ -133,7 +166,6 @@ export class MemStorage implements IStorage {
         reviewCount: contractor.reviewCount || 0,
         isLicensed: contractor.isLicensed ?? true,
         isInsured: contractor.isInsured ?? true,
-        isAvailableThisWeek: contractor.isAvailableThisWeek ?? false,
         hasEmergencyServices: contractor.hasEmergencyServices ?? false
       };
       this.contractors.set(id, contractorWithId);
@@ -204,7 +236,6 @@ export class MemStorage implements IStorage {
     services?: string[];
     location?: string;
     minRating?: number;
-    availableThisWeek?: boolean;
     hasEmergencyServices?: boolean;
     maxDistance?: number;
   }): Promise<Contractor[]> {
@@ -227,11 +258,7 @@ export class MemStorage implements IStorage {
         );
       }
 
-      if (filters.availableThisWeek !== undefined) {
-        contractors = contractors.filter(contractor =>
-          contractor.isAvailableThisWeek === filters.availableThisWeek
-        );
-      }
+
 
       if (filters.hasEmergencyServices !== undefined) {
         contractors = contractors.filter(contractor =>
@@ -263,7 +290,6 @@ export class MemStorage implements IStorage {
       reviewCount: contractor.reviewCount || 0,
       isLicensed: contractor.isLicensed ?? true,
       isInsured: contractor.isInsured ?? true,
-      isAvailableThisWeek: contractor.isAvailableThisWeek ?? false,
       hasEmergencyServices: contractor.hasEmergencyServices ?? false
     };
     this.contractors.set(id, newContractor);

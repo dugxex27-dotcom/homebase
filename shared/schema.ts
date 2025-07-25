@@ -20,7 +20,7 @@ export const contractors = pgTable("contractors", {
   insuranceProvider: text("insurance_provider").notNull(),
   isLicensed: boolean("is_licensed").notNull().default(true),
   isInsured: boolean("is_insured").notNull().default(true),
-  isAvailableThisWeek: boolean("is_available_this_week").notNull().default(false),
+
   hasEmergencyServices: boolean("has_emergency_services").notNull().default(false),
   profileImage: text("profile_image"),
 });
@@ -38,6 +38,20 @@ export const products = pgTable("products", {
   inStock: boolean("in_stock").notNull().default(true),
 });
 
+export const maintenanceTasks = pgTable("maintenance_tasks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  month: integer("month").notNull(), // 1-12
+  climateZones: text("climate_zones").array().notNull(), // array of climate zones
+  priority: text("priority").notNull(), // 'high', 'medium', 'low'
+  estimatedTime: text("estimated_time").notNull(),
+  difficulty: text("difficulty").notNull(), // 'easy', 'moderate', 'difficult'
+  category: text("category").notNull(),
+  tools: text("tools").array(),
+  cost: text("cost"),
+});
+
 export const insertContractorSchema = createInsertSchema(contractors).omit({
   id: true,
 });
@@ -46,7 +60,13 @@ export const insertProductSchema = createInsertSchema(products).omit({
   id: true,
 });
 
+export const insertMaintenanceTaskSchema = createInsertSchema(maintenanceTasks).omit({
+  id: true,
+});
+
 export type InsertContractor = z.infer<typeof insertContractorSchema>;
 export type Contractor = typeof contractors.$inferSelect;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Product = typeof products.$inferSelect;
+export type InsertMaintenanceTask = z.infer<typeof insertMaintenanceTaskSchema>;
+export type MaintenanceTask = typeof maintenanceTasks.$inferSelect;

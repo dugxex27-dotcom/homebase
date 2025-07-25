@@ -1,8 +1,8 @@
-# HomeConnect - Contractor & DIY Products Platform
+# Home Base - Contractor & DIY Products Platform
 
 ## Overview
 
-HomeConnect is a full-stack web application that connects homeowners with trusted contractors and provides a marketplace for DIY products. The application features a modern React frontend with shadcn/ui components, an Express.js backend, and uses Drizzle ORM with PostgreSQL for data management.
+Home Base is a full-stack web application that connects homeowners with skilled contractors specializing in niche services (gutters, drywall, custom work) and provides a marketplace for DIY products plus seasonal maintenance guidance. The application features an Anthropologie-inspired aesthetic with warm colors, elegant typography, and a sophisticated design approach using React frontend with shadcn/ui components, Express.js backend, and Drizzle ORM.
 
 ## User Preferences
 
@@ -62,9 +62,10 @@ The application defines two main entities:
   - Category-based browsing
 
 ### Frontend Pages
-- **Home**: Landing page with hero section and featured content
-- **Contractors**: Contractor listing with search and filtering
+- **Home**: Landing page with "Home Base" branding and Anthropologie-inspired hero section
+- **Contractors**: Contractor listing with search and filtering (availability filters removed)
 - **Products**: DIY product marketplace
+- **Maintenance**: Seasonal home maintenance schedule with location-based recommendations
 - **Contractor Profile**: Detailed contractor information
 - **404**: Not found page
 
@@ -123,3 +124,13 @@ The application uses a clean separation between client and server with shared Ty
 - **Environment**: Production mode serves static files from Express
 
 The application is designed for deployment on platforms that support Node.js with PostgreSQL databases, with specific configuration for Replit's development environment.
+
+## Recent Changes (January 2025)
+
+- **Rebranded** platform from "HomeConnect" to "Home Base" with new tagline and messaging
+- **Redesigned UI** with Anthropologie-inspired aesthetic featuring warm color palette (terra cotta, cream, soft browns)
+- **Removed availability filters** from contractor search and profiles as requested
+- **Added maintenance schedule feature** with location-based seasonal recommendations for US regions
+- **Expanded contractor services** to include niche specialties like gutter installation/cleaning, drywall installation/repair, and custom cabinetry
+- **Updated color scheme** in CSS to use warmer, more elegant colors with proper light/dark mode support
+- **Enhanced search placeholders** to highlight specialized services like "gutter cleaning, drywall repair, custom cabinetry"
