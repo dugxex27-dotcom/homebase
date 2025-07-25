@@ -55,16 +55,16 @@ export default function Logo({ className = "h-8 w-auto" }: { className?: string 
         />
       </g>
 
-      {/* Text "Home Base" - larger font to match house height with more spacing */}
+      {/* Text "Home Base" - aligned with bottom of house */}
       <g fill="currentColor">
         <text
           x="280"
-          y="50"
+          y="85"
           fontSize="65"
           fontWeight="700"
           fontFamily="system-ui, -apple-system, sans-serif"
           textAnchor="middle"
-          dominantBaseline="middle"
+          dominantBaseline="baseline"
         >
           Home Base
         </text>
