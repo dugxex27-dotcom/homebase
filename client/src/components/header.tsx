@@ -20,7 +20,7 @@ export default function Header() {
             <Link href="/products" className={`text-gray-700 hover:text-primary transition-colors ${
               location === '/products' ? 'text-primary font-medium' : ''
             }`}>
-              DIY Products
+              Products
             </Link>
             <Link href="/maintenance" className={`text-gray-700 hover:text-primary transition-colors ${
               location === '/maintenance' ? 'text-primary font-medium' : ''
