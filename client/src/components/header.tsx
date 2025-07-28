@@ -17,11 +17,6 @@ export default function Header() {
           </div>
           
           <nav className="hidden md:flex space-x-8">
-            <Link href="/contractors" className={`text-gray-700 hover:text-primary transition-colors ${
-              location === '/contractors' ? 'text-primary font-medium' : ''
-            }`}>
-              Find Contractors
-            </Link>
             <Link href="/products" className={`text-gray-700 hover:text-primary transition-colors ${
               location === '/products' ? 'text-primary font-medium' : ''
             }`}>
@@ -31,6 +26,11 @@ export default function Header() {
               location === '/maintenance' ? 'text-primary font-medium' : ''
             }`}>
               Maintenance Schedule
+            </Link>
+            <Link href="/contractors" className={`text-gray-700 hover:text-primary transition-colors ${
+              location === '/contractors' ? 'text-primary font-medium' : ''
+            }`}>
+              Find Contractors
             </Link>
           </nav>
 
