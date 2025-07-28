@@ -21,7 +21,7 @@ interface MaintenanceTask {
   category: string;
   tools: string[] | null;
   cost: string | null;
-  systemRequirements?: string[]; // New field for home system requirements
+  systemRequirements?: string[];
 }
 
 const MONTHS = [
@@ -114,7 +114,7 @@ export default function Maintenance() {
     localStorage.setItem('home-systems', JSON.stringify(homeSystems));
   }, [homeSystems]);
 
-  // Generate storage key for task completion (includes month/year to reset monthly)
+  // Generate unique key for task completion tracking (includes month/year)
   const getTaskKey = (taskId: string, month: number, year: number) => {
     return `${taskId}-${month}-${year}`;
   };
@@ -161,12 +161,19 @@ export default function Maintenance() {
     );
   };
 
-  // Comprehensive maintenance schedule based on professional recommendations
+  // Generate maintenance tasks based on month and location
   const getMaintenanceTasksForMonth = (month: number): MaintenanceTask[] => {
-    const allTasks: MaintenanceTask[] = [
-      // MONTHLY TASKS (Every Month)
+    const isWinter = month === 12 || month === 1 || month === 2;
+    const isSpring = month === 3 || month === 4 || month === 5;
+    const isSummer = month === 6 || month === 7 || month === 8;
+    const isFall = month === 9 || month === 10 || month === 11;
+
+    const tasks: MaintenanceTask[] = [];
+
+    // Universal monthly tasks
+    tasks.push(
       {
-        id: "monthly-1",
+        id: "monthly-smoke-detectors",
         title: "Test Smoke and Carbon Monoxide Detectors",
         description: "Check batteries and functionality by pressing test buttons. Replace batteries if chirping or low.",
         month: month,
@@ -179,7 +186,7 @@ export default function Maintenance() {
         cost: "$10-15"
       },
       {
-        id: "monthly-2",
+        id: "monthly-hvac-filter",
         title: "Change HVAC Air Filters",
         description: "Replace air filters every 30-60 days, more frequently during heavy use seasons. Check size and MERV rating.",
         month: month,
@@ -192,46 +199,128 @@ export default function Maintenance() {
         cost: "$15-40"
       },
       {
-        id: "monthly-3",
-        title: "Clean Garbage Disposal",
-        description: "Use baking soda and vinegar or grind citrus peels to eliminate odors and clean blades.",
+        id: "monthly-water-check",
+        title: "Check Water Systems",
+        description: "Test water pressure, look for leaks under sinks, and run garbage disposal with citrus peels.",
         month: month,
         climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
         priority: "medium",
-        estimatedTime: "10 minutes",
+        estimatedTime: "15 minutes",
         difficulty: "easy",
-        category: "Appliances",
+        category: "Plumbing",
         tools: ["Baking soda", "Vinegar", "Citrus peels"],
         cost: "$0-5"
-      },
-      {
-        id: "monthly-4",
-        title: "Clean Dryer Vent",
-        description: "Remove lint buildup from dryer vent to prevent fire hazard and improve efficiency.",
+      }
+    );
+
+    // Winter tasks (December, January, February)
+    if (isWinter) {
+      // Cold climate winter tasks
+      if (["pacific-northwest", "northeast", "midwest", "mountain-west"].includes(selectedZone)) {
+        tasks.push({
+          id: "winter-heating-check",
+          title: "Inspect Heating System Operation",
+          description: month === 12 ? "Schedule professional HVAC maintenance before peak winter season." : 
+                      month === 1 ? "Monitor heating system efficiency and check for unusual sounds or smells." :
+                      "Check heating vents for blockages and ensure consistent heating throughout home.",
+          month: month,
+          climateZones: ["pacific-northwest", "northeast", "midwest", "mountain-west"],
+          priority: "high",
+          estimatedTime: month === 12 ? "2 hours" : "30 minutes",
+          difficulty: month === 12 ? "moderate" : "easy",
+          category: "HVAC",
+          tools: month === 12 ? null : ["Flashlight"],
+          cost: month === 12 ? "$100-200" : "$0"
+        });
+      }
+
+      // Mild climate winter tasks
+      if (["southeast", "southwest", "california"].includes(selectedZone)) {
+        tasks.push({
+          id: "winter-mild-maintenance",
+          title: "Winter Home Preparation",
+          description: month === 12 ? "Clean and inspect fireplace and chimney if applicable." :
+                      month === 1 ? "Check for any moisture issues and inspect exterior paint for winter damage." :
+                      "Prune dormant trees and shrubs, clean and store outdoor furniture.",
+          month: month,
+          climateZones: ["southeast", "southwest", "california"],
+          priority: "medium",
+          estimatedTime: "1-2 hours",
+          difficulty: "moderate",
+          category: month === 2 ? "Landscaping" : "General",
+          tools: month === 2 ? ["Pruning shears", "Garden gloves"] : ["Flashlight", "Cleaning supplies"],
+          cost: "$10-30"
+        });
+      }
+    }
+
+    // Spring tasks (March, April, May)
+    if (isSpring) {
+      tasks.push({
+        id: "spring-exterior-prep",
+        title: "Spring Exterior Maintenance",
+        description: month === 3 ? "Inspect roof for winter damage and check gutters for clogs or damage." :
+                    month === 4 ? "Power wash deck, patio, and exterior siding. Check exterior paint." :
+                    "Deep clean windows inside and out, inspect and repair window screens.",
         month: month,
         climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
         priority: "high",
-        estimatedTime: "30 minutes",
-        difficulty: "easy",
-        category: "Safety",
-        tools: ["Vacuum", "Dryer brush"],
-        cost: "$0-20"
-      },
-      {
-        id: "monthly-5",
-        title: "Run Water in Unused Areas",
-        description: "Flush toilets and run faucets in guest bathrooms or unused areas to prevent sewer gas buildup.",
-        month: month,
-        climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
-        priority: "low",
-        estimatedTime: "5 minutes",
-        difficulty: "easy",
-        category: "Plumbing",
-        tools: null,
-        cost: "$0"
-      },
+        estimatedTime: month === 4 ? "3-4 hours" : "2-3 hours",
+        difficulty: "moderate",
+        category: month === 3 ? "Roofing" : month === 4 ? "Exterior" : "Windows",
+        tools: month === 3 ? ["Ladder", "Binoculars"] : 
+              month === 4 ? ["Power washer", "Cleaning supplies"] : 
+              ["Window cleaner", "Squeegee", "Repair kit"],
+        cost: month === 3 ? "$0-50" : month === 4 ? "$20-40" : "$15-35"
+      });
+    }
 
-      // SYSTEM-SPECIFIC MONTHLY TASKS
+    // Summer tasks (June, July, August)
+    if (isSummer) {
+      // Hot climate summer tasks
+      if (["southeast", "southwest", "california", "great-plains"].includes(selectedZone)) {
+        tasks.push({
+          id: "summer-cooling-maintenance",
+          title: "Cooling System Maintenance",
+          description: month === 6 ? "Deep clean AC filters and check refrigerant levels professionally." :
+                      month === 7 ? "Monitor AC efficiency, clean vents and registers throughout home." :
+                      "Inspect AC ductwork for leaks and ensure optimal cooling performance.",
+          month: month,
+          climateZones: ["southeast", "southwest", "california", "great-plains"],
+          priority: "high",
+          estimatedTime: month === 6 ? "2 hours" : "1 hour",
+          difficulty: month === 6 ? "moderate" : "easy",
+          category: "HVAC",
+          tools: ["New air filter", "Vacuum", "Cleaning supplies"],
+          cost: month === 6 ? "$50-100" : "$0-25"
+        });
+      }
+    }
+
+    // Fall tasks (September, October, November)
+    if (isFall) {
+      // Cold climate fall winterization
+      if (["pacific-northwest", "northeast", "midwest", "mountain-west"].includes(selectedZone)) {
+        tasks.push({
+          id: "fall-winterization",
+          title: "Fall Winterization Prep",
+          description: month === 9 ? "Inspect and service heating system before cold weather arrives." :
+                      month === 10 ? "Winterize outdoor water systems, drain and store hoses." :
+                      "Final exterior home inspection, seal gaps and cracks before winter.",
+          month: month,
+          climateZones: ["pacific-northwest", "northeast", "midwest", "mountain-west"],
+          priority: "high",
+          estimatedTime: month === 9 ? "2-3 hours" : "1-2 hours",
+          difficulty: "moderate",
+          category: month === 9 ? "HVAC" : month === 10 ? "Plumbing" : "Weatherization",
+          tools: month === 10 ? ["Hose storage", "Shut-off tools"] : ["Caulk", "Weather stripping"],
+          cost: "$25-75"
+        });
+      }
+    }
+
+    // System-specific tasks
+    tasks.push(
       {
         id: "monthly-gas-furnace",
         title: "Check Gas Furnace Filter and Vents",
@@ -245,20 +334,6 @@ export default function Maintenance() {
         tools: null,
         cost: "$0",
         systemRequirements: ["gas-furnace"]
-      },
-      {
-        id: "monthly-oil-furnace",
-        title: "Monitor Oil Furnace and Check Oil Level",
-        description: "Check oil level gauge and listen for unusual sounds during operation.",
-        month: month,
-        climateZones: ["pacific-northwest", "northeast", "midwest", "mountain-west"],
-        priority: "medium",
-        estimatedTime: "10 minutes",
-        difficulty: "easy",
-        category: "HVAC",
-        tools: null,
-        cost: "$0",
-        systemRequirements: ["oil-furnace"]
       },
       {
         id: "monthly-heat-pump",
@@ -275,34 +350,6 @@ export default function Maintenance() {
         systemRequirements: ["heat-pump"]
       },
       {
-        id: "monthly-water-softener",
-        title: "Check Water Softener Salt Level",
-        description: "Replenish salt and check for salt bridges that can prevent proper operation.",
-        month: month,
-        climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
-        priority: "medium",
-        estimatedTime: "10 minutes",
-        difficulty: "easy",
-        category: "Plumbing",
-        tools: ["Water softener salt"],
-        cost: "$20-40",
-        systemRequirements: ["water-softener"]
-      },
-      {
-        id: "monthly-well-water",
-        title: "Test Well Water Quality",
-        description: "Check water pressure and test for clarity, taste, or odor changes that might indicate issues.",
-        month: month,
-        climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
-        priority: "medium",
-        estimatedTime: "15 minutes",
-        difficulty: "easy",
-        category: "Plumbing",
-        tools: ["Water test kit"],
-        cost: "$15-30",
-        systemRequirements: ["well-water"]
-      },
-      {
         id: "monthly-generator",
         title: "Test Backup Generator",
         description: "Run generator for 15-30 minutes to ensure proper operation and check fuel levels.",
@@ -315,24 +362,12 @@ export default function Maintenance() {
         tools: null,
         cost: "$0",
         systemRequirements: ["generator"]
-      },
-      {
-        id: "monthly-security-system",
-        title: "Test Security System",
-        description: "Test all sensors, cameras, and alarms. Replace backup batteries as needed.",
-        month: month,
-        climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
-        priority: "medium",
-        estimatedTime: "20 minutes",
-        difficulty: "easy",
-        category: "Security",
-        tools: ["Batteries"],
-        cost: "$10-25",
-        systemRequirements: ["security-system"]
-      },
+      }
+    );
 
-      // SEASONAL SYSTEM-SPECIFIC TASKS
-      ...(month >= 6 && month <= 8 ? [
+    // Pool tasks (summer only)
+    if (isSummer) {
+      tasks.push(
         {
           id: "summer-pool",
           title: "Pool Maintenance and Chemical Balance",
@@ -346,7 +381,7 @@ export default function Maintenance() {
           tools: ["Pool test kit", "Pool chemicals", "Pool brush", "Skimmer net"],
           cost: "$30-60",
           systemRequirements: ["pool"]
-        } as MaintenanceTask,
+        },
         {
           id: "summer-spa",
           title: "Hot Tub/Spa Water Treatment",
@@ -360,596 +395,31 @@ export default function Maintenance() {
           tools: ["Spa test strips", "Spa chemicals"],
           cost: "$25-45",
           systemRequirements: ["spa"]
-        } as MaintenanceTask,
-        {
-          id: "summer-solar-panels",
-          title: "Clean Solar Panels",
-          description: "Remove dust, pollen, and debris from solar panels to maintain efficiency.",
-          month: month,
-          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
-          priority: "medium",
-          estimatedTime: "2-3 hours",
-          difficulty: "moderate",
-          category: "Solar",
-          tools: ["Garden hose", "Soft brush", "Squeegee"],
-          cost: "$0-20",
-          systemRequirements: ["solar-panels"]
-        } as MaintenanceTask,
-        {
-          id: "summer-sprinkler",
-          title: "Inspect and Adjust Sprinkler System",
-          description: "Check all sprinkler heads, adjust spray patterns, and test automatic timers.",
-          month: month,
-          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
-          priority: "medium",
-          estimatedTime: "1-2 hours",
-          difficulty: "moderate",
-          category: "Irrigation",
-          tools: ["Screwdriver", "Sprinkler head tool"],
-          cost: "$10-30",
-          systemRequirements: ["sprinkler-system"]
-        } as MaintenanceTask
-      ] : []),
+        }
+      );
+    }
 
-      ...(month >= 10 && month <= 11 ? [
-        {
-          id: "fall-sprinkler-winterize",
-          title: "Winterize Sprinkler System",
-          description: "Drain water from sprinkler lines and shut off water supply to prevent freeze damage.",
-          month: month,
-          climateZones: ["pacific-northwest", "northeast", "midwest", "mountain-west"],
-          priority: "high",
-          estimatedTime: "2-3 hours",
-          difficulty: "moderate",
-          category: "Irrigation",
-          tools: ["Air compressor", "Wrench"],
-          cost: "$0-100",
-          systemRequirements: ["sprinkler-system"]
-        } as MaintenanceTask,
-        {
-          id: "fall-pool-winterize",
-          title: "Winterize Swimming Pool",
-          description: "Balance chemicals, lower water level, and cover pool for winter season.",
-          month: month,
-          climateZones: ["pacific-northwest", "northeast", "midwest", "mountain-west"],
-          priority: "high",
-          estimatedTime: "3-4 hours",
-          difficulty: "difficult",
-          category: "Pool",
-          tools: ["Pool cover", "Winter chemicals", "Pool vacuum"],
-          cost: "$50-100",
-          systemRequirements: ["pool"]
-        } as MaintenanceTask
-      ] : []),
+    // Solar panel tasks
+    if (isSummer || month === 3 || month === 9) {
+      tasks.push({
+        id: `solar-${month}`,
+        title: isSummer ? "Clean Solar Panels" : "Solar Panel System Inspection",
+        description: isSummer ? 
+          "Remove dust, pollen, and debris from solar panels to maintain efficiency." :
+          "Check mounting hardware, wiring connections, and monitor system performance data.",
+        month: month,
+        climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
+        priority: "medium",
+        estimatedTime: isSummer ? "2-3 hours" : "1 hour",
+        difficulty: "moderate",
+        category: "Solar",
+        tools: isSummer ? ["Garden hose", "Soft brush", "Squeegee"] : ["Multimeter", "Binoculars"],
+        cost: isSummer ? "$0-20" : "$0",
+        systemRequirements: ["solar-panels"]
+      });
+    }
 
-      ...(month === 3 || month === 9 ? [
-        {
-          id: "seasonal-solar-inspection",
-          title: "Solar Panel System Inspection",
-          description: "Check mounting hardware, wiring connections, and monitor system performance data.",
-          month: month,
-          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
-          priority: "medium",
-          estimatedTime: "1 hour",
-          difficulty: "moderate",
-          category: "Solar",
-          tools: ["Multimeter", "Binoculars"],
-          cost: "$0",
-          systemRequirements: ["solar-panels"]
-        } as MaintenanceTask,
-        {
-          id: "seasonal-septic-check",
-          title: "Septic System Inspection",
-          description: "Check for proper drainage, unusual odors, and schedule pumping if needed (every 3-5 years).",
-          month: month,
-          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
-          priority: "medium",
-          estimatedTime: "30 minutes",
-          difficulty: "easy",
-          category: "Plumbing",
-          tools: null,
-          cost: "$0",
-          systemRequirements: ["septic"]
-        } as MaintenanceTask
-      ] : []),
-
-      // WINTER TASKS (December - February)
-      ...(month === 12 ? [
-        {
-          id: "dec-1",
-          title: "Insulate Outdoor Water Faucets",
-          description: "Install faucet covers and insulate exposed pipes to prevent freezing damage.",
-          month: 12,
-          climateZones: ["pacific-northwest", "northeast", "midwest", "mountain-west"],
-          priority: "high",
-          estimatedTime: "1 hour",
-          difficulty: "easy",
-          category: "Winterization",
-          tools: ["Faucet covers", "Pipe insulation", "Duct tape"],
-          cost: "$15-40"
-        } as MaintenanceTask,
-        {
-          id: "dec-2",
-          title: "Cover Outdoor AC Units",
-          description: "Protect central air units with weatherproof covers or store window units indoors.",
-          month: 12,
-          climateZones: ["pacific-northwest", "northeast", "midwest", "mountain-west"],
-          priority: "medium",
-          estimatedTime: "30 minutes",
-          difficulty: "easy",
-          category: "HVAC",
-          tools: ["AC cover", "Bungee cords"],
-          cost: "$20-50"
-        } as MaintenanceTask,
-        {
-          id: "dec-3",
-          title: "Sweep Chimney and Prepare Fireplace",
-          description: "Have chimney professionally cleaned and inspected. Check damper operation and screen condition.",
-          month: 12,
-          climateZones: ["pacific-northwest", "northeast", "midwest", "mountain-west"],
-          priority: "high",
-          estimatedTime: "Professional service",
-          difficulty: "difficult",
-          category: "Safety",
-          tools: null,
-          cost: "$150-300"
-        } as MaintenanceTask
-      ] : []),
-
-      ...(month === 1 ? [
-        {
-          id: "jan-1",
-          title: "Monitor for Ice Dams",
-          description: "Check roof edges for ice buildup that can cause water damage. Contact contractor if found.",
-          month: 1,
-          climateZones: ["pacific-northwest", "northeast", "midwest", "mountain-west"],
-          priority: "high",
-          estimatedTime: "15 minutes",
-          difficulty: "easy",
-          category: "Exterior",
-          tools: ["Binoculars (optional)"],
-          cost: "$0"
-        } as MaintenanceTask,
-        {
-          id: "jan-2",
-          title: "Service Heating System",
-          description: "Have boiler or furnace professionally serviced before peak cold season arrives.",
-          month: 1,
-          climateZones: ["pacific-northwest", "northeast", "midwest", "mountain-west"],
-          priority: "high",
-          estimatedTime: "Professional service",
-          difficulty: "difficult",
-          category: "HVAC",
-          tools: null,
-          cost: "$100-200"
-        } as MaintenanceTask,
-        {
-          id: "jan-3",
-          title: "Check Windows for Condensation",
-          description: "Look for excessive moisture on windows and improve ventilation as needed to prevent mold.",
-          month: 1,
-          climateZones: ["pacific-northwest", "northeast", "midwest", "mountain-west"],
-          priority: "medium",
-          estimatedTime: "20 minutes",
-          difficulty: "easy",
-          category: "Energy Efficiency",
-          tools: ["Towels", "Fan"],
-          cost: "$0-30"
-        } as MaintenanceTask
-      ] : []),
-
-      ...(month === 2 ? [
-        {
-          id: "feb-1",
-          title: "Clean Windows Inside and Out",
-          description: "Wash windows and check wooden frames for rot or damage from winter weather.",
-          month: 2,
-          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
-          priority: "low",
-          estimatedTime: "2-3 hours",
-          difficulty: "moderate",
-          category: "Exterior",
-          tools: ["Window cleaner", "Squeegee", "Microfiber cloths"],
-          cost: "$10-25"
-        } as MaintenanceTask,
-        {
-          id: "feb-2",
-          title: "Deep Clean Indoor Spaces",
-          description: "Focus on areas neglected during holidays - baseboards, light fixtures, and behind furniture.",
-          month: 2,
-          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
-          priority: "low",
-          estimatedTime: "4-6 hours",
-          difficulty: "moderate",
-          category: "Interior",
-          tools: ["Vacuum", "Microfiber cloths", "All-purpose cleaner"],
-          cost: "$15-30"
-        } as MaintenanceTask
-      ] : []),
-
-      // SPRING TASKS (March - May)
-      ...(month === 3 ? [
-        {
-          id: "mar-1",
-          title: "HVAC System Spring Inspection",
-          description: "Schedule professional tune-up before cooling season. Clean outdoor unit and check refrigerant levels.",
-          month: 3,
-          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
-          priority: "high",
-          estimatedTime: "Professional service",
-          difficulty: "difficult",
-          category: "HVAC",
-          tools: null,
-          cost: "$100-200"
-        } as MaintenanceTask,
-        {
-          id: "mar-2",
-          title: "Check Gutters for Winter Damage",
-          description: "Clear debris and inspect for damage from ice, snow, and winter storms.",
-          month: 3,
-          climateZones: ["pacific-northwest", "northeast", "midwest", "mountain-west"],
-          priority: "high",
-          estimatedTime: "2-3 hours",
-          difficulty: "moderate",
-          category: "Exterior",
-          tools: ["Ladder", "Garden hose", "Gloves", "Trowel"],
-          cost: "$0-50"
-        } as MaintenanceTask,
-        {
-          id: "mar-3",
-          title: "Inspect Sidewalks and Driveway",
-          description: "Look for freeze-damage cracks and plan repairs to prevent water infiltration.",
-          month: 3,
-          climateZones: ["pacific-northwest", "northeast", "midwest", "mountain-west"],
-          priority: "medium",
-          estimatedTime: "30 minutes",
-          difficulty: "easy",
-          category: "Exterior",
-          tools: null,
-          cost: "$0"
-        } as MaintenanceTask
-      ] : []),
-
-      ...(month === 4 ? [
-        {
-          id: "apr-1",
-          title: "Remove Debris from AC Units",
-          description: "Clear leaves, twigs, and debris from around outdoor AC units for optimal airflow.",
-          month: 4,
-          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
-          priority: "medium",
-          estimatedTime: "30 minutes",
-          difficulty: "easy",
-          category: "HVAC",
-          tools: ["Garden hose", "Soft brush"],
-          cost: "$0"
-        } as MaintenanceTask,
-        {
-          id: "apr-2",
-          title: "Inspect Roof and Chimney",
-          description: "Look for loose or missing shingles, damaged flashing, and chimney cap issues from winter.",
-          month: 4,
-          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
-          priority: "high",
-          estimatedTime: "45 minutes",
-          difficulty: "moderate",
-          category: "Exterior",
-          tools: ["Binoculars", "Ladder (if needed)"],
-          cost: "$0"
-        } as MaintenanceTask,
-        {
-          id: "apr-3",
-          title: "Service Lawn Equipment",
-          description: "Tune-up mower, sharpen blades, change oil, and check spark plugs for the growing season.",
-          month: 4,
-          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "california", "great-plains"],
-          priority: "medium",
-          estimatedTime: "2 hours",
-          difficulty: "moderate",
-          category: "Yard",
-          tools: ["Oil", "Spark plug", "Air filter", "Blade sharpener"],
-          cost: "$30-60"
-        } as MaintenanceTask
-      ] : []),
-
-      ...(month === 5 ? [
-        {
-          id: "may-1",
-          title: "Deep Clean and Inspect Gutters",
-          description: "Thoroughly clean gutters and downspouts. Check for proper drainage and secure mounting.",
-          month: 5,
-          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
-          priority: "high",
-          estimatedTime: "3-4 hours",
-          difficulty: "moderate",
-          category: "Exterior",
-          tools: ["Ladder", "Garden hose", "Gloves", "Gutter scoop"],
-          cost: "$0-30"
-        } as MaintenanceTask,
-        {
-          id: "may-2",
-          title: "Power Wash Exterior Surfaces",
-          description: "Clean siding, decks, patios, and outdoor furniture to remove winter grime and mildew.",
-          month: 5,
-          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
-          priority: "medium",
-          estimatedTime: "4-6 hours",
-          difficulty: "moderate",
-          category: "Exterior",
-          tools: ["Pressure washer", "Garden hose", "Mild detergent"],
-          cost: "$20-50"
-        } as MaintenanceTask,
-        {
-          id: "may-3",
-          title: "Inspect and Repair Concrete",
-          description: "Fill driveway and walkway cracks to prevent water damage and further deterioration.",
-          month: 5,
-          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
-          priority: "medium",
-          estimatedTime: "2-3 hours",
-          difficulty: "moderate",
-          category: "Exterior",
-          tools: ["Concrete crack filler", "Trowel", "Wire brush"],
-          cost: "$15-40"
-        } as MaintenanceTask
-      ] : []),
-
-      // SUMMER TASKS (June - August)
-      ...(month === 6 ? [
-        {
-          id: "jun-1",
-          title: "Deep Clean AC Unit",
-          description: "Professional cleaning of coils, fins, and internal components before peak summer usage.",
-          month: 6,
-          climateZones: ["northeast", "southeast", "midwest", "southwest", "california", "great-plains"],
-          priority: "high",
-          estimatedTime: "Professional service",
-          difficulty: "difficult",
-          category: "HVAC",
-          tools: null,
-          cost: "$100-200"
-        } as MaintenanceTask,
-        {
-          id: "jun-2",
-          title: "Clean Refrigerator Coils",
-          description: "Vacuum dust and debris from coils behind or beneath refrigerator to improve efficiency.",
-          month: 6,
-          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
-          priority: "medium",
-          estimatedTime: "30 minutes",
-          difficulty: "easy",
-          category: "Appliances",
-          tools: ["Vacuum", "Coil brush"],
-          cost: "$0"
-        } as MaintenanceTask,
-        {
-          id: "jun-3",
-          title: "Reverse Ceiling Fans",
-          description: "Set ceiling fans to run counter-clockwise to push cool air down during summer months.",
-          month: 6,
-          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
-          priority: "low",
-          estimatedTime: "15 minutes",
-          difficulty: "easy",
-          category: "Energy Efficiency",
-          tools: null,
-          cost: "$0"
-        } as MaintenanceTask
-      ] : []),
-
-      ...(month === 7 ? [
-        {
-          id: "jul-1",
-          title: "Inspect Foundation Drainage",
-          description: "Check for water pooling around foundation and ensure proper grading away from house.",
-          month: 7,
-          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
-          priority: "high",
-          estimatedTime: "45 minutes",
-          difficulty: "easy",
-          category: "Exterior",
-          tools: null,
-          cost: "$0"
-        } as MaintenanceTask,
-        {
-          id: "jul-2",
-          title: "Check Basement/Crawl Space for Moisture",
-          description: "Look for signs of water infiltration, mold, or excessive humidity that could cause damage.",
-          month: 7,
-          climateZones: ["pacific-northwest", "northeast", "midwest", "mountain-west"],
-          priority: "medium",
-          estimatedTime: "30 minutes",
-          difficulty: "easy",
-          category: "Interior",
-          tools: ["Flashlight", "Humidity meter"],
-          cost: "$0-20"
-        } as MaintenanceTask,
-        {
-          id: "jul-3",
-          title: "Inspect for Insect Activity",
-          description: "Look for signs of termites, carpenter ants, or other destructive insects around foundation and wood structures.",
-          month: 7,
-          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "california", "great-plains"],
-          priority: "medium",
-          estimatedTime: "45 minutes",
-          difficulty: "easy",
-          category: "Pest Control",
-          tools: ["Flashlight"],
-          cost: "$0"
-        } as MaintenanceTask
-      ] : []),
-
-      ...(month === 8 ? [
-        {
-          id: "aug-1",
-          title: "Organize and Clean Garage",
-          description: "Deep clean garage, organize tools and equipment, and check for pest activity or water damage.",
-          month: 8,
-          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
-          priority: "low",
-          estimatedTime: "4-6 hours",
-          difficulty: "moderate",
-          category: "Organization",
-          tools: ["Broom", "Storage containers", "All-purpose cleaner"],
-          cost: "$20-50"
-        } as MaintenanceTask,
-        {
-          id: "aug-2",
-          title: "Clean Kitchen Cabinets and Hardware",
-          description: "Deep clean cabinet surfaces, hardware, and interior shelves. Check for loose hinges or handles.",
-          month: 8,
-          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
-          priority: "low",
-          estimatedTime: "3-4 hours",
-          difficulty: "easy",
-          category: "Interior",
-          tools: ["Wood cleaner", "Microfiber cloths", "Screwdriver"],
-          cost: "$10-20"
-        } as MaintenanceTask,
-        {
-          id: "aug-3",
-          title: "Rotate Mattresses",
-          description: "Flip and rotate mattresses to ensure even wear and extend their lifespan.",
-          month: 8,
-          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
-          priority: "low",
-          estimatedTime: "30 minutes",
-          difficulty: "easy",
-          category: "Interior",
-          tools: null,
-          cost: "$0"
-        } as MaintenanceTask
-      ] : []),
-
-      // FALL TASKS (September - November)
-      ...(month === 9 ? [
-        {
-          id: "sep-1",
-          title: "Schedule Heating System Maintenance",
-          description: "Have furnace or boiler professionally serviced before cold weather arrives.",
-          month: 9,
-          climateZones: ["pacific-northwest", "northeast", "midwest", "mountain-west"],
-          priority: "high",
-          estimatedTime: "Professional service",
-          difficulty: "difficult",
-          category: "HVAC",
-          tools: null,
-          cost: "$100-200"
-        } as MaintenanceTask,
-        {
-          id: "sep-2",
-          title: "Have Chimney Serviced",
-          description: "Professional chimney cleaning and inspection to prepare for heating season use.",
-          month: 9,
-          climateZones: ["pacific-northwest", "northeast", "midwest", "mountain-west"],
-          priority: "high",
-          estimatedTime: "Professional service",
-          difficulty: "difficult",
-          category: "Safety",
-          tools: null,
-          cost: "$150-300"
-        } as MaintenanceTask,
-        {
-          id: "sep-3",
-          title: "Whole-House Deep Clean",
-          description: "Comprehensive deep cleaning including baseboards, light fixtures, ceiling fans, and forgotten corners.",
-          month: 9,
-          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
-          priority: "medium",
-          estimatedTime: "8-12 hours",
-          difficulty: "moderate",
-          category: "Interior",
-          tools: ["Vacuum", "Microfiber cloths", "All-purpose cleaner", "Ladder"],
-          cost: "$30-60"
-        } as MaintenanceTask
-      ] : []),
-
-      ...(month === 10 ? [
-        {
-          id: "oct-1",
-          title: "Final Gutter Cleaning",
-          description: "Remove all leaves and debris from gutters and downspouts before winter weather arrives.",
-          month: 10,
-          climateZones: ["pacific-northwest", "northeast", "midwest", "mountain-west"],
-          priority: "high",
-          estimatedTime: "3-4 hours",
-          difficulty: "moderate",
-          category: "Exterior",
-          tools: ["Ladder", "Garden hose", "Gloves", "Gutter scoop"],
-          cost: "$0-30"
-        } as MaintenanceTask,
-        {
-          id: "oct-2",
-          title: "Trim Trees and Shrubs",
-          description: "Cut back branches touching or near the house to prevent damage during winter storms.",
-          month: 10,
-          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
-          priority: "medium",
-          estimatedTime: "3-5 hours",
-          difficulty: "moderate",
-          category: "Yard",
-          tools: ["Pruning shears", "Loppers", "Ladder", "Safety glasses"],
-          cost: "$0-40"
-        } as MaintenanceTask,
-        {
-          id: "oct-3",
-          title: "Inspect and Secure Deck",
-          description: "Check for loose nails, screws, or boards. Hammer down or replace as needed for winter safety.",
-          month: 10,
-          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
-          priority: "medium",
-          estimatedTime: "2-3 hours",
-          difficulty: "moderate",
-          category: "Exterior",
-          tools: ["Hammer", "Screwdriver", "Replacement screws/nails"],
-          cost: "$10-30"
-        } as MaintenanceTask
-      ] : []),
-
-      ...(month === 11 ? [
-        {
-          id: "nov-1",
-          title: "Drain Hot Water Heater Sediment",
-          description: "Flush sediment from water heater tank to improve efficiency and extend unit life.",
-          month: 11,
-          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
-          priority: "medium",
-          estimatedTime: "1 hour",
-          difficulty: "moderate",
-          category: "Plumbing",
-          tools: ["Garden hose", "Bucket"],
-          cost: "$0"
-        } as MaintenanceTask,
-        {
-          id: "nov-2",
-          title: "Shut Off Outdoor Water Supply",
-          description: "Turn off water to outdoor faucets and drain/store garden hoses to prevent freeze damage.",
-          month: 11,
-          climateZones: ["pacific-northwest", "northeast", "midwest", "mountain-west"],
-          priority: "high",
-          estimatedTime: "45 minutes",
-          difficulty: "easy",
-          category: "Winterization",
-          tools: ["Wrench"],
-          cost: "$0"
-        } as MaintenanceTask,
-        {
-          id: "nov-3",
-          title: "Install Storm Windows",
-          description: "Put up storm windows if applicable, or check existing windows for air leaks and draft issues.",
-          month: 11,
-          climateZones: ["pacific-northwest", "northeast", "midwest", "mountain-west"],
-          priority: "medium",
-          estimatedTime: "3-4 hours",
-          difficulty: "moderate",
-          category: "Energy Efficiency",
-          tools: ["Screwdriver", "Weather stripping", "Caulk gun"],
-          cost: "$20-80"
-        } as MaintenanceTask
-      ] : [])
-    ];
-
-    return allTasks.filter(task => task.month === month);
+    return tasks;
   };
 
   const maintenanceTasks = getMaintenanceTasksForMonth(selectedMonth);
@@ -974,44 +444,44 @@ export default function Maintenance() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high': return 'bg-red-100 text-red-800 border-red-200';
-      case 'medium': return 'bg-amber-100 text-amber-800 border-amber-200';
-      case 'low': return 'bg-green-100 text-green-800 border-green-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'high': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      case 'medium': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+      case 'low': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
     }
   };
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
-      case 'easy': return 'bg-green-50 text-green-700';
-      case 'moderate': return 'bg-amber-50 text-amber-700';
-      case 'difficult': return 'bg-red-50 text-red-700';
-      default: return 'bg-gray-50 text-gray-700';
+      case 'easy': return 'text-green-600 dark:text-green-400';
+      case 'moderate': return 'text-yellow-600 dark:text-yellow-400';
+      case 'difficult': return 'text-red-600 dark:text-red-400';
+      default: return 'text-gray-600 dark:text-gray-400';
     }
   };
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground mb-2">
-                Monthly Maintenance Schedule
-              </h1>
-              <p className="text-muted-foreground text-lg">
-                Stay on top of home maintenance with personalized recommendations based on your location and the season.
-              </p>
+          <h1 className="text-4xl font-bold text-foreground mb-2">
+            Monthly Maintenance Schedule
+          </h1>
+          <p className="text-lg text-muted-foreground mb-4">
+            Keep your home in perfect condition with personalized maintenance recommendations
+          </p>
+          
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+            <div className="text-sm text-muted-foreground">
+              <Calendar className="inline w-4 h-4 mr-1" />
+              {MONTHS[selectedMonth - 1]} • {CLIMATE_ZONES.find(z => z.value === selectedZone)?.label}
             </div>
+            
             {totalTasks > 0 && (
-              <div className="text-right">
-                <div className="text-2xl font-bold text-foreground mb-1">
-                  {completedCount}/{totalTasks}
-                </div>
-                <div className="text-sm text-muted-foreground mb-2">
-                  Tasks Completed
+              <div className="flex items-center gap-3">
+                <div className="text-sm font-medium">
+                  Progress: {completedCount}/{totalTasks} completed
                 </div>
                 <Button 
                   variant="outline" 
@@ -1199,7 +669,7 @@ export default function Maintenance() {
             </p>
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 }
