@@ -80,7 +80,7 @@ export default function Products() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto">
             <h1 className="text-3xl font-bold text-gray-900 mb-6 text-center">
-              DIY Products & Supplies
+              Products & Supplies
             </h1>
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1 relative">
