@@ -2,6 +2,7 @@ import { Link, useLocation } from "wouter";
 import { Users, Package, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Logo from "@/components/logo";
+import { Notifications } from "@/components/notifications";
 
 export default function Header() {
   const [location] = useLocation();
@@ -40,6 +41,7 @@ export default function Header() {
           </nav>
 
           <div className="flex items-center space-x-4">
+            <Notifications />
             <div className="hidden md:flex bg-gray-100 rounded-lg p-1">
               <button className="px-3 py-1 bg-white rounded-md shadow-sm text-sm font-medium text-gray-900">
                 Homeowner

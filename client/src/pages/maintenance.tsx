@@ -17,6 +17,7 @@ import { insertHomeApplianceSchema, insertMaintenanceLogSchema } from "@shared/s
 import type { HomeAppliance, MaintenanceLog } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, Settings, Plus, Edit, Trash2, Home, FileText, Building2, User } from "lucide-react";
+import { AppointmentScheduler } from "@/components/appointment-scheduler";
 
 interface MaintenanceTask {
   id: string;
@@ -872,6 +873,13 @@ export default function Maintenance() {
                     </Button>
                   </div>
                 )}
+                
+                <div className="ml-auto">
+                  <AppointmentScheduler 
+                    triggerButtonText="Schedule Visit" 
+                    triggerButtonVariant="outline"
+                  />
+                </div>
               </div>
             </div>
 

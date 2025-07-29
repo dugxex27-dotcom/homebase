@@ -1,4 +1,4 @@
-import { type Contractor, type InsertContractor, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type MaintenanceLog, type InsertMaintenanceLog } from "@shared/schema";
+import { type Contractor, type InsertContractor, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type Notification, type InsertNotification } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -36,6 +36,22 @@ export interface IStorage {
   updateMaintenanceLog(id: string, log: Partial<InsertMaintenanceLog>): Promise<MaintenanceLog | undefined>;
   deleteMaintenanceLog(id: string): Promise<boolean>;
   
+  // Contractor appointment methods
+  getContractorAppointments(homeownerId?: string): Promise<ContractorAppointment[]>;
+  getContractorAppointment(id: string): Promise<ContractorAppointment | undefined>;
+  createContractorAppointment(appointment: InsertContractorAppointment): Promise<ContractorAppointment>;
+  updateContractorAppointment(id: string, appointment: Partial<InsertContractorAppointment>): Promise<ContractorAppointment | undefined>;
+  deleteContractorAppointment(id: string): Promise<boolean>;
+  
+  // Notification methods
+  getNotifications(homeownerId?: string): Promise<Notification[]>;
+  getNotification(id: string): Promise<Notification | undefined>;
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  updateNotification(id: string, notification: Partial<InsertNotification>): Promise<Notification | undefined>;
+  deleteNotification(id: string): Promise<boolean>;
+  getUnreadNotifications(homeownerId: string): Promise<Notification[]>;
+  markNotificationAsRead(id: string): Promise<boolean>;
+  
   // Search methods
   searchContractors(query: string, location?: string): Promise<Contractor[]>;
   searchProducts(query: string): Promise<Product[]>;
@@ -46,12 +62,16 @@ export class MemStorage implements IStorage {
   private products: Map<string, Product>;
   private homeAppliances: Map<string, HomeAppliance>;
   private maintenanceLogs: Map<string, MaintenanceLog>;
+  private contractorAppointments: Map<string, ContractorAppointment>;
+  private notifications: Map<string, Notification>;
 
   constructor() {
     this.contractors = new Map();
     this.products = new Map();
     this.homeAppliances = new Map();
     this.maintenanceLogs = new Map();
+    this.contractorAppointments = new Map();
+    this.notifications = new Map();
     this.seedData();
   }
 
@@ -248,6 +268,28 @@ export class MemStorage implements IStorage {
       };
       this.products.set(id, productWithId);
     });
+
+    // Add sample appointment for testing notifications
+    const sampleAppointment: ContractorAppointment = {
+      id: "demo-appointment-1",
+      homeownerId: "demo-homeowner-123",
+      contractorId: null,
+      contractorName: "Mike Thompson",
+      contractorCompany: "Thompson Construction LLC",
+      contractorPhone: "(206) 555-0123",
+      serviceType: "maintenance",
+      serviceDescription: "Annual HVAC system inspection and filter replacement",
+      homeArea: "hvac",
+      scheduledDateTime: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(), // 2 hours from now
+      estimatedDuration: 120,
+      status: "scheduled",
+      notes: "Please ensure clear access to basement HVAC unit",
+      createdAt: new Date(),
+    };
+    this.contractorAppointments.set(sampleAppointment.id, sampleAppointment);
+
+    // Create notifications for the sample appointment
+    this.createAppointmentNotifications(sampleAppointment);
   }
 
   async getContractors(filters?: {
@@ -488,6 +530,201 @@ export class MemStorage implements IStorage {
 
   async deleteMaintenanceLog(id: string): Promise<boolean> {
     return this.maintenanceLogs.delete(id);
+  }
+
+  // Contractor appointment methods
+  async getContractorAppointments(homeownerId?: string): Promise<ContractorAppointment[]> {
+    const appointments = Array.from(this.contractorAppointments.values());
+    
+    if (homeownerId) {
+      return appointments.filter(appointment => appointment.homeownerId === homeownerId);
+    }
+    
+    return appointments.sort((a, b) => new Date(a.scheduledDateTime).getTime() - new Date(b.scheduledDateTime).getTime());
+  }
+
+  async getContractorAppointment(id: string): Promise<ContractorAppointment | undefined> {
+    return this.contractorAppointments.get(id);
+  }
+
+  async createContractorAppointment(appointment: InsertContractorAppointment): Promise<ContractorAppointment> {
+    const id = randomUUID();
+    const newAppointment: ContractorAppointment = {
+      ...appointment,
+      id,
+      contractorCompany: appointment.contractorCompany ?? null,
+      contractorPhone: appointment.contractorPhone ?? null,
+      estimatedDuration: appointment.estimatedDuration ?? null,
+      notes: appointment.notes ?? null,
+      status: appointment.status ?? "scheduled",
+      createdAt: new Date()
+    };
+    this.contractorAppointments.set(id, newAppointment);
+    
+    // Create notifications for this appointment
+    await this.createAppointmentNotifications(newAppointment);
+    
+    return newAppointment;
+  }
+
+  async updateContractorAppointment(id: string, appointment: Partial<InsertContractorAppointment>): Promise<ContractorAppointment | undefined> {
+    const existing = this.contractorAppointments.get(id);
+    if (!existing) {
+      return undefined;
+    }
+
+    const updated: ContractorAppointment = {
+      ...existing,
+      ...appointment
+    };
+    this.contractorAppointments.set(id, updated);
+    
+    // If the scheduled date/time changed, update notifications
+    if (appointment.scheduledDateTime && appointment.scheduledDateTime !== existing.scheduledDateTime) {
+      await this.updateAppointmentNotifications(updated);
+    }
+    
+    return updated;
+  }
+
+  async deleteContractorAppointment(id: string): Promise<boolean> {
+    const deleted = this.contractorAppointments.delete(id);
+    
+    if (deleted) {
+      // Delete associated notifications
+      const notifications = Array.from(this.notifications.values()).filter(n => n.appointmentId === id);
+      notifications.forEach(notification => this.notifications.delete(notification.id));
+    }
+    
+    return deleted;
+  }
+
+  // Notification methods
+  async getNotifications(homeownerId?: string): Promise<Notification[]> {
+    const notifications = Array.from(this.notifications.values());
+    
+    if (homeownerId) {
+      return notifications.filter(notification => notification.homeownerId === homeownerId);
+    }
+    
+    return notifications.sort((a, b) => new Date(b.createdAt || new Date()).getTime() - new Date(a.createdAt || new Date()).getTime());
+  }
+
+  async getNotification(id: string): Promise<Notification | undefined> {
+    return this.notifications.get(id);
+  }
+
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const id = randomUUID();
+    const newNotification: Notification = {
+      ...notification,
+      id,
+      sentAt: notification.sentAt ?? null,
+      isRead: notification.isRead ?? false,
+      createdAt: new Date()
+    };
+    this.notifications.set(id, newNotification);
+    return newNotification;
+  }
+
+  async updateNotification(id: string, notification: Partial<InsertNotification>): Promise<Notification | undefined> {
+    const existing = this.notifications.get(id);
+    if (!existing) {
+      return undefined;
+    }
+
+    const updated: Notification = {
+      ...existing,
+      ...notification
+    };
+    this.notifications.set(id, updated);
+    return updated;
+  }
+
+  async deleteNotification(id: string): Promise<boolean> {
+    return this.notifications.delete(id);
+  }
+
+  async getUnreadNotifications(homeownerId: string): Promise<Notification[]> {
+    const notifications = Array.from(this.notifications.values());
+    return notifications.filter(notification => 
+      notification.homeownerId === homeownerId && !notification.isRead
+    ).sort((a, b) => new Date(a.scheduledFor).getTime() - new Date(b.scheduledFor).getTime());
+  }
+
+  async markNotificationAsRead(id: string): Promise<boolean> {
+    const notification = this.notifications.get(id);
+    if (!notification) {
+      return false;
+    }
+
+    const updated: Notification = {
+      ...notification,
+      isRead: true
+    };
+    this.notifications.set(id, updated);
+    return true;
+  }
+
+  // Helper method to create notifications for an appointment
+  private async createAppointmentNotifications(appointment: ContractorAppointment): Promise<void> {
+    const appointmentDateTime = new Date(appointment.scheduledDateTime);
+    const now = new Date();
+    
+    // Create 24-hour notification
+    const twentyFourHourNotification = new Date(appointmentDateTime.getTime() - 24 * 60 * 60 * 1000);
+    if (twentyFourHourNotification > now) {
+      await this.createNotification({
+        homeownerId: appointment.homeownerId,
+        appointmentId: appointment.id,
+        type: "24_hour",
+        title: "Contractor Visit Tomorrow",
+        message: `${appointment.contractorName} is scheduled to visit tomorrow at ${appointmentDateTime.toLocaleTimeString()} for ${appointment.serviceDescription}.`,
+        scheduledFor: twentyFourHourNotification.toISOString(),
+        isRead: false,
+        sentAt: null,
+      });
+    }
+    
+    // Create 4-hour notification
+    const fourHourNotification = new Date(appointmentDateTime.getTime() - 4 * 60 * 60 * 1000);
+    if (fourHourNotification > now) {
+      await this.createNotification({
+        homeownerId: appointment.homeownerId,
+        appointmentId: appointment.id,
+        type: "4_hour",
+        title: "Contractor Visit in 4 Hours",
+        message: `${appointment.contractorName} will arrive in 4 hours at ${appointmentDateTime.toLocaleTimeString()} for ${appointment.serviceDescription}.`,
+        scheduledFor: fourHourNotification.toISOString(),
+        isRead: false,
+        sentAt: null,
+      });
+    }
+    
+    // Create 1-hour notification
+    const oneHourNotification = new Date(appointmentDateTime.getTime() - 60 * 60 * 1000);
+    if (oneHourNotification > now) {
+      await this.createNotification({
+        homeownerId: appointment.homeownerId,
+        appointmentId: appointment.id,
+        type: "1_hour",
+        title: "Contractor Arriving Soon",
+        message: `${appointment.contractorName} will arrive in 1 hour at ${appointmentDateTime.toLocaleTimeString()}. Please ensure someone is home to let them in.`,
+        scheduledFor: oneHourNotification.toISOString(),
+        isRead: false,
+        sentAt: null,
+      });
+    }
+  }
+
+  // Helper method to update notifications when appointment time changes
+  private async updateAppointmentNotifications(appointment: ContractorAppointment): Promise<void> {
+    // Delete existing notifications for this appointment
+    const existingNotifications = Array.from(this.notifications.values()).filter(n => n.appointmentId === appointment.id);
+    existingNotifications.forEach(notification => this.notifications.delete(notification.id));
+    
+    // Create new notifications with updated times
+    await this.createAppointmentNotifications(appointment);
   }
 }
 

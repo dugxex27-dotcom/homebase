@@ -73,7 +73,7 @@ export const maintenanceLogs = pgTable("maintenance_logs", {
   serviceDate: text("service_date").notNull(), // Date when service was performed
   serviceType: text("service_type").notNull(), // Type of service performed
   homeArea: text("home_area").notNull(), // What part of home was serviced (roof, HVAC, plumbing, etc.)
-  description: text("description").notNull(), // Description of work performed
+  serviceDescription: text("service_description").notNull(), // Description of work performed
   cost: decimal("cost", { precision: 10, scale: 2 }), // Cost of service
   contractorName: text("contractor_name"), // Name of contractor who performed service
   contractorCompany: text("contractor_company"), // Contractor company
@@ -81,6 +81,36 @@ export const maintenanceLogs = pgTable("maintenance_logs", {
   notes: text("notes"), // Additional notes about the service
   warrantyPeriod: text("warranty_period"), // Warranty period for the work
   nextServiceDue: text("next_service_due"), // When next service is recommended
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const contractorAppointments = pgTable("contractor_appointments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  homeownerId: text("homeowner_id").notNull(),
+  contractorId: text("contractor_id"), // nullable, references contractors table
+  contractorName: text("contractor_name").notNull(),
+  contractorCompany: text("contractor_company"), // nullable
+  contractorPhone: text("contractor_phone"), // nullable
+  serviceType: text("service_type").notNull(),
+  serviceDescription: text("service_description").notNull(),
+  homeArea: text("home_area").notNull(),
+  scheduledDateTime: text("scheduled_date_time").notNull(), // ISO datetime string
+  estimatedDuration: integer("estimated_duration"), // minutes
+  status: text("status").notNull().default("scheduled"), // "scheduled", "confirmed", "completed", "cancelled"
+  notes: text("notes"), // nullable
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const notifications = pgTable("notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  homeownerId: text("homeowner_id").notNull(),
+  appointmentId: text("appointment_id").notNull(), // references contractor_appointments
+  type: text("type").notNull(), // "24_hour", "4_hour", "1_hour"
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  scheduledFor: text("scheduled_for").notNull(), // ISO datetime string when notification should be sent
+  sentAt: text("sent_at"), // nullable, ISO datetime string when notification was actually sent
+  isRead: boolean("is_read").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -106,6 +136,16 @@ export const insertMaintenanceLogSchema = createInsertSchema(maintenanceLogs).om
   createdAt: true,
 });
 
+export const insertContractorAppointmentSchema = createInsertSchema(contractorAppointments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertContractor = z.infer<typeof insertContractorSchema>;
 export type Contractor = typeof contractors.$inferSelect;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
@@ -116,3 +156,7 @@ export type InsertHomeAppliance = z.infer<typeof insertHomeApplianceSchema>;
 export type HomeAppliance = typeof homeAppliances.$inferSelect;
 export type InsertMaintenanceLog = z.infer<typeof insertMaintenanceLogSchema>;
 export type MaintenanceLog = typeof maintenanceLogs.$inferSelect;
+export type InsertContractorAppointment = z.infer<typeof insertContractorAppointmentSchema>;
+export type ContractorAppointment = typeof contractorAppointments.$inferSelect;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type Notification = typeof notifications.$inferSelect;
