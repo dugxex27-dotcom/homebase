@@ -327,6 +327,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generate maintenance notifications for current month
+  app.post("/api/notifications/maintenance", async (req, res) => {
+    try {
+      const { homeownerId, tasks } = req.body;
+      if (!homeownerId || !Array.isArray(tasks)) {
+        return res.status(400).json({ message: "homeownerId and tasks array are required" });
+      }
+      
+      await storage.createMaintenanceNotifications(homeownerId, tasks);
+      res.json({ success: true, message: "Maintenance notifications created" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create maintenance notifications" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -817,6 +817,33 @@ export default function Maintenance() {
     return true;
   });
 
+  // Generate maintenance notifications for current month tasks
+  const generateMaintenanceNotificationsMutation = useMutation({
+    mutationFn: async (tasks: MaintenanceTask[]) => {
+      const response = await fetch('/api/notifications/maintenance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          homeownerId: "demo-homeowner-123",
+          tasks: tasks
+        }),
+      });
+      if (!response.ok) throw new Error('Failed to create maintenance notifications');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+    },
+  });
+
+  // Auto-generate notifications when viewing current month
+  useEffect(() => {
+    const currentMonth = new Date().getMonth() + 1;
+    if (selectedMonth === currentMonth && filteredTasks.length > 0) {
+      generateMaintenanceNotificationsMutation.mutate(filteredTasks);
+    }
+  }, [selectedMonth, filteredTasks.length]);
+
   const completedCount = filteredTasks.filter(task => isTaskCompleted(task.id)).length;
   const totalTasks = filteredTasks.length;
 

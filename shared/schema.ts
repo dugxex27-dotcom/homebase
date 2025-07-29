@@ -104,13 +104,17 @@ export const contractorAppointments = pgTable("contractor_appointments", {
 export const notifications = pgTable("notifications", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   homeownerId: text("homeowner_id").notNull(),
-  appointmentId: text("appointment_id").notNull(), // references contractor_appointments
-  type: text("type").notNull(), // "24_hour", "4_hour", "1_hour"
+  appointmentId: text("appointment_id"), // nullable, references contractor_appointments
+  maintenanceTaskId: text("maintenance_task_id"), // nullable, references maintenance tasks
+  type: text("type").notNull(), // "24_hour", "4_hour", "1_hour", "maintenance_due", "maintenance_overdue"
+  category: text("category").notNull(), // "appointment", "maintenance"
   title: text("title").notNull(),
   message: text("message").notNull(),
   scheduledFor: text("scheduled_for").notNull(), // ISO datetime string when notification should be sent
   sentAt: text("sent_at"), // nullable, ISO datetime string when notification was actually sent
   isRead: boolean("is_read").default(false).notNull(),
+  priority: text("priority").default("medium").notNull(), // "high", "medium", "low"
+  actionUrl: text("action_url"), // nullable, URL to take action on notification
   createdAt: timestamp("created_at").defaultNow(),
 });
 

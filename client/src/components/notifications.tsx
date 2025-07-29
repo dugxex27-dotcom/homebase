@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Bell, X, Clock, Calendar, User, Building2 } from "lucide-react";
+import { Bell, X, Clock, Calendar, User, Building2, Wrench, AlertTriangle, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -77,47 +77,81 @@ export function Notifications({ homeownerId = "demo-homeowner-123" }: Notificati
     deleteNotificationMutation.mutate(notificationId);
   };
 
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case "24_hour":
-        return <Calendar className="w-4 h-4 text-blue-600" />;
-      case "4_hour":
-        return <Clock className="w-4 h-4 text-orange-600" />;
-      case "1_hour":
-        return <Bell className="w-4 h-4 text-red-600" />;
-      default:
-        return <Bell className="w-4 h-4 text-gray-600" />;
-    }
-  };
-
-  const getNotificationColor = (type: string) => {
-    switch (type) {
-      case "24_hour":
-        return "border-l-blue-500";
-      case "4_hour":
-        return "border-l-orange-500";
-      case "1_hour":
-        return "border-l-red-500";
-      default:
-        return "border-l-gray-500";
-    }
-  };
-
-  const formatRelativeTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInHours = (date.getTime() - now.getTime()) / (1000 * 60 * 60);
-    
-    if (diffInHours < 0) {
-      return "Overdue";
-    } else if (diffInHours < 1) {
-      const minutes = Math.floor(diffInHours * 60);
-      return `in ${minutes} min`;
-    } else if (diffInHours < 24) {
-      return `in ${Math.floor(diffInHours)} hours`;
+  const getNotificationIcon = (notification: Notification) => {
+    if (notification.category === "maintenance") {
+      switch (notification.type) {
+        case "maintenance_overdue":
+          return <AlertTriangle className="w-4 h-4 text-red-600" />;
+        case "maintenance_due":
+          return <Wrench className="w-4 h-4 text-blue-600" />;
+        default:
+          return <Wrench className="w-4 h-4 text-blue-600" />;
+      }
     } else {
-      const days = Math.floor(diffInHours / 24);
-      return `in ${days} day${days === 1 ? '' : 's'}`;
+      // Appointment notifications
+      switch (notification.type) {
+        case "24_hour":
+          return <Calendar className="w-4 h-4 text-blue-600" />;
+        case "4_hour":
+          return <Clock className="w-4 h-4 text-orange-600" />;
+        case "1_hour":
+          return <Bell className="w-4 h-4 text-red-600" />;
+        default:
+          return <Bell className="w-4 h-4 text-gray-600" />;
+      }
+    }
+  };
+
+  const getNotificationColor = (notification: Notification) => {
+    if (notification.category === "maintenance") {
+      switch (notification.type) {
+        case "maintenance_overdue":
+          return "border-l-red-500";
+        case "maintenance_due":
+          return "border-l-blue-500";
+        default:
+          return "border-l-blue-500";
+      }
+    } else {
+      // Appointment notifications
+      switch (notification.type) {
+        case "24_hour":
+          return "border-l-blue-500";
+        case "4_hour":
+          return "border-l-orange-500";
+        case "1_hour":
+          return "border-l-red-500";
+        default:
+          return "border-l-gray-500";
+      }
+    }
+  };
+
+  const formatRelativeTime = (notification: Notification) => {
+    if (notification.category === "maintenance") {
+      // For maintenance tasks, show current status
+      if (notification.type === "maintenance_overdue") {
+        return "Overdue";
+      } else {
+        return "Due this month";
+      }
+    } else {
+      // For appointments, show time remaining
+      const date = new Date(notification.scheduledFor);
+      const now = new Date();
+      const diffInHours = (date.getTime() - now.getTime()) / (1000 * 60 * 60);
+      
+      if (diffInHours < 0) {
+        return "Overdue";
+      } else if (diffInHours < 1) {
+        const minutes = Math.floor(diffInHours * 60);
+        return `in ${minutes} min`;
+      } else if (diffInHours < 24) {
+        return `in ${Math.floor(diffInHours)} hours`;
+      } else {
+        const days = Math.floor(diffInHours / 24);
+        return `in ${days} day${days === 1 ? '' : 's'}`;
+      }
     }
   };
 
@@ -158,19 +192,22 @@ export function Notifications({ homeownerId = "demo-homeowner-123" }: Notificati
               {allNotifications.map((notification) => (
                 <Card 
                   key={notification.id} 
-                  className={`mb-2 border-l-4 ${getNotificationColor(notification.type)} ${
+                  className={`mb-2 border-l-4 ${getNotificationColor(notification)} ${
                     !notification.isRead ? 'bg-muted/50' : ''
                   }`}
                 >
                   <CardContent className="p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-start gap-2 flex-1">
-                        {getNotificationIcon(notification.type)}
+                        {getNotificationIcon(notification)}
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <h4 className="font-medium text-sm">{notification.title}</h4>
                             {!notification.isRead && (
                               <Badge variant="secondary" className="text-xs">New</Badge>
+                            )}
+                            {notification.priority === "high" && (
+                              <Badge variant="destructive" className="text-xs">High Priority</Badge>
                             )}
                           </div>
                           <p className="text-xs text-muted-foreground mb-2">
@@ -178,9 +215,25 @@ export function Notifications({ homeownerId = "demo-homeowner-123" }: Notificati
                           </p>
                           <div className="flex items-center justify-between text-xs text-muted-foreground">
                             <span>
-                              Scheduled {formatRelativeTime(notification.scheduledFor)}
+                              {notification.category === "maintenance" ? 
+                                formatRelativeTime(notification) :
+                                `Scheduled ${formatRelativeTime(notification)}`
+                              }
                             </span>
                             <div className="flex gap-1">
+                              {notification.actionUrl && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 px-2 text-xs"
+                                  onClick={() => {
+                                    window.location.href = notification.actionUrl!;
+                                    handleMarkAsRead(notification.id);
+                                  }}
+                                >
+                                  View
+                                </Button>
+                              )}
                               {!notification.isRead && (
                                 <Button
                                   size="sm"

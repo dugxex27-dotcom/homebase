@@ -147,3 +147,10 @@ The application is designed for deployment on platforms that support Node.js wit
   - Complete CRUD operations for appointments and notifications
   - Integration with maintenance page for easy scheduling
   - Sample appointment data with active notifications for testing
+- **Enhanced notification system with maintenance task alerts** (January 29, 2025)
+  - Automatic notifications for pending maintenance tasks in current month
+  - Priority-based notification system (high, medium, low)
+  - Visual differentiation between appointment and maintenance notifications
+  - Overdue task notifications with special styling and urgency indicators
+  - Direct action links to maintenance page from notifications
+  - Auto-generation of maintenance notifications when viewing current month tasks

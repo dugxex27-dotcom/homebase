@@ -290,6 +290,40 @@ export class MemStorage implements IStorage {
 
     // Create notifications for the sample appointment
     this.createAppointmentNotifications(sampleAppointment);
+
+    // Add sample maintenance task notifications
+    const sampleMaintenanceTasks = [
+      {
+        id: "hvac-filter-january",
+        title: "Replace HVAC Filters",
+        description: "Replace air filters in HVAC system for optimal air quality and system efficiency",
+        month: new Date().getMonth() + 1, // Current month
+        priority: "high",
+        estimatedTime: "30 minutes",
+        category: "HVAC"
+      },
+      {
+        id: "smoke-detector-january", 
+        title: "Test Smoke Detectors",
+        description: "Test all smoke detectors and replace batteries if needed",
+        month: new Date().getMonth() + 1, // Current month
+        priority: "high",
+        estimatedTime: "15 minutes",
+        category: "Safety"
+      },
+      {
+        id: "clean-gutters-january",
+        title: "Clean Gutters and Downspouts",
+        description: "Remove debris from gutters and check for proper drainage",
+        month: new Date().getMonth() + 1, // Current month
+        priority: "medium",
+        estimatedTime: "2-3 hours",
+        category: "Exterior"
+      }
+    ];
+
+    // Create maintenance notifications
+    this.createMaintenanceNotifications("demo-homeowner-123", sampleMaintenanceTasks);
   }
 
   async getContractors(filters?: {
@@ -677,12 +711,16 @@ export class MemStorage implements IStorage {
       await this.createNotification({
         homeownerId: appointment.homeownerId,
         appointmentId: appointment.id,
+        maintenanceTaskId: null,
         type: "24_hour",
+        category: "appointment",
         title: "Contractor Visit Tomorrow",
         message: `${appointment.contractorName} is scheduled to visit tomorrow at ${appointmentDateTime.toLocaleTimeString()} for ${appointment.serviceDescription}.`,
         scheduledFor: twentyFourHourNotification.toISOString(),
         isRead: false,
         sentAt: null,
+        priority: "medium",
+        actionUrl: null,
       });
     }
     
@@ -692,12 +730,16 @@ export class MemStorage implements IStorage {
       await this.createNotification({
         homeownerId: appointment.homeownerId,
         appointmentId: appointment.id,
+        maintenanceTaskId: null,
         type: "4_hour",
+        category: "appointment",
         title: "Contractor Visit in 4 Hours",
         message: `${appointment.contractorName} will arrive in 4 hours at ${appointmentDateTime.toLocaleTimeString()} for ${appointment.serviceDescription}.`,
         scheduledFor: fourHourNotification.toISOString(),
         isRead: false,
         sentAt: null,
+        priority: "high",
+        actionUrl: null,
       });
     }
     
@@ -707,14 +749,78 @@ export class MemStorage implements IStorage {
       await this.createNotification({
         homeownerId: appointment.homeownerId,
         appointmentId: appointment.id,
+        maintenanceTaskId: null,
         type: "1_hour",
+        category: "appointment",
         title: "Contractor Arriving Soon",
         message: `${appointment.contractorName} will arrive in 1 hour at ${appointmentDateTime.toLocaleTimeString()}. Please ensure someone is home to let them in.`,
         scheduledFor: oneHourNotification.toISOString(),
         isRead: false,
         sentAt: null,
+        priority: "high",
+        actionUrl: null,
       });
     }
+  }
+
+  // New method to create maintenance task notifications
+  async createMaintenanceNotifications(homeownerId: string, tasks: any[]): Promise<void> {
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    
+    // Get tasks for current month that haven't been completed
+    const pendingTasks = tasks.filter(task => task.month === currentMonth);
+    
+    for (const task of pendingTasks) {
+      // Check if notification already exists for this task
+      const existingNotifications = Array.from(this.notifications.values()).filter(n => 
+        n.homeownerId === homeownerId && 
+        n.maintenanceTaskId === task.id &&
+        !n.isRead
+      );
+      
+      if (existingNotifications.length === 0) {
+        // Create notification based on task priority
+        const priority = task.priority === 'high' ? 'high' : task.priority === 'low' ? 'low' : 'medium';
+        const daysUntilEndOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate();
+        
+        let notificationType = "maintenance_due";
+        let title = "Maintenance Task Due";
+        let message = `${task.title} is due this month. Estimated time: ${task.estimatedTime}.`;
+        
+        // Make it overdue if we're in the last week of the month
+        if (daysUntilEndOfMonth <= 7) {
+          notificationType = "maintenance_overdue";
+          title = "Maintenance Task Overdue";
+          message = `${task.title} is overdue! Only ${daysUntilEndOfMonth} days left this month. Estimated time: ${task.estimatedTime}.`;
+        }
+        
+        await this.createNotification({
+          homeownerId,
+          appointmentId: null,
+          maintenanceTaskId: task.id,
+          type: notificationType,
+          category: "maintenance",
+          title,
+          message,
+          scheduledFor: now.toISOString(),
+          isRead: false,
+          sentAt: null,
+          priority,
+          actionUrl: "/maintenance",
+        });
+      }
+    }
+  }
+
+  // Method to get pending maintenance notifications
+  async getMaintenanceNotifications(homeownerId: string): Promise<Notification[]> {
+    const notifications = Array.from(this.notifications.values());
+    return notifications.filter(notification => 
+      notification.homeownerId === homeownerId && 
+      notification.category === "maintenance" &&
+      !notification.isRead
+    );
   }
 
   // Helper method to update notifications when appointment time changes
