@@ -35,7 +35,7 @@ Preferred communication style: Simple, everyday language.
 ## Key Components
 
 ### Database Schema
-The application defines two main entities:
+The application defines main entities:
 
 1. **Contractors Table**:
    - Personal info (name, company, bio, location)
@@ -49,6 +49,18 @@ The application defines two main entities:
    - Category and stock status
    - Rating and review metrics
    - Featured product flags
+
+3. **Houses Table** (Multi-property support):
+   - Property identification (name, address)
+   - Location-specific settings (climate zone, home systems)
+   - Default property designation for users
+   - Links to appointments and maintenance records
+
+4. **Notifications Table** (Enhanced system):
+   - Support for both appointment and maintenance task notifications
+   - Priority levels and categorization
+   - House-specific filtering for multi-property users
+   - Action URLs for direct navigation
 
 ### API Endpoints
 - **Contractor Routes**:
@@ -154,3 +166,10 @@ The application is designed for deployment on platforms that support Node.js wit
   - Overdue task notifications with special styling and urgency indicators
   - Direct action links to maintenance page from notifications
   - Auto-generation of maintenance notifications when viewing current month tasks
+- **Added multi-house support for maintenance scheduling** (January 29, 2025)
+  - Users can now manage multiple properties with individual maintenance schedules
+  - House-specific climate zones and home systems configuration
+  - Property selector in maintenance interface for easy switching between homes
+  - Sample data includes Main House and Vacation Cabin with different configurations
+  - Maintenance tasks and notifications automatically filtered by selected property
+  - Appointment scheduling links to specific houses for accurate record keeping

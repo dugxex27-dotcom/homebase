@@ -342,6 +342,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // House management routes
+  app.get("/api/houses", async (req, res) => {
+    try {
+      const { homeownerId } = req.query;
+      const houses = await storage.getHouses(homeownerId as string);
+      res.json(houses);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch houses" });
+    }
+  });
+
+  app.get("/api/houses/:id", async (req, res) => {
+    try {
+      const house = await storage.getHouse(req.params.id);
+      if (!house) {
+        return res.status(404).json({ message: "House not found" });
+      }
+      res.json(house);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch house" });
+    }
+  });
+
+  app.post("/api/houses", async (req, res) => {  
+    try {
+      const house = await storage.createHouse(req.body);
+      res.status(201).json(house);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to create house" });
+    }
+  });
+
+  app.put("/api/houses/:id", async (req, res) => {
+    try {
+      const house = await storage.updateHouse(req.params.id, req.body);
+      if (!house) {
+        return res.status(404).json({ message: "House not found" });
+      }
+      res.json(house);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update house" });
+    }
+  });
+
+  app.delete("/api/houses/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteHouse(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "House not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete house" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

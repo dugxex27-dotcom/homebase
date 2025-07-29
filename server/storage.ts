@@ -1,4 +1,4 @@
-import { type Contractor, type InsertContractor, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type Notification, type InsertNotification } from "@shared/schema";
+import { type Contractor, type InsertContractor, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -36,8 +36,16 @@ export interface IStorage {
   updateMaintenanceLog(id: string, log: Partial<InsertMaintenanceLog>): Promise<MaintenanceLog | undefined>;
   deleteMaintenanceLog(id: string): Promise<boolean>;
   
+  // House methods
+  getHouses(homeownerId?: string): Promise<House[]>;
+  getHouse(id: string): Promise<House | undefined>;
+  createHouse(house: InsertHouse): Promise<House>;
+  updateHouse(id: string, house: Partial<InsertHouse>): Promise<House | undefined>;
+  deleteHouse(id: string): Promise<boolean>;
+  getDefaultHouse(homeownerId: string): Promise<House | undefined>;
+
   // Contractor appointment methods
-  getContractorAppointments(homeownerId?: string): Promise<ContractorAppointment[]>;
+  getContractorAppointments(homeownerId?: string, houseId?: string): Promise<ContractorAppointment[]>;
   getContractorAppointment(id: string): Promise<ContractorAppointment | undefined>;
   createContractorAppointment(appointment: InsertContractorAppointment): Promise<ContractorAppointment>;
   updateContractorAppointment(id: string, appointment: Partial<InsertContractorAppointment>): Promise<ContractorAppointment | undefined>;
@@ -62,6 +70,7 @@ export class MemStorage implements IStorage {
   private products: Map<string, Product>;
   private homeAppliances: Map<string, HomeAppliance>;
   private maintenanceLogs: Map<string, MaintenanceLog>;
+  private houses: Map<string, House>;
   private contractorAppointments: Map<string, ContractorAppointment>;
   private notifications: Map<string, Notification>;
 
@@ -70,6 +79,7 @@ export class MemStorage implements IStorage {
     this.products = new Map();
     this.homeAppliances = new Map();
     this.maintenanceLogs = new Map();
+    this.houses = new Map();
     this.contractorAppointments = new Map();
     this.notifications = new Map();
     this.seedData();
@@ -269,10 +279,39 @@ export class MemStorage implements IStorage {
       this.products.set(id, productWithId);
     });
 
+    // Add sample houses for multi-house support
+    const sampleHouses: House[] = [
+      {
+        id: "house-1",
+        homeownerId: "demo-homeowner-123",
+        name: "Main House",
+        address: "123 Oak Street, Seattle, WA 98101",
+        climateZone: "Pacific Northwest",
+        homeSystems: ["Central Air", "Gas Heat", "Gas Water Heater", "Dishwasher", "Garbage Disposal"],
+        isDefault: true,
+        createdAt: new Date(),
+      },
+      {
+        id: "house-2", 
+        homeownerId: "demo-homeowner-123",
+        name: "Vacation Cabin",
+        address: "456 Mountain View Drive, Snoqualmie, WA 98065",
+        climateZone: "Pacific Northwest",
+        homeSystems: ["Electric Heat", "Electric Water Heater", "Wood Stove"],
+        isDefault: false,
+        createdAt: new Date(),
+      }
+    ];
+
+    sampleHouses.forEach(house => {
+      this.houses.set(house.id, house);
+    });
+
     // Add sample appointment for testing notifications
     const sampleAppointment: ContractorAppointment = {
       id: "demo-appointment-1",
       homeownerId: "demo-homeowner-123",
+      houseId: "house-1", // Link to default house
       contractorId: null,
       contractorName: "Mike Thompson",
       contractorCompany: "Thompson Construction LLC",
@@ -566,15 +605,67 @@ export class MemStorage implements IStorage {
     return this.maintenanceLogs.delete(id);
   }
 
+  // House methods
+  async getHouses(homeownerId?: string): Promise<House[]> {
+    const houses = Array.from(this.houses.values());
+    if (homeownerId) {
+      return houses.filter(house => house.homeownerId === homeownerId);
+    }
+    return houses;
+  }
+
+  async getHouse(id: string): Promise<House | undefined> {
+    return this.houses.get(id);
+  }
+
+  async createHouse(house: InsertHouse): Promise<House> {
+    const id = randomUUID();
+    const newHouse: House = {
+      ...house,
+      id,
+      createdAt: new Date(),
+    };
+    this.houses.set(id, newHouse);
+    return newHouse;
+  }
+
+  async updateHouse(id: string, house: Partial<InsertHouse>): Promise<House | undefined> {
+    const existing = this.houses.get(id);
+    if (!existing) {
+      return undefined;
+    }
+
+    const updated: House = {
+      ...existing,
+      ...house,
+    };
+    this.houses.set(id, updated);
+    return updated;
+  }
+
+  async deleteHouse(id: string): Promise<boolean> {
+    return this.houses.delete(id);
+  }
+
+  async getDefaultHouse(homeownerId: string): Promise<House | undefined> {
+    const houses = Array.from(this.houses.values());
+    return houses.find(house => house.homeownerId === homeownerId && house.isDefault);
+  }
+
   // Contractor appointment methods
-  async getContractorAppointments(homeownerId?: string): Promise<ContractorAppointment[]> {
+  async getContractorAppointments(homeownerId?: string, houseId?: string): Promise<ContractorAppointment[]> {
     const appointments = Array.from(this.contractorAppointments.values());
+    let filtered = appointments;
     
     if (homeownerId) {
-      return appointments.filter(appointment => appointment.homeownerId === homeownerId);
+      filtered = filtered.filter(appointment => appointment.homeownerId === homeownerId);
     }
     
-    return appointments.sort((a, b) => new Date(a.scheduledDateTime).getTime() - new Date(b.scheduledDateTime).getTime());
+    if (houseId) {
+      filtered = filtered.filter(appointment => appointment.houseId === houseId);
+    }
+    
+    return filtered.sort((a, b) => new Date(a.scheduledDateTime).getTime() - new Date(b.scheduledDateTime).getTime());
   }
 
   async getContractorAppointment(id: string): Promise<ContractorAppointment | undefined> {

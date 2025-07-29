@@ -14,9 +14,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { insertHomeApplianceSchema, insertMaintenanceLogSchema } from "@shared/schema";
-import type { HomeAppliance, MaintenanceLog } from "@shared/schema";
+import type { HomeAppliance, MaintenanceLog, House } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, Settings, Plus, Edit, Trash2, Home, FileText, Building2, User } from "lucide-react";
+import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, Settings, Plus, Edit, Trash2, Home, FileText, Building2, User, Building } from "lucide-react";
 import { AppointmentScheduler } from "@/components/appointment-scheduler";
 
 interface MaintenanceTask {
@@ -172,6 +172,7 @@ const HOME_SYSTEMS = {
 export default function Maintenance() {
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   const [selectedZone, setSelectedZone] = useState<string>("pacific-northwest");
+  const [selectedHouseId, setSelectedHouseId] = useState<string>("house-1");
   const [completedTasks, setCompletedTasks] = useState<Record<string, boolean>>({});
   const [homeSystems, setHomeSystems] = useState<string[]>([]);
   const [showSystemFilters, setShowSystemFilters] = useState(false);
@@ -184,6 +185,21 @@ export default function Maintenance() {
 
   // For demo purposes, we'll use a default homeowner ID
   const homeownerId = "demo-homeowner-123";
+
+  // Fetch houses for the current user
+  const { data: houses = [], isLoading: housesLoading } = useQuery({
+    queryKey: ['/api/houses'],
+    queryFn: () => fetch('/api/houses?homeownerId=demo-homeowner-123').then(res => res.json())
+  });
+
+  // Update home systems and climate zone when house changes
+  useEffect(() => {
+    const selectedHouse = houses.find((house: House) => house.id === selectedHouseId);
+    if (selectedHouse) {
+      setHomeSystems(selectedHouse.homeSystems);
+      setSelectedZone(selectedHouse.climateZone.toLowerCase().replace(/ /g, '-'));
+    }
+  }, [selectedHouseId, houses]);
 
   // Appliance queries and mutations
   const { data: appliances, isLoading: appliancesLoading } = useQuery<HomeAppliance[]>({
@@ -913,6 +929,24 @@ export default function Maintenance() {
             {/* Filters */}
             <div className="space-y-6 mb-8">
               <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    <Building className="inline w-4 h-4 mr-1" />
+                    Property
+                  </label>
+                  <Select value={selectedHouseId} onValueChange={setSelectedHouseId}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {houses.map((house: House) => (
+                        <SelectItem key={house.id} value={house.id}>
+                          {house.name} • {house.address}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-foreground mb-2">
                     Month

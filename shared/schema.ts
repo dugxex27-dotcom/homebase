@@ -87,6 +87,7 @@ export const maintenanceLogs = pgTable("maintenance_logs", {
 export const contractorAppointments = pgTable("contractor_appointments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   homeownerId: text("homeowner_id").notNull(),
+  houseId: text("house_id").notNull(), // references houses table
   contractorId: text("contractor_id"), // nullable, references contractors table
   contractorName: text("contractor_name").notNull(),
   contractorCompany: text("contractor_company"), // nullable
@@ -101,9 +102,22 @@ export const contractorAppointments = pgTable("contractor_appointments", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Houses table for multi-property support
+export const houses = pgTable("houses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  homeownerId: text("homeowner_id").notNull(),
+  name: text("name").notNull(), // "Main House", "Vacation Home", "Rental Property", etc.
+  address: text("address").notNull(),
+  climateZone: text("climate_zone").notNull(),
+  homeSystems: text("home_systems").array().notNull(), // Array of systems like ["Central Air", "Gas Heat", etc.]
+  isDefault: boolean("is_default").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const notifications = pgTable("notifications", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   homeownerId: text("homeowner_id").notNull(),
+  houseId: text("house_id"), // nullable, references houses
   appointmentId: text("appointment_id"), // nullable, references contractor_appointments
   maintenanceTaskId: text("maintenance_task_id"), // nullable, references maintenance tasks
   type: text("type").notNull(), // "24_hour", "4_hour", "1_hour", "maintenance_due", "maintenance_overdue"
@@ -145,6 +159,11 @@ export const insertContractorAppointmentSchema = createInsertSchema(contractorAp
   createdAt: true,
 });
 
+export const insertHouseSchema = createInsertSchema(houses).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertNotificationSchema = createInsertSchema(notifications).omit({
   id: true,
   createdAt: true,
@@ -162,5 +181,7 @@ export type InsertMaintenanceLog = z.infer<typeof insertMaintenanceLogSchema>;
 export type MaintenanceLog = typeof maintenanceLogs.$inferSelect;
 export type InsertContractorAppointment = z.infer<typeof insertContractorAppointmentSchema>;
 export type ContractorAppointment = typeof contractorAppointments.$inferSelect;
+export type InsertHouse = z.infer<typeof insertHouseSchema>;
+export type House = typeof houses.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notifications.$inferSelect;
