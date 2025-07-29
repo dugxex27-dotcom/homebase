@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { z } from "zod";
+import { insertHomeApplianceSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Contractor routes
@@ -83,6 +84,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(product);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch product" });
+    }
+  });
+
+  // Home Appliance routes
+  app.get("/api/appliances", async (req, res) => {
+    try {
+      const homeownerId = req.query.homeownerId as string;
+      const appliances = await storage.getHomeAppliances(homeownerId);
+      res.json(appliances);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch appliances" });
+    }
+  });
+
+  app.get("/api/appliances/:id", async (req, res) => {
+    try {
+      const appliance = await storage.getHomeAppliance(req.params.id);
+      if (!appliance) {
+        return res.status(404).json({ message: "Appliance not found" });
+      }
+      res.json(appliance);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch appliance" });
+    }
+  });
+
+  app.post("/api/appliances", async (req, res) => {
+    try {
+      const applianceData = insertHomeApplianceSchema.parse(req.body);
+      const appliance = await storage.createHomeAppliance(applianceData);
+      res.status(201).json(appliance);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid appliance data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create appliance" });
+    }
+  });
+
+  app.patch("/api/appliances/:id", async (req, res) => {
+    try {
+      const partialData = insertHomeApplianceSchema.partial().parse(req.body);
+      const appliance = await storage.updateHomeAppliance(req.params.id, partialData);
+      if (!appliance) {
+        return res.status(404).json({ message: "Appliance not found" });
+      }
+      res.json(appliance);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid appliance data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update appliance" });
+    }
+  });
+
+  app.delete("/api/appliances/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteHomeAppliance(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Appliance not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete appliance" });
     }
   });
 

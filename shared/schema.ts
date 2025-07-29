@@ -52,6 +52,21 @@ export const maintenanceTasks = pgTable("maintenance_tasks", {
   cost: text("cost"),
 });
 
+export const homeAppliances = pgTable("home_appliances", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  homeownerId: text("homeowner_id").notNull(), // In real app would be foreign key to users table
+  applianceType: text("appliance_type").notNull(), // 'hvac', 'water_heater', 'washer', etc.
+  brand: text("brand").notNull(),
+  model: text("model").notNull(),
+  yearInstalled: integer("year_installed"),
+  serialNumber: text("serial_number"),
+  notes: text("notes"), // Additional details about condition, issues, etc.
+  location: text("location"), // Kitchen, basement, garage, etc.
+  warrantyExpiration: text("warranty_expiration"),
+  lastServiceDate: text("last_service_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertContractorSchema = createInsertSchema(contractors).omit({
   id: true,
 });
@@ -64,9 +79,16 @@ export const insertMaintenanceTaskSchema = createInsertSchema(maintenanceTasks).
   id: true,
 });
 
+export const insertHomeApplianceSchema = createInsertSchema(homeAppliances).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertContractor = z.infer<typeof insertContractorSchema>;
 export type Contractor = typeof contractors.$inferSelect;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Product = typeof products.$inferSelect;
 export type InsertMaintenanceTask = z.infer<typeof insertMaintenanceTaskSchema>;
 export type MaintenanceTask = typeof maintenanceTasks.$inferSelect;
+export type InsertHomeAppliance = z.infer<typeof insertHomeApplianceSchema>;
+export type HomeAppliance = typeof homeAppliances.$inferSelect;

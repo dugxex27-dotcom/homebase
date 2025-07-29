@@ -1,4 +1,4 @@
-import { type Contractor, type InsertContractor, type Product, type InsertProduct } from "@shared/schema";
+import { type Contractor, type InsertContractor, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -22,6 +22,13 @@ export interface IStorage {
   getProduct(id: string): Promise<Product | undefined>;
   createProduct(product: InsertProduct): Promise<Product>;
   
+  // Appliance methods
+  getHomeAppliances(homeownerId?: string): Promise<HomeAppliance[]>;
+  getHomeAppliance(id: string): Promise<HomeAppliance | undefined>;
+  createHomeAppliance(appliance: InsertHomeAppliance): Promise<HomeAppliance>;
+  updateHomeAppliance(id: string, appliance: Partial<InsertHomeAppliance>): Promise<HomeAppliance | undefined>;
+  deleteHomeAppliance(id: string): Promise<boolean>;
+  
   // Search methods
   searchContractors(query: string, location?: string): Promise<Contractor[]>;
   searchProducts(query: string): Promise<Product[]>;
@@ -30,10 +37,12 @@ export interface IStorage {
 export class MemStorage implements IStorage {
   private contractors: Map<string, Contractor>;
   private products: Map<string, Product>;
+  private homeAppliances: Map<string, HomeAppliance>;
 
   constructor() {
     this.contractors = new Map();
     this.products = new Map();
+    this.homeAppliances = new Map();
     this.seedData();
   }
 
@@ -370,6 +379,55 @@ export class MemStorage implements IStorage {
       product.description.toLowerCase().includes(query.toLowerCase()) ||
       product.category.toLowerCase().includes(query.toLowerCase())
     );
+  }
+
+  async getHomeAppliances(homeownerId?: string): Promise<HomeAppliance[]> {
+    const appliances = Array.from(this.homeAppliances.values());
+    
+    if (homeownerId) {
+      return appliances.filter(appliance => appliance.homeownerId === homeownerId);
+    }
+    
+    return appliances;
+  }
+
+  async getHomeAppliance(id: string): Promise<HomeAppliance | undefined> {
+    return this.homeAppliances.get(id);
+  }
+
+  async createHomeAppliance(appliance: InsertHomeAppliance): Promise<HomeAppliance> {
+    const id = randomUUID();
+    const newAppliance: HomeAppliance = {
+      ...appliance,
+      id,
+      yearInstalled: appliance.yearInstalled ?? null,
+      serialNumber: appliance.serialNumber ?? null,
+      notes: appliance.notes ?? null,
+      location: appliance.location ?? null,
+      warrantyExpiration: appliance.warrantyExpiration ?? null,
+      lastServiceDate: appliance.lastServiceDate ?? null,
+      createdAt: new Date()
+    };
+    this.homeAppliances.set(id, newAppliance);
+    return newAppliance;
+  }
+
+  async updateHomeAppliance(id: string, appliance: Partial<InsertHomeAppliance>): Promise<HomeAppliance | undefined> {
+    const existing = this.homeAppliances.get(id);
+    if (!existing) {
+      return undefined;
+    }
+
+    const updated: HomeAppliance = {
+      ...existing,
+      ...appliance
+    };
+    this.homeAppliances.set(id, updated);
+    return updated;
+  }
+
+  async deleteHomeAppliance(id: string): Promise<boolean> {
+    return this.homeAppliances.delete(id);
   }
 }
 

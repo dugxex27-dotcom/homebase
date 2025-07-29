@@ -27,6 +27,11 @@ export default function Header() {
             }`}>
               Maintenance Schedule
             </Link>
+            <Link href="/appliances" className={`text-gray-700 hover:text-primary transition-colors ${
+              location === '/appliances' ? 'text-primary font-medium' : ''
+            }`}>
+              My Appliances
+            </Link>
             <Link href="/contractors" className={`text-gray-700 hover:text-primary transition-colors ${
               location === '/contractors' ? 'text-primary font-medium' : ''
             }`}>
