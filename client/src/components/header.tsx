@@ -76,16 +76,16 @@ export default function Header() {
                 }`}>
                   Dashboard
                 </Link>
-                <Link href="/profile" className={`text-gray-700 hover:text-primary transition-colors ${
-                  location === '/profile' ? 'text-primary font-medium' : ''
-                }`}>
-                  My Profile
-                </Link>
                 <Link href="/messages" className={`text-gray-700 hover:text-primary transition-colors ${
                   location === '/messages' ? 'text-primary font-medium' : ''
                 }`}>
                   <MessageCircle className="w-4 h-4 inline mr-1" />
                   Messages
+                </Link>
+                <Link href="/profile" className={`text-gray-700 hover:text-primary transition-colors ${
+                  location === '/profile' ? 'text-primary font-medium' : ''
+                }`}>
+                  My Profile
                 </Link>
               </>
             )}
