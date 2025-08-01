@@ -5,6 +5,14 @@ import { setupAuth, isAuthenticated, requireRole } from "./replitAuth";
 import { z } from "zod";
 import { insertHomeApplianceSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema } from "@shared/schema";
 
+// Extend session data interface
+declare module 'express-session' {
+  interface SessionData {
+    user?: any;
+    isAuthenticated?: boolean;
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Skip OAuth setup to prevent browser crashes
   // await setupAuth(app);
