@@ -43,7 +43,53 @@ export default function Header() {
             </Link>
           </div>
           
-
+          <nav className="hidden md:flex space-x-8">
+            {typedUser?.role === 'homeowner' && (
+              <>
+                <Link href="/products" className={`text-gray-700 hover:text-primary transition-colors ${
+                  location === '/products' ? 'text-primary font-medium' : ''
+                }`}>
+                  Products
+                </Link>
+                <Link href="/maintenance" className={`text-gray-700 hover:text-primary transition-colors ${
+                  location === '/maintenance' ? 'text-primary font-medium' : ''
+                }`}>
+                  Maintenance Schedule
+                </Link>
+                <Link href="/contractors" className={`text-gray-700 hover:text-primary transition-colors ${
+                  location === '/contractors' ? 'text-primary font-medium' : ''
+                }`}>
+                  Find Contractors
+                </Link>
+                <Link href="/messages" className={`text-gray-700 hover:text-primary transition-colors ${
+                  location === '/messages' ? 'text-primary font-medium' : ''
+                }`}>
+                  <MessageCircle className="w-4 h-4 inline mr-1" />
+                  Messages
+                </Link>
+              </>
+            )}
+            {typedUser?.role === 'contractor' && (
+              <>
+                <Link href="/dashboard" className={`text-gray-700 hover:text-primary transition-colors ${
+                  location === '/dashboard' ? 'text-primary font-medium' : ''
+                }`}>
+                  Dashboard
+                </Link>
+                <Link href="/messages" className={`text-gray-700 hover:text-primary transition-colors ${
+                  location === '/messages' ? 'text-primary font-medium' : ''
+                }`}>
+                  <MessageCircle className="w-4 h-4 inline mr-1" />
+                  Messages
+                </Link>
+                <Link href="/profile" className={`text-gray-700 hover:text-primary transition-colors ${
+                  location === '/profile' ? 'text-primary font-medium' : ''
+                }`}>
+                  My Profile
+                </Link>
+              </>
+            )}
+          </nav>
 
           <div className="flex items-center space-x-4">
             {isAuthenticated && typedUser?.role === 'homeowner' && <Notifications />}
