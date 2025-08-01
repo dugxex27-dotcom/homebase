@@ -10,8 +10,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
 
   // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  app.get('/api/auth/user', async (req: any, res) => {
     try {
+      // Check for demo session first
+      if ((req as any).session?.isAuthenticated && (req as any).session?.user) {
+        return res.json((req as any).session.user);
+      }
+
+      // Otherwise check OAuth authentication
+      if (!req.isAuthenticated() || !req.user?.claims?.sub) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
       res.json(user);
@@ -30,6 +40,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } else {
       res.status(400).json({ message: "Invalid role" });
+    }
+  });
+
+  // Simple contractor demo login (no OAuth)
+  app.post('/api/auth/contractor-demo-login', async (req, res) => {
+    try {
+      const { email, name, company } = req.body;
+      
+      if (!email || !name || !company) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      // Create a demo contractor user
+      const contractorId = `demo-contractor-${Date.now()}`;
+      const user = await storage.upsertUser({
+        id: contractorId,
+        email: email,
+        firstName: name.split(' ')[0],
+        lastName: name.split(' ').slice(1).join(' '),
+        profileImageUrl: null,
+        role: 'contractor'
+      });
+
+      // Create a simple session (for demo purposes)
+      (req as any).session.user = user;
+      (req as any).session.isAuthenticated = true;
+
+      res.json({ success: true, user });
+    } catch (error) {
+      console.error("Error creating contractor demo user:", error);
+      res.status(500).json({ message: "Failed to create contractor account" });
     }
   });
   // Contractor routes

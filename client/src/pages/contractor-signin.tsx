@@ -13,8 +13,8 @@ export default function ContractorSignIn() {
     setIsLoading(true);
     
     try {
-      // Set the role as contractor and redirect to authentication
-      await fetch('/api/auth/select-role', {
+      // Set the role as contractor
+      const response = await fetch('/api/auth/select-role', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -22,11 +22,19 @@ export default function ContractorSignIn() {
         body: JSON.stringify({ role: 'contractor' }),
       });
       
-      // Redirect to Replit OAuth for contractor sign-in
-      window.location.href = '/api/login';
+      if (response.ok) {
+        // Small delay to ensure role is set, then redirect
+        setTimeout(() => {
+          window.location.href = '/api/login';
+        }, 100);
+      } else {
+        throw new Error('Failed to set contractor role');
+      }
     } catch (error) {
       console.error('Error during contractor sign-in:', error);
       setIsLoading(false);
+      // Show user-friendly error
+      alert('There was an issue with sign-in. Please try again.');
     }
   };
 

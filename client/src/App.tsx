@@ -12,6 +12,7 @@ import Maintenance from "./pages/maintenance";
 import ContractorDashboard from "./pages/contractor-dashboard";
 import SignIn from "./pages/signin";
 import ContractorSignIn from "./pages/contractor-signin";
+import SimpleContractorSignIn from "./pages/simple-contractor-signin";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -31,7 +32,13 @@ function Router() {
 
   // Show sign-in page if not authenticated
   if (!isAuthenticated) {
-    return <SignIn />;
+    // Allow access to contractor-signin page even when not authenticated
+    return (
+      <Switch>
+        <Route path="/contractor-signin" component={SimpleContractorSignIn} />
+        <Route component={SignIn} />
+      </Switch>
+    );
   }
 
   // Authenticated user routes
