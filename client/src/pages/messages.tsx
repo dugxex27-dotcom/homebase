@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import Header from "@/components/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -60,20 +61,25 @@ export default function Messages() {
 
   if (!typedUser) {
     return (
-      <div className="container mx-auto p-6">
-        <Card>
-          <CardContent className="p-8 text-center">
-            <MessageCircle className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Sign In Required</h2>
-            <p className="text-gray-600">Please sign in to view your messages.</p>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="container mx-auto p-6">
+          <Card>
+            <CardContent className="p-8 text-center">
+              <MessageCircle className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+              <h2 className="text-xl font-semibold mb-2">Sign In Required</h2>
+              <p className="text-gray-600">Please sign in to view your messages.</p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="min-h-screen bg-background">
+      <Header />
+      <div className="container mx-auto p-6">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900">Messages</h1>
         <p className="text-gray-600 mt-2">
@@ -222,6 +228,7 @@ export default function Messages() {
             </CardContent>
           )}
         </Card>
+      </div>
       </div>
     </div>
   );
