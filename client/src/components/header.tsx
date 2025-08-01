@@ -76,11 +76,6 @@ export default function Header() {
                 }`}>
                   Dashboard
                 </Link>
-                <Link href="/appointments" className={`text-gray-700 hover:text-primary transition-colors ${
-                  location === '/appointments' ? 'text-primary font-medium' : ''
-                }`}>
-                  My Appointments
-                </Link>
                 <Link href="/profile" className={`text-gray-700 hover:text-primary transition-colors ${
                   location === '/profile' ? 'text-primary font-medium' : ''
                 }`}>
