@@ -2,7 +2,7 @@ import Header from "@/components/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Calendar, Users, Star, TrendingUp } from "lucide-react";
+import { Calendar, Users, Star, TrendingUp, FileText, User } from "lucide-react";
 
 export default function ContractorDashboard() {
   return (
@@ -102,14 +102,26 @@ export default function ContractorDashboard() {
             <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Button className="h-20 flex flex-col items-center justify-center space-y-2">
                 <Calendar className="h-6 w-6" />
                 <span>View Schedule</span>
               </Button>
-              <Button variant="outline" className="h-20 flex flex-col items-center justify-center space-y-2">
-                <Users className="h-6 w-6" />
-                <span>Manage Clients</span>
+              <Button 
+                variant="outline" 
+                className="h-20 flex flex-col items-center justify-center space-y-2"
+                onClick={() => window.location.href = "/service-records"}
+              >
+                <FileText className="h-6 w-6" />
+                <span>Service Records</span>
+              </Button>
+              <Button 
+                variant="outline" 
+                className="h-20 flex flex-col items-center justify-center space-y-2"
+                onClick={() => window.location.href = "/profile"}
+              >
+                <User className="h-6 w-6" />
+                <span>Edit Profile</span>
               </Button>
               <Button variant="outline" className="h-20 flex flex-col items-center justify-center space-y-2">
                 <Star className="h-6 w-6" />

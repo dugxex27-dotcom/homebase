@@ -543,6 +543,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Service records routes
+  app.get('/api/service-records', isAuthenticated, async (req: any, res) => {
+    try {
+      const contractorId = req.user.claims.sub;
+      const serviceRecords = await storage.getServiceRecords(contractorId);
+      res.json(serviceRecords);
+    } catch (error) {
+      console.error("Error fetching service records:", error);
+      res.status(500).json({ message: "Failed to fetch service records" });
+    }
+  });
+
+  app.get('/api/service-records/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const serviceRecord = await storage.getServiceRecord(id);
+      if (!serviceRecord) {
+        return res.status(404).json({ message: "Service record not found" });
+      }
+      res.json(serviceRecord);
+    } catch (error) {
+      console.error("Error fetching service record:", error);
+      res.status(500).json({ message: "Failed to fetch service record" });
+    }
+  });
+
+  app.post('/api/service-records', isAuthenticated, async (req: any, res) => {
+    try {
+      const contractorId = req.user.claims.sub;
+      const serviceRecordData = {
+        ...req.body,
+        contractorId,
+      };
+      const serviceRecord = await storage.createServiceRecord(serviceRecordData);
+      res.json(serviceRecord);
+    } catch (error) {
+      console.error("Error creating service record:", error);
+      res.status(500).json({ message: "Failed to create service record" });
+    }
+  });
+
+  app.put('/api/service-records/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const serviceRecord = await storage.updateServiceRecord(id, req.body);
+      if (!serviceRecord) {
+        return res.status(404).json({ message: "Service record not found" });
+      }
+      res.json(serviceRecord);
+    } catch (error) {
+      console.error("Error updating service record:", error);
+      res.status(500).json({ message: "Failed to update service record" });
+    }
+  });
+
+  app.delete('/api/service-records/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteServiceRecord(id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Service record not found" });
+      }
+      res.json({ message: "Service record deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting service record:", error);
+      res.status(500).json({ message: "Failed to delete service record" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

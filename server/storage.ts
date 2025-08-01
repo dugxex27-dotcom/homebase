@@ -1,4 +1,4 @@
-import { type Contractor, type InsertContractor, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser } from "@shared/schema";
+import { type Contractor, type InsertContractor, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -71,6 +71,13 @@ export interface IStorage {
   // Contractor profile operations
   getContractorProfile(contractorId: string): Promise<any | undefined>;
   updateContractorProfile(contractorId: string, profileData: any): Promise<any>;
+
+  // Service record operations
+  getServiceRecords(contractorId?: string): Promise<ServiceRecord[]>;
+  getServiceRecord(id: string): Promise<ServiceRecord | undefined>;
+  createServiceRecord(serviceRecord: InsertServiceRecord): Promise<ServiceRecord>;
+  updateServiceRecord(id: string, serviceRecord: Partial<InsertServiceRecord>): Promise<ServiceRecord | undefined>;
+  deleteServiceRecord(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -83,6 +90,7 @@ export class MemStorage implements IStorage {
   private contractorAppointments: Map<string, ContractorAppointment>;
   private notifications: Map<string, Notification>;
   private contractorProfiles: Map<string, any>;
+  private serviceRecords: ServiceRecord[];
 
   constructor() {
     this.users = new Map();
@@ -94,7 +102,9 @@ export class MemStorage implements IStorage {
     this.contractorAppointments = new Map();
     this.notifications = new Map();
     this.contractorProfiles = new Map();
+    this.serviceRecords = [];
     this.seedData();
+    this.seedServiceRecords();
   }
 
   // User operations (required for Replit Auth)
@@ -984,6 +994,89 @@ export class MemStorage implements IStorage {
   async updateContractorProfile(contractorId: string, profileData: any): Promise<any> {
     this.contractorProfiles.set(contractorId, profileData);
     return profileData;
+  }
+
+  // Service record operations
+  async getServiceRecords(contractorId?: string): Promise<ServiceRecord[]> {
+    if (contractorId) {
+      return this.serviceRecords.filter(record => record.contractorId === contractorId);
+    }
+    return this.serviceRecords;
+  }
+
+  async getServiceRecord(id: string): Promise<ServiceRecord | undefined> {
+    return this.serviceRecords.find(record => record.id === id);
+  }
+
+  async createServiceRecord(serviceRecord: InsertServiceRecord): Promise<ServiceRecord> {
+    const newRecord: ServiceRecord = {
+      ...serviceRecord,
+      id: randomUUID(),
+      createdAt: new Date(),
+    };
+    this.serviceRecords.push(newRecord);
+    return newRecord;
+  }
+
+  async updateServiceRecord(id: string, serviceRecord: Partial<InsertServiceRecord>): Promise<ServiceRecord | undefined> {
+    const index = this.serviceRecords.findIndex(record => record.id === id);
+    if (index !== -1) {
+      this.serviceRecords[index] = { ...this.serviceRecords[index], ...serviceRecord };
+      return this.serviceRecords[index];
+    }
+    return undefined;
+  }
+
+  async deleteServiceRecord(id: string): Promise<boolean> {
+    const index = this.serviceRecords.findIndex(record => record.id === id);
+    if (index !== -1) {
+      this.serviceRecords.splice(index, 1);
+      return true;
+    }
+    return false;
+  }
+
+  private seedServiceRecords() {
+    this.serviceRecords = [
+      {
+        id: "service-1",
+        contractorId: "demo-contractor-1754009854143",
+        customerName: "John Smith",
+        customerAddress: "123 Oak Street, Seattle, WA",
+        customerPhone: "(555) 123-4567",
+        customerEmail: "john.smith@email.com",
+        serviceType: "HVAC Service",
+        serviceDescription: "Annual HVAC system inspection and maintenance. Cleaned filters, checked refrigerant levels, and tested all components.",
+        serviceDate: "2025-01-15",
+        duration: "2 hours",
+        cost: "175.00",
+        status: "completed",
+        notes: "System running efficiently. Recommended filter replacement in 3 months.",
+        materialsUsed: ["HVAC Filter", "Refrigerant R-410A"],
+        warrantyPeriod: "90 days",
+        followUpDate: null,
+        createdAt: new Date("2025-01-15T10:00:00"),
+      },
+      {
+        id: "service-2",
+        contractorId: "demo-contractor-1754009854143",
+        customerName: "Sarah Johnson",
+        customerAddress: "456 Pine Avenue, Seattle, WA",
+        customerPhone: "(555) 987-6543",
+        customerEmail: "sarah.j@email.com",
+        serviceType: "Plumbing Repair",
+        serviceDescription: "Fixed leaking kitchen faucet and replaced worn-out gaskets.",
+        serviceDate: "2025-01-20",
+        duration: "1.5 hours",
+        cost: "125.00",
+        status: "completed",
+        notes: "Customer satisfied with repair. No additional issues found.",
+        materialsUsed: ["Faucet Gasket", "Plumber's Tape"],
+        warrantyPeriod: "1 year",
+        followUpDate: null,
+        createdAt: new Date("2025-01-20T14:30:00"),
+      }
+    ];
   }
 }
 

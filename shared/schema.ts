@@ -155,6 +155,26 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const serviceRecords = pgTable("service_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contractorId: varchar("contractor_id").notNull(),
+  customerName: text("customer_name").notNull(),
+  customerAddress: text("customer_address").notNull(),
+  customerPhone: text("customer_phone"),
+  customerEmail: text("customer_email"),
+  serviceType: text("service_type").notNull(),
+  serviceDescription: text("service_description").notNull(),
+  serviceDate: text("service_date").notNull(),
+  duration: text("duration"),
+  cost: decimal("cost", { precision: 10, scale: 2 }).notNull().default("0"),
+  status: text("status").notNull().default("completed"), // completed, in-progress, scheduled
+  notes: text("notes"),
+  materialsUsed: text("materials_used").array().notNull().default(sql`'{}'::text[]`),
+  warrantyPeriod: text("warranty_period"),
+  followUpDate: text("follow_up_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertContractorSchema = createInsertSchema(contractors).omit({
   id: true,
 });
@@ -198,6 +218,11 @@ export const insertUserSchema = createInsertSchema(users).omit({
   updatedAt: true,
 });
 
+export const insertServiceRecordSchema = createInsertSchema(serviceRecords).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertContractor = z.infer<typeof insertContractorSchema>;
 export type Contractor = typeof contractors.$inferSelect;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
@@ -217,3 +242,5 @@ export type Notification = typeof notifications.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type UpsertUser = typeof users.$inferInsert;
+export type InsertServiceRecord = z.infer<typeof insertServiceRecordSchema>;
+export type ServiceRecord = typeof serviceRecords.$inferSelect;
