@@ -2,13 +2,13 @@ export default function Logo({ className = "h-8 w-auto" }: { className?: string 
   return (
     <svg
       className={className}
-      viewBox="0 0 500 100"
+      viewBox="0 0 500 76"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       preserveAspectRatio="xMidYMid meet"
     >
       {/* House icon with warm colors - positioned left */}
-      <g transform="translate(10, 5)">
+      <g transform="translate(10, -7)">
         {/* House base */}
         <rect
           x="0"
@@ -59,7 +59,7 @@ export default function Logo({ className = "h-8 w-auto" }: { className?: string 
       <g fill="currentColor">
         <text
           x="280"
-          y="85"
+          y="73"
           fontSize="65"
           fontWeight="700"
           fontFamily="system-ui, -apple-system, sans-serif"
