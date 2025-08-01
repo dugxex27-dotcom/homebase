@@ -892,11 +892,53 @@ export default function Maintenance() {
           <p className="text-lg text-muted-foreground mb-4">
             Keep your home in perfect condition with personalized maintenance recommendations and appliance tracking
           </p>
+          
+          {/* Property Selector Card */}
+          <div className="bg-card border rounded-lg p-4 mb-6">
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  <Building className="inline w-4 h-4 mr-1" />
+                  Select Property
+                </label>
+                <Select value={selectedHouseId} onValueChange={setSelectedHouseId}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Choose a property..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {houses.map((house: House) => (
+                      <SelectItem key={house.id} value={house.id}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{house.name}</span>
+                          <span className="text-xs text-muted-foreground">{house.address}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {selectedHouseId && houses.length > 0 && (
+                <div className="text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    <span>{houses.find((house: House) => house.id === selectedHouseId)?.climateZone}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Home className="w-4 h-4" />
+                    <span>{houses.find((house: House) => house.id === selectedHouseId)?.homeSystems.length || 0} systems configured</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
             <div className="mb-6">
               <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
                 <div className="text-sm text-muted-foreground">
-                  <Calendar className="inline w-4 h-4 mr-1" />
+                  <Building className="inline w-4 h-4 mr-1" />
+                  {houses.find((house: House) => house.id === selectedHouseId)?.name || 'Loading...'} • 
+                  <Calendar className="inline w-4 h-4 ml-2 mr-1" />
                   {MONTHS[selectedMonth - 1]} • {CLIMATE_ZONES.find(z => z.value === selectedZone)?.label}
                 </div>
                 
@@ -931,24 +973,7 @@ export default function Maintenance() {
               <div className="flex flex-col md:flex-row gap-4">
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-foreground mb-2">
-                    <Building className="inline w-4 h-4 mr-1" />
-                    Property
-                  </label>
-                  <Select value={selectedHouseId} onValueChange={setSelectedHouseId}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {houses.map((house: House) => (
-                        <SelectItem key={house.id} value={house.id}>
-                          {house.name} • {house.address}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-foreground mb-2">
+                    <Calendar className="inline w-4 h-4 mr-1" />
                     Month
                   </label>
                   <Select value={selectedMonth.toString()} onValueChange={(value) => setSelectedMonth(parseInt(value))}>
@@ -967,10 +992,10 @@ export default function Maintenance() {
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-foreground mb-2">
                     <MapPin className="inline w-4 h-4 mr-1" />
-                    Climate Zone
+                    Climate Zone (auto-set by property)
                   </label>
-                  <Select value={selectedZone} onValueChange={setSelectedZone}>
-                    <SelectTrigger>
+                  <Select value={selectedZone} onValueChange={setSelectedZone} disabled>
+                    <SelectTrigger className="opacity-60">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
