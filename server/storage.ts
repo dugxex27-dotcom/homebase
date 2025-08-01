@@ -1,7 +1,11 @@
-import { type Contractor, type InsertContractor, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification } from "@shared/schema";
+import { type Contractor, type InsertContractor, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
+  // User operations (required for Replit Auth)
+  getUser(id: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
+  
   // Contractor methods
   getContractors(filters?: {
     services?: string[];
@@ -66,6 +70,7 @@ export interface IStorage {
 }
 
 export class MemStorage implements IStorage {
+  private users: Map<string, User>;
   private contractors: Map<string, Contractor>;
   private products: Map<string, Product>;
   private homeAppliances: Map<string, HomeAppliance>;
@@ -75,6 +80,7 @@ export class MemStorage implements IStorage {
   private notifications: Map<string, Notification>;
 
   constructor() {
+    this.users = new Map();
     this.contractors = new Map();
     this.products = new Map();
     this.homeAppliances = new Map();
@@ -83,6 +89,24 @@ export class MemStorage implements IStorage {
     this.contractorAppointments = new Map();
     this.notifications = new Map();
     this.seedData();
+  }
+
+  // User operations (required for Replit Auth)
+  async getUser(id: string): Promise<User | undefined> {
+    return this.users.get(id);
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const existingUser = this.users.get(userData.id!);
+    const user: User = {
+      ...userData,
+      id: userData.id!,
+      role: userData.role || 'homeowner',
+      createdAt: existingUser?.createdAt || new Date(),
+      updatedAt: new Date(),
+    };
+    this.users.set(user.id, user);
+    return user;
   }
 
   private seedData() {

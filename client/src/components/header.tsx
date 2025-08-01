@@ -1,11 +1,14 @@
 import { Link, useLocation } from "wouter";
-import { Users, Package, User } from "lucide-react";
+import { Users, Package, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Logo from "@/components/logo";
 import { Notifications } from "@/components/notifications";
+import { useAuth } from "@/hooks/useAuth";
+import { Badge } from "@/components/ui/badge";
 
 export default function Header() {
   const [location] = useLocation();
+  const { user, isAuthenticated } = useAuth();
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
@@ -18,41 +21,78 @@ export default function Header() {
           </div>
           
           <nav className="hidden md:flex space-x-8">
-            <Link href="/products" className={`text-gray-700 hover:text-primary transition-colors ${
-              location === '/products' ? 'text-primary font-medium' : ''
-            }`}>
-              Products
-            </Link>
-            <Link href="/maintenance" className={`text-gray-700 hover:text-primary transition-colors ${
-              location === '/maintenance' ? 'text-primary font-medium' : ''
-            }`}>
-              Maintenance Schedule
-            </Link>
-            <Link href="/appliances" className={`text-gray-700 hover:text-primary transition-colors ${
-              location === '/appliances' ? 'text-primary font-medium' : ''
-            }`}>
-              My Appliances
-            </Link>
-            <Link href="/contractors" className={`text-gray-700 hover:text-primary transition-colors ${
-              location === '/contractors' ? 'text-primary font-medium' : ''
-            }`}>
-              Find Contractors
-            </Link>
+            {user?.role === 'homeowner' && (
+              <>
+                <Link href="/products" className={`text-gray-700 hover:text-primary transition-colors ${
+                  location === '/products' ? 'text-primary font-medium' : ''
+                }`}>
+                  Products
+                </Link>
+                <Link href="/maintenance" className={`text-gray-700 hover:text-primary transition-colors ${
+                  location === '/maintenance' ? 'text-primary font-medium' : ''
+                }`}>
+                  Maintenance Schedule
+                </Link>
+                <Link href="/contractors" className={`text-gray-700 hover:text-primary transition-colors ${
+                  location === '/contractors' ? 'text-primary font-medium' : ''
+                }`}>
+                  Find Contractors
+                </Link>
+              </>
+            )}
+            {user?.role === 'contractor' && (
+              <>
+                <Link href="/dashboard" className={`text-gray-700 hover:text-primary transition-colors ${
+                  location === '/dashboard' ? 'text-primary font-medium' : ''
+                }`}>
+                  Dashboard
+                </Link>
+                <Link href="/appointments" className={`text-gray-700 hover:text-primary transition-colors ${
+                  location === '/appointments' ? 'text-primary font-medium' : ''
+                }`}>
+                  My Appointments
+                </Link>
+                <Link href="/profile" className={`text-gray-700 hover:text-primary transition-colors ${
+                  location === '/profile' ? 'text-primary font-medium' : ''
+                }`}>
+                  My Profile
+                </Link>
+              </>
+            )}
           </nav>
 
           <div className="flex items-center space-x-4">
-            <Notifications />
-            <div className="hidden md:flex bg-gray-100 rounded-lg p-1">
-              <button className="px-3 py-1 bg-white rounded-md shadow-sm text-sm font-medium text-gray-900">
-                Homeowner
-              </button>
-              <button className="px-3 py-1 text-sm font-medium text-gray-600 hover:text-gray-900">
-                Contractor
-              </button>
-            </div>
-            <Button className="bg-primary text-white hover:bg-blue-700">
-              Sign In
-            </Button>
+            {isAuthenticated && user?.role === 'homeowner' && <Notifications />}
+            
+            {isAuthenticated && user && (
+              <>
+                <div className="flex items-center space-x-2">
+                  <Badge variant={user.role === 'homeowner' ? 'default' : 'secondary'}>
+                    {user.role === 'homeowner' ? 'Homeowner' : 'Contractor'}
+                  </Badge>
+                  <span className="text-sm text-gray-700">
+                    {user.firstName || user.email}
+                  </span>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => window.location.href = '/api/logout'}
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sign Out
+                </Button>
+              </>
+            )}
+            
+            {!isAuthenticated && (
+              <Button 
+                className="bg-primary text-white hover:bg-blue-700"
+                onClick={() => window.location.href = '/signin'}
+              >
+                Sign In
+              </Button>
+            )}
           </div>
         </div>
       </div>
