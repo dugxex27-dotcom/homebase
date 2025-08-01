@@ -83,7 +83,7 @@ export default function Home() {
             <>
               <div className="text-center mb-10">
                 <h2 className="text-3xl font-bold text-foreground mb-4">
-                  Featured DIY Products
+                  Featured Products
                 </h2>
                 <p className="text-lg text-muted-foreground">
                   Quality tools and materials for your next project
