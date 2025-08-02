@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Header from "@/components/header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,6 +18,20 @@ import type { HomeAppliance, MaintenanceLog, House } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, Settings, Plus, Edit, Trash2, Home, FileText, Building2, User, Building } from "lucide-react";
 import { AppointmentScheduler } from "@/components/appointment-scheduler";
+
+// Google Maps API type declarations
+declare global {
+  interface Window {
+    google?: {
+      maps?: {
+        places?: {
+          AutocompleteService: any;
+          PlacesServiceStatus: any;
+        };
+      };
+    };
+  }
+}
 
 interface MaintenanceTask {
   id: string;
@@ -184,6 +198,58 @@ const getClimateZoneFromCoordinates = (lat: number, lng: number): string => {
   return "southwest";
 };
 
+// Address suggestion interface
+interface AddressSuggestion {
+  description: string;
+  place_id: string;
+  structured_formatting: {
+    main_text: string;
+    secondary_text: string;
+  };
+}
+
+// Get address suggestions using Google Places API (fallback to manual geocoding)
+const getAddressSuggestions = async (input: string): Promise<AddressSuggestion[]> => {
+  try {
+    // Check if Google Places API is available
+    const googleMaps = (window as any).google?.maps?.places;
+    if (googleMaps) {
+      return new Promise((resolve) => {
+        const service = new googleMaps.AutocompleteService();
+        service.getPlacePredictions({
+          input,
+          componentRestrictions: { country: 'us' },
+          types: ['address']
+        }, (predictions: any, status: any) => {
+          if (status === googleMaps.PlacesServiceStatus.OK && predictions) {
+            resolve(predictions);
+          } else {
+            resolve([]);
+          }
+        });
+      });
+    }
+    
+    // Fallback: Use Nominatim for suggestions
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(input)}&limit=5&countrycodes=us&addressdetails=1`
+    );
+    const data = await response.json();
+    
+    return data.map((item: any) => ({
+      description: item.display_name,
+      place_id: item.place_id.toString(),
+      structured_formatting: {
+        main_text: item.display_name.split(',')[0],
+        secondary_text: item.display_name.split(',').slice(1).join(',').trim()
+      }
+    }));
+  } catch (error) {
+    console.error('Address suggestion error:', error);
+    return [];
+  }
+};
+
 // Geocoding function using a free service
 const geocodeAddress = async (address: string): Promise<{ lat: number; lng: number } | null> => {
   try {
@@ -269,6 +335,10 @@ export default function Maintenance() {
   const [editingHouse, setEditingHouse] = useState<House | null>(null);
   const [isGeocodingAddress, setIsGeocodingAddress] = useState(false);
   const [addressDebounceTimer, setAddressDebounceTimer] = useState<NodeJS.Timeout | null>(null);
+  const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
+  const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
+  const [suggestionDebounceTimer, setSuggestionDebounceTimer] = useState<NodeJS.Timeout | null>(null);
+  const addressInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -656,13 +726,44 @@ export default function Maintenance() {
     setIsHouseDialogOpen(true);
   };
 
+  // Handle address suggestions
+  const handleAddressSuggestions = async (input: string) => {
+    if (input.length > 3) {
+      try {
+        const suggestions = await getAddressSuggestions(input);
+        setAddressSuggestions(suggestions);
+        setShowAddressSuggestions(suggestions.length > 0);
+      } catch (error) {
+        console.error('Failed to get address suggestions:', error);
+        setAddressSuggestions([]);
+        setShowAddressSuggestions(false);
+      }
+    } else {
+      setAddressSuggestions([]);
+      setShowAddressSuggestions(false);
+    }
+  };
+
   // Auto-detect climate zone from address with debounce
   const handleAddressChange = (address: string, onChange: (value: string) => void) => {
     onChange(address);
     
-    // Clear existing timer
+    // Clear existing timers
     if (addressDebounceTimer) {
       clearTimeout(addressDebounceTimer);
+    }
+    if (suggestionDebounceTimer) {
+      clearTimeout(suggestionDebounceTimer);
+    }
+    
+    // Get suggestions (debounce for 300ms)
+    if (address.length > 3) {
+      const suggestionTimer = setTimeout(() => {
+        handleAddressSuggestions(address);
+      }, 300);
+      setSuggestionDebounceTimer(suggestionTimer);
+    } else {
+      setShowAddressSuggestions(false);
     }
     
     // Set new timer for geocoding (debounce for 1 second)
@@ -688,6 +789,33 @@ export default function Maintenance() {
       
       setAddressDebounceTimer(timer);
     }
+  };
+
+  // Handle address suggestion selection
+  const handleAddressSuggestionSelect = (suggestion: AddressSuggestion, onChange: (value: string) => void) => {
+    onChange(suggestion.description);
+    setShowAddressSuggestions(false);
+    setAddressSuggestions([]);
+    
+    // Trigger climate zone detection immediately for selected address
+    setTimeout(async () => {
+      setIsGeocodingAddress(true);
+      try {
+        const coords = await geocodeAddress(suggestion.description);
+        if (coords) {
+          const detectedZone = getClimateZoneFromCoordinates(coords.lat, coords.lng);
+          houseForm.setValue('climateZone', detectedZone);
+          toast({
+            title: "Climate Zone Detected",
+            description: `Automatically set to ${CLIMATE_ZONES.find(z => z.value === detectedZone)?.label}`,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to detect climate zone:', error);
+      } finally {
+        setIsGeocodingAddress(false);
+      }
+    }, 100);
   };
 
   const onSubmitHouse = (data: HouseFormData) => {
@@ -2114,16 +2242,48 @@ export default function Maintenance() {
                     <FormItem>
                       <FormLabel>Address</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="Full street address (e.g., 123 Main St, City, State)" 
-                          {...field} 
-                          onChange={(e) => handleAddressChange(e.target.value, field.onChange)}
-                        />
+                        <div className="relative">
+                          <Input 
+                            placeholder="Start typing your address..." 
+                            {...field} 
+                            onChange={(e) => handleAddressChange(e.target.value, field.onChange)}
+                            onFocus={() => {
+                              if (addressSuggestions.length > 0) {
+                                setShowAddressSuggestions(true);
+                              }
+                            }}
+                            onBlur={() => {
+                              // Delay hiding suggestions to allow clicks
+                              setTimeout(() => setShowAddressSuggestions(false), 200);
+                            }}
+                          />
+                          
+                          {/* Address Suggestions Dropdown */}
+                          {showAddressSuggestions && addressSuggestions.length > 0 && (
+                            <div className="absolute z-50 w-full mt-1 bg-background border border-input rounded-md shadow-lg max-h-60 overflow-y-auto">
+                              {addressSuggestions.map((suggestion, index) => (
+                                <div
+                                  key={suggestion.place_id || index}
+                                  className="px-3 py-2 hover:bg-accent hover:text-accent-foreground cursor-pointer text-sm border-b border-border last:border-b-0"
+                                  onClick={() => handleAddressSuggestionSelect(suggestion, field.onChange)}
+                                >
+                                  <div className="font-medium">{suggestion.structured_formatting.main_text}</div>
+                                  <div className="text-xs text-muted-foreground">{suggestion.structured_formatting.secondary_text}</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </FormControl>
                       {isGeocodingAddress && (
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
                           <span className="animate-spin">⟳</span>
                           Detecting climate zone...
+                        </p>
+                      )}
+                      {addressSuggestions.length > 0 && !showAddressSuggestions && (
+                        <p className="text-xs text-muted-foreground">
+                          Click on the input to see {addressSuggestions.length} address suggestions
                         </p>
                       )}
                       <FormMessage />

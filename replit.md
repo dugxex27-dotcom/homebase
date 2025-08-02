@@ -180,3 +180,9 @@ The application is designed for deployment on platforms that support Node.js wit
   - Real-time feedback with toast notifications when zone is detected
   - Manual override option still available if automatic detection is incorrect
   - Comprehensive coverage of all US regions with fallback logic
+- **Added address autocomplete functionality** (February 2, 2025)
+  - Real-time address suggestions as you type (300ms debounce)
+  - Integration with Google Places API (when available) and OpenStreetMap fallback
+  - Dropdown showing up to 5 address suggestions with structured formatting
+  - One-click selection automatically triggers climate zone detection
+  - Improves address accuracy and user experience for property setup
