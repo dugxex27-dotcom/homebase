@@ -535,46 +535,93 @@ export default function Home() {
               Why Choose Home Base?
             </h2>
             <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-              We've designed every feature to make home management simple, reliable, and efficient
+              {typedUser?.role === 'homeowner' 
+                ? 'We\'ve designed every feature to make home management simple, reliable, and efficient'
+                : 'The platform contractors trust to grow their business and connect with quality clients'
+              }
             </p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <Card className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border-amber-200 dark:border-amber-800/30">
-              <CardContent className="p-8 text-center">
-                <div className="w-16 h-16 bg-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                  <Shield className="h-8 w-8 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Verified Professionals</h3>
-                <p className="text-gray-600 dark:text-gray-300">
-                  All contractors are thoroughly vetted with background checks, license verification, and customer reviews
-                </p>
-              </CardContent>
-            </Card>
+            {typedUser?.role === 'homeowner' ? (
+              // Homeowner Features
+              <>
+                <Card className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border-amber-200 dark:border-amber-800/30">
+                  <CardContent className="p-8 text-center">
+                    <div className="w-16 h-16 bg-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                      <Shield className="h-8 w-8 text-white" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Verified Professionals</h3>
+                    <p className="text-gray-600 dark:text-gray-300">
+                      All contractors are thoroughly vetted with background checks, license verification, and customer reviews
+                    </p>
+                  </CardContent>
+                </Card>
 
-            <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800/30">
-              <CardContent className="p-8 text-center">
-                <div className="w-16 h-16 bg-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                  <Calendar className="h-8 w-8 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Smart Scheduling</h3>
-                <p className="text-gray-600 dark:text-gray-300">
-                  AI-powered maintenance schedules that adapt to your home's specific needs and local climate conditions
-                </p>
-              </CardContent>
-            </Card>
+                <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800/30">
+                  <CardContent className="p-8 text-center">
+                    <div className="w-16 h-16 bg-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                      <Calendar className="h-8 w-8 text-white" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Smart Scheduling</h3>
+                    <p className="text-gray-600 dark:text-gray-300">
+                      Climate-based maintenance schedules that adapt to your home's specific needs and local conditions
+                    </p>
+                  </CardContent>
+                </Card>
 
-            <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-green-200 dark:border-green-800/30">
-              <CardContent className="p-8 text-center">
-                <div className="w-16 h-16 bg-green-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                  <TrendingUp className="h-8 w-8 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Cost Savings</h3>
-                <p className="text-gray-600 dark:text-gray-300">
-                  Preventive maintenance and competitive contractor pricing help you save thousands on home repairs
-                </p>
-              </CardContent>
-            </Card>
+                <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-green-200 dark:border-green-800/30">
+                  <CardContent className="p-8 text-center">
+                    <div className="w-16 h-16 bg-green-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                      <TrendingUp className="h-8 w-8 text-white" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Cost Savings</h3>
+                    <p className="text-gray-600 dark:text-gray-300">
+                      Preventive maintenance and competitive contractor pricing help you save thousands on home repairs
+                    </p>
+                  </CardContent>
+                </Card>
+              </>
+            ) : (
+              // Contractor Features
+              <>
+                <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800/30">
+                  <CardContent className="p-8 text-center">
+                    <div className="w-16 h-16 bg-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                      <Users className="h-8 w-8 text-white" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Quality Leads</h3>
+                    <p className="text-gray-600 dark:text-gray-300">
+                      Connect with motivated homeowners who value professional service and quality workmanship
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-green-200 dark:border-green-800/30">
+                  <CardContent className="p-8 text-center">
+                    <div className="w-16 h-16 bg-green-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                      <TrendingUp className="h-8 w-8 text-white" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Grow Your Business</h3>
+                    <p className="text-gray-600 dark:text-gray-300">
+                      Tools and features designed to help you manage projects, track earnings, and expand your client base
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border-amber-200 dark:border-amber-800/30">
+                  <CardContent className="p-8 text-center">
+                    <div className="w-16 h-16 bg-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                      <Star className="h-8 w-8 text-white" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Build Reputation</h3>
+                    <p className="text-gray-600 dark:text-gray-300">
+                      Showcase your expertise through customer reviews and build a trusted reputation in your community
+                    </p>
+                  </CardContent>
+                </Card>
+              </>
+            )}
           </div>
         </div>
       </section>
