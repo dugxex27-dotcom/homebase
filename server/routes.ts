@@ -480,6 +480,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/houses/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteHouse(req.params.id);
+      if (!success) {
+        return res.status(404).json({ message: "House not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete house" });
+    }
+  });
+
   app.put("/api/houses/:id", async (req, res) => {
     try {
       const house = await storage.updateHouse(req.params.id, req.body);

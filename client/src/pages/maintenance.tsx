@@ -44,8 +44,19 @@ const maintenanceLogFormSchema = insertMaintenanceLogSchema.extend({
   homeownerId: z.string().min(1, "Homeowner ID is required"),
 });
 
+// Form schema for house creation/editing
+const houseFormSchema = z.object({
+  homeownerId: z.string().min(1, "Homeowner ID is required"),
+  name: z.string().min(1, "House name is required"),
+  address: z.string().min(1, "Address is required"),
+  climateZone: z.string().min(1, "Climate zone is required"),
+  homeSystems: z.array(z.string()).default([]),
+  isDefault: z.boolean().default(false),
+});
+
 type ApplianceFormData = z.infer<typeof applianceFormSchema>;
 type MaintenanceLogFormData = z.infer<typeof maintenanceLogFormSchema>;
+type HouseFormData = z.infer<typeof houseFormSchema>;
 
 const APPLIANCE_TYPES = [
   { value: "hvac", label: "HVAC System" },
@@ -180,6 +191,8 @@ export default function Maintenance() {
   const [editingAppliance, setEditingAppliance] = useState<HomeAppliance | null>(null);
   const [isMaintenanceLogDialogOpen, setIsMaintenanceLogDialogOpen] = useState(false);
   const [editingMaintenanceLog, setEditingMaintenanceLog] = useState<MaintenanceLog | null>(null);
+  const [isHouseDialogOpen, setIsHouseDialogOpen] = useState(false);
+  const [editingHouse, setEditingHouse] = useState<House | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -372,6 +385,84 @@ export default function Maintenance() {
     },
   });
 
+  // House form handling
+  const houseForm = useForm<HouseFormData>({
+    resolver: zodResolver(houseFormSchema),
+    defaultValues: {
+      homeownerId,
+      name: "",
+      address: "",
+      climateZone: "",
+      homeSystems: [],
+      isDefault: false,
+    },
+  });
+
+  const createHouseMutation = useMutation({
+    mutationFn: async (data: HouseFormData) => {
+      const response = await fetch('/api/houses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error('Failed to create house');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/houses'] });
+      setIsHouseDialogOpen(false);
+      houseForm.reset();
+      toast({ title: "Success", description: "House added successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to add house", variant: "destructive" });
+    },
+  });
+
+  const updateHouseMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<HouseFormData> }) => {
+      const response = await fetch(`/api/houses/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error('Failed to update house');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/houses'] });
+      setIsHouseDialogOpen(false);
+      setEditingHouse(null);
+      houseForm.reset();
+      toast({ title: "Success", description: "House updated successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update house", variant: "destructive" });
+    },
+  });
+
+  const deleteHouseMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/houses/${id}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('Failed to delete house');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/houses'] });
+      // If we deleted the currently selected house, select the first available house
+      if (selectedHouseId === editingHouse?.id) {
+        const remainingHouses = houses.filter((h: House) => h.id !== editingHouse?.id);
+        if (remainingHouses.length > 0) {
+          setSelectedHouseId(remainingHouses[0].id);
+        }
+      }
+      toast({ title: "Success", description: "House deleted successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to delete house", variant: "destructive" });
+    },
+  });
+
   // Load completed tasks and home systems from localStorage on component mount
   useEffect(() => {
     const storedTasks = localStorage.getItem('maintenance-completed-tasks');
@@ -447,6 +538,54 @@ export default function Maintenance() {
         ? prev.filter(s => s !== system)
         : [...prev, system]
     );
+  };
+
+  // House helper functions
+  const handleEditHouse = (house: House) => {
+    setEditingHouse(house);
+    houseForm.reset({
+      homeownerId,
+      name: house.name,
+      address: house.address,
+      climateZone: house.climateZone,
+      homeSystems: house.homeSystems,
+      isDefault: house.isDefault,
+    });
+    setIsHouseDialogOpen(true);
+  };
+
+  const handleDeleteHouse = (house: House) => {
+    if (houses.length <= 1) {
+      toast({ 
+        title: "Cannot Delete", 
+        description: "You must have at least one house.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+    setEditingHouse(house);
+    deleteHouseMutation.mutate(house.id);
+  };
+
+  const handleAddNewHouse = () => {
+    setEditingHouse(null);
+    houseForm.reset({
+      homeownerId,
+      name: "",
+      address: "",
+      climateZone: "",
+      homeSystems: [],
+      isDefault: false,
+    });
+    setIsHouseDialogOpen(true);
+  };
+
+  const onSubmitHouse = (data: HouseFormData) => {
+    if (editingHouse) {
+      updateHouseMutation.mutate({ id: editingHouse.id, data });
+    } else {
+      createHouseMutation.mutate(data);
+    }
   };
 
   // Appliance helper functions
@@ -918,18 +1057,60 @@ export default function Maintenance() {
                 </Select>
               </div>
               
-              {selectedHouseId && houses.length > 0 && (
-                <div className="text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4" />
-                    <span>{houses.find((house: House) => house.id === selectedHouseId)?.climateZone}</span>
-                  </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Home className="w-4 h-4" />
-                    <span>{houses.find((house: House) => house.id === selectedHouseId)?.homeSystems.length || 0} systems configured</span>
-                  </div>
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleAddNewHouse}
+                    className="whitespace-nowrap"
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add House
+                  </Button>
+                  {selectedHouseId && houses.length > 0 && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => {
+                        const selectedHouse = houses.find((h: House) => h.id === selectedHouseId);
+                        if (selectedHouse) handleEditHouse(selectedHouse);
+                      }}
+                      className="whitespace-nowrap"
+                    >
+                      <Edit className="w-4 h-4 mr-1" />
+                      Edit
+                    </Button>
+                  )}
+                  {selectedHouseId && houses.length > 1 && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => {
+                        const selectedHouse = houses.find((h: House) => h.id === selectedHouseId);
+                        if (selectedHouse) handleDeleteHouse(selectedHouse);
+                      }}
+                      className="whitespace-nowrap text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4 mr-1" />
+                      Delete
+                    </Button>
+                  )}
                 </div>
-              )}
+                
+                {selectedHouseId && houses.length > 0 && (
+                  <div className="text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4" />
+                      <span>{houses.find((house: House) => house.id === selectedHouseId)?.climateZone}</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Home className="w-4 h-4" />
+                      <span>{houses.find((house: House) => house.id === selectedHouseId)?.homeSystems.length || 0} systems configured</span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -1787,6 +1968,143 @@ export default function Maintenance() {
                     disabled={createMaintenanceLogMutation.isPending || updateMaintenanceLogMutation.isPending}
                   >
                     {createMaintenanceLogMutation.isPending || updateMaintenanceLogMutation.isPending ? 'Saving...' : editingMaintenanceLog ? 'Update' : 'Add'} Service Record
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+
+        {/* House Management Dialog */}
+        <Dialog open={isHouseDialogOpen} onOpenChange={setIsHouseDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>{editingHouse ? 'Edit House' : 'Add New House'}</DialogTitle>
+            </DialogHeader>
+            <Form {...houseForm}>
+              <form onSubmit={houseForm.handleSubmit(onSubmitHouse)} className="space-y-4">
+                <FormField
+                  control={houseForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>House Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., Main House, Vacation Home" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={houseForm.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Address</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Full street address" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={houseForm.control}
+                  name="climateZone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Climate Zone</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select climate zone" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {CLIMATE_ZONES.map((zone) => (
+                            <SelectItem key={zone.value} value={zone.value}>
+                              {zone.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={houseForm.control}
+                  name="homeSystems"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Home Systems</FormLabel>
+                      <FormControl>
+                        <div className="grid grid-cols-2 gap-2">
+                          {[
+                            "Central Air", "Gas Heat", "Electric Heat", "Fireplace", "Pool", "Hot Tub",
+                            "Sprinkler System", "Security System", "Solar Panels", "Generator"
+                          ].map((system) => (
+                            <label key={system} className="flex items-center space-x-2 text-sm">
+                              <input
+                                type="checkbox"
+                                checked={field.value.includes(system)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    field.onChange([...field.value, system]);
+                                  } else {
+                                    field.onChange(field.value.filter((s: string) => s !== system));
+                                  }
+                                }}
+                                className="rounded border-input"
+                              />
+                              <span>{system}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={houseForm.control}
+                  name="isDefault"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center space-x-2">
+                      <FormControl>
+                        <input
+                          type="checkbox"
+                          checked={field.value}
+                          onChange={field.onChange}
+                          className="rounded border-input"
+                        />
+                      </FormControl>
+                      <FormLabel className="text-sm font-normal">
+                        Set as default property
+                      </FormLabel>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setIsHouseDialogOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    disabled={createHouseMutation.isPending || updateHouseMutation.isPending}
+                  >
+                    {createHouseMutation.isPending || updateHouseMutation.isPending ? 'Saving...' : editingHouse ? 'Update' : 'Add'} House
                   </Button>
                 </div>
               </form>
