@@ -268,6 +268,7 @@ export default function Maintenance() {
   const [isHouseDialogOpen, setIsHouseDialogOpen] = useState(false);
   const [editingHouse, setEditingHouse] = useState<House | null>(null);
   const [isGeocodingAddress, setIsGeocodingAddress] = useState(false);
+  const [addressDebounceTimer, setAddressDebounceTimer] = useState<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -655,27 +656,37 @@ export default function Maintenance() {
     setIsHouseDialogOpen(true);
   };
 
-  // Auto-detect climate zone from address
-  const handleAddressChange = async (address: string, onChange: (value: string) => void) => {
+  // Auto-detect climate zone from address with debounce
+  const handleAddressChange = (address: string, onChange: (value: string) => void) => {
     onChange(address);
     
-    if (address.length > 10) { // Only geocode when we have a substantial address
-      setIsGeocodingAddress(true);
-      try {
-        const coords = await geocodeAddress(address);
-        if (coords) {
-          const detectedZone = getClimateZoneFromCoordinates(coords.lat, coords.lng);
-          houseForm.setValue('climateZone', detectedZone);
-          toast({
-            title: "Climate Zone Detected",
-            description: `Automatically set to ${CLIMATE_ZONES.find(z => z.value === detectedZone)?.label}`,
-          });
+    // Clear existing timer
+    if (addressDebounceTimer) {
+      clearTimeout(addressDebounceTimer);
+    }
+    
+    // Set new timer for geocoding (debounce for 1 second)
+    if (address.length > 10) {
+      const timer = setTimeout(async () => {
+        setIsGeocodingAddress(true);
+        try {
+          const coords = await geocodeAddress(address);
+          if (coords) {
+            const detectedZone = getClimateZoneFromCoordinates(coords.lat, coords.lng);
+            houseForm.setValue('climateZone', detectedZone);
+            toast({
+              title: "Climate Zone Detected",
+              description: `Automatically set to ${CLIMATE_ZONES.find(z => z.value === detectedZone)?.label}`,
+            });
+          }
+        } catch (error) {
+          console.error('Failed to detect climate zone:', error);
+        } finally {
+          setIsGeocodingAddress(false);
         }
-      } catch (error) {
-        console.error('Failed to detect climate zone:', error);
-      } finally {
-        setIsGeocodingAddress(false);
-      }
+      }, 1000); // 1 second debounce
+      
+      setAddressDebounceTimer(timer);
     }
   };
 
@@ -2104,14 +2115,14 @@ export default function Maintenance() {
                       <FormLabel>Address</FormLabel>
                       <FormControl>
                         <Input 
-                          placeholder="Full street address" 
+                          placeholder="Full street address (e.g., 123 Main St, City, State)" 
                           {...field} 
                           onChange={(e) => handleAddressChange(e.target.value, field.onChange)}
-                          disabled={isGeocodingAddress}
                         />
                       </FormControl>
                       {isGeocodingAddress && (
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <span className="animate-spin">⟳</span>
                           Detecting climate zone...
                         </p>
                       )}
