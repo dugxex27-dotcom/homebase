@@ -71,8 +71,8 @@ export default function Header() {
             )}
             {typedUser?.role === 'contractor' && (
               <>
-                <Link href="/" className={`text-gray-700 hover:text-primary transition-colors ${
-                  location === '/' ? 'text-primary font-medium' : ''
+                <Link href="/contractor-dashboard" className={`text-gray-700 hover:text-primary transition-colors ${
+                  location === '/contractor-dashboard' ? 'text-primary font-medium' : ''
                 }`}>
                   Dashboard
                 </Link>
