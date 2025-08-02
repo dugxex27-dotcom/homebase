@@ -82,8 +82,8 @@ export default function Header() {
                   <MessageCircle className="w-4 h-4 inline mr-1" />
                   Messages
                 </Link>
-                <Link href="/profile" className={`text-gray-700 hover:text-primary transition-colors ${
-                  location === '/profile' ? 'text-primary font-medium' : ''
+                <Link href="/contractor-profile" className={`text-gray-700 hover:text-primary transition-colors ${
+                  location === '/contractor-profile' ? 'text-primary font-medium' : ''
                 }`}>
                   My Profile
                 </Link>
