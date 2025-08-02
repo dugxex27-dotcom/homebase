@@ -186,10 +186,13 @@ The application is designed for deployment on platforms that support Node.js wit
   - Dropdown showing up to 5 address suggestions with structured formatting
   - One-click selection automatically triggers climate zone detection
   - Improves address accuracy and user experience for property setup
-- **Transformed main page into customer dashboard** (February 2, 2025)
-  - Removed smart maintenance tab from main page tabbed interface
-  - Created dedicated "Customer Dashboard" tab for homeowners with quick access cards
-  - Dashboard includes maintenance, service records, contractors, recent alerts, active projects, and home value tracking
+- **Transformed main page into role-based dashboards** (February 2, 2025)
+  - Completely removed smart maintenance tab and content from main page for all users
+  - Created role-based dashboard system serving as primary interface:
+    - **Homeowner Dashboard**: Maintenance, service records, contractors, alerts, projects, home value
+    - **Contractor Dashboard**: Business overview, profile management, messages, active projects, reviews, leads
+  - Made dashboard the default primary section for both user types with role-specific content
+  - Added role-specific quick actions and features sections throughout the page
   - Enhanced with professional design system including gradient hero sections across all pages
   - Polished contractors, products, contractor detail, and maintenance pages with consistent styling
   - Added unique color themes for each page (amber for home, green for products, blue for contractor detail)

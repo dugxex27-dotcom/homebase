@@ -561,11 +561,11 @@ export default function Home() {
                 <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800/30">
                   <CardContent className="p-8 text-center">
                     <div className="w-16 h-16 bg-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                      <Calendar className="h-8 w-8 text-white" />
+                      <Package className="h-8 w-8 text-white" />
                     </div>
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Smart Scheduling</h3>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Quality Products</h3>
                     <p className="text-gray-600 dark:text-gray-300">
-                      Climate-based maintenance schedules that adapt to your home's specific needs and local conditions
+                      Browse professional-grade tools and materials for your home improvement projects
                     </p>
                   </CardContent>
                 </Card>
