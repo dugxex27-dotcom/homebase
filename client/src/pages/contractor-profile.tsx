@@ -44,6 +44,7 @@ const AVAILABLE_SERVICES = [
   "HVAC",
   "Kitchen Remodeling",
   "Landscaping",
+  "Masonry/Paver",
   "Painting",
   "Plumbing",
   "Pressure Washing",
