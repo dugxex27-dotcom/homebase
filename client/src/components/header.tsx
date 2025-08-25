@@ -107,6 +107,16 @@ export default function Header() {
                 <span className="text-sm text-gray-700">
                   {typedUser.firstName || typedUser.email}
                 </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleLogout}
+                  className="ml-2"
+                  data-testid="button-logout"
+                >
+                  <LogOut className="w-4 h-4 mr-1" />
+                  Sign Out
+                </Button>
               </div>
             )}
             
