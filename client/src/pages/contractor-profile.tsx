@@ -27,6 +27,8 @@ import {
 } from "lucide-react";
 
 const AVAILABLE_SERVICES = [
+  "General Contracting",
+  "Assembly Services",
   "Plumbing",
   "Electrical",
   "HVAC",
