@@ -27,28 +27,28 @@ import {
 } from "lucide-react";
 
 const AVAILABLE_SERVICES = [
-  "General Contracting",
   "Assembly Services",
-  "Plumbing",
-  "Electrical",
-  "HVAC",
-  "Roofing",
-  "Flooring",
-  "Painting",
-  "Drywall",
-  "Kitchen Remodeling",
-  "Bathroom Remodeling",
   "Basement Finishing",
-  "Deck Building",
-  "Fence Installation",
-  "Landscaping",
-  "Gutters",
-  "Windows & Doors",
-  "Siding",
-  "Concrete Work",
-  "Tile Work",
+  "Bathroom Remodeling",
   "Carpentry",
-  "Handyman Services"
+  "Concrete Work",
+  "Deck Building",
+  "Drywall",
+  "Electrical",
+  "Fence Installation",
+  "Flooring",
+  "General Contracting",
+  "Gutters",
+  "Handyman Services",
+  "HVAC",
+  "Kitchen Remodeling",
+  "Landscaping",
+  "Painting",
+  "Plumbing",
+  "Roofing",
+  "Siding",
+  "Tile Work",
+  "Windows & Doors"
 ];
 
 export default function ContractorProfile() {
