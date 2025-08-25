@@ -276,7 +276,7 @@ export class MemStorage implements IStorage {
         rating: "4.8",
         reviewCount: 142,
         experience: 11,
-        services: ["Gutters", "Roofing", "Landscaping"],
+        services: ["Gutters", "Gutter Cleaning", "Pressure Washing"],
         phone: "(206) 555-0654",
         email: "rachel@gutterpro.com",
         licenseNumber: "GREEN*654KL",
