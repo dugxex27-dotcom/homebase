@@ -190,9 +190,7 @@ export class MemStorage implements IStorage {
         phone: "(206) 555-0123",
         email: "mike@thompsonllc.com",
         licenseNumber: "THOMC*123AB",
-        insuranceProvider: "Liberty Mutual",
         isLicensed: true,
-        isInsured: true,
         hasEmergencyServices: false,
         profileImage: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=150&h=150"
       },
@@ -209,9 +207,7 @@ export class MemStorage implements IStorage {
         phone: "(206) 555-0456",
         email: "sarah@martinezelectric.com",
         licenseNumber: "MARTI*456CD",
-        insuranceProvider: "State Farm",
         isLicensed: true,
-        isInsured: true,
         hasEmergencyServices: true,
         profileImage: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=150&h=150"
       },
@@ -228,9 +224,7 @@ export class MemStorage implements IStorage {
         phone: "(206) 555-0789",
         email: "david@chenplumbing.com",
         licenseNumber: "CHEND*789EF",
-        insuranceProvider: "Allstate",
         isLicensed: true,
-        isInsured: true,
         hasEmergencyServices: true,
         profileImage: "https://images.unsplash.com/photo-1560250097-0b93528c311a?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=150&h=150"
       },
@@ -247,9 +241,7 @@ export class MemStorage implements IStorage {
         phone: "(206) 555-0321",
         email: "emily@rodriguezroofing.com",
         licenseNumber: "RODRI*321GH",
-        insuranceProvider: "Farmers Insurance",
         isLicensed: true,
-        isInsured: true,
         hasEmergencyServices: false,
         profileImage: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=150&h=150"
       },
@@ -266,9 +258,7 @@ export class MemStorage implements IStorage {
         phone: "(206) 555-0987",
         email: "marcus@perfectdrywall.com",
         licenseNumber: "JOHNS*987IJ",
-        insuranceProvider: "Progressive",
         isLicensed: true,
-        isInsured: true,
         hasEmergencyServices: false,
         profileImage: "https://images.unsplash.com/photo-1558618739-ace2d1e8de4c?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=150&h=150"
       },
@@ -285,9 +275,7 @@ export class MemStorage implements IStorage {
         phone: "(206) 555-0654",
         email: "rachel@gutterpro.com",
         licenseNumber: "GREEN*654KL",
-        insuranceProvider: "GEICO",
         isLicensed: true,
-        isInsured: true,
         hasEmergencyServices: true,
         profileImage: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=150&h=150"
       }

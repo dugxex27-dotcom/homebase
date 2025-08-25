@@ -65,9 +65,6 @@ export default function ContractorProfile() {
     licenseNumber: '',
     licenseState: '',
     licenseExpiry: '',
-    insuranceProvider: '',
-    insurancePolicy: '',
-    insuranceExpiry: '',
     servicesOffered: [] as string[],
     website: '',
     facebook: '',
@@ -333,47 +330,6 @@ export default function ContractorProfile() {
                   type="date"
                   value={formData.licenseExpiry}
                   onChange={(e) => handleInputChange('licenseExpiry', e.target.value)}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Insurance Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="w-5 h-5" />
-              Insurance Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label htmlFor="insuranceProvider">Insurance Provider</Label>
-                <Input
-                  id="insuranceProvider"
-                  value={formData.insuranceProvider}
-                  onChange={(e) => handleInputChange('insuranceProvider', e.target.value)}
-                  placeholder="State Farm Business"
-                />
-              </div>
-              <div>
-                <Label htmlFor="insurancePolicy">Policy Number</Label>
-                <Input
-                  id="insurancePolicy"
-                  value={formData.insurancePolicy}
-                  onChange={(e) => handleInputChange('insurancePolicy', e.target.value)}
-                  placeholder="POL123456789"
-                />
-              </div>
-              <div>
-                <Label htmlFor="insuranceExpiry">Insurance Expiry</Label>
-                <Input
-                  id="insuranceExpiry"
-                  type="date"
-                  value={formData.insuranceExpiry}
-                  onChange={(e) => handleInputChange('insuranceExpiry', e.target.value)}
                 />
               </div>
             </div>
