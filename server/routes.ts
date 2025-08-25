@@ -927,6 +927,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk message sending - create conversations with multiple contractors
+  app.post('/api/conversations/bulk', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.user.id;
+      const userType = req.session.user.role;
+      
+      if (userType !== 'homeowner') {
+        return res.status(403).json({ message: "Only homeowners can send bulk messages" });
+      }
+
+      const { subject, message, contractorIds } = req.body;
+      
+      if (!subject || !message || !contractorIds || !Array.isArray(contractorIds) || contractorIds.length === 0) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      const createdConversations = [];
+      
+      // Create a conversation with each contractor
+      for (const contractorId of contractorIds) {
+        // Check if conversation already exists
+        const existingConversations = await storage.getConversations(userId, userType);
+        const existing = existingConversations.find(conv => conv.contractorId === contractorId);
+        
+        let conversation;
+        if (existing) {
+          conversation = existing;
+        } else {
+          // Create new conversation
+          const conversationData = insertConversationSchema.parse({
+            homeownerId: userId,
+            contractorId: contractorId,
+            subject: subject
+          });
+          conversation = await storage.createConversation(conversationData);
+        }
+        
+        // Send the message in this conversation
+        const messageData = insertMessageSchema.parse({
+          conversationId: conversation.id,
+          senderId: userId,
+          senderType: 'homeowner',
+          message: message
+        });
+        
+        await storage.createMessage(messageData);
+        createdConversations.push(conversation);
+      }
+
+      res.json({ 
+        success: true, 
+        conversationsCreated: createdConversations.length,
+        messagesSent: contractorIds.length 
+      });
+    } catch (error) {
+      console.error("Error sending bulk messages:", error);
+      res.status(500).json({ message: "Failed to send bulk messages" });
+    }
+  });
+
   app.get('/api/conversations/:id/messages', isAuthenticated, async (req: any, res) => {
     try {
       const conversationId = req.params.id;

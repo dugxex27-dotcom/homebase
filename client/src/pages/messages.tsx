@@ -2,15 +2,20 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { MessageCircle, Send, User, Calendar } from "lucide-react";
-import type { User as UserType, Conversation, Message } from "@shared/schema";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { MessageCircle, Send, User, Calendar, Plus, Users } from "lucide-react";
+import type { User as UserType, Conversation, Message, Contractor } from "@shared/schema";
 
 interface ConversationWithDetails extends Conversation {
   otherPartyName: string;
@@ -19,14 +24,27 @@ interface ConversationWithDetails extends Conversation {
 
 export default function Messages() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const typedUser = user as UserType | undefined;
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
+  const [isComposeDialogOpen, setIsComposeDialogOpen] = useState(false);
+  const [composeForm, setComposeForm] = useState({
+    subject: "",
+    message: "",
+    selectedContractors: [] as string[]
+  });
 
   // Fetch conversations
   const { data: conversations = [], isLoading: conversationsLoading } = useQuery<ConversationWithDetails[]>({
     queryKey: ['/api/conversations'],
     enabled: !!typedUser
+  });
+
+  // Fetch contractors for homeowners to compose new messages
+  const { data: contractors = [] } = useQuery<Contractor[]>({
+    queryKey: ['/api/contractors'],
+    enabled: !!typedUser && typedUser.role === 'homeowner'
   });
 
   // Fetch messages for selected conversation
@@ -57,6 +75,54 @@ export default function Messages() {
   const handleSendMessage = () => {
     if (!newMessage.trim() || !selectedConversationId) return;
     sendMessageMutation.mutate({ message: newMessage });
+  };
+
+  // Send message to multiple contractors
+  const sendBulkMessageMutation = useMutation({
+    mutationFn: async (data: { subject: string; message: string; contractorIds: string[] }) => {
+      return await apiRequest('POST', '/api/conversations/bulk', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
+      setIsComposeDialogOpen(false);
+      setComposeForm({ subject: "", message: "", selectedContractors: [] });
+      toast({
+        title: "Messages Sent",
+        description: `Your message was sent to ${composeForm.selectedContractors.length} contractor${composeForm.selectedContractors.length > 1 ? 's' : ''}.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send messages.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleComposeSubmit = () => {
+    if (!composeForm.subject.trim() || !composeForm.message.trim() || composeForm.selectedContractors.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please fill in all fields and select at least one contractor.",
+        variant: "destructive",
+      });
+      return;
+    }
+    sendBulkMessageMutation.mutate({
+      subject: composeForm.subject,
+      message: composeForm.message,
+      contractorIds: composeForm.selectedContractors
+    });
+  };
+
+  const handleContractorSelection = (contractorId: string, checked: boolean) => {
+    setComposeForm(prev => ({
+      ...prev,
+      selectedContractors: checked 
+        ? [...prev.selectedContractors, contractorId]
+        : prev.selectedContractors.filter(id => id !== contractorId)
+    }));
   };
 
   if (!typedUser) {
@@ -94,9 +160,103 @@ export default function Messages() {
         {/* Conversations List */}
         <Card className="lg:col-span-1">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MessageCircle className="h-5 w-5" />
-              Conversations
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <MessageCircle className="h-5 w-5" />
+                Conversations
+              </div>
+              {typedUser?.role === 'homeowner' && (
+                <Dialog open={isComposeDialogOpen} onOpenChange={setIsComposeDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" data-testid="button-compose-message">
+                      <Plus className="h-4 w-4 mr-1" />
+                      New
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2">
+                        <Users className="h-5 w-5" />
+                        Send Message to Contractors
+                      </DialogTitle>
+                      <DialogDescription>
+                        Select one or more contractors to send your message to. Each contractor will receive a separate conversation.
+                      </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="subject">Subject</Label>
+                        <Input
+                          id="subject"
+                          data-testid="input-subject"
+                          placeholder="Enter message subject"
+                          value={composeForm.subject}
+                          onChange={(e) => setComposeForm(prev => ({ ...prev, subject: e.target.value }))}
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="message">Message</Label>
+                        <Textarea
+                          id="message"
+                          data-testid="textarea-message"
+                          placeholder="Write your message..."
+                          value={composeForm.message}
+                          onChange={(e) => setComposeForm(prev => ({ ...prev, message: e.target.value }))}
+                          rows={4}
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label>Select Contractors ({composeForm.selectedContractors.length} selected)</Label>
+                        <ScrollArea className="h-60 border rounded-md p-4 mt-2">
+                          <div className="space-y-3">
+                            {contractors.map((contractor) => (
+                              <div key={contractor.id} className="flex items-center space-x-3">
+                                <Checkbox
+                                  id={`contractor-${contractor.id}`}
+                                  data-testid={`checkbox-contractor-${contractor.id}`}
+                                  checked={composeForm.selectedContractors.includes(contractor.id)}
+                                  onCheckedChange={(checked) => handleContractorSelection(contractor.id, checked as boolean)}
+                                />
+                                <Label htmlFor={`contractor-${contractor.id}`} className="flex-1 cursor-pointer">
+                                  <div>
+                                    <div className="font-medium">{contractor.name} - {contractor.company}</div>
+                                    <div className="text-sm text-gray-500">
+                                      {contractor.services.slice(0, 3).join(', ')}
+                                      {contractor.services.length > 3 && ` +${contractor.services.length - 3} more`}
+                                    </div>
+                                    <div className="text-sm text-gray-500">{contractor.location}</div>
+                                  </div>
+                                </Label>
+                              </div>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      </div>
+                      
+                      <div className="flex justify-end gap-2">
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setIsComposeDialogOpen(false)}
+                          data-testid="button-cancel-compose"
+                        >
+                          Cancel
+                        </Button>
+                        <Button 
+                          onClick={handleComposeSubmit}
+                          disabled={sendBulkMessageMutation.isPending || composeForm.selectedContractors.length === 0}
+                          data-testid="button-send-bulk-message"
+                        >
+                          <Send className="h-4 w-4 mr-2" />
+                          {sendBulkMessageMutation.isPending ? 'Sending...' : `Send to ${composeForm.selectedContractors.length} Contractor${composeForm.selectedContractors.length !== 1 ? 's' : ''}`}
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
