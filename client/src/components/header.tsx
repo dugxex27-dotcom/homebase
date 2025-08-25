@@ -100,24 +100,14 @@ export default function Header() {
             {isAuthenticated && typedUser?.role === 'homeowner' && <Notifications />}
             
             {isAuthenticated && typedUser && (
-              <>
-                <div className="flex items-center space-x-2">
-                  <Badge variant={typedUser.role === 'homeowner' ? 'default' : 'secondary'}>
-                    {typedUser.role === 'homeowner' ? 'Homeowner' : 'Contractor'}
-                  </Badge>
-                  <span className="text-sm text-gray-700">
-                    {typedUser.firstName || typedUser.email}
-                  </span>
-                </div>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleLogout}
-                >
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Sign Out
-                </Button>
-              </>
+              <div className="flex items-center space-x-2">
+                <Badge variant={typedUser.role === 'homeowner' ? 'default' : 'secondary'}>
+                  {typedUser.role === 'homeowner' ? 'Homeowner' : 'Contractor'}
+                </Badge>
+                <span className="text-sm text-gray-700">
+                  {typedUser.firstName || typedUser.email}
+                </span>
+              </div>
             )}
             
             {!isAuthenticated && (

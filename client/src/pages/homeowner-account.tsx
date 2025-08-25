@@ -17,7 +17,8 @@ import {
   Phone, 
   MapPin,
   Save,
-  Camera
+  Camera,
+  LogOut
 } from "lucide-react";
 
 export default function HomeownerAccount() {
@@ -98,6 +99,26 @@ export default function HomeownerAccount() {
 
   const handleInputChange = (field: keyof typeof profileData, value: string) => {
     setProfileData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleLogout = async () => {
+    try {
+      const response = await fetch('/api/auth/logout', { 
+        method: 'POST',
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        // Clear all cached queries
+        queryClient.clear();
+        // Reload the page to reset the app state
+        window.location.href = '/';
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Fallback: try the GET endpoint
+      window.location.href = '/api/logout';
+    }
   };
 
   return (
@@ -238,6 +259,25 @@ export default function HomeownerAccount() {
                   </div>
                   <Button variant="outline" size="sm" data-testid="button-change-password">
                     Change
+                  </Button>
+                </div>
+
+                <Separator />
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="font-medium">Sign Out</h4>
+                    <p className="text-sm text-gray-600">Sign out of your account</p>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    data-testid="button-logout"
+                    onClick={handleLogout}
+                    className="text-red-600 border-red-200 hover:bg-red-50"
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign Out
                   </Button>
                 </div>
               </CardContent>
