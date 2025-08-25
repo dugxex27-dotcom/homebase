@@ -17,20 +17,28 @@ export default function FilterSidebar({ onFiltersChange }: FilterSidebarProps) {
   const [maxDistance, setMaxDistance] = useState<number | undefined>();
 
   const services = [
-    "Kitchen Remodeling",
-    "Bathroom Renovation", 
-    "Plumbing",
+    "Assembly Services",
+    "Basement Finishing",
+    "Bathroom Remodeling",
+    "Carpentry",
+    "Concrete Work",
+    "Deck Building",
+    "Drywall",
     "Electrical",
-    "Roofing",
-    "HVAC",
+    "Fence Installation",
     "Flooring",
+    "General Contracting",
+    "Gutters",
+    "Handyman Services",
+    "HVAC",
+    "Kitchen Remodeling",
+    "Landscaping",
     "Painting",
-    "Drywall Installation",
-    "Drywall Repair",
-    "Gutter Installation",
-    "Gutter Cleaning",
-    "Custom Cabinetry",
-    "Smart Home Installation"
+    "Plumbing",
+    "Roofing",
+    "Siding",
+    "Tile Work",
+    "Windows & Doors"
   ];
 
   const handleServiceChange = (service: string, checked: boolean) => {
