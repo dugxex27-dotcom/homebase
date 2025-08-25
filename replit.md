@@ -62,6 +62,13 @@ The application defines main entities:
    - House-specific filtering for multi-property users
    - Action URLs for direct navigation
 
+5. **Proposals Table** (Contractor business management):
+   - Contractor-generated service proposals with detailed scope of work
+   - Cost estimation and project duration planning
+   - Materials list and warranty period management
+   - Status tracking (draft, sent, accepted, rejected, expired)
+   - Proposal validity dates and internal contractor notes
+
 ### API Endpoints
 - **Contractor Routes**:
   - `GET /api/contractors` - List contractors with filtering
@@ -206,3 +213,10 @@ The application is designed for deployment on platforms that support Node.js wit
   - Completed service records linking system between contractors and homeowners
   - Added comprehensive homeowner service records page with filtering, search, and detailed display
   - Removed home value tracking feature from homeowner dashboard as requested
+- **Added comprehensive proposal management system** (August 25, 2025)
+  - Contractors can now create detailed service proposals with cost estimates and timelines
+  - Full CRUD operations for proposals including create, edit, and delete functionality
+  - Status tracking system (draft, sent, accepted, rejected, expired)
+  - Comprehensive proposal forms with scope of work, materials lists, and warranty periods
+  - Proposal validity dates and internal contractor notes for business management
+  - Integrated proposal section directly into contractor dashboard for easy access
