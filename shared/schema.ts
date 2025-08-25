@@ -40,6 +40,7 @@ export const contractors = pgTable("contractors", {
   phone: text("phone").notNull(),
   email: text("email").notNull(),
   licenseNumber: text("license_number").notNull(),
+  licenseMunicipality: text("license_municipality").notNull(),
   isLicensed: boolean("is_licensed").notNull().default(true),
 
   hasEmergencyServices: boolean("has_emergency_services").notNull().default(false),

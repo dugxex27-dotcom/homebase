@@ -65,6 +65,7 @@ export default function ContractorProfile() {
     licenseNumber: '',
     licenseState: '',
     licenseExpiry: '',
+    licenseMunicipality: '',
     servicesOffered: [] as string[],
     website: '',
     facebook: '',
@@ -304,7 +305,7 @@ export default function ContractorProfile() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <Label htmlFor="licenseNumber">License Number</Label>
                 <Input
@@ -312,6 +313,15 @@ export default function ContractorProfile() {
                   value={formData.licenseNumber}
                   onChange={(e) => handleInputChange('licenseNumber', e.target.value)}
                   placeholder="GC123456"
+                />
+              </div>
+              <div>
+                <Label htmlFor="licenseMunicipality">Municipality Issued</Label>
+                <Input
+                  id="licenseMunicipality"
+                  value={formData.licenseMunicipality}
+                  onChange={(e) => handleInputChange('licenseMunicipality', e.target.value)}
+                  placeholder="Chicago"
                 />
               </div>
               <div>
