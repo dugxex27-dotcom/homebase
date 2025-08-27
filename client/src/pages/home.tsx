@@ -141,8 +141,8 @@ export default function Home() {
                   <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group">
                     <CardContent className="p-6">
                       <div className="flex items-center mb-4">
-                        <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-xl flex items-center justify-center group-hover:bg-amber-200 dark:group-hover:bg-amber-800/50 transition-colors">
-                          <Calendar className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                        <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700/50 rounded-xl flex items-center justify-center group-hover:bg-gray-200 dark:group-hover:bg-gray-600/50 transition-colors">
+                          <Calendar className="h-6 w-6 text-gray-600 dark:text-gray-400" />
                         </div>
                         <div className="ml-4">
                           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Maintenance</h3>
@@ -160,8 +160,8 @@ export default function Home() {
                   <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group">
                     <CardContent className="p-6">
                       <div className="flex items-center mb-4">
-                        <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center group-hover:bg-green-200 dark:group-hover:bg-green-800/50 transition-colors">
-                          <Users className="h-6 w-6 text-green-600 dark:text-green-400" />
+                        <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center group-hover:bg-purple-200 dark:group-hover:bg-purple-800/50 transition-colors">
+                          <Users className="h-6 w-6 text-purple-600 dark:text-purple-400" />
                         </div>
                         <div className="ml-4">
                           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Find Contractors</h3>
@@ -178,8 +178,8 @@ export default function Home() {
                 <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-lg">
                   <CardContent className="p-6">
                     <div className="flex items-center mb-4">
-                      <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center">
-                        <Bell className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                      <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700/50 rounded-xl flex items-center justify-center">
+                        <Bell className="h-6 w-6 text-gray-600 dark:text-gray-400" />
                       </div>
                       <div className="ml-4">
                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Alerts</h3>
@@ -195,8 +195,8 @@ export default function Home() {
                 <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-lg">
                   <CardContent className="p-6">
                     <div className="flex items-center mb-4">
-                      <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-xl flex items-center justify-center">
-                        <Wrench className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+                      <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700/50 rounded-xl flex items-center justify-center">
+                        <Wrench className="h-6 w-6 text-gray-600 dark:text-gray-400" />
                       </div>
                       <div className="ml-4">
                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Active Projects</h3>
