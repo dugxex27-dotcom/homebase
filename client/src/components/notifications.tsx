@@ -81,7 +81,7 @@ export function Notifications({ homeownerId = "demo-homeowner-123" }: Notificati
     if (notification.category === "maintenance") {
       switch (notification.type) {
         case "maintenance_overdue":
-          return <AlertTriangle className="w-4 h-4 text-red-600" />;
+          return <AlertTriangle className="w-4 h-4 text-red-800" />;
         case "maintenance_due":
           return <Wrench className="w-4 h-4 text-blue-600" />;
         default:
@@ -95,7 +95,7 @@ export function Notifications({ homeownerId = "demo-homeowner-123" }: Notificati
         case "4_hour":
           return <Clock className="w-4 h-4 text-orange-600" />;
         case "1_hour":
-          return <Bell className="w-4 h-4 text-red-600" />;
+          return <Bell className="w-4 h-4 text-red-800" />;
         default:
           return <Bell className="w-4 h-4 text-gray-600" />;
       }
@@ -106,7 +106,7 @@ export function Notifications({ homeownerId = "demo-homeowner-123" }: Notificati
     if (notification.category === "maintenance") {
       switch (notification.type) {
         case "maintenance_overdue":
-          return "border-l-red-500";
+          return "border-l-red-800";
         case "maintenance_due":
           return "border-l-blue-500";
         default:
@@ -120,7 +120,7 @@ export function Notifications({ homeownerId = "demo-homeowner-123" }: Notificati
         case "4_hour":
           return "border-l-orange-500";
         case "1_hour":
-          return "border-l-red-500";
+          return "border-l-red-800";
         default:
           return "border-l-gray-500";
       }

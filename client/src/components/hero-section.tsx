@@ -12,7 +12,7 @@ export default function HeroSection() {
     <section className={`py-20 ${typedUser?.role === 'homeowner' ? 'bg-gradient-to-br from-gray-100 via-purple-100 to-gray-50 dark:from-gray-800 dark:via-purple-900/30 dark:to-gray-900' : 'bg-gradient-to-br from-gray-50 via-red-50 to-black/5 dark:from-gray-900 dark:via-red-950/20 dark:to-black'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
-          <Logo className={`h-32 w-full mx-auto block mb-8 ${typedUser?.role === 'homeowner' ? 'text-purple-700 dark:text-purple-300' : 'text-red-600 dark:text-red-400'}`} />
+          <Logo className={`h-32 w-full mx-auto block mb-8 ${typedUser?.role === 'homeowner' ? 'text-purple-700 dark:text-purple-300' : 'text-red-900 dark:text-red-300'}`} />
           
           <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-6 leading-tight">
             {typedUser?.role === 'homeowner' ? (
@@ -20,7 +20,7 @@ export default function HeroSection() {
               <span className="text-purple-600 dark:text-purple-400">Management Hub</span></>
             ) : (
               <>Your Business{" "}
-              <span className="text-red-600 dark:text-red-400">Growth Platform</span></>
+              <span className="text-red-900 dark:text-red-300">Growth Platform</span></>
             )}
           </h1>
           
@@ -90,8 +90,8 @@ export default function HeroSection() {
 
                 <Link href="/messages">
                   <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group border border-gray-200 dark:border-gray-700">
-                    <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center mb-4 group-hover:bg-red-200 dark:group-hover:bg-red-800/50 transition-colors">
-                      <MessageSquare className="h-6 w-6 text-red-600 dark:text-red-400" />
+                    <div className="w-12 h-12 bg-red-200 dark:bg-red-950/40 rounded-xl flex items-center justify-center mb-4 group-hover:bg-red-300 dark:group-hover:bg-red-900/60 transition-colors">
+                      <MessageSquare className="h-6 w-6 text-red-900 dark:text-red-300" />
                     </div>
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Messages</h3>
                     <p className="text-gray-600 dark:text-gray-300 text-sm">
