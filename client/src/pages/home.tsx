@@ -217,24 +217,6 @@ export default function Home() {
                 ) : (
                   // Contractor Dashboard Cards
                   <>
-                    <Link href="/contractor-dashboard">
-                      <Card className="bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group">
-                        <CardContent className="p-6">
-                          <div className="flex items-center mb-4">
-                            <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center group-hover:bg-red-200 dark:group-hover:bg-red-800/50 transition-colors">
-                              <BarChart3 className="h-6 w-6 text-red-800 dark:text-red-400" />
-                            </div>
-                            <div className="ml-4">
-                              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Business Overview</h3>
-                              <p className="text-sm text-gray-600 dark:text-gray-300">View stats</p>
-                            </div>
-                          </div>
-                          <p className="text-gray-600 dark:text-gray-300 text-sm">
-                            Track your projects, earnings, and customer reviews
-                          </p>
-                        </CardContent>
-                      </Card>
-                    </Link>
 
                     <Link href="/contractor-profile">
                       <Card className="bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group">
