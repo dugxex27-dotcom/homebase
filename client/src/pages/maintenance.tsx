@@ -2140,97 +2140,11 @@ export default function Maintenance() {
             const currentMonthTasks = regionData ? getCurrentMonthTasks(region, currentMonth) : null;
             
             return (
-              <div className="space-y-8">
-                {/* AI Suggestions Section */}
-                <AIMaintenanceSuggestionsCard 
-                  userId={homeownerId} 
-                  currentHouse={currentHouse}
-                  homeSystems={homeSystems}
-                />
-
-                {/* Regional Suggestions Section */}
-                {regionData && currentMonthTasks && (
-                  <Card className="border-2 border-orange-200 dark:border-orange-800 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20">
-                    <CardHeader>
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-full bg-orange-100 dark:bg-orange-900/40">
-                          <Cloud className="w-6 h-6 text-orange-600 dark:text-orange-400" />
-                        </div>
-                        <div>
-                          <CardTitle className="text-xl font-bold text-orange-800 dark:text-orange-200">
-                            {region} Regional Guidelines
-                          </CardTitle>
-                          <p className="text-sm text-orange-600 dark:text-orange-400">
-                            General climate recommendations for {new Date().toLocaleString('default', { month: 'long' })}
-                          </p>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                      {/* Current Month Tasks */}
-                      <div>
-                        <h4 className="font-semibold text-orange-800 dark:text-orange-200 mb-3 flex items-center gap-2">
-                          <Calendar className="w-4 h-4" />
-                          This Month's Priority Tasks
-                        </h4>
-                        <div className="space-y-2">
-                          {currentMonthTasks.seasonal.map((task, index) => (
-                            <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-white/60 dark:bg-gray-800/60 border border-orange-200 dark:border-orange-700">
-                              <div className={`w-2 h-2 rounded-full mt-2 ${
-                                currentMonthTasks.priority === 'high' ? 'bg-red-500' : 
-                                currentMonthTasks.priority === 'medium' ? 'bg-yellow-500' : 'bg-green-500'
-                              }`} />
-                              <span className="text-sm text-gray-700 dark:text-gray-300">{task}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Weather-Specific Tasks */}
-                      {currentMonthTasks.weatherSpecific.length > 0 && (
-                        <div>
-                          <h4 className="font-semibold text-orange-800 dark:text-orange-200 mb-3 flex items-center gap-2">
-                            <Thermometer className="w-4 h-4" />
-                            Weather-Specific Tasks
-                          </h4>
-                          <div className="space-y-2">
-                            {currentMonthTasks.weatherSpecific.map((task, index) => (
-                              <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-700">
-                                <div className="w-2 h-2 rounded-full mt-2 bg-blue-500" />
-                                <span className="text-sm text-blue-800 dark:text-blue-200">{task}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Special Considerations */}
-                      <div>
-                        <h4 className="font-semibold text-orange-800 dark:text-orange-200 mb-3 flex items-center gap-2">
-                          <AlertTriangle className="w-4 h-4" />
-                          Regional Considerations
-                        </h4>
-                        <div className="grid gap-2">
-                          {regionData.specialConsiderations.map((consideration, index) => (
-                            <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-700">
-                              <div className="w-2 h-2 rounded-full mt-2 bg-purple-500" />
-                              <span className="text-sm text-purple-800 dark:text-purple-200">{consideration}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Climate Zone Info */}
-                      <div className="border-t border-orange-200 dark:border-orange-700 pt-4">
-                        <p className="text-xs text-orange-600 dark:text-orange-400 flex items-center gap-2">
-                          <MapPin className="w-3 h-3" />
-                          Based on your location in climate zone: {regionData.climateZone}
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
+              <AIMaintenanceSuggestionsCard 
+                userId={homeownerId} 
+                currentHouse={currentHouse}
+                homeSystems={homeSystems}
+              />
             );
           })()}
         </div>
