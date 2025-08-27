@@ -10,6 +10,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import Header from "@/components/header";
+import PushNotificationManager from "@/components/push-notification-manager";
+import { useAuth } from "@/hooks/useAuth";
+import type { User as UserType } from "@shared/schema";
 import { 
   User, 
   Building, 
@@ -69,6 +72,8 @@ const AVAILABLE_SERVICES = [
 export default function ContractorProfile() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const typedUser = user as UserType | undefined;
   
   const [formData, setFormData] = useState({
     businessName: '',
@@ -395,7 +400,7 @@ export default function ContractorProfile() {
 
             <div>
               <Label htmlFor="serviceRadius">Service Radius (miles) *</Label>
-              <Select onValueChange={(value) => handleInputChange('serviceRadius', parseInt(value))}>
+              <Select onValueChange={(value) => handleInputChange('serviceRadius', value)}>
                 <SelectTrigger>
                   <SelectValue placeholder={`${formData.serviceRadius} miles`} />
                 </SelectTrigger>
@@ -765,6 +770,13 @@ export default function ContractorProfile() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Push Notifications */}
+        {typedUser && (
+          <div className="mb-8">
+            <PushNotificationManager userId={typedUser.id} />
+          </div>
+        )}
 
         {/* Save Button */}
         <div className="flex justify-end">

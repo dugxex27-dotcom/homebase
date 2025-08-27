@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Proposals } from "@/components/proposals";
-import PushNotificationManager from "@/components/push-notification-manager";
+
 import { useAuth } from "@/hooks/useAuth";
 import { Calendar, Users, Star, TrendingUp, FileText, User } from "lucide-react";
 import type { User as UserType } from "@shared/schema";
@@ -118,9 +118,9 @@ export default function ContractorDashboard() {
           <Proposals contractorId={typedUser.id} />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6">
           {/* Quick Actions */}
-          <Card className="lg:col-span-2">
+          <Card>
             <CardHeader>
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
@@ -154,10 +154,7 @@ export default function ContractorDashboard() {
             </CardContent>
           </Card>
 
-          {/* Push Notifications */}
-          <div className="lg:col-span-1">
-            <PushNotificationManager userId={typedUser.id} />
-          </div>
+
         </div>
       </main>
     </div>

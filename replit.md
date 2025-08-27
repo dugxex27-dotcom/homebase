@@ -220,3 +220,11 @@ The application is designed for deployment on platforms that support Node.js wit
   - Comprehensive proposal forms with scope of work, materials lists, and warranty periods
   - Proposal validity dates and internal contractor notes for business management
   - Integrated proposal section directly into contractor dashboard for easy access
+- **Updated service radius to 5-mile increments** (August 27, 2025)
+  - Changed service radius options from large increments to precise 5-mile intervals
+  - Updated both contractor profile configuration and homeowner filter sidebar
+  - Now offers granular control from 5 miles up to 100 miles in 5-mile steps
+- **Moved push notifications to contractor profile page** (August 27, 2025)
+  - Relocated push notification management from contractor dashboard to My Profile section
+  - Provides centralized location for contractors to manage notification preferences
+  - Fixed runtime error that occurred when accessing contractor dashboard
