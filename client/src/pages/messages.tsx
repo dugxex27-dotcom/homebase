@@ -127,7 +127,7 @@ export default function Messages() {
 
   if (!typedUser) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-purple-50 dark:bg-gray-900">
         <Header />
         <div className="container mx-auto p-6">
           <Card>
@@ -143,18 +143,27 @@ export default function Messages() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-purple-50 dark:bg-gray-900">
       <Header />
+      
+      {/* Hero Section */}
+      <section className="bg-gradient-to-br from-purple-100 via-purple-50 to-purple-100 dark:from-purple-950/20 dark:via-purple-900/20 dark:to-purple-950/20 py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-6">
+              <span className="text-purple-600 dark:text-purple-400">Messages</span>
+            </h1>
+            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto mb-8">
+              {typedUser.role === 'homeowner' 
+                ? 'Communicate with contractors about your projects'
+                : 'Stay in touch with your homeowner clients'
+              }
+            </p>
+          </div>
+        </div>
+      </section>
+
       <div className="container mx-auto p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Messages</h1>
-        <p className="text-gray-600 mt-2">
-          {typedUser.role === 'homeowner' 
-            ? 'Communicate with contractors about your projects'
-            : 'Stay in touch with your homeowner clients'
-          }
-        </p>
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
         {/* Conversations List */}
