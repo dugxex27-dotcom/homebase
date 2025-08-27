@@ -217,12 +217,13 @@ export default function Home() {
                 ) : (
                   // Contractor Dashboard Cards
                   <>
+
                     <Link href="/contractor-profile">
                       <Card className="bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group">
                         <CardContent className="p-6">
                           <div className="flex items-center mb-4">
                             <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center group-hover:bg-red-200 dark:group-hover:bg-red-800/50 transition-colors">
-                              <Users className="h-6 w-6 text-red-800 dark:text-red-400" />
+                              <Users className="h-6 w-6 text-red-800 dark:text-red-400 !text-red-800" />
                             </div>
                             <div className="ml-4">
                               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">My Profile</h3>
@@ -250,6 +251,63 @@ export default function Home() {
                           </div>
                           <p className="text-gray-600 dark:text-gray-300 text-sm">
                             Communicate with potential and existing clients
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </Link>
+
+                    <Link href="/contractor-dashboard">
+                      <Card className="bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group">
+                        <CardContent className="p-6">
+                          <div className="flex items-center mb-4">
+                            <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center group-hover:bg-red-200 dark:group-hover:bg-red-800/50 transition-colors">
+                              <Calendar className="h-6 w-6 text-red-800 dark:text-red-400" />
+                            </div>
+                            <div className="ml-4">
+                              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Active Projects</h3>
+                              <p className="text-sm text-gray-600 dark:text-gray-300">Current work</p>
+                            </div>
+                          </div>
+                          <p className="text-gray-600 dark:text-gray-300 text-sm">
+                            3 active projects scheduled this week
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </Link>
+
+                    <Link href="/contractor-dashboard">
+                      <Card className="bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group">
+                        <CardContent className="p-6">
+                          <div className="flex items-center mb-4">
+                            <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center group-hover:bg-red-200 dark:group-hover:bg-red-800/50 transition-colors">
+                              <Star className="h-6 w-6 text-red-800 dark:text-red-400" />
+                            </div>
+                            <div className="ml-4">
+                              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Reviews</h3>
+                              <p className="text-sm text-gray-600 dark:text-gray-300">Customer feedback</p>
+                            </div>
+                          </div>
+                          <p className="text-gray-600 dark:text-gray-300 text-sm">
+                            4.8/5 stars from 127 recent reviews
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </Link>
+
+                    <Link href="/contractor-dashboard">
+                      <Card className="bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group">
+                        <CardContent className="p-6">
+                          <div className="flex items-center mb-4">
+                            <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center group-hover:bg-red-200 dark:group-hover:bg-red-800/50 transition-colors">
+                              <Search className="h-6 w-6 text-red-800 dark:text-red-400" />
+                            </div>
+                            <div className="ml-4">
+                              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">New Leads</h3>
+                              <p className="text-sm text-gray-600 dark:text-gray-300">Opportunities</p>
+                            </div>
+                          </div>
+                          <p className="text-gray-600 dark:text-gray-300 text-sm">
+                            5 new customer inquiries this week
                           </p>
                         </CardContent>
                       </Card>
