@@ -356,22 +356,22 @@ export default function Home() {
                   ) : (
                     <>
                       <Link href="/contractor-profile">
-                        <Button className="bg-red-600 hover:bg-red-700 text-white">
+                        <Button className="bg-red-800 hover:bg-red-900 text-white">
                           Update Profile
                         </Button>
                       </Link>
                       <Link href="/messages">
-                        <Button variant="outline" className="border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">
+                        <Button variant="outline" className="border-red-800 text-red-800 hover:bg-red-50">
                           View Messages
                         </Button>
                       </Link>
                       <Link href="/contractor-dashboard">
-                        <Button variant="outline" className="border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                        <Button variant="outline" className="border-red-800 text-red-800 hover:bg-red-50">
                           Business Overview
                         </Button>
                       </Link>
                       <Link href="/products">
-                        <Button variant="outline" className="border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                        <Button variant="outline" className="border-red-800 text-red-800 hover:bg-red-50">
                           Browse Tools
                         </Button>
                       </Link>
