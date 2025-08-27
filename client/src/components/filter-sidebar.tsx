@@ -31,7 +31,7 @@ export default function FilterSidebar({ onFiltersChange }: FilterSidebarProps) {
     "Flooring",
     "General Contracting",
     "Gutter Cleaning",
-    "Gutters",
+    "Gutter Installation",
     "Handyman Services",
     "Home Inspectors",
     "House Cleaning",
