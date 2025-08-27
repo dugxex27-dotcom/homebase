@@ -27,6 +27,7 @@ export default function FilterSidebar({ onFiltersChange }: FilterSidebarProps) {
     "Drywall",
     "Dumpster Rental",
     "Electrical",
+    "Epoxy Flooring",
     "Fence Installation",
     "Flooring",
     "General Contracting",

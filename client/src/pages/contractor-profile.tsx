@@ -37,6 +37,7 @@ const AVAILABLE_SERVICES = [
   "Drywall",
   "Dumpster Rental",
   "Electrical",
+  "Epoxy Flooring",
   "Fence Installation",
   "Flooring",
   "General Contracting",
