@@ -324,7 +324,7 @@ export default function Maintenance() {
   const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
   const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
   const [suggestionDebounceTimer, setSuggestionDebounceTimer] = useState<NodeJS.Timeout | null>(null);
-  const addressInputRef = useRef<HTMLInputElement | null>(null);
+  // const addressInputRef = useRef<HTMLInputElement | null>(null); // Temporarily removed to fix dispatcher error
   const { toast } = useToast();
   const queryClient = useQueryClient();
 

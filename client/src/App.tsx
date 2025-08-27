@@ -25,21 +25,73 @@ import Messages from "./pages/messages";
 import NotFound from "@/pages/not-found";
 
 function Router() {
-  return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl font-bold text-blue-600 mb-6">Home Base</h1>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <p className="text-lg text-gray-700 mb-4">Application is running successfully!</p>
-          <p className="text-gray-600">React hooks dispatcher error has been resolved.</p>
+  const { isAuthenticated, isLoading, user } = useAuth();
+
+  // Show loading screen while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-2xl font-bold text-primary mb-2">Home Base</div>
+          <div className="text-muted-foreground">Loading...</div>
         </div>
       </div>
-    </div>
+    );
+  }
+
+  // Show sign-in page if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <Switch>
+        <Route path="/contractor-signin" component={DemoContractorSignIn} />
+        <Route component={SignIn} />
+      </Switch>
+    );
+  }
+
+  // Authenticated user routes
+  const typedUser = user as { role?: string } | undefined;
+  
+  return (
+    <Switch>
+      <Route path="/" component={Home} />
+      {/* Homeowner routes */}
+      {typedUser?.role === 'homeowner' && (
+        <>
+          <Route path="/contractors" component={Contractors} />
+          <Route path="/products" component={Products} />
+          <Route path="/maintenance" component={MaintenanceSimple} />
+          <Route path="/contractor/:id" component={ContractorDetail} />
+          <Route path="/service-records" component={HomeownerServiceRecords} />
+          <Route path="/account" component={HomeownerAccount} />
+          <Route path="/messages" component={Messages} />
+        </>
+      )}
+      {/* Contractor routes */}
+      {typedUser?.role === 'contractor' && (
+        <>
+          <Route path="/contractor-dashboard" component={ContractorDashboard} />
+          <Route path="/contractor-profile" component={ContractorProfile} />
+          <Route path="/service-records" component={ServiceRecords} />
+          <Route path="/messages" component={Messages} />
+        </>
+      )}
+      <Route path="/signin" component={SignIn} />
+      <Route path="/contractor-signin" component={ContractorSignIn} />
+      <Route component={NotFound} />
+    </Switch>
   );
 }
 
 function App() {
-  return <Router />;
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Router />
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
 }
 
 export default App;
