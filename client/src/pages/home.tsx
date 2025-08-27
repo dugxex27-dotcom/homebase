@@ -78,7 +78,7 @@ export default function Home() {
                 onClick={() => setActiveTab('dashboard')}
                 className={`px-8 py-4 rounded-xl text-sm font-medium flex items-center transition-all duration-200 ${
                   activeTab === 'dashboard'
-                    ? 'bg-amber-500 text-white shadow-md transform scale-105'
+                    ? (typedUser?.role === 'homeowner' ? 'bg-purple-500 text-white shadow-md transform scale-105' : 'bg-red-500 text-white shadow-md transform scale-105')
                     : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
@@ -89,7 +89,7 @@ export default function Home() {
                 onClick={() => setActiveTab('products')}
                 className={`px-8 py-4 rounded-xl text-sm font-medium flex items-center transition-all duration-200 ${
                   activeTab === 'products'
-                    ? 'bg-amber-500 text-white shadow-md transform scale-105'
+                    ? (typedUser?.role === 'homeowner' ? 'bg-purple-500 text-white shadow-md transform scale-105' : 'bg-red-500 text-white shadow-md transform scale-105')
                     : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
@@ -102,7 +102,7 @@ export default function Home() {
                   onClick={() => setActiveTab('contractors')}
                   className={`px-8 py-4 rounded-xl text-sm font-medium flex items-center transition-all duration-200 ${
                     activeTab === 'contractors'
-                      ? 'bg-amber-500 text-white shadow-md transform scale-105'
+                      ? 'bg-purple-500 text-white shadow-md transform scale-105'
                       : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
                   }`}
                 >
@@ -218,8 +218,8 @@ export default function Home() {
                       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group">
                         <CardContent className="p-6">
                           <div className="flex items-center mb-4">
-                            <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center group-hover:bg-blue-200 dark:group-hover:bg-blue-800/50 transition-colors">
-                              <BarChart3 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                            <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700/50 rounded-xl flex items-center justify-center group-hover:bg-gray-200 dark:group-hover:bg-gray-600/50 transition-colors">
+                              <BarChart3 className="h-6 w-6 text-gray-600 dark:text-gray-400" />
                             </div>
                             <div className="ml-4">
                               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Business Overview</h3>
@@ -237,8 +237,8 @@ export default function Home() {
                       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group">
                         <CardContent className="p-6">
                           <div className="flex items-center mb-4">
-                            <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center group-hover:bg-green-200 dark:group-hover:bg-green-800/50 transition-colors">
-                              <Users className="h-6 w-6 text-green-600 dark:text-green-400" />
+                            <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700/50 rounded-xl flex items-center justify-center group-hover:bg-gray-200 dark:group-hover:bg-gray-600/50 transition-colors">
+                              <Users className="h-6 w-6 text-gray-600 dark:text-gray-400" />
                             </div>
                             <div className="ml-4">
                               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">My Profile</h3>
@@ -256,8 +256,8 @@ export default function Home() {
                       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group">
                         <CardContent className="p-6">
                           <div className="flex items-center mb-4">
-                            <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center group-hover:bg-purple-200 dark:group-hover:bg-purple-800/50 transition-colors">
-                              <Bell className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                            <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center group-hover:bg-red-200 dark:group-hover:bg-red-800/50 transition-colors">
+                              <Bell className="h-6 w-6 text-red-600 dark:text-red-400" />
                             </div>
                             <div className="ml-4">
                               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Messages</h3>
@@ -275,8 +275,8 @@ export default function Home() {
                       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group">
                         <CardContent className="p-6">
                           <div className="flex items-center mb-4">
-                            <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-xl flex items-center justify-center group-hover:bg-amber-200 dark:group-hover:bg-amber-800/50 transition-colors">
-                              <Calendar className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                            <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700/50 rounded-xl flex items-center justify-center group-hover:bg-gray-200 dark:group-hover:bg-gray-600/50 transition-colors">
+                              <Calendar className="h-6 w-6 text-gray-600 dark:text-gray-400" />
                             </div>
                             <div className="ml-4">
                               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Active Projects</h3>
@@ -294,8 +294,8 @@ export default function Home() {
                       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group">
                         <CardContent className="p-6">
                           <div className="flex items-center mb-4">
-                            <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 rounded-xl flex items-center justify-center group-hover:bg-orange-200 dark:group-hover:bg-orange-800/50 transition-colors">
-                              <Star className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+                            <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center group-hover:bg-red-200 dark:group-hover:bg-red-800/50 transition-colors">
+                              <Star className="h-6 w-6 text-red-600 dark:text-red-400" />
                             </div>
                             <div className="ml-4">
                               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Reviews</h3>
@@ -356,22 +356,22 @@ export default function Home() {
                   ) : (
                     <>
                       <Link href="/contractor-profile">
-                        <Button className="bg-amber-600 hover:bg-amber-700 text-white">
+                        <Button className="bg-red-600 hover:bg-red-700 text-white">
                           Update Profile
                         </Button>
                       </Link>
                       <Link href="/messages">
-                        <Button variant="outline" className="border-gray-300 dark:border-gray-600">
+                        <Button variant="outline" className="border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">
                           View Messages
                         </Button>
                       </Link>
                       <Link href="/contractor-dashboard">
-                        <Button variant="outline" className="border-gray-300 dark:border-gray-600">
+                        <Button variant="outline" className="border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50">
                           Business Overview
                         </Button>
                       </Link>
                       <Link href="/products">
-                        <Button variant="outline" className="border-gray-300 dark:border-gray-600">
+                        <Button variant="outline" className="border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800/50">
                           Browse Tools
                         </Button>
                       </Link>
@@ -417,7 +417,7 @@ export default function Home() {
 
               <div className="text-center mt-12">
                 <Link href="/products">
-                  <Button className={`px-8 py-4 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 ${typedUser?.role === 'homeowner' ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-amber-600 hover:bg-amber-700 text-white'}`}>
+                  <Button className={`px-8 py-4 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 ${typedUser?.role === 'homeowner' ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-red-600 hover:bg-red-700 text-white'}`}>
                     Explore All Products
                   </Button>
                 </Link>
@@ -562,9 +562,9 @@ export default function Home() {
             ) : (
               // Contractor Features
               <>
-                <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border-blue-200 dark:border-blue-800/30">
+                <Card className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 border-gray-200 dark:border-gray-600">
                   <CardContent className="p-8 text-center">
-                    <div className="w-16 h-16 bg-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                    <div className="w-16 h-16 bg-gray-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
                       <Users className="h-8 w-8 text-white" />
                     </div>
                     <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Quality Leads</h3>
@@ -574,9 +574,9 @@ export default function Home() {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-green-200 dark:border-green-800/30">
+                <Card className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 border-red-200 dark:border-red-700">
                   <CardContent className="p-8 text-center">
-                    <div className="w-16 h-16 bg-green-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                    <div className="w-16 h-16 bg-red-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
                       <TrendingUp className="h-8 w-8 text-white" />
                     </div>
                     <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Grow Your Business</h3>
@@ -586,9 +586,9 @@ export default function Home() {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border-amber-200 dark:border-amber-800/30">
+                <Card className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 border-gray-200 dark:border-gray-600">
                   <CardContent className="p-8 text-center">
-                    <div className="w-16 h-16 bg-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                    <div className="w-16 h-16 bg-gray-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
                       <Star className="h-8 w-8 text-white" />
                     </div>
                     <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Build Reputation</h3>
@@ -609,7 +609,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
               <div className="mb-6">
-                <Logo className={`h-10 w-auto ${typedUser?.role === 'homeowner' ? 'text-purple-400' : 'text-amber-400'}`} />
+                <Logo className={`h-10 w-auto ${typedUser?.role === 'homeowner' ? 'text-purple-400' : 'text-red-400'}`} />
               </div>
               <p className="text-gray-400 mb-6 leading-relaxed">
                 Your trusted partner for connecting with skilled contractors, discovering quality DIY products, and maintaining your home with confidence.
@@ -632,20 +632,20 @@ export default function Home() {
             <div>
               <h4 className="text-lg font-semibold mb-6 text-white">For Contractors</h4>
               <ul className="space-y-3 text-gray-400">
-                <li><Link href="/contractor-signin" className="hover:text-amber-400 transition-colors">Join Network</Link></li>
-                <li><a href="#" className="hover:text-amber-400 transition-colors">Pricing Plans</a></li>
-                <li><a href="#" className="hover:text-amber-400 transition-colors">Success Stories</a></li>
-                <li><a href="#" className="hover:text-amber-400 transition-colors">Resources</a></li>
+                <li><Link href="/contractor-signin" className={`transition-colors ${typedUser?.role === 'homeowner' ? 'hover:text-purple-400' : 'hover:text-red-400'}`}>Join Network</Link></li>
+                <li><a href="#" className={`transition-colors ${typedUser?.role === 'homeowner' ? 'hover:text-purple-400' : 'hover:text-red-400'}`}>Pricing Plans</a></li>
+                <li><a href="#" className={`transition-colors ${typedUser?.role === 'homeowner' ? 'hover:text-purple-400' : 'hover:text-red-400'}`}>Success Stories</a></li>
+                <li><a href="#" className={`transition-colors ${typedUser?.role === 'homeowner' ? 'hover:text-purple-400' : 'hover:text-red-400'}`}>Resources</a></li>
               </ul>
             </div>
 
             <div>
               <h4 className="text-lg font-semibold mb-6 text-white">Support</h4>
               <ul className="space-y-3 text-gray-400">
-                <li><a href="#" className="hover:text-amber-400 transition-colors">Help Center</a></li>
-                <li><a href="#" className="hover:text-amber-400 transition-colors">Contact Us</a></li>
-                <li><a href="#" className="hover:text-amber-400 transition-colors">Terms of Service</a></li>
-                <li><a href="#" className="hover:text-amber-400 transition-colors">Privacy Policy</a></li>
+                <li><a href="#" className={`transition-colors ${typedUser?.role === 'homeowner' ? 'hover:text-purple-400' : 'hover:text-red-400'}`}>Help Center</a></li>
+                <li><a href="#" className={`transition-colors ${typedUser?.role === 'homeowner' ? 'hover:text-purple-400' : 'hover:text-red-400'}`}>Contact Us</a></li>
+                <li><a href="#" className={`transition-colors ${typedUser?.role === 'homeowner' ? 'hover:text-purple-400' : 'hover:text-red-400'}`}>Terms of Service</a></li>
+                <li><a href="#" className={`transition-colors ${typedUser?.role === 'homeowner' ? 'hover:text-purple-400' : 'hover:text-red-400'}`}>Privacy Policy</a></li>
               </ul>
             </div>
           </div>

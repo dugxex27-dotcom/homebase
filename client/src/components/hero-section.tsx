@@ -9,10 +9,10 @@ export default function HeroSection() {
   const typedUser = user as User | undefined;
 
   return (
-    <section className={`py-20 ${typedUser?.role === 'homeowner' ? 'bg-gradient-to-br from-gray-100 via-purple-100 to-gray-50 dark:from-gray-800 dark:via-purple-900/30 dark:to-gray-900' : 'bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 dark:from-amber-950/20 dark:via-orange-950/20 dark:to-red-950/20'}`}>
+    <section className={`py-20 ${typedUser?.role === 'homeowner' ? 'bg-gradient-to-br from-gray-100 via-purple-100 to-gray-50 dark:from-gray-800 dark:via-purple-900/30 dark:to-gray-900' : 'bg-gradient-to-br from-gray-50 via-red-50 to-black/5 dark:from-gray-900 dark:via-red-950/20 dark:to-black'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
-          <Logo className={`h-32 w-full mx-auto block mb-8 ${typedUser?.role === 'homeowner' ? 'text-purple-700 dark:text-purple-300' : 'text-amber-700 dark:text-amber-300'}`} />
+          <Logo className={`h-32 w-full mx-auto block mb-8 ${typedUser?.role === 'homeowner' ? 'text-purple-700 dark:text-purple-300' : 'text-red-600 dark:text-red-400'}`} />
           
           <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-6 leading-tight">
             {typedUser?.role === 'homeowner' ? (
@@ -20,7 +20,7 @@ export default function HeroSection() {
               <span className="text-purple-600 dark:text-purple-400">Management Hub</span></>
             ) : (
               <>Your Business{" "}
-              <span className="text-amber-600 dark:text-amber-400">Growth Platform</span></>
+              <span className="text-red-600 dark:text-red-400">Growth Platform</span></>
             )}
           </h1>
           
@@ -77,9 +77,9 @@ export default function HeroSection() {
               // Contractor Quick Actions
               <>
                 <Link href="/contractor-profile">
-                  <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group border border-amber-100 dark:border-amber-900/30">
-                    <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mb-4 group-hover:bg-blue-200 dark:group-hover:bg-blue-800/50 transition-colors">
-                      <Search className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                  <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group border border-gray-200 dark:border-gray-700">
+                    <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700/50 rounded-xl flex items-center justify-center mb-4 group-hover:bg-gray-200 dark:group-hover:bg-gray-600/50 transition-colors">
+                      <Search className="h-6 w-6 text-gray-600 dark:text-gray-400" />
                     </div>
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">My Profile</h3>
                     <p className="text-gray-600 dark:text-gray-300 text-sm">
@@ -89,9 +89,9 @@ export default function HeroSection() {
                 </Link>
 
                 <Link href="/messages">
-                  <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group border border-amber-100 dark:border-amber-900/30">
-                    <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center mb-4 group-hover:bg-purple-200 dark:group-hover:bg-purple-800/50 transition-colors">
-                      <MessageSquare className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                  <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group border border-gray-200 dark:border-gray-700">
+                    <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center mb-4 group-hover:bg-red-200 dark:group-hover:bg-red-800/50 transition-colors">
+                      <MessageSquare className="h-6 w-6 text-red-600 dark:text-red-400" />
                     </div>
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Messages</h3>
                     <p className="text-gray-600 dark:text-gray-300 text-sm">
