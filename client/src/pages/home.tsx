@@ -643,7 +643,7 @@ export default function Home() {
                   <li><Link href="/contractors" className="hover:text-amber-400 transition-colors">Find Contractors</Link></li>
                   <li><Link href="/products" className="hover:text-amber-400 transition-colors">DIY Products</Link></li>
                   <li><Link href="/maintenance" className="hover:text-amber-400 transition-colors">Maintenance Schedule</Link></li>
-                  <li><Link href="/service-records" className="hover:text-amber-400 transition-colors">Service History</Link></li>
+                  <li><Link href="/maintenance" className="hover:text-amber-400 transition-colors">Service History</Link></li>
                 </ul>
               </div>
             )}
