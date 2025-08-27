@@ -19,78 +19,31 @@ import SignIn from "./pages/signin";
 import ContractorSignIn from "./pages/contractor-signin";
 import SimpleContractorSignIn from "./pages/simple-contractor-signin";
 import DemoContractorSignIn from "./pages/demo-contractor-signin";
+import TestSimple from "./pages/test-simple";
 import HomeownerAccount from "./pages/homeowner-account";
 import Messages from "./pages/messages";
 import NotFound from "@/pages/not-found";
 
 function Router() {
-  const { isAuthenticated, isLoading, user } = useAuth();
-
-  // Show loading screen while checking authentication
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-2xl font-bold text-primary mb-2">Home Base</div>
-          <div className="text-muted-foreground">Loading...</div>
-        </div>
-      </div>
-    );
-  }
-
-  // Show sign-in page if not authenticated
-  if (!isAuthenticated) {
-    // Allow access to contractor-signin page even when not authenticated
-    return (
-      <Switch>
-        <Route path="/contractor-signin" component={DemoContractorSignIn} />
-        <Route component={SignIn} />
-      </Switch>
-    );
-  }
-
-  // Authenticated user routes
-  const typedUser = user as { role?: string } | undefined;
-  
   return (
     <Switch>
-      <Route path="/" component={Home} />
-      {/* Homeowner routes */}
-      {typedUser?.role === 'homeowner' && (
-        <>
-          <Route path="/contractors" component={Contractors} />
-          <Route path="/products" component={Products} />
-          <Route path="/maintenance" component={MaintenanceSimple} />
-          <Route path="/contractor/:id" component={ContractorDetail} />
-          <Route path="/service-records" component={HomeownerServiceRecords} />
-          <Route path="/account" component={HomeownerAccount} />
-          <Route path="/messages" component={Messages} />
-        </>
-      )}
-      {/* Contractor routes */}
-      {typedUser?.role === 'contractor' && (
-        <>
-          <Route path="/contractor-dashboard" component={ContractorDashboard} />
-          <Route path="/contractor-profile" component={ContractorProfile} />
-          <Route path="/service-records" component={ServiceRecords} />
-          <Route path="/messages" component={Messages} />
-        </>
-      )}
-      <Route path="/signin" component={SignIn} />
-      <Route path="/contractor-signin" component={ContractorSignIn} />
-      <Route component={NotFound} />
+      <Route path="/test" component={TestSimple} />
+      <Route component={TestSimple} />
     </Switch>
   );
 }
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <div className="p-8">
+      <h1 className="text-4xl font-bold text-blue-600 mb-4">Home Base</h1>
+      <p className="text-lg text-gray-600">App is running successfully!</p>
+      <div className="mt-4">
+        <button className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+          Test Button
+        </button>
+      </div>
+    </div>
   );
 }
 
