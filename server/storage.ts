@@ -13,7 +13,6 @@ export interface IStorage {
     minRating?: number;
     hasEmergencyServices?: boolean;
     maxDistance?: number;
-    serviceRadius?: number;
   }): Promise<Contractor[]>;
   getContractor(id: string): Promise<Contractor | undefined>;
   createContractor(contractor: InsertContractor): Promise<Contractor>;
@@ -129,6 +128,11 @@ export interface IStorage {
   updatePushSubscription(id: string, subscription: Partial<InsertPushSubscription>): Promise<PushSubscription | undefined>;
   deletePushSubscription(id: string): Promise<boolean>;
   deletePushSubscriptionByEndpoint(endpoint: string): Promise<boolean>;
+
+  // AI Maintenance helper methods
+  getHousesByHomeowner(homeownerId: string): Promise<House[]>;
+  getHomeSystemsByHomeowner(homeownerId: string): Promise<HomeSystem[]>;
+  getMaintenanceLogsByHomeowner(homeownerId: string): Promise<MaintenanceLog[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -1812,6 +1816,19 @@ export class MemStorage implements IStorage {
       return this.pushSubscriptions.delete(subscription[0]);
     }
     return false;
+  }
+
+  // AI Maintenance helper methods
+  async getHousesByHomeowner(homeownerId: string): Promise<House[]> {
+    return Array.from(this.houses.values()).filter(house => house.homeownerId === homeownerId);
+  }
+
+  async getHomeSystemsByHomeowner(homeownerId: string): Promise<HomeSystem[]> {
+    return Array.from(this.homeSystems.values()).filter(system => system.homeownerId === homeownerId);
+  }
+
+  async getMaintenanceLogsByHomeowner(homeownerId: string): Promise<MaintenanceLog[]> {
+    return Array.from(this.maintenanceLogs.values()).filter(log => log.homeownerId === homeownerId);
   }
 }
 

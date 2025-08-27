@@ -16,9 +16,10 @@ import { z } from "zod";
 import { insertHomeApplianceSchema, insertMaintenanceLogSchema, insertCustomMaintenanceTaskSchema, insertHomeSystemSchema } from "@shared/schema";
 import type { HomeAppliance, MaintenanceLog, House, CustomMaintenanceTask, HomeSystem } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, Settings, Plus, Edit, Trash2, Home, FileText, Building2, User, Building, Phone, MessageSquare } from "lucide-react";
+import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, Settings, Plus, Edit, Trash2, Home, FileText, Building2, User, Building, Phone, MessageSquare, AlertTriangle, Thermometer, Cloud } from "lucide-react";
 import { AppointmentScheduler } from "@/components/appointment-scheduler";
 import { CustomMaintenanceTasks } from "@/components/custom-maintenance-tasks";
+import { US_MAINTENANCE_DATA, getRegionFromClimateZone, getCurrentMonthTasks } from "@shared/location-maintenance-data";
 
 // Google Maps API type declarations
 declare global {
@@ -1123,6 +1124,217 @@ export default function Maintenance() {
     return APPLIANCE_LOCATIONS.find(l => l.value === location)?.label || location;
   };
 
+  // AI Maintenance Suggestions Component
+  const AIMaintenanceSuggestionsCard = ({ userId, currentHouse, homeSystems }: { 
+    userId: string; 
+    currentHouse: House; 
+    homeSystems: string[];
+  }) => {
+    const { data: aiSuggestions, isLoading: isLoadingAI, error: aiError } = useQuery({
+      queryKey: ['/api/ai-maintenance-suggestions', userId],
+      enabled: !!userId && !!currentHouse,
+      staleTime: 1000 * 60 * 30, // 30 minutes
+      refetchOnWindowFocus: false,
+    });
+
+    const getPriorityColor = (priority: string) => {
+      switch (priority) {
+        case 'critical': return 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/20 dark:text-red-300 dark:border-red-700';
+        case 'high': return 'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-700';
+        case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-700';
+        case 'low': return 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/20 dark:text-green-300 dark:border-green-700';
+        default: return 'bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-900/20 dark:text-gray-300 dark:border-gray-700';
+      }
+    };
+
+    const getUrgencyColor = (urgency: string) => {
+      switch (urgency) {
+        case 'immediate': return 'bg-red-500';
+        case 'this_week': return 'bg-orange-500';
+        case 'this_month': return 'bg-yellow-500';
+        case 'next_month': return 'bg-blue-500';
+        default: return 'bg-gray-500';
+      }
+    };
+
+    if (isLoadingAI) {
+      return (
+        <Card className="border-2 border-blue-200 dark:border-blue-800">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/40 animate-pulse" />
+              <div>
+                <div className="w-48 h-6 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2" />
+                <div className="w-64 h-4 bg-gray-100 dark:bg-gray-800 rounded animate-pulse" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="p-4 rounded-lg bg-gray-50 dark:bg-gray-800 animate-pulse">
+                  <div className="w-3/4 h-5 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
+                  <div className="w-full h-4 bg-gray-100 dark:bg-gray-600 rounded mb-1" />
+                  <div className="w-2/3 h-4 bg-gray-100 dark:bg-gray-600 rounded" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (aiError || !aiSuggestions || aiSuggestions.length === 0) {
+      return (
+        <Card className="border-2 border-gray-200 dark:border-gray-700">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-gray-100 dark:bg-gray-800">
+                <AlertTriangle className="w-6 h-6 text-gray-400" />
+              </div>
+              <div>
+                <CardTitle className="text-gray-600 dark:text-gray-400">AI Suggestions Unavailable</CardTitle>
+                <p className="text-sm text-gray-500 dark:text-gray-500">
+                  {aiError ? 'Unable to generate suggestions at this time' : 'No suggestions available'}
+                </p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Personalized AI suggestions require an OpenAI API key to be configured. 
+              Regional guidelines are still available below.
+            </p>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    const houseSuggestions = aiSuggestions.find((s: any) => s.userId === userId);
+    if (!houseSuggestions) return null;
+
+    return (
+      <Card className="border-2 border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/40">
+                <Thermometer className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <CardTitle className="text-xl font-bold text-blue-800 dark:text-blue-200">
+                  Personalized Monthly Suggestions
+                </CardTitle>
+                <p className="text-sm text-blue-600 dark:text-blue-400">
+                  AI-powered recommendations for {currentHouse.name} - {houseSuggestions.region} region
+                </p>
+              </div>
+            </div>
+            <Badge className="bg-blue-100 text-blue-800 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700">
+              {houseSuggestions.suggestions.length} suggestions
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* AI Suggestions */}
+          <div className="space-y-4">
+            {houseSuggestions.suggestions.map((suggestion: any, index: number) => (
+              <div key={suggestion.id} className="bg-white/60 dark:bg-gray-800/60 rounded-lg border border-blue-200 dark:border-blue-700 p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h4 className="font-semibold text-blue-900 dark:text-blue-100">{suggestion.title}</h4>
+                      <div className={`w-2 h-2 rounded-full ${getUrgencyColor(suggestion.urgency)}`} />
+                    </div>
+                    <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">{suggestion.description}</p>
+                  </div>
+                  <Badge className={getPriorityColor(suggestion.priority)}>
+                    {suggestion.priority}
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                  <div className="flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-gray-500" />
+                    <span>{suggestion.timeRequired}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <DollarSign className="w-3 h-3 text-gray-500" />
+                    <span>{suggestion.estimatedCost}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Badge variant="outline" className="text-xs">
+                      {suggestion.category}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {suggestion.diyFriendly && (
+                      <Badge className="bg-green-100 text-green-800 text-xs border-green-300">DIY</Badge>
+                    )}
+                    {suggestion.contractorRecommended && (
+                      <Badge className="bg-purple-100 text-purple-800 text-xs border-purple-300">Pro</Badge>
+                    )}
+                  </div>
+                </div>
+
+                {suggestion.seasonalRelevance && (
+                  <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-700">
+                    <p className="text-xs text-blue-700 dark:text-blue-300 italic">
+                      {suggestion.seasonalRelevance}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Weather Considerations */}
+          {houseSuggestions.weatherConsiderations && houseSuggestions.weatherConsiderations.length > 0 && (
+            <div>
+              <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-3 flex items-center gap-2">
+                <Cloud className="w-4 h-4" />
+                Weather Considerations
+              </h4>
+              <div className="space-y-2">
+                {houseSuggestions.weatherConsiderations.map((consideration: string, index: number) => (
+                  <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-700">
+                    <div className="w-2 h-2 rounded-full mt-2 bg-yellow-500" />
+                    <span className="text-sm text-yellow-800 dark:text-yellow-200">{consideration}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Regional Risks */}
+          {houseSuggestions.regionalRisks && houseSuggestions.regionalRisks.length > 0 && (
+            <div>
+              <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-3 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" />
+                Regional Risk Awareness
+              </h4>
+              <div className="space-y-2">
+                {houseSuggestions.regionalRisks.map((risk: string, index: number) => (
+                  <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-700">
+                    <div className="w-2 h-2 rounded-full mt-2 bg-red-500" />
+                    <span className="text-sm text-red-800 dark:text-red-200">{risk}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="border-t border-blue-200 dark:border-blue-700 pt-4">
+            <p className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-2">
+              <MapPin className="w-3 h-3" />
+              Generated: {new Date(houseSuggestions.generatedAt).toLocaleDateString()} • Climate: {houseSuggestions.climateZone}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   const getServiceTypeLabel = (type: string) => {
     return SERVICE_TYPES.find(t => t.value === type)?.label || type;
   };
@@ -1915,6 +2127,113 @@ export default function Maintenance() {
                 </div>
               )}
             </div>
+
+        {/* AI-Powered Monthly Maintenance Suggestions */}
+        <div className="mt-12">
+          {(() => {
+            const currentHouse = selectedHouseId && houses.find((h: House) => h.id === selectedHouseId);
+            if (!currentHouse) return null;
+            
+            const region = getRegionFromClimateZone(currentHouse.climateZone);
+            const regionData = US_MAINTENANCE_DATA[region];
+            const currentMonth = new Date().getMonth() + 1;
+            const currentMonthTasks = regionData ? getCurrentMonthTasks(region, currentMonth) : null;
+            
+            return (
+              <div className="space-y-8">
+                {/* AI Suggestions Section */}
+                <AIMaintenanceSuggestionsCard 
+                  userId={homeownerId} 
+                  currentHouse={currentHouse}
+                  homeSystems={homeSystems}
+                />
+
+                {/* Regional Suggestions Section */}
+                {regionData && currentMonthTasks && (
+                  <Card className="border-2 border-orange-200 dark:border-orange-800 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20">
+                    <CardHeader>
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-full bg-orange-100 dark:bg-orange-900/40">
+                          <Cloud className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-xl font-bold text-orange-800 dark:text-orange-200">
+                            {region} Regional Guidelines
+                          </CardTitle>
+                          <p className="text-sm text-orange-600 dark:text-orange-400">
+                            General climate recommendations for {new Date().toLocaleString('default', { month: 'long' })}
+                          </p>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      {/* Current Month Tasks */}
+                      <div>
+                        <h4 className="font-semibold text-orange-800 dark:text-orange-200 mb-3 flex items-center gap-2">
+                          <Calendar className="w-4 h-4" />
+                          This Month's Priority Tasks
+                        </h4>
+                        <div className="space-y-2">
+                          {currentMonthTasks.seasonal.map((task, index) => (
+                            <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-white/60 dark:bg-gray-800/60 border border-orange-200 dark:border-orange-700">
+                              <div className={`w-2 h-2 rounded-full mt-2 ${
+                                currentMonthTasks.priority === 'high' ? 'bg-red-500' : 
+                                currentMonthTasks.priority === 'medium' ? 'bg-yellow-500' : 'bg-green-500'
+                              }`} />
+                              <span className="text-sm text-gray-700 dark:text-gray-300">{task}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Weather-Specific Tasks */}
+                      {currentMonthTasks.weatherSpecific.length > 0 && (
+                        <div>
+                          <h4 className="font-semibold text-orange-800 dark:text-orange-200 mb-3 flex items-center gap-2">
+                            <Thermometer className="w-4 h-4" />
+                            Weather-Specific Tasks
+                          </h4>
+                          <div className="space-y-2">
+                            {currentMonthTasks.weatherSpecific.map((task, index) => (
+                              <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-700">
+                                <div className="w-2 h-2 rounded-full mt-2 bg-blue-500" />
+                                <span className="text-sm text-blue-800 dark:text-blue-200">{task}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Special Considerations */}
+                      <div>
+                        <h4 className="font-semibold text-orange-800 dark:text-orange-200 mb-3 flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4" />
+                          Regional Considerations
+                        </h4>
+                        <div className="grid gap-2">
+                          {regionData.specialConsiderations.map((consideration, index) => (
+                            <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-700">
+                              <div className="w-2 h-2 rounded-full mt-2 bg-purple-500" />
+                              <span className="text-sm text-purple-800 dark:text-purple-200">{consideration}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Climate Zone Info */}
+                      <div className="border-t border-orange-200 dark:border-orange-700 pt-4">
+                        <p className="text-xs text-orange-600 dark:text-orange-400 flex items-center gap-2">
+                          <MapPin className="w-3 h-3" />
+                          Based on your location in climate zone: {regionData.climateZone}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            );
+          })()}
+        </div>
 
         {/* Custom Maintenance Tasks Section */}
         <div className="mt-12">
