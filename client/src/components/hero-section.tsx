@@ -78,17 +78,7 @@ export default function HeroSection() {
               <>
 
 
-                <Link href="/messages">
-                  <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group border border-gray-200 dark:border-gray-700">
-                    <div className="w-12 h-12 bg-red-200 dark:bg-red-950/40 rounded-xl flex items-center justify-center mb-4 group-hover:bg-red-300 dark:group-hover:bg-red-900/60 transition-colors">
-                      <MessageSquare className="h-6 w-6 text-red-900 dark:text-red-300" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Messages</h3>
-                    <p className="text-gray-600 dark:text-gray-300 text-sm">
-                      Communicate with clients and manage project inquiries
-                    </p>
-                  </div>
-                </Link>
+
               </>
             )}
           </div>
