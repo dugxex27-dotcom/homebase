@@ -523,10 +523,10 @@ export default function Home() {
             {typedUser?.role === 'homeowner' ? (
               // Homeowner Features
               <>
-                <Card className="bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-700 border-gray-300 dark:border-gray-600">
+                <Card className="bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-600">
                   <CardContent className="p-8 text-center">
-                    <div className="w-16 h-16 bg-gray-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                      <Shield className="h-8 w-8 text-white" />
+                    <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                      <Shield className="h-8 w-8 text-purple-600 dark:text-purple-400" />
                     </div>
                     <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Verified Professionals</h3>
                     <p className="text-gray-600 dark:text-gray-300">
@@ -547,10 +547,10 @@ export default function Home() {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-800 dark:to-gray-700 border-gray-300 dark:border-gray-600">
+                <Card className="bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-600">
                   <CardContent className="p-8 text-center">
-                    <div className="w-16 h-16 bg-gray-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                      <TrendingUp className="h-8 w-8 text-white" />
+                    <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                      <TrendingUp className="h-8 w-8 text-purple-600 dark:text-purple-400" />
                     </div>
                     <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Cost Savings</h3>
                     <p className="text-gray-600 dark:text-gray-300">
