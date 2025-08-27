@@ -224,10 +224,12 @@ The application is designed for deployment on platforms that support Node.js wit
   - Changed service radius options from large increments to precise 5-mile intervals
   - Updated both contractor profile configuration and homeowner filter sidebar
   - Now offers granular control from 5 miles up to 100 miles in 5-mile steps
-- **Moved push notifications to contractor profile page** (August 27, 2025)
-  - Relocated push notification management from contractor dashboard to My Profile section
-  - Provides centralized location for contractors to manage notification preferences
+- **Moved push notifications to account pages** (August 27, 2025)
+  - Relocated push notification management from contractor dashboard to account/profile sections
+  - Homeowners can now manage push notifications in their Account page alongside other notification preferences
+  - Contractors can manage push notifications in their My Profile section for centralized settings
   - Fixed runtime error that occurred when accessing contractor dashboard
+  - Improved user experience by organizing notifications in logical account settings areas
 - **Completed comprehensive appliance system removal and code cleanup** (August 27, 2025)
   - Successfully removed all remaining "My Appliances" functionality including state variables, forms, mutations, and UI components
   - Fixed HomeSystem form field naming inconsistencies (yearInstalled → installationYear) for database compatibility
