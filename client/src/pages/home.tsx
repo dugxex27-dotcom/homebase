@@ -156,7 +156,7 @@ export default function Home() {
                   </Card>
                 </Link>
 
-                <Link href="/maintenance">
+                <Link href="/maintenance#service-records">
                   <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group">
                     <CardContent className="p-6">
                       <div className="flex items-center mb-4">
@@ -643,7 +643,7 @@ export default function Home() {
                   <li><Link href="/contractors" className="hover:text-amber-400 transition-colors">Find Contractors</Link></li>
                   <li><Link href="/products" className="hover:text-amber-400 transition-colors">DIY Products</Link></li>
                   <li><Link href="/maintenance" className="hover:text-amber-400 transition-colors">Maintenance Schedule</Link></li>
-                  <li><Link href="/maintenance" className="hover:text-amber-400 transition-colors">Service History</Link></li>
+                  <li><Link href="/maintenance#service-records" className="hover:text-amber-400 transition-colors">Service History</Link></li>
                 </ul>
               </div>
             )}

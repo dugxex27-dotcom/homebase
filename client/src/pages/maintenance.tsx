@@ -1979,7 +1979,7 @@ export default function Maintenance() {
         </div>
 
         {/* Maintenance Log Section */}
-        <div className="mb-8">
+        <div id="service-records" className="mb-8">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="bg-primary/10 p-2 rounded-lg">
