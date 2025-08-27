@@ -85,17 +85,20 @@ export default function Home() {
                 <HomeIcon className="mr-3 h-5 w-5" />
                 {typedUser?.role === 'homeowner' ? 'Customer Dashboard' : 'Contractor Dashboard'}
               </button>
-              <button
-                onClick={() => setActiveTab('products')}
-                className={`px-8 py-4 rounded-xl text-sm font-medium flex items-center transition-all duration-200 ${
-                  activeTab === 'products'
-                    ? (typedUser?.role === 'homeowner' ? 'bg-purple-500 text-white shadow-md transform scale-105' : 'bg-red-500 text-white shadow-md transform scale-105')
-                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
-              >
-                <Package className="mr-3 h-5 w-5" />
-                Featured Products
-              </button>
+              {/* Only show Products tab for homeowners */}
+              {typedUser?.role === 'homeowner' && (
+                <button
+                  onClick={() => setActiveTab('products')}
+                  className={`px-8 py-4 rounded-xl text-sm font-medium flex items-center transition-all duration-200 ${
+                    activeTab === 'products'
+                      ? 'bg-purple-500 text-white shadow-md transform scale-105'
+                      : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <Package className="mr-3 h-5 w-5" />
+                  Featured Products
+                </button>
+              )}
               {/* Only show Find Contractors tab for homeowners */}
               {typedUser?.role === 'homeowner' && (
                 <button
