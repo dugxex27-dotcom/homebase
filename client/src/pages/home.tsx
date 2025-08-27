@@ -39,18 +39,20 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-center">
             <div className="flex bg-gray-50 dark:bg-gray-800 rounded-2xl p-2 shadow-lg border border-gray-300 dark:border-gray-700">
-              {/* Dashboard tab for all users */}
-              <button
-                onClick={() => setActiveTab('dashboard')}
-                className={`px-8 py-4 rounded-xl text-sm font-medium flex items-center transition-all duration-200 ${
-                  activeTab === 'dashboard'
-                    ? (typedUser?.role === 'homeowner' ? 'bg-purple-500 text-white shadow-md transform scale-105' : 'bg-red-500 text-white shadow-md transform scale-105')
-                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
-              >
-                <HomeIcon className="mr-3 h-5 w-5" />
-                {typedUser?.role === 'homeowner' ? 'Customer Dashboard' : 'Contractor Dashboard'}
-              </button>
+              {/* Dashboard tab for homeowners only */}
+              {typedUser?.role === 'homeowner' && (
+                <button
+                  onClick={() => setActiveTab('dashboard')}
+                  className={`px-8 py-4 rounded-xl text-sm font-medium flex items-center transition-all duration-200 ${
+                    activeTab === 'dashboard'
+                      ? 'bg-purple-500 text-white shadow-md transform scale-105'
+                      : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                >
+                  <HomeIcon className="mr-3 h-5 w-5" />
+                  Customer Dashboard
+                </button>
+              )}
               {/* Only show Products tab for homeowners */}
               {typedUser?.role === 'homeowner' && (
                 <button
