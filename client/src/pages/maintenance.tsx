@@ -13,8 +13,8 @@ import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { insertHomeApplianceSchema, insertMaintenanceLogSchema, insertCustomMaintenanceTaskSchema } from "@shared/schema";
-import type { HomeAppliance, MaintenanceLog, House, CustomMaintenanceTask } from "@shared/schema";
+import { insertHomeApplianceSchema, insertMaintenanceLogSchema, insertCustomMaintenanceTaskSchema, insertHomeSystemSchema } from "@shared/schema";
+import type { HomeAppliance, MaintenanceLog, House, CustomMaintenanceTask, HomeSystem } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, Settings, Plus, Edit, Trash2, Home, FileText, Building2, User, Building, Phone, MessageSquare } from "lucide-react";
 import { AppointmentScheduler } from "@/components/appointment-scheduler";
@@ -73,6 +73,11 @@ const houseFormSchema = z.object({
 const customTaskFormSchema = insertCustomMaintenanceTaskSchema.extend({
   homeownerId: z.string().min(1, "Homeowner ID is required"),
   tools: z.array(z.string()).optional(),
+});
+
+// Form schema for home system creation/editing
+const homeSystemFormSchema = insertHomeSystemSchema.extend({
+  homeownerId: z.string().min(1, "Homeowner ID is required"),
   specificMonths: z.array(z.string()).optional(),
 });
 
@@ -342,6 +347,11 @@ export default function Maintenance() {
   const [editingMaintenanceLog, setEditingMaintenanceLog] = useState<MaintenanceLog | null>(null);
   const [isHouseDialogOpen, setIsHouseDialogOpen] = useState(false);
   const [editingHouse, setEditingHouse] = useState<House | null>(null);
+  
+  // Home systems dialog state
+  const [isHomeSystemDialogOpen, setIsHomeSystemDialogOpen] = useState(false);
+  const [editingHomeSystem, setEditingHomeSystem] = useState<HomeSystem | null>(null);
+  const [selectedSystemType, setSelectedSystemType] = useState<string>("");
   const [isGeocodingAddress, setIsGeocodingAddress] = useState(false);
   const [addressDebounceTimer, setAddressDebounceTimer] = useState<NodeJS.Timeout | null>(null);
   const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
@@ -385,6 +395,16 @@ export default function Maintenance() {
     queryFn: async () => {
       const response = await fetch(`/api/maintenance-logs?homeownerId=${homeownerId}`);
       if (!response.ok) throw new Error('Failed to fetch maintenance logs');
+      return response.json();
+    },
+  });
+
+  // Home systems queries
+  const { data: homeSystemsData, isLoading: homeSystemsLoading } = useQuery<HomeSystem[]>({
+    queryKey: ['/api/home-systems', { homeownerId, houseId: selectedHouseId }],
+    queryFn: async () => {
+      const response = await fetch(`/api/home-systems?homeownerId=${homeownerId}&houseId=${selectedHouseId}`);
+      if (!response.ok) throw new Error('Failed to fetch home systems');
       return response.json();
     },
   });
@@ -662,6 +682,83 @@ export default function Maintenance() {
     },
   });
 
+  // Home systems form handling
+  type HomeSystemFormData = z.infer<typeof homeSystemFormSchema>;
+
+  const homeSystemForm = useForm<HomeSystemFormData>({
+    resolver: zodResolver(homeSystemFormSchema),
+    defaultValues: {
+      homeownerId,
+      houseId: selectedHouseId,
+      systemType: "",
+      yearInstalled: undefined,
+      lastServiceYear: undefined,
+      brand: "",
+      model: "",
+      notes: "",
+    },
+  });
+
+  const createHomeSystemMutation = useMutation({
+    mutationFn: async (data: HomeSystemFormData) => {
+      const response = await fetch('/api/home-systems', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error('Failed to create home system');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/home-systems'] });
+      setIsHomeSystemDialogOpen(false);
+      homeSystemForm.reset();
+      setSelectedSystemType("");
+      toast({ title: "Success", description: "Home system added successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to add home system", variant: "destructive" });
+    },
+  });
+
+  const updateHomeSystemMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<HomeSystemFormData> }) => {
+      const response = await fetch(`/api/home-systems/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error('Failed to update home system');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/home-systems'] });
+      setIsHomeSystemDialogOpen(false);
+      setEditingHomeSystem(null);
+      homeSystemForm.reset();
+      setSelectedSystemType("");
+      toast({ title: "Success", description: "Home system updated successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update home system", variant: "destructive" });
+    },
+  });
+
+  const deleteHomeSystemMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/home-systems/${id}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('Failed to delete home system');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/home-systems'] });
+      toast({ title: "Success", description: "Home system deleted successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to delete home system", variant: "destructive" });
+    },
+  });
+
   // Load completed tasks and home systems from localStorage on component mount
   useEffect(() => {
     const storedTasks = localStorage.getItem('maintenance-completed-tasks');
@@ -736,6 +833,47 @@ export default function Maintenance() {
       prev.includes(system) 
         ? prev.filter(s => s !== system)
         : [...prev, system]
+    );
+  };
+
+  // Handle adding a new home system
+  const handleAddHomeSystem = (systemType: string) => {
+    setSelectedSystemType(systemType);
+    setEditingHomeSystem(null);
+    homeSystemForm.reset({
+      homeownerId,
+      houseId: selectedHouseId,
+      systemType,
+      yearInstalled: undefined,
+      lastServiceYear: undefined,
+      brand: "",
+      model: "",
+      notes: "",
+    });
+    setIsHomeSystemDialogOpen(true);
+  };
+
+  // Handle editing an existing home system
+  const handleEditHomeSystem = (system: HomeSystem) => {
+    setEditingHomeSystem(system);
+    setSelectedSystemType(system.systemType);
+    homeSystemForm.reset({
+      homeownerId: system.homeownerId,
+      houseId: system.houseId,
+      systemType: system.systemType,
+      yearInstalled: system.yearInstalled,
+      lastServiceYear: system.lastServiceYear,
+      brand: system.brand || "",
+      model: system.model || "",
+      notes: system.notes || "",
+    });
+    setIsHomeSystemDialogOpen(true);
+  };
+
+  // Get existing system data for a specific system type
+  const getSystemData = (systemType: string) => {
+    return homeSystemsData?.find(system => 
+      system.systemType === systemType && system.houseId === selectedHouseId
     );
   };
 
@@ -966,6 +1104,14 @@ export default function Maintenance() {
       updateMaintenanceLogMutation.mutate({ id: editingMaintenanceLog.id, data });
     } else {
       createMaintenanceLogMutation.mutate(data);
+    }
+  };
+
+  const onSubmitHomeSystem = (data: HomeSystemFormData) => {
+    if (editingHomeSystem) {
+      updateHomeSystemMutation.mutate({ id: editingHomeSystem.id, data });
+    } else {
+      createHomeSystemMutation.mutate(data);
     }
   };
 
@@ -1557,20 +1703,46 @@ export default function Maintenance() {
                       <div className="space-y-3">
                         <h4 className="font-medium text-sm text-foreground">HVAC Systems</h4>
                         <div className="space-y-2">
-                          {["Central Air", "Gas Heat", "Electric Heat", "Heat Pump"].map((system) => (
-                            <div key={system} className="border rounded-lg p-3 bg-muted/30">
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-medium">{system}</span>
-                                <Button variant="outline" size="sm" className="h-6 text-xs">
-                                  <Plus className="w-3 h-3 mr-1" />
-                                  Add
-                                </Button>
+                          {["Central Air", "Gas Heat", "Electric Heat", "Heat Pump"].map((system) => {
+                            const systemData = getSystemData(system);
+                            return (
+                              <div key={system} className="border rounded-lg p-3 bg-muted/30">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-sm font-medium">{system}</span>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="h-6 text-xs"
+                                    onClick={() => systemData ? handleEditHomeSystem(systemData) : handleAddHomeSystem(system)}
+                                    data-testid={`button-add-system-${system.toLowerCase().replace(/\s+/g, '-')}`}
+                                  >
+                                    {systemData ? (
+                                      <>
+                                        <Edit className="w-3 h-3 mr-1" />
+                                        Edit
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Plus className="w-3 h-3 mr-1" />
+                                        Add
+                                      </>
+                                    )}
+                                  </Button>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {systemData ? (
+                                    <div className="space-y-1">
+                                      <div>Installed: {systemData.yearInstalled || 'Unknown'}</div>
+                                      {systemData.brand && <div>Brand: {systemData.brand}</div>}
+                                      {systemData.lastServiceYear && <div>Last Service: {systemData.lastServiceYear}</div>}
+                                    </div>
+                                  ) : (
+                                    "No installation date recorded"
+                                  )}
+                                </div>
                               </div>
-                              <div className="text-xs text-muted-foreground">
-                                No installation date recorded
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
 
@@ -1578,20 +1750,46 @@ export default function Maintenance() {
                       <div className="space-y-3">
                         <h4 className="font-medium text-sm text-foreground">Water Systems</h4>
                         <div className="space-y-2">
-                          {["Water Heater", "Water Softener", "Sump Pump"].map((system) => (
-                            <div key={system} className="border rounded-lg p-3 bg-muted/30">
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-medium">{system}</span>
-                                <Button variant="outline" size="sm" className="h-6 text-xs">
-                                  <Plus className="w-3 h-3 mr-1" />
-                                  Add
-                                </Button>
+                          {["Water Heater", "Water Softener", "Sump Pump"].map((system) => {
+                            const systemData = getSystemData(system);
+                            return (
+                              <div key={system} className="border rounded-lg p-3 bg-muted/30">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-sm font-medium">{system}</span>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="h-6 text-xs"
+                                    onClick={() => systemData ? handleEditHomeSystem(systemData) : handleAddHomeSystem(system)}
+                                    data-testid={`button-add-system-${system.toLowerCase().replace(/\s+/g, '-')}`}
+                                  >
+                                    {systemData ? (
+                                      <>
+                                        <Edit className="w-3 h-3 mr-1" />
+                                        Edit
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Plus className="w-3 h-3 mr-1" />
+                                        Add
+                                      </>
+                                    )}
+                                  </Button>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {systemData ? (
+                                    <div className="space-y-1">
+                                      <div>Installed: {systemData.yearInstalled || 'Unknown'}</div>
+                                      {systemData.brand && <div>Brand: {systemData.brand}</div>}
+                                      {systemData.lastServiceYear && <div>Last Service: {systemData.lastServiceYear}</div>}
+                                    </div>
+                                  ) : (
+                                    "No installation date recorded"
+                                  )}
+                                </div>
                               </div>
-                              <div className="text-xs text-muted-foreground">
-                                No installation date recorded
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
 
@@ -1599,20 +1797,46 @@ export default function Maintenance() {
                       <div className="space-y-3">
                         <h4 className="font-medium text-sm text-foreground">Electrical & Safety</h4>
                         <div className="space-y-2">
-                          {["Electrical Panel", "Generator", "Security System"].map((system) => (
-                            <div key={system} className="border rounded-lg p-3 bg-muted/30">
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-sm font-medium">{system}</span>
-                                <Button variant="outline" size="sm" className="h-6 text-xs">
-                                  <Plus className="w-3 h-3 mr-1" />
-                                  Add
-                                </Button>
+                          {["Electrical Panel", "Generator", "Security System"].map((system) => {
+                            const systemData = getSystemData(system);
+                            return (
+                              <div key={system} className="border rounded-lg p-3 bg-muted/30">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-sm font-medium">{system}</span>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="h-6 text-xs"
+                                    onClick={() => systemData ? handleEditHomeSystem(systemData) : handleAddHomeSystem(system)}
+                                    data-testid={`button-add-system-${system.toLowerCase().replace(/\s+/g, '-')}`}
+                                  >
+                                    {systemData ? (
+                                      <>
+                                        <Edit className="w-3 h-3 mr-1" />
+                                        Edit
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Plus className="w-3 h-3 mr-1" />
+                                        Add
+                                      </>
+                                    )}
+                                  </Button>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {systemData ? (
+                                    <div className="space-y-1">
+                                      <div>Installed: {systemData.yearInstalled || 'Unknown'}</div>
+                                      {systemData.brand && <div>Brand: {systemData.brand}</div>}
+                                      {systemData.lastServiceYear && <div>Last Service: {systemData.lastServiceYear}</div>}
+                                    </div>
+                                  ) : (
+                                    "No installation date recorded"
+                                  )}
+                                </div>
                               </div>
-                              <div className="text-xs text-muted-foreground">
-                                No installation date recorded
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     </div>
@@ -2583,6 +2807,138 @@ export default function Maintenance() {
                   >
                     {createHouseMutation.isPending || updateHouseMutation.isPending ? 'Saving...' : editingHouse ? 'Update' : 'Add'} House
                   </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Home System Form Dialog */}
+        <Dialog open={isHomeSystemDialogOpen} onOpenChange={setIsHomeSystemDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {editingHomeSystem ? `Edit ${selectedSystemType}` : `Add ${selectedSystemType}`}
+              </DialogTitle>
+            </DialogHeader>
+            
+            <Form {...homeSystemForm}>
+              <form onSubmit={homeSystemForm.handleSubmit(onSubmitHomeSystem)} className="space-y-4">
+                <FormField
+                  control={homeSystemForm.control}
+                  name="yearInstalled"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Year Installed</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          placeholder="e.g., 2020" 
+                          {...field}
+                          onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={homeSystemForm.control}
+                  name="lastServiceYear"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Last Service Year (Optional)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          placeholder="e.g., 2023" 
+                          {...field}
+                          onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={homeSystemForm.control}
+                    name="brand"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Brand (Optional)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g., Carrier" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={homeSystemForm.control}
+                    name="model"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Model (Optional)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g., 24ABC3" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={homeSystemForm.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notes (Optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Additional information..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setIsHomeSystemDialogOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    disabled={createHomeSystemMutation.isPending || updateHomeSystemMutation.isPending}
+                  >
+                    {createHomeSystemMutation.isPending || updateHomeSystemMutation.isPending ? (
+                      "Saving..."
+                    ) : (
+                      editingHomeSystem ? "Update System" : "Add System"
+                    )}
+                  </Button>
+                  {editingHomeSystem && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => {
+                        if (window.confirm('Are you sure you want to delete this system?')) {
+                          deleteHomeSystemMutation.mutate(editingHomeSystem.id);
+                          setIsHomeSystemDialogOpen(false);
+                        }
+                      }}
+                      disabled={deleteHomeSystemMutation.isPending}
+                    >
+                      {deleteHomeSystemMutation.isPending ? "Deleting..." : "Delete"}
+                    </Button>
+                  )}
                 </div>
               </form>
             </Form>
