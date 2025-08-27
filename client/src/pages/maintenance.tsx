@@ -1773,7 +1773,7 @@ export default function Maintenance() {
                   <Card 
                     key={task.id} 
                     className={`hover:shadow-md transition-all ${
-                      completed ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800' : ''
+                      completed ? 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800' : 'bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-700'
                     }`}
                   >
                     <CardHeader>

@@ -130,7 +130,7 @@ export default function Messages() {
       <div className="min-h-screen bg-purple-50 dark:bg-gray-900">
         <Header />
         <div className="container mx-auto p-6">
-          <Card>
+          <Card className="bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-700">
             <CardContent className="p-8 text-center">
               <MessageCircle className="mx-auto h-12 w-12 text-gray-400 mb-4" />
               <h2 className="text-xl font-semibold mb-2">Sign In Required</h2>
@@ -167,7 +167,7 @@ export default function Messages() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">
         {/* Conversations List */}
-        <Card className="lg:col-span-1">
+        <Card className="lg:col-span-1 bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-700">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -317,7 +317,7 @@ export default function Messages() {
         </Card>
 
         {/* Messages Area */}
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-700">
           {selectedConversationId ? (
             <>
               <CardHeader>
