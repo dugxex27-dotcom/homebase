@@ -156,7 +156,7 @@ export default function Home() {
                   </Card>
                 </Link>
 
-                <Link href="/service-records">
+                <Link href="/maintenance">
                   <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group">
                     <CardContent className="p-6">
                       <div className="flex items-center mb-4">
