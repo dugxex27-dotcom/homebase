@@ -1514,7 +1514,7 @@ export default function Maintenance() {
                     variant="outline" 
                     size="sm" 
                     onClick={handleAddNewHouse}
-                    className="whitespace-nowrap"
+                    className="whitespace-nowrap border-purple-300 dark:border-purple-600 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
                   >
                     <Plus className="w-4 h-4 mr-1" />
                     Add House
@@ -1527,7 +1527,7 @@ export default function Maintenance() {
                         const selectedHouse = houses.find((h: House) => h.id === selectedHouseId);
                         if (selectedHouse) handleEditHouse(selectedHouse);
                       }}
-                      className="whitespace-nowrap"
+                      className="whitespace-nowrap border-purple-300 dark:border-purple-600 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
                     >
                       <Edit className="w-4 h-4 mr-1" />
                       Edit
@@ -1583,7 +1583,7 @@ export default function Maintenance() {
                       variant="outline" 
                       size="sm" 
                       onClick={resetMonthTasks}
-                      className="text-xs"
+                      className="text-xs border-purple-300 dark:border-purple-600 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
                     >
                       <RotateCcw className="w-3 h-3 mr-1" />
                       Reset Month
@@ -1644,7 +1644,7 @@ export default function Maintenance() {
               {/* Home Systems Filter */}
               <Collapsible open={showSystemFilters} onOpenChange={setShowSystemFilters}>
                 <CollapsibleTrigger asChild>
-                  <Button variant="outline" className="w-full justify-between">
+                  <Button variant="outline" className="w-full justify-between border-purple-300 dark:border-purple-600 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20">
                     <div className="flex items-center">
                       <Settings className="w-4 h-4 mr-2" />
                       Home Systems & Features ({homeSystems.length} selected)
@@ -1686,7 +1686,7 @@ export default function Maintenance() {
                                   <Button 
                                     variant="ghost" 
                                     size="sm" 
-                                    className="h-6 w-6 p-0 text-xs"
+                                    className="h-6 w-6 p-0 text-xs text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
                                     onClick={() => systemData ? handleEditHomeSystem(systemData) : handleAddHomeSystem(system.label)}
                                     data-testid={`button-add-date-${system.value}`}
                                   >
@@ -1729,6 +1729,7 @@ export default function Maintenance() {
                           serviceRecordsSection?.scrollIntoView({ behavior: 'smooth' });
                         }}
                         data-testid="button-view-service-records"
+                        className="border-purple-300 dark:border-purple-600 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
                       >
                         View All Records
                       </Button>
@@ -1932,7 +1933,7 @@ export default function Maintenance() {
                 Track your home appliances to help contractors provide better service
               </p>
             </div>
-            <Button onClick={handleAddNewAppliance} className="flex items-center gap-2">
+            <Button onClick={handleAddNewAppliance} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white">
               <Plus className="w-4 h-4" />
               Add Appliance
             </Button>
@@ -1970,6 +1971,7 @@ export default function Maintenance() {
                             size="sm" 
                             variant="ghost" 
                             onClick={() => handleEditAppliance(appliance)}
+                            className="text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
                           >
                             <Edit className="w-4 h-4" />
                           </Button>
@@ -2029,7 +2031,7 @@ export default function Maintenance() {
                 <p className="text-muted-foreground mb-4">
                   Start tracking your home appliances to help contractors provide better service.
                 </p>
-                <Button onClick={handleAddNewAppliance}>
+                <Button onClick={handleAddNewAppliance} className="bg-purple-600 hover:bg-purple-700 text-white">
                   <Plus className="w-4 h-4 mr-2" />
                   Add Your First Appliance
                 </Button>
@@ -2049,7 +2051,7 @@ export default function Maintenance() {
                 <p className="text-muted-foreground">Complete history of maintenance and repairs performed on your home</p>
               </div>
             </div>
-            <Button onClick={handleAddNewMaintenanceLog}>
+            <Button onClick={handleAddNewMaintenanceLog} className="bg-purple-600 hover:bg-purple-700 text-white">
               <Plus className="w-4 h-4 mr-2" />
               Add Service Record
             </Button>
@@ -2103,6 +2105,7 @@ export default function Maintenance() {
                             size="sm" 
                             variant="ghost" 
                             onClick={() => handleEditMaintenanceLog(log)}
+                            className="text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
                           >
                             <Edit className="w-4 h-4" />
                           </Button>
