@@ -45,6 +45,8 @@ export const contractors = pgTable("contractors", {
 
   hasEmergencyServices: boolean("has_emergency_services").notNull().default(false),
   profileImage: text("profile_image"),
+  businessLogo: text("business_logo"),
+  projectPhotos: text("project_photos").array().default(sql`ARRAY[]::text[]`),
 });
 
 export const products = pgTable("products", {

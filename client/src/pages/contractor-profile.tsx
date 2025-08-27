@@ -88,10 +88,14 @@ export default function ContractorProfile() {
     linkedin: '',
     bio: '',
     yearsExperience: '',
-    profileImage: ''
+    profileImage: '',
+    businessLogo: '',
+    projectPhotos: [] as string[]
   });
 
   const [customService, setCustomService] = useState('');
+  const [logoPreview, setLogoPreview] = useState<string>('');
+  const [photosPreviews, setPhotosPreviews] = useState<string[]>([]);
 
   // Load existing profile data
   const { data: profile, isLoading } = useQuery({
@@ -102,6 +106,12 @@ export default function ContractorProfile() {
   React.useEffect(() => {
     if (profile) {
       setFormData(prev => ({ ...prev, ...profile }));
+      if ((profile as any).businessLogo) {
+        setLogoPreview((profile as any).businessLogo);
+      }
+      if ((profile as any).projectPhotos && (profile as any).projectPhotos.length > 0) {
+        setPhotosPreviews((profile as any).projectPhotos);
+      }
     }
   }, [profile]);
 
@@ -166,6 +176,77 @@ export default function ContractorProfile() {
       ...prev,
       servicesOffered: prev.servicesOffered.filter(s => s !== service)
     }));
+  };
+
+  const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast({
+          title: "File Too Large",
+          description: "Logo file must be smaller than 5MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setLogoPreview(result);
+        setFormData(prev => ({ ...prev, businessLogo: result }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleProjectPhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files) {
+      if (formData.projectPhotos.length + files.length > 20) {
+        toast({
+          title: "Too Many Photos",
+          description: "You can upload a maximum of 20 project photos.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      Array.from(files).forEach(file => {
+        if (file.size > 10 * 1024 * 1024) { // 10MB limit per photo
+          toast({
+            title: "File Too Large",
+            description: `${file.name} is too large. Photos must be smaller than 10MB.`,
+            variant: "destructive",
+          });
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const result = e.target?.result as string;
+          setPhotosPreviews(prev => [...prev, result]);
+          setFormData(prev => ({
+            ...prev,
+            projectPhotos: [...prev.projectPhotos, result]
+          }));
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  };
+
+  const removeProjectPhoto = (index: number) => {
+    setPhotosPreviews(prev => prev.filter((_, i) => i !== index));
+    setFormData(prev => ({
+      ...prev,
+      projectPhotos: prev.projectPhotos.filter((_, i) => i !== index)
+    }));
+  };
+
+  const removeLogo = () => {
+    setLogoPreview('');
+    setFormData(prev => ({ ...prev, businessLogo: '' }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -358,6 +439,148 @@ export default function ContractorProfile() {
                 />
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Business Logo */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Camera className="w-5 h-5 text-red-800" />
+              Business Logo
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-sm text-gray-600">
+              Upload your business logo to display next to your business name. Maximum file size: 5MB.
+            </div>
+            
+            {logoPreview || formData.businessLogo ? (
+              <div className="flex items-start gap-4">
+                <div className="relative">
+                  <img 
+                    src={logoPreview || formData.businessLogo} 
+                    alt="Business Logo" 
+                    className="w-24 h-24 object-contain border border-gray-300 rounded-lg bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={removeLogo}
+                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-900 mb-1">
+                    {formData.businessName || "Your Business Name"}
+                  </p>
+                  <p className="text-xs text-gray-600">Logo preview with business name</p>
+                </div>
+              </div>
+            ) : (
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                <Camera className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-900">Upload Your Logo</p>
+                  <p className="text-xs text-gray-600">PNG, JPG up to 5MB</p>
+                </div>
+              </div>
+            )}
+            
+            <div>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleLogoUpload}
+                className="hidden"
+                id="logo-upload"
+              />
+              <label htmlFor="logo-upload">
+                <Button type="button" variant="outline" className="cursor-pointer" asChild>
+                  <span className="flex items-center gap-2">
+                    <Plus className="w-4 h-4" />
+                    {logoPreview || formData.businessLogo ? 'Change Logo' : 'Upload Logo'}
+                  </span>
+                </Button>
+              </label>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Project Photos */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Camera className="w-5 h-5 text-red-800" />
+              Project Portfolio
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-sm text-gray-600">
+              Showcase your work with up to 20 photos of completed projects. Maximum file size per photo: 10MB.
+            </div>
+            
+            {(photosPreviews.length > 0 || formData.projectPhotos.length > 0) && (
+              <div>
+                <p className="text-sm font-medium text-gray-900 mb-3">
+                  Portfolio ({Math.max(photosPreviews.length, formData.projectPhotos.length)}/20)
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {(photosPreviews.length > 0 ? photosPreviews : formData.projectPhotos).map((photo, index) => (
+                    <div key={index} className="relative group">
+                      <img 
+                        src={photo} 
+                        alt={`Project ${index + 1}`} 
+                        className="w-full h-32 object-cover rounded-lg border border-gray-300"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeProjectPhoto(index)}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {Math.max(photosPreviews.length, formData.projectPhotos.length) < 20 && (
+              <div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleProjectPhotoUpload}
+                  className="hidden"
+                  id="photos-upload"
+                />
+                <label htmlFor="photos-upload">
+                  <Button type="button" variant="outline" className="cursor-pointer" asChild>
+                    <span className="flex items-center gap-2">
+                      <Plus className="w-4 h-4" />
+                      Add Project Photos
+                      <span className="text-xs text-gray-500">
+                        ({Math.max(photosPreviews.length, formData.projectPhotos.length)}/20)
+                      </span>
+                    </span>
+                  </Button>
+                </label>
+              </div>
+            )}
+            
+            {Math.max(photosPreviews.length, formData.projectPhotos.length) === 0 && (
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                <Camera className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-900">Showcase Your Work</p>
+                  <p className="text-xs text-gray-600">Upload photos of your completed projects to attract more clients</p>
+                  <p className="text-xs text-gray-500">PNG, JPG up to 10MB each • Maximum 20 photos</p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

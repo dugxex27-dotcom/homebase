@@ -76,8 +76,8 @@ export interface IStorage {
   searchProducts(query: string): Promise<Product[]>;
   
   // Contractor profile operations
-  getContractorProfile(contractorId: string): Promise<any | undefined>;
-  updateContractorProfile(contractorId: string, profileData: any): Promise<any>;
+  getContractorProfile(contractorId: string): Promise<Contractor | undefined>;
+  updateContractorProfile(contractorId: string, profileData: Partial<InsertContractor>): Promise<Contractor>;
 
   // Service record operations
   getServiceRecords(contractorId?: string, homeownerId?: string): Promise<ServiceRecord[]>;
@@ -399,8 +399,9 @@ export class MemStorage implements IStorage {
         profileImage: contractor.profileImage || null,
         reviewCount: contractor.reviewCount || 0,
         isLicensed: contractor.isLicensed ?? true,
-        isInsured: contractor.isInsured ?? true,
-        hasEmergencyServices: contractor.hasEmergencyServices ?? false
+        hasEmergencyServices: contractor.hasEmergencyServices ?? false,
+        businessLogo: null,
+        projectPhotos: []
       };
       this.contractors.set(id, contractorWithId);
     });
@@ -608,8 +609,9 @@ export class MemStorage implements IStorage {
       profileImage: contractor.profileImage || null,
       reviewCount: contractor.reviewCount || 0,
       isLicensed: contractor.isLicensed ?? true,
-      isInsured: contractor.isInsured ?? true,
-      hasEmergencyServices: contractor.hasEmergencyServices ?? false
+      hasEmergencyServices: contractor.hasEmergencyServices ?? false,
+      businessLogo: contractor.businessLogo || null,
+      projectPhotos: contractor.projectPhotos || []
     };
     this.contractors.set(id, newContractor);
     return newContractor;
@@ -785,6 +787,14 @@ export class MemStorage implements IStorage {
     const task: CustomMaintenanceTask = {
       id,
       ...taskData,
+      priority: taskData.priority || 'medium',
+      estimatedTime: taskData.estimatedTime || null,
+      difficulty: taskData.difficulty || 'easy',
+      tools: taskData.tools || null,
+      cost: taskData.cost || null,
+      frequencyValue: taskData.frequencyValue || null,
+      specificMonths: taskData.specificMonths || null,
+      isActive: taskData.isActive ?? true,
       createdAt: now,
       updatedAt: now,
     };
@@ -1167,13 +1177,25 @@ export class MemStorage implements IStorage {
   }
 
   // Contractor profile methods
-  async getContractorProfile(contractorId: string): Promise<any | undefined> {
-    return this.contractorProfiles.get(contractorId);
+  async getContractorProfile(contractorId: string): Promise<Contractor | undefined> {
+    return this.contractors.get(contractorId);
   }
 
-  async updateContractorProfile(contractorId: string, profileData: any): Promise<any> {
-    this.contractorProfiles.set(contractorId, profileData);
-    return profileData;
+  async updateContractorProfile(contractorId: string, profileData: Partial<InsertContractor>): Promise<Contractor> {
+    const existingContractor = this.contractors.get(contractorId);
+    if (!existingContractor) {
+      throw new Error('Contractor not found');
+    }
+
+    const updatedContractor: Contractor = {
+      ...existingContractor,
+      ...profileData,
+      businessLogo: profileData.businessLogo ?? existingContractor.businessLogo,
+      projectPhotos: profileData.projectPhotos ?? existingContractor.projectPhotos,
+    };
+
+    this.contractors.set(contractorId, updatedContractor);
+    return updatedContractor;
   }
 
   // Service record operations
@@ -1206,9 +1228,13 @@ export class MemStorage implements IStorage {
       ...serviceRecord,
       id: randomUUID(),
       homeownerId: serviceRecord.homeownerId ?? null,
+      customerPhone: serviceRecord.customerPhone ?? null,
+      customerEmail: serviceRecord.customerEmail ?? null,
       cost: serviceRecord.cost ?? "0",
       status: serviceRecord.status ?? "completed",
       notes: serviceRecord.notes ?? null,
+      materialsUsed: serviceRecord.materialsUsed ?? [],
+      duration: serviceRecord.duration ?? null,
       warrantyPeriod: serviceRecord.warrantyPeriod ?? null,
       followUpDate: serviceRecord.followUpDate ?? null,
       isVisibleToHomeowner: serviceRecord.isVisibleToHomeowner ?? true,
@@ -1369,6 +1395,7 @@ export class MemStorage implements IStorage {
       comment: reviewData.comment || null,
       serviceDate: reviewData.serviceDate || null,
       serviceType: reviewData.serviceType || null,
+      wouldRecommend: reviewData.wouldRecommend ?? true,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -1474,6 +1501,7 @@ export class MemStorage implements IStorage {
       warrantyPeriod: proposalData.warrantyPeriod || null,
       notes: proposalData.notes || null,
       homeownerId: proposalData.homeownerId || null,
+      status: proposalData.status || 'draft',
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -1676,6 +1704,11 @@ export class MemStorage implements IStorage {
     const system: HomeSystem = {
       ...systemData,
       id,
+      brand: systemData.brand ?? null,
+      model: systemData.model ?? null,
+      notes: systemData.notes ?? null,
+      installationYear: systemData.installationYear ?? null,
+      lastServiceYear: systemData.lastServiceYear ?? null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
