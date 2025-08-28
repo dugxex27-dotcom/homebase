@@ -634,11 +634,13 @@ export class MemStorage implements IStorage {
         );
       }
 
-      if (filters.serviceRadius) {
-        contractors = contractors.filter(contractor =>
-          contractor.serviceRadius >= filters.serviceRadius!
-        );
-      }
+      // Only show contractors whose service area overlaps with homeowner's location
+      // This means the contractor's service radius must be >= the distance to the homeowner
+      contractors = contractors.filter(contractor => {
+        if (!contractor.distance) return true; // If no distance data, include contractor
+        const distanceToHomeowner = parseFloat(contractor.distance);
+        return contractor.serviceRadius >= distanceToHomeowner;
+      });
     }
 
     return contractors;
@@ -1211,7 +1213,11 @@ export class MemStorage implements IStorage {
       const matchesLocation = !location || 
         contractor.location.toLowerCase().includes(location.toLowerCase());
       
-      return matchesQuery && matchesLocation;
+      // Only show contractors whose service area overlaps with homeowner's location
+      // This means the contractor's service radius must be >= the distance to the homeowner
+      const withinServiceArea = !contractor.distance || contractor.serviceRadius >= parseFloat(contractor.distance);
+      
+      return matchesQuery && matchesLocation && withinServiceArea;
     });
   }
 
