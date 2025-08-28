@@ -66,6 +66,7 @@ const AVAILABLE_SERVICES = [
   "Roofing",
   "Siding",
   "Snow Removal",
+  "Sprinklers/Irrigation",
   "Tile Work",
   "Windows & Doors"
 ];

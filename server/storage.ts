@@ -428,6 +428,25 @@ export class MemStorage implements IStorage {
         hasEmergencyServices: true,
         serviceRadius: 50,
         profileImage: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=150&h=150"
+      },
+      {
+        name: "Maria Rodriguez",
+        company: "GreenScape Irrigation Systems",
+        bio: "Expert in residential and commercial irrigation systems with 12 years of experience. Specializing in water-efficient sprinkler installations, repairs, and seasonal maintenance services.",
+        location: "Seattle, WA",
+        distance: "3.1", 
+        rating: "4.8",
+        reviewCount: 94,
+        experience: 12,
+        services: ["Sprinklers/Irrigation", "Landscaping", "Pressure Washing", "General Contracting"],
+        phone: "(206) 555-0456",
+        email: "maria@greenscapesystems.com",
+        licenseNumber: "GRNSC*287WA",
+        licenseMunicipality: "Seattle",
+        isLicensed: true,
+        hasEmergencyServices: true,
+        serviceRadius: 40,
+        profileImage: "https://images.unsplash.com/photo-1494790108755-2616b612b786?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=150&h=150"
       }
     ];
 
