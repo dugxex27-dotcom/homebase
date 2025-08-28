@@ -17,7 +17,7 @@ import { Link } from "wouter";
 export default function Home() {
   const { user } = useAuth();
   const typedUser = user as User | undefined;
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'contractors'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'contractors'>('dashboard');
 
   const { data: featuredProducts, isLoading } = useQuery<Product[]>({
     queryKey: ['/api/products', 'featured'],
@@ -169,20 +169,7 @@ export default function Home() {
                   Customer Dashboard
                 </button>
               )}
-              {/* Only show Products tab for homeowners */}
-              {typedUser?.role === 'homeowner' && (
-                <button
-                  onClick={() => setActiveTab('products')}
-                  className={`px-8 py-4 rounded-xl text-sm font-medium flex items-center transition-all duration-200 ${
-                    activeTab === 'products'
-                      ? 'bg-purple-500 text-white shadow-md transform scale-105'
-                      : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  <Package className="mr-3 h-5 w-5" />
-                  Featured Products
-                </button>
-              )}
+
               {/* Only show Find Contractors tab for homeowners */}
               {typedUser?.role === 'homeowner' && (
                 <button
@@ -454,48 +441,7 @@ export default function Home() {
             </div>
           )}
 
-          {activeTab === 'products' && (
-            <>
-              <div className="text-center mb-12">
-                <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-                  Featured Products
-                </h2>
-                <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-                  Discover professional-grade tools and materials carefully selected for quality and reliability
-                </p>
-              </div>
 
-              {isLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                  {[...Array(4)].map((_, i) => (
-                    <div key={i} className="bg-gray-50 dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-300 dark:border-gray-700 p-6 animate-pulse">
-                      <div className="w-full h-48 bg-gray-200 dark:bg-gray-700 rounded-xl mb-4"></div>
-                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
-                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-3 w-3/4"></div>
-                      <div className="flex justify-between items-center">
-                        <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-20"></div>
-                        <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-24"></div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                  {featuredProducts?.map((product) => (
-                    <ProductCard key={product.id} product={product} />
-                  ))}
-                </div>
-              )}
-
-              <div className="text-center mt-12">
-                <Link href="/products">
-                  <Button className={`px-8 py-4 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 ${typedUser?.role === 'homeowner' ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-red-600 hover:bg-red-700 text-white'}`}>
-                    Explore All Products
-                  </Button>
-                </Link>
-              </div>
-            </>
-          )}
 
 
 
