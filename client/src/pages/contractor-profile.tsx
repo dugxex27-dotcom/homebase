@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import Header from "@/components/header";
-import PushNotificationManager from "@/components/push-notification-manager";
+
 import { useAuth } from "@/hooks/useAuth";
 import type { User as UserType } from "@shared/schema";
 import { 
@@ -772,10 +772,7 @@ export default function ContractorProfile() {
           </CardContent>
         </Card>
 
-        {/* Push Notifications */}
-        {typedUser && (
-          <PushNotificationManager userId={typedUser.id} />
-        )}
+
 
         {/* Save Button */}
         <div className="flex justify-end">

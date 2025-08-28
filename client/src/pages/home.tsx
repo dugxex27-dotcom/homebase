@@ -5,7 +5,7 @@ import Header from "@/components/header";
 import HeroSection from "@/components/hero-section";
 import ProductCard from "@/components/product-card";
 import Logo from "@/components/logo";
-import PushNotificationManager from "@/components/push-notification-manager";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -401,12 +401,7 @@ export default function Home() {
                 )}
               </div>
 
-              {/* Push Notifications Section - only for homeowners */}
-              {typedUser?.role === 'homeowner' && (
-                <div className="mb-8">
-                  <PushNotificationManager userId={typedUser.id} />
-                </div>
-              )}
+
 
               {/* Quick Actions */}
               <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-300 dark:border-gray-700 p-6">
