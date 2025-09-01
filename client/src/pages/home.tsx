@@ -29,7 +29,7 @@ export default function Home() {
   });
 
   return (
-    <div className={`min-h-screen ${typedUser?.role === 'homeowner' ? 'bg-gradient-to-br from-purple-800 via-purple-600 to-purple-400 dark:bg-gradient-to-br dark:from-purple-900 dark:via-purple-800 dark:to-purple-700' : 'bg-background'}`}>
+    <div className={`min-h-screen ${typedUser?.role === 'homeowner' ? 'bg-gradient-to-br from-purple-600 via-purple-500 to-purple-300 dark:bg-gradient-to-br dark:from-purple-700 dark:via-purple-600 dark:to-purple-500' : 'bg-background'}`}>
       <Header />
       <HeroSection />
       
