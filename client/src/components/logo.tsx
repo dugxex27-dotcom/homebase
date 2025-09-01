@@ -6,6 +6,9 @@ export default function Logo({ className = "h-8 w-auto" }: { className?: string 
       src={logoImage} 
       alt="HomeBase" 
       className={`${className} object-contain`}
+      style={{ 
+        filter: 'hue-rotate(10deg) brightness(0.85) saturate(1.2)' 
+      }}
     />
   );
 }
