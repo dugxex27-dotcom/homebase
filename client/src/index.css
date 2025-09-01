@@ -3,11 +3,11 @@
 @tailwind utilities;
 
 :root {
-  --background: hsl(250, 15%, 98%);
+  --background: hsl(250, 15%, 85%);
   --foreground: hsl(260, 20%, 25%);
-  --muted: hsl(250, 12%, 94%);
+  --muted: hsl(250, 12%, 80%);
   --muted-foreground: hsl(260, 10%, 45%);
-  --popover: hsl(250, 15%, 98%);
+  --popover: hsl(250, 15%, 85%);
   --popover-foreground: hsl(260, 20%, 25%);
   --card: hsl(0, 0%, 100%);
   --card-foreground: hsl(260, 20%, 25%);
@@ -27,11 +27,11 @@
   --success-foreground: hsl(0, 0%, 100%);
   --warning: hsl(35, 85%, 60%);
   --warning-foreground: hsl(0, 0%, 100%);
-  --neutral: hsl(250, 15%, 98%);
+  --neutral: hsl(250, 15%, 85%);
 }
 
 .dark {
-  --background: hsl(260, 20%, 8%);
+  --background: hsl(260, 20%, 5%);
   --foreground: hsl(250, 25%, 92%);
   --muted: hsl(260, 15%, 15%);
   --muted-foreground: hsl(250, 15%, 65%);
