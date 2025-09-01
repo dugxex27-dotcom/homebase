@@ -29,7 +29,12 @@ export default function Home() {
   });
 
   return (
-    <div className={`min-h-screen ${typedUser?.role === 'homeowner' ? 'bg-gradient-to-br from-purple-800 via-purple-600 to-purple-400 dark:bg-gradient-to-br dark:from-purple-900 dark:via-purple-800 dark:to-purple-700' : 'bg-background'}`}>
+    <div className={`min-h-screen ${typedUser?.role === 'homeowner' ? '' : 'bg-background'}`} style={typedUser?.role === 'homeowner' ? {
+      background: 'linear-gradient(to bottom right, #5633c1, #7c5cd6, #a085e3, #c4afef)',
+      ...(document.documentElement.classList.contains('dark') && {
+        background: 'linear-gradient(to bottom right, #3d2480, #5633c1, #6b46c7, #8b5fbf)'
+      })
+    } : {}}>
       <Header />
       <HeroSection />
       
