@@ -157,7 +157,7 @@ export default function Home() {
 
 
       {/* Tab Content Section */}
-      <section className={`py-16 ${typedUser?.role === 'homeowner' ? 'bg-purple-50 dark:bg-gray-900/30' : 'bg-gray-50 dark:bg-gray-900/30'}`}>
+      <section className={`py-16 ${typedUser?.role === 'homeowner' ? '' : 'bg-gray-50 dark:bg-gray-900/30'}`} style={typedUser?.role === 'homeowner' ? { background: 'linear-gradient(135deg, #c4afef40, #a085e340)' } : {}}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
 
@@ -169,8 +169,8 @@ export default function Home() {
             <div className="max-w-5xl mx-auto">
               <Card className="bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-700 shadow-xl">
                 <CardHeader className="text-center pb-8">
-                  <div className="flex items-center justify-center w-20 h-20 bg-purple-100 dark:bg-purple-900/30 rounded-2xl mx-auto mb-6">
-                    <Users className="h-10 w-10 text-purple-600 dark:text-purple-400" />
+                  <div className="flex items-center justify-center w-20 h-20 rounded-2xl mx-auto mb-6" style={{ background: 'linear-gradient(135deg, #7c5cd6, #5633c1)' }}>
+                    <Users className="h-10 w-10 text-white" />
                   </div>
                   <CardTitle className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
                     Find Trusted Contractors
@@ -184,13 +184,13 @@ export default function Home() {
                     <Badge variant="secondary" className="bg-gray-100 dark:bg-gray-700/50 text-gray-800 dark:text-gray-200 px-3 py-1">
                       Gutter Cleaning
                     </Badge>
-                    <Badge variant="secondary" className="bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 px-3 py-1">
+                    <Badge variant="secondary" className="px-3 py-1" style={{ background: 'linear-gradient(135deg, #a085e3, #7c5cd6)', color: 'white' }}>
                       Drywall / Spackling Repair
                     </Badge>
                     <Badge variant="secondary" className="bg-gray-100 dark:bg-gray-700/50 text-gray-800 dark:text-gray-200 px-3 py-1">
                       Custom Cabinetry
                     </Badge>
-                    <Badge variant="secondary" className="bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 px-3 py-1">
+                    <Badge variant="secondary" className="px-3 py-1" style={{ background: 'linear-gradient(135deg, #a085e3, #7c5cd6)', color: 'white' }}>
                       HVAC Services
                     </Badge>
                     <Badge variant="secondary" className="bg-gray-100 dark:bg-gray-700/50 text-gray-800 dark:text-gray-200 px-3 py-1">
@@ -227,7 +227,7 @@ export default function Home() {
                       </div>
                     </div>
                     <Link href="/contractors" className="lg:self-end">
-                      <Button className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 h-12 text-base rounded-xl font-medium transition-all duration-200 flex items-center justify-center w-full lg:w-auto">
+                      <Button className="text-white px-8 py-3 h-12 text-base rounded-xl font-medium transition-all duration-200 flex items-center justify-center w-full lg:w-auto hover:opacity-90" style={{ background: 'linear-gradient(135deg, #5633c1, #7c5cd6)' }}>
                         <Search className="mr-2 h-4 w-4" />
                         Find Contractors
                       </Button>
@@ -243,7 +243,7 @@ export default function Home() {
 
 
       {/* Additional Features Section */}
-      <section className={`py-16 ${typedUser?.role === 'homeowner' ? 'bg-purple-100/30 dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-900'}`}>
+      <section className={`py-16 ${typedUser?.role === 'homeowner' ? '' : 'bg-gray-50 dark:bg-gray-900'}`} style={typedUser?.role === 'homeowner' ? { background: 'linear-gradient(135deg, #e8dcf440, #c4afef30)' } : {}}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
@@ -263,8 +263,8 @@ export default function Home() {
               <>
                 <Card className="bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-600">
                   <CardContent className="p-8 text-center">
-                    <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                      <Shield className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ background: 'linear-gradient(135deg, #a085e3, #7c5cd6)' }}>
+                      <Shield className="h-8 w-8 text-white" />
                     </div>
                     <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Verified Professionals</h3>
                     <p className="text-gray-600 dark:text-gray-300">
@@ -275,8 +275,8 @@ export default function Home() {
 
                 <Card className="bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-600">
                   <CardContent className="p-8 text-center">
-                    <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                      <Package className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ background: 'linear-gradient(135deg, #a085e3, #7c5cd6)' }}>
+                      <Package className="h-8 w-8 text-white" />
                     </div>
                     <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Quality Products</h3>
                     <p className="text-gray-600 dark:text-gray-300">
@@ -287,8 +287,8 @@ export default function Home() {
 
                 <Card className="bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-600">
                   <CardContent className="p-8 text-center">
-                    <div className="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                      <TrendingUp className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ background: 'linear-gradient(135deg, #a085e3, #7c5cd6)' }}>
+                      <TrendingUp className="h-8 w-8 text-white" />
                     </div>
                     <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Cost Savings</h3>
                     <p className="text-gray-600 dark:text-gray-300">
@@ -347,7 +347,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
               <div className="mb-6">
-                <Logo className={`h-10 w-auto ${typedUser?.role === 'homeowner' ? 'text-purple-400' : 'text-red-400'}`} />
+                <Logo className={`h-10 w-auto`} style={typedUser?.role === 'homeowner' ? { color: '#7c5cd6' } : { color: '#ef4444' }} />
               </div>
               <p className="text-gray-400 mb-6 leading-relaxed">
                 Your trusted partner for connecting with skilled contractors, discovering quality DIY products, and maintaining your home with confidence.

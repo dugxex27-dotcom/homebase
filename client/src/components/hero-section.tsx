@@ -9,15 +9,15 @@ export default function HeroSection() {
   const typedUser = user as User | undefined;
 
   return (
-    <section className={`py-20 ${typedUser?.role === 'homeowner' ? 'bg-gradient-to-br from-gray-100 via-purple-100 to-gray-50 dark:from-gray-800 dark:via-purple-900/30 dark:to-gray-900' : 'bg-gradient-to-br from-gray-50 via-red-900/10 to-black/5 dark:from-gray-900 dark:via-red-950/30 dark:to-black'}`}>
+    <section className={`py-20 ${typedUser?.role === 'homeowner' ? '' : 'bg-gradient-to-br from-gray-50 via-red-900/10 to-black/5 dark:from-gray-900 dark:via-red-950/30 dark:to-black'}`} style={typedUser?.role === 'homeowner' ? { background: 'linear-gradient(to bottom right, #d1c4e940, #c4afef30, #e8dcf420)' } : {}}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
-          <Logo className={`h-32 w-full mx-auto block mb-8 ${typedUser?.role === 'homeowner' ? 'text-purple-700 dark:text-purple-300' : 'text-red-900 dark:text-red-300'}`} />
+          <Logo className={`h-32 w-full mx-auto block mb-8`} style={typedUser?.role === 'homeowner' ? { color: '#5633c1' } : { color: '#7f1d1d' }} />
           
           <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-6 leading-tight">
             {typedUser?.role === 'homeowner' ? (
               <>Your Home{" "}
-              <span className="text-purple-600 dark:text-purple-400">Management Hub</span></>
+              <span style={{ color: '#5633c1' }}>Management Hub</span></>
             ) : (
               <>Your Business{" "}
               <span className="text-red-900 dark:text-red-300">Growth Platform</span></>
@@ -39,8 +39,8 @@ export default function HeroSection() {
               <>
                 <Link href="/maintenance">
                   <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group border border-gray-300 dark:border-gray-700">
-                    <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center mb-4 group-hover:bg-purple-200 dark:group-hover:bg-purple-800/50 transition-colors">
-                      <Calendar className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-colors" style={{ background: 'linear-gradient(135deg, #a085e3, #7c5cd6)' }}>
+                      <Calendar className="h-6 w-6 text-white" />
                     </div>
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Home Maintenance</h3>
                     <p className="text-gray-600 dark:text-gray-300 text-sm">
@@ -51,8 +51,8 @@ export default function HeroSection() {
 
                 <Link href="/contractors">
                   <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group border border-gray-300 dark:border-gray-700">
-                    <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center mb-4 group-hover:bg-purple-200 dark:group-hover:bg-purple-800/50 transition-colors">
-                      <Search className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-colors" style={{ background: 'linear-gradient(135deg, #a085e3, #7c5cd6)' }}>
+                      <Search className="h-6 w-6 text-white" />
                     </div>
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Find Contractors</h3>
                     <p className="text-gray-600 dark:text-gray-300 text-sm">
@@ -63,8 +63,8 @@ export default function HeroSection() {
 
                 <Link href="/products">
                   <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group border border-gray-300 dark:border-gray-700">
-                    <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center mb-4 group-hover:bg-purple-200 dark:group-hover:bg-purple-800/50 transition-colors">
-                      <Wrench className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-colors" style={{ background: 'linear-gradient(135deg, #a085e3, #7c5cd6)' }}>
+                      <Wrench className="h-6 w-6 text-white" />
                     </div>
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">DIY Products</h3>
                     <p className="text-gray-600 dark:text-gray-300 text-sm">
