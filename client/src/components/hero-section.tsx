@@ -12,7 +12,7 @@ export default function HeroSection() {
     <section className={`py-20 ${typedUser?.role === 'homeowner' ? '' : 'bg-gradient-to-br from-gray-50 via-red-900/10 to-black/5 dark:from-gray-900 dark:via-red-950/30 dark:to-black'}`} style={typedUser?.role === 'homeowner' ? { background: 'linear-gradient(to bottom right, #d1c4e940, #c4afef30, #e8dcf420)' } : {}}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
-          <Logo className={`h-32 w-full mx-auto block mb-8`} style={typedUser?.role === 'homeowner' ? { color: '#5633c1' } : { color: '#7f1d1d' }} />
+          <Logo className={`h-32 w-full mx-auto block mb-8`} />
           
           <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-6 leading-tight">
             {typedUser?.role === 'homeowner' ? (
