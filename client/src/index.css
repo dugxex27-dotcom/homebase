@@ -13,7 +13,7 @@
   --card-foreground: hsl(260, 20%, 25%);
   --border: hsl(250, 10%, 88%);
   --input: hsl(250, 10%, 88%);
-  --primary: hsl(260, 65%, 55%);
+  --primary: hsl(260, 80%, 30%);
   --primary-foreground: hsl(0, 0%, 100%);
   --secondary: hsl(250, 20%, 92%);
   --secondary-foreground: hsl(260, 20%, 25%);
@@ -41,7 +41,7 @@
   --card-foreground: hsl(250, 25%, 92%);
   --border: hsl(260, 12%, 20%);
   --input: hsl(260, 12%, 20%);
-  --primary: hsl(260, 65%, 55%);
+  --primary: hsl(260, 80%, 30%);
   --primary-foreground: hsl(0, 0%, 100%);
   --secondary: hsl(260, 15%, 18%);
   --secondary-foreground: hsl(250, 25%, 92%);
