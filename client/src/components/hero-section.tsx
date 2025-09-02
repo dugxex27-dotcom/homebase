@@ -24,7 +24,7 @@ export default function HeroSection() {
             )}
           </h1>
           
-          <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-xl mb-8 max-w-3xl mx-auto leading-relaxed" style={typedUser?.role === 'homeowner' ? { color: '#b6a6f4' } : { color: 'rgb(75 85 99)' }}>
             {typedUser?.role === 'homeowner' ? (
               'Connect with skilled contractors, discover quality DIY products, and keep your home running smoothly with our intelligent maintenance scheduling system.'
             ) : (
