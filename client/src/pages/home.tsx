@@ -30,10 +30,7 @@ export default function Home() {
 
   return (
     <div className={`min-h-screen ${typedUser?.role === 'homeowner' ? '' : 'bg-background'}`} style={typedUser?.role === 'homeowner' ? {
-      background: 'linear-gradient(to bottom right, #5633c1, #7c5cd6, #a085e3, #c4afef)',
-      ...(document.documentElement.classList.contains('dark') && {
-        background: 'linear-gradient(to bottom right, #3d2480, #5633c1, #6b46c7, #8b5fbf)'
-      })
+      background: '#230d4c'
     } : {}}>
       <Header />
       <HeroSection />
@@ -243,7 +240,7 @@ export default function Home() {
 
 
       {/* Additional Features Section */}
-      <section className={`py-16 ${typedUser?.role === 'homeowner' ? '' : 'bg-gray-50 dark:bg-gray-900'}`} style={typedUser?.role === 'homeowner' ? { background: 'linear-gradient(135deg, #e8dcf440, #c4afef30)' } : {}}>
+      <section className={`py-16 ${typedUser?.role === 'homeowner' ? '' : 'bg-gray-50 dark:bg-gray-900'}`} style={typedUser?.role === 'homeowner' ? { background: '#230d4c' } : {}}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
