@@ -14,7 +14,7 @@ export default function HeroSection() {
         <div className="text-center mb-16">
           <Logo className={`h-32 w-full mx-auto block mb-8`} />
           
-          <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-6 leading-tight">
+          <h1 className="text-5xl lg:text-6xl font-bold mb-6 leading-tight" style={typedUser?.role === 'homeowner' ? { color: '#ffffff' } : { color: 'rgb(17 24 39)' }}>
             {typedUser?.role === 'homeowner' ? (
               <>Your Home{" "}
               <span style={{ color: '#ffffff' }}>Management Hub</span></>
