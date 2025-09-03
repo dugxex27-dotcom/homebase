@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Home, Wrench, ArrowRight } from "lucide-react";
-import logoImage from '@assets/homebase-logo_1756860134028.png';
+import logoImage from '@assets/homebase-logo_1756861910640.png';
 
 export default function SignIn() {
   const [selectedRole, setSelectedRole] = useState<'homeowner' | 'contractor' | null>(null);
