@@ -81,8 +81,11 @@ export default function SignIn() {
                 onClick={() => handleRoleSelect('homeowner')}
               >
                 <div className={`p-3 rounded-full ${
-                  selectedRole === 'homeowner' ? 'bg-white/20' : 'bg-primary/10'
-                }`}>
+                  selectedRole === 'homeowner' ? 'bg-white/20' : ''
+                }`}
+                style={{
+                  backgroundColor: selectedRole === 'homeowner' ? undefined : '#3c258e'
+                }}>
                   <Home className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1">
