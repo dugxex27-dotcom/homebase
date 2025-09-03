@@ -109,7 +109,7 @@ export default function SignIn() {
                   }`} />
                 </div>
                 <div className="flex-1">
-                  <div className="font-semibold text-lg">I'm a Contractor</div>
+                  <div className="font-semibold text-lg" style={{ color: '#ffffff' }}>I'm a Contractor</div>
                   <div className={`text-sm ${
                     selectedRole === 'contractor' ? 'text-white/80' : 'text-muted-foreground'
                   }`}>
