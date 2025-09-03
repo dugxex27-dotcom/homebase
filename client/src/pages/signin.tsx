@@ -107,9 +107,7 @@ export default function SignIn() {
                 <div className={`p-3 rounded-full ${
                   selectedRole === 'contractor' ? 'bg-white/20' : 'bg-primary/10'
                 }`}>
-                  <Wrench className={`w-6 h-6 ${
-                    selectedRole === 'contractor' ? 'text-white' : 'text-primary'
-                  }`} />
+                  <Wrench className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1">
                   <div className="font-semibold text-lg" style={{ color: '#ffffff' }}>I'm a Contractor</div>
