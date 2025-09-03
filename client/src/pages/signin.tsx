@@ -51,7 +51,7 @@ export default function SignIn() {
             alt="Home Base" 
             className="h-24 w-auto mx-auto mb-4"
           />
-          <p className="text-muted-foreground text-lg">
+          <p className="text-lg" style={{ color: '#ffffff' }}>
             Your trusted home services marketplace
           </p>
         </div>
