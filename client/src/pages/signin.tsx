@@ -101,7 +101,7 @@ export default function SignIn() {
                     : 'hover:bg-primary/5 hover:border-primary/20'
                 }`}
                 style={{ 
-                  background: selectedRole === 'contractor' ? '#3798ef' : '#1560a2'
+                  background: selectedRole === 'contractor' ? '#518ebc' : '#1560a2'
                 }}
                 onClick={() => handleRoleSelect('contractor')}
               >
