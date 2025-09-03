@@ -344,8 +344,8 @@ export default function Home() {
       <footer className="bg-gray-900 text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <div className="mb-6">
+            <div className="text-center">
+              <div className="mb-6 flex justify-center">
                 <Logo className={`w-1/4 h-auto`} style={typedUser?.role === 'homeowner' ? { color: '#7c5cd6' } : { color: '#ef4444' }} />
               </div>
               <p className="text-gray-400 mb-6 leading-relaxed">
