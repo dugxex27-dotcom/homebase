@@ -355,7 +355,7 @@ export default function Home() {
 
             {/* Only show homeowner links for homeowners */}
             {typedUser?.role === 'homeowner' && (
-              <div>
+              <div className="text-center">
                 <h4 className="text-lg font-semibold mb-6 text-white">For Homeowners</h4>
                 <ul className="space-y-3 text-gray-400">
                   <li><Link href="/contractors" className="hover:text-purple-400 transition-colors">Find Contractors</Link></li>
@@ -366,7 +366,7 @@ export default function Home() {
               </div>
             )}
 
-            <div>
+            <div className="text-center">
               <h4 className="text-lg font-semibold mb-6 text-white">For Contractors</h4>
               <ul className="space-y-3 text-gray-400">
                 <li><Link href="/contractor-signin" className={`transition-colors ${typedUser?.role === 'homeowner' ? 'hover:text-purple-400' : 'hover:text-red-400'}`}>Join Network</Link></li>
@@ -376,7 +376,7 @@ export default function Home() {
               </ul>
             </div>
 
-            <div>
+            <div className="text-center">
               <h4 className="text-lg font-semibold mb-6 text-white">Support</h4>
               <ul className="space-y-3 text-gray-400">
                 <li><a href="#" className={`transition-colors ${typedUser?.role === 'homeowner' ? 'hover:text-purple-400' : 'hover:text-red-400'}`}>Help Center</a></li>
