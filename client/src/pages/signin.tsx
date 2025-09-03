@@ -130,6 +130,7 @@ export default function SignIn() {
               onClick={handleSignIn}
               disabled={!selectedRole}
               className="w-full mt-6 py-3 text-lg font-semibold"
+              style={{ background: '#2c0f5b' }}
               size="lg"
             >
               {selectedRole === 'contractor' ? 'Access Contractor Demo' : 'Continue as Homeowner'}
