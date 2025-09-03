@@ -80,9 +80,7 @@ export default function SignIn() {
                 <div className={`p-3 rounded-full ${
                   selectedRole === 'homeowner' ? 'bg-white/20' : 'bg-primary/10'
                 }`}>
-                  <Home className={`w-6 h-6 ${
-                    selectedRole === 'homeowner' ? 'text-white' : 'text-primary'
-                  }`} />
+                  <Home className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1">
                   <div className="font-semibold text-lg" style={{ color: '#ffffff' }}>I'm a Homeowner</div>
