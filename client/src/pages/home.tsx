@@ -248,7 +248,7 @@ export default function Home() {
             <h2 className="text-4xl font-bold mb-4" style={typedUser?.role === 'homeowner' ? { color: '#ffffff' } : { color: 'rgb(17 24 39)' }}>
               Why Choose Home Base?
             </h2>
-            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+            <p className="text-xl max-w-3xl mx-auto" style={{ color: '#b6a6f4' }}>
               {typedUser?.role === 'homeowner' 
                 ? 'We\'ve designed every feature to make home management simple, reliable, and efficient'
                 : 'The platform contractors trust to grow their business and connect with quality clients'
