@@ -198,7 +198,7 @@ export default function Home() {
                 <CardContent className="pt-0">
                   <div className="flex flex-col lg:flex-row gap-4 mb-8">
                     <div className="flex-1">
-                      <label className="block text-sm font-medium mb-2" style={{ color: '#ffffff' }}>
+                      <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
                         What service do you need?
                       </label>
                       <div className="relative">
@@ -207,11 +207,12 @@ export default function Home() {
                           type="text"
                           placeholder="Gutter cleaning, drywall repair, custom cabinetry..."
                           className="pl-10 h-12 text-base border-gray-300 dark:border-gray-600"
+                          style={{ color: '#ffffff' }}
                         />
                       </div>
                     </div>
                     <div className="flex-1">
-                      <label className="block text-sm font-medium mb-2" style={{ color: '#ffffff' }}>
+                      <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
                         Your location
                       </label>
                       <div className="relative">
@@ -220,6 +221,7 @@ export default function Home() {
                           type="text"
                           placeholder="City, State or ZIP code"
                           className="pl-10 h-12 text-base border-gray-300 dark:border-gray-600"
+                          style={{ color: '#ffffff' }}
                         />
                       </div>
                     </div>
