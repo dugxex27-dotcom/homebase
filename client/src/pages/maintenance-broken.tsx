@@ -364,21 +364,6 @@ export default function Maintenance() {
           tools: month === 10 ? ["Hose storage", "Shut-off tools"] : ["Caulk", "Weather stripping"],
           cost: "$25-75"
         },
-        {
-          id: "fall-gutter-maintenance",
-          title: "Gutter and Drainage Maintenance",
-          description: month === 9 ? "Clean gutters and downspouts, check for proper drainage." :
-                      month === 10 ? "Install gutter guards if needed, ensure downspouts direct water away." :
-                      "Final gutter cleaning before winter, check for ice dam prevention.",
-          month: month,
-          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "mountain-west"],
-          priority: "high",
-          estimatedTime: "2-4 hours",
-          difficulty: "moderate",
-          category: "Gutters",
-          tools: ["Ladder", "Gutter scoop", "Garden hose"],
-          cost: "$0-50"
-        },
         // Mild climate fall tasks
         {
           id: "fall-mild-climate",
@@ -446,6 +431,25 @@ export default function Maintenance() {
           cost: "$0-5"
         }
       );
+    }
+
+    // GUTTER MAINTENANCE TASKS (November and December only)
+    const gutterTasks: MaintenanceTask[] = [];
+    if (month === 11 || month === 12) {
+      gutterTasks.push({
+        id: "winter-gutter-maintenance",
+        title: "Gutter and Drainage Maintenance",
+        description: month === 11 ? "Final gutter cleaning before winter, check for ice dam prevention." :
+                    "Clean gutters and downspouts, check for proper drainage before heavy winter weather.",
+        month: month,
+        climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "mountain-west"],
+        priority: "high",
+        estimatedTime: "2-4 hours",
+        difficulty: "moderate",
+        category: "Gutters",
+        tools: ["Ladder", "Gutter scoop", "Garden hose"],
+        cost: "$0-50"
+      });
     }
 
     // SYSTEM-SPECIFIC MONTHLY TASKS
@@ -554,7 +558,7 @@ export default function Maintenance() {
     }
 
     // Combine all task arrays
-    return [...climateTasks, ...universalTasks, ...seasonalTasks, ...systemTasks, ...poolTasks, ...solarTasks];
+    return [...climateTasks, ...universalTasks, ...seasonalTasks, ...gutterTasks, ...systemTasks, ...poolTasks, ...solarTasks];
   };
 
   const maintenanceTasks = getMaintenanceTasksForMonth(selectedMonth);
