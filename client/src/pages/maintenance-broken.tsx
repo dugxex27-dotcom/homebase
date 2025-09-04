@@ -7,7 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, Settings } from "lucide-react";
+import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, Settings, Edit, Trash2, Plus } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 interface MaintenanceTask {
   id: string;
@@ -83,6 +88,10 @@ export default function Maintenance() {
   const [completedTasks, setCompletedTasks] = useState<Record<string, boolean>>({});
   const [homeSystems, setHomeSystems] = useState<string[]>([]);
   const [showSystemFilters, setShowSystemFilters] = useState(false);
+  const [editingTask, setEditingTask] = useState<MaintenanceTask | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [customTasks, setCustomTasks] = useState<MaintenanceTask[]>([]);
+  const [removedTasks, setRemovedTasks] = useState<string[]>([]);
 
   // Load completed tasks and home systems from localStorage on component mount
   useEffect(() => {
@@ -103,6 +112,24 @@ export default function Maintenance() {
         setHomeSystems([]);
       }
     }
+
+    const storedCustomTasks = localStorage.getItem('custom-maintenance-tasks');
+    if (storedCustomTasks) {
+      try {
+        setCustomTasks(JSON.parse(storedCustomTasks));
+      } catch {
+        setCustomTasks([]);
+      }
+    }
+
+    const storedRemovedTasks = localStorage.getItem('removed-maintenance-tasks');
+    if (storedRemovedTasks) {
+      try {
+        setRemovedTasks(JSON.parse(storedRemovedTasks));
+      } catch {
+        setRemovedTasks([]);
+      }
+    }
   }, []);
 
   // Save completed tasks and home systems to localStorage whenever they change
@@ -113,6 +140,14 @@ export default function Maintenance() {
   useEffect(() => {
     localStorage.setItem('home-systems', JSON.stringify(homeSystems));
   }, [homeSystems]);
+
+  useEffect(() => {
+    localStorage.setItem('custom-maintenance-tasks', JSON.stringify(customTasks));
+  }, [customTasks]);
+
+  useEffect(() => {
+    localStorage.setItem('removed-maintenance-tasks', JSON.stringify(removedTasks));
+  }, [removedTasks]);
 
   // Generate storage key for task completion (includes month/year to reset monthly)
   const getTaskKey = (taskId: string, month: number, year: number) => {
@@ -159,6 +194,65 @@ export default function Maintenance() {
         ? prev.filter(s => s !== system)
         : [...prev, system]
     );
+  };
+
+  // Edit task functionality
+  const handleEditTask = (task: MaintenanceTask) => {
+    setEditingTask({ ...task });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSaveTask = () => {
+    if (!editingTask) return;
+    
+    setCustomTasks(prev => {
+      const existing = prev.find(t => t.id === editingTask.id);
+      if (existing) {
+        return prev.map(t => t.id === editingTask.id ? editingTask : t);
+      } else {
+        // Create a custom version of an original task
+        const newTask = { ...editingTask, id: `custom-${Date.now()}` };
+        return [...prev, newTask];
+      }
+    });
+    
+    setIsEditDialogOpen(false);
+    setEditingTask(null);
+  };
+
+  const handleRemoveTask = (taskId: string) => {
+    // Add to removed tasks list to hide original tasks
+    setRemovedTasks(prev => [...prev, taskId]);
+    // Remove from custom tasks if it's a custom task
+    setCustomTasks(prev => prev.filter(t => t.id !== taskId));
+    // Remove from completed tasks
+    setCompletedTasks(prev => {
+      const updated = { ...prev };
+      Object.keys(updated).forEach(key => {
+        if (key.startsWith(taskId)) {
+          delete updated[key];
+        }
+      });
+      return updated;
+    });
+  };
+
+  const handleAddCustomTask = () => {
+    const newTask: MaintenanceTask = {
+      id: `custom-${Date.now()}`,
+      title: "New Custom Task",
+      description: "Add your own maintenance task description here",
+      month: selectedMonth,
+      climateZones: [selectedZone],
+      priority: "medium",
+      estimatedTime: "30 minutes",
+      difficulty: "easy",
+      category: "Custom",
+      tools: [],
+      cost: "$0"
+    };
+    setCustomTasks(prev => [...prev, newTask]);
+    handleEditTask(newTask);
   };
 
   // Comprehensive maintenance schedule based on professional recommendations
@@ -806,7 +900,13 @@ export default function Maintenance() {
 
   const maintenanceTasks = getMaintenanceTasksForMonth(selectedMonth);
 
-  const filteredTasks = maintenanceTasks.filter(task => {
+  // Combine original tasks with custom tasks, filter out removed tasks
+  const allTasks = [
+    ...maintenanceTasks.filter(task => !removedTasks.includes(task.id)),
+    ...customTasks.filter(task => task.month === selectedMonth)
+  ];
+
+  const filteredTasks = allTasks.filter(task => {
     // Filter by climate zone
     if (!task.climateZones.includes(selectedZone)) {
       return false;
@@ -961,6 +1061,22 @@ export default function Maintenance() {
           </Collapsible>
         </div>
 
+        {/* Add Custom Task Button */}
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h2 className="text-2xl font-semibold text-foreground">Maintenance Tasks</h2>
+            <p className="text-muted-foreground">Customize your maintenance schedule</p>
+          </div>
+          <Button
+            onClick={handleAddCustomTask}
+            className="bg-primary hover:bg-primary/90"
+            data-testid="button-add-custom-task"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Custom Task
+          </Button>
+        </div>
+
         {/* Tasks Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {filteredTasks.map((task) => {
@@ -1034,6 +1150,50 @@ export default function Maintenance() {
                       </div>
                     </div>
                   )}
+                  
+                  {/* Task Actions */}
+                  <div className="flex justify-end gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditTask(task)}
+                      className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950"
+                      data-testid={`button-edit-task-${task.id}`}
+                    >
+                      <Edit className="w-4 h-4 mr-1" />
+                      Edit
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
+                          data-testid={`button-remove-task-${task.id}`}
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Remove
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Remove Task</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to remove "{task.title}"? This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction 
+                            onClick={() => handleRemoveTask(task.id)}
+                            className="bg-red-600 hover:bg-red-700"
+                          >
+                            Remove
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </CardContent>
               </Card>
             );
@@ -1041,6 +1201,122 @@ export default function Maintenance() {
         </div>
       </div>
     </div>
+    
+    {/* Edit Task Dialog */}
+    <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>Edit Maintenance Task</DialogTitle>
+        </DialogHeader>
+        {editingTask && (
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="task-title">Title</Label>
+              <Input
+                id="task-title"
+                value={editingTask.title}
+                onChange={(e) => setEditingTask({...editingTask, title: e.target.value})}
+                data-testid="input-task-title"
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="task-description">Description</Label>
+              <Textarea
+                id="task-description"
+                value={editingTask.description}
+                onChange={(e) => setEditingTask({...editingTask, description: e.target.value})}
+                rows={3}
+                data-testid="textarea-task-description"
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="task-priority">Priority</Label>
+                <Select value={editingTask.priority} onValueChange={(value) => setEditingTask({...editingTask, priority: value})}>
+                  <SelectTrigger data-testid="select-task-priority">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="task-difficulty">Difficulty</Label>
+                <Select value={editingTask.difficulty} onValueChange={(value) => setEditingTask({...editingTask, difficulty: value})}>
+                  <SelectTrigger data-testid="select-task-difficulty">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="easy">Easy</SelectItem>
+                    <SelectItem value="moderate">Moderate</SelectItem>
+                    <SelectItem value="difficult">Difficult</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="task-time">Estimated Time</Label>
+                <Input
+                  id="task-time"
+                  value={editingTask.estimatedTime}
+                  onChange={(e) => setEditingTask({...editingTask, estimatedTime: e.target.value})}
+                  placeholder="e.g., 30 minutes"
+                  data-testid="input-task-time"
+                />
+              </div>
+              
+              <div className="grid gap-2">
+                <Label htmlFor="task-cost">Cost</Label>
+                <Input
+                  id="task-cost"
+                  value={editingTask.cost || ''}
+                  onChange={(e) => setEditingTask({...editingTask, cost: e.target.value})}
+                  placeholder="e.g., $20-40"
+                  data-testid="input-task-cost"
+                />
+              </div>
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="task-category">Category</Label>
+              <Input
+                id="task-category"
+                value={editingTask.category}
+                onChange={(e) => setEditingTask({...editingTask, category: e.target.value})}
+                data-testid="input-task-category"
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="task-tools">Tools (comma separated)</Label>
+              <Input
+                id="task-tools"
+                value={editingTask.tools?.join(', ') || ''}
+                onChange={(e) => setEditingTask({...editingTask, tools: e.target.value.split(',').map(tool => tool.trim()).filter(Boolean)})}
+                placeholder="e.g., Screwdriver, Pliers, Safety goggles"
+                data-testid="input-task-tools"
+              />
+            </div>
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSaveTask} data-testid="button-save-task">
+            Save Changes
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
         title: "Clean Garbage Disposal",
@@ -1959,6 +2235,22 @@ export default function Maintenance() {
           </Collapsible>
         </div>
 
+        {/* Add Custom Task Button */}
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h2 className="text-2xl font-semibold text-foreground">Maintenance Tasks</h2>
+            <p className="text-muted-foreground">Customize your maintenance schedule</p>
+          </div>
+          <Button
+            onClick={handleAddCustomTask}
+            className="bg-primary hover:bg-primary/90"
+            data-testid="button-add-custom-task"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Custom Task
+          </Button>
+        </div>
+
         {/* Tasks Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {filteredTasks.map((task) => {
@@ -2032,6 +2324,50 @@ export default function Maintenance() {
                       </div>
                     </div>
                   )}
+                  
+                  {/* Task Actions */}
+                  <div className="flex justify-end gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditTask(task)}
+                      className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950"
+                      data-testid={`button-edit-task-${task.id}`}
+                    >
+                      <Edit className="w-4 h-4 mr-1" />
+                      Edit
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
+                          data-testid={`button-remove-task-${task.id}`}
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Remove
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Remove Task</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to remove "{task.title}"? This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction 
+                            onClick={() => handleRemoveTask(task.id)}
+                            className="bg-red-600 hover:bg-red-700"
+                          >
+                            Remove
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </CardContent>
               </Card>
             );
