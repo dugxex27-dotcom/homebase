@@ -401,19 +401,6 @@ export default function Maintenance() {
     // UNIVERSAL MONTHLY TASKS (appear every month)
     const universalTasks: MaintenanceTask[] = [
       {
-        id: "monthly-smoke-detectors",
-        title: "Test Smoke and Carbon Monoxide Detectors",
-        description: "Check batteries and functionality by pressing test buttons. Replace batteries if chirping or low.",
-        month: month,
-        climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
-        priority: "high",
-        estimatedTime: "15 minutes",
-        difficulty: "easy",
-        category: "Safety",
-        tools: ["9V batteries"],
-        cost: "$10-15"
-      },
-      {
         id: "monthly-hvac-filter",
         title: "Change HVAC Air Filters",
         description: "Replace air filters every 30-60 days, more frequently during heavy use seasons. Check size and MERV rating.",
@@ -425,21 +412,41 @@ export default function Maintenance() {
         category: "HVAC",
         tools: ["New air filter"],
         cost: "$15-40"
-      },
-      {
-        id: "monthly-water-check",
-        title: "Check Water Systems",
-        description: "Test water pressure, look for leaks under sinks, and run garbage disposal with citrus peels.",
-        month: month,
-        climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
-        priority: "medium",
-        estimatedTime: "15 minutes",
-        difficulty: "easy",
-        category: "Plumbing",
-        tools: ["Baking soda", "Vinegar", "Citrus peels"],
-        cost: "$0-5"
       }
     ];
+
+    // SEASONAL SAFETY AND MAINTENANCE TASKS (March and October only)
+    const seasonalTasks: MaintenanceTask[] = [];
+    if (month === 3 || month === 10) {
+      seasonalTasks.push(
+        {
+          id: "seasonal-smoke-detectors",
+          title: "Test Smoke and Carbon Monoxide Detectors",
+          description: "Check batteries and functionality by pressing test buttons. Replace batteries if chirping or low.",
+          month: month,
+          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
+          priority: "high",
+          estimatedTime: "15 minutes",
+          difficulty: "easy",
+          category: "Safety",
+          tools: ["9V batteries"],
+          cost: "$10-15"
+        },
+        {
+          id: "seasonal-water-check",
+          title: "Check Water Systems",
+          description: "Test water pressure, look for leaks under sinks, and run garbage disposal with citrus peels.",
+          month: month,
+          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
+          priority: "medium",
+          estimatedTime: "15 minutes",
+          difficulty: "easy",
+          category: "Plumbing",
+          tools: ["Baking soda", "Vinegar", "Citrus peels"],
+          cost: "$0-5"
+        }
+      );
+    }
 
     // SYSTEM-SPECIFIC MONTHLY TASKS
     const systemTasks: MaintenanceTask[] = [
@@ -547,7 +554,7 @@ export default function Maintenance() {
     }
 
     // Combine all task arrays
-    return [...climateTasks, ...universalTasks, ...systemTasks, ...poolTasks, ...solarTasks];
+    return [...climateTasks, ...universalTasks, ...seasonalTasks, ...systemTasks, ...poolTasks, ...solarTasks];
   };
 
   const maintenanceTasks = getMaintenanceTasksForMonth(selectedMonth);
