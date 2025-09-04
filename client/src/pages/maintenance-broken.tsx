@@ -433,13 +433,14 @@ export default function Maintenance() {
       );
     }
 
-    // GUTTER MAINTENANCE TASKS (November and December only)
+    // GUTTER MAINTENANCE TASKS (April, November and December)
     const gutterTasks: MaintenanceTask[] = [];
-    if (month === 11 || month === 12) {
+    if (month === 4 || month === 11 || month === 12) {
       gutterTasks.push({
-        id: "winter-gutter-maintenance",
+        id: month === 4 ? "spring-gutter-maintenance" : "winter-gutter-maintenance",
         title: "Gutter and Drainage Maintenance",
-        description: month === 11 ? "Final gutter cleaning before winter, check for ice dam prevention." :
+        description: month === 4 ? "Spring gutter cleaning after winter, remove debris and check for damage from ice and snow." :
+                    month === 11 ? "Final gutter cleaning before winter, check for ice dam prevention." :
                     "Clean gutters and downspouts, check for proper drainage before heavy winter weather.",
         month: month,
         climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "mountain-west"],
