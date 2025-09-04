@@ -259,6 +259,23 @@ export default function Maintenance() {
       });
     }
 
+    // OCTOBER-SPECIFIC AC UNIT PREPARATION TASK
+    if (month === 10) {
+      climateTasks.push({
+        id: "october-cover-ac-units",
+        title: "Cover AC Units",
+        description: "Cover outdoor AC units with weatherproof covers to protect from winter weather, debris, and ice damage. Ensure covers allow for proper ventilation.",
+        month: month,
+        climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
+        priority: "medium",
+        estimatedTime: "30 minutes",
+        difficulty: "easy",
+        category: "HVAC",
+        tools: ["AC covers", "Bungee cords or tie-downs"],
+        cost: "$25-50"
+      });
+    }
+
     if (isWinter) {
       climateTasks.push(
         // Mild Climate Winter Tasks
