@@ -242,6 +242,23 @@ export default function Maintenance() {
       });
     }
 
+    // MAY-SPECIFIC LANDSCAPING TASK
+    if (month === 5) {
+      climateTasks.push({
+        id: "may-trim-bushes",
+        title: "Trim Bushes Back from Home and AC Units",
+        description: "Trim bushes and vegetation at least 3 feet away from home foundation and AC units for proper airflow, pest prevention, and maintenance access.",
+        month: month,
+        climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
+        priority: "medium",
+        estimatedTime: "2-3 hours",
+        difficulty: "moderate",
+        category: "Landscaping",
+        tools: ["Pruning shears", "Loppers", "Garden gloves", "Rake"],
+        cost: "$0-20"
+      });
+    }
+
     if (isWinter) {
       climateTasks.push(
         // Mild Climate Winter Tasks
