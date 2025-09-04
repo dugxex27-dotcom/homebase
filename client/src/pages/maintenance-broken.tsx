@@ -204,7 +204,29 @@ export default function Maintenance() {
           category: "Insulation",
           tools: ["Caulk gun", "Weather stripping", "Flashlight"],
           cost: "$25-60"
-        },
+        }
+      );
+    }
+    
+    // FEBRUARY-SPECIFIC GROUT AND CAULKING TASK
+    if (month === 2) {
+      climateTasks.push({
+        id: "february-grout-caulking",
+        title: "Inspect Grout and Caulking",
+        description: "Inspect bathroom and kitchen grout and caulking for cracks, mold, or deterioration. Re-caulk as needed to prevent moisture damage.",
+        month: month,
+        climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
+        priority: "medium",
+        estimatedTime: "1-2 hours",
+        difficulty: "moderate",
+        category: "Maintenance",
+        tools: ["Caulk gun", "Caulk", "Scraper tool", "Cleaning supplies"],
+        cost: "$15-30"
+      });
+    }
+
+    if (isWinter) {
+      climateTasks.push(
         // Mild Climate Winter Tasks
         {
           id: "winter-mild-maintenance",
