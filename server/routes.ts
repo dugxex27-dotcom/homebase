@@ -59,9 +59,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Push notification routes
   app.use('/api/push', pushRoutes);
 
-  // Push notification routes
-  app.use('/api/push', pushRoutes);
-
   // Simple contractor demo login (no OAuth)
   app.post('/api/auth/contractor-demo-login', async (req, res) => {
     try {
