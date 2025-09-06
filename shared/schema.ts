@@ -251,7 +251,8 @@ export const proposals = pgTable("proposals", {
   warrantyPeriod: text("warranty_period"), // e.g., "1 year", "6 months"
   validUntil: text("valid_until").notNull(), // expiration date for proposal
   status: text("status").notNull().default("draft"), // "draft", "sent", "accepted", "rejected", "expired"
-  notes: text("notes"), // internal notes for contractor
+  customerNotes: text("customer_notes"), // notes visible to customer about the job
+  internalNotes: text("internal_notes"), // internal notes only contractor can see
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

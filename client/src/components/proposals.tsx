@@ -46,7 +46,8 @@ export function Proposals({ contractorId }: ProposalsProps) {
       warrantyPeriod: "",
       validUntil: "",
       status: "draft",
-      notes: "",
+      customerNotes: "",
+      internalNotes: "",
     },
   });
 
@@ -151,7 +152,8 @@ export function Proposals({ contractorId }: ProposalsProps) {
       warrantyPeriod: proposal.warrantyPeriod || "",
       validUntil: proposal.validUntil,
       status: proposal.status,
-      notes: proposal.notes || "",
+      customerNotes: proposal.customerNotes || "",
+      internalNotes: proposal.internalNotes || "",
     });
     setIsDialogOpen(true);
   };
@@ -426,16 +428,35 @@ export function Proposals({ contractorId }: ProposalsProps) {
 
                   <FormField
                     control={form.control}
-                    name="notes"
+                    name="customerNotes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Customer Notes</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Notes visible to the customer about this job"
+                            {...field}
+                            value={field.value || ""}
+                            data-testid="textarea-customer-notes"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="internalNotes"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Internal Notes</FormLabel>
                         <FormControl>
                           <Textarea
-                            placeholder="Private notes for internal use"
+                            placeholder="Private notes for internal use only"
                             {...field}
                             value={field.value || ""}
-                            data-testid="textarea-proposal-notes"
+                            data-testid="textarea-internal-notes"
                           />
                         </FormControl>
                         <FormMessage />
@@ -494,6 +515,29 @@ export function Proposals({ contractorId }: ProposalsProps) {
                     <p className="text-sm text-muted-foreground mb-3" data-testid={`proposal-description-${proposal.id}`}>
                       {proposal.description}
                     </p>
+                    
+                    {/* Display notes */}
+                    {(proposal.customerNotes || proposal.internalNotes) && (
+                      <div className="mb-3 space-y-2">
+                        {proposal.customerNotes && (
+                          <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-lg">
+                            <h4 className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">Customer Notes</h4>
+                            <p className="text-sm text-blue-700 dark:text-blue-300" data-testid={`customer-notes-${proposal.id}`}>
+                              {proposal.customerNotes}
+                            </p>
+                          </div>
+                        )}
+                        {proposal.internalNotes && (
+                          <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                            <h4 className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Internal Notes</h4>
+                            <p className="text-sm text-gray-700 dark:text-gray-300" data-testid={`internal-notes-${proposal.id}`}>
+                              {proposal.internalNotes}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                       <div className="flex items-center gap-2">
                         <DollarSign className="h-4 w-4 text-red-800" />
