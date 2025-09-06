@@ -346,7 +346,9 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="text-center">
               <div className="mb-6 flex justify-center">
-                <Logo className={`w-1/4 h-auto`} style={typedUser?.role === 'homeowner' ? { color: '#7c5cd6' } : { color: '#ef4444' }} />
+                <div className={`w-1/4 h-auto ${typedUser?.role === 'homeowner' ? 'text-purple-400' : 'text-red-400'}`}>
+                  <Logo className="w-full h-auto" />
+                </div>
               </div>
               <p className="text-gray-400 mb-6 leading-relaxed">
                 Your trusted partner for connecting with skilled contractors, discovering quality DIY products, and maintaining your home with confidence.
