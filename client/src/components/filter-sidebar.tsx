@@ -26,6 +26,7 @@ export default function FilterSidebar({ onFiltersChange }: FilterSidebarProps) {
     "Christmas Light Hanging",
     "Concrete Work",
     "Deck Building",
+    "Drainage",
     "Drywall / Spackling",
     "Dumpster Rental",
     "Electrical",
@@ -42,8 +43,10 @@ export default function FilterSidebar({ onFiltersChange }: FilterSidebarProps) {
     "HVAC",
     "Junk Removal",
     "Kitchen Remodeling",
+    "Landscape Design",
     "Landscaping",
     "Masonry/Paver",
+    "Mold Remediation",
     "Painting- Exterior",
     "Painting- Interior",
     "Pest Control",
@@ -56,6 +59,7 @@ export default function FilterSidebar({ onFiltersChange }: FilterSidebarProps) {
     "Snow Removal",
     "Sprinklers/Irrigation",
     "Tile Work",
+    "Tree Trimming",
     "Windows & Doors"
   ];
 
