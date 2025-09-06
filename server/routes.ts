@@ -534,6 +534,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Object storage routes for proposal file uploads
+  app.post("/api/objects/upload", async (req, res) => {
+    const { ObjectStorageService } = await import("./objectStorage");
+    const objectStorageService = new ObjectStorageService();
+    try {
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      res.json({ uploadURL });
+    } catch (error) {
+      console.error("Error getting upload URL:", error);
+      res.status(500).json({ message: "Failed to get upload URL" });
+    }
+  });
+
+  app.get("/objects/:objectPath(*)", async (req, res) => {
+    const { ObjectStorageService, ObjectNotFoundError } = await import("./objectStorage");
+    const objectStorageService = new ObjectStorageService();
+    try {
+      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
+      objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error("Error accessing object:", error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.sendStatus(404);
+      }
+      return res.sendStatus(500);
+    }
+  });
+
+  app.put("/api/proposal-attachments", async (req, res) => {
+    if (!req.body.attachmentURL || !req.body.proposalId) {
+      return res.status(400).json({ error: "attachmentURL and proposalId are required" });
+    }
+
+    try {
+      const { ObjectStorageService } = await import("./objectStorage");
+      const objectStorageService = new ObjectStorageService();
+      
+      const objectPath = objectStorageService.normalizeObjectEntityPath(req.body.attachmentURL);
+      
+      // Get the existing proposal to update its attachments
+      const proposal = await storage.getProposal(req.body.proposalId);
+      if (!proposal) {
+        return res.status(404).json({ error: "Proposal not found" });
+      }
+
+      // Add the new attachment to the existing attachments
+      const updatedAttachments = [...(proposal.attachments || []), objectPath];
+      
+      // Update the proposal with the new attachment
+      const updatedProposal = await storage.updateProposal(req.body.proposalId, {
+        attachments: updatedAttachments
+      });
+
+      res.status(200).json({
+        objectPath: objectPath,
+        proposal: updatedProposal
+      });
+    } catch (error) {
+      console.error("Error setting proposal attachment:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Contractor Appointment routes
   app.get("/api/appointments", async (req, res) => {
     try {

@@ -14,7 +14,8 @@ import { z } from "zod";
 import { insertProposalSchema, type Proposal } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, FileText, Calendar, DollarSign, Clock, Edit, Trash2 } from "lucide-react";
+import { Plus, FileText, Calendar, DollarSign, Clock, Edit, Trash2, Paperclip, Download, X } from "lucide-react";
+import { ObjectUploader } from "@/components/ObjectUploader";
 
 const proposalFormSchema = insertProposalSchema.extend({
   materials: z.string(),
@@ -31,6 +32,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProposal, setEditingProposal] = useState<Proposal | null>(null);
+  const [currentAttachments, setCurrentAttachments] = useState<string[]>([]);
 
   const form = useForm<ProposalFormData>({
     resolver: zodResolver(proposalFormSchema),
@@ -155,6 +157,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
       customerNotes: proposal.customerNotes || "",
       internalNotes: proposal.internalNotes || "",
     });
+    setCurrentAttachments(proposal.attachments || []);
     setIsDialogOpen(true);
   };
 
@@ -173,6 +176,50 @@ export function Proposals({ contractorId }: ProposalsProps) {
       case 'expired': return 'outline';
       default: return 'secondary';
     }
+  };
+
+  const handleGetUploadParameters = async () => {
+    const response = await apiRequest("/api/objects/upload", "POST");
+    return {
+      method: "PUT" as const,
+      url: response.uploadURL,
+    };
+  };
+
+  const handleUploadComplete = async (result: any) => {
+    if (result.successful && result.successful.length > 0 && editingProposal) {
+      const uploadURL = result.successful[0].uploadURL;
+      try {
+        const response = await apiRequest("/api/proposal-attachments", "PUT", {
+          attachmentURL: uploadURL,
+          proposalId: editingProposal.id,
+        });
+        
+        setCurrentAttachments(prev => [...prev, response.objectPath]);
+        queryClient.invalidateQueries({ queryKey: ["/api/proposals"] });
+        
+        toast({
+          title: "Success",
+          description: "File uploaded successfully",
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to attach file to proposal",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const removeAttachment = (attachmentPath: string) => {
+    setCurrentAttachments(prev => prev.filter(path => path !== attachmentPath));
+    // Note: In a real app, you might want to also remove from the database
+  };
+
+  const getFileName = (path: string) => {
+    const parts = path.split('/');
+    return parts[parts.length - 1];
   };
 
   if (isLoading) {
@@ -200,6 +247,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
             setIsDialogOpen(open);
             if (!open) {
               setEditingProposal(null);
+              setCurrentAttachments([]);
               form.reset();
             }
           }}>
@@ -464,6 +512,72 @@ export function Proposals({ contractorId }: ProposalsProps) {
                     )}
                   />
 
+                  {/* File Attachments Section */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-medium">Contract Documents</h3>
+                      {editingProposal && (
+                        <ObjectUploader
+                          maxNumberOfFiles={5}
+                          maxFileSize={10485760} // 10MB
+                          onGetUploadParameters={handleGetUploadParameters}
+                          onComplete={handleUploadComplete}
+                          buttonClassName="text-sm"
+                        >
+                          <Paperclip className="h-4 w-4 mr-2" />
+                          Add File
+                        </ObjectUploader>
+                      )}
+                    </div>
+                    
+                    {currentAttachments.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">Attached files:</p>
+                        <div className="grid gap-2">
+                          {currentAttachments.map((attachment, index) => (
+                            <div
+                              key={index}
+                              className="flex items-center justify-between bg-muted/50 p-2 rounded-lg"
+                            >
+                              <div className="flex items-center gap-2">
+                                <FileText className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-sm" data-testid={`attachment-${index}`}>
+                                  {getFileName(attachment)}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => window.open(attachment, '_blank')}
+                                  data-testid={`download-attachment-${index}`}
+                                >
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeAttachment(attachment)}
+                                  data-testid={`remove-attachment-${index}`}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {!editingProposal && (
+                      <p className="text-sm text-muted-foreground italic">
+                        Save the proposal first to add file attachments
+                      </p>
+                    )}
+                  </div>
+
                   <div className="flex justify-end space-x-2">
                     <Button
                       type="button"
@@ -535,6 +649,29 @@ export function Proposals({ contractorId }: ProposalsProps) {
                             </p>
                           </div>
                         )}
+                      </div>
+                    )}
+                    
+                    {/* Display attachments */}
+                    {proposal.attachments && proposal.attachments.length > 0 && (
+                      <div className="mb-3">
+                        <h4 className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">Attached Documents</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {proposal.attachments.map((attachment, index) => (
+                            <div key={index} className="flex items-center gap-1 bg-muted/50 px-2 py-1 rounded text-sm">
+                              <Paperclip className="h-3 w-3" />
+                              <a
+                                href={attachment}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="hover:underline"
+                                data-testid={`attachment-link-${proposal.id}-${index}`}
+                              >
+                                {getFileName(attachment)}
+                              </a>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
                     

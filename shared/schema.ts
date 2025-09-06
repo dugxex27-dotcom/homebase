@@ -253,6 +253,7 @@ export const proposals = pgTable("proposals", {
   status: text("status").notNull().default("draft"), // "draft", "sent", "accepted", "rejected", "expired"
   customerNotes: text("customer_notes"), // notes visible to customer about the job
   internalNotes: text("internal_notes"), // internal notes only contractor can see
+  attachments: text("attachments").array().notNull().default(sql`'{}'::text[]`), // file paths for proposal attachments
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

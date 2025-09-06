@@ -1576,6 +1576,7 @@ export class MemStorage implements IStorage {
       warrantyPeriod: proposalData.warrantyPeriod || null,
       customerNotes: proposalData.customerNotes || null,
       internalNotes: proposalData.internalNotes || null,
+      attachments: proposalData.attachments || [],
       homeownerId: proposalData.homeownerId || null,
       status: proposalData.status || 'draft',
       createdAt: new Date(),
