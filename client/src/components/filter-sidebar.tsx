@@ -60,6 +60,7 @@ export default function FilterSidebar({ onFiltersChange }: FilterSidebarProps) {
     "Sprinklers/Irrigation",
     "Tile Work",
     "Tree Trimming",
+    "Trim Carpentry",
     "Windows & Doors"
   ];
 
