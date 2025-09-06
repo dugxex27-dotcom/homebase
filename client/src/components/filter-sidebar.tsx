@@ -54,6 +54,7 @@ export default function FilterSidebar({ onFiltersChange }: FilterSidebarProps) {
     "Landscaping",
     "Masonry/Paver",
     "Mold Remediation",
+    "New Home Builder",
     "Painting- Exterior",
     "Painting- Interior",
     "Pest Control",
