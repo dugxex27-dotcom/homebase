@@ -422,10 +422,10 @@ export default function Messages() {
               </CardContent>
             </>
           ) : (
-            <CardContent className="flex items-center justify-center h-[500px]" style={{ backgroundColor: '#1560a2' }}>
-              <div className="text-center">
-                <MessageCircle className="mx-auto h-12 w-12 mb-4" style={{ color: '#afd6f9' }} />
-                <p style={{ color: 'white' }}>Select a conversation to start messaging</p>
+            <CardContent className="flex items-center justify-center h-[500px]">
+              <div className="text-center text-gray-500">
+                <MessageCircle className="mx-auto h-12 w-12 mb-4" />
+                <p>Select a conversation to start messaging</p>
               </div>
             </CardContent>
           )}
