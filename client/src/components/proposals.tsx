@@ -290,7 +290,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
             }
           }}>
             <DialogTrigger asChild>
-              <Button data-testid="button-create-proposal" className="bg-red-800 hover:bg-red-900 text-white">
+              <Button data-testid="button-create-proposal" style={{ backgroundColor: '#1560a2', color: 'white' }} className="hover:opacity-90">
                 <Plus className="h-4 w-4 mr-2" />
                 Create Proposal
               </Button>
@@ -563,7 +563,8 @@ export function Proposals({ contractorId }: ProposalsProps) {
                       type="submit"
                       disabled={createMutation.isPending || updateMutation.isPending}
                       data-testid="button-submit-proposal"
-                      className="bg-red-800 hover:bg-red-900 text-white"
+                      style={{ backgroundColor: '#1560a2', color: 'white' }}
+                      className="hover:opacity-90"
                     >
                       {editingProposal ? "Update" : "Create"} Proposal
                     </Button>

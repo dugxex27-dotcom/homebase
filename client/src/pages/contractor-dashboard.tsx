@@ -94,7 +94,7 @@ export default function ContractorDashboard() {
                 </div>
                 <div className="flex items-center space-x-2">
                   <Badge variant="outline">Scheduled</Badge>
-                  <Button size="sm">View Details</Button>
+                  <Button size="sm" style={{ backgroundColor: '#1560a2', color: 'white' }}>View Details</Button>
                 </div>
               </div>
               
@@ -106,7 +106,7 @@ export default function ContractorDashboard() {
                 </div>
                 <div className="flex items-center space-x-2">
                   <Badge variant="outline">Confirmed</Badge>
-                  <Button size="sm">View Details</Button>
+                  <Button size="sm" style={{ backgroundColor: '#1560a2', color: 'white' }}>View Details</Button>
                 </div>
               </div>
             </div>
