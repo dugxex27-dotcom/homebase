@@ -314,6 +314,7 @@ export default function ServiceRecords() {
                           onChange={(e) => handleInputChange('customerName', e.target.value)}
                           placeholder="John Smith"
                           required
+                          style={{ backgroundColor: '#ffffff' }}
                         />
                       </div>
                       <div>
@@ -324,6 +325,7 @@ export default function ServiceRecords() {
                           value={formData.customerPhone}
                           onChange={(e) => handleInputChange('customerPhone', e.target.value)}
                           placeholder="(555) 123-4567"
+                          style={{ backgroundColor: '#ffffff' }}
                         />
                       </div>
                     </div>
@@ -337,6 +339,7 @@ export default function ServiceRecords() {
                           value={formData.customerEmail}
                           onChange={(e) => handleInputChange('customerEmail', e.target.value)}
                           placeholder="john@example.com"
+                          style={{ backgroundColor: '#ffffff' }}
                         />
                       </div>
                       <div>
@@ -347,6 +350,7 @@ export default function ServiceRecords() {
                           onChange={(e) => handleInputChange('customerAddress', e.target.value)}
                           placeholder="123 Main Street, City, State"
                           required
+                          style={{ backgroundColor: '#ffffff' }}
                         />
                       </div>
                     </div>
@@ -400,6 +404,7 @@ export default function ServiceRecords() {
                         placeholder="Detailed description of the service performed..."
                         rows={3}
                         required
+                        style={{ backgroundColor: '#ffffff' }}
                       />
                     </div>
 
@@ -412,6 +417,7 @@ export default function ServiceRecords() {
                           value={formData.serviceDate}
                           onChange={(e) => handleInputChange('serviceDate', e.target.value)}
                           required
+                          style={{ backgroundColor: '#ffffff' }}
                         />
                       </div>
                       <div>
@@ -421,6 +427,7 @@ export default function ServiceRecords() {
                           value={formData.duration}
                           onChange={(e) => handleInputChange('duration', e.target.value)}
                           placeholder="2 hours"
+                          style={{ backgroundColor: '#ffffff' }}
                         />
                       </div>
                       <div>
@@ -436,6 +443,7 @@ export default function ServiceRecords() {
                             placeholder="0.00"
                             step="0.01"
                             min="0"
+                            style={{ backgroundColor: '#ffffff' }}
                           />
                         </div>
                       </div>
@@ -450,6 +458,7 @@ export default function ServiceRecords() {
                           onChange={(e) => setMaterialInput(e.target.value)}
                           placeholder="Add material..."
                           onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addMaterial())}
+                          style={{ backgroundColor: '#ffffff' }}
                         />
                         <Button type="button" onClick={addMaterial} size="sm" style={{ backgroundColor: '#1560a2', color: 'white' }} className="hover:opacity-90">
                           <Plus className="w-4 h-4" />
@@ -502,6 +511,7 @@ export default function ServiceRecords() {
                         onChange={(e) => handleInputChange('notes', e.target.value)}
                         placeholder="Any additional notes or observations..."
                         rows={3}
+                        style={{ backgroundColor: '#ffffff' }}
                       />
                     </div>
                   </CardContent>
