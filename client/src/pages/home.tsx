@@ -50,10 +50,10 @@ export default function Home() {
               </div>
 
               {/* Contractor Dashboard Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                <Link href="/contractor-profile">
-                  <Card className="border-gray-300 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group" style={{ background: '#1560a2' }}>
-                    <CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 items-stretch">
+                <Link href="/contractor-profile" className="h-full">
+                  <Card className="border-gray-300 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group h-full flex flex-col" style={{ background: '#1560a2' }}>
+                    <CardContent className="p-6 flex-1 flex flex-col">
                       <div className="flex items-center mb-4">
                         <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center group-hover:bg-white/30 transition-colors">
                           <Users className="h-6 w-6 text-white" />
@@ -70,9 +70,9 @@ export default function Home() {
                   </Card>
                 </Link>
 
-                <Link href="/messages">
-                  <Card className="border-gray-300 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group" style={{ background: '#1560a2' }}>
-                    <CardContent className="p-6">
+                <Link href="/messages" className="h-full">
+                  <Card className="border-gray-300 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group h-full flex flex-col" style={{ background: '#1560a2' }}>
+                    <CardContent className="p-6 flex-1 flex flex-col">
                       <div className="flex items-center mb-4">
                         <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center group-hover:bg-white/30 transition-colors">
                           <Bell className="h-6 w-6 text-white" />
@@ -89,9 +89,9 @@ export default function Home() {
                   </Card>
                 </Link>
 
-                <Link href="/contractor-dashboard">
-                  <Card className="border-gray-300 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group" style={{ background: '#1560a2' }}>
-                    <CardContent className="p-6">
+                <Link href="/contractor-dashboard" className="h-full">
+                  <Card className="border-gray-300 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group h-full flex flex-col" style={{ background: '#1560a2' }}>
+                    <CardContent className="p-6 flex-1 flex flex-col">
                       <div className="flex items-center mb-4">
                         <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center group-hover:bg-white/30 transition-colors">
                           <Calendar className="h-6 w-6 text-white" />
@@ -108,9 +108,9 @@ export default function Home() {
                   </Card>
                 </Link>
 
-                <Link href="/contractor-dashboard">
-                  <Card className="border-gray-300 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group" style={{ background: '#1560a2' }}>
-                    <CardContent className="p-6">
+                <Link href="/contractor-dashboard" className="h-full">
+                  <Card className="border-gray-300 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group h-full flex flex-col" style={{ background: '#1560a2' }}>
+                    <CardContent className="p-6 flex-1 flex flex-col">
                       <div className="flex items-center mb-4">
                         <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center group-hover:bg-white/30 transition-colors">
                           <Star className="h-6 w-6 text-white" />
@@ -127,9 +127,9 @@ export default function Home() {
                   </Card>
                 </Link>
 
-                <Link href="/contractor-dashboard">
-                  <Card className="border-gray-300 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group" style={{ background: '#1560a2' }}>
-                    <CardContent className="p-6">
+                <Link href="/contractor-dashboard" className="h-full">
+                  <Card className="border-gray-300 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group h-full flex flex-col" style={{ background: '#1560a2' }}>
+                    <CardContent className="p-6 flex-1 flex flex-col">
                       <div className="flex items-center mb-4">
                         <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center group-hover:bg-white/30 transition-colors">
                           <Search className="h-6 w-6 text-white" />
