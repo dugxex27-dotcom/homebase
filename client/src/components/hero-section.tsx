@@ -9,7 +9,7 @@ export default function HeroSection() {
   const typedUser = user as User | undefined;
 
   return (
-    <section style={typedUser?.role === 'homeowner' ? { background: '#230d4c', paddingTop: '20px', paddingBottom: '2px' } : { background: '#1560a2', paddingTop: '20px', paddingBottom: '2px' }}>
+    <section style={typedUser?.role === 'homeowner' ? { background: '#2c0f5b', paddingTop: '20px', paddingBottom: '2px' } : { background: '#1560a2', paddingTop: '20px', paddingBottom: '2px' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <Logo className={`h-32 w-full mx-auto block mb-8`} />
