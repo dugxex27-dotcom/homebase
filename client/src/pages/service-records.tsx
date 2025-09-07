@@ -290,7 +290,7 @@ export default function ServiceRecords() {
               </DialogTrigger>
               <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>
+                <DialogTitle style={{ color: '#1560a2' }}>
                   {editingRecord ? 'Edit Service Record' : 'Add New Service Record'}
                 </DialogTitle>
               </DialogHeader>
@@ -299,8 +299,8 @@ export default function ServiceRecords() {
                 {/* Customer Information */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <User className="w-5 h-5" />
+                    <CardTitle className="flex items-center gap-2" style={{ color: '#1560a2' }}>
+                      <User className="w-5 h-5" style={{ color: '#1560a2' }} />
                       Customer Information
                     </CardTitle>
                   </CardHeader>
@@ -356,8 +356,8 @@ export default function ServiceRecords() {
                 {/* Service Details */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <FileText className="w-5 h-5" />
+                    <CardTitle className="flex items-center gap-2" style={{ color: '#1560a2' }}>
+                      <FileText className="w-5 h-5" style={{ color: '#1560a2' }} />
                       Service Details
                     </CardTitle>
                   </CardHeader>
@@ -366,7 +366,7 @@ export default function ServiceRecords() {
                       <div>
                         <Label htmlFor="serviceType">Service Type *</Label>
                         <Select value={formData.serviceType} onValueChange={(value) => handleInputChange('serviceType', value)}>
-                          <SelectTrigger>
+                          <SelectTrigger style={{ backgroundColor: '#1560a2', color: 'white' }}>
                             <SelectValue placeholder="Select service type" />
                           </SelectTrigger>
                           <SelectContent>
@@ -379,7 +379,7 @@ export default function ServiceRecords() {
                       <div>
                         <Label htmlFor="status">Status *</Label>
                         <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value as any)}>
-                          <SelectTrigger>
+                          <SelectTrigger style={{ backgroundColor: '#1560a2', color: 'white' }}>
                             <SelectValue placeholder="Select status" />
                           </SelectTrigger>
                           <SelectContent>
@@ -443,7 +443,7 @@ export default function ServiceRecords() {
 
                     {/* Materials Used */}
                     <div>
-                      <Label>Materials Used</Label>
+                      <Label style={{ color: '#1560a2' }}>Materials Used</Label>
                       <div className="flex gap-2 mt-2">
                         <Input
                           value={materialInput}
