@@ -242,13 +242,13 @@ export default function Home() {
 
 
       {/* Additional Features Section */}
-      <section className={`py-16 ${typedUser?.role === 'homeowner' ? '' : 'bg-gray-50 dark:bg-gray-900'}`} style={typedUser?.role === 'homeowner' ? { background: '#1560a2' } : {}}>
+      <section className="py-16" style={{ background: '#1560a2' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold mb-4" style={typedUser?.role === 'homeowner' ? { color: '#ffffff' } : { color: 'rgb(17 24 39)' }}>
+            <h2 className="text-4xl font-bold mb-4" style={{ color: '#ffffff' }}>
               Why Choose Home Base?
             </h2>
-            <p className="text-xl max-w-3xl mx-auto" style={{ color: '#b6a6f4' }}>
+            <p className="text-xl max-w-3xl mx-auto" style={{ color: '#ffffff' }}>
               {typedUser?.role === 'homeowner' 
                 ? 'We\'ve designed every feature to make home management simple, reliable, and efficient'
                 : 'The platform contractors trust to grow their business and connect with quality clients'
