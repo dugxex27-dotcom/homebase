@@ -524,6 +524,7 @@ export default function ServiceRecords() {
                     type="button" 
                     variant="outline" 
                     onClick={() => setIsDialogOpen(false)}
+                    style={{ backgroundColor: '#3798ef', color: 'white' }}
                   >
                     Cancel
                   </Button>
