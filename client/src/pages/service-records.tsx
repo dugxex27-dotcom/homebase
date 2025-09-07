@@ -542,6 +542,7 @@ export default function ServiceRecords() {
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
+                    style={{ backgroundColor: '#ffffff' }}
                   />
                 </div>
               </div>
