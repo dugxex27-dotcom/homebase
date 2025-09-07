@@ -37,7 +37,7 @@ export default function ContractorDashboard() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Appointments</CardTitle>
-              <Calendar className="h-4 w-4 text-red-800" />
+              <Calendar className="h-4 w-4" style={{ color: '#1560a2' }} />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">12</div>
@@ -48,7 +48,7 @@ export default function ContractorDashboard() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Active Clients</CardTitle>
-              <Users className="h-4 w-4 text-red-800" />
+              <Users className="h-4 w-4" style={{ color: '#1560a2' }} />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">8</div>
@@ -59,7 +59,7 @@ export default function ContractorDashboard() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Average Rating</CardTitle>
-              <Star className="h-4 w-4 text-red-800" />
+              <Star className="h-4 w-4" style={{ color: '#1560a2' }} />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">4.9</div>
@@ -70,7 +70,7 @@ export default function ContractorDashboard() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Monthly Revenue</CardTitle>
-              <TrendingUp className="h-4 w-4 text-red-800" />
+              <TrendingUp className="h-4 w-4" style={{ color: '#1560a2' }} />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">$8,200</div>
