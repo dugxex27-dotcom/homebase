@@ -759,7 +759,7 @@ export default function ContractorProfile() {
             <div>
               <Label htmlFor="yearsExperience">Years of Experience</Label>
               <Select value={formData.yearsExperience} onValueChange={(value) => handleInputChange('yearsExperience', value)}>
-                <SelectTrigger style={{ backgroundColor: '#1560a2', color: 'white' }} className="hover:bg-[#afd6f9] hover:text-black transition-colors">
+                <SelectTrigger style={{ backgroundColor: '#ffffff', color: 'black' }} className="hover:bg-[#afd6f9] hover:text-black transition-colors">
                   <SelectValue placeholder="Select years of experience" />
                 </SelectTrigger>
                 <SelectContent>
