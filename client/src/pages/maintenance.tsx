@@ -1396,7 +1396,7 @@ export default function Maintenance() {
                         const selectedHouse = houses.find((h: House) => h.id === selectedHouseId);
                         if (selectedHouse) handleDeleteHouse(selectedHouse);
                       }}
-                      className="whitespace-nowrap text-destructive hover:text-destructive"
+                      className="whitespace-nowrap" style={{ backgroundColor: '#dc2626', color: 'white', borderColor: '#dc2626' }}
                     >
                       <Trash2 className="w-4 h-4 mr-1" />
                       Delete
@@ -2413,6 +2413,7 @@ export default function Maintenance() {
                         }
                       }}
                       disabled={deleteHomeSystemMutation.isPending}
+                      style={{ color: 'white' }}
                     >
                       {deleteHomeSystemMutation.isPending ? "Deleting..." : "Delete"}
                     </Button>
