@@ -78,7 +78,7 @@ export default function DemoContractorSignIn() {
             <Button 
               onClick={handleDemoSignIn}
               disabled={isLoading}
-              className="w-full text-white h-12 text-lg font-medium" style={{ background: '#3798ef' }}
+              className="w-full text-white h-12 text-lg font-medium" style={{ background: '#1560a2' }}
             >
               {isLoading ? (
                 <div className="flex items-center gap-2">
