@@ -265,7 +265,7 @@ export default function Home() {
                     <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#b6a6f4' }}>
                       <Shield className="h-8 w-8 text-white" />
                     </div>
-                    <h3 className="text-xl font-bold mb-3" style={{ color: '#1560a2' }}>Verified Professionals</h3>
+                    <h3 className="text-xl font-bold mb-3" style={{ color: '#2c0f5b' }}>Verified Professionals</h3>
                     <p className="text-gray-600 dark:text-gray-300">
                       All contractors are thoroughly vetted with background checks, license verification, and customer reviews
                     </p>
@@ -277,7 +277,7 @@ export default function Home() {
                     <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#b6a6f4' }}>
                       <Package className="h-8 w-8 text-white" />
                     </div>
-                    <h3 className="text-xl font-bold mb-3" style={{ color: '#1560a2' }}>Quality Products</h3>
+                    <h3 className="text-xl font-bold mb-3" style={{ color: '#2c0f5b' }}>Quality Products</h3>
                     <p className="text-gray-600 dark:text-gray-300">
                       Browse professional-grade tools and materials for your home improvement projects
                     </p>
@@ -289,7 +289,7 @@ export default function Home() {
                     <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#b6a6f4' }}>
                       <TrendingUp className="h-8 w-8 text-white" />
                     </div>
-                    <h3 className="text-xl font-bold mb-3" style={{ color: '#1560a2' }}>Cost Savings</h3>
+                    <h3 className="text-xl font-bold mb-3" style={{ color: '#2c0f5b' }}>Cost Savings</h3>
                     <p className="text-gray-600 dark:text-gray-300">
                       Preventive maintenance and competitive contractor pricing help you save thousands on home repairs
                     </p>
