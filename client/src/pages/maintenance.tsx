@@ -1317,7 +1317,7 @@ export default function Maintenance() {
       <Header />
       
       {/* Hero Section */}
-      <section className="py-16" style={{ background: 'linear-gradient(135deg, #c4afef40, #a085e340)' }}>
+      <section className="py-16" style={{ background: '#2c0f5b' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h1 className="text-4xl lg:text-5xl font-bold mb-6" style={{ color: '#ffffff' }}>
