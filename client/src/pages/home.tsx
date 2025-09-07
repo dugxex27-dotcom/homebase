@@ -166,8 +166,8 @@ export default function Home() {
             <div className="max-w-5xl mx-auto">
               <Card className="bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-700 shadow-xl">
                 <CardHeader className="text-center pb-8">
-                  <div className="flex items-center justify-center w-20 h-20 rounded-2xl mx-auto mb-6" style={{ background: 'linear-gradient(135deg, #7c5cd6, #5633c1)' }}>
-                    <Users className="h-10 w-10" style={{ color: '#b6a6f4' }} />
+                  <div className="flex items-center justify-center w-20 h-20 rounded-2xl mx-auto mb-6" style={{ backgroundColor: '#b6a6f4' }}>
+                    <Users className="h-10 w-10 text-white" />
                   </div>
                   <CardTitle className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
                     Find Trusted Contractors
@@ -262,8 +262,8 @@ export default function Home() {
               <>
                 <Card className="bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-600">
                   <CardContent className="p-8 text-center">
-                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ background: 'linear-gradient(135deg, #a085e3, #7c5cd6)' }}>
-                      <Shield className="h-8 w-8" style={{ color: '#b6a6f4' }} />
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#b6a6f4' }}>
+                      <Shield className="h-8 w-8 text-white" />
                     </div>
                     <h3 className="text-xl font-bold mb-3" style={{ color: '#1560a2' }}>Verified Professionals</h3>
                     <p className="text-gray-600 dark:text-gray-300">
@@ -274,8 +274,8 @@ export default function Home() {
 
                 <Card className="bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-600">
                   <CardContent className="p-8 text-center">
-                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ background: 'linear-gradient(135deg, #a085e3, #7c5cd6)' }}>
-                      <Package className="h-8 w-8" style={{ color: '#b6a6f4' }} />
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#b6a6f4' }}>
+                      <Package className="h-8 w-8 text-white" />
                     </div>
                     <h3 className="text-xl font-bold mb-3" style={{ color: '#1560a2' }}>Quality Products</h3>
                     <p className="text-gray-600 dark:text-gray-300">
@@ -286,8 +286,8 @@ export default function Home() {
 
                 <Card className="bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-600">
                   <CardContent className="p-8 text-center">
-                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ background: 'linear-gradient(135deg, #a085e3, #7c5cd6)' }}>
-                      <TrendingUp className="h-8 w-8" style={{ color: '#b6a6f4' }} />
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#b6a6f4' }}>
+                      <TrendingUp className="h-8 w-8 text-white" />
                     </div>
                     <h3 className="text-xl font-bold mb-3" style={{ color: '#1560a2' }}>Cost Savings</h3>
                     <p className="text-gray-600 dark:text-gray-300">
@@ -301,8 +301,8 @@ export default function Home() {
               <>
                 <Card className="border-gray-300 dark:border-gray-600" style={{ backgroundColor: '#f2f2f2' }}>
                   <CardContent className="p-8 text-center">
-                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#2c0f5b' }}>
-                      <Users className="h-8 w-8" style={{ color: '#b6a6f4' }} />
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#b6a6f4' }}>
+                      <Users className="h-8 w-8 text-white" />
                     </div>
                     <h3 className="text-xl font-bold mb-3" style={{ color: '#1560a2' }}>Quality Leads</h3>
                     <p className="text-gray-600 dark:text-gray-300">
@@ -313,8 +313,8 @@ export default function Home() {
 
                 <Card className="border-gray-300 dark:border-gray-600" style={{ backgroundColor: '#f2f2f2' }}>
                   <CardContent className="p-8 text-center">
-                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#2c0f5b' }}>
-                      <TrendingUp className="h-8 w-8" style={{ color: '#b6a6f4' }} />
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#b6a6f4' }}>
+                      <TrendingUp className="h-8 w-8 text-white" />
                     </div>
                     <h3 className="text-xl font-bold mb-3" style={{ color: '#1560a2' }}>Grow Your Business</h3>
                     <p className="text-gray-600 dark:text-gray-300">
@@ -325,8 +325,8 @@ export default function Home() {
 
                 <Card className="border-gray-300 dark:border-gray-600" style={{ backgroundColor: '#f2f2f2' }}>
                   <CardContent className="p-8 text-center">
-                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#2c0f5b' }}>
-                      <Star className="h-8 w-8" style={{ color: '#b6a6f4' }} />
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#b6a6f4' }}>
+                      <Star className="h-8 w-8 text-white" />
                     </div>
                     <h3 className="text-xl font-bold mb-3" style={{ color: '#1560a2' }}>Build Reputation</h3>
                     <p className="text-gray-600 dark:text-gray-300">

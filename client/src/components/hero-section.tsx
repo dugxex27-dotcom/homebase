@@ -39,8 +39,8 @@ export default function HeroSection() {
               <>
                 <Link href="/maintenance">
                   <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group border border-gray-300 dark:border-gray-700">
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-colors" style={{ background: 'linear-gradient(135deg, #a085e3, #7c5cd6)' }}>
-                      <Calendar className="h-6 w-6" style={{ color: '#b6a6f4' }} />
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-colors" style={{ backgroundColor: '#b6a6f4' }}>
+                      <Calendar className="h-6 w-6 text-white" />
                     </div>
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Home Maintenance</h3>
                     <p className="text-gray-600 dark:text-gray-300 text-sm">
@@ -51,8 +51,8 @@ export default function HeroSection() {
 
                 <Link href="/contractors">
                   <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group border border-gray-300 dark:border-gray-700">
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-colors" style={{ background: 'linear-gradient(135deg, #a085e3, #7c5cd6)' }}>
-                      <Search className="h-6 w-6" style={{ color: '#b6a6f4' }} />
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-colors" style={{ backgroundColor: '#b6a6f4' }}>
+                      <Search className="h-6 w-6 text-white" />
                     </div>
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Find Contractors</h3>
                     <p className="text-gray-600 dark:text-gray-300 text-sm">
@@ -63,8 +63,8 @@ export default function HeroSection() {
 
                 <Link href="/products">
                   <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group border border-gray-300 dark:border-gray-700">
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-colors" style={{ background: 'linear-gradient(135deg, #a085e3, #7c5cd6)' }}>
-                      <Wrench className="h-6 w-6" style={{ color: '#b6a6f4' }} />
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-colors" style={{ backgroundColor: '#b6a6f4' }}>
+                      <Wrench className="h-6 w-6 text-white" />
                     </div>
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">DIY Products</h3>
                     <p className="text-gray-600 dark:text-gray-300 text-sm">
