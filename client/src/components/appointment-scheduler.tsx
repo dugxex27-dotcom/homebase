@@ -155,7 +155,7 @@ export function AppointmentScheduler({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant={triggerButtonVariant} className={triggerButtonVariant === "outline" ? "border-purple-300 dark:border-purple-600 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20" : ""}>
+        <Button variant={triggerButtonVariant} className={triggerButtonVariant === "outline" ? "border-purple-300 dark:border-purple-600 text-white hover:bg-purple-50 dark:hover:bg-purple-900/20" : ""} style={triggerButtonVariant === "outline" ? { backgroundColor: '#2c0f5b', borderColor: '#2c0f5b' } : {}}>
           <Plus className="w-4 h-4 mr-2" />
           {triggerButtonText}
         </Button>
