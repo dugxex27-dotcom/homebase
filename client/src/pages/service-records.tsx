@@ -484,21 +484,23 @@ export default function ServiceRecords() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="warrantyPeriod">Warranty Period</Label>
+                        <Label htmlFor="warrantyPeriod" style={{ color: 'white' }}>Warranty Period</Label>
                         <Input
                           id="warrantyPeriod"
                           value={formData.warrantyPeriod}
                           onChange={(e) => handleInputChange('warrantyPeriod', e.target.value)}
                           placeholder="1 year"
+                          style={{ backgroundColor: '#ffffff' }}
                         />
                       </div>
                       <div>
-                        <Label htmlFor="followUpDate">Follow-up Date</Label>
+                        <Label htmlFor="followUpDate" style={{ color: 'white' }}>Follow-up Date</Label>
                         <Input
                           id="followUpDate"
                           type="date"
                           value={formData.followUpDate}
                           onChange={(e) => handleInputChange('followUpDate', e.target.value)}
+                          style={{ backgroundColor: '#ffffff' }}
                         />
                       </div>
                     </div>
