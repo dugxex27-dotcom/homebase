@@ -52,7 +52,7 @@ export default function DemoContractorSignIn() {
         <Card className="border-0 shadow-2xl bg-white/90 backdrop-blur-sm">
           <CardHeader className="text-center pb-6">
             <CardTitle className="text-2xl text-gray-900 flex items-center justify-center gap-2">
-              <Wrench className="w-6 h-6 text-amber-600" />
+              <Wrench className="w-6 h-6" style={{ color: '#1560a2' }} />
               Quick Demo Access
             </CardTitle>
             <p className="text-gray-600 text-sm">
@@ -87,7 +87,7 @@ export default function DemoContractorSignIn() {
                 </div>
               ) : (
                 <>
-                  <Wrench className="w-5 h-5 mr-2" />
+                  <Wrench className="w-5 h-5 mr-2" style={{ color: '#1560a2' }} />
                   Access Contractor Dashboard
                 </>
               )}
