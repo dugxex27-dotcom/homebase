@@ -196,7 +196,7 @@ export class MemStorage implements IStorage {
       {
         id: "maint-log-1",
         homeownerId: "demo-homeowner-123",
-        serviceDate: "2024-08-15",
+        serviceDate: "2024-08-14",
         serviceType: "HVAC Maintenance",
         homeArea: "HVAC",
         serviceDescription: "Annual HVAC system maintenance including filter replacement, duct cleaning, and system inspection",
@@ -207,12 +207,12 @@ export class MemStorage implements IStorage {
         notes: "System running efficiently. Recommended next service in 6 months.",
         warrantyPeriod: "90 days",
         nextServiceDue: "2025-02-15",
-        createdAt: new Date("2024-08-15")
+        createdAt: new Date("2024-08-14")
       },
       {
         id: "maint-log-2",
         homeownerId: "demo-homeowner-123",
-        serviceDate: "2024-06-20",
+        serviceDate: "2024-06-19",
         serviceType: "Gutter Cleaning",
         homeArea: "Exterior",
         serviceDescription: "Professional gutter cleaning and minor gutter repair",
@@ -222,8 +222,8 @@ export class MemStorage implements IStorage {
         contractorId: "contractor-2",
         notes: "Removed leaves and debris. Fixed small leak in downspout.",
         warrantyPeriod: "30 days",
-        nextServiceDue: "2024-12-20",
-        createdAt: new Date("2024-06-20")
+        nextServiceDue: "2024-12-19",
+        createdAt: new Date("2024-06-19")
       },
       {
         id: "maint-log-3",
