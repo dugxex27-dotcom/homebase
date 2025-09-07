@@ -1320,10 +1320,10 @@ export default function Maintenance() {
       <section className="py-16" style={{ background: 'linear-gradient(135deg, #c4afef40, #a085e340)' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-6">
-              Smart <span className="text-purple-600 dark:text-purple-400">Maintenance</span> Schedule
+            <h1 className="text-4xl lg:text-5xl font-bold mb-6" style={{ color: '#ffffff' }}>
+              Smart <span style={{ color: '#b6a6f4' }}>Maintenance</span> Schedule
             </h1>
-            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto mb-8">
+            <p className="text-xl max-w-3xl mx-auto mb-8" style={{ color: '#b6a6f4' }}>
               Keep your home in perfect condition with personalized maintenance schedules based on your location and home systems
             </p>
           </div>
@@ -1331,10 +1331,10 @@ export default function Maintenance() {
       </section>
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2">
+          <h1 className="text-4xl font-bold mb-2" style={{ color: '#ffffff' }}>
             Home Maintenance & Appliances
           </h1>
-          <p className="text-lg text-muted-foreground mb-4">
+          <p className="text-lg mb-4" style={{ color: '#b6a6f4' }}>
             Keep your home in perfect condition with personalized maintenance recommendations and appliance tracking
           </p>
           
@@ -1342,8 +1342,8 @@ export default function Maintenance() {
           <div className="border rounded-lg p-4 mb-6" style={{ backgroundColor: '#f2f2f2' }}>
             <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
               <div className="flex-1">
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  <Building className="inline w-4 h-4 mr-1" />
+                <label className="block text-sm font-medium mb-2" style={{ color: '#ffffff' }}>
+                  <Building className="inline w-4 h-4 mr-1" style={{ color: '#ffffff' }} />
                   Select Property
                 </label>
                 <Select value={selectedHouseId} onValueChange={setSelectedHouseId}>
@@ -1405,14 +1405,14 @@ export default function Maintenance() {
                 </div>
                 
                 {selectedHouseId && houses.length > 0 && (
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-sm" style={{ color: '#b6a6f4' }}>
                     <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4" />
-                      <span>{houses.find((house: House) => house.id === selectedHouseId)?.climateZone}</span>
+                      <MapPin className="w-4 h-4" style={{ color: '#b6a6f4' }} />
+                      <span style={{ color: '#b6a6f4' }}>{houses.find((house: House) => house.id === selectedHouseId)?.climateZone}</span>
                     </div>
                     <div className="flex items-center gap-2 mt-1">
-                      <Home className="w-4 h-4" />
-                      <span>{houses.find((house: House) => house.id === selectedHouseId)?.homeSystems.length || 0} systems configured</span>
+                      <Home className="w-4 h-4" style={{ color: '#b6a6f4' }} />
+                      <span style={{ color: '#b6a6f4' }}>{houses.find((house: House) => house.id === selectedHouseId)?.homeSystems.length || 0} systems configured</span>
                     </div>
                   </div>
                 )}
@@ -1422,16 +1422,16 @@ export default function Maintenance() {
         </div>
             <div className="mb-6">
               <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                <div className="text-sm text-muted-foreground">
-                  <Building className="inline w-4 h-4 mr-1" />
+                <div className="text-sm" style={{ color: '#b6a6f4' }}>
+                  <Building className="inline w-4 h-4 mr-1" style={{ color: '#b6a6f4' }} />
                   {houses.find((house: House) => house.id === selectedHouseId)?.name || 'Loading...'} • 
-                  <Calendar className="inline w-4 h-4 ml-2 mr-1" />
+                  <Calendar className="inline w-4 h-4 ml-2 mr-1" style={{ color: '#b6a6f4' }} />
                   {MONTHS[selectedMonth - 1]} • {CLIMATE_ZONES.find(z => z.value === selectedZone)?.label}
                 </div>
                 
                 {totalTasks > 0 && (
                   <div className="flex items-center gap-3">
-                    <div className="text-sm font-medium">
+                    <div className="text-sm font-medium" style={{ color: '#ffffff' }}>
                       Progress: {completedCount}/{totalTasks} completed
                     </div>
                     <Button 
@@ -1459,8 +1459,8 @@ export default function Maintenance() {
             <div className="space-y-6 mb-8">
               <div className="flex flex-col md:flex-row gap-4">
                 <div className="flex-1">
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    <Calendar className="inline w-4 h-4 mr-1" />
+                  <label className="block text-sm font-medium mb-2" style={{ color: '#ffffff' }}>
+                    <Calendar className="inline w-4 h-4 mr-1" style={{ color: '#ffffff' }} />
                     Month
                   </label>
                   <Select value={selectedMonth.toString()} onValueChange={(value) => setSelectedMonth(parseInt(value))}>
@@ -1477,8 +1477,8 @@ export default function Maintenance() {
                   </Select>
                 </div>
                 <div className="flex-1">
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    <MapPin className="inline w-4 h-4 mr-1" />
+                  <label className="block text-sm font-medium mb-2" style={{ color: '#ffffff' }}>
+                    <MapPin className="inline w-4 h-4 mr-1" style={{ color: '#ffffff' }} />
                     Climate Zone (auto-set by property)
                   </label>
                   <Select value={selectedZone} onValueChange={setSelectedZone} disabled>
@@ -1501,17 +1501,17 @@ export default function Maintenance() {
                 <CollapsibleTrigger asChild>
                   <Button variant="outline" className="w-full justify-between" style={{ backgroundColor: '#2c0f5b', color: 'white', borderColor: '#2c0f5b' }}>
                     <div className="flex items-center">
-                      <Settings className="w-4 h-4 mr-2" />
+                      <Settings className="w-4 h-4 mr-2" style={{ color: '#ffffff' }} />
                       Home Systems & Features ({homeSystems.length} selected)
                     </div>
-                    <ChevronDown className={`w-4 h-4 transition-transform ${showSystemFilters ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`w-4 h-4 transition-transform ${showSystemFilters ? 'rotate-180' : ''}`} style={{ color: '#ffffff' }} />
                   </Button>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="mt-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-4 border rounded-lg bg-muted/50">
                     {Object.entries(HOME_SYSTEMS).map(([category, systems]) => (
                       <div key={category}>
-                        <h4 className="font-medium text-sm mb-3 capitalize text-foreground">
+                        <h4 className="font-medium text-sm mb-3 capitalize" style={{ color: '#ffffff' }}>
                           {category === 'features' ? 'Special Features' : `${category} System`}
                         </h4>
                         <div className="space-y-2">
@@ -1527,14 +1527,15 @@ export default function Maintenance() {
                                   />
                                   <label
                                     htmlFor={system.value}
-                                    className="text-sm text-muted-foreground cursor-pointer"
+                                    className="text-sm cursor-pointer"
+                                    style={{ color: '#b6a6f4' }}
                                   >
                                     {system.label}
                                   </label>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                   {systemData && (
-                                    <span className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded">
+                                    <span className="text-xs bg-muted/50 px-2 py-1 rounded" style={{ color: '#b6a6f4' }}>
                                       {systemData.installationYear || 'Unknown'}
                                     </span>
                                   )}
@@ -1570,8 +1571,8 @@ export default function Maintenance() {
                           <FileText className="w-5 h-5 text-white" />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-foreground">Recent Service History</h3>
-                          <p className="text-sm text-muted-foreground">
+                          <h3 className="font-semibold" style={{ color: '#ffffff' }}>Recent Service History</h3>
+                          <p className="text-sm" style={{ color: '#b6a6f4' }}>
                             {maintenanceLogs.length} service record{maintenanceLogs.length !== 1 ? 's' : ''} tracked
                           </p>
                         </div>
@@ -1593,8 +1594,8 @@ export default function Maintenance() {
                       <div key={log.id} className="mt-3 p-3 rounded-lg border-gray-300 dark:border-gray-700" style={{ backgroundColor: '#f2f2f2' }}>
                         <div className="flex justify-between items-start">
                           <div>
-                            <h4 className="font-medium text-sm text-foreground">{log.serviceDescription}</h4>
-                            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+                            <h4 className="font-medium text-sm" style={{ color: '#ffffff' }}>{log.serviceDescription}</h4>
+                            <div className="flex items-center gap-3 text-xs mt-1" style={{ color: '#b6a6f4' }}>
                               <span>{new Date(log.serviceDate).toLocaleDateString()}</span>
                               <span>•</span>
                               <span>{getHomeAreaLabel(log.homeArea)}</span>
@@ -1762,10 +1763,10 @@ export default function Maintenance() {
               {filteredTasks.length === 0 && (
                 <div className="col-span-full text-center py-12">
                   <Calendar className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium text-foreground mb-2">
+                  <h3 className="text-lg font-medium mb-2" style={{ color: '#ffffff' }}>
                     No tasks for this month and location
                   </h3>
-                  <p className="text-muted-foreground">
+                  <p style={{ color: '#b6a6f4' }}>
                     Try selecting a different month or climate zone to see recommended maintenance tasks.
                   </p>
                 </div>
@@ -1791,8 +1792,8 @@ export default function Maintenance() {
                 <FileText className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <h2 className="text-2xl font-semibold text-foreground">Service Records</h2>
-                <p className="text-muted-foreground">Complete history of maintenance and repairs performed on your home</p>
+                <h2 className="text-2xl font-semibold" style={{ color: '#ffffff' }}>Service Records</h2>
+                <p style={{ color: '#b6a6f4' }}>Complete history of maintenance and repairs performed on your home</p>
               </div>
             </div>
             <Button onClick={handleAddNewMaintenanceLog} style={{ backgroundColor: '#2c0f5b', color: 'white' }} className="hover:opacity-90">
@@ -1904,8 +1905,8 @@ export default function Maintenance() {
             ) : (
               <div className="text-center py-12">
                 <FileText className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium text-foreground mb-2">No service records yet</h3>
-                <p className="text-muted-foreground mb-4">
+                <h3 className="text-lg font-medium mb-2" style={{ color: '#ffffff' }}>No service records yet</h3>
+                <p className="mb-4" style={{ color: '#b6a6f4' }}>
                   Start tracking maintenance and repairs to build a complete home service history.
                 </p>
                 <Button onClick={handleAddNewMaintenanceLog} style={{ backgroundColor: '#2c0f5b', color: 'white' }} className="hover:opacity-90">
