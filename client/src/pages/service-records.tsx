@@ -531,7 +531,7 @@ export default function ServiceRecords() {
         </div>
 
         {/* Filters and Search */}
-        <Card className="mb-6">
+        <Card className="mb-6" style={{ backgroundColor: '#f2f2f2' }}>
           <CardContent className="py-4">
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
@@ -565,7 +565,7 @@ export default function ServiceRecords() {
         {/* Service Records List */}
         <div className="space-y-4">
           {filteredRecords.length === 0 ? (
-            <Card>
+            <Card style={{ backgroundColor: '#f2f2f2' }}>
               <CardContent className="py-12 text-center">
                 <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No Service Records</h3>
