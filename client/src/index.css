@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  --background: #230d4c;
+  --background: #2c0f5b;
   --foreground: hsl(260, 20%, 25%);
   --muted: hsl(250, 12%, 80%);
   --muted-foreground: hsl(260, 10%, 45%);
@@ -31,7 +31,7 @@
 }
 
 .dark {
-  --background: #230d4c;
+  --background: #2c0f5b;
   --foreground: hsl(250, 25%, 92%);
   --muted: hsl(260, 15%, 15%);
   --muted-foreground: hsl(250, 15%, 65%);
