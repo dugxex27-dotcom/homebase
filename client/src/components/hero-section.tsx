@@ -14,17 +14,17 @@ export default function HeroSection() {
         <div className="text-center mb-16">
           <Logo className={`h-32 w-full mx-auto block mb-8`} />
           
-          <h1 className="text-5xl lg:text-6xl font-bold mb-6 leading-tight" style={typedUser?.role === 'homeowner' ? { color: '#ffffff' } : { color: 'rgb(17 24 39)' }}>
+          <h1 className="text-5xl lg:text-6xl font-bold mb-6 leading-tight" style={typedUser?.role === 'homeowner' ? { color: '#ffffff' } : { color: 'white' }}>
             {typedUser?.role === 'homeowner' ? (
               <>Your Home{" "}
               <span style={{ color: '#ffffff' }}>Management Hub</span></>
             ) : (
               <>Your Business{" "}
-              <span className="text-red-900 dark:text-red-300">Growth Platform</span></>
+              <span style={{ color: 'white' }}>Growth Platform</span></>
             )}
           </h1>
           
-          <p className="text-xl mb-8 max-w-3xl mx-auto leading-relaxed" style={typedUser?.role === 'homeowner' ? { color: '#b6a6f4' } : { color: 'rgb(75 85 99)' }}>
+          <p className="text-xl mb-8 max-w-3xl mx-auto leading-relaxed" style={typedUser?.role === 'homeowner' ? { color: '#b6a6f4' } : { color: '#afd6f9' }}>
             {typedUser?.role === 'homeowner' ? (
               'Connect with skilled contractors, discover quality DIY products, and keep your home running smoothly with our intelligent maintenance scheduling system.'
             ) : (
