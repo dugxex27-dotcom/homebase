@@ -92,6 +92,7 @@ export default function ContractorProfile() {
     facebook: '',
     instagram: '',
     linkedin: '',
+    googleBusinessUrl: '',
     bio: '',
     yearsExperience: '',
     profileImage: '',
@@ -820,6 +821,18 @@ export default function ContractorProfile() {
                 value={formData.website}
                 onChange={(e) => handleInputChange('website', e.target.value)}
                 placeholder="https://www.abcconstruction.com"
+                style={{ backgroundColor: '#ffffff' }}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="googleBusinessUrl">Google Business Page</Label>
+              <Input
+                id="googleBusinessUrl"
+                type="url"
+                value={formData.googleBusinessUrl}
+                onChange={(e) => handleInputChange('googleBusinessUrl', e.target.value)}
+                placeholder="https://business.google.com/your-business"
                 style={{ backgroundColor: '#ffffff' }}
               />
             </div>

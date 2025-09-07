@@ -51,6 +51,7 @@ export const contractors = pgTable("contractors", {
   profileImage: text("profile_image"),
   businessLogo: text("business_logo"),
   projectPhotos: text("project_photos").array().default(sql`ARRAY[]::text[]`),
+  googleBusinessUrl: text("google_business_url"),
 });
 
 export const products = pgTable("products", {
