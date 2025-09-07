@@ -50,7 +50,7 @@ export default function Home() {
               </div>
 
               {/* Contractor Dashboard Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 items-stretch">
                 <Link href="/contractor-profile" className="h-full">
                   <Card className="border-gray-300 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group h-full flex flex-col" style={{ background: '#1560a2' }}>
                     <CardContent className="p-6 flex-1 flex flex-col">
@@ -242,7 +242,7 @@ export default function Home() {
 
 
       {/* Additional Features Section */}
-      <section className="pt-8 pb-16" style={{ background: '#1560a2' }}>
+      <section className="py-16" style={{ background: '#1560a2' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4" style={{ color: '#ffffff' }}>
