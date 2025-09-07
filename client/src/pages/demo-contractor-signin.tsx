@@ -43,8 +43,8 @@ export default function DemoContractorSignIn() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8" style={{ background: '#1560a2' }}>
           <Logo className="h-12 w-auto text-primary mx-auto mb-4" />
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Contractor Demo</h1>
-          <p className="text-gray-600 text-lg">
+          <h1 className="text-4xl font-bold mb-2" style={{ color: 'white' }}>Contractor Demo</h1>
+          <p className="text-lg" style={{ color: '#afd6f9' }}>
             One-click contractor access for testing
           </p>
         </div>
