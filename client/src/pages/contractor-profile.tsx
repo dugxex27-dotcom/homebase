@@ -143,24 +143,53 @@ export default function ContractorProfile() {
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const response = await fetch('/api/contractor/profile', {
+      // Update profile
+      const profileResponse = await fetch('/api/contractor/profile', {
         method: 'PUT',
         body: JSON.stringify(data),
         headers: {
           'Content-Type': 'application/json',
         },
       });
-      if (!response.ok) {
+      if (!profileResponse.ok) {
         throw new Error('Failed to update profile');
       }
-      return response.json();
+      
+      // Save licenses - first get existing licenses to determine creates vs updates
+      const existingResponse = await fetch('/api/contractor/licenses');
+      const existingLicenses = existingResponse.ok ? await existingResponse.json() : [];
+      const existingLicenseIds = new Set(existingLicenses.map((l: any) => l.id));
+      
+      // Save each license
+      for (const license of licenses) {
+        if (license.licenseNumber && license.municipality && license.state) { // Only save complete licenses
+          if (license.id && existingLicenseIds.has(license.id)) {
+            // Update existing license
+            await fetch(`/api/contractor/licenses/${license.id}`, {
+              method: 'PUT',
+              body: JSON.stringify(license),
+              headers: { 'Content-Type': 'application/json' },
+            });
+          } else {
+            // Create new license
+            await fetch('/api/contractor/licenses', {
+              method: 'POST',
+              body: JSON.stringify(license),
+              headers: { 'Content-Type': 'application/json' },
+            });
+          }
+        }
+      }
+      
+      return profileResponse.json();
     },
     onSuccess: () => {
       toast({
         title: "Profile Updated",
-        description: "Your contractor profile has been successfully updated.",
+        description: "Your contractor profile and licenses have been successfully updated.",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/contractor/profile'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/contractor/licenses'] });
     },
     onError: (error) => {
       toast({
