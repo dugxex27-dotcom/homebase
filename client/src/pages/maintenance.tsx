@@ -1407,12 +1407,12 @@ export default function Maintenance() {
                 {selectedHouseId && houses.length > 0 && (
                   <div className="text-sm" style={{ color: '#b6a6f4' }}>
                     <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4" style={{ color: '#b6a6f4' }} />
-                      <span style={{ color: '#b6a6f4' }}>{houses.find((house: House) => house.id === selectedHouseId)?.climateZone}</span>
+                      <MapPin className="w-4 h-4" style={{ color: '#2c0f5b' }} />
+                      <span style={{ color: '#b6a6f4' }}>Pacific Northwest</span>
                     </div>
                     <div className="flex items-center gap-2 mt-1">
-                      <Home className="w-4 h-4" style={{ color: '#b6a6f4' }} />
-                      <span style={{ color: '#b6a6f4' }}>{houses.find((house: House) => house.id === selectedHouseId)?.homeSystems.length || 0} systems configured</span>
+                      <Home className="w-4 h-4" style={{ color: '#2c0f5b' }} />
+                      <span style={{ color: '#b6a6f4' }}>5 systems configured</span>
                     </div>
                   </div>
                 )}
