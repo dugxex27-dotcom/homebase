@@ -1029,6 +1029,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Contractor licenses routes
+  app.get('/api/contractor/licenses', async (req: any, res) => {
+    try {
+      if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const contractorId = req.session.user.id;
+      const licenses = await storage.getContractorLicenses(contractorId);
+      res.json(licenses);
+    } catch (error) {
+      console.error("Error fetching contractor licenses:", error);
+      res.status(500).json({ message: "Failed to fetch licenses" });
+    }
+  });
+
+  app.post('/api/contractor/licenses', async (req: any, res) => {
+    try {
+      if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const contractorId = req.session.user.id;
+      const licenseData = { ...req.body, contractorId };
+      const newLicense = await storage.createContractorLicense(licenseData);
+      res.json(newLicense);
+    } catch (error) {
+      console.error("Error creating contractor license:", error);
+      res.status(500).json({ message: "Failed to create license" });
+    }
+  });
+
+  app.put('/api/contractor/licenses/:id', async (req: any, res) => {
+    try {
+      if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const licenseId = req.params.id;
+      const contractorId = req.session.user.id;
+      const licenseData = req.body;
+      
+      const updatedLicense = await storage.updateContractorLicense(licenseId, contractorId, licenseData);
+      if (!updatedLicense) {
+        return res.status(404).json({ message: "License not found" });
+      }
+      
+      res.json(updatedLicense);
+    } catch (error) {
+      console.error("Error updating contractor license:", error);
+      res.status(500).json({ message: "Failed to update license" });
+    }
+  });
+
+  app.delete('/api/contractor/licenses/:id', async (req: any, res) => {
+    try {
+      if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const licenseId = req.params.id;
+      const contractorId = req.session.user.id;
+      
+      const success = await storage.deleteContractorLicense(licenseId, contractorId);
+      if (!success) {
+        return res.status(404).json({ message: "License not found" });
+      }
+      
+      res.json({ message: "License deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting contractor license:", error);
+      res.status(500).json({ message: "Failed to delete license" });
+    }
+  });
+
   // Service records routes
   app.get('/api/service-records', isAuthenticated, async (req: any, res) => {
     try {

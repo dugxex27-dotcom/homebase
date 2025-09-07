@@ -86,10 +86,6 @@ export default function ContractorProfile() {
     city: '',
     state: '',
     zipCode: '',
-    licenseNumber: '',
-    licenseState: '',
-    licenseExpiry: '',
-    licenseMunicipality: '',
     serviceRadius: 25,
     servicesOffered: [] as string[],
     website: '',
@@ -106,10 +102,23 @@ export default function ContractorProfile() {
   const [customService, setCustomService] = useState('');
   const [logoPreview, setLogoPreview] = useState<string>('');
   const [photosPreviews, setPhotosPreviews] = useState<string[]>([]);
+  const [licenses, setLicenses] = useState([{
+    id: '',
+    licenseNumber: '',
+    municipality: '',
+    state: '',
+    expiryDate: '',
+    licenseType: 'General Contractor'
+  }]);
 
   // Load existing profile data
   const { data: profile, isLoading } = useQuery({
     queryKey: ['/api/contractor/profile'],
+  });
+
+  // Load existing licenses
+  const { data: existingLicenses } = useQuery({
+    queryKey: ['/api/contractor/licenses'],
   });
 
   // Update form data when profile loads
@@ -124,6 +133,13 @@ export default function ContractorProfile() {
       }
     }
   }, [profile]);
+
+  // Update licenses when existing licenses load
+  React.useEffect(() => {
+    if (existingLicenses && existingLicenses.length > 0) {
+      setLicenses(existingLicenses);
+    }
+  }, [existingLicenses]);
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
@@ -186,6 +202,28 @@ export default function ContractorProfile() {
       ...prev,
       servicesOffered: prev.servicesOffered.filter(s => s !== service)
     }));
+  };
+
+  // License management functions
+  const addLicense = () => {
+    setLicenses(prev => [...prev, {
+      id: '',
+      licenseNumber: '',
+      municipality: '',
+      state: '',
+      expiryDate: '',
+      licenseType: 'General Contractor'
+    }]);
+  };
+
+  const removeLicense = (index: number) => {
+    setLicenses(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updateLicense = (index: number, field: string, value: string) => {
+    setLicenses(prev => prev.map((license, i) => 
+      i === index ? { ...license, [field]: value } : license
+    ));
   };
 
   const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -445,48 +483,93 @@ export default function ContractorProfile() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <Label htmlFor="licenseNumber">License Number</Label>
-                <Input
-                  id="licenseNumber"
-                  value={formData.licenseNumber}
-                  onChange={(e) => handleInputChange('licenseNumber', e.target.value)}
-                  placeholder="GC123456"
-                  style={{ backgroundColor: '#ffffff' }}
-                />
+            {licenses.map((license, index) => (
+              <div key={index} className="border border-gray-200 rounded-lg p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-gray-900">License #{index + 1}</h4>
+                  {licenses.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeLicense(index)}
+                      className="text-red-600 border-red-600 hover:bg-red-50"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                  <div>
+                    <Label>License Type</Label>
+                    <Select
+                      value={license.licenseType}
+                      onValueChange={(value) => updateLicense(index, 'licenseType', value)}
+                    >
+                      <SelectTrigger style={{ backgroundColor: '#ffffff' }}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="General Contractor">General Contractor</SelectItem>
+                        <SelectItem value="Electrical">Electrical</SelectItem>
+                        <SelectItem value="Plumbing">Plumbing</SelectItem>
+                        <SelectItem value="HVAC">HVAC</SelectItem>
+                        <SelectItem value="Roofing">Roofing</SelectItem>
+                        <SelectItem value="Masonry">Masonry</SelectItem>
+                        <SelectItem value="Landscaping">Landscaping</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>License Number</Label>
+                    <Input
+                      value={license.licenseNumber}
+                      onChange={(e) => updateLicense(index, 'licenseNumber', e.target.value)}
+                      placeholder="GC123456"
+                      style={{ backgroundColor: '#ffffff' }}
+                    />
+                  </div>
+                  <div>
+                    <Label>Municipality</Label>
+                    <Input
+                      value={license.municipality}
+                      onChange={(e) => updateLicense(index, 'municipality', e.target.value)}
+                      placeholder="Chicago"
+                      style={{ backgroundColor: '#ffffff' }}
+                    />
+                  </div>
+                  <div>
+                    <Label>State</Label>
+                    <Input
+                      value={license.state}
+                      onChange={(e) => updateLicense(index, 'state', e.target.value)}
+                      placeholder="Illinois"
+                      style={{ backgroundColor: '#ffffff' }}
+                    />
+                  </div>
+                  <div>
+                    <Label>Expiry Date</Label>
+                    <Input
+                      type="date"
+                      value={license.expiryDate}
+                      onChange={(e) => updateLicense(index, 'expiryDate', e.target.value)}
+                      style={{ backgroundColor: '#ffffff' }}
+                    />
+                  </div>
+                </div>
               </div>
-              <div>
-                <Label htmlFor="licenseMunicipality">Municipality Issued</Label>
-                <Input
-                  id="licenseMunicipality"
-                  value={formData.licenseMunicipality}
-                  onChange={(e) => handleInputChange('licenseMunicipality', e.target.value)}
-                  placeholder="Chicago"
-                  style={{ backgroundColor: '#ffffff' }}
-                />
-              </div>
-              <div>
-                <Label htmlFor="licenseState">License State</Label>
-                <Input
-                  id="licenseState"
-                  value={formData.licenseState}
-                  onChange={(e) => handleInputChange('licenseState', e.target.value)}
-                  placeholder="Illinois"
-                  style={{ backgroundColor: '#ffffff' }}
-                />
-              </div>
-              <div>
-                <Label htmlFor="licenseExpiry">License Expiry</Label>
-                <Input
-                  id="licenseExpiry"
-                  type="date"
-                  value={formData.licenseExpiry}
-                  onChange={(e) => handleInputChange('licenseExpiry', e.target.value)}
-                  style={{ backgroundColor: '#ffffff' }}
-                />
-              </div>
-            </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={addLicense}
+              className="w-full border-dashed border-2"
+              style={{ borderColor: '#1560a2', color: '#1560a2' }}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Another License
+            </Button>
           </CardContent>
         </Card>
 

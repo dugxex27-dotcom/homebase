@@ -1,4 +1,4 @@
-import { type Contractor, type InsertContractor, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription } from "@shared/schema";
+import { type Contractor, type InsertContractor, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -17,6 +17,13 @@ export interface IStorage {
   }): Promise<Contractor[]>;
   getContractor(id: string): Promise<Contractor | undefined>;
   createContractor(contractor: InsertContractor): Promise<Contractor>;
+  
+  // Contractor license methods
+  getContractorLicenses(contractorId: string): Promise<ContractorLicense[]>;
+  getContractorLicense(id: string): Promise<ContractorLicense | undefined>;
+  createContractorLicense(license: InsertContractorLicense): Promise<ContractorLicense>;
+  updateContractorLicense(id: string, contractorId: string, license: Partial<InsertContractorLicense>): Promise<ContractorLicense | undefined>;
+  deleteContractorLicense(id: string, contractorId: string): Promise<boolean>;
   
   // Product methods
   getProducts(filters?: {
@@ -139,6 +146,7 @@ export interface IStorage {
 export class MemStorage implements IStorage {
   private users: Map<string, User>;
   private contractors: Map<string, Contractor>;
+  private contractorLicenses: Map<string, ContractorLicense>;
   private products: Map<string, Product>;
   private homeAppliances: Map<string, HomeAppliance>;
   private maintenanceLogs: Map<string, MaintenanceLog>;
@@ -158,6 +166,7 @@ export class MemStorage implements IStorage {
   constructor() {
     this.users = new Map();
     this.contractors = new Map();
+    this.contractorLicenses = new Map();
     this.products = new Map();
     this.homeAppliances = new Map();
     this.maintenanceLogs = new Map();
@@ -685,6 +694,56 @@ export class MemStorage implements IStorage {
     };
     this.contractors.set(id, newContractor);
     return newContractor;
+  }
+
+  // Contractor license methods
+  async getContractorLicenses(contractorId: string): Promise<ContractorLicense[]> {
+    const licenses = Array.from(this.contractorLicenses.values())
+      .filter(license => license.contractorId === contractorId && license.isActive);
+    return licenses;
+  }
+
+  async getContractorLicense(id: string): Promise<ContractorLicense | undefined> {
+    return this.contractorLicenses.get(id);
+  }
+
+  async createContractorLicense(license: InsertContractorLicense): Promise<ContractorLicense> {
+    const id = randomUUID();
+    const newLicense: ContractorLicense = {
+      ...license,
+      id,
+      licenseType: license.licenseType ?? 'General Contractor',
+      isActive: license.isActive ?? true,
+      expiryDate: license.expiryDate ?? null,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.contractorLicenses.set(id, newLicense);
+    return newLicense;
+  }
+
+  async updateContractorLicense(id: string, contractorId: string, licenseData: Partial<InsertContractorLicense>): Promise<ContractorLicense | undefined> {
+    const existingLicense = this.contractorLicenses.get(id);
+    if (!existingLicense || existingLicense.contractorId !== contractorId) {
+      return undefined;
+    }
+
+    const updatedLicense: ContractorLicense = {
+      ...existingLicense,
+      ...licenseData,
+      updatedAt: new Date()
+    };
+    this.contractorLicenses.set(id, updatedLicense);
+    return updatedLicense;
+  }
+
+  async deleteContractorLicense(id: string, contractorId: string): Promise<boolean> {
+    const existingLicense = this.contractorLicenses.get(id);
+    if (!existingLicense || existingLicense.contractorId !== contractorId) {
+      return false;
+    }
+
+    return this.contractorLicenses.delete(id);
   }
 
   async getProducts(filters?: {
