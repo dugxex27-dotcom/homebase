@@ -61,12 +61,12 @@ export default function DemoContractorSignIn() {
           </CardHeader>
           
           <CardContent className="space-y-6">
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <div className="rounded-lg p-4" style={{ background: '#1560a2' }}>
               <div className="flex items-start gap-3">
-                <Building className="w-5 h-5 text-amber-600 mt-0.5" />
+                <Building className="w-5 h-5 mt-0.5" style={{ color: 'white' }} />
                 <div>
-                  <h4 className="font-medium text-amber-900 mb-1">Demo Contractor Profile</h4>
-                  <p className="text-sm text-amber-700">
+                  <h4 className="font-medium mb-1" style={{ color: 'white' }}>Demo Contractor Profile</h4>
+                  <p className="text-sm" style={{ color: 'white' }}>
                     <strong>Name:</strong> Demo Contractor<br />
                     <strong>Company:</strong> Demo Construction LLC<br />
                     <strong>Email:</strong> demo.contractor@example.com
