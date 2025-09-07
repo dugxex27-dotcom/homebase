@@ -1342,8 +1342,8 @@ export default function Maintenance() {
           <div className="border rounded-lg p-4 mb-6" style={{ backgroundColor: '#f2f2f2' }}>
             <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
               <div className="flex-1">
-                <label className="block text-sm font-medium mb-2" style={{ color: '#ffffff' }}>
-                  <Building className="inline w-4 h-4 mr-1" style={{ color: '#b6a6f4' }} />
+                <label className="block text-sm font-medium mb-2" style={{ color: '#2c0f5b' }}>
+                  <Building className="inline w-4 h-4 mr-1" style={{ color: '#2c0f5b' }} />
                   Select Property
                 </label>
                 <Select value={selectedHouseId} onValueChange={setSelectedHouseId}>
