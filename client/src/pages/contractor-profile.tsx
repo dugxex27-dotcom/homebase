@@ -799,11 +799,11 @@ export default function ContractorProfile() {
             type="submit" 
             disabled={updateProfileMutation.isPending}
             className="px-8 py-2 hover:opacity-90"
-            style={{ backgroundColor: '#1560a2', color: 'white' }}
+            style={{ backgroundColor: '#afd6f9', color: 'black' }}
           >
             {updateProfileMutation.isPending ? (
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
                 Saving...
               </div>
             ) : (
