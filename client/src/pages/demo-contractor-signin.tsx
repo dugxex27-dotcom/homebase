@@ -39,7 +39,7 @@ export default function DemoContractorSignIn() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#1560a2' }}>
       <div className="w-full max-w-md">
         <div className="text-center mb-8" style={{ background: '#1560a2' }}>
           <Logo className="h-12 w-auto text-primary mx-auto mb-4" />
