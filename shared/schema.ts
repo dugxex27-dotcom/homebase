@@ -22,6 +22,9 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   role: text("role").notNull().default("homeowner"), // "homeowner" or "contractor"
+  referralCode: varchar("referral_code").unique(),
+  referredBy: varchar("referred_by"), // referral code of user who referred this user
+  referralCount: integer("referral_count").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
