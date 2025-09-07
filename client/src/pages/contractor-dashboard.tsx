@@ -14,7 +14,7 @@ export default function ContractorDashboard() {
   
   if (!typedUser) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#1560a2' }}>
         <div className="text-center">
           <div className="text-2xl font-bold text-primary mb-2">Loading...</div>
         </div>
@@ -23,7 +23,7 @@ export default function ContractorDashboard() {
   }
   
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen" style={{ background: '#1560a2' }}>
       <Header />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
