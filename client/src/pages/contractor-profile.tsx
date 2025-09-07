@@ -610,7 +610,7 @@ export default function ContractorProfile() {
                     <span className="flex items-center gap-2">
                       <Plus className="w-4 h-4" />
                       Add Project Photos
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-white">
                         ({Math.max(photosPreviews.length, formData.projectPhotos.length)}/20)
                       </span>
                     </span>
