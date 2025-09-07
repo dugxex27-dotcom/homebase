@@ -276,22 +276,22 @@ export default function ContractorProfile() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen" style={{ backgroundColor: '#1560a2' }}>
       <Header />
       <div className="container mx-auto py-8 px-4 max-w-4xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">My Profile</h1>
-        <p className="text-gray-600">
+      <div className="mb-8" style={{ backgroundColor: '#f2f2f2', borderRadius: '8px', padding: '24px' }}>
+        <h1 className="text-3xl font-bold mb-2" style={{ color: '#ffffff' }}>My Profile</h1>
+        <p style={{ color: '#afd6f9' }}>
           Manage your business information and professional credentials
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Business Information */}
-        <Card>
+        <Card style={{ backgroundColor: '#f2f2f2' }}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building className="w-5 h-5 text-red-800" />
+            <CardTitle className="flex items-center gap-2" style={{ color: '#1560a2' }}>
+              <Building className="w-5 h-5" style={{ color: '#1560a2' }} />
               Business Information
             </CardTitle>
           </CardHeader>
@@ -305,6 +305,7 @@ export default function ContractorProfile() {
                   onChange={(e) => handleInputChange('businessName', e.target.value)}
                   placeholder="ABC Construction LLC"
                   required
+                  style={{ backgroundColor: '#ffffff' }}
                 />
               </div>
               <div>
@@ -315,6 +316,7 @@ export default function ContractorProfile() {
                   onChange={(e) => handleInputChange('contactName', e.target.value)}
                   placeholder="John Smith"
                   required
+                  style={{ backgroundColor: '#ffffff' }}
                 />
               </div>
             </div>
@@ -323,7 +325,7 @@ export default function ContractorProfile() {
               <div>
                 <Label htmlFor="email">Email Address *</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-red-800" />
+                  <Mail className="absolute left-3 top-3 h-4 w-4" style={{ color: '#1560a2' }} />
                   <Input
                     id="email"
                     type="email"
@@ -332,13 +334,14 @@ export default function ContractorProfile() {
                     className="pl-10"
                     placeholder="contact@abcconstruction.com"
                     required
+                    style={{ backgroundColor: '#ffffff' }}
                   />
                 </div>
               </div>
               <div>
                 <Label htmlFor="phone">Phone Number *</Label>
                 <div className="relative">
-                  <Phone className="absolute left-3 top-3 h-4 w-4 text-red-800" />
+                  <Phone className="absolute left-3 top-3 h-4 w-4" style={{ color: '#1560a2' }} />
                   <Input
                     id="phone"
                     type="tel"
@@ -347,6 +350,7 @@ export default function ContractorProfile() {
                     className="pl-10"
                     placeholder="(555) 123-4567"
                     required
+                    style={{ backgroundColor: '#ffffff' }}
                   />
                 </div>
               </div>
@@ -355,7 +359,7 @@ export default function ContractorProfile() {
             <div>
               <Label htmlFor="address">Business Address *</Label>
               <div className="relative">
-                <MapPin className="absolute left-3 top-3 h-4 w-4 text-red-800" />
+                <MapPin className="absolute left-3 top-3 h-4 w-4" style={{ color: '#1560a2' }} />
                 <Input
                   id="address"
                   value={formData.address}
@@ -363,6 +367,7 @@ export default function ContractorProfile() {
                   className="pl-10"
                   placeholder="123 Main Street"
                   required
+                  style={{ backgroundColor: '#ffffff' }}
                 />
               </div>
             </div>
@@ -376,6 +381,7 @@ export default function ContractorProfile() {
                   onChange={(e) => handleInputChange('city', e.target.value)}
                   placeholder="Springfield"
                   required
+                  style={{ backgroundColor: '#ffffff' }}
                 />
               </div>
               <div>
@@ -386,6 +392,7 @@ export default function ContractorProfile() {
                   onChange={(e) => handleInputChange('state', e.target.value)}
                   placeholder="IL"
                   required
+                  style={{ backgroundColor: '#ffffff' }}
                 />
               </div>
               <div>
@@ -396,6 +403,7 @@ export default function ContractorProfile() {
                   onChange={(e) => handleInputChange('zipCode', e.target.value)}
                   placeholder="62704"
                   required
+                  style={{ backgroundColor: '#ffffff' }}
                 />
               </div>
             </div>
@@ -403,7 +411,7 @@ export default function ContractorProfile() {
             <div>
               <Label htmlFor="serviceRadius">Service Radius (miles) *</Label>
               <Select onValueChange={(value) => handleInputChange('serviceRadius', value)}>
-                <SelectTrigger>
+                <SelectTrigger style={{ backgroundColor: '#1560a2', color: 'white' }} className="hover:bg-[#afd6f9] hover:text-black transition-colors">
                   <SelectValue placeholder={`${formData.serviceRadius} miles`} />
                 </SelectTrigger>
                 <SelectContent>
@@ -429,10 +437,10 @@ export default function ContractorProfile() {
         </Card>
 
         {/* License Information */}
-        <Card>
+        <Card style={{ backgroundColor: '#f2f2f2' }}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-red-800" />
+            <CardTitle className="flex items-center gap-2" style={{ color: '#1560a2' }}>
+              <FileText className="w-5 h-5" style={{ color: '#1560a2' }} />
               License Information
             </CardTitle>
           </CardHeader>
@@ -445,6 +453,7 @@ export default function ContractorProfile() {
                   value={formData.licenseNumber}
                   onChange={(e) => handleInputChange('licenseNumber', e.target.value)}
                   placeholder="GC123456"
+                  style={{ backgroundColor: '#ffffff' }}
                 />
               </div>
               <div>
@@ -454,6 +463,7 @@ export default function ContractorProfile() {
                   value={formData.licenseMunicipality}
                   onChange={(e) => handleInputChange('licenseMunicipality', e.target.value)}
                   placeholder="Chicago"
+                  style={{ backgroundColor: '#ffffff' }}
                 />
               </div>
               <div>
@@ -463,6 +473,7 @@ export default function ContractorProfile() {
                   value={formData.licenseState}
                   onChange={(e) => handleInputChange('licenseState', e.target.value)}
                   placeholder="Illinois"
+                  style={{ backgroundColor: '#ffffff' }}
                 />
               </div>
               <div>
@@ -472,6 +483,7 @@ export default function ContractorProfile() {
                   type="date"
                   value={formData.licenseExpiry}
                   onChange={(e) => handleInputChange('licenseExpiry', e.target.value)}
+                  style={{ backgroundColor: '#ffffff' }}
                 />
               </div>
             </div>
@@ -479,10 +491,10 @@ export default function ContractorProfile() {
         </Card>
 
         {/* Business Logo */}
-        <Card>
+        <Card style={{ backgroundColor: '#f2f2f2' }}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Camera className="w-5 h-5 text-red-800" />
+            <CardTitle className="flex items-center gap-2" style={{ color: '#1560a2' }}>
+              <Camera className="w-5 h-5" style={{ color: '#1560a2' }} />
               Business Logo
             </CardTitle>
           </CardHeader>
@@ -545,10 +557,10 @@ export default function ContractorProfile() {
         </Card>
 
         {/* Project Photos */}
-        <Card>
+        <Card style={{ backgroundColor: '#f2f2f2' }}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Camera className="w-5 h-5 text-red-800" />
+            <CardTitle className="flex items-center gap-2" style={{ color: '#1560a2' }}>
+              <Camera className="w-5 h-5" style={{ color: '#1560a2' }} />
               Project Portfolio
             </CardTitle>
           </CardHeader>
@@ -621,10 +633,10 @@ export default function ContractorProfile() {
         </Card>
 
         {/* Services Offered */}
-        <Card>
+        <Card style={{ backgroundColor: '#f2f2f2' }}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Wrench className="w-5 h-5 text-red-800" />
+            <CardTitle className="flex items-center gap-2" style={{ color: '#1560a2' }}>
+              <Wrench className="w-5 h-5" style={{ color: '#1560a2' }} />
               Services Offered
             </CardTitle>
           </CardHeader>
@@ -651,8 +663,9 @@ export default function ContractorProfile() {
                   onChange={(e) => setCustomService(e.target.value)}
                   placeholder="Add custom service..."
                   onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomService())}
+                  style={{ backgroundColor: '#ffffff' }}
                 />
-                <Button type="button" onClick={addCustomService} size="sm" className="bg-red-800 hover:bg-red-900 text-white">
+                <Button type="button" onClick={addCustomService} size="sm" style={{ backgroundColor: '#1560a2', color: 'white' }} className="hover:opacity-90">
                   <Plus className="w-4 h-4" />
                 </Button>
               </div>
@@ -679,10 +692,10 @@ export default function ContractorProfile() {
         </Card>
 
         {/* Online Presence */}
-        <Card>
+        <Card style={{ backgroundColor: '#f2f2f2' }}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Globe className="w-5 h-5 text-red-800" />
+            <CardTitle className="flex items-center gap-2" style={{ color: '#1560a2' }}>
+              <Globe className="w-5 h-5" style={{ color: '#1560a2' }} />
               Online Presence
             </CardTitle>
           </CardHeader>
@@ -695,6 +708,7 @@ export default function ContractorProfile() {
                 value={formData.website}
                 onChange={(e) => handleInputChange('website', e.target.value)}
                 placeholder="https://www.abcconstruction.com"
+                style={{ backgroundColor: '#ffffff' }}
               />
             </div>
 
@@ -706,6 +720,7 @@ export default function ContractorProfile() {
                   value={formData.facebook}
                   onChange={(e) => handleInputChange('facebook', e.target.value)}
                   placeholder="https://facebook.com/abcconstruction"
+                  style={{ backgroundColor: '#ffffff' }}
                 />
               </div>
               <div>
@@ -715,6 +730,7 @@ export default function ContractorProfile() {
                   value={formData.instagram}
                   onChange={(e) => handleInputChange('instagram', e.target.value)}
                   placeholder="https://instagram.com/abcconstruction"
+                  style={{ backgroundColor: '#ffffff' }}
                 />
               </div>
               <div>
@@ -724,6 +740,7 @@ export default function ContractorProfile() {
                   value={formData.linkedin}
                   onChange={(e) => handleInputChange('linkedin', e.target.value)}
                   placeholder="https://linkedin.com/company/abcconstruction"
+                  style={{ backgroundColor: '#ffffff' }}
                 />
               </div>
             </div>
@@ -731,10 +748,10 @@ export default function ContractorProfile() {
         </Card>
 
         {/* About & Experience */}
-        <Card>
+        <Card style={{ backgroundColor: '#f2f2f2' }}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="w-5 h-5 text-red-800" />
+            <CardTitle className="flex items-center gap-2" style={{ color: '#1560a2' }}>
+              <User className="w-5 h-5" style={{ color: '#1560a2' }} />
               About & Experience
             </CardTitle>
           </CardHeader>
@@ -742,7 +759,7 @@ export default function ContractorProfile() {
             <div>
               <Label htmlFor="yearsExperience">Years of Experience</Label>
               <Select value={formData.yearsExperience} onValueChange={(value) => handleInputChange('yearsExperience', value)}>
-                <SelectTrigger>
+                <SelectTrigger style={{ backgroundColor: '#1560a2', color: 'white' }} className="hover:bg-[#afd6f9] hover:text-black transition-colors">
                   <SelectValue placeholder="Select years of experience" />
                 </SelectTrigger>
                 <SelectContent>
@@ -765,6 +782,7 @@ export default function ContractorProfile() {
                 placeholder="Tell potential clients about your business, specialties, and what sets you apart..."
                 rows={4}
                 maxLength={1000}
+                style={{ backgroundColor: '#ffffff' }}
               />
               <p className="text-sm text-gray-500 mt-1">
                 {formData.bio.length}/1000 characters
@@ -780,7 +798,8 @@ export default function ContractorProfile() {
           <Button 
             type="submit" 
             disabled={updateProfileMutation.isPending}
-            className="px-8 py-2 bg-red-800 hover:bg-red-900 text-white"
+            className="px-8 py-2 hover:opacity-90"
+            style={{ backgroundColor: '#1560a2', color: 'white' }}
           >
             {updateProfileMutation.isPending ? (
               <div className="flex items-center gap-2">
