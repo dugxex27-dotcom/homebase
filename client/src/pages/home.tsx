@@ -50,7 +50,7 @@ export default function Home() {
               </div>
 
               {/* Contractor Dashboard Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 items-stretch">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-4 items-stretch">
                 <Link href="/contractor-profile" className="h-full">
                   <Card className="border-gray-300 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group h-full flex flex-col" style={{ background: '#1560a2' }}>
                     <CardContent className="p-6 flex-1 flex flex-col">
