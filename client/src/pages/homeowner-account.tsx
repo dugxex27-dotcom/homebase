@@ -151,7 +151,7 @@ export default function HomeownerAccount() {
                 <form onSubmit={handleProfileSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="firstName">First Name</Label>
+                      <Label htmlFor="firstName" style={{ color: '#b6a6f4' }}>First Name</Label>
                       <Input
                         id="firstName"
                         data-testid="input-first-name"
@@ -161,7 +161,7 @@ export default function HomeownerAccount() {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="lastName">Last Name</Label>
+                      <Label htmlFor="lastName" style={{ color: '#b6a6f4' }}>Last Name</Label>
                       <Input
                         id="lastName"
                         data-testid="input-last-name"
@@ -173,7 +173,7 @@ export default function HomeownerAccount() {
                   </div>
                   
                   <div>
-                    <Label htmlFor="email">Email Address</Label>
+                    <Label htmlFor="email" style={{ color: '#b6a6f4' }}>Email Address</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                       <Input
@@ -189,7 +189,7 @@ export default function HomeownerAccount() {
                   </div>
 
                   <div>
-                    <Label htmlFor="phone">Phone Number</Label>
+                    <Label htmlFor="phone" style={{ color: '#b6a6f4' }}>Phone Number</Label>
                     <div className="relative">
                       <Phone className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                       <Input
@@ -205,7 +205,7 @@ export default function HomeownerAccount() {
                   </div>
 
                   <div>
-                    <Label htmlFor="address">Primary Address</Label>
+                    <Label htmlFor="address" style={{ color: '#b6a6f4' }}>Primary Address</Label>
                     <div className="relative">
                       <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
                       <Input
@@ -243,7 +243,7 @@ export default function HomeownerAccount() {
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="font-medium">Two-Factor Authentication</h4>
+                    <h4 className="font-medium" style={{ color: '#b6a6f4' }}>Two-Factor Authentication</h4>
                     <p className="text-sm text-gray-600">Add an extra layer of security to your account</p>
                   </div>
                   <Button variant="outline" size="sm" data-testid="button-setup-2fa">
@@ -255,7 +255,7 @@ export default function HomeownerAccount() {
                 
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="font-medium">Change Password</h4>
+                    <h4 className="font-medium" style={{ color: '#b6a6f4' }}>Change Password</h4>
                     <p className="text-sm text-gray-600">Update your account password</p>
                   </div>
                   <Button variant="outline" size="sm" data-testid="button-change-password">
@@ -267,7 +267,7 @@ export default function HomeownerAccount() {
                 
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="font-medium">Sign Out</h4>
+                    <h4 className="font-medium" style={{ color: '#b6a6f4' }}>Sign Out</h4>
                     <p className="text-sm text-gray-600">Sign out of your account</p>
                   </div>
                   <Button 
@@ -301,7 +301,7 @@ export default function HomeownerAccount() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium">Email Notifications</p>
+                      <p className="font-medium" style={{ color: '#b6a6f4' }}>Email Notifications</p>
                       <p className="text-sm text-gray-600">Receive updates via email</p>
                     </div>
                     <Switch
@@ -313,7 +313,7 @@ export default function HomeownerAccount() {
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium">SMS Notifications</p>
+                      <p className="font-medium" style={{ color: '#b6a6f4' }}>SMS Notifications</p>
                       <p className="text-sm text-gray-600">Receive urgent alerts via text</p>
                     </div>
                     <Switch
@@ -327,7 +327,7 @@ export default function HomeownerAccount() {
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium">Maintenance Reminders</p>
+                      <p className="font-medium" style={{ color: '#b6a6f4' }}>Maintenance Reminders</p>
                       <p className="text-sm text-gray-600">Get notified about upcoming tasks</p>
                     </div>
                     <Switch
@@ -339,7 +339,7 @@ export default function HomeownerAccount() {
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium">Appointment Reminders</p>
+                      <p className="font-medium" style={{ color: '#b6a6f4' }}>Appointment Reminders</p>
                       <p className="text-sm text-gray-600">Contractor appointment alerts</p>
                     </div>
                     <Switch
@@ -351,7 +351,7 @@ export default function HomeownerAccount() {
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium">Contractor Messages</p>
+                      <p className="font-medium" style={{ color: '#b6a6f4' }}>Contractor Messages</p>
                       <p className="text-sm text-gray-600">New message notifications</p>
                     </div>
                     <Switch
@@ -363,7 +363,7 @@ export default function HomeownerAccount() {
 
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium">Weekly Digest</p>
+                      <p className="font-medium" style={{ color: '#b6a6f4' }}>Weekly Digest</p>
                       <p className="text-sm text-gray-600">Summary of weekly activity</p>
                     </div>
                     <Switch
