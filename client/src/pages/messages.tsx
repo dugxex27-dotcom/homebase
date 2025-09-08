@@ -196,8 +196,8 @@ export default function Messages() {
                   </DialogTrigger>
                   <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto" style={{ backgroundColor: '#f2f2f2' }}>
                     <DialogHeader>
-                      <DialogTitle className="flex items-center gap-2" style={{ color: '#1560a2' }}>
-                        <Users className="h-5 w-5" style={{ color: '#1560a2' }} />
+                      <DialogTitle className="flex items-center gap-2" style={{ color: '#2c0f5b' }}>
+                        <Users className="h-5 w-5" style={{ color: '#2c0f5b' }} />
                         Send Message to Contractors
                       </DialogTitle>
                       <DialogDescription>
@@ -207,7 +207,7 @@ export default function Messages() {
                     
                     <div className="space-y-4">
                       <div>
-                        <Label htmlFor="subject" style={{ color: '#1560a2' }}>Subject</Label>
+                        <Label htmlFor="subject" style={{ color: '#2c0f5b' }}>Subject</Label>
                         <Input
                           id="subject"
                           data-testid="input-subject"
@@ -219,7 +219,7 @@ export default function Messages() {
                       </div>
                       
                       <div>
-                        <Label htmlFor="message" style={{ color: '#1560a2' }}>Message</Label>
+                        <Label htmlFor="message" style={{ color: '#2c0f5b' }}>Message</Label>
                         <Textarea
                           id="message"
                           data-testid="textarea-message"
@@ -232,7 +232,7 @@ export default function Messages() {
                       </div>
                       
                       <div>
-                        <Label style={{ color: '#1560a2' }}>Select Contractors ({composeForm.selectedContractors.length} selected)</Label>
+                        <Label style={{ color: '#2c0f5b' }}>Select Contractors ({composeForm.selectedContractors.length} selected)</Label>
                         <ScrollArea className="h-60 border rounded-md p-4 mt-2">
                           <div className="space-y-3">
                             {contractors.map((contractor) => (
