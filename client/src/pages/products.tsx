@@ -111,7 +111,7 @@ export default function Products() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Categories */}
         <div className="mb-8">
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Shop by Category</h3>
+          <h3 className="text-xl font-semibold mb-6" style={{ color: '#b6a6f4' }}>Shop by Category</h3>
           <div className="flex flex-wrap gap-3">
             <Badge
               variant={selectedCategory === "" ? "default" : "secondary"}
