@@ -156,7 +156,7 @@ export default function Home() {
 
 
       {/* Tab Content Section */}
-      <section className={`py-16 ${typedUser?.role === 'homeowner' ? '' : 'bg-gray-50 dark:bg-gray-900/30'}`} style={typedUser?.role === 'homeowner' ? { background: 'linear-gradient(135deg, #c4afef40, #a085e340)' } : {}}>
+      <section className="py-16" style={typedUser?.role === 'homeowner' ? { background: 'linear-gradient(135deg, #c4afef40, #a085e340)' } : { background: '#1560a2' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
 
