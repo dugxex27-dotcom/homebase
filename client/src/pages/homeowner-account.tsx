@@ -280,9 +280,9 @@ export default function HomeownerAccount() {
                     size="sm" 
                     data-testid="button-logout"
                     onClick={handleLogout}
-                    className="text-red-600 border-red-200 hover:bg-red-50"
+                    style={{ color: '#b6a6f4' }}
                   >
-                    <LogOut className="w-4 h-4 mr-2" />
+                    <LogOut className="w-4 h-4 mr-2" style={{ color: '#b6a6f4' }} />
                     Sign Out
                   </Button>
                 </div>
