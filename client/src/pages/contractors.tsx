@@ -134,10 +134,10 @@ export default function Contractors() {
             <div className="mb-8">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <div>
-                  <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                  <h2 className="text-3xl font-bold mb-2" style={{ color: '#ffffff' }}>
                     Available Contractors
                   </h2>
-                  <p className="text-gray-600 dark:text-gray-300 text-lg">
+                  <p className="text-lg" style={{ color: '#b6a6f4' }}>
                     {isLoading ? 'Loading...' : `${sortedContractors.length} verified contractors specializing in niche services`}
                   </p>
                 </div>
