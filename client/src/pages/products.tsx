@@ -131,16 +131,10 @@ export default function Products() {
                 variant={selectedCategory === category ? "default" : "secondary"}
                 className={`cursor-pointer px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
                   selectedCategory === category 
-                    ? "shadow-md" 
-                    : "bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-green-50 dark:hover:bg-green-900/20 hover:border-green-200 dark:hover:border-green-700"
+                    ? "text-white shadow-md" 
+                    : "bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-green-50 dark:hover:bg-green-900/20 hover:border-green-200 dark:hover:border-green-700"
                 }`}
-                style={
-                  selectedCategory === category 
-                    ? { backgroundColor: '#3c258e' }
-                    : category === "Paint & Drywall / Spackling Supplies"
-                    ? { color: 'white' }
-                    : { color: 'rgb(55, 65, 81)' }
-                }
+                style={selectedCategory === category ? { backgroundColor: '#3c258e' } : {}}
                 onClick={() => setSelectedCategory(category)}
               >
                 {category}
@@ -152,7 +146,7 @@ export default function Products() {
         {/* Results Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 className="text-2xl font-bold" style={{ color: 'white' }}>
               {selectedCategory || "All Products"}
             </h2>
             <p style={{ color: '#f2f2f2' }}>
