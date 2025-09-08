@@ -96,10 +96,10 @@ export default function Contractors() {
       <section className="py-16" style={{ background: '#2c0f5b' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-6">
-              Find <span className="text-purple-600 dark:text-purple-400">Trusted Contractors</span>
+            <h1 className="text-4xl lg:text-5xl font-bold mb-6" style={{ color: '#ffffff' }}>
+              Find Trusted Contractors
             </h1>
-            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto mb-8">
+            <p className="text-xl max-w-3xl mx-auto mb-8" style={{ color: '#b6a6f4' }}>
               Connect with verified professionals specializing in niche home services
             </p>
             <div className="flex justify-center">
