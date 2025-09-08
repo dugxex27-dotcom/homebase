@@ -154,7 +154,7 @@ export default function Products() {
             </p>
           </div>
           <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-48" style={{ backgroundColor: '#b6a6f4', color: '#2c0f5b' }}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
