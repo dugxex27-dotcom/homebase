@@ -142,7 +142,7 @@ export default function Contractors() {
                   </p>
                 </div>
                 <div className="flex items-center gap-4">
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                  <div className="text-sm" style={{ color: '#ffffff' }}>
                     Sort by:
                   </div>
                   <Select value={sortBy} onValueChange={setSortBy}>
