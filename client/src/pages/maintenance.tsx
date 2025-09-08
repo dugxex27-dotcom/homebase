@@ -1801,7 +1801,7 @@ export default function Maintenance() {
                 <p style={{ color: '#b6a6f4' }}>Complete history of maintenance and repairs performed on your home</p>
               </div>
             </div>
-            <Button onClick={handleAddNewMaintenanceLog} style={{ backgroundColor: '#2c0f5b', color: 'white' }} className="hover:opacity-90">
+            <Button onClick={handleAddNewMaintenanceLog} style={{ backgroundColor: '#b6a6f4', color: 'white' }} className="hover:opacity-90">
               <Plus className="w-4 h-4 mr-2" />
               Add Service Record
             </Button>

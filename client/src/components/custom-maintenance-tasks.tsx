@@ -228,7 +228,7 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
             <Button onClick={() => {
               setEditingTask(null);
               form.reset();
-            }} className="bg-purple-600 hover:bg-purple-700 text-white">
+            }} style={{ backgroundColor: '#b6a6f4', color: 'white' }} className="hover:opacity-90">
               <Plus className="h-4 w-4 mr-2" />
               Add Custom Task
             </Button>
