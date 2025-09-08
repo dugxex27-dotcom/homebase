@@ -132,9 +132,15 @@ export default function Products() {
                 className={`cursor-pointer px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
                   selectedCategory === category 
                     ? "text-white shadow-md" 
-                    : "bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-green-50 dark:hover:bg-green-900/20 hover:border-green-200 dark:hover:border-green-700"
+                    : "bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-green-50 dark:hover:bg-green-900/20 hover:border-green-200 dark:hover:border-green-700"
                 }`}
-                style={selectedCategory === category ? { backgroundColor: '#3c258e' } : {}}
+                style={
+                  selectedCategory === category 
+                    ? { backgroundColor: '#3c258e' }
+                    : category === "Paint & Drywall / Spackling Supplies"
+                    ? { color: 'white' }
+                    : { color: 'rgb(55, 65, 81)' }
+                }
                 onClick={() => setSelectedCategory(category)}
               >
                 {category}
