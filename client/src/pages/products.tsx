@@ -131,7 +131,7 @@ export default function Products() {
                 variant={selectedCategory === category ? "default" : "secondary"}
                 className={`cursor-pointer px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
                   selectedCategory === category 
-                    ? "text-white shadow-md" 
+                    ? "shadow-md" 
                     : "bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-green-50 dark:hover:bg-green-900/20 hover:border-green-200 dark:hover:border-green-700"
                 }`}
                 style={
