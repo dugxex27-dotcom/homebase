@@ -1790,11 +1790,11 @@ export default function Maintenance() {
 
 
         {/* Maintenance Log Section */}
-        <div id="service-records" className="mb-8">
+        <div id="service-records" className="mb-8" style={{ paddingTop: '30px' }}>
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="bg-primary/10 p-2 rounded-lg">
-                <FileText className="w-6 h-6 text-primary" />
+                <FileText className="w-6 h-6" style={{ color: '#b6a6f4' }} />
               </div>
               <div>
                 <h2 className="text-2xl font-semibold" style={{ color: '#ffffff' }}>Service Records</h2>
