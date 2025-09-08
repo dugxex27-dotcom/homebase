@@ -207,7 +207,7 @@ export default function Messages() {
                     
                     <div className="space-y-4">
                       <div>
-                        <Label htmlFor="subject" style={{ color: '#2c0f5b' }}>Subject</Label>
+                        <Label htmlFor="subject" style={{ color: '#2c0f5b', paddingBottom: '5px', display: 'block' }}>Subject</Label>
                         <Input
                           id="subject"
                           data-testid="input-subject"
