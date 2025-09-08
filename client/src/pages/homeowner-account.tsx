@@ -137,7 +137,7 @@ export default function HomeownerAccount() {
           {/* Profile Information */}
           <div className="lg:col-span-2 space-y-6">
             {/* Basic Profile */}
-            <Card>
+            <Card style={{ backgroundColor: '#f2f2f2' }}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <User className="w-5 h-5" />
@@ -238,7 +238,7 @@ export default function HomeownerAccount() {
             </Card>
 
             {/* Account Security */}
-            <Card>
+            <Card style={{ backgroundColor: '#f2f2f2' }}>
               <CardHeader>
                 <CardTitle>Account Security</CardTitle>
                 <CardDescription>
@@ -292,7 +292,7 @@ export default function HomeownerAccount() {
 
           {/* Notification Preferences */}
           <div className="space-y-6">
-            <Card>
+            <Card style={{ backgroundColor: '#f2f2f2' }}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Bell className="w-5 h-5" />
