@@ -264,7 +264,7 @@ export default function Messages() {
                           variant="outline" 
                           onClick={() => setIsComposeDialogOpen(false)}
                           data-testid="button-cancel-compose"
-                          style={{ backgroundColor: '#3798ef', color: 'white' }}
+                          style={{ backgroundColor: '#3c258e', color: 'white' }}
                         >
                           Cancel
                         </Button>
@@ -272,7 +272,7 @@ export default function Messages() {
                           onClick={handleComposeSubmit}
                           disabled={sendBulkMessageMutation.isPending || composeForm.selectedContractors.length === 0}
                           data-testid="button-send-bulk-message"
-                          style={{ backgroundColor: '#1560a2', color: 'white' }}
+                          style={{ backgroundColor: '#2c0f5b', color: 'white' }}
                           className="hover:opacity-90"
                         >
                           <Send className="h-4 w-4 mr-2" />
