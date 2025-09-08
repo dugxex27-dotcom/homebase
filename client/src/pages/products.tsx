@@ -155,7 +155,7 @@ export default function Products() {
             <h2 className="text-2xl font-bold text-gray-900">
               {selectedCategory || "All Products"}
             </h2>
-            <p className="text-gray-600">
+            <p style={{ color: '#f2f2f2' }}>
               {isLoading ? 'Loading...' : `${sortedProducts.length} products found`}
             </p>
           </div>
