@@ -101,6 +101,7 @@ export default function ContractorProfile() {
     zipCode: '',
     serviceRadius: 25,
     servicesOffered: [] as string[],
+    hasEmergencyServices: false,
     website: '',
     facebook: '',
     instagram: '',
@@ -813,6 +814,23 @@ export default function ContractorProfile() {
                     ))}
                 </div>
               )}
+            </div>
+
+            {/* Emergency Services */}
+            <div className="border-t pt-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="emergency-services"
+                  checked={formData.hasEmergencyServices}
+                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, hasEmergencyServices: checked === true }))}
+                />
+                <Label htmlFor="emergency-services" className="text-sm font-medium">
+                  Emergency services available (24/7 response)
+                </Label>
+              </div>
+              <p className="text-xs text-gray-600 mt-1">
+                Check this if you offer emergency services outside of normal business hours
+              </p>
             </div>
           </CardContent>
         </Card>
