@@ -1703,23 +1703,23 @@ export default function Maintenance() {
                       {/* Previous Contractor Section */}
                       {previousContractor && (
                         <div className="border-t pt-4 mt-4">
-                          <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                          <div className="rounded-lg p-3" style={{ backgroundColor: '#2c0f5b', borderColor: '#2c0f5b' }}>
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
                                 <div className="flex items-center mb-2">
-                                  <User className="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" />
-                                  <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                                  <User className="w-4 h-4 mr-2" style={{ color: '#ffffff' }} />
+                                  <span className="text-sm font-medium" style={{ color: '#ffffff' }}>
                                     Previous contractor used for {previousContractor.serviceType}
                                   </span>
                                 </div>
-                                <div className="text-sm text-blue-800 dark:text-blue-200">
+                                <div className="text-sm" style={{ color: '#ffffff' }}>
                                   <div className="font-medium">
                                     {previousContractor.contractorName}
                                     {previousContractor.contractorCompany && (
                                       <span className="font-normal"> - {previousContractor.contractorCompany}</span>
                                     )}
                                   </div>
-                                  <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                                  <div className="text-xs mt-1" style={{ color: '#ffffff' }}>
                                     Last service: {new Date(previousContractor.lastServiceDate).toLocaleDateString()}
                                   </div>
                                 </div>
@@ -1729,7 +1729,8 @@ export default function Maintenance() {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="text-xs border-purple-300 text-purple-600 hover:bg-purple-50 dark:border-purple-600 dark:text-purple-400 dark:hover:bg-purple-900/20"
+                                    className="text-xs"
+                                    style={{ backgroundColor: '#b6a6f4', color: '#ffffff', borderColor: '#b6a6f4' }}
                                     onClick={() => window.open(`/contractor-profile/${previousContractor.contractorId}`, '_blank')}
                                     data-testid={`button-view-contractor-${task.id}`}
                                   >
@@ -1740,7 +1741,8 @@ export default function Maintenance() {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="text-xs border-purple-300 text-purple-600 hover:bg-purple-50 dark:border-purple-600 dark:text-purple-400 dark:hover:bg-purple-900/20"
+                                    className="text-xs"
+                                    style={{ backgroundColor: '#b6a6f4', color: '#ffffff', borderColor: '#b6a6f4' }}
                                     onClick={() => {
                                       toast({
                                         title: "Contact Contractor",
