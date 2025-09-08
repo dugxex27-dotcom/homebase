@@ -306,7 +306,7 @@ export default function Home() {
               <>
                 <Card className="border-gray-300 dark:border-gray-600" style={{ backgroundColor: '#f2f2f2' }}>
                   <CardContent className="p-8 text-center">
-                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#b6a6f4' }}>
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#1560a2' }}>
                       <Users className="h-8 w-8 text-white" />
                     </div>
                     <h3 className="text-xl font-bold mb-3" style={{ color: '#1560a2' }}>Quality Leads</h3>
@@ -318,7 +318,7 @@ export default function Home() {
 
                 <Card className="border-gray-300 dark:border-gray-600" style={{ backgroundColor: '#f2f2f2' }}>
                   <CardContent className="p-8 text-center">
-                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#b6a6f4' }}>
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#1560a2' }}>
                       <TrendingUp className="h-8 w-8 text-white" />
                     </div>
                     <h3 className="text-xl font-bold mb-3" style={{ color: '#1560a2' }}>Grow Your Business</h3>
@@ -330,7 +330,7 @@ export default function Home() {
 
                 <Card className="border-gray-300 dark:border-gray-600" style={{ backgroundColor: '#f2f2f2' }}>
                   <CardContent className="p-8 text-center">
-                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#b6a6f4' }}>
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#1560a2' }}>
                       <Star className="h-8 w-8 text-white" />
                     </div>
                     <h3 className="text-xl font-bold mb-3" style={{ color: '#1560a2' }}>Build Reputation</h3>
