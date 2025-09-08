@@ -244,7 +244,7 @@ export default function Home() {
 
 
       {/* Additional Features Section */}
-      <section className="py-16" style={{ background: typedUser?.role === 'homeowner' ? '#2c0f5b' : '#1560a2' }}>
+      <section className="pb-16" style={{ background: typedUser?.role === 'homeowner' ? '#2c0f5b' : '#1560a2', paddingTop: '114px' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4" style={{ color: '#ffffff' }}>
