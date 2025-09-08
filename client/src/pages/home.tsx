@@ -39,7 +39,7 @@ export default function Home() {
       
       {/* Contractor Dashboard - shown directly after hero for contractors */}
       {typedUser?.role === 'contractor' && (
-        <section className="py-16 bg-gray-50 dark:bg-gray-900/30">
+        <section className="py-16" style={{ backgroundColor: '#1560a2' }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="max-w-6xl mx-auto">
               <div className="text-center mb-12">
@@ -244,7 +244,7 @@ export default function Home() {
 
 
       {/* Additional Features Section */}
-      <section className="py-16" style={{ background: '#2c0f5b' }}>
+      <section className="py-16" style={{ background: typedUser?.role === 'homeowner' ? '#2c0f5b' : '#1560a2' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4" style={{ color: '#ffffff' }}>
@@ -343,7 +343,7 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-16">
+      <footer className="text-white py-16" style={{ backgroundColor: typedUser?.role === 'homeowner' ? '#1f2937' : '#1560a2' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="text-center">
