@@ -99,7 +99,7 @@ export default function FilterSidebar({ onFiltersChange }: FilterSidebarProps) {
           <div>
             <Label className="text-sm font-medium text-foreground mb-3 block">Distance from you</Label>
             <Select onValueChange={(value) => setMaxDistance(parseFloat(value))}>
-              <SelectTrigger className="border-muted">
+              <SelectTrigger className="border-muted" style={{ color: '#ffffff' }}>
                 <SelectValue placeholder="Any distance" />
               </SelectTrigger>
               <SelectContent>
