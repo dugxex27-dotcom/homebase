@@ -131,9 +131,10 @@ export default function Products() {
                 variant={selectedCategory === category ? "default" : "secondary"}
                 className={`cursor-pointer px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
                   selectedCategory === category 
-                    ? "bg-green-600 text-white shadow-md" 
+                    ? "text-white shadow-md" 
                     : "bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-green-50 dark:hover:bg-green-900/20 hover:border-green-200 dark:hover:border-green-700"
                 }`}
+                style={selectedCategory === category ? { backgroundColor: '#3c258e' } : {}}
                 onClick={() => setSelectedCategory(category)}
               >
                 {category}
