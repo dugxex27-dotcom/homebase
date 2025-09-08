@@ -127,7 +127,7 @@ export default function Messages() {
 
   if (!typedUser) {
     return (
-      <div className="min-h-screen bg-purple-50 dark:bg-gray-900">
+      <div className="min-h-screen" style={{ backgroundColor: '#2c0f5b' }}>
         <Header />
         <div className="container mx-auto p-6">
           <Card className="bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-700" style={{ backgroundColor: '#f2f2f2' }}>
@@ -144,28 +144,28 @@ export default function Messages() {
 
   const bgColor = typedUser.role === 'contractor' 
     ? 'dark:bg-gray-900' 
-    : 'bg-purple-50 dark:bg-gray-900';
+    : '';
   
   const heroGradient = typedUser.role === 'contractor'
     ? ''
-    : 'bg-gradient-to-br from-purple-100 via-purple-50 to-purple-100 dark:from-purple-950/20 dark:via-purple-900/20 dark:to-purple-950/20';
+    : '';
   
   const accentColor = typedUser.role === 'contractor'
     ? 'text-blue-800 dark:text-blue-400'
     : 'text-purple-600 dark:text-purple-400';
 
   return (
-    <div className={`min-h-screen ${bgColor}`} style={typedUser.role === 'contractor' ? { backgroundColor: '#1560a2' } : {}}>
+    <div className={`min-h-screen ${bgColor}`} style={typedUser.role === 'contractor' ? { backgroundColor: '#1560a2' } : { backgroundColor: '#2c0f5b' }}>
       <Header />
       
       {/* Hero Section */}
-      <section className={`${heroGradient} py-16`} style={typedUser.role === 'contractor' ? { backgroundColor: '#1560a2' } : {}}>
+      <section className={`${heroGradient} py-16`} style={typedUser.role === 'contractor' ? { backgroundColor: '#1560a2' } : { backgroundColor: '#2c0f5b' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h1 className="text-4xl lg:text-5xl font-bold mb-6" style={typedUser.role === 'contractor' ? { color: 'white' } : { color: 'text-gray-900 dark:text-white' }}>
-              <span className={typedUser.role === 'contractor' ? '' : accentColor} style={typedUser.role === 'contractor' ? { color: 'white' } : {}}>Messages</span>
+            <h1 className="text-4xl lg:text-5xl font-bold mb-6" style={typedUser.role === 'contractor' ? { color: 'white' } : { color: '#ffffff' }}>
+              <span className={typedUser.role === 'contractor' ? '' : ''} style={typedUser.role === 'contractor' ? { color: 'white' } : { color: '#ffffff' }}>Messages</span>
             </h1>
-            <p className="text-xl max-w-3xl mx-auto mb-8" style={typedUser.role === 'contractor' ? { color: '#afd6f9' } : { color: 'text-gray-600 dark:text-gray-300' }}>
+            <p className="text-xl max-w-3xl mx-auto mb-8" style={typedUser.role === 'contractor' ? { color: '#afd6f9' } : { color: '#b6a6f4' }}>
               {typedUser.role === 'homeowner' 
                 ? 'Communicate with contractors about your projects'
                 : 'Stay in touch with your homeowner clients'
