@@ -89,11 +89,11 @@ export default function Contractors() {
   }
 
   return (
-    <div className="min-h-screen bg-purple-50 dark:bg-gray-900">
+    <div className="min-h-screen" style={{ backgroundColor: '#2c0f5b' }}>
       <Header />
       
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-purple-100 via-purple-50 to-purple-100 dark:from-purple-950/20 dark:via-purple-900/20 dark:to-purple-950/20 py-16">
+      <section className="py-16" style={{ background: '#2c0f5b' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-6">
