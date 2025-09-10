@@ -27,6 +27,7 @@ const customTaskFormSchema = insertCustomMaintenanceTaskSchema.extend({
 type CustomTaskFormData = z.infer<typeof customTaskFormSchema>;
 
 const FREQUENCY_OPTIONS = [
+  { value: "once", label: "One time task" },
   { value: "monthly", label: "Monthly" },
   { value: "quarterly", label: "Every 3 months" },
   { value: "biannually", label: "Every 6 months" },
