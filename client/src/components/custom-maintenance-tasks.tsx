@@ -224,20 +224,20 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold" style={{ color: '#ffffff' }}>Your Custom Tasks</h2>
+        <h2 className="text-2xl font-semibold text-white">Your Custom Tasks</h2>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => {
               setEditingTask(null);
               form.reset();
-            }} style={{ backgroundColor: '#b6a6f4', color: 'white' }} className="hover:opacity-90">
+            }} className="text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 hover:opacity-90" style={{ background: 'linear-gradient(135deg, #5633c1, #7c5cd6)' }}>
               <Plus className="h-4 w-4 mr-2" />
               Add Custom Task
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" style={{ backgroundColor: '#f8f9fa', border: '2px solid #2c0f5b' }}>
             <DialogHeader>
-              <DialogTitle>
+              <DialogTitle style={{ color: '#2c0f5b', fontSize: '1.5rem', fontWeight: 'bold' }}>
                 {editingTask ? 'Edit Custom Task' : 'Create Custom Task'}
               </DialogTitle>
             </DialogHeader>
@@ -469,10 +469,21 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
                 />
 
                 <div className="flex justify-end space-x-2 pt-4">
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setIsDialogOpen(false)}
+                    className="border-2 text-gray-700 hover:bg-gray-100"
+                    style={{ borderColor: '#2c0f5b' }}
+                  >
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={createTaskMutation.isPending || updateTaskMutation.isPending}>
+                  <Button 
+                    type="submit" 
+                    disabled={createTaskMutation.isPending || updateTaskMutation.isPending}
+                    className="text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 hover:opacity-90"
+                    style={{ background: 'linear-gradient(135deg, #5633c1, #7c5cd6)' }}
+                  >
                     {editingTask ? 'Update Task' : 'Create Task'}
                   </Button>
                 </div>
@@ -485,11 +496,11 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
       {isLoading ? (
         <div className="text-center py-8">Loading your custom tasks...</div>
       ) : customTasks.length === 0 ? (
-        <Card>
+        <Card className="border-2" style={{ borderColor: '#b6a6f4', backgroundColor: '#f8f9fa' }}>
           <CardContent className="py-8 text-center">
-            <Calendar className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No custom tasks yet</h3>
-            <p className="text-gray-600 dark:text-gray-300 mb-4">
+            <Calendar className="h-12 w-12 mx-auto mb-4" style={{ color: '#b6a6f4' }} />
+            <h3 className="text-lg font-medium mb-2" style={{ color: '#2c0f5b' }}>No custom tasks yet</h3>
+            <p className="text-gray-600 mb-4">
               Create your own maintenance tasks with custom schedules
             </p>
           </CardContent>
@@ -499,12 +510,12 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
           {customTasks.map((task) => {
             const priorityOption = PRIORITY_OPTIONS.find(p => p.value === task.priority);
             return (
-              <Card key={task.id} className="border border-gray-200 dark:border-gray-700">
+              <Card key={task.id} className="border-2" style={{ borderColor: '#b6a6f4', backgroundColor: '#ffffff' }}>
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <CardTitle className="text-lg">{task.title}</CardTitle>
-                      <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                      <CardTitle className="text-lg" style={{ color: '#2c0f5b' }}>{task.title}</CardTitle>
+                      <p className="text-sm text-gray-600 mt-1">
                         {task.description}
                       </p>
                     </div>
@@ -513,7 +524,8 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
                         variant="ghost"
                         size="sm"
                         onClick={() => handleEdit(task)}
-                        className="text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                        className="hover:bg-purple-50"
+                        style={{ color: '#2c0f5b' }}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -521,7 +533,7 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
                         variant="ghost"
                         size="sm"
                         onClick={() => handleDelete(task.id)}
-                        className="text-red-800 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-950/30"
+                        className="text-red-600 hover:bg-red-50"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -540,7 +552,7 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
                       {task.difficulty}
                     </Badge>
                   </div>
-                  <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-300">
+                  <div className="flex items-center space-x-4 text-sm text-gray-600">
                     <div className="flex items-center">
                       <Calendar className="h-4 w-4 mr-1" />
                       {getFrequencyLabel(task)}
