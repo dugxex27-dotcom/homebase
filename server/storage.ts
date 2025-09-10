@@ -305,6 +305,9 @@ export class MemStorage implements IStorage {
       lastName: userData.lastName || null,
       profileImageUrl: userData.profileImageUrl || null,
       role: userData.role || 'homeowner',
+      referralCode: userData.referralCode || null,
+      referredBy: userData.referredBy || null,
+      referralCount: userData.referralCount || 0,
       createdAt: existingUser?.createdAt || new Date(),
       updatedAt: new Date(),
     };
@@ -481,7 +484,8 @@ export class MemStorage implements IStorage {
         hasEmergencyServices: contractor.hasEmergencyServices ?? false,
         serviceRadius: (contractor as any).serviceRadius ?? 25,
         businessLogo: null,
-        projectPhotos: []
+        projectPhotos: [],
+        googleBusinessUrl: null
       };
       this.contractors.set(id, contractorWithId);
     });
@@ -727,7 +731,8 @@ export class MemStorage implements IStorage {
       hasEmergencyServices: contractor.hasEmergencyServices ?? false,
       serviceRadius: contractor.serviceRadius ?? 25,
       businessLogo: contractor.businessLogo || null,
-      projectPhotos: contractor.projectPhotos || []
+      projectPhotos: contractor.projectPhotos || [],
+      googleBusinessUrl: contractor.googleBusinessUrl || null
     };
     this.contractors.set(id, newContractor);
     return newContractor;
@@ -1674,6 +1679,12 @@ export class MemStorage implements IStorage {
       internalNotes: proposalData.internalNotes || null,
       homeownerId: proposalData.homeownerId || null,
       status: proposalData.status || 'draft',
+      attachments: proposalData.attachments || null,
+      contractFilePath: proposalData.contractFilePath || null,
+      contractSignedAt: proposalData.contractSignedAt || null,
+      customerSignature: proposalData.customerSignature || null,
+      contractorSignature: proposalData.contractorSignature || null,
+      signatureIpAddress: proposalData.signatureIpAddress || null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -2012,6 +2023,10 @@ export class MemStorage implements IStorage {
     const boost: ContractorBoost = {
       id: randomUUID(),
       ...boostData,
+      isActive: boostData.isActive ?? true,
+      status: boostData.status || 'active',
+      boostRadius: boostData.boostRadius ?? 10,
+      stripePaymentIntentId: boostData.stripePaymentIntentId || null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
