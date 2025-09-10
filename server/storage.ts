@@ -638,7 +638,7 @@ export class MemStorage implements IStorage {
     minRating?: number;
     hasEmergencyServices?: boolean;
     maxDistance?: number;
-  }): Promise<Contractor[]> {
+  }): Promise<(Contractor & { isBoosted?: boolean })[]> {
     let contractors = Array.from(this.contractors.values());
 
     if (filters) {
@@ -657,8 +657,6 @@ export class MemStorage implements IStorage {
           parseFloat(contractor.rating) >= filters.minRating!
         );
       }
-
-
 
       if (filters.hasEmergencyServices !== undefined) {
         contractors = contractors.filter(contractor =>
@@ -681,7 +679,36 @@ export class MemStorage implements IStorage {
       });
     }
 
-    return contractors;
+    // Check for active boosts and prioritize boosted contractors
+    const contractorsWithBoosts = await Promise.all(
+      contractors.map(async (contractor) => {
+        let isBoosted = false;
+        
+        // Check if this contractor has active boosts for any of the filtered services
+        if (filters?.services && filters.services.length > 0) {
+          for (const service of filters.services) {
+            const activeBoosts = await this.getActiveBoosts(service);
+            if (activeBoosts.some(boost => boost.contractorId === contractor.id)) {
+              isBoosted = true;
+              break;
+            }
+          }
+        }
+        
+        return { ...contractor, isBoosted };
+      })
+    );
+
+    // Sort contractors: boosted contractors first, then by rating
+    contractorsWithBoosts.sort((a, b) => {
+      if (a.isBoosted && !b.isBoosted) return -1;
+      if (!a.isBoosted && b.isBoosted) return 1;
+      
+      // If both are boosted or both are not boosted, sort by rating
+      return parseFloat(b.rating) - parseFloat(a.rating);
+    });
+
+    return contractorsWithBoosts;
   }
 
   async getContractor(id: string): Promise<Contractor | undefined> {
