@@ -28,7 +28,7 @@ export default function Contractors() {
     }
   }, [location]);
 
-  const { data: contractors, isLoading, error } = useQuery<Contractor[]>({
+  const { data: contractors, isLoading, error } = useQuery<(Contractor & { isBoosted?: boolean })[]>({
     queryKey: filters.searchQuery || filters.searchLocation 
       ? ['/api/contractors/search', filters]
       : ['/api/contractors', filters],
