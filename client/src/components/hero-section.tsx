@@ -50,12 +50,12 @@ export default function HeroSection() {
                 </Link>
 
                 <Link href="/contractors">
-                  <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group border border-gray-300 dark:border-gray-700">
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-colors" style={{ backgroundColor: '#2c0f5b' }}>
+                  <div className="rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group border border-gray-300 dark:border-gray-700" style={{ backgroundColor: '#2c0f5b' }}>
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-colors" style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)' }}>
                       <Search className="h-6 w-6 text-white" />
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Find Contractors</h3>
-                    <p className="text-gray-600 dark:text-gray-300 text-sm">
+                    <h3 className="text-lg font-semibold mb-2" style={{ color: 'white' }}>Find Contractors</h3>
+                    <p className="text-sm" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>
                       Connect with trusted local contractors for any home project
                     </p>
                   </div>
