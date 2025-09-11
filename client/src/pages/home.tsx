@@ -29,24 +29,20 @@ export default function Home() {
   });
 
   return (
-    <div className="min-h-screen" style={typedUser?.role === 'homeowner' ? {
-      background: '#2c0f5b'
-    } : {
-      background: '#1560a2'
-    }}>
+    <div className="min-h-screen" style={{ background: '#2c0f5b' }}>
       <Header />
       <HeroSection />
       
       {/* Contractor Dashboard - shown directly after hero for contractors */}
       {typedUser?.role === 'contractor' && (
-        <section className="py-16" style={{ backgroundColor: '#1560a2' }}>
+        <section className="py-16" style={{ backgroundColor: '#2c0f5b' }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="max-w-6xl mx-auto">
               <div className="text-center mb-12">
                 <h2 className="text-4xl font-bold mb-4" style={{ color: 'white' }}>
                   Your Business Dashboard
                 </h2>
-                <p className="text-xl max-w-2xl mx-auto" style={{ color: '#87ceeb' }}>
+                <p className="text-xl max-w-2xl mx-auto" style={{ color: '#b6a6f4' }}>
                   Manage your contracting business and grow your client base
                 </p>
               </div>
@@ -57,15 +53,15 @@ export default function Home() {
                   <Card className="border-gray-300 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group h-full flex flex-col" style={{ background: '#f2f2f2' }}>
                     <CardContent className="p-6 flex-1 flex flex-col">
                       <div className="flex items-center mb-4">
-                        <div className="w-12 h-12 rounded-xl flex items-center justify-center group-hover:opacity-80 transition-colors" style={{ backgroundColor: '#1560a2' }}>
+                        <div className="w-12 h-12 rounded-xl flex items-center justify-center group-hover:opacity-80 transition-colors" style={{ backgroundColor: '#2c0f5b' }}>
                           <Users className="h-6 w-6" style={{ color: 'white' }} />
                         </div>
                         <div className="ml-4">
-                          <h3 className="text-lg font-semibold" style={{ color: '#1560a2' }}>My Profile</h3>
-                          <p className="text-sm" style={{ color: '#1560a2' }}>Update info</p>
+                          <h3 className="text-lg font-semibold" style={{ color: '#2c0f5b' }}>My Profile</h3>
+                          <p className="text-sm" style={{ color: '#2c0f5b' }}>Update info</p>
                         </div>
                       </div>
-                      <p className="text-sm" style={{ color: '#1560a2' }}>
+                      <p className="text-sm" style={{ color: '#2c0f5b' }}>
                         Manage your professional profile and service offerings
                       </p>
                     </CardContent>
@@ -76,15 +72,15 @@ export default function Home() {
                   <Card className="border-gray-300 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group h-full flex flex-col" style={{ background: '#f2f2f2' }}>
                     <CardContent className="p-6 flex-1 flex flex-col">
                       <div className="flex items-center mb-4">
-                        <div className="w-12 h-12 rounded-xl flex items-center justify-center group-hover:opacity-80 transition-colors" style={{ backgroundColor: '#1560a2' }}>
+                        <div className="w-12 h-12 rounded-xl flex items-center justify-center group-hover:opacity-80 transition-colors" style={{ backgroundColor: '#2c0f5b' }}>
                           <Bell className="h-6 w-6" style={{ color: 'white' }} />
                         </div>
                         <div className="ml-4">
-                          <h3 className="text-lg font-semibold" style={{ color: '#1560a2' }}>Messages</h3>
-                          <p className="text-sm" style={{ color: '#1560a2' }}>Client communication</p>
+                          <h3 className="text-lg font-semibold" style={{ color: '#2c0f5b' }}>Messages</h3>
+                          <p className="text-sm" style={{ color: '#2c0f5b' }}>Client communication</p>
                         </div>
                       </div>
-                      <p className="text-sm" style={{ color: '#1560a2' }}>
+                      <p className="text-sm" style={{ color: '#2c0f5b' }}>
                         Communicate with potential and existing clients
                       </p>
                     </CardContent>
@@ -95,15 +91,15 @@ export default function Home() {
                   <Card className="border-gray-300 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group h-full flex flex-col" style={{ background: '#f2f2f2' }}>
                     <CardContent className="p-6 flex-1 flex flex-col">
                       <div className="flex items-center mb-4">
-                        <div className="w-12 h-12 rounded-xl flex items-center justify-center group-hover:opacity-80 transition-colors" style={{ backgroundColor: '#1560a2' }}>
+                        <div className="w-12 h-12 rounded-xl flex items-center justify-center group-hover:opacity-80 transition-colors" style={{ backgroundColor: '#2c0f5b' }}>
                           <Calendar className="h-6 w-6" style={{ color: 'white' }} />
                         </div>
                         <div className="ml-4">
-                          <h3 className="text-lg font-semibold" style={{ color: '#1560a2' }}>Active Projects</h3>
-                          <p className="text-sm" style={{ color: '#1560a2' }}>Current work</p>
+                          <h3 className="text-lg font-semibold" style={{ color: '#2c0f5b' }}>Active Projects</h3>
+                          <p className="text-sm" style={{ color: '#2c0f5b' }}>Current work</p>
                         </div>
                       </div>
-                      <p className="text-sm" style={{ color: '#1560a2' }}>
+                      <p className="text-sm" style={{ color: '#2c0f5b' }}>
                         3 active projects scheduled this week
                       </p>
                     </CardContent>
@@ -114,15 +110,15 @@ export default function Home() {
                   <Card className="border-gray-300 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group h-full flex flex-col" style={{ background: '#f2f2f2' }}>
                     <CardContent className="p-6 flex-1 flex flex-col">
                       <div className="flex items-center mb-4">
-                        <div className="w-12 h-12 rounded-xl flex items-center justify-center group-hover:opacity-80 transition-colors" style={{ backgroundColor: '#1560a2' }}>
+                        <div className="w-12 h-12 rounded-xl flex items-center justify-center group-hover:opacity-80 transition-colors" style={{ backgroundColor: '#2c0f5b' }}>
                           <Star className="h-6 w-6" style={{ color: 'white' }} />
                         </div>
                         <div className="ml-4">
-                          <h3 className="text-lg font-semibold" style={{ color: '#1560a2' }}>Reviews</h3>
-                          <p className="text-sm" style={{ color: '#1560a2' }}>Customer feedback</p>
+                          <h3 className="text-lg font-semibold" style={{ color: '#2c0f5b' }}>Reviews</h3>
+                          <p className="text-sm" style={{ color: '#2c0f5b' }}>Customer feedback</p>
                         </div>
                       </div>
-                      <p className="text-sm" style={{ color: '#1560a2' }}>
+                      <p className="text-sm" style={{ color: '#2c0f5b' }}>
                         4.8/5 stars from 127 recent reviews
                       </p>
                     </CardContent>
@@ -133,15 +129,15 @@ export default function Home() {
                   <Card className="border-gray-300 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group h-full flex flex-col" style={{ background: '#f2f2f2' }}>
                     <CardContent className="p-6 flex-1 flex flex-col">
                       <div className="flex items-center mb-4">
-                        <div className="w-12 h-12 rounded-xl flex items-center justify-center group-hover:opacity-80 transition-colors" style={{ backgroundColor: '#1560a2' }}>
+                        <div className="w-12 h-12 rounded-xl flex items-center justify-center group-hover:opacity-80 transition-colors" style={{ backgroundColor: '#2c0f5b' }}>
                           <Search className="h-6 w-6" style={{ color: 'white' }} />
                         </div>
                         <div className="ml-4">
-                          <h3 className="text-lg font-semibold" style={{ color: '#1560a2' }}>New Leads</h3>
-                          <p className="text-sm" style={{ color: '#1560a2' }}>Opportunities</p>
+                          <h3 className="text-lg font-semibold" style={{ color: '#2c0f5b' }}>New Leads</h3>
+                          <p className="text-sm" style={{ color: '#2c0f5b' }}>Opportunities</p>
                         </div>
                       </div>
-                      <p className="text-sm" style={{ color: '#1560a2' }}>
+                      <p className="text-sm" style={{ color: '#2c0f5b' }}>
                         5 new client inquiries this week
                       </p>
                     </CardContent>
@@ -156,7 +152,7 @@ export default function Home() {
 
 
       {/* Tab Content Section */}
-      <section className="py-16" style={typedUser?.role === 'homeowner' ? { background: 'linear-gradient(135deg, #c4afef40, #a085e340)' } : { background: '#1560a2' }}>
+      <section className="py-16" style={{ background: '#2c0f5b' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
 
@@ -180,19 +176,19 @@ export default function Home() {
                   
                   {/* Service badges */}
                   <div className="flex flex-wrap justify-center gap-2 mb-8">
-                    <Badge variant="secondary" className="bg-gray-100 dark:bg-gray-700/50 text-gray-800 dark:text-gray-200 px-3 py-1">
+                    <Badge variant="secondary" className="px-3 py-1" style={{ backgroundColor: '#2c0f5b', color: 'white' }}>
                       Gutter Cleaning
                     </Badge>
-                    <Badge variant="secondary" className="px-3 py-1" style={{ backgroundColor: '#3c258e', color: 'white' }}>
+                    <Badge variant="secondary" className="px-3 py-1" style={{ backgroundColor: '#2c0f5b', color: 'white' }}>
                       Drywall / Spackling Repair
                     </Badge>
-                    <Badge variant="secondary" className="bg-gray-100 dark:bg-gray-700/50 text-gray-800 dark:text-gray-200 px-3 py-1">
+                    <Badge variant="secondary" className="px-3 py-1" style={{ backgroundColor: '#2c0f5b', color: 'white' }}>
                       Custom Cabinetry
                     </Badge>
-                    <Badge variant="secondary" className="px-3 py-1" style={{ backgroundColor: '#3c258e', color: 'white' }}>
+                    <Badge variant="secondary" className="px-3 py-1" style={{ backgroundColor: '#2c0f5b', color: 'white' }}>
                       HVAC Services
                     </Badge>
-                    <Badge variant="secondary" className="bg-gray-100 dark:bg-gray-700/50 text-gray-800 dark:text-gray-200 px-3 py-1">
+                    <Badge variant="secondary" className="px-3 py-1" style={{ backgroundColor: '#2c0f5b', color: 'white' }}>
                       Electrical Work
                     </Badge>
                   </div>
@@ -244,7 +240,7 @@ export default function Home() {
 
 
       {/* Additional Features Section */}
-      <section style={{ background: typedUser?.role === 'homeowner' ? '#2c0f5b' : '#1560a2', paddingTop: '14px', paddingBottom: '30px' }}>
+      <section style={{ background: '#2c0f5b', paddingTop: '14px', paddingBottom: '30px' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4" style={{ color: '#ffffff' }}>
@@ -255,7 +251,7 @@ export default function Home() {
                 We've designed every feature to make home management simple, reliable, and efficient
               </p>
             ) : (
-              <p className="text-xl max-w-3xl mx-auto" style={{ color: '#87ceeb' }}>
+              <p className="text-xl max-w-3xl mx-auto" style={{ color: '#b6a6f4' }}>
                 The platform contractors trust to grow their business and connect with quality clients
               </p>
             )}
@@ -306,10 +302,10 @@ export default function Home() {
               <>
                 <Card className="border-gray-300 dark:border-gray-600" style={{ backgroundColor: '#f2f2f2' }}>
                   <CardContent className="p-8 text-center">
-                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#1560a2' }}>
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#2c0f5b' }}>
                       <Users className="h-8 w-8 text-white" />
                     </div>
-                    <h3 className="text-xl font-bold mb-3" style={{ color: '#1560a2' }}>Quality Leads</h3>
+                    <h3 className="text-xl font-bold mb-3" style={{ color: '#2c0f5b' }}>Quality Leads</h3>
                     <p className="text-gray-600 dark:text-gray-300">
                       Connect with motivated homeowners who value professional service and quality workmanship
                     </p>
@@ -318,10 +314,10 @@ export default function Home() {
 
                 <Card className="border-gray-300 dark:border-gray-600" style={{ backgroundColor: '#f2f2f2' }}>
                   <CardContent className="p-8 text-center">
-                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#1560a2' }}>
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#2c0f5b' }}>
                       <TrendingUp className="h-8 w-8 text-white" />
                     </div>
-                    <h3 className="text-xl font-bold mb-3" style={{ color: '#1560a2' }}>Grow Your Business</h3>
+                    <h3 className="text-xl font-bold mb-3" style={{ color: '#2c0f5b' }}>Grow Your Business</h3>
                     <p className="text-gray-600 dark:text-gray-300">
                       Tools and features designed to help you manage projects, track earnings, and expand your client base
                     </p>
@@ -330,10 +326,10 @@ export default function Home() {
 
                 <Card className="border-gray-300 dark:border-gray-600" style={{ backgroundColor: '#f2f2f2' }}>
                   <CardContent className="p-8 text-center">
-                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#1560a2' }}>
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#2c0f5b' }}>
                       <Star className="h-8 w-8 text-white" />
                     </div>
-                    <h3 className="text-xl font-bold mb-3" style={{ color: '#1560a2' }}>Build Reputation</h3>
+                    <h3 className="text-xl font-bold mb-3" style={{ color: '#2c0f5b' }}>Build Reputation</h3>
                     <p className="text-gray-600 dark:text-gray-300">
                       Showcase your expertise through customer reviews and build a trusted reputation in your community
                     </p>
@@ -346,7 +342,7 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="text-white py-16" style={{ backgroundColor: '#000000' }}>
+      <footer className="text-white py-16" style={{ backgroundColor: '#2c0f5b' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="text-center">
@@ -376,20 +372,20 @@ export default function Home() {
             <div className="text-center">
               <h4 className="text-lg font-semibold mb-6 text-white">For Contractors</h4>
               <ul className="space-y-3 text-gray-400">
-                <li><Link href="/contractor-signin" className={`transition-colors ${typedUser?.role === 'homeowner' ? 'hover:text-purple-400' : 'hover:text-red-400'}`}>Join Network</Link></li>
-                <li><a href="#" className={`transition-colors ${typedUser?.role === 'homeowner' ? 'hover:text-purple-400' : 'hover:text-red-400'}`}>Pricing Plans</a></li>
-                <li><a href="#" className={`transition-colors ${typedUser?.role === 'homeowner' ? 'hover:text-purple-400' : 'hover:text-red-400'}`}>Success Stories</a></li>
-                <li><a href="#" className={`transition-colors ${typedUser?.role === 'homeowner' ? 'hover:text-purple-400' : 'hover:text-red-400'}`}>Resources</a></li>
+                <li><Link href="/contractor-signin" className="transition-colors hover:text-purple-400">Join Network</Link></li>
+                <li><a href="#" className="transition-colors hover:text-purple-400">Pricing Plans</a></li>
+                <li><a href="#" className="transition-colors hover:text-purple-400">Success Stories</a></li>
+                <li><a href="#" className="transition-colors hover:text-purple-400">Resources</a></li>
               </ul>
             </div>
 
             <div className="text-center">
               <h4 className="text-lg font-semibold mb-6 text-white">Support</h4>
               <ul className="space-y-3 text-gray-400">
-                <li><a href="#" className={`transition-colors ${typedUser?.role === 'homeowner' ? 'hover:text-purple-400' : 'hover:text-red-400'}`}>Help Center</a></li>
-                <li><a href="#" className={`transition-colors ${typedUser?.role === 'homeowner' ? 'hover:text-purple-400' : 'hover:text-red-400'}`}>Contact Us</a></li>
-                <li><a href="#" className={`transition-colors ${typedUser?.role === 'homeowner' ? 'hover:text-purple-400' : 'hover:text-red-400'}`}>Terms of Service</a></li>
-                <li><a href="#" className={`transition-colors ${typedUser?.role === 'homeowner' ? 'hover:text-purple-400' : 'hover:text-red-400'}`}>Privacy Policy</a></li>
+                <li><a href="#" className="transition-colors hover:text-purple-400">Help Center</a></li>
+                <li><a href="#" className="transition-colors hover:text-purple-400">Contact Us</a></li>
+                <li><a href="#" className="transition-colors hover:text-purple-400">Terms of Service</a></li>
+                <li><a href="#" className="transition-colors hover:text-purple-400">Privacy Policy</a></li>
               </ul>
             </div>
           </div>
