@@ -183,13 +183,13 @@ export default function Home() {
                     <Badge variant="secondary" className="bg-gray-100 dark:bg-gray-700/50 text-gray-800 dark:text-gray-200 px-3 py-1">
                       Gutter Cleaning
                     </Badge>
-                    <Badge variant="secondary" className="px-3 py-1" style={{ backgroundColor: '#b6a6f4', color: 'white' }}>
+                    <Badge variant="secondary" className="px-3 py-1" style={{ backgroundColor: '#3c258e', color: 'white' }}>
                       Drywall / Spackling Repair
                     </Badge>
                     <Badge variant="secondary" className="bg-gray-100 dark:bg-gray-700/50 text-gray-800 dark:text-gray-200 px-3 py-1">
                       Custom Cabinetry
                     </Badge>
-                    <Badge variant="secondary" className="px-3 py-1" style={{ backgroundColor: '#b6a6f4', color: 'white' }}>
+                    <Badge variant="secondary" className="px-3 py-1" style={{ backgroundColor: '#3c258e', color: 'white' }}>
                       HVAC Services
                     </Badge>
                     <Badge variant="secondary" className="bg-gray-100 dark:bg-gray-700/50 text-gray-800 dark:text-gray-200 px-3 py-1">
