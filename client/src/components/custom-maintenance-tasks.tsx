@@ -230,7 +230,7 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
             <Button onClick={() => {
               setEditingTask(null);
               form.reset();
-            }} className="text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 hover:opacity-90" style={{ background: 'linear-gradient(135deg, #5633c1, #7c5cd6)' }}>
+            }} className="text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 hover:opacity-90" style={{ backgroundColor: '#b6a6f4' }} data-testid="button-add-custom-task">
               <Plus className="h-4 w-4 mr-2" />
               Add Custom Task
             </Button>
