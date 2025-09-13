@@ -56,10 +56,13 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       
-      {/* Common routes available to all authenticated users */}
+      {/* Always available routes */}
       <Route path="/maintenance" component={Maintenance} />
+      <Route path="/contractor-maintenance" component={Maintenance} />
       <Route path="/messages" component={Messages} />
       <Route path="/my-home" component={MyHome} />
+      <Route path="/signin" component={SignIn} />
+      <Route path="/contractor-signin" component={ContractorSignIn} />
       
       {/* Homeowner-specific routes */}
       {typedUser?.role === 'homeowner' && (
@@ -80,10 +83,6 @@ function Router() {
           <Route path="/service-records" component={ServiceRecords} />
         </>
       )}
-      
-      {/* Authentication routes */}
-      <Route path="/signin" component={SignIn} />
-      <Route path="/contractor-signin" component={ContractorSignIn} />
       
       {/* 404 fallback */}
       <Route component={NotFound} />
