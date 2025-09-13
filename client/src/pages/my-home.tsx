@@ -16,7 +16,7 @@ import { z } from "zod";
 import { insertHouseSchema } from "@shared/schema";
 import type { House } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, Clock, Wrench, Home, MapPin, Edit, Trash2, Plus, Building, Thermometer, AlertTriangle, ChevronRight } from "lucide-react";
+import { Calendar, Clock, Wrench, Home, MapPin, Edit, Trash2, Plus, Building, Thermometer, AlertTriangle, ChevronRight, Crown, BarChart3, Copy, Settings } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 // Form schema for house creation/editing
@@ -83,12 +83,15 @@ export default function MyHome() {
   const [selectedHouse, setSelectedHouse] = useState<House | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingHouse, setEditingHouse] = useState<House | null>(null);
+  const [bulkSelectMode, setBulkSelectMode] = useState(false);
+  const [selectedForBulk, setSelectedForBulk] = useState<string[]>([]);
+  const [showTemplateDialog, setShowTemplateDialog] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // Check authentication and role
   useEffect(() => {
-    if (!authLoading && (!isAuthenticated || (user as any)?.role !== 'contractor')) {
+    if (!authLoading && (!isAuthenticated || (user as any)?.role !== 'homeowner')) {
       setLocation('/');
     }
   }, [authLoading, isAuthenticated, user, setLocation]);
@@ -107,16 +110,16 @@ export default function MyHome() {
     );
   }
 
-  // Don't render if not authenticated as contractor
-  if (!isAuthenticated || (user as any)?.role !== 'contractor') {
+  // Don't render if not authenticated as homeowner
+  if (!isAuthenticated || (user as any)?.role !== 'homeowner') {
     return null;
   }
 
-  // Fetch contractor's houses
+  // Fetch homeowner's houses
   const { data: houses = [], isLoading: housesLoading } = useQuery<House[]>({
-    queryKey: ['/api/contractor/my-home'],
+    queryKey: ['/api/houses'],
     queryFn: async () => {
-      const response = await fetch('/api/contractor/my-home');
+      const response = await fetch('/api/houses?homeownerId=' + (user as any)?.id);
       if (!response.ok) throw new Error('Failed to fetch houses');
       return response.json();
     },
@@ -124,10 +127,10 @@ export default function MyHome() {
 
   // Fetch maintenance tasks for selected house
   const { data: maintenanceTasks, isLoading: tasksLoading } = useQuery<MaintenanceTasksResponse>({
-    queryKey: ['/api/contractor/my-home/tasks', selectedHouse?.id],
+    queryKey: ['/api/houses/tasks', selectedHouse?.id],
     queryFn: async () => {
       if (!selectedHouse) return null;
-      const response = await fetch(`/api/contractor/my-home/tasks?houseId=${selectedHouse.id}`);
+      const response = await fetch(`/api/houses/${selectedHouse.id}/maintenance-tasks`);
       if (!response.ok) throw new Error('Failed to fetch maintenance tasks');
       return response.json();
     },
@@ -156,11 +159,15 @@ export default function MyHome() {
   // Create house mutation
   const createHouseMutation = useMutation({
     mutationFn: async (data: HouseFormData) => {
-      const response = await apiRequest('/api/contractor/my-home', 'POST', data);
+      const houseData = {
+        ...data,
+        homeownerId: (user as any)?.id,
+      };
+      const response = await apiRequest('/api/houses', 'POST', houseData);
       return response.json();
     },
     onSuccess: (newHouse) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/contractor/my-home'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/houses'] });
       setShowCreateDialog(false);
       setSelectedHouse(newHouse);
       toast({
@@ -181,11 +188,11 @@ export default function MyHome() {
   // Update house mutation
   const updateHouseMutation = useMutation({
     mutationFn: async ({ houseId, data }: { houseId: string; data: Partial<HouseFormData> }) => {
-      const response = await apiRequest(`/api/contractor/my-home/${houseId}`, 'PATCH', data);
+      const response = await apiRequest(`/api/houses/${houseId}`, 'PUT', data);
       return response.json();
     },
     onSuccess: (updatedHouse) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/contractor/my-home'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/houses'] });
       setEditingHouse(null);
       if (selectedHouse?.id === updatedHouse.id) {
         setSelectedHouse(updatedHouse);
@@ -207,11 +214,11 @@ export default function MyHome() {
   // Delete house mutation
   const deleteHouseMutation = useMutation({
     mutationFn: async (houseId: string) => {
-      const response = await apiRequest(`/api/contractor/my-home/${houseId}`, 'DELETE');
+      const response = await apiRequest(`/api/houses/${houseId}`, 'DELETE');
       return response.json();
     },
     onSuccess: (_, deletedHouseId) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/contractor/my-home'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/houses'] });
       if (selectedHouse?.id === deletedHouseId) {
         setSelectedHouse(null);
       }
@@ -228,6 +235,56 @@ export default function MyHome() {
       });
     },
   });
+
+  // Super user functionality
+  const isSuperUser = houses.length >= 3;
+  
+  const handleBulkDelete = async () => {
+    if (selectedForBulk.length === 0) return;
+    
+    try {
+      await Promise.all(
+        selectedForBulk.map(id => deleteHouseMutation.mutateAsync(id))
+      );
+      setSelectedForBulk([]);
+      setBulkSelectMode(false);
+      toast({
+        title: "Success",
+        description: `${selectedForBulk.length} properties deleted successfully`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error", 
+        description: "Failed to delete some properties",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleBulkSelect = (houseId: string, selected: boolean) => {
+    if (selected) {
+      setSelectedForBulk(prev => [...prev, houseId]);
+    } else {
+      setSelectedForBulk(prev => prev.filter(id => id !== houseId));
+    }
+  };
+
+  const createPropertyFromTemplate = async (templateHouse: House) => {
+    const templateData = {
+      name: `${templateHouse.name} - Copy`,
+      address: "",
+      climateZone: templateHouse.climateZone,
+      homeSystems: templateHouse.homeSystems || [],
+      isDefault: false,
+    };
+    
+    try {
+      await createHouseMutation.mutateAsync(templateData);
+      setShowTemplateDialog(false);
+    } catch (error) {
+      // Error handling already in mutation
+    }
+  };
 
   const onSubmit = (data: HouseFormData) => {
     if (editingHouse) {
@@ -308,12 +365,89 @@ export default function MyHome() {
         ) : (
           <div className="space-y-8">
             {/* House Selection */}
+            {/* Super User Section for 3+ properties */}
+            {isSuperUser && (
+              <Card className="border-purple-600 shadow-lg" style={{ background: 'linear-gradient(135deg, #2c0f5b 0%, #4c1d95 100%)' }}>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between text-white">
+                    <div className="flex items-center gap-2">
+                      <Crown className="h-6 w-6 text-yellow-400" />
+                      Super User Dashboard
+                      <Badge variant="secondary" className="bg-yellow-400 text-purple-900 font-medium">
+                        {houses.length} Properties
+                      </Badge>
+                    </div>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    {/* Quick Stats */}
+                    <div className="bg-white/10 rounded-lg p-4 text-center">
+                      <BarChart3 className="h-8 w-8 text-yellow-400 mx-auto mb-2" />
+                      <p className="text-white font-semibold">{houses.length}</p>
+                      <p className="text-purple-200 text-sm">Total Properties</p>
+                    </div>
+                    <div className="bg-white/10 rounded-lg p-4 text-center">
+                      <Settings className="h-8 w-8 text-yellow-400 mx-auto mb-2" />
+                      <p className="text-white font-semibold">{houses.filter(h => h.isDefault).length}</p>
+                      <p className="text-purple-200 text-sm">Default Property</p>
+                    </div>
+                    <div className="bg-white/10 rounded-lg p-4 text-center">
+                      <Calendar className="h-8 w-8 text-yellow-400 mx-auto mb-2" />
+                      <p className="text-white font-semibold">Active</p>
+                      <p className="text-purple-200 text-sm">All Properties</p>
+                    </div>
+                  </div>
+                  
+                  {/* Super User Actions */}
+                  <div className="flex flex-wrap gap-3">
+                    <Button 
+                      onClick={() => setBulkSelectMode(!bulkSelectMode)}
+                      className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                      variant="outline"
+                      data-testid="button-bulk-select"
+                    >
+                      <Settings className="h-4 w-4 mr-2" />
+                      {bulkSelectMode ? 'Exit Bulk Mode' : 'Bulk Management'}
+                    </Button>
+                    
+                    <Button 
+                      onClick={() => setShowTemplateDialog(true)}
+                      className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                      variant="outline"
+                      data-testid="button-template"
+                    >
+                      <Copy className="h-4 w-4 mr-2" />
+                      Create from Template
+                    </Button>
+                    
+                    {bulkSelectMode && selectedForBulk.length > 0 && (
+                      <Button 
+                        onClick={handleBulkDelete}
+                        className="bg-red-600 hover:bg-red-700 text-white"
+                        data-testid="button-bulk-delete"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Selected ({selectedForBulk.length})
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             <Card className="border-gray-300 shadow-lg" style={{ background: '#f2f2f2' }}>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between" style={{ color: '#2c0f5b' }}>
                   <div className="flex items-center gap-2">
                     <Building className="h-6 w-6" />
                     Your Properties
+                    {isSuperUser && (
+                      <Badge variant="outline" className="border-purple-600 text-purple-600">
+                        <Crown className="h-3 w-3 mr-1" />
+                        Super User
+                      </Badge>
+                    )}
                   </div>
                   <Button 
                     onClick={() => {
@@ -341,16 +475,28 @@ export default function MyHome() {
                   {houses.map((house) => (
                     <div
                       key={house.id}
-                      className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                      className={`p-4 rounded-lg border-2 transition-all ${
                         selectedHouse?.id === house.id
                           ? 'border-purple-600 bg-purple-50'
-                          : 'border-gray-300 hover:border-purple-400'
-                      }`}
-                      onClick={() => setSelectedHouse(house)}
+                          : selectedForBulk.includes(house.id) 
+                            ? 'border-blue-600 bg-blue-50'
+                            : 'border-gray-300 hover:border-purple-400'
+                      } ${bulkSelectMode ? '' : 'cursor-pointer'}`}
+                      onClick={() => !bulkSelectMode && setSelectedHouse(house)}
                       data-testid={`card-house-${house.id}`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
+                          {bulkSelectMode && (
+                            <input
+                              type="checkbox"
+                              checked={selectedForBulk.includes(house.id)}
+                              onChange={(e) => handleBulkSelect(house.id, e.target.checked)}
+                              className="h-4 w-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                              data-testid={`checkbox-bulk-${house.id}`}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          )}
                           <Home className="h-5 w-5" style={{ color: '#2c0f5b' }} />
                           <div>
                             <h3 className="font-semibold" style={{ color: '#2c0f5b' }}>
@@ -649,6 +795,51 @@ export default function MyHome() {
                 </div>
               </form>
             </Form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Template Creation Dialog */}
+        <Dialog open={showTemplateDialog} onOpenChange={setShowTemplateDialog}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Create Property from Template</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-gray-600">Select a property to use as a template. The new property will copy the climate zone and home systems configuration.</p>
+              <div className="grid gap-3 max-h-80 overflow-y-auto">
+                {houses.map((house) => (
+                  <div
+                    key={house.id}
+                    className="p-4 border rounded-lg hover:bg-purple-50 cursor-pointer transition-colors"
+                    onClick={() => createPropertyFromTemplate(house)}
+                    data-testid={`template-house-${house.id}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Copy className="h-5 w-5 text-purple-600" />
+                      <div>
+                        <h4 className="font-semibold text-purple-900">{house.name}</h4>
+                        <p className="text-sm text-gray-600">{house.address}</p>
+                        <p className="text-sm text-gray-500">Climate Zone: {house.climateZone}</p>
+                        {house.homeSystems && house.homeSystems.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {house.homeSystems.slice(0, 3).map((system, idx) => (
+                              <Badge key={idx} variant="secondary" className="text-xs">
+                                {system}
+                              </Badge>
+                            ))}
+                            {house.homeSystems.length > 3 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{house.homeSystems.length - 3} more
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       </div>

@@ -46,6 +46,11 @@ export default function Header() {
           <nav className="hidden md:flex space-x-8">
             {typedUser?.role === 'homeowner' && (
               <>
+                <Link href="/my-home" className={`text-gray-700 hover:text-primary transition-colors ${
+                  location === '/my-home' ? 'text-primary font-medium' : ''
+                }`}>
+                  My Home
+                </Link>
                 <Link href="/products" className={`text-gray-700 hover:text-primary transition-colors ${
                   location === '/products' ? 'text-primary font-medium' : ''
                 }`}>

@@ -985,6 +985,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get maintenance tasks for a specific house
+  app.get("/api/houses/:id/maintenance-tasks", async (req, res) => {
+    try {
+      const house = await storage.getHouse(req.params.id);
+      if (!house) {
+        return res.status(404).json({ message: "House not found" });
+      }
+
+      // Get current month and create mock maintenance tasks based on house
+      const currentDate = new Date();
+      const currentMonth = currentDate.toLocaleString('default', { month: 'long' });
+      
+      // Mock response structure - in a real app this would be more sophisticated
+      const response = {
+        house,
+        currentMonth,
+        region: house.climateZone || "Mixed",
+        tasks: {
+          seasonal: [
+            "Check HVAC filters and replace if needed",
+            "Inspect gutters and downspouts for blockages",
+            "Test smoke and carbon monoxide detectors",
+            "Check weatherstripping around doors and windows"
+          ],
+          weatherSpecific: [
+            "Inspect roof for loose or damaged shingles",
+            "Clean dryer vent and lint trap",
+            "Service lawn equipment for spring use"
+          ],
+          priority: "medium" as const
+        }
+      };
+      
+      res.json(response);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch maintenance tasks" });
+    }
+  });
+
   // Home Systems routes
   app.get("/api/home-systems", async (req, res) => {
     try {
