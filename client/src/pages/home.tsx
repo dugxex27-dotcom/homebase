@@ -8,16 +8,28 @@ import Logo from "@/components/logo";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
-import type { Product, User } from "@shared/schema";
+import type { Product, User, House } from "@shared/schema";
 import { Link } from "wouter";
 
 export default function Home() {
   const { user } = useAuth();
   const typedUser = user as User | undefined;
 
+  // Fetch user's houses for homeowners
+  const { data: userHouses = [], isLoading: housesLoading } = useQuery<House[]>({
+    queryKey: ['/api/houses'],
+    queryFn: async () => {
+      if (typedUser?.role !== 'homeowner') return [];
+      const response = await fetch('/api/houses');
+      if (!response.ok) throw new Error('Failed to fetch houses');
+      return response.json();
+    },
+    enabled: typedUser?.role === 'homeowner',
+  });
 
   const { data: featuredProducts, isLoading } = useQuery<Product[]>({
     queryKey: ['/api/products', 'featured'],
@@ -233,13 +245,36 @@ export default function Home() {
                         Your location
                       </label>
                       <div className="relative">
-                        <MapPin className="absolute left-3 top-3 h-4 w-4" style={{ color: '#b6a6f4' }} />
-                        <Input
-                          type="text"
-                          placeholder="City, State or ZIP code"
-                          className="pl-10 h-12 text-base border-gray-300 dark:border-gray-600"
-                          style={{ backgroundColor: '#ffffff', color: '#000000' }}
-                        />
+                        <MapPin className="absolute left-3 top-3 h-4 w-4 z-10" style={{ color: '#b6a6f4' }} />
+                        {userHouses.length > 0 ? (
+                          <Select>
+                            <SelectTrigger 
+                              className="pl-10 h-12 text-base border-gray-300 dark:border-gray-600"
+                              style={{ backgroundColor: '#ffffff', color: '#000000' }}
+                              data-testid="select-home-location"
+                            >
+                              <SelectValue placeholder="Select your home" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {userHouses.map((house) => (
+                                <SelectItem key={house.id} value={house.id} data-testid={`home-option-${house.id}`}>
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{house.name}</span>
+                                    <span className="text-sm text-gray-500">{house.address}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Input
+                            type="text"
+                            placeholder="City, State or ZIP code"
+                            className="pl-10 h-12 text-base border-gray-300 dark:border-gray-600"
+                            style={{ backgroundColor: '#ffffff', color: '#000000' }}
+                            data-testid="input-location"
+                          />
+                        )}
                       </div>
                     </div>
                     <Link href="/contractors" className="lg:self-end">
