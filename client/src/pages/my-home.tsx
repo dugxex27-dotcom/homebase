@@ -86,6 +86,7 @@ export default function MyHome() {
   const [bulkSelectMode, setBulkSelectMode] = useState(false);
   const [selectedForBulk, setSelectedForBulk] = useState<string[]>([]);
   const [showTemplateDialog, setShowTemplateDialog] = useState(false);
+  const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -144,6 +145,12 @@ export default function MyHome() {
       setSelectedHouse(defaultHouse);
     }
   }, [houses, selectedHouse]);
+  
+  // Property limit logic
+  const hasReachedLimit = !(user as any)?.isPremium && houses.length >= 2;
+  const canAddProperty = (user as any)?.isPremium || houses.length < 2;
+  const hasMultipleProperties = houses.length >= 3;
+  const isSuperUser = hasMultipleProperties && (user as any)?.isPremium;
 
   const form = useForm<HouseFormData>({
     resolver: zodResolver(houseFormSchema),
@@ -236,8 +243,7 @@ export default function MyHome() {
     },
   });
 
-  // Super user functionality
-  const isSuperUser = houses.length >= 3;
+  // Super user functionality (already defined above with premium check)
   
   const handleBulkDelete = async () => {
     if (selectedForBulk.length === 0) return;
@@ -276,6 +282,7 @@ export default function MyHome() {
       climateZone: templateHouse.climateZone,
       homeSystems: templateHouse.homeSystems || [],
       isDefault: false,
+      homeownerId: (user as any)?.id,
     };
     
     try {
@@ -449,25 +456,37 @@ export default function MyHome() {
                       </Badge>
                     )}
                   </div>
-                  <Button 
-                    onClick={() => {
-                      setEditingHouse(null);
-                      form.reset({
-                        name: "",
-                        address: "",
-                        climateZone: "",
-                        homeSystems: [],
-                        isDefault: false,
-                      });
-                      setShowCreateDialog(true);
-                    }}
-                    style={{ backgroundColor: '#2c0f5b', color: 'white' }}
-                    className="hover:opacity-90"
-                    data-testid="button-add-property"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Property
-                  </Button>
+                  {canAddProperty ? (
+                    <Button 
+                      onClick={() => {
+                        setEditingHouse(null);
+                        form.reset({
+                          name: "",
+                          address: "",
+                          climateZone: "",
+                          homeSystems: [],
+                          isDefault: false,
+                        });
+                        setShowCreateDialog(true);
+                      }}
+                      style={{ backgroundColor: '#2c0f5b', color: 'white' }}
+                      className="hover:opacity-90"
+                      data-testid="button-add-property"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Property
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => setShowUpgradeDialog(true)}
+                      style={{ backgroundColor: '#b6a6f4', color: '#2c0f5b', borderColor: '#2c0f5b' }}
+                      className="hover:opacity-90 border-2"
+                      data-testid="button-upgrade-required"
+                    >
+                      <Crown className="h-4 w-4 mr-2" />
+                      Upgrade to Add More
+                    </Button>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -838,6 +857,75 @@ export default function MyHome() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Upgrade Dialog */}
+        <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-purple-900">
+                <Crown className="h-6 w-6 text-purple-600" />
+                Upgrade to Premium
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="text-center">
+                <div className="bg-purple-50 p-6 rounded-lg">
+                  <Crown className="h-12 w-12 text-purple-600 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-purple-900 mb-2">
+                    Manage Multiple Properties
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    You've reached the limit of 2 properties on the free plan. Upgrade to Premium to add unlimited properties and unlock advanced features.
+                  </p>
+                  <div className="space-y-2 text-left bg-white p-4 rounded border">
+                    <div className="flex items-center gap-2">
+                      <Crown className="h-4 w-4 text-purple-600" />
+                      <span className="text-sm">Unlimited properties</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Settings className="h-4 w-4 text-purple-600" />
+                      <span className="text-sm">Bulk management tools</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Copy className="h-4 w-4 text-purple-600" />
+                      <span className="text-sm">Property templates</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <BarChart3 className="h-4 w-4 text-purple-600" />
+                      <span className="text-sm">Advanced analytics</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowUpgradeDialog(false)}
+                  className="flex-1"
+                  data-testid="button-cancel-upgrade"
+                >
+                  Maybe Later
+                </Button>
+                <Button
+                  onClick={() => {
+                    setShowUpgradeDialog(false);
+                    // TODO: Navigate to subscription page when available
+                    toast({
+                      title: "Upgrade Coming Soon",
+                      description: "Premium subscription will be available soon!",
+                    });
+                  }}
+                  style={{ backgroundColor: '#2c0f5b', color: 'white' }}
+                  className="hover:opacity-90 flex-1"
+                  data-testid="button-upgrade-now"
+                >
+                  <Crown className="h-4 w-4 mr-2" />
+                  Upgrade Now
+                </Button>
               </div>
             </div>
           </DialogContent>
