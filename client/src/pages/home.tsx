@@ -21,6 +21,7 @@ const AVAILABLE_SERVICES = [
   "Basement Remodeling",
   "Bathroom Remodeling",
   "Cabinet Installation",
+  "Carpet Installation",
   "Closet Organization",
   "Concrete & Masonry",
   "Custom Carpentry",

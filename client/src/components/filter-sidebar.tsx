@@ -23,6 +23,7 @@ export default function FilterSidebar({ onFiltersChange }: FilterSidebarProps) {
     "Basement Remodeling",
     "Bathroom Remodeling",
     "Cabinet Installation",
+    "Carpet Installation",
     "Closet Organization",
     "Concrete & Masonry",
     "Custom Carpentry",
