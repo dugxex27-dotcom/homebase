@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Users, Package, Calendar, Search, MapPin, Star, CheckCircle, TrendingUp, Shield, Home as HomeIcon, Wrench, Bell, BarChart3 } from "lucide-react";
+import { Users, Package, Calendar, Search, MapPin, Star, CheckCircle, TrendingUp, Shield, Home as HomeIcon, Wrench, Bell, BarChart3, X, ChevronDown } from "lucide-react";
 import Header from "@/components/header";
 import HeroSection from "@/components/hero-section";
 import ProductCard from "@/components/product-card";
@@ -15,9 +15,57 @@ import { useAuth } from "@/hooks/useAuth";
 import type { Product, User, House } from "@shared/schema";
 import { Link } from "wouter";
 
+const AVAILABLE_SERVICES = [
+  "Gutter Cleaning",
+  "Drywall Repair", 
+  "Custom Cabinetry",
+  "HVAC Services",
+  "Electrical Work",
+  "Plumbing Repair",
+  "Roof Repair",
+  "Painting",
+  "Flooring Installation",
+  "Bathroom Remodeling",
+  "Kitchen Remodeling",
+  "Deck Building",
+  "Fence Installation",
+  "Landscaping",
+  "Pool Maintenance",
+  "Appliance Repair",
+  "Window Installation",
+  "Insulation",
+  "Tile Work",
+  "Carpet Installation",
+  "Pressure Washing",
+  "Tree Removal",
+  "Basement Finishing",
+  "Attic Renovation",
+  "Garage Door Repair"
+];
+
 export default function Home() {
   const { user } = useAuth();
   const typedUser = user as User | undefined;
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [showServiceDropdown, setShowServiceDropdown] = useState(false);
+  const serviceDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (serviceDropdownRef.current && !serviceDropdownRef.current.contains(event.target as Node)) {
+        setShowServiceDropdown(false);
+      }
+    };
+
+    if (showServiceDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showServiceDropdown]);
 
   // Fetch user's houses for homeowners
   const { data: userHouses = [], isLoading: housesLoading } = useQuery<House[]>({
@@ -231,13 +279,74 @@ export default function Home() {
                         What service do you need?
                       </label>
                       <div className="relative">
-                        <Search className="absolute left-3 top-3 h-4 w-4" style={{ color: '#b6a6f4' }} />
-                        <Input
-                          type="text"
-                          placeholder="Gutter cleaning, drywall repair, custom cabinetry..."
-                          className="pl-10 h-12 text-base border-gray-300 dark:border-gray-600"
-                          style={{ backgroundColor: '#ffffff', color: '#000000' }}
-                        />
+                        <Search className="absolute left-3 top-3 h-4 w-4 z-10" style={{ color: '#b6a6f4' }} />
+                        <div className="relative" ref={serviceDropdownRef}>
+                          <button
+                            type="button"
+                            onClick={() => setShowServiceDropdown(!showServiceDropdown)}
+                            className="pl-10 pr-10 h-12 w-full text-base border border-gray-300 dark:border-gray-600 rounded-md flex items-center justify-between text-left"
+                            style={{ backgroundColor: '#ffffff', color: '#000000' }}
+                            data-testid="select-services-trigger"
+                          >
+                            <div className="flex flex-wrap gap-1 flex-1 min-h-[1.5rem]">
+                              {selectedServices.length > 0 ? (
+                                selectedServices.map((service) => (
+                                  <span
+                                    key={service}
+                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium"
+                                    style={{ backgroundColor: '#2c0f5b', color: 'white' }}
+                                  >
+                                    {service}
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedServices(prev => prev.filter(s => s !== service));
+                                      }}
+                                      className="ml-1 hover:opacity-70"
+                                      data-testid={`remove-service-${service.toLowerCase().replace(/\s+/g, '-')}`}
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-gray-500">Select services you need...</span>
+                              )}
+                            </div>
+                            <ChevronDown className="h-4 w-4 text-gray-400" />
+                          </button>
+                          
+                          {showServiceDropdown && (
+                            <div
+                              className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-20 max-h-60 overflow-y-auto"
+                              data-testid="services-dropdown"
+                            >
+                              {AVAILABLE_SERVICES.map((service) => (
+                                <button
+                                  key={service}
+                                  type="button"
+                                  onClick={() => {
+                                    if (selectedServices.includes(service)) {
+                                      setSelectedServices(prev => prev.filter(s => s !== service));
+                                    } else {
+                                      setSelectedServices(prev => [...prev, service]);
+                                    }
+                                  }}
+                                  className={`w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between ${
+                                    selectedServices.includes(service) ? 'bg-purple-50' : ''
+                                  }`}
+                                  data-testid={`service-option-${service.toLowerCase().replace(/\s+/g, '-')}`}
+                                >
+                                  <span style={{ color: '#000000' }}>{service}</span>
+                                  {selectedServices.includes(service) && (
+                                    <CheckCircle className="h-4 w-4" style={{ color: '#2c0f5b' }} />
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className="flex-1">
