@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, requireRole } from "./replitAuth";
 import { z } from "zod";
-import { insertHomeApplianceSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema } from "@shared/schema";
+import { insertHomeApplianceSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema } from "@shared/schema";
 import pushRoutes from "./push-routes";
 import { pushService } from "./push-service";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
@@ -1046,6 +1046,142 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Failed to delete home system" });
+    }
+  });
+
+  // Contractor home management routes 
+  app.get('/api/contractor/my-home', async (req: any, res) => {
+    try {
+      if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const contractorId = req.session.user.id;
+      const houses = await storage.getHouses(contractorId);
+      res.json(houses);
+    } catch (error) {
+      console.error("Error fetching contractor houses:", error);
+      res.status(500).json({ message: "Failed to fetch houses" });
+    }
+  });
+
+  app.post('/api/contractor/my-home', async (req: any, res) => {
+    try {
+      if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const contractorId = req.session.user.id;
+      const houseData = insertHouseSchema.parse({
+        ...req.body,
+        homeownerId: contractorId
+      });
+
+      const house = await storage.createHouse(houseData);
+      res.status(201).json(house);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid house data", errors: error.errors });
+      }
+      console.error("Error creating contractor house:", error);
+      res.status(500).json({ message: "Failed to create house" });
+    }
+  });
+
+  app.patch('/api/contractor/my-home/:houseId', async (req: any, res) => {
+    try {
+      if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const contractorId = req.session.user.id;
+      const houseId = req.params.houseId;
+
+      // Check if house belongs to contractor
+      const existingHouse = await storage.getHouse(houseId);
+      if (!existingHouse || existingHouse.homeownerId !== contractorId) {
+        return res.status(404).json({ message: "House not found or not owned by you" });
+      }
+
+      // Strip homeownerId from request body to prevent ownership transfer
+      const { homeownerId, ...safeRequestData } = req.body;
+      const partialData = insertHouseSchema.partial().parse(safeRequestData);
+      const house = await storage.updateHouse(houseId, partialData);
+      res.json(house);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid house data", errors: error.errors });
+      }
+      console.error("Error updating contractor house:", error);
+      res.status(500).json({ message: "Failed to update house" });
+    }
+  });
+
+  app.delete('/api/contractor/my-home/:houseId', async (req: any, res) => {
+    try {
+      if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const contractorId = req.session.user.id;
+      const houseId = req.params.houseId;
+
+      // Check if house belongs to contractor
+      const existingHouse = await storage.getHouse(houseId);
+      if (!existingHouse || existingHouse.homeownerId !== contractorId) {
+        return res.status(404).json({ message: "House not found or not owned by you" });
+      }
+
+      const success = await storage.deleteHouse(houseId);
+      if (!success) {
+        return res.status(404).json({ message: "House not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting contractor house:", error);
+      res.status(500).json({ message: "Failed to delete house" });
+    }
+  });
+
+  app.get('/api/contractor/my-home/tasks', async (req: any, res) => {
+    try {
+      if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const contractorId = req.session.user.id;
+      const houseId = req.query.houseId as string;
+
+      if (!houseId) {
+        return res.status(400).json({ message: "houseId is required" });
+      }
+
+      // Check if house belongs to contractor
+      const house = await storage.getHouse(houseId);
+      if (!house || house.homeownerId !== contractorId) {
+        return res.status(404).json({ message: "House not found or not owned by you" });
+      }
+
+      // Get maintenance tasks for current month based on house climate zone
+      const currentMonth = new Date().getMonth() + 1;
+      const { getCurrentMonthTasks, getRegionFromClimateZone } = await import('../shared/location-maintenance-data');
+      
+      const region = getRegionFromClimateZone(house.climateZone);
+      const tasks = getCurrentMonthTasks(region, currentMonth);
+
+      res.json({
+        house,
+        currentMonth: new Date().toLocaleString('default', { month: 'long' }),
+        region,
+        tasks: tasks || {
+          seasonal: [],
+          weatherSpecific: [],
+          priority: 'medium'
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching maintenance tasks:", error);
+      res.status(500).json({ message: "Failed to fetch maintenance tasks" });
     }
   });
 

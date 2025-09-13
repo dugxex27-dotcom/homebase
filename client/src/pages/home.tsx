@@ -87,6 +87,25 @@ export default function Home() {
                   </Card>
                 </Link>
 
+                <Link href="/my-home" className="h-full">
+                  <Card className="border-gray-300 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group h-full flex flex-col" style={{ background: '#f2f2f2' }}>
+                    <CardContent className="p-6 flex-1 flex flex-col">
+                      <div className="flex items-center mb-4">
+                        <div className="w-12 h-12 rounded-xl flex items-center justify-center group-hover:opacity-80 transition-colors" style={{ backgroundColor: '#2c0f5b' }}>
+                          <HomeIcon className="h-6 w-6" style={{ color: 'white' }} />
+                        </div>
+                        <div className="ml-4">
+                          <h3 className="text-lg font-semibold" style={{ color: '#2c0f5b' }}>My Home</h3>
+                          <p className="text-sm" style={{ color: '#2c0f5b' }}>Personal maintenance</p>
+                        </div>
+                      </div>
+                      <p className="text-sm" style={{ color: '#2c0f5b' }}>
+                        Track your own property maintenance tasks
+                      </p>
+                    </CardContent>
+                  </Card>
+                </Link>
+
                 <Link href="/contractor-dashboard" className="h-full">
                   <Card className="border-gray-300 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group h-full flex flex-col" style={{ background: '#f2f2f2' }}>
                     <CardContent className="p-6 flex-1 flex flex-col">

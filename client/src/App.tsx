@@ -20,6 +20,7 @@ import SimpleContractorSignIn from "./pages/simple-contractor-signin";
 import DemoContractorSignIn from "./pages/demo-contractor-signin";
 import HomeownerAccount from "./pages/homeowner-account";
 import Messages from "./pages/messages";
+import MyHome from "./pages/my-home";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -72,6 +73,7 @@ function Router() {
           <Route path="/contractor-profile" component={ContractorProfile} />
           <Route path="/service-records" component={ServiceRecords} />
           <Route path="/messages" component={Messages} />
+          <Route path="/my-home" component={MyHome} />
         </>
       )}
       <Route path="/signin" component={SignIn} />
