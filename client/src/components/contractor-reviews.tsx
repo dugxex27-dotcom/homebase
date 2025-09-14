@@ -333,6 +333,12 @@ export function ContractorReviews({ contractorId, contractorName }: ContractorRe
     enabled: !!user && (user as any).role === 'homeowner',
   });
 
+  // Check if homeowner can review this contractor (requires accepted proposals)
+  const { data: eligibility } = useQuery<{ canReview: boolean; reason?: string }>({
+    queryKey: ['/api/contractors', contractorId, 'can-review'],
+    enabled: !!user && (user as any).role === 'homeowner',
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (reviewId: string) => 
       apiRequest(`/api/reviews/${reviewId}`, "DELETE"),
@@ -367,7 +373,7 @@ export function ContractorReviews({ contractorId, contractorName }: ContractorRe
     setEditingReview(null);
   };
 
-  const canLeaveReview = user && (user as any).role === 'homeowner';
+  const canLeaveReview = user && (user as any).role === 'homeowner' && eligibility?.canReview;
   const hasExistingReview = myReviews.some((review: ContractorReview) => review.contractorId === contractorId);
 
   if (isLoading) {
@@ -390,26 +396,37 @@ export function ContractorReviews({ contractorId, contractorName }: ContractorRe
           )}
         </div>
         
-        {canLeaveReview && !hasExistingReview && (
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>Write a Review</Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingReview ? 'Edit Review' : `Review ${contractorName || 'Contractor'}`}
-                </DialogTitle>
-              </DialogHeader>
-              <ReviewForm
-                contractorId={contractorId}
-                contractorName={contractorName}
-                existingReview={editingReview || undefined}
-                onSuccess={handleDialogClose}
-              />
-            </DialogContent>
-          </Dialog>
-        )}
+        {user && (user as any).role === 'homeowner' ? (
+          canLeaveReview && !hasExistingReview ? (
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>Write a Review</Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingReview ? 'Edit Review' : `Review ${contractorName || 'Contractor'}`}
+                  </DialogTitle>
+                </DialogHeader>
+                <ReviewForm
+                  contractorId={contractorId}
+                  contractorName={contractorName}
+                  existingReview={editingReview || undefined}
+                  onSuccess={handleDialogClose}
+                />
+              </DialogContent>
+            </Dialog>
+          ) : hasExistingReview ? (
+            <Badge variant="secondary">You've already reviewed this contractor</Badge>
+          ) : eligibility && !eligibility.canReview ? (
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground mb-2">
+                {eligibility.reason || "You can only review contractors after accepting their proposals"}
+              </p>
+              <Badge variant="outline">Review Unavailable</Badge>
+            </div>
+          ) : null
+        ) : null}
       </div>
 
       <Separator />
