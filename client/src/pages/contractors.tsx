@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import Header from "@/components/header";
 import ContractorCard from "@/components/contractor-card";
-import FilterSidebar from "@/components/filter-sidebar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +14,11 @@ export default function Contractors() {
   const [filters, setFilters] = useState<any>({});
   const [sortBy, setSortBy] = useState('best-match');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Local state for form controls
+  const [selectedDistance, setSelectedDistance] = useState<string>('');
+  const [selectedRating, setSelectedRating] = useState<string>('');
+  const [hasEmergencyServices, setHasEmergencyServices] = useState<boolean>(false);
 
   // Parse URL parameters
   useEffect(() => {
@@ -127,48 +131,138 @@ export default function Contractors() {
       </section>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col lg:flex-row gap-8">
-          <FilterSidebar onFiltersChange={handleFiltersChange} />
+        {/* Find Contractor Section */}
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold mb-6" style={{ color: '#ffffff' }}>
+            Find Contractor
+          </h2>
           
-          <div className="flex-1">
-            {/* Find Contractor Section */}
-            <div className="mb-8">
-              <h2 className="text-3xl font-bold mb-4" style={{ color: '#ffffff' }}>
-                Find Contractor
-              </h2>
-            </div>
+          {/* Horizontal Filters */}
+          <div className="bg-card rounded-xl shadow-sm border p-6 mb-8">
+            <h3 className="text-lg font-semibold text-foreground mb-6">Find Your Perfect Contractor</h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* Distance Filter */}
+              <div>
+                <label className="text-sm font-medium text-foreground mb-3 block">Distance from you</label>
+                <select 
+                  className="w-full px-3 py-2 border border-muted rounded-md"
+                  style={{ color: '#ffffff', backgroundColor: '#374151' }}
+                  value={selectedDistance}
+                  onChange={(e) => {
+                    setSelectedDistance(e.target.value);
+                  }}
+                  data-testid="filter-distance"
+                >
+                  <option value="">Any distance</option>
+                  <option value="5">Within 5 miles</option>
+                  <option value="10">Within 10 miles</option>
+                  <option value="25">Within 25 miles</option>
+                  <option value="50">Within 50 miles</option>
+                </select>
+              </div>
 
-            <div className="mb-8">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                <div>
-                  <h2 className="text-3xl font-bold mb-2" style={{ color: '#ffffff' }}>
-                    Available Contractors
-                  </h2>
-                  <p className="text-lg" style={{ color: '#b6a6f4' }}>
-                    {isLoading ? 'Loading...' : `${sortedContractors.length} verified contractors specializing in niche services`}
-                  </p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-sm" style={{ color: '#ffffff' }}>
-                    Sort by:
-                  </div>
-                  <Select value={sortBy} onValueChange={setSortBy}>
-                    <SelectTrigger className="w-48 bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-600">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="best-match">Best Match</SelectItem>
-                      <SelectItem value="highest-rated">Highest Rated</SelectItem>
-                      <SelectItem value="most-reviews">Most Reviews</SelectItem>
-                      <SelectItem value="distance">Distance</SelectItem>
-                    </SelectContent>
-                  </Select>
+              {/* Rating Filter */}
+              <div>
+                <label className="text-sm font-medium text-foreground mb-3 block">Minimum Rating</label>
+                <select 
+                  className="w-full px-3 py-2 border border-muted rounded-md"
+                  style={{ color: '#ffffff', backgroundColor: '#374151' }}
+                  value={selectedRating}
+                  onChange={(e) => {
+                    setSelectedRating(e.target.value);
+                  }}
+                  data-testid="filter-rating"
+                >
+                  <option value="">Any rating</option>
+                  <option value="5">5 stars</option>
+                  <option value="4">4+ stars</option>
+                  <option value="3">3+ stars</option>
+                </select>
+              </div>
+
+              {/* Emergency Services */}
+              <div>
+                <label className="text-sm font-medium text-foreground mb-3 block">Emergency Services</label>
+                <div className="flex items-center space-x-2">
+                  <input 
+                    type="checkbox" 
+                    id="emergency-services"
+                    className="rounded"
+                    checked={hasEmergencyServices}
+                    onChange={(e) => {
+                      setHasEmergencyServices(e.target.checked);
+                    }}
+                    data-testid="filter-emergency"
+                  />
+                  <label htmlFor="emergency-services" className="text-sm text-foreground">
+                    Available 24/7
+                  </label>
                 </div>
               </div>
-              
-            </div>
 
-            {isLoading ? (
+              {/* Apply Filters Button */}
+              <div className="flex items-end">
+                <button 
+                  className="w-full py-2 px-4 rounded-md text-white font-medium hover:opacity-90"
+                  style={{ backgroundColor: '#3c258e' }}
+                  onClick={() => {
+                    const newFilters: any = {};
+                    
+                    if (selectedDistance) {
+                      newFilters.maxDistance = parseFloat(selectedDistance);
+                    }
+                    
+                    if (selectedRating) {
+                      newFilters.minRating = parseFloat(selectedRating);
+                    }
+                    
+                    if (hasEmergencyServices) {
+                      newFilters.hasEmergencyServices = true;
+                    }
+                    
+                    handleFiltersChange(newFilters);
+                  }}
+                  data-testid="button-apply-filters"
+                >
+                  Apply Filters
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Available Contractors Section */}
+        <div className="mb-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <div>
+              <h2 className="text-3xl font-bold mb-2" style={{ color: '#ffffff' }}>
+                Available Contractors
+              </h2>
+              <p className="text-lg" style={{ color: '#b6a6f4' }}>
+                {isLoading ? 'Loading...' : `${sortedContractors.length} verified contractors specializing in niche services`}
+              </p>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="text-sm" style={{ color: '#ffffff' }}>
+                Sort by:
+              </div>
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-48 bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="best-match">Best Match</SelectItem>
+                  <SelectItem value="highest-rated">Highest Rated</SelectItem>
+                  <SelectItem value="most-reviews">Most Reviews</SelectItem>
+                  <SelectItem value="distance">Distance</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
+        {isLoading ? (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {[...Array(4)].map((_, i) => (
                   <div key={i} className="bg-gray-50 dark:bg-gray-800 rounded-xl shadow-sm border border-gray-300 dark:border-gray-700 p-6 animate-pulse">
@@ -223,8 +317,6 @@ export default function Contractors() {
                 </div>
               </>
             )}
-          </div>
-        </div>
       </main>
     </div>
   );
