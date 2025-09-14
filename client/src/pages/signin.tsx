@@ -121,7 +121,7 @@ export default function SignIn() {
                 </div>
                 <div className="flex-1">
                   <div className="font-semibold text-lg" style={{ color: '#ffffff' }}>I'm a Contractor</div>
-                  <div className="text-sm" style={{ color: '#ffffff' }}>
+                  <div className="text-sm text-center leading-tight" style={{ color: '#ffffff' }}>
                     Connect with clients, manage appointments, and grow your business
                   </div>
                 </div>
