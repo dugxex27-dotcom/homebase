@@ -1505,7 +1505,6 @@ export default function Maintenance() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#2c0f5b' }}>
       <Header />
-      
       {/* Hero Section */}
       <section className="py-6" style={{ background: '#2c0f5b' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -1689,7 +1688,7 @@ export default function Maintenance() {
                 
                 {totalTasks > 0 && (
                   <div className="flex items-center gap-3">
-                    <div className="text-sm font-medium" style={{ color: '#ffffff' }}>
+                    <div className="text-sm font-medium text-[#2c0f5b]" style={{ color: '#ffffff' }}>
                       Progress: {completedCount}/{totalTasks} completed
                     </div>
                     <Button 
