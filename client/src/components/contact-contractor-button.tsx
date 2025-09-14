@@ -144,6 +144,7 @@ export default function ContactContractorButton({
               placeholder="What would you like to discuss?"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
+              style={{ color: '#ffffff' }}
             />
           </div>
           
