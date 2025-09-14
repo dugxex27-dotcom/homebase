@@ -121,7 +121,7 @@ export default function SignIn() {
                   <Wrench className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1">
-                  <div className="font-semibold text-center text-[20pt]" style={{ color: '#ffffff' }}>I'm a Contractor</div>
+                  <div className="font-semibold text-center text-[20px]" style={{ color: '#ffffff' }}>I'm a Contractor</div>
                   <div className="text-sm text-center leading-tight" style={{ color: '#ffffff' }}>
                     Connect with clients, manage appointments,<br />
                     and grow your business
