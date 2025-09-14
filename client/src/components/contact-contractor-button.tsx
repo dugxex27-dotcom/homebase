@@ -149,7 +149,7 @@ export default function ContactContractorButton({
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="message" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 dark:text-white text-[#ffffff]">Message</Label>
+            <Label htmlFor="message" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 dark:text-white text-[#ffff]">Message</Label>
             <Textarea
               id="message"
               placeholder="Describe your project needs, timeline, budget, or any questions you have..."
