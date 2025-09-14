@@ -11,7 +11,6 @@ import ContractorProfile from "./pages/contractor-profile";
 import ContractorDetail from "./pages/contractor-detail";
 import Maintenance from "./pages/maintenance";
 import ContractorDashboard from "./pages/contractor-dashboard";
-import ContractorMaintenance from "./pages/contractor-maintenance";
 import ServiceRecords from "./pages/service-records";
 import CustomerServiceRecords from "./pages/customer-service-records";
 import HomeownerServiceRecords from "./pages/homeowner-service-records";
@@ -58,7 +57,6 @@ function Router() {
       
       {/* Always available routes */}
       <Route path="/maintenance" component={Maintenance} />
-      <Route path="/contractor-maintenance" component={ContractorMaintenance} />
       <Route path="/messages" component={Messages} />
       <Route path="/my-home" component={MyHome} />
       <Route path="/signin" component={SignIn} />
