@@ -89,7 +89,7 @@ export default function SignIn() {
                   <Home className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1">
-                  <div className="font-semibold text-center text-[20pt]" style={{ color: '#ffffff' }}>I'm a Homeowner</div>
+                  <div className="font-semibold text-center text-[20px]" style={{ color: '#ffffff' }}>I'm a Homeowner</div>
                   <div className="text-sm text-center leading-tight" style={{ color: '#ffffff' }}>
                     Find contractors<br />
                     and manage home maintenance
