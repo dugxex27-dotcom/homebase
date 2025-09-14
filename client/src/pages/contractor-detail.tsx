@@ -79,7 +79,6 @@ export default function ContractorDetail() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Header />
-      
       {/* Hero Section */}
       <section className="py-12" style={{ backgroundColor: '#3c258e' }}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -147,7 +146,6 @@ export default function ContractorDetail() {
           </div>
         </div>
       </section>
-
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-8">
           
@@ -163,7 +161,7 @@ export default function ContractorDetail() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {contractor.services.map((service, index) => (
                   <div key={index} className="border border-amber-200 dark:border-amber-800/30 rounded-xl px-4 py-3" style={{ backgroundColor: '#3c258e' }}>
-                    <span className="font-medium text-amber-800 dark:text-amber-200">{service}</span>
+                    <span className="font-medium dark:text-amber-200 text-[#ffffff]">{service}</span>
                   </div>
                 ))}
               </div>
