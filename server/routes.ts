@@ -1948,15 +1948,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.session.user.id;
       const userType = req.session.user.role;
+      const contractorId = req.params.id;
       
       // Only homeowners can leave reviews
       if (userType !== 'homeowner') {
         return res.status(403).json({ message: "Only homeowners can leave reviews" });
       }
       
+      // Check if homeowner has accepted proposals with this contractor
+      const hasAcceptedProposal = await storage.hasAcceptedProposalWithContractor(userId, contractorId);
+      if (!hasAcceptedProposal) {
+        return res.status(403).json({ message: "You can only review contractors after accepting their proposals" });
+      }
+      
       const reviewData = insertContractorReviewSchema.parse({
         ...req.body,
-        contractorId: req.params.id,
+        contractorId: contractorId,
         homeownerId: userId
       });
       
