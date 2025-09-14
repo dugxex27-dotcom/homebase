@@ -332,8 +332,9 @@ export default function Maintenance() {
   // Use authenticated user's ID  
   const homeownerId = (user as any)?.id;
   const userRole = (user as any)?.role;
+  const isContractor = userRole === 'contractor';
 
-  // Fetch houses for the authenticated user
+  // Fetch houses for the authenticated user (only for homeowners)
   const { data: houses = [], isLoading: housesLoading } = useQuery({
     queryKey: ['/api/houses'],
     queryFn: async () => {
@@ -341,7 +342,7 @@ export default function Maintenance() {
       if (!response.ok) throw new Error('Failed to fetch houses');
       return response.json();
     },
-    enabled: isAuthenticated && !!homeownerId
+    enabled: isAuthenticated && !!homeownerId && !isContractor
   });
 
   // Auto-select first house when houses are loaded
@@ -363,7 +364,7 @@ export default function Maintenance() {
 
 
 
-  // Maintenance log queries and mutations
+  // Maintenance log queries and mutations (only for homeowners)
   const { data: maintenanceLogs, isLoading: maintenanceLogsLoading } = useQuery<MaintenanceLog[]>({
     queryKey: ['/api/maintenance-logs', { homeownerId }],
     queryFn: async () => {
@@ -371,10 +372,10 @@ export default function Maintenance() {
       if (!response.ok) throw new Error('Failed to fetch maintenance logs');
       return response.json();
     },
-    enabled: isAuthenticated && !!homeownerId
+    enabled: isAuthenticated && !!homeownerId && !isContractor
   });
 
-  // Home systems queries
+  // Home systems queries (only for homeowners)
   const { data: homeSystemsData, isLoading: homeSystemsLoading } = useQuery<HomeSystem[]>({
     queryKey: ['/api/home-systems', { homeownerId, houseId: selectedHouseId }],
     queryFn: async () => {
@@ -382,10 +383,10 @@ export default function Maintenance() {
       if (!response.ok) throw new Error('Failed to fetch home systems');
       return response.json();
     },
-    enabled: isAuthenticated && !!homeownerId && !!selectedHouseId
+    enabled: isAuthenticated && !!homeownerId && !!selectedHouseId && !isContractor
   });
 
-  // AI Maintenance Suggestions Query
+  // AI Maintenance Suggestions Query (only for homeowners)
   const { data: aiSuggestions, isLoading: aiSuggestionsLoading } = useQuery({
     queryKey: ['/api/ai-maintenance-suggestions'],
     queryFn: async () => {
@@ -393,7 +394,7 @@ export default function Maintenance() {
       if (!response.ok) throw new Error('Failed to fetch AI suggestions');
       return response.json();
     },
-    enabled: isAuthenticated && !!homeownerId && houses.length > 0
+    enabled: isAuthenticated && !!homeownerId && houses.length > 0 && !isContractor
   });
 
   // Function to find previous contractors for similar maintenance tasks
