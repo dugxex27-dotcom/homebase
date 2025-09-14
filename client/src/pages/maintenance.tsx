@@ -1688,7 +1688,7 @@ export default function Maintenance() {
                 
                 {totalTasks > 0 && (
                   <div className="flex items-center gap-3">
-                    <div className="text-sm font-medium text-[#2c0f5b]" style={{ color: '#ffffff' }}>
+                    <div className="text-sm font-medium text-[#2c0f5b]" style={{ color: '#2c0f5b' }}>
                       Progress: {completedCount}/{totalTasks} completed
                     </div>
                     <Button 
