@@ -166,6 +166,7 @@ export default function ContactContractorButton({
             variant="outline" 
             onClick={() => setIsOpen(false)}
             disabled={createConversationMutation.isPending}
+            style={{ color: '#ffffff' }}
           >
             Cancel
           </Button>
