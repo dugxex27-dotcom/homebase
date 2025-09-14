@@ -2469,7 +2469,7 @@ export default function Maintenance() {
 
         {/* House Management Dialog */}
         <Dialog open={isHouseDialogOpen} onOpenChange={setIsHouseDialogOpen}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md text-[#ffffff]">
             <DialogHeader>
               <DialogTitle>{editingHouse ? 'Edit House' : 'Add New House'}</DialogTitle>
             </DialogHeader>
