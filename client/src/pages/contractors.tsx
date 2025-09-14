@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import Header from "@/components/header";
@@ -6,7 +6,8 @@ import ContractorCard from "@/components/contractor-card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ChevronLeft, ChevronRight, Search, ChevronDown, X } from "lucide-react";
 import type { Contractor } from "@shared/schema";
 
 export default function Contractors() {
@@ -19,6 +20,66 @@ export default function Contractors() {
   const [selectedDistance, setSelectedDistance] = useState<string>('');
   const [selectedRating, setSelectedRating] = useState<string>('');
   const [hasEmergencyServices, setHasEmergencyServices] = useState<boolean>(false);
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [servicesDropdownOpen, setServicesDropdownOpen] = useState<boolean>(false);
+  const servicesDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Services list from FilterSidebar
+  const services = [
+    "Appliance Installation",
+    "Appliance Repair & Maintenance",
+    "Basement Remodeling",
+    "Bathroom Remodeling",
+    "Cabinet Installation",
+    "Carpet Installation",
+    "Closet Organization",
+    "Concrete & Masonry",
+    "Custom Carpentry",
+    "Custom Home Building",
+    "Deck Construction",
+    "Drainage Solutions",
+    "Drywall & Spackling Repair",
+    "Dumpster Rental",
+    "Electrical Services",
+    "Epoxy Flooring",
+    "Exterior Painting",
+    "Fence Installation",
+    "Fire & Water Damage Restoration",
+    "Furniture Assembly",
+    "Garage Door Services",
+    "General Contracting",
+    "Gutter Cleaning and Repair",
+    "Gutter Installation",
+    "Handyman Services",
+    "Hardwood Flooring",
+    "Holiday Light Installation",
+    "Home Inspection",
+    "House Cleaning",
+    "HVAC Services",
+    "Interior Painting",
+    "Irrigation Systems",
+    "Junk Removal",
+    "Kitchen Remodeling",
+    "Laminate & Vinyl Flooring",
+    "Landscape Design",
+    "Lawn & Landscaping",
+    "Masonry & Paver Installation",
+    "Mold Remediation",
+    "Pest Control",
+    "Plumbing Services",
+    "Pool Installation",
+    "Pool Maintenance",
+    "Pressure Washing",
+    "Roofing Services",
+    "Security System Installation",
+    "Septic Services",
+    "Siding Installation",
+    "Snow Removal",
+    "Tile Installation",
+    "Tree Service & Trimming",
+    "Trim & Finish Carpentry",
+    "Windows & Door Installation"
+  ];
 
   // Parse URL parameters
   useEffect(() => {
@@ -32,13 +93,45 @@ export default function Contractors() {
     }
   }, [location]);
 
+  // Handle click outside to close services dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (servicesDropdownRef.current && !servicesDropdownRef.current.contains(event.target as Node)) {
+        setServicesDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Handle service selection
+  const handleServiceChange = (service: string, checked: boolean) => {
+    if (checked) {
+      setSelectedServices([...selectedServices, service]);
+    } else {
+      setSelectedServices(selectedServices.filter(s => s !== service));
+    }
+  };
+
   const { data: contractors, isLoading, error } = useQuery<(Contractor & { isBoosted?: boolean })[]>({
     queryKey: filters.searchQuery || filters.searchLocation 
       ? ['/api/contractors/search', filters]
       : ['/api/contractors', filters],
     queryFn: async () => {
+      const params = new URLSearchParams();
+      
+      // Always include filter parameters
+      if (filters.services) params.set('services', filters.services.join(','));
+      if (filters.minRating) params.set('minRating', filters.minRating.toString());
+      if (filters.availableThisWeek) params.set('availableThisWeek', 'true');
+      if (filters.hasEmergencyServices) params.set('hasEmergencyServices', 'true');
+      if (filters.maxDistance) params.set('maxDistance', filters.maxDistance.toString());
+      
       if (filters.searchQuery || filters.searchLocation) {
-        const params = new URLSearchParams();
+        // Add search parameters
         if (filters.searchQuery) params.set('q', filters.searchQuery);
         if (filters.searchLocation) params.set('location', filters.searchLocation);
         
@@ -46,13 +139,6 @@ export default function Contractors() {
         if (!response.ok) throw new Error('Failed to search contractors');
         return response.json();
       } else {
-        const params = new URLSearchParams();
-        if (filters.services) params.set('services', filters.services.join(','));
-        if (filters.minRating) params.set('minRating', filters.minRating.toString());
-        if (filters.availableThisWeek) params.set('availableThisWeek', 'true');
-        if (filters.hasEmergencyServices) params.set('hasEmergencyServices', 'true');
-        if (filters.maxDistance) params.set('maxDistance', filters.maxDistance.toString());
-        
         const response = await fetch(`/api/contractors?${params}`);
         if (!response.ok) throw new Error('Failed to fetch contractors');
         return response.json();
@@ -61,7 +147,12 @@ export default function Contractors() {
   });
 
   const handleFiltersChange = (newFilters: any) => {
-    setFilters({ ...filters, ...newFilters });
+    // Preserve search parameters if they exist, but completely replace other filters
+    const searchParams = {
+      ...(filters.searchQuery && { searchQuery: filters.searchQuery }),
+      ...(filters.searchLocation && { searchLocation: filters.searchLocation })
+    };
+    setFilters({ ...searchParams, ...newFilters });
   };
 
   // Sort contractors based on selected option
@@ -141,7 +232,7 @@ export default function Contractors() {
           <div className="bg-card rounded-xl shadow-sm border p-6 mb-8">
             <h3 className="text-lg font-semibold text-foreground mb-6">Find Your Perfect Contractor</h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
               {/* Distance Filter */}
               <div>
                 <label className="text-sm font-medium text-foreground mb-3 block">Distance from you</label>
@@ -179,6 +270,67 @@ export default function Contractors() {
                   <option value="4">4+ stars</option>
                   <option value="3">3+ stars</option>
                 </select>
+              </div>
+
+              {/* Services Filter */}
+              <div className="relative" ref={servicesDropdownRef}>
+                <label className="text-sm font-medium text-foreground mb-3 block">Services</label>
+                <button
+                  type="button"
+                  className="w-full px-3 py-2 border border-muted rounded-md text-left flex items-center justify-between"
+                  style={{ color: '#ffffff', backgroundColor: '#374151' }}
+                  onClick={() => setServicesDropdownOpen(!servicesDropdownOpen)}
+                  data-testid="filter-services"
+                >
+                  <span className="truncate">
+                    {selectedServices.length === 0
+                      ? 'All services'
+                      : selectedServices.length === 1
+                      ? selectedServices[0]
+                      : `${selectedServices.length} services selected`
+                    }
+                  </span>
+                  <ChevronDown className={`h-4 w-4 transition-transform ${servicesDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {servicesDropdownOpen && (
+                  <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-80 overflow-y-auto">
+                    <div className="p-2">
+                      <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-200 dark:border-gray-700">
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          Select Services ({selectedServices.length})
+                        </span>
+                        {selectedServices.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedServices([])}
+                            className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                            data-testid="clear-services"
+                          >
+                            Clear all
+                          </button>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-1 gap-1 max-h-60 overflow-y-auto">
+                        {services.map((service) => (
+                          <div key={service} className="flex items-center space-x-2 p-1 hover:bg-gray-50 dark:hover:bg-gray-700 rounded">
+                            <Checkbox
+                              id={`service-${service}`}
+                              checked={selectedServices.includes(service)}
+                              onCheckedChange={(checked) => handleServiceChange(service, checked as boolean)}
+                            />
+                            <label
+                              htmlFor={`service-${service}`}
+                              className="text-sm text-gray-700 dark:text-gray-300 leading-tight cursor-pointer flex-1"
+                            >
+                              {service}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Emergency Services */}
@@ -221,7 +373,12 @@ export default function Contractors() {
                       newFilters.hasEmergencyServices = true;
                     }
                     
+                    if (selectedServices.length > 0) {
+                      newFilters.services = selectedServices;
+                    }
+                    
                     handleFiltersChange(newFilters);
+                    setServicesDropdownOpen(false);
                   }}
                   data-testid="button-apply-filters"
                 >
