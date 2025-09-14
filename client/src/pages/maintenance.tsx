@@ -1521,7 +1521,7 @@ export default function Maintenance() {
       <div className="container mx-auto px-4 py-4">
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2" style={{ color: '#ffffff' }}>
-            Home Maintenance & Appliances
+            Home Maintenance
           </h1>
           <p className="text-lg mb-4" style={{ color: '#b6a6f4' }}>
             Keep your home in perfect condition with personalized maintenance recommendations and appliance tracking
