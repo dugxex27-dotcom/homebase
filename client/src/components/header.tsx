@@ -46,11 +46,6 @@ export default function Header() {
           <nav className="hidden md:flex space-x-8">
             {typedUser?.role === 'homeowner' && (
               <>
-                <Link href="/products" className={`text-gray-700 hover:text-primary transition-colors ${
-                  location === '/products' ? 'text-primary font-medium' : ''
-                }`}>
-                  Products
-                </Link>
                 <Link href="/maintenance" className={`text-gray-700 hover:text-primary transition-colors ${
                   location === '/maintenance' ? 'text-primary font-medium' : ''
                 }`}>
@@ -60,6 +55,11 @@ export default function Header() {
                   location === '/contractors' ? 'text-primary font-medium' : ''
                 }`}>
                   Find Contractors
+                </Link>
+                <Link href="/products" className={`text-gray-700 hover:text-primary transition-colors ${
+                  location === '/products' ? 'text-primary font-medium' : ''
+                }`}>
+                  Products
                 </Link>
                 <Link href="/messages" className={`text-gray-700 hover:text-primary transition-colors ${
                   location === '/messages' ? 'text-primary font-medium' : ''
