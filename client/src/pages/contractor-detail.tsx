@@ -162,7 +162,7 @@ export default function ContractorDetail() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {contractor.services.map((service, index) => (
-                  <div key={index} className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/30 rounded-xl px-4 py-3">
+                  <div key={index} className="border border-amber-200 dark:border-amber-800/30 rounded-xl px-4 py-3" style={{ backgroundColor: '#3c258e' }}>
                     <span className="font-medium text-amber-800 dark:text-amber-200">{service}</span>
                   </div>
                 ))}
