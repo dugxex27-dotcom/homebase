@@ -159,18 +159,6 @@ export default function Contractors() {
                 </div>
               </div>
               
-              {/* Search Bar */}
-              <div className="relative mb-6">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5" style={{ color: '#f2f2f2' }} />
-                <Input
-                  type="text"
-                  placeholder="Search for christmas light hanging, snow removal, pool installation, house cleaning..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-3 text-lg border-muted"
-                  style={{ color: '#f2f2f2' }}
-                />
-              </div>
             </div>
 
             {isLoading ? (
