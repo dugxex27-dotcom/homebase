@@ -138,7 +138,7 @@ export default function ContactContractorButton({
         
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="subject" className="text-foreground dark:text-white">Subject</Label>
+            <Label htmlFor="subject" style={{ color: '#ffffff' }}>Subject</Label>
             <Input
               id="subject"
               placeholder="What would you like to discuss?"
