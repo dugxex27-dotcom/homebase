@@ -89,8 +89,8 @@ export default function SignIn() {
                   <Home className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1">
-                  <div className="font-semibold text-center text-[20px]" style={{ color: '#ffffff' }}>I'm a Homeowner</div>
-                  <div className="text-sm text-center leading-tight mt-2" style={{ color: '#ffffff' }}>
+                  <div className="font-semibold text-left text-[20px]" style={{ color: '#ffffff' }}>I'm a Homeowner</div>
+                  <div className="text-sm text-left leading-tight mt-2" style={{ color: '#ffffff' }}>
                     Find contractors<br />
                     and manage home maintenance
                   </div>
@@ -121,8 +121,8 @@ export default function SignIn() {
                   <Wrench className="w-6 h-6 text-white" />
                 </div>
                 <div className="flex-1">
-                  <div className="font-semibold text-center text-[20px]" style={{ color: '#ffffff' }}>I'm a Contractor</div>
-                  <div className="text-sm text-center leading-tight mt-2" style={{ color: '#ffffff' }}>
+                  <div className="font-semibold text-left text-[20px]" style={{ color: '#ffffff' }}>I'm a Contractor</div>
+                  <div className="text-sm text-left leading-tight mt-2" style={{ color: '#ffffff' }}>
                     Connect with clients, manage appointments,<br />
                     and grow your business
                   </div>
