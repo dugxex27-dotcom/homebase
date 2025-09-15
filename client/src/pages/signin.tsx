@@ -90,7 +90,7 @@ export default function SignIn() {
                 </div>
                 <div className="flex-1" style={{ paddingRight: '10px' }}>
                   <div className="font-semibold text-left text-[20px]" style={{ color: '#ffffff' }}>I'm a Homeowner</div>
-                  <div className="text-sm text-left leading-tight mt-2" style={{ color: '#ffffff' }}>
+                  <div className="text-sm text-left leading-tight mt-2" style={{ color: '#ffffff', paddingRight: '10px' }}>
                     Find contractors and manage home maintenance
                   </div>
                 </div>
