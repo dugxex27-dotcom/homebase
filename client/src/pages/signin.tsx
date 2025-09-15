@@ -123,8 +123,8 @@ export default function SignIn() {
                 <div className="flex-1" style={{ paddingRight: '10px' }}>
                   <div className="font-semibold text-left text-[20px]" style={{ color: '#ffffff' }}>I'm a Contractor</div>
                   <div className="text-sm text-left leading-tight mt-2" style={{ color: '#ffffff' }}>
-                    Connect with clients, manage appointments,<br />
-                    and grow your business
+                    Connect with clients, manage<br />
+                    appointments, and grow your business
                   </div>
                 </div>
                 {selectedRole === 'contractor' && (

@@ -16,6 +16,7 @@ Preferred communication style: Simple, everyday language.
 - **Theming**: Supports light/dark mode with purple-based color palette (primary: hsl(260, 65%, 55%)) for homeowner interface, maintaining red theme for contractor interface.
 - **Navigation**: Role-based dashboards (Homeowner and Contractor) serve as primary interfaces, offering tailored content and quick actions.
 - **Logo**: Updated to use custom HomeBase logo with house icon and gradient blue "H" design, imported from attached assets.
+- **Signin Page**: Role selection buttons feature left-aligned text, consistent padding structure, and properly wrapped subcopy text for optimal readability and visual balance.
 
 ### Technical Implementation
 - **Frontend**: React 18 with TypeScript, Wouter for routing, TanStack Query for state management, and Tailwind CSS for styling. Vite is used for fast development and optimized builds.
