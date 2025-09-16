@@ -130,7 +130,7 @@ export default function Home() {
                 <h2 className="text-4xl font-bold mb-4" style={{ color: 'white' }}>
                   Your Business Dashboard
                 </h2>
-                <p className="text-xl max-w-2xl mx-auto" style={{ color: '#3798ef' }}>
+                <p className="text-xl max-w-2xl mx-auto" style={{ color: '#9ed0ef' }}>
                   Manage your contracting business and grow your client base
                 </p>
               </div>
