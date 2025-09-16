@@ -424,7 +424,7 @@ export default function Home() {
                 We've designed every feature to make home management simple, reliable, and efficient
               </p>
             ) : (
-              <p className="text-xl max-w-3xl mx-auto" style={{ color: '#3798ef' }}>
+              <p className="text-xl max-w-3xl mx-auto" style={{ color: '#9ed0ef' }}>
                 The platform contractors trust to grow their business and connect with quality clients
               </p>
             )}

@@ -29,7 +29,7 @@ export default function ContractorDashboard() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8 p-6 rounded-lg" style={{ background: '#f2f2f2' }}>
           <h1 className="text-3xl font-bold mb-2" style={{ color: '#1560a2' }}>Contractor Dashboard</h1>
-          <p className="text-lg" style={{ color: '#3798ef' }}>Manage your contracting business and grow your client base</p>
+          <p className="text-lg" style={{ color: '#9ed0ef' }}>Manage your contracting business and grow your client base</p>
         </div>
 
         {/* Stats Overview */}
