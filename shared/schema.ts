@@ -1,4 +1,4 @@
-import { sql } from "drizzle-orm";
+import { sql, eq } from "drizzle-orm";
 import { pgTable, text, varchar, integer, decimal, boolean, timestamp, index, uniqueIndex, check, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -166,6 +166,7 @@ export const customMaintenanceTasks = pgTable("custom_maintenance_tasks", {
 export const homeAppliances = pgTable("home_appliances", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   homeownerId: text("homeowner_id").notNull(), // In real app would be foreign key to users table
+  houseId: text("house_id").notNull(), // references houses table
   applianceType: text("appliance_type").notNull(), // 'hvac', 'water_heater', 'washer', etc.
   brand: text("brand").notNull(),
   model: text("model").notNull(),
@@ -181,6 +182,7 @@ export const homeAppliances = pgTable("home_appliances", {
 export const maintenanceLogs = pgTable("maintenance_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   homeownerId: text("homeowner_id").notNull(), // In real app would be foreign key to users table
+  houseId: text("house_id").notNull(), // references houses table
   serviceDate: text("service_date").notNull(), // Date when service was performed
   serviceType: text("service_type").notNull(), // Type of service performed
   homeArea: text("home_area").notNull(), // What part of home was serviced (roof, HVAC, plumbing, etc.)
@@ -386,6 +388,28 @@ export const contractorBoosts = pgTable("contractor_boosts", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const houseTransfers = pgTable("house_transfers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  houseId: text("house_id").notNull(), // references houses table
+  fromHomeownerId: text("from_homeowner_id").notNull(), // current owner initiating transfer
+  toHomeownerEmail: text("to_homeowner_email").notNull(), // email of recipient
+  toHomeownerId: text("to_homeowner_id"), // nullable until accepted
+  token: text("token").notNull().unique(), // secure token for transfer acceptance
+  status: text("status").notNull().default("pending"), // "pending", "completed", "cancelled", "expired"
+  expiresAt: timestamp("expires_at").notNull(), // when the transfer token expires
+  completedAt: timestamp("completed_at"), // when transfer was completed
+  // Transfer counts for audit trail
+  maintenanceLogsTransferred: integer("maintenance_logs_transferred").default(0),
+  appliancesTransferred: integer("appliances_transferred").default(0),
+  appointmentsTransferred: integer("appointments_transferred").default(0),
+  customTasksTransferred: integer("custom_tasks_transferred").default(0),
+  homeSystemsTransferred: integer("home_systems_transferred").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  // Ensure no duplicate pending transfers for same house
+  uniqueIndex("idx_house_transfers_pending").on(table.houseId, table.status).where(eq(table.status, "pending")),
+]);
+
 // Push subscription types
 export const insertPushSubscriptionSchema = createInsertSchema(pushSubscriptions).omit({
   id: true,
@@ -492,6 +516,17 @@ export const insertContractorBoostSchema = createInsertSchema(contractorBoosts).
   updatedAt: true,
 });
 
+export const insertHouseTransferSchema = createInsertSchema(houseTransfers).omit({
+  id: true,
+  createdAt: true,
+  completedAt: true,
+  maintenanceLogsTransferred: true,
+  appliancesTransferred: true,
+  appointmentsTransferred: true,
+  customTasksTransferred: true,
+  homeSystemsTransferred: true,
+});
+
 export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans).omit({
   id: true,
   createdAt: true,
@@ -545,3 +580,5 @@ export type InsertContractorLicense = z.infer<typeof insertContractorLicenseSche
 export type ContractorLicense = typeof contractorLicenses.$inferSelect;
 export type InsertContractorBoost = z.infer<typeof insertContractorBoostSchema>;
 export type ContractorBoost = typeof contractorBoosts.$inferSelect;
+export type InsertHouseTransfer = z.infer<typeof insertHouseTransferSchema>;
+export type HouseTransfer = typeof houseTransfers.$inferSelect;
