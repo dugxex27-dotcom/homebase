@@ -14,7 +14,24 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// Users table for Replit Auth with role support
+// Subscription plans table
+export const subscriptionPlans = pgTable("subscription_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  tierName: text("tier_name").notNull().unique(), // "basic", "super", "contractor"
+  displayName: text("display_name").notNull(), // "Basic Homeowner", "Super Homeowner", "Contractor"
+  description: text("description").notNull(),
+  monthlyPrice: decimal("monthly_price", { precision: 10, scale: 2 }).notNull(),
+  maxHouses: integer("max_houses").notNull(), // Maximum houses allowed for this tier
+  stripeProductId: varchar("stripe_product_id").unique(),
+  stripePriceId: varchar("stripe_price_id").unique(),
+  features: text("features").array().notNull(), // Array of feature descriptions
+  isActive: boolean("is_active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0), // For display ordering
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Users table for Replit Auth with role and subscription support
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),
@@ -25,10 +42,17 @@ export const users = pgTable("users", {
   referralCode: varchar("referral_code").unique(),
   referredBy: varchar("referred_by"), // referral code of user who referred this user
   referralCount: integer("referral_count").notNull().default(0),
-  // Premium subscription fields
+  // Subscription fields
+  subscriptionTier: text("subscription_tier").default("free"), // "free", "basic", "super", "contractor"
+  subscriptionStatus: text("subscription_status").default("inactive"), // "active", "inactive", "cancelled", "past_due"
+  referralDiscountAmount: decimal("referral_discount_amount", { precision: 10, scale: 2 }).notNull().default("0.00"), // Total discount earned from referrals
+  maxHousesAllowed: integer("max_houses_allowed").notNull().default(2), // Based on subscription tier
   isPremium: boolean("is_premium").notNull().default(false),
   stripeCustomerId: varchar("stripe_customer_id"),
   stripeSubscriptionId: varchar("stripe_subscription_id"),
+  stripePriceId: varchar("stripe_price_id"), // Current Stripe price ID for the subscription
+  subscriptionStartDate: timestamp("subscription_start_date"),
+  subscriptionEndDate: timestamp("subscription_end_date"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -435,6 +459,14 @@ export const insertContractorBoostSchema = createInsertSchema(contractorBoosts).
   updatedAt: true,
 });
 
+export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSubscriptionPlan = z.infer<typeof insertSubscriptionPlanSchema>;
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
 export type InsertContractor = z.infer<typeof insertContractorSchema>;
 export type Contractor = typeof contractors.$inferSelect;
 export type InsertProduct = z.infer<typeof insertProductSchema>;
