@@ -352,14 +352,15 @@ export default function ContractorProfile() {
     updateProfileMutation.mutate(formData);
   };
 
-  // Referral sharing functionality
-  const generateReferralCode = () => {
-    const userId = typedUser?.id || 'contractor';
-    return userId.slice(0, 8).toUpperCase();
-  };
+  // Referral data query
+  const { data: referralData, isLoading: isLoadingReferral } = useQuery({
+    queryKey: ['/api/user/referral-code'],
+    enabled: !!typedUser,
+  });
 
-  const referralCode = typedUser?.referralCode || generateReferralCode();
-  const referralLink = `${window.location.origin}/?ref=${referralCode}`;
+  const referralCode = (referralData as any)?.referralCode || '';
+  const referralLink = (referralData as any)?.referralLink || '';
+  const referralCount = (referralData as any)?.referralCount || 0;
   const shareMessage = `Join me on Home Base! Use my referral code ${referralCode} and we both get $1 off our subscription. Perfect for contractors! Sign up here: ${referralLink}`;
 
   const copyToClipboard = async (text: string) => {
@@ -1016,13 +1017,13 @@ export default function ContractorProfile() {
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center p-3 bg-white rounded-lg">
                 <div className="text-2xl font-bold" style={{ color: '#1560a2' }}>
-                  {typedUser?.referralCount || 0}
+                  {isLoadingReferral ? '...' : referralCount}
                 </div>
                 <div className="text-sm text-gray-600">People Referred</div>
               </div>
               <div className="text-center p-3 bg-white rounded-lg">
                 <div className="text-2xl font-bold text-green-600">
-                  ${((typedUser?.referralCount || 0) * 1).toFixed(2)}
+                  ${isLoadingReferral ? '...' : (referralCount * 1).toFixed(2)}
                 </div>
                 <div className="text-sm text-gray-600">Total Earned</div>
               </div>

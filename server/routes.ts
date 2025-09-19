@@ -62,6 +62,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Generate unique referral code utility function
+  function generateUniqueReferralCode(): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < 8; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  }
+
+  // Get or create user's referral code
+  app.get('/api/user/referral-code', async (req: any, res) => {
+    try {
+      if (!req.session?.isAuthenticated || !req.session?.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const userId = req.session.user.id;
+      let user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // If user doesn't have a referral code, generate one
+      if (!user.referralCode) {
+        let newCode = generateUniqueReferralCode();
+        let attempts = 0;
+        const maxAttempts = 10;
+
+        // Ensure uniqueness by checking against existing codes
+        while (attempts < maxAttempts) {
+          const existingUser = await storage.getUserByReferralCode?.(newCode);
+          if (!existingUser) {
+            break; // Code is unique
+          }
+          newCode = generateUniqueReferralCode();
+          attempts++;
+        }
+
+        if (attempts >= maxAttempts) {
+          return res.status(500).json({ message: "Failed to generate unique referral code" });
+        }
+
+        // Update user with new referral code
+        user = await storage.upsertUser({
+          ...user,
+          referralCode: newCode
+        });
+
+        // Update session user data
+        req.session.user = { ...req.session.user, referralCode: newCode };
+      }
+
+      res.json({ 
+        referralCode: user.referralCode,
+        referralCount: user.referralCount || 0,
+        referralLink: `${req.protocol}://${req.get('host')}/?ref=${user.referralCode}`
+      });
+    } catch (error) {
+      console.error("Error getting referral code:", error);
+      res.status(500).json({ message: "Failed to get referral code" });
+    }
+  });
+
   // Push notification routes
   app.use('/api/push', pushRoutes);
 

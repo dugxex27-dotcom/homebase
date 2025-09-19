@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 export interface IStorage {
   // User operations (required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
+  getUserByReferralCode(referralCode: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   
   // Contractor methods
@@ -294,6 +295,15 @@ export class MemStorage implements IStorage {
   // User operations (required for Replit Auth)
   async getUser(id: string): Promise<User | undefined> {
     return this.users.get(id);
+  }
+
+  async getUserByReferralCode(referralCode: string): Promise<User | undefined> {
+    for (const user of this.users.values()) {
+      if (user.referralCode === referralCode) {
+        return user;
+      }
+    }
+    return undefined;
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {

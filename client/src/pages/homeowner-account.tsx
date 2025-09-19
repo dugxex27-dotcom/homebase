@@ -127,14 +127,15 @@ export default function HomeownerAccount() {
     }
   };
 
-  // Generate referral code if user doesn't have one
-  const generateReferralCode = () => {
-    const userId = (user as any)?.id || 'user';
-    return userId.slice(0, 8).toUpperCase();
-  };
+  // Referral data query
+  const { data: referralData, isLoading: isLoadingReferral } = useQuery({
+    queryKey: ['/api/user/referral-code'],
+    enabled: !!user,
+  });
 
-  const referralCode = (user as any)?.referralCode || generateReferralCode();
-  const referralLink = `${window.location.origin}/?ref=${referralCode}`;
+  const referralCode = (referralData as any)?.referralCode || '';
+  const referralLink = (referralData as any)?.referralLink || '';
+  const referralCount = (referralData as any)?.referralCount || 0;
   const shareMessage = `Join me on Home Base! Use my referral code ${referralCode} and we both get $1 off our subscription. Sign up here: ${referralLink}`;
 
   const copyToClipboard = async (text: string) => {
@@ -455,13 +456,13 @@ export default function HomeownerAccount() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="text-center p-3 bg-white rounded-lg">
                     <div className="text-2xl font-bold" style={{ color: '#2c0f5b' }}>
-                      {(user as any)?.referralCount || 0}
+                      {isLoadingReferral ? '...' : referralCount}
                     </div>
                     <div className="text-sm text-gray-600">Friends Referred</div>
                   </div>
                   <div className="text-center p-3 bg-white rounded-lg">
                     <div className="text-2xl font-bold text-green-600">
-                      ${((user as any)?.referralCount || 0) * 1}.00
+                      ${isLoadingReferral ? '...' : (referralCount * 1).toFixed(2)}
                     </div>
                     <div className="text-sm text-gray-600">Total Earned</div>
                   </div>
