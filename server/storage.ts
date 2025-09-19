@@ -336,7 +336,7 @@ export class MemStorage implements IStorage {
   }
 
   async getUserByReferralCode(referralCode: string): Promise<User | undefined> {
-    for (const user of this.users.values()) {
+    for (const user of Array.from(this.users.values())) {
       if (user.referralCode === referralCode) {
         return user;
       }
@@ -356,11 +356,17 @@ export class MemStorage implements IStorage {
       referralCode: userData.referralCode || null,
       referredBy: userData.referredBy || null,
       referralCount: userData.referralCount || 0,
-      createdAt: existingUser?.createdAt || new Date(),
-      updatedAt: new Date(),
+      subscriptionPlanId: userData.subscriptionPlanId ?? existingUser?.subscriptionPlanId ?? null,
+      subscriptionStatus: userData.subscriptionStatus ?? existingUser?.subscriptionStatus ?? null,
+      maxHousesAllowed: userData.maxHousesAllowed ?? existingUser?.maxHousesAllowed ?? 2,
       isPremium: userData.isPremium ?? existingUser?.isPremium ?? false,
       stripeCustomerId: userData.stripeCustomerId ?? existingUser?.stripeCustomerId ?? null,
       stripeSubscriptionId: userData.stripeSubscriptionId ?? existingUser?.stripeSubscriptionId ?? null,
+      stripePriceId: userData.stripePriceId ?? existingUser?.stripePriceId ?? null,
+      subscriptionStartDate: userData.subscriptionStartDate ?? existingUser?.subscriptionStartDate ?? null,
+      subscriptionEndDate: userData.subscriptionEndDate ?? existingUser?.subscriptionEndDate ?? null,
+      createdAt: existingUser?.createdAt || new Date(),
+      updatedAt: new Date(),
     };
     this.users.set(user.id, user);
     return user;
@@ -536,6 +542,10 @@ export class MemStorage implements IStorage {
         serviceRadius: (contractor as any).serviceRadius ?? 25,
         businessLogo: null,
         projectPhotos: [],
+        website: (contractor as any).website || null,
+        facebook: (contractor as any).facebook || null,
+        instagram: (contractor as any).instagram || null,
+        linkedin: (contractor as any).linkedin || null,
         googleBusinessUrl: null
       };
       this.contractors.set(id, contractorWithId);
@@ -783,6 +793,10 @@ export class MemStorage implements IStorage {
       serviceRadius: contractor.serviceRadius ?? 25,
       businessLogo: contractor.businessLogo || null,
       projectPhotos: contractor.projectPhotos || [],
+      website: contractor.website || null,
+      facebook: contractor.facebook || null,
+      instagram: contractor.instagram || null,
+      linkedin: contractor.linkedin || null,
       googleBusinessUrl: contractor.googleBusinessUrl || null
     };
     this.contractors.set(id, newContractor);
@@ -2150,6 +2164,7 @@ export class MemStorage implements IStorage {
       id: randomUUID(),
       ...transferData,
       status: transferData.status || 'pending',
+      toHomeownerId: transferData.toHomeownerId || null,
       maintenanceLogsTransferred: 0,
       appliancesTransferred: 0,
       appointmentsTransferred: 0,
@@ -2167,7 +2182,7 @@ export class MemStorage implements IStorage {
   }
 
   async getHouseTransferByToken(token: string): Promise<HouseTransfer | undefined> {
-    for (const transfer of this.houseTransfers.values()) {
+    for (const transfer of Array.from(this.houseTransfers.values())) {
       if (transfer.token === token) {
         return transfer;
       }
@@ -2223,7 +2238,7 @@ export class MemStorage implements IStorage {
     let homeSystemsTransferred = 0;
 
     // Transfer maintenance logs
-    for (const [id, log] of this.maintenanceLogs.entries()) {
+    for (const [id, log] of Array.from(this.maintenanceLogs.entries())) {
       if (log.houseId === houseId && log.homeownerId === fromHomeownerId) {
         const updated: MaintenanceLog = {
           ...log,
@@ -2235,7 +2250,7 @@ export class MemStorage implements IStorage {
     }
 
     // Transfer home appliances
-    for (const [id, appliance] of this.homeAppliances.entries()) {
+    for (const [id, appliance] of Array.from(this.homeAppliances.entries())) {
       if (appliance.houseId === houseId && appliance.homeownerId === fromHomeownerId) {
         const updated: HomeAppliance = {
           ...appliance,
@@ -2247,7 +2262,7 @@ export class MemStorage implements IStorage {
     }
 
     // Transfer contractor appointments
-    for (const [id, appointment] of this.contractorAppointments.entries()) {
+    for (const [id, appointment] of Array.from(this.contractorAppointments.entries())) {
       if (appointment.houseId === houseId && appointment.homeownerId === fromHomeownerId) {
         const updated: ContractorAppointment = {
           ...appointment,
@@ -2259,7 +2274,7 @@ export class MemStorage implements IStorage {
     }
 
     // Transfer custom maintenance tasks (only those with matching houseId)
-    for (const [id, task] of this.customMaintenanceTasks.entries()) {
+    for (const [id, task] of Array.from(this.customMaintenanceTasks.entries())) {
       if (task.houseId === houseId && task.homeownerId === fromHomeownerId) {
         const updated: CustomMaintenanceTask = {
           ...task,
@@ -2271,7 +2286,7 @@ export class MemStorage implements IStorage {
     }
 
     // Transfer home systems
-    for (const [id, system] of this.homeSystems.entries()) {
+    for (const [id, system] of Array.from(this.homeSystems.entries())) {
       if (system.houseId === houseId && system.homeownerId === fromHomeownerId) {
         const updated: HomeSystem = {
           ...system,

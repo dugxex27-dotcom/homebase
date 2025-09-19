@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRoute } from "wouter";
+import { useEffect } from "react";
 import Header from "@/components/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import ContactContractorButton from "@/components/contact-contractor-button";
 import { ContractorReviews } from "@/components/contractor-reviews";
+import { trackProfileView } from "@/lib/analytics";
 import { 
   User, 
   Building, 
@@ -28,6 +30,13 @@ export default function ContractorDetail() {
     queryKey: ['/api/contractors', contractorId],
     enabled: !!contractorId,
   });
+
+  // Track profile view when contractor data loads successfully
+  useEffect(() => {
+    if (contractor && contractorId) {
+      trackProfileView(contractorId);
+    }
+  }, [contractor, contractorId]);
 
   if (isLoading) {
     return (
