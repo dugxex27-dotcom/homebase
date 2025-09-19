@@ -1,4 +1,4 @@
-import { type Contractor, type InsertContractor, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type ContractorBoost, type InsertContractorBoost } from "@shared/schema";
+import { type Contractor, type InsertContractor, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -150,6 +150,21 @@ export interface IStorage {
   updateContractorBoost(id: string, boost: Partial<InsertContractorBoost>): Promise<ContractorBoost | undefined>;
   deleteContractorBoost(id: string): Promise<boolean>;
   checkBoostConflict(serviceCategory: string, latitude: number, longitude: number, radius: number): Promise<ContractorBoost | null>;
+
+  // House transfer operations
+  createHouseTransfer(transfer: InsertHouseTransfer): Promise<HouseTransfer>;
+  getHouseTransfer(id: string): Promise<HouseTransfer | undefined>;
+  getHouseTransferByToken(token: string): Promise<HouseTransfer | undefined>;
+  getHouseTransfersForUser(homeownerId: string): Promise<HouseTransfer[]>;
+  updateHouseTransfer(id: string, transfer: Partial<HouseTransfer>): Promise<HouseTransfer | undefined>;
+  transferHouseOwnership(houseId: string, fromHomeownerId: string, toHomeownerId: string): Promise<{
+    maintenanceLogsTransferred: number;
+    appliancesTransferred: number;
+    appointmentsTransferred: number;
+    customTasksTransferred: number;
+    homeSystemsTransferred: number;
+  }>;
+  getHousesCount(homeownerId: string): Promise<number>;
 }
 
 export class MemStorage implements IStorage {
@@ -162,6 +177,7 @@ export class MemStorage implements IStorage {
   private customMaintenanceTasks: Map<string, CustomMaintenanceTask>;
   private houses: Map<string, House>;
   private contractorAppointments: Map<string, ContractorAppointment>;
+  private houseTransfers: Map<string, HouseTransfer>;
   private notifications: Map<string, Notification>;
   private contractorProfiles: Map<string, any>;
   private serviceRecords: ServiceRecord[];
@@ -183,6 +199,7 @@ export class MemStorage implements IStorage {
     this.customMaintenanceTasks = new Map();
     this.houses = new Map();
     this.contractorAppointments = new Map();
+    this.houseTransfers = new Map();
     this.notifications = new Map();
     this.contractorProfiles = new Map();
     this.serviceRecords = [];
@@ -207,6 +224,7 @@ export class MemStorage implements IStorage {
       {
         id: "maint-log-1",
         homeownerId: "demo-homeowner-123",
+        houseId: "house-1",
         serviceDate: "2024-08-14",
         serviceType: "HVAC Maintenance",
         homeArea: "HVAC",
@@ -223,6 +241,7 @@ export class MemStorage implements IStorage {
       {
         id: "maint-log-2",
         homeownerId: "demo-homeowner-123",
+        houseId: "house-1",
         serviceDate: "2024-06-19",
         serviceType: "Gutter Cleaning",
         homeArea: "Exterior",
@@ -239,6 +258,7 @@ export class MemStorage implements IStorage {
       {
         id: "maint-log-3",
         homeownerId: "demo-homeowner-123",
+        houseId: "house-1",
         serviceDate: "2024-05-10",
         serviceType: "Plumbing Repair",
         homeArea: "Plumbing",
@@ -255,6 +275,7 @@ export class MemStorage implements IStorage {
       {
         id: "maint-log-4",
         homeownerId: "demo-homeowner-123",
+        houseId: "house-1",
         serviceDate: "2024-03-25",
         serviceType: "Pressure Washing",
         homeArea: "Exterior",
@@ -271,6 +292,7 @@ export class MemStorage implements IStorage {
       {
         id: "maint-log-5",
         homeownerId: "demo-homeowner-123",
+        houseId: "house-1",
         serviceDate: "2024-01-15",
         serviceType: "Electrical Inspection",
         homeArea: "Electrical",
@@ -2104,6 +2126,157 @@ export class MemStorage implements IStorage {
               Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
+  }
+
+  // House transfer operations
+  async createHouseTransfer(transferData: InsertHouseTransfer): Promise<HouseTransfer> {
+    const transfer: HouseTransfer = {
+      id: randomUUID(),
+      ...transferData,
+      status: transferData.status || 'pending',
+      maintenanceLogsTransferred: 0,
+      appliancesTransferred: 0,
+      appointmentsTransferred: 0,
+      customTasksTransferred: 0,
+      homeSystemsTransferred: 0,
+      createdAt: new Date(),
+      completedAt: null,
+    };
+    this.houseTransfers.set(transfer.id, transfer);
+    return transfer;
+  }
+
+  async getHouseTransfer(id: string): Promise<HouseTransfer | undefined> {
+    return this.houseTransfers.get(id);
+  }
+
+  async getHouseTransferByToken(token: string): Promise<HouseTransfer | undefined> {
+    for (const transfer of this.houseTransfers.values()) {
+      if (transfer.token === token) {
+        return transfer;
+      }
+    }
+    return undefined;
+  }
+
+  async getHouseTransfersForUser(homeownerId: string): Promise<HouseTransfer[]> {
+    return Array.from(this.houseTransfers.values()).filter(
+      transfer => transfer.fromHomeownerId === homeownerId || transfer.toHomeownerId === homeownerId
+    );
+  }
+
+  async updateHouseTransfer(id: string, updateData: Partial<HouseTransfer>): Promise<HouseTransfer | undefined> {
+    const existingTransfer = this.houseTransfers.get(id);
+    if (!existingTransfer) {
+      return undefined;
+    }
+
+    const updated: HouseTransfer = {
+      ...existingTransfer,
+      ...updateData,
+    };
+    this.houseTransfers.set(id, updated);
+    return updated;
+  }
+
+  async transferHouseOwnership(houseId: string, fromHomeownerId: string, toHomeownerId: string): Promise<{
+    maintenanceLogsTransferred: number;
+    appliancesTransferred: number;
+    appointmentsTransferred: number;
+    customTasksTransferred: number;
+    homeSystemsTransferred: number;
+  }> {
+    // First, transfer the house ownership
+    const house = this.houses.get(houseId);
+    if (!house || house.homeownerId !== fromHomeownerId) {
+      throw new Error("House not found or ownership mismatch");
+    }
+
+    // Update house ownership
+    const updatedHouse: House = {
+      ...house,
+      homeownerId: toHomeownerId,
+    };
+    this.houses.set(houseId, updatedHouse);
+
+    // Transfer all related data
+    let maintenanceLogsTransferred = 0;
+    let appliancesTransferred = 0;
+    let appointmentsTransferred = 0;
+    let customTasksTransferred = 0;
+    let homeSystemsTransferred = 0;
+
+    // Transfer maintenance logs
+    for (const [id, log] of this.maintenanceLogs.entries()) {
+      if (log.houseId === houseId && log.homeownerId === fromHomeownerId) {
+        const updated: MaintenanceLog = {
+          ...log,
+          homeownerId: toHomeownerId,
+        };
+        this.maintenanceLogs.set(id, updated);
+        maintenanceLogsTransferred++;
+      }
+    }
+
+    // Transfer home appliances
+    for (const [id, appliance] of this.homeAppliances.entries()) {
+      if (appliance.houseId === houseId && appliance.homeownerId === fromHomeownerId) {
+        const updated: HomeAppliance = {
+          ...appliance,
+          homeownerId: toHomeownerId,
+        };
+        this.homeAppliances.set(id, updated);
+        appliancesTransferred++;
+      }
+    }
+
+    // Transfer contractor appointments
+    for (const [id, appointment] of this.contractorAppointments.entries()) {
+      if (appointment.houseId === houseId && appointment.homeownerId === fromHomeownerId) {
+        const updated: ContractorAppointment = {
+          ...appointment,
+          homeownerId: toHomeownerId,
+        };
+        this.contractorAppointments.set(id, updated);
+        appointmentsTransferred++;
+      }
+    }
+
+    // Transfer custom maintenance tasks (only those with matching houseId)
+    for (const [id, task] of this.customMaintenanceTasks.entries()) {
+      if (task.houseId === houseId && task.homeownerId === fromHomeownerId) {
+        const updated: CustomMaintenanceTask = {
+          ...task,
+          homeownerId: toHomeownerId,
+        };
+        this.customMaintenanceTasks.set(id, updated);
+        customTasksTransferred++;
+      }
+    }
+
+    // Transfer home systems
+    for (const [id, system] of this.homeSystems.entries()) {
+      if (system.houseId === houseId && system.homeownerId === fromHomeownerId) {
+        const updated: HomeSystem = {
+          ...system,
+          homeownerId: toHomeownerId,
+        };
+        this.homeSystems.set(id, updated);
+        homeSystemsTransferred++;
+      }
+    }
+
+    return {
+      maintenanceLogsTransferred,
+      appliancesTransferred,
+      appointmentsTransferred,
+      customTasksTransferred,
+      homeSystemsTransferred,
+    };
+  }
+
+  async getHousesCount(homeownerId: string): Promise<number> {
+    return Array.from(this.houses.values()).filter(house => house.homeownerId === homeownerId).length;
   }
 }
 
