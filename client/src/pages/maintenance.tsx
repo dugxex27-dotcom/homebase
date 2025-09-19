@@ -1088,6 +1088,55 @@ export default function Maintenance() {
           cost: "$10-30"
         });
       }
+
+      // Winter garden protection and planning
+      if (month === 12) {
+        tasks.push({
+          id: "winter-plant-protection",
+          title: "Winter Plant Protection",
+          description: "Check plant protection measures during cold snaps. Monitor for rodent damage to trees and shrubs. Plan next year's garden layout and order seed catalogs. Maintain bird feeders and water sources.",
+          month: month,
+          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
+          priority: "medium",
+          estimatedTime: "1-2 hours",
+          difficulty: "easy",
+          category: "Landscaping",
+          tools: ["Tree guards", "Bird seed", "Garden planning materials"],
+          cost: "$15-40"
+        });
+      }
+
+      if (month === 1) {
+        tasks.push({
+          id: "winter-garden-planning",
+          title: "Garden Planning and Equipment Maintenance",
+          description: "Plan garden layout for the coming year. Order seeds and plants from catalogs. Clean and sharpen garden tools during dormant season. Check stored bulbs and tubers for rot or damage.",
+          month: month,
+          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
+          priority: "low",
+          estimatedTime: "2-3 hours",
+          difficulty: "easy",
+          category: "Landscaping",
+          tools: ["Tool sharpener", "Oil for tools", "Garden planning books/apps"],
+          cost: "$20-50"
+        });
+      }
+
+      if (month === 2) {
+        tasks.push({
+          id: "late-winter-garden-prep",
+          title: "Late Winter Garden Preparation",
+          description: "Begin pruning fruit trees and grape vines during dormancy. Start seeds indoors for early spring planting. Check and repair garden structures like trellises and fences. Remove heavy snow from evergreen branches.",
+          month: month,
+          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
+          priority: "medium",
+          estimatedTime: "3-4 hours",
+          difficulty: "moderate",
+          category: "Landscaping",
+          tools: ["Pruning shears", "Seed starting supplies", "Repair materials", "Soft brush for snow"],
+          cost: "$30-80"
+        });
+      }
     }
 
     // Spring tasks (March, April, May)
@@ -1125,6 +1174,53 @@ export default function Maintenance() {
           tools: ["New air filter", "Garden hose", "Cleaning supplies"],
           cost: "$100-200"
         });
+
+        // Spring soil preparation and fertilizing
+        tasks.push({
+          id: "spring-soil-prep",
+          title: "Soil Preparation and Spring Fertilizing",
+          description: "Test soil pH and nutrient levels. Add compost or organic matter to garden beds. Apply pre-emergent herbicide to prevent weeds. Fertilize established lawn areas with spring fertilizer.",
+          month: month,
+          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
+          priority: "high",
+          estimatedTime: "3-4 hours",
+          difficulty: "moderate",
+          category: "Landscaping",
+          tools: ["Soil test kit", "Compost", "Spring fertilizer", "Spreader", "Garden spade"],
+          cost: "$40-80"
+        });
+      }
+
+      if (month === 4) {
+        // Cool season planting and pruning
+        tasks.push({
+          id: "spring-cool-season-planting",
+          title: "Cool Season Planting and Pruning",
+          description: "Plant cool-season vegetables and flowers. Prune roses, fruit trees, and flowering shrubs after last frost. Remove dead or damaged branches from trees and shrubs.",
+          month: month,
+          climateZones: ["pacific-northwest", "northeast", "midwest", "mountain-west"],
+          priority: "high",
+          estimatedTime: "4-6 hours",
+          difficulty: "moderate",
+          category: "Landscaping",
+          tools: ["Pruning shears", "Hand saw", "Garden gloves", "Plant stakes", "Mulch"],
+          cost: "$50-120"
+        });
+
+        // Warm climate spring planting
+        tasks.push({
+          id: "spring-warm-season-prep",
+          title: "Warm Season Garden Preparation",
+          description: "Plant warm-season flowers and vegetables. Begin summer prep for heat-tolerant plants. Install irrigation systems or repair existing ones. Apply mulch to retain moisture.",
+          month: month,
+          climateZones: ["southeast", "southwest", "california", "great-plains"],
+          priority: "high",
+          estimatedTime: "3-5 hours",
+          difficulty: "moderate",
+          category: "Landscaping",
+          tools: ["Seeds/plants", "Irrigation supplies", "Mulch", "Garden tools", "Plant food"],
+          cost: "$60-150"
+        });
       }
 
       if (month === 5) {
@@ -1140,6 +1236,21 @@ export default function Maintenance() {
           category: "Landscaping",
           tools: ["Motor oil", "Spark plug", "Air filter", "Blade sharpener"],
           cost: "$30-60"
+        });
+
+        // Late spring planting and pest control
+        tasks.push({
+          id: "late-spring-garden-care",
+          title: "Late Spring Garden Care and Pest Management",
+          description: "Plant heat-loving annuals and vegetables after last frost date. Apply organic pest control measures. Deadhead spring flowers. Begin regular watering schedule for new plantings.",
+          month: month,
+          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
+          priority: "high",
+          estimatedTime: "3-4 hours",
+          difficulty: "moderate",
+          category: "Landscaping",
+          tools: ["Plants/seeds", "Organic pest spray", "Watering equipment", "Garden scissors", "Plant supports"],
+          cost: "$40-100"
         });
       }
     }
@@ -1180,6 +1291,55 @@ export default function Maintenance() {
           tools: ["Garden hose", "Bucket", "Pipe wrench", "Safety gloves"],
           cost: "$0-25",
           systemRequirements: ["gas-water-heater", "electric-water-heater"]
+        });
+
+        // Summer garden maintenance
+        tasks.push({
+          id: "summer-garden-setup",
+          title: "Summer Garden Establishment",
+          description: "Establish deep watering schedule for plants. Install shade structures for sensitive plants. Apply summer mulch to conserve moisture. Begin regular feeding schedule for flowering plants and vegetables.",
+          month: month,
+          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
+          priority: "high",
+          estimatedTime: "3-5 hours",
+          difficulty: "moderate",
+          category: "Landscaping",
+          tools: ["Mulch", "Shade cloth", "Drip irrigation", "Plant fertilizer", "Watering timer"],
+          cost: "$60-150"
+        });
+      }
+
+      if (month === 7) {
+        // Peak summer garden care
+        tasks.push({
+          id: "peak-summer-garden-care",
+          title: "Peak Summer Garden Maintenance",
+          description: "Monitor plants for heat stress and adjust watering. Deadhead flowers to encourage blooming. Harvest vegetables regularly. Apply organic pest control for summer insects. Prune spring-flowering shrubs.",
+          month: month,
+          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
+          priority: "high",
+          estimatedTime: "2-3 hours weekly",
+          difficulty: "easy",
+          category: "Landscaping",
+          tools: ["Pruning shears", "Harvest baskets", "Organic pest spray", "Watering equipment"],
+          cost: "$20-40"
+        });
+      }
+
+      if (month === 8) {
+        // Late summer garden tasks
+        tasks.push({
+          id: "late-summer-garden-prep",
+          title: "Late Summer Garden Preparation",
+          description: "Plant fall vegetables and cool-season flowers. Begin seed collection from favorite plants. Reduce fertilizing to help plants prepare for dormancy. Plan fall garden layout and order bulbs.",
+          month: month,
+          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
+          priority: "medium",
+          estimatedTime: "2-4 hours",
+          difficulty: "moderate",
+          category: "Landscaping",
+          tools: ["Seeds/plants", "Seed envelopes", "Garden notebook", "Planting tools"],
+          cost: "$30-80"
         });
       }
     }
@@ -1237,6 +1397,55 @@ export default function Maintenance() {
           tools: ["Flashlight", "Cleaning supplies", "Ladder", "Drop cloth"],
           cost: "$0-50",
           systemRequirements: ["wood-stove"]
+        });
+      }
+
+      // Fall garden tasks
+      if (month === 9) {
+        tasks.push({
+          id: "fall-garden-transition",
+          title: "Fall Garden Transition",
+          description: "Plant spring-blooming bulbs for next year. Begin harvesting and preserving summer crops. Start composting fallen leaves. Apply fall fertilizer to lawn areas. Begin reducing watering frequency.",
+          month: month,
+          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
+          priority: "high",
+          estimatedTime: "3-4 hours",
+          difficulty: "moderate",
+          category: "Landscaping",
+          tools: ["Bulbs", "Compost bin", "Fall fertilizer", "Harvest containers", "Bulb planter"],
+          cost: "$50-120"
+        });
+      }
+
+      if (month === 10) {
+        tasks.push({
+          id: "fall-leaf-management",
+          title: "Fall Leaf Management and Tree Care",
+          description: "Rake and compost fallen leaves or use as mulch. Remove diseased plant material. Plant trees and shrubs (ideal time for root establishment). Apply dormant oil to fruit trees.",
+          month: month,
+          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
+          priority: "high",
+          estimatedTime: "4-6 hours",
+          difficulty: "moderate",
+          category: "Landscaping",
+          tools: ["Rake", "Compost bin", "Tree stakes", "Dormant oil", "Pruning shears"],
+          cost: "$30-100"
+        });
+      }
+
+      if (month === 11) {
+        tasks.push({
+          id: "winter-garden-prep",
+          title: "Winter Garden Preparation",
+          description: "Cut back perennials and ornamental grasses. Protect tender plants with burlap or covers. Drain and store garden hoses. Apply winter mulch around trees and shrubs. Clean and store garden tools.",
+          month: month,
+          climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
+          priority: "high",
+          estimatedTime: "3-5 hours",
+          difficulty: "moderate",
+          category: "Landscaping",
+          tools: ["Pruning shears", "Burlap", "Winter mulch", "Tool oil", "Storage containers"],
+          cost: "$40-90"
         });
       }
     }
@@ -1340,6 +1549,20 @@ export default function Maintenance() {
         tools: ["Replacement batteries", "Cleaning cloth"],
         cost: "$10-20",
         systemRequirements: ["security-system"]
+      },
+      {
+        id: "monthly-irrigation-system",
+        title: "Irrigation System Check",
+        description: "Inspect sprinkler heads for clogs or damage. Test system zones and adjust timing based on season and weather. Check for leaks in lines and fittings. Clean filter screens and adjust water pressure.",
+        month: month,
+        climateZones: ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"],
+        priority: "medium",
+        estimatedTime: "30-45 minutes",
+        difficulty: "easy",
+        category: "Landscaping",
+        tools: ["Sprinkler tool", "Wire brush", "Replacement sprinkler heads"],
+        cost: "$10-30",
+        systemRequirements: ["sprinkler-system"]
       },
       {
         id: "monthly-heat-pump",
