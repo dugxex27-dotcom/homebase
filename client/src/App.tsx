@@ -21,6 +21,7 @@ import DemoContractorSignIn from "./pages/demo-contractor-signin";
 import HomeownerAccount from "./pages/homeowner-account";
 import Messages from "./pages/messages";
 import MyHome from "./pages/my-home";
+import HouseTransferAccept from "./pages/house-transfer-accept";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -54,6 +55,9 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      
+      {/* Public routes */}
+      <Route path="/house-transfer/:token" component={HouseTransferAccept} />
       
       {/* Always available routes */}
       <Route path="/maintenance" component={Maintenance} />

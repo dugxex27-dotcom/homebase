@@ -10,6 +10,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { 
   User, 
   Bell, 
@@ -23,7 +27,12 @@ import {
   Copy,
   MessageSquare,
   Gift,
-  DollarSign
+  DollarSign,
+  Home,
+  Send,
+  Clock,
+  CheckCircle,
+  Plus
 } from "lucide-react";
 import PushNotificationManager from "@/components/push-notification-manager";
 
@@ -49,6 +58,14 @@ export default function HomeownerAccount() {
     appointmentReminders: true,
     contractorMessages: true,
     weeklyDigest: false
+  });
+
+  // House transfer state
+  const [transferModalOpen, setTransferModalOpen] = useState(false);
+  const [transferData, setTransferData] = useState({
+    houseId: "",
+    toHomeownerEmail: "",
+    transferNote: "",
   });
 
   // Update profile mutation
@@ -173,6 +190,60 @@ export default function HomeownerAccount() {
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareMessage)}`;
     window.open(whatsappUrl, '_blank');
   };
+
+  // House transfer queries and mutations
+  const { data: houses } = useQuery({
+    queryKey: ['/api/houses'],
+    queryFn: () => apiRequest('GET', '/api/houses'),
+  });
+
+  const { data: transfers, refetch: refetchTransfers } = useQuery({
+    queryKey: ['/api/house-transfers'],
+    queryFn: () => apiRequest('GET', '/api/house-transfers'),
+  });
+
+  const createTransferMutation = useMutation({
+    mutationFn: async (data: typeof transferData) => {
+      return await apiRequest('POST', '/api/house-transfers', data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Transfer Created",
+        description: "House transfer invitation sent successfully!",
+      });
+      setTransferModalOpen(false);
+      setTransferData({ houseId: "", toHomeownerEmail: "", transferNote: "" });
+      refetchTransfers();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create house transfer.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const confirmTransferMutation = useMutation({
+    mutationFn: async (transferId: string) => {
+      return await apiRequest('POST', `/api/house-transfers/${transferId}/confirm`);
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Transfer Completed",
+        description: "House ownership has been successfully transferred!",
+      });
+      refetchTransfers();
+      queryClient.invalidateQueries({ queryKey: ['/api/houses'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to confirm house transfer.",
+        variant: "destructive",
+      });
+    }
+  });
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#2c0f5b' }}>
@@ -566,6 +637,173 @@ export default function HomeownerAccount() {
                     Share this link and I get $1 off when someone subscribes using my code. New users pay regular price but help me save money!
                   </p>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* House Transfers */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Home className="h-5 w-5" />
+                  House Transfers
+                </CardTitle>
+                <CardDescription>
+                  Transfer house ownership to another homeowner
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Create Transfer Button */}
+                <Dialog open={transferModalOpen} onOpenChange={setTransferModalOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="w-full" data-testid="button-create-transfer">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Transfer a House
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Transfer House Ownership</DialogTitle>
+                      <DialogDescription>
+                        Send an invitation to transfer ownership of one of your houses to another homeowner.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="house-select">Select House</Label>
+                        <Select 
+                          value={transferData.houseId} 
+                          onValueChange={(value) => setTransferData(prev => ({ ...prev, houseId: value }))}
+                        >
+                          <SelectTrigger data-testid="select-house">
+                            <SelectValue placeholder="Choose a house to transfer" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(houses as any)?.map((house: any) => (
+                              <SelectItem key={house.id} value={house.id}>
+                                {house.address || house.nickname || `House ${house.id}`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="recipient-email">Recipient Email</Label>
+                        <Input
+                          id="recipient-email"
+                          type="email"
+                          placeholder="Enter recipient's email address"
+                          value={transferData.toHomeownerEmail}
+                          onChange={(e) => setTransferData(prev => ({ ...prev, toHomeownerEmail: e.target.value }))}
+                          data-testid="input-recipient-email"
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="transfer-note">Transfer Note (Optional)</Label>
+                        <Textarea
+                          id="transfer-note"
+                          placeholder="Add a note for the recipient..."
+                          value={transferData.transferNote}
+                          onChange={(e) => setTransferData(prev => ({ ...prev, transferNote: e.target.value }))}
+                          data-testid="textarea-transfer-note"
+                        />
+                      </div>
+                      
+                      <Button 
+                        onClick={() => createTransferMutation.mutate(transferData)}
+                        disabled={!transferData.houseId || !transferData.toHomeownerEmail || createTransferMutation.isPending}
+                        className="w-full"
+                        data-testid="button-send-transfer"
+                      >
+                        {createTransferMutation.isPending ? (
+                          "Sending..."
+                        ) : (
+                          <>
+                            <Send className="h-4 w-4 mr-2" />
+                            Send Transfer Invitation
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+
+                {/* Transfers Awaiting Confirmation */}
+                {transfers && (transfers as any).filter((t: any) => t.status === 'accepted').length > 0 && (
+                  <div>
+                    <h4 className="font-medium mb-3 text-orange-600">Transfers Awaiting Your Confirmation</h4>
+                    <div className="space-y-2">
+                      {(transfers as any).filter((t: any) => t.status === 'accepted').map((transfer: any) => (
+                        <div key={transfer.id} className="flex items-center justify-between p-3 border rounded-lg bg-orange-50">
+                          <div className="flex-1">
+                            <p className="font-medium text-sm" data-testid={`transfer-email-${transfer.id}`}>
+                              To: {transfer.toHomeownerEmail}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Accepted on {new Date(transfer.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="secondary" data-testid={`transfer-status-${transfer.id}`}>
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Accepted
+                            </Badge>
+                            <Button 
+                              size="sm"
+                              onClick={() => confirmTransferMutation.mutate(transfer.id)}
+                              disabled={confirmTransferMutation.isPending}
+                              data-testid={`button-confirm-${transfer.id}`}
+                            >
+                              {confirmTransferMutation.isPending ? "Confirming..." : "Confirm Transfer"}
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Existing Transfers List */}
+                {transfers && (transfers as any).length > 0 && (
+                  <div>
+                    <h4 className="font-medium mb-3">Recent Transfers</h4>
+                    <div className="space-y-2">
+                      {(transfers as any).slice(0, 3).map((transfer: any) => (
+                        <div key={transfer.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex-1">
+                            <p className="font-medium text-sm" data-testid={`transfer-email-${transfer.id}`}>
+                              To: {transfer.toHomeownerEmail}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(transfer.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <Badge 
+                            variant={
+                              transfer.status === 'completed' ? "default" : 
+                              transfer.status === 'accepted' ? "secondary" : 
+                              transfer.status === 'pending' ? "outline" : 
+                              "destructive"
+                            }
+                            data-testid={`transfer-status-${transfer.id}`}
+                          >
+                            {transfer.status === 'pending' && <Clock className="h-3 w-3 mr-1" />}
+                            {transfer.status === 'accepted' && <CheckCircle className="h-3 w-3 mr-1" />}
+                            {transfer.status === 'completed' && <CheckCircle className="h-3 w-3 mr-1" />}
+                            {transfer.status.charAt(0).toUpperCase() + transfer.status.slice(1)}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {transfers && (transfers as any).length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No house transfers yet. Click "Transfer a House" to get started.
+                  </p>
+                )}
               </CardContent>
             </Card>
 

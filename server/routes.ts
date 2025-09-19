@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, requireRole, requirePropertyOwner } from "./replitAuth";
 import { z } from "zod";
+import { randomUUID } from "crypto";
 import { insertHomeApplianceSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema } from "@shared/schema";
 import pushRoutes from "./push-routes";
 import { pushService } from "./push-service";
@@ -1202,9 +1203,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const homeownerId = req.session.user.id;
       
-      // Validate request body  
+      // Validate request body (exclude server-generated fields)
       const validatedData = insertHouseTransferSchema.omit({ 
-        fromHomeownerId: true
+        fromHomeownerId: true,
+        token: true,
+        expiresAt: true,
+        status: true,
+        maintenanceLogsTransferred: true,
+        appliancesTransferred: true,
+        appointmentsTransferred: true,
+        customTasksTransferred: true,
+        homeSystemsTransferred: true,
+        createdAt: true,
+        completedAt: true
       }).parse(req.body);
       
       // Verify house ownership
@@ -1213,10 +1224,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "House not found or access denied" });
       }
       
-      // Create transfer request with homeowner ID from session
+      // Generate secure token and expiry server-side
+      const token = randomUUID();
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+      
+      // Create transfer request with server-generated security fields
       const transfer = await storage.createHouseTransfer({
         ...validatedData,
         fromHomeownerId: homeownerId,
+        token,
+        expiresAt,
       });
       
       res.status(201).json(transfer);
@@ -1266,9 +1283,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Transfer not found" });
       }
       
-      // Check if token is still valid (7 days)
-      const tokenExpiry = new Date(transfer.createdAt || transfer.expiresAt);
-      tokenExpiry.setDate(tokenExpiry.getDate() + 7);
+      // Check if token is still valid
+      const tokenExpiry = transfer.expiresAt ? 
+        new Date(transfer.expiresAt) : 
+        new Date(new Date(transfer.createdAt).getTime() + 7*24*60*60*1000);
       
       if (new Date() > tokenExpiry) {
         return res.status(410).json({ message: "Transfer token has expired" });
@@ -1289,9 +1307,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Transfer not found" });
       }
       
-      // Verify this user is the intended recipient
-      if (transfer.toHomeownerId !== homeownerId) {
-        return res.status(403).json({ message: "Access denied - you are not the intended recipient" });
+      // Verify this user is the intended recipient (by email or ID)
+      const user = await storage.getUser(homeownerId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const emailMatch = user.email?.toLowerCase() === transfer.toHomeownerEmail?.toLowerCase();
+      const idMatch = transfer.toHomeownerId === homeownerId;
+      
+      if (!emailMatch && !idMatch) {
+        return res.status(403).json({ 
+          message: "Access denied - this transfer is not intended for your account" 
+        });
       }
       
       if (transfer.status !== 'pending') {
@@ -1300,11 +1328,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check subscription limits for recipient
       const housesCount = await storage.getHousesCount(homeownerId);
-      const user = await storage.getUser(homeownerId);
-      
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
       
       // Check subscription limits
       const maxHouses = user.maxHousesAllowed || 2; // Default to basic plan limit
@@ -1314,9 +1337,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Update transfer status to accepted
+      // Update transfer status to accepted and set recipient ID
       const updatedTransfer = await storage.updateHouseTransfer(req.params.id, {
-        status: 'accepted'
+        status: 'accepted',
+        toHomeownerId: homeownerId
       });
       
       res.json(updatedTransfer);
