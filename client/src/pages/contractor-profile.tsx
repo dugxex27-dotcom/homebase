@@ -157,7 +157,7 @@ export default function ContractorProfile() {
 
   // Update licenses when existing licenses load
   React.useEffect(() => {
-    if (existingLicenses && existingLicenses.length > 0) {
+    if (existingLicenses && Array.isArray(existingLicenses) && existingLicenses.length > 0) {
       setLicenses(existingLicenses);
     }
   }, [existingLicenses]);
