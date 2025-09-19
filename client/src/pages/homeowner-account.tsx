@@ -136,7 +136,7 @@ export default function HomeownerAccount() {
   const referralCode = (referralData as any)?.referralCode || '';
   const referralLink = (referralData as any)?.referralLink || '';
   const referralCount = (referralData as any)?.referralCount || 0;
-  const shareMessage = `Join me on Home Base! Use my referral code ${referralCode} and we both get $1 off our subscription. Sign up here: ${referralLink}`;
+  const shareMessage = `Join me on Home Base! Use my referral code ${referralCode} and I get $1 off when you subscribe. You'll get the full Home Base experience at regular price while helping me save money! Sign up here: ${referralLink}`;
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -448,7 +448,7 @@ export default function HomeownerAccount() {
                   Referral Rewards
                 </CardTitle>
                 <CardDescription>
-                  Share Home Base with friends and earn $1 off your subscription for each signup
+                  Share Home Base with friends and I get $1 off my subscription for each signup
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -563,7 +563,7 @@ export default function HomeownerAccount() {
                     </Button>
                   </div>
                   <p className="text-sm text-gray-600 mt-1">
-                    Share this link and both you and your friend get $1 off when they subscribe!
+                    Share this link and I get $1 off when someone subscribes using my code. New users pay regular price but help me save money!
                   </p>
                 </div>
               </CardContent>

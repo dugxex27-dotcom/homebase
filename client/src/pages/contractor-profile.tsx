@@ -361,7 +361,7 @@ export default function ContractorProfile() {
   const referralCode = (referralData as any)?.referralCode || '';
   const referralLink = (referralData as any)?.referralLink || '';
   const referralCount = (referralData as any)?.referralCount || 0;
-  const shareMessage = `Join me on Home Base! Use my referral code ${referralCode} and we both get $1 off our subscription. Perfect for contractors! Sign up here: ${referralLink}`;
+  const shareMessage = `Join me on Home Base! Use my referral code ${referralCode} and I get $1 off when you subscribe. You'll get the full Home Base experience at regular price while helping me save money! Perfect for contractors! Sign up here: ${referralLink}`;
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -1010,7 +1010,7 @@ export default function ContractorProfile() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-sm text-gray-600">
-              Share Home Base with other contractors and homeowners. Earn $1 off your subscription for each signup!
+              Share Home Base with other contractors and homeowners. I earn $1 off my subscription for each signup!
             </div>
             
             {/* Referral Stats */}
@@ -1130,7 +1130,7 @@ export default function ContractorProfile() {
                 </Button>
               </div>
               <p className="text-sm text-gray-600 mt-1">
-                Perfect for sharing with fellow contractors and potential clients!
+                Share with fellow contractors and potential clients. They get the full Home Base experience while helping you save $1!
               </p>
             </div>
           </CardContent>
