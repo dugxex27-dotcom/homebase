@@ -163,6 +163,24 @@ export const customMaintenanceTasks = pgTable("custom_maintenance_tasks", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Task overrides table for customizing default regional maintenance tasks
+export const taskOverrides = pgTable("task_overrides", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  homeownerId: text("homeowner_id").notNull(),
+  houseId: text("house_id").notNull(), // references houses table
+  taskId: text("task_id").notNull(), // unique identifier for the default task (generated from task title)
+  isEnabled: boolean("is_enabled").notNull().default(true), // false to disable the task entirely
+  frequencyType: text("frequency_type"), // override default frequency: 'monthly', 'quarterly', 'biannually', 'annually', 'custom'
+  frequencyValue: integer("frequency_value"), // for custom frequency in days
+  specificMonths: text("specific_months").array(), // override which months the task appears in (1-12)
+  notes: text("notes"), // user's personal notes about the customization
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  // Ensure one override per task per house
+  uniqueIndex("idx_task_overrides_unique").on(table.homeownerId, table.houseId, table.taskId),
+]);
+
 export const homeAppliances = pgTable("home_appliances", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   homeownerId: text("homeowner_id").notNull(), // In real app would be foreign key to users table
@@ -451,6 +469,15 @@ export const insertHouseSchema = createInsertSchema(houses).omit({
   id: true,
   createdAt: true,
 });
+
+export const insertTaskOverrideSchema = createInsertSchema(taskOverrides).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type TaskOverride = typeof taskOverrides.$inferSelect;
+export type InsertTaskOverride = z.infer<typeof insertTaskOverrideSchema>;
 
 export const insertNotificationSchema = createInsertSchema(notifications).omit({
   id: true,
