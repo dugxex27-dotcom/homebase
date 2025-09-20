@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated, requireRole, requirePropertyOwner } from "./replitAuth";
 import { z } from "zod";
 import { randomUUID } from "crypto";
-import { insertHomeApplianceSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema } from "@shared/schema";
+import { insertHomeApplianceSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema } from "@shared/schema";
 import pushRoutes from "./push-routes";
 import { pushService } from "./push-service";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
@@ -2298,6 +2298,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting review:", error);
       res.status(500).json({ message: "Failed to delete review" });
+    }
+  });
+
+  // Analytics API endpoints
+  app.post('/api/analytics/track', async (req: any, res) => {
+    try {
+      // Remove homeownerId from client data and set from session if available
+      const { homeownerId, ...clientData } = req.body;
+      
+      const analyticsData = insertContractorAnalyticsSchema.parse({
+        ...clientData,
+        homeownerId: req.session?.user?.id || null, // Override with server-side user ID
+        ipAddress: req.ip || req.connection.remoteAddress || null
+      });
+      
+      const analytics = await storage.trackContractorClick(analyticsData);
+      res.status(201).json({ success: true, id: analytics.id });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid analytics data", errors: error.errors });
+      }
+      console.error("Error tracking analytics:", error);
+      // Fail silently for analytics to not break user experience
+      res.status(200).json({ success: true });
+    }
+  });
+
+  app.get('/api/analytics/contractor/:contractorId', isAuthenticated, async (req: any, res) => {
+    try {
+      const contractorId = req.params.contractorId;
+      const { startDate, endDate } = req.query;
+      
+      // Only allow contractors to access their own analytics
+      if (req.session.user.role !== 'contractor') {
+        return res.status(403).json({ message: "Access denied - not a contractor" });
+      }
+      
+      // Check if the contractorId matches the authenticated user's ID
+      if (req.session.user.id !== contractorId) {
+        return res.status(403).json({ message: "Access denied - can only view own analytics" });
+      }
+
+      const analytics = await storage.getContractorAnalytics(
+        contractorId,
+        startDate ? new Date(startDate as string) : undefined,
+        endDate ? new Date(endDate as string) : undefined
+      );
+      
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching contractor analytics:", error);
+      res.status(500).json({ message: "Failed to fetch analytics" });
+    }
+  });
+
+  app.get('/api/analytics/contractor/:contractorId/monthly/:year/:month', isAuthenticated, async (req: any, res) => {
+    try {
+      const contractorId = req.params.contractorId;
+      const year = parseInt(req.params.year);
+      const month = parseInt(req.params.month);
+      
+      // Only allow contractors to access their own analytics
+      if (req.session.user.role !== 'contractor') {
+        return res.status(403).json({ message: "Access denied - not a contractor" });
+      }
+      
+      // Check if the contractorId matches the authenticated user's ID
+      if (req.session.user.id !== contractorId) {
+        return res.status(403).json({ message: "Access denied - can only view own analytics" });
+      }
+
+      const stats = await storage.getContractorMonthlyStats(contractorId, year, month);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching monthly stats:", error);
+      res.status(500).json({ message: "Failed to fetch monthly stats" });
     }
   });
 

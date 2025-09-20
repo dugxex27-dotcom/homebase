@@ -527,6 +527,24 @@ export const insertHouseTransferSchema = createInsertSchema(houseTransfers).omit
   homeSystemsTransferred: true,
 });
 
+// Contractor Analytics table for tracking profile interactions
+export const contractorAnalytics = pgTable("contractor_analytics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contractorId: text("contractor_id").notNull(), // references contractors table
+  sessionId: text("session_id").notNull(), // unique session identifier
+  homeownerId: text("homeowner_id"), // nullable, if user is logged in
+  clickType: text("click_type").notNull(), // 'profile_view', 'website', 'facebook', 'instagram', 'linkedin', 'google_business', 'phone', 'email', 'message'
+  ipAddress: text("ip_address"), // for unique visitor tracking
+  userAgent: text("user_agent"), // browser information
+  referrerUrl: text("referrer_url"), // where they came from
+  clickedAt: timestamp("clicked_at").defaultNow(),
+});
+
+export const insertContractorAnalyticsSchema = createInsertSchema(contractorAnalytics).omit({
+  id: true,
+  clickedAt: true,
+});
+
 export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans).omit({
   id: true,
   createdAt: true,
@@ -582,3 +600,5 @@ export type InsertContractorBoost = z.infer<typeof insertContractorBoostSchema>;
 export type ContractorBoost = typeof contractorBoosts.$inferSelect;
 export type InsertHouseTransfer = z.infer<typeof insertHouseTransferSchema>;
 export type HouseTransfer = typeof houseTransfers.$inferSelect;
+export type InsertContractorAnalytics = z.infer<typeof insertContractorAnalyticsSchema>;
+export type ContractorAnalytics = typeof contractorAnalytics.$inferSelect;

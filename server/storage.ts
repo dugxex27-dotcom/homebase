@@ -1,4 +1,4 @@
-import { type Contractor, type InsertContractor, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer } from "@shared/schema";
+import { type Contractor, type InsertContractor, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -165,6 +165,20 @@ export interface IStorage {
     homeSystemsTransferred: number;
   }>;
   getHousesCount(homeownerId: string): Promise<number>;
+
+  // Contractor analytics operations
+  trackContractorClick(analyticsData: InsertContractorAnalytics): Promise<ContractorAnalytics>;
+  getContractorAnalytics(contractorId: string, startDate?: Date, endDate?: Date): Promise<ContractorAnalytics[]>;
+  getContractorMonthlyStats(contractorId: string, year: number, month: number): Promise<{
+    totalViews: number;
+    uniqueVisitors: number;
+    websiteClicks: number;
+    socialMediaClicks: number;
+    phoneClicks: number;
+    emailClicks: number;
+    topReferrers: { referrer: string; count: number }[];
+    dailyBreakdown: { day: number; views: number; uniqueVisitors: number }[];
+  }>;
 }
 
 export class MemStorage implements IStorage {
@@ -188,6 +202,7 @@ export class MemStorage implements IStorage {
   private homeSystems: Map<string, HomeSystem>;
   private pushSubscriptions: Map<string, PushSubscription>;
   private contractorBoosts: Map<string, ContractorBoost>;
+  private contractorAnalytics: Map<string, ContractorAnalytics>;
 
   constructor() {
     this.users = new Map();
@@ -210,6 +225,7 @@ export class MemStorage implements IStorage {
     this.homeSystems = new Map();
     this.pushSubscriptions = new Map();
     this.contractorBoosts = new Map();
+    this.contractorAnalytics = new Map();
     this.seedData();
     this.seedServiceRecords();
     this.seedReviews();
@@ -2277,6 +2293,114 @@ export class MemStorage implements IStorage {
 
   async getHousesCount(homeownerId: string): Promise<number> {
     return Array.from(this.houses.values()).filter(house => house.homeownerId === homeownerId).length;
+  }
+
+  // Contractor analytics operations
+  async trackContractorClick(analyticsData: InsertContractorAnalytics): Promise<ContractorAnalytics> {
+    const analytics: ContractorAnalytics = {
+      id: randomUUID(),
+      contractorId: analyticsData.contractorId,
+      sessionId: analyticsData.sessionId,
+      homeownerId: analyticsData.homeownerId || null,
+      clickType: analyticsData.clickType,
+      ipAddress: analyticsData.ipAddress || null,
+      userAgent: analyticsData.userAgent || null,
+      referrerUrl: analyticsData.referrerUrl || null,
+      clickedAt: new Date()
+    };
+    this.contractorAnalytics.set(analytics.id, analytics);
+    return analytics;
+  }
+
+  async getContractorAnalytics(contractorId: string, startDate?: Date, endDate?: Date): Promise<ContractorAnalytics[]> {
+    let analytics = Array.from(this.contractorAnalytics.values())
+      .filter(a => a.contractorId === contractorId);
+
+    if (startDate) {
+      analytics = analytics.filter(a => a.clickedAt && a.clickedAt >= startDate);
+    }
+    if (endDate) {
+      analytics = analytics.filter(a => a.clickedAt && a.clickedAt <= endDate);
+    }
+
+    return analytics.sort((a, b) => {
+      const aTime = a.clickedAt ? a.clickedAt.getTime() : 0;
+      const bTime = b.clickedAt ? b.clickedAt.getTime() : 0;
+      return bTime - aTime;
+    });
+  }
+
+  async getContractorMonthlyStats(contractorId: string, year: number, month: number): Promise<{
+    totalViews: number;
+    uniqueVisitors: number;
+    websiteClicks: number;
+    socialMediaClicks: number;
+    phoneClicks: number;
+    emailClicks: number;
+    topReferrers: { referrer: string; count: number }[];
+    dailyBreakdown: { day: number; views: number; uniqueVisitors: number }[];
+  }> {
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59);
+    
+    const analytics = await this.getContractorAnalytics(contractorId, startDate, endDate);
+
+    // Calculate metrics
+    const totalViews = analytics.filter(a => a.clickType === 'profile_view').length;
+    const uniqueVisitors = new Set(analytics.map(a => a.sessionId)).size;
+    const websiteClicks = analytics.filter(a => a.clickType === 'website').length;
+    const socialMediaClicks = analytics.filter(a => 
+      ['facebook', 'instagram', 'linkedin'].includes(a.clickType)
+    ).length;
+    const phoneClicks = analytics.filter(a => a.clickType === 'phone').length;
+    const emailClicks = analytics.filter(a => a.clickType === 'email').length;
+
+    // Top referrers
+    const referrerCounts = new Map<string, number>();
+    analytics.forEach(a => {
+      if (a.referrerUrl) {
+        const referrer = a.referrerUrl;
+        referrerCounts.set(referrer, (referrerCounts.get(referrer) || 0) + 1);
+      }
+    });
+    const topReferrers = Array.from(referrerCounts.entries())
+      .map(([referrer, count]) => ({ referrer, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    // Daily breakdown
+    const dailyData = new Map<number, { views: number; uniqueVisitors: Set<string> }>();
+    analytics.forEach(a => {
+      if (!a.clickedAt) return;
+      const day = a.clickedAt.getDate();
+      if (!dailyData.has(day)) {
+        dailyData.set(day, { views: 0, uniqueVisitors: new Set() });
+      }
+      const dayData = dailyData.get(day)!;
+      if (a.clickType === 'profile_view') {
+        dayData.views++;
+      }
+      dayData.uniqueVisitors.add(a.sessionId);
+    });
+
+    const dailyBreakdown = Array.from(dailyData.entries())
+      .map(([day, data]) => ({
+        day,
+        views: data.views,
+        uniqueVisitors: data.uniqueVisitors.size
+      }))
+      .sort((a, b) => a.day - b.day);
+
+    return {
+      totalViews,
+      uniqueVisitors,
+      websiteClicks,
+      socialMediaClicks,
+      phoneClicks,
+      emailClicks,
+      topReferrers,
+      dailyBreakdown
+    };
   }
 }
 

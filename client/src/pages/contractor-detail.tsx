@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRoute } from "wouter";
 import Header from "@/components/header";
@@ -19,6 +20,7 @@ import {
   Star
 } from "lucide-react";
 import type { Contractor } from "@shared/schema";
+import { trackProfileView, trackSocialClick } from "@/lib/analytics";
 
 export default function ContractorDetail() {
   const [match, params] = useRoute("/contractor/:id");
@@ -28,6 +30,13 @@ export default function ContractorDetail() {
     queryKey: ['/api/contractors', contractorId],
     enabled: !!contractorId,
   });
+
+  // Track profile view when contractor data loads
+  useEffect(() => {
+    if (contractor?.id) {
+      trackProfileView(contractor.id);
+    }
+  }, [contractor?.id]);
 
   if (isLoading) {
     return (

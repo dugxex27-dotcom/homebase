@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { MessageCircle, Send } from "lucide-react";
 import { useLocation } from "wouter";
 import type { User, Contractor } from "@shared/schema";
+import { trackContactClick } from "@/lib/analytics";
 
 interface ContactContractorButtonProps {
   contractor: Contractor;
@@ -123,6 +124,8 @@ export default function ContactContractorButton({
           size={size}
           className={`${variant === "default" ? "text-white hover:opacity-90" : variant === "outline" ? "border-purple-300 text-purple-600 hover:bg-purple-50 dark:border-purple-600 dark:text-purple-400 dark:hover:bg-purple-900/20" : ""} ${className}`}
           style={variant === "default" ? { backgroundColor: '#3c258e' } : {}}
+          onClick={() => trackContactClick(contractor.id, 'message')}
+          data-testid="button-contact-contractor"
         >
           <MessageCircle className="h-4 w-4 mr-2" />
           Contact
