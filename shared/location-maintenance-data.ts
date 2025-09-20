@@ -179,6 +179,7 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Clean gutters and install leaf guards',
           'Winterize outdoor water systems',
           'Turn off outside water sources',
+          'Shut off outside house spigots',
           'Check and seal exterior gaps'
         ],
         weatherSpecific: [
@@ -404,7 +405,8 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Check heating system preparation',
           'Clean gutters and drainage systems',
           'Inspect exterior paint and siding',
-          'Maintain outdoor equipment'
+          'Maintain outdoor equipment',
+          'Shut off outside house spigots'
         ],
         weatherSpecific: [
           'End of hurricane season vigilance',
@@ -629,6 +631,7 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Service heating system for winter',
           'Winterize outdoor water systems',
           'Turn off outside water sources',
+          'Shut off outside house spigots',
           'Clean and maintain gutters',
           'Check storm windows and doors'
         ],
@@ -855,7 +858,8 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Check heating system preparation',
           'Clean and maintain outdoor areas',
           'Inspect exterior for summer damage',
-          'Check pool heating systems'
+          'Check pool heating systems',
+          'Shut off outside house spigots'
         ],
         weatherSpecific: [
           'End of extreme heat season',
@@ -1080,7 +1084,8 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Begin heating system preparation',
           'Clean gutters before winter rains',
           'Check weatherproofing',
-          'Maintain outdoor areas'
+          'Maintain outdoor areas',
+          'Shut off outside house spigots'
         ],
         weatherSpecific: [
           'Peak wildfire season continues',
@@ -1306,7 +1311,8 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Service heating system for winter',
           'Check insulation and weatherproofing',
           'Winterize outdoor water systems',
-          'Turn off outside water sources'
+          'Turn off outside water sources',
+          'Shut off outside house spigots'
         ],
         weatherSpecific: [
           'Prepare for rapid temperature drops',
@@ -1531,7 +1537,8 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Begin winter storm preparation',
           'Check heating system operation',
           'Clean gutters before winter rains',
-          'Check weatherproofing'
+          'Check weatherproofing',
+          'Shut off outside house spigots'
         ],
         weatherSpecific: [
           'Transition from dry to wet season',
