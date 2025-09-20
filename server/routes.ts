@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated, requireRole, requirePropertyOwner } from "./replitAuth";
 import { z } from "zod";
 import { randomUUID } from "crypto";
-import { insertHomeApplianceSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema } from "@shared/schema";
+import { insertHomeApplianceSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema } from "@shared/schema";
 import pushRoutes from "./push-routes";
 import { pushService } from "./push-service";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
@@ -695,6 +695,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Task override routes for customizing default regional tasks
+  app.get("/api/houses/:houseId/task-overrides", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+    try {
+      const homeownerId = req.session.user.id;
+      const houseId = req.params.houseId;
+      
+      // Verify house ownership
+      const house = await storage.getHouse(houseId);
+      if (!house || house.homeownerId !== homeownerId) {
+        return res.status(403).json({ message: "Access denied to house" });
+      }
+      
+      const overrides = await storage.getTaskOverrides(homeownerId, houseId);
+      res.json(overrides);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch task overrides" });
+    }
+  });
+
+  app.post("/api/houses/:houseId/task-overrides", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+    try {
+      const homeownerId = req.session.user.id;
+      const houseId = req.params.houseId;
+      
+      // Verify house ownership
+      const house = await storage.getHouse(houseId);
+      if (!house || house.homeownerId !== homeownerId) {
+        return res.status(403).json({ message: "Access denied to house" });
+      }
+      
+      // Validate request body
+      const validatedData = insertTaskOverrideSchema.omit({ homeownerId: true, houseId: true }).parse(req.body);
+      
+      const overrideData = {
+        ...validatedData,
+        homeownerId,
+        houseId
+      };
+      
+      const override = await storage.upsertTaskOverride(overrideData);
+      res.status(201).json(override);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid task override data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create task override" });
+    }
+  });
+
+  app.delete("/api/houses/:houseId/task-overrides/:taskId", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+    try {
+      const homeownerId = req.session.user.id;
+      const houseId = req.params.houseId;
+      const taskId = req.params.taskId;
+      
+      // Verify house ownership
+      const house = await storage.getHouse(houseId);
+      if (!house || house.homeownerId !== homeownerId) {
+        return res.status(403).json({ message: "Access denied to house" });
+      }
+      
+      const deleted = await storage.deleteTaskOverride(homeownerId, houseId, taskId);
+      if (!deleted) {
+        return res.status(404).json({ message: "Task override not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete task override" });
+    }
+  });
 
   // Proposal routes
   app.get("/api/proposals", async (req, res) => {
