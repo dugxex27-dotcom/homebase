@@ -24,7 +24,10 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Inspect and clean fireplace/chimney',
           'Check for ice dams on roof',
           'Test carbon monoxide detectors',
-          'Inspect weatherstripping on doors and windows'
+          'Inspect weatherstripping on doors and windows',
+          'Inspect furnace filter and replace if dirty',
+          'Test GFCI outlets in kitchen, bathrooms, garage, and exterior',
+          'Inspect sump pump (if applicable) — pour water to confirm it activates'
         ],
         weatherSpecific: [
           'Remove snow from roof if excessive buildup',
@@ -41,7 +44,12 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Check attic insulation and ventilation',
           'Inspect roof for winter damage',
           'Test sump pump if applicable',
-          'Check storm doors and windows'
+          'Check storm doors and windows',
+          'Test GFCI/AFCI circuit breakers in electrical panel',
+          'Inspect water heater for leaks and check temperature (~120°F)',
+          'Flush toilets and sinks that aren\'t used often to prevent dry traps',
+          'Check bathroom exhaust fans for proper airflow',
+          'Inspect fire extinguishers for charge and expiration date'
         ],
         weatherSpecific: [
           'Monitor for ice damage on gutters',
@@ -58,7 +66,12 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Schedule HVAC system transition maintenance',
           'Inspect exterior for winter damage',
           'Check deck and patio for winter damage',
-          'Test outdoor water spigots'
+          'Test outdoor water spigots',
+          'Test sump pump again before spring rains',
+          'Test outdoor faucets for leaks once thawed',
+          'Inspect foundation for cracks or water entry points',
+          'Clean and test dryer vent and exhaust duct for airflow',
+          'Check window screens for tears; repair before spring'
         ],
         weatherSpecific: [
           'Begin monitoring for spring flooding',
@@ -75,7 +88,13 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Service air conditioning before summer',
           'Clean and inspect gutters',
           'Check exterior paint and siding',
-          'Inspect roof shingles and flashing'
+          'Inspect roof shingles and flashing',
+          'Test HVAC system (switch between heat and cooling modes)',
+          'Schedule AC service/inspection before summer',
+          'Test irrigation/sprinkler system for leaks and coverage',
+          'Inspect deck, porch, and railings for rot or loose boards',
+          'Check garage door auto-reverse safety feature',
+          'Test safety lighting (motion sensor and exterior lights)'
         ],
         weatherSpecific: [
           'Check for spring flooding in basement',
@@ -92,7 +111,13 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Clean and maintain outdoor equipment',
           'Inspect and clean deck/patio',
           'Check screens on windows and doors',
-          'Service lawn mower and garden tools'
+          'Service lawn mower and garden tools',
+          'Test outdoor GFCI outlets with a tester',
+          'Inspect and clean gutters and downspouts after spring pollen/debris',
+          'Check lawn equipment (mower blades, fuel lines, spark plugs)',
+          'Inspect fences and gates for stability',
+          'Test window locks and lubricate if needed',
+          'Check exterior caulking (windows, doors, siding, trim)'
         ],
         weatherSpecific: [
           'Check air conditioning system before summer heat',
@@ -110,7 +135,13 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Check attic ventilation for summer heat',
           'Clean and inspect swimming pool if applicable',
           'Maintain landscaping and irrigation',
-          'Flush water heater'
+          'Flush water heater',
+          'Inspect attic ventilation fans and confirm proper airflow',
+          'Test ceiling fans for wobble/balance',
+          'Inspect plumbing under sinks for leaks',
+          'Test outdoor water pressure and hoses for leaks',
+          'Check pest control barriers and look for termite activity',
+          'Inspect grout and caulking in showers, tubs, and sinks'
         ],
         weatherSpecific: [
           'Ensure adequate cooling system capacity',
@@ -127,7 +158,13 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Monitor energy usage and efficiency',
           'Maintain outdoor living spaces',
           'Check and clean outdoor equipment',
-          'Inspect deck and outdoor structures'
+          'Inspect deck and outdoor structures',
+          'Test home security system and update codes if needed',
+          'Inspect driveway and walkways for cracks',
+          'Test outdoor drainage after heavy rain',
+          'Check refrigerator door seals (paper test)',
+          'Inspect pool equipment (if applicable) for safety and leaks',
+          'Test garage door keypad and remotes'
         ],
         weatherSpecific: [
           'Monitor air conditioning filters frequently',
@@ -144,7 +181,13 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Prepare for fall transition',
           'Check exterior painting needs',
           'Maintain outdoor equipment and furniture',
-          'Monitor lawn and garden irrigation'
+          'Monitor lawn and garden irrigation',
+          'Inspect roof shingles for summer storm damage',
+          'Test HVAC performance (is the AC cooling properly?)',
+          'Test water pressure regulator (should be ~40–60 psi)',
+          'Inspect chimney exterior for cracks or leaning',
+          'Check septic system filter/inspection port (if applicable)',
+          'Flush garbage disposal with ice and vinegar to clean blades'
         ],
         weatherSpecific: [
           'Check cooling system efficiency during peak heat',
@@ -161,7 +204,12 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Schedule heating system service',
           'Clean and inspect gutters before autumn',
           'Check weatherstripping and caulking',
-          'Prepare outdoor equipment for storage'
+          'Prepare outdoor equipment for storage',
+          'Test smoke/CO detectors again (quarterly)',
+          'Test thermostat programming',
+          'Inspect weatherstripping and door seals before cold weather',
+          'Check attic for pests (rodents often enter in fall)',
+          'Test outdoor handrails and steps for safety'
         ],
         weatherSpecific: [
           'Transition HVAC from cooling to heating mode',
@@ -180,7 +228,13 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Winterize outdoor water systems',
           'Turn off outside water sources',
           'Shut off outside house spigots',
-          'Check and seal exterior gaps'
+          'Check and seal exterior gaps',
+          'Test outdoor lighting (especially pathway and security lights)',
+          'Test emergency generator if you have one',
+          'Inspect fireplace and chimney flue; schedule cleaning if needed',
+          'Test carbon monoxide detectors before heating season',
+          'Check insulation around pipes to prevent winter freezing',
+          'Test ground drainage with garden hose'
         ],
         weatherSpecific: [
           'Prepare heating system for cold weather',
@@ -197,7 +251,13 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Test heating system thoroughly',
           'Final exterior maintenance before cold',
           'Check insulation and weatherproofing',
-          'Store outdoor furniture and equipment'
+          'Store outdoor furniture and equipment',
+          'Test garage door auto-reverse safety again',
+          'Inspect and clean gutters of fall leaves',
+          'Test backup sump pump battery (if applicable)',
+          'Inspect snow removal equipment (snowblower, shovels, salt)',
+          'Test outdoor outlets (holiday lighting safety)',
+          'Inspect weatherproofing on exterior doors/windows'
         ],
         weatherSpecific: [
           'Ensure heating system is operating efficiently',
@@ -214,7 +274,12 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Check holiday decorations safety',
           'Inspect and maintain fireplace',
           'Test carbon monoxide and smoke detectors',
-          'Monitor energy usage and efficiency'
+          'Monitor energy usage and efficiency',
+          'Check water heater pressure relief valve (carefully lift lever)',
+          'Test indoor circuit breakers (flip each one to ensure not stuck)',
+          'Inspect attic and crawl space for moisture or leaks',
+          'Test furnace emergency shut-off switch',
+          'Run whole-home safety drill (fire escape plan + extinguisher use)'
         ],
         weatherSpecific: [
           'Prepare for winter storm conditions',
@@ -231,7 +296,14 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
       'Check HVAC filters monthly',
       'Inspect plumbing for leaks quarterly',
       'Check electrical systems annually',
-      'Professional HVAC service twice yearly'
+      'Professional HVAC service twice yearly',
+      'Whole-home electrical inspection by electrician (every 3–5 years)',
+      'Whole-home plumbing inspection (annually)',
+      'Pest inspection (annually or as needed)',
+      'Radon test (at least once, more if in high-risk area)',
+      'Well water test (if applicable, annually)',
+      'Septic inspection/pumping (every 3–5 years)',
+      'Roof inspection (annually)'
     ],
     specialConsiderations: [
       'Heavy snow load considerations for roof',
@@ -251,7 +323,10 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Check and clean fireplace if applicable',
           'Inspect weatherstripping',
           'Test carbon monoxide detectors',
-          'Check attic insulation'
+          'Check attic insulation',
+          'Inspect furnace filter and replace if dirty',
+          'Test GFCI outlets in kitchen, bathrooms, garage, and exterior',
+          'Inspect sump pump (if applicable) — pour water to confirm it activates'
         ],
         weatherSpecific: [
           'Monitor for freeze protection of pipes',
@@ -268,7 +343,12 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Check irrigation system for spring startup',
           'Inspect exterior paint and siding',
           'Clean and maintain lawn equipment',
-          'Check deck and outdoor furniture'
+          'Check deck and outdoor furniture',
+          'Test GFCI/AFCI circuit breakers in electrical panel',
+          'Inspect water heater for leaks and check temperature (~120°F)',
+          'Flush toilets and sinks that aren\'t used often to prevent dry traps',
+          'Check bathroom exhaust fans for proper airflow',
+          'Inspect fire extinguishers for charge and expiration date'
         ],
         weatherSpecific: [
           'Prepare for early spring weather changes',
@@ -285,7 +365,12 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Service air conditioning system',
           'Clean and inspect gutters',
           'Check screens and outdoor areas',
-          'Start landscaping and lawn care'
+          'Start landscaping and lawn care',
+          'Test sump pump again before spring rains',
+          'Test outdoor faucets for leaks once thawed',
+          'Inspect foundation for cracks or water entry points',
+          'Clean and test dryer vent and exhaust duct for airflow',
+          'Check window screens for tears; repair before spring'
         ],
         weatherSpecific: [
           'Prepare cooling system for warm weather',
@@ -302,7 +387,13 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Deep clean interior and exterior',
           'Service and test air conditioning',
           'Maintain outdoor living spaces',
-          'Check pool and spa systems'
+          'Check pool and spa systems',
+          'Test HVAC system (switch between heat and cooling modes)',
+          'Schedule AC service/inspection before summer',
+          'Test irrigation/sprinkler system for leaks and coverage',
+          'Inspect deck, porch, and railings for rot or loose boards',
+          'Check garage door auto-reverse safety feature',
+          'Test safety lighting (motion sensor and exterior lights)'
         ],
         weatherSpecific: [
           'Prepare for severe weather season',
@@ -319,7 +410,13 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Complete outdoor maintenance',
           'Check and maintain pool systems',
           'Inspect deck and outdoor structures',
-          'Maintain landscaping systems'
+          'Maintain landscaping systems',
+          'Test outdoor GFCI outlets with a tester',
+          'Inspect and clean gutters and downspouts after spring pollen/debris',
+          'Check lawn equipment (mower blades, fuel lines, spark plugs)',
+          'Inspect fences and gates for stability',
+          'Test window locks and lubricate if needed',
+          'Check exterior caulking (windows, doors, siding, trim)'
         ],
         weatherSpecific: [
           'Ensure air conditioning system is ready for heat',
@@ -337,7 +434,13 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Maintain pool and outdoor systems',
           'Check attic ventilation',
           'Inspect for heat-related expansion',
-          'Flush water heater'
+          'Flush water heater',
+          'Inspect attic ventilation fans and confirm proper airflow',
+          'Test ceiling fans for wobble/balance',
+          'Inspect plumbing under sinks for leaks',
+          'Test outdoor water pressure and hoses for leaks',
+          'Check pest control barriers and look for termite activity',
+          'Inspect grout and caulking in showers, tubs, and sinks'
         ],
         weatherSpecific: [
           'Hurricane season preparation',
@@ -354,7 +457,13 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Monitor energy efficiency',
           'Maintain cooling systems',
           'Check and clean pool systems',
-          'Inspect outdoor equipment'
+          'Inspect outdoor equipment',
+          'Test home security system and update codes if needed',
+          'Inspect driveway and walkways for cracks',
+          'Test outdoor drainage after heavy rain',
+          'Check refrigerator door seals (paper test)',
+          'Inspect pool equipment (if applicable) for safety and leaks',
+          'Test garage door keypad and remotes'
         ],
         weatherSpecific: [
           'Peak hurricane season vigilance',
@@ -371,7 +480,13 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Monitor cooling system performance',
           'Maintain outdoor living areas',
           'Check pool and spa equipment',
-          'Inspect exterior for heat damage'
+          'Inspect exterior for heat damage',
+          'Inspect roof shingles for summer storm damage',
+          'Test HVAC performance (is the AC cooling properly?)',
+          'Test water pressure regulator (should be ~40–60 psi)',
+          'Inspect chimney exterior for cracks or leaning',
+          'Check septic system filter/inspection port (if applicable)',
+          'Flush garbage disposal with ice and vinegar to clean blades'
         ],
         weatherSpecific: [
           'Peak hurricane season preparation',
@@ -388,7 +503,12 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Maintain cooling systems',
           'Begin gradual fall preparation',
           'Check exterior maintenance needs',
-          'Inspect pool and outdoor equipment'
+          'Inspect pool and outdoor equipment',
+          'Test smoke/CO detectors again (quarterly)',
+          'Test thermostat programming',
+          'Inspect weatherstripping and door seals before cold weather',
+          'Check attic for pests (rodents often enter in fall)',
+          'Test outdoor handrails and steps for safety'
         ],
         weatherSpecific: [
           'Peak hurricane season continues',
@@ -406,7 +526,13 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Clean gutters and drainage systems',
           'Inspect exterior paint and siding',
           'Maintain outdoor equipment',
-          'Shut off outside house spigots'
+          'Shut off outside house spigots',
+          'Test outdoor lighting (especially pathway and security lights)',
+          'Test emergency generator if you have one',
+          'Inspect fireplace and chimney flue; schedule cleaning if needed',
+          'Test carbon monoxide detectors before heating season',
+          'Check insulation around pipes to prevent winter freezing',
+          'Test ground drainage with garden hose'
         ],
         weatherSpecific: [
           'End of hurricane season vigilance',
@@ -423,7 +549,13 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Check heating system operation',
           'Clean and maintain outdoor areas',
           'Inspect weatherproofing',
-          'Check holiday decoration safety'
+          'Check holiday decoration safety',
+          'Test garage door auto-reverse safety again',
+          'Inspect and clean gutters of fall leaves',
+          'Test backup sump pump battery (if applicable)',
+          'Inspect snow removal equipment (snowblower, shovels, salt)',
+          'Test outdoor outlets (holiday lighting safety)',
+          'Inspect weatherproofing on exterior doors/windows'
         ],
         weatherSpecific: [
           'Prepare for cooler but mild winter',
@@ -440,7 +572,12 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Check holiday decorations and lighting',
           'Maintain mild winter preparations',
           'Test smoke and carbon monoxide detectors',
-          'Check weatherstripping and insulation'
+          'Check weatherstripping and insulation',
+          'Check water heater pressure relief valve (carefully lift lever)',
+          'Test indoor circuit breakers (flip each one to ensure not stuck)',
+          'Inspect attic and crawl space for moisture or leaks',
+          'Test furnace emergency shut-off switch',
+          'Run whole-home safety drill (fire escape plan + extinguisher use)'
         ],
         weatherSpecific: [
           'Monitor for occasional freeze conditions',
@@ -667,7 +804,12 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
           'Check holiday decorations and lighting',
           'Test carbon monoxide and smoke detectors',
           'Maintain winter preparations',
-          'Monitor energy usage'
+          'Monitor energy usage',
+          'Check water heater pressure relief valve (carefully lift lever)',
+          'Test indoor circuit breakers (flip each one to ensure not stuck)',
+          'Inspect attic and crawl space for moisture or leaks',
+          'Test furnace emergency shut-off switch',
+          'Run whole-home safety drill (fire escape plan + extinguisher use)'
         ],
         weatherSpecific: [
           'Monitor heating during cold snaps',
