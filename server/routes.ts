@@ -8,6 +8,7 @@ import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaint
 import pushRoutes from "./push-routes";
 import { pushService } from "./push-service";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { pool } from "./db";
 
 // Extend session data interface
 declare module 'express-session' {
@@ -2519,11 +2520,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Countries endpoints
   app.get('/api/countries', async (req: any, res) => {
     try {
-      const countries = await storage.getCountries();
-      res.json(countries);
+      // Temporarily use direct SQL to test international expansion functionality
+      const result = await pool.query('SELECT * FROM countries ORDER BY name');
+      res.json(result.rows);
     } catch (error) {
       console.error("Error fetching countries:", error);
-      res.status(500).json({ message: "Failed to fetch countries" });
+      // Fallback to storage interface
+      try {
+        const countries = await storage.getCountries();
+        res.json(countries);
+      } catch (storageError) {
+        console.error("Error fetching countries from storage:", storageError);
+        res.status(500).json({ message: "Failed to fetch countries" });
+      }
     }
   });
 

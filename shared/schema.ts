@@ -613,6 +613,7 @@ export const countries = pgTable("countries", {
   isActive: boolean("is_active").default(true).notNull(),
   defaultCurrency: text("default_currency").notNull(), // USD, CAD, AUD, GBP
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Administrative regions within countries (states, provinces, territories)
