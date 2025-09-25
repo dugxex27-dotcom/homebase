@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated, requireRole, requirePropertyOwner } from "./replitAuth";
 import { z } from "zod";
 import { randomUUID } from "crypto";
-import { insertHomeApplianceSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema } from "@shared/schema";
+import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema } from "@shared/schema";
 import pushRoutes from "./push-routes";
 import { pushService } from "./push-service";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
@@ -435,7 +435,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/appliances", async (req, res) => {
     try {
       const homeownerId = req.query.homeownerId as string;
-      const appliances = await storage.getHomeAppliances(homeownerId);
+      const houseId = req.query.houseId as string;
+      const appliances = await storage.getHomeAppliances(homeownerId, houseId);
       res.json(appliances);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch appliances" });
@@ -492,6 +493,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Failed to delete appliance" });
+    }
+  });
+
+  // Home Appliance Manual routes
+  app.get("/api/appliances/:applianceId/manuals", async (req, res) => {
+    try {
+      const manuals = await storage.getHomeApplianceManuals(req.params.applianceId);
+      res.json(manuals);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch appliance manuals" });
+    }
+  });
+
+  app.get("/api/appliance-manuals/:id", async (req, res) => {
+    try {
+      const manual = await storage.getHomeApplianceManual(req.params.id);
+      if (!manual) {
+        return res.status(404).json({ message: "Manual not found" });
+      }
+      res.json(manual);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch manual" });
+    }
+  });
+
+  app.post("/api/appliances/:applianceId/manuals", async (req, res) => {
+    try {
+      const manualData = insertHomeApplianceManualSchema.parse({
+        ...req.body,
+        applianceId: req.params.applianceId
+      });
+      const manual = await storage.createHomeApplianceManual(manualData);
+      res.status(201).json(manual);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid manual data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create manual" });
+    }
+  });
+
+  app.patch("/api/appliance-manuals/:id", async (req, res) => {
+    try {
+      const partialData = insertHomeApplianceManualSchema.partial().parse(req.body);
+      const manual = await storage.updateHomeApplianceManual(req.params.id, partialData);
+      if (!manual) {
+        return res.status(404).json({ message: "Manual not found" });
+      }
+      res.json(manual);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid manual data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update manual" });
+    }
+  });
+
+  app.delete("/api/appliance-manuals/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteHomeApplianceManual(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Manual not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete manual" });
     }
   });
 
