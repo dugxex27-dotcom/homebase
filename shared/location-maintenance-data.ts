@@ -1774,3 +1774,278 @@ export function getRegionConsiderations(region: string) {
   
   return regionData.specialConsiderations;
 }
+
+// International expansion data for UK, Canada, and Australia
+export const INTERNATIONAL_COUNTRIES = [
+  {
+    code: "US",
+    name: "United States", 
+    defaultCurrency: "USD",
+    isActive: true
+  },
+  {
+    code: "CA",
+    name: "Canada",
+    defaultCurrency: "CAD", 
+    isActive: true
+  },
+  {
+    code: "AU",
+    name: "Australia",
+    defaultCurrency: "AUD",
+    isActive: true  
+  },
+  {
+    code: "GB",
+    name: "United Kingdom",
+    defaultCurrency: "GBP",
+    isActive: true
+  }
+];
+
+export const INTERNATIONAL_REGIONS = {
+  CA: [
+    { code: "AB", name: "Alberta", type: "province" },
+    { code: "BC", name: "British Columbia", type: "province" },
+    { code: "MB", name: "Manitoba", type: "province" },
+    { code: "NB", name: "New Brunswick", type: "province" },
+    { code: "NL", name: "Newfoundland and Labrador", type: "province" },
+    { code: "NS", name: "Nova Scotia", type: "province" },
+    { code: "ON", name: "Ontario", type: "province" },
+    { code: "PE", name: "Prince Edward Island", type: "province" },
+    { code: "QC", name: "Quebec", type: "province" },
+    { code: "SK", name: "Saskatchewan", type: "province" },
+    { code: "NT", name: "Northwest Territories", type: "territory" },
+    { code: "NU", name: "Nunavut", type: "territory" },
+    { code: "YT", name: "Yukon", type: "territory" }
+  ],
+  AU: [
+    { code: "NSW", name: "New South Wales", type: "state" },
+    { code: "VIC", name: "Victoria", type: "state" },
+    { code: "QLD", name: "Queensland", type: "state" },
+    { code: "WA", name: "Western Australia", type: "state" },
+    { code: "SA", name: "South Australia", type: "state" },
+    { code: "TAS", name: "Tasmania", type: "state" },
+    { code: "ACT", name: "Australian Capital Territory", type: "territory" },
+    { code: "NT", name: "Northern Territory", type: "territory" }
+  ],
+  GB: [
+    { code: "ENG", name: "England", type: "country" },
+    { code: "SCT", name: "Scotland", type: "country" },
+    { code: "WLS", name: "Wales", type: "country" },
+    { code: "NIR", name: "Northern Ireland", type: "country" }
+  ]
+};
+
+export const INTERNATIONAL_CLIMATE_ZONES = {
+  CA: [
+    { code: "zone-4", name: "Zone 4 - Warmest", description: "Heating degree days 3000-3999 (warmest Canadian zone)" },
+    { code: "zone-5", name: "Zone 5 - Warm", description: "Heating degree days 4000-4999" },
+    { code: "zone-6", name: "Zone 6 - Moderate", description: "Heating degree days 5000-5999" },
+    { code: "zone-7a", name: "Zone 7A - Cold", description: "Heating degree days 6000-6999" },
+    { code: "zone-7b", name: "Zone 7B - Very Cold", description: "Heating degree days 7000-7999" },
+    { code: "zone-8", name: "Zone 8 - Coldest", description: "Heating degree days 8000+ (Arctic/sub-Arctic)" }
+  ],
+  AU: [
+    { code: "zone-1", name: "Zone 1 - Hot Humid Summer", description: "Northern Australia - hot humid summer, warm winter" },
+    { code: "zone-2", name: "Zone 2 - Warm Humid Summer", description: "Coastal Queensland - warm humid summer, mild winter" },
+    { code: "zone-3", name: "Zone 3 - Hot Dry Summer", description: "Hot dry summer, warm winter" },
+    { code: "zone-4", name: "Zone 4 - Hot Dry Summer", description: "Hot dry summer, cool winter" },
+    { code: "zone-5", name: "Zone 5 - Warm Temperate", description: "Warm temperate climate" },
+    { code: "zone-6", name: "Zone 6 - Mild Temperate", description: "Mild temperate climate" },
+    { code: "zone-7", name: "Zone 7 - Cool Temperate", description: "Cool temperate climate" },
+    { code: "zone-8", name: "Zone 8 - Alpine", description: "Alpine areas of southeastern Australia" }
+  ],
+  GB: [
+    { code: "southern", name: "Southern England", description: "Milder temperatures, lower rainfall" },
+    { code: "northern", name: "Northern England", description: "Cooler temperatures, higher rainfall" },
+    { code: "scotland", name: "Scotland", description: "Cool temperatures, high rainfall, frost risk" },
+    { code: "wales", name: "Wales", description: "Mild temperatures, high rainfall, mountain climate" },
+    { code: "ni", name: "Northern Ireland", description: "Mild maritime climate, high rainfall" }
+  ]
+};
+
+export const INTERNATIONAL_REGULATORY_BODIES = {
+  GB: [
+    { name: "Gas Safe Register", type: "licensing", website: "https://www.gassaferegister.co.uk", description: "Mandatory for all gas work in UK" },
+    { name: "Federation of Master Builders", type: "certification", website: "https://www.fmb.org.uk", description: "UK's largest construction trade association" },
+    { name: "TrustMark", type: "certification", website: "https://www.trustmark.org.uk", description: "Government-endorsed quality scheme" },
+    { name: "NICEIC", type: "certification", website: "https://www.niceic.com", description: "Electrical contractor certification" }
+  ],
+  CA: {
+    ON: [
+      { name: "Skilled Trades Ontario", type: "licensing", website: "https://www.skilledtradesontario.ca", description: "Trade certification and licensing" },
+      { name: "Electrical Safety Authority", type: "licensing", website: "https://www.esasafe.com", description: "Electrical contractor licensing" }
+    ],
+    QC: [
+      { name: "Régie du bâtiment du Québec", type: "licensing", website: "https://www.rbq.gouv.qc.ca", description: "Construction contractor licensing" },
+      { name: "Corporation des maîtres électriciens du Québec", type: "licensing", website: "https://www.cmeq.org", description: "Electrical contractor licensing" }
+    ],
+    BC: [
+      { name: "BC Housing", type: "registration", website: "https://www.bchousing.org", description: "Residential builder registration" }
+    ]
+  },
+  AU: {
+    NSW: [
+      { name: "NSW Fair Trading", type: "licensing", website: "https://www.fairtrading.nsw.gov.au", description: "Building contractor licensing >$5,000" }
+    ],
+    VIC: [
+      { name: "Victorian Building Authority", type: "registration", website: "https://www.vba.vic.gov.au", description: "Building practitioner registration" }
+    ],
+    QLD: [
+      { name: "Queensland Building and Construction Commission", type: "licensing", website: "https://www.qbcc.qld.gov.au", description: "Building contractor licensing >$3,300" }
+    ]
+  }
+};
+
+export const INTERNATIONAL_MAINTENANCE_TASKS = {
+  GB: [
+    {
+      taskId: "gb-damp-prevention",
+      title: "Damp Prevention and Ventilation",
+      description: "Monitor for condensation, check ventilation, inspect for rising damp. Critical in UK climate.",
+      category: "Moisture Control",
+      priority: "high",
+      season: "year-round",
+      months: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"],
+      estimatedTime: "1-2 hours monthly",
+      difficulty: "easy",
+      tools: ["Dehumidifier", "Moisture meter", "Ventilation fans"],
+      cost: "£20-200 depending on severity"
+    },
+    {
+      taskId: "gb-roof-moss-removal",
+      title: "Roof Moss Removal and Prevention", 
+      description: "Remove moss growth from roof tiles and gutters. Install zinc/copper strips to prevent regrowth.",
+      category: "Roofing",
+      priority: "high",
+      season: "spring",
+      months: ["3", "4", "5"],
+      estimatedTime: "1-2 days",
+      difficulty: "medium",
+      tools: ["Roof brush", "Moss killer", "Safety equipment", "Ladder"],
+      cost: "£150-500 depending on roof size"
+    },
+    {
+      taskId: "gb-radiator-bleeding-autumn",
+      title: "Radiator Bleeding Before Winter",
+      description: "Bleed all radiators to remove air pockets, check heating system efficiency before winter.",
+      category: "HVAC", 
+      priority: "high",
+      season: "autumn",
+      months: ["9", "10"],
+      estimatedTime: "2-3 hours",
+      difficulty: "easy",
+      tools: ["Radiator key", "Cloth", "Small container"],
+      cost: "£0-100 (DIY vs professional)"
+    },
+    {
+      taskId: "gb-chimney-sweeping-autumn",
+      title: "Annual Chimney Sweeping",
+      description: "Professional chimney sweep before winter heating season. Remove soot and check for blockages.",
+      category: "HVAC",
+      priority: "high", 
+      season: "autumn",
+      months: ["9", "10", "11"],
+      estimatedTime: "2-3 hours",
+      difficulty: "hard",
+      tools: ["Professional service required"],
+      cost: "£50-120 for standard chimney"
+    }
+  ],
+  CA: [
+    {
+      taskId: "ca-extreme-weatherization",
+      title: "Extreme Weather Preparation",
+      description: "Comprehensive winterization for Canadian climate zones 6-8. Critical for preventing freeze damage.",
+      category: "Winterization",
+      priority: "high",
+      season: "autumn", 
+      months: ["9", "10"],
+      estimatedTime: "2-3 days",
+      difficulty: "medium",
+      tools: ["Insulation materials", "Heat tape", "Caulking", "Weather stripping"],
+      cost: "CAD $300-1000 depending on zone"
+    },
+    {
+      taskId: "ca-ice-dam-prevention",
+      title: "Ice Dam Prevention System",
+      description: "Install heat cables, improve attic ventilation. Critical for zones 6-8 to prevent roof damage.",
+      category: "Roofing",
+      priority: "high",
+      season: "autumn",
+      months: ["10", "11"], 
+      estimatedTime: "1-2 days",
+      difficulty: "hard",
+      tools: ["Heat cables", "Roof rake", "Attic ventilation"],
+      cost: "CAD $500-2000 depending on roof size"
+    },
+    {
+      taskId: "ca-heating-system-inspection",
+      title: "Heating System Maximum Efficiency",
+      description: "Comprehensive heating system service for extreme Canadian winters. Test all safety systems.",
+      category: "HVAC",
+      priority: "high",
+      season: "autumn",
+      months: ["9", "10"],
+      estimatedTime: "3-4 hours", 
+      difficulty: "medium",
+      tools: ["HVAC service tools", "Carbon monoxide detector", "Filters"],
+      cost: "CAD $200-500 for professional service"
+    }
+  ],
+  AU: [
+    {
+      taskId: "au-cyclone-preparation",
+      title: "Cyclone Season Preparation",
+      description: "Secure outdoor items, trim trees, check roof fastenings. Critical for tropical zones 1-2.",
+      category: "Storm Preparation",
+      priority: "high",
+      season: "summer",
+      months: ["11", "12", "1", "2", "3", "4"],
+      estimatedTime: "2-3 days",
+      difficulty: "medium",
+      tools: ["Rope", "Tarps", "Pruning tools", "Emergency supplies"],
+      cost: "AUD $300-1000 depending on property size"
+    },
+    {
+      taskId: "au-termite-inspection",
+      title: "Comprehensive Termite Inspection",
+      description: "Professional termite inspection every 12 months. Critical for all Australian homes.",
+      category: "Pest Control", 
+      priority: "high",
+      season: "year-round",
+      months: ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"],
+      estimatedTime: "2-3 hours",
+      difficulty: "hard",
+      tools: ["Professional inspection required"],
+      cost: "AUD $300-600 for professional inspection"
+    },
+    {
+      taskId: "au-bushfire-preparation",
+      title: "Bushfire Season Preparation", 
+      description: "Clear vegetation, clean gutters, prepare evacuation plan. Critical for zones 3-7.",
+      category: "Fire Safety",
+      priority: "high",
+      season: "spring",
+      months: ["9", "10", "11"],
+      estimatedTime: "3-5 days",
+      difficulty: "medium",
+      tools: ["Clearing tools", "Water systems", "Fire-resistant materials"],
+      cost: "AUD $500-2000 depending on property"
+    },
+    {
+      taskId: "au-air-conditioning-service",
+      title: "Pre-Summer AC Service", 
+      description: "Comprehensive air conditioning service before hot season. Clean filters, check refrigerant.",
+      category: "HVAC",
+      priority: "high",
+      season: "spring",
+      months: ["9", "10", "11"],
+      estimatedTime: "2-3 hours",
+      difficulty: "medium",
+      tools: ["AC service tools", "Filters", "Cleaning materials"],
+      cost: "AUD $150-400 for professional service"
+    }
+  ]
+};
