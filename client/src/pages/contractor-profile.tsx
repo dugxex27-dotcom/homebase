@@ -123,6 +123,12 @@ export default function ContractorProfile() {
   const [customService, setCustomService] = useState('');
   const [logoPreview, setLogoPreview] = useState<string>('');
   const [photosPreviews, setPhotosPreviews] = useState<string[]>([]);
+  
+  // Address autocomplete state
+  const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [addressDebounceTimer, setAddressDebounceTimer] = useState<NodeJS.Timeout>();
   const [licenses, setLicenses] = useState([{
     id: '',
     licenseNumber: '',
@@ -161,6 +167,125 @@ export default function ContractorProfile() {
       setLicenses(existingLicenses);
     }
   }, [existingLicenses]);
+
+  // Business address geolocation functions
+  const getBusinessAddressSuggestions = async (query: string) => {
+    if (!query || query.length < 3) {
+      setAddressSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    setIsLoadingSuggestions(true);
+    try {
+      // Use LocationIQ API for business address suggestions with focus on UK, Canada, Australia, US
+      const response = await fetch(
+        `https://us1.locationiq.com/v1/search.php?key=${import.meta.env.VITE_LOCATIONIQ_API_KEY || 'pk.3e1d1a4cb7bf7b8b11e0e0a2d9f4e5c6'}&q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=5&countrycodes=gb,ca,au,us`
+      );
+      
+      if (!response.ok) {
+        // Fallback to OpenStreetMap Nominatim
+        const nominatimResponse = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1&countrycodes=gb,ca,au,us`
+        );
+        if (nominatimResponse.ok) {
+          const data = await nominatimResponse.json();
+          setAddressSuggestions(data);
+          setShowSuggestions(true);
+        }
+      } else {
+        const data = await response.json();
+        setAddressSuggestions(data);
+        setShowSuggestions(true);
+      }
+    } catch (error) {
+      console.error('Error fetching business address suggestions:', error);
+      setAddressSuggestions([]);
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  };
+
+  const geocodeBusinessAddress = async (address: string) => {
+    try {
+      // Use LocationIQ for business address geocoding
+      const response = await fetch(
+        `https://us1.locationiq.com/v1/search.php?key=${import.meta.env.VITE_LOCATIONIQ_API_KEY || 'pk.3e1d1a4cb7bf7b8b11e0e0a2d9f4e5c6'}&q=${encodeURIComponent(address)}&format=json&limit=1&addressdetails=1`
+      );
+      
+      let result = null;
+      if (!response.ok) {
+        // Fallback to OpenStreetMap Nominatim
+        const nominatimResponse = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1&addressdetails=1`
+        );
+        if (nominatimResponse.ok) {
+          const data = await nominatimResponse.json();
+          result = data[0];
+        }
+      } else {
+        const data = await response.json();
+        result = data[0];
+      }
+
+      if (result) {
+        const addressDetails = result.address;
+        
+        // Auto-populate city, state, and zip code from geocoded address
+        if (addressDetails) {
+          const city = addressDetails.city || addressDetails.town || addressDetails.village || '';
+          const state = addressDetails.state || addressDetails.province || '';
+          const zipCode = addressDetails.postcode || '';
+          
+          setFormData(prev => ({
+            ...prev,
+            city: city,
+            state: state,
+            zipCode: zipCode
+          }));
+          
+          toast({
+            title: "Address details populated",
+            description: `Auto-filled city, state, and zip code from ${addressDetails.country}`,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error geocoding business address:', error);
+    }
+  };
+
+  const handleBusinessAddressChange = (address: string) => {
+    setFormData(prev => ({ ...prev, address }));
+    
+    // Clear existing timer
+    if (addressDebounceTimer) {
+      clearTimeout(addressDebounceTimer);
+    }
+    
+    // Set new timer for suggestions
+    const suggestionTimer = setTimeout(() => {
+      getBusinessAddressSuggestions(address);
+    }, 300);
+    setAddressDebounceTimer(suggestionTimer);
+    
+    // Set separate timer for geocoding to auto-fill other fields
+    const geocodeTimer = setTimeout(() => {
+      if (address.length > 10) {
+        geocodeBusinessAddress(address);
+      }
+    }, 1000);
+  };
+
+  const handleBusinessAddressSuggestionSelect = (suggestion: any) => {
+    const fullAddress = suggestion.display_name;
+    setFormData(prev => ({ ...prev, address: fullAddress }));
+    setShowSuggestions(false);
+    setAddressSuggestions([]);
+    
+    // Auto-geocode the selected address to populate other fields
+    geocodeBusinessAddress(fullAddress);
+  };
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
@@ -492,18 +617,47 @@ export default function ContractorProfile() {
             </div>
 
             <div>
-              <Label htmlFor="address">Business Address *</Label>
+              <Label htmlFor="address">Business Address * (UK, Canada, Australia, US supported)</Label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-3 h-4 w-4" style={{ color: '#1560a2' }} />
                 <Input
                   id="address"
                   value={formData.address}
-                  onChange={(e) => handleInputChange('address', e.target.value)}
+                  onChange={(e) => handleBusinessAddressChange(e.target.value)}
                   className="pl-10"
-                  placeholder="123 Main Street"
+                  placeholder="Start typing business address (e.g., 123 Business St, London)"
                   required
                   style={{ backgroundColor: '#ffffff' }}
                 />
+                {isLoadingSuggestions && (
+                  <div className="absolute right-3 top-3">
+                    <div className="animate-spin w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+                  </div>
+                )}
+                {/* Business address suggestions dropdown */}
+                {showSuggestions && addressSuggestions.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 max-h-60 overflow-auto bg-white border border-gray-300 rounded-md shadow-lg">
+                    {addressSuggestions.map((suggestion, index) => (
+                      <div
+                        key={index}
+                        className="px-4 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                        onClick={() => handleBusinessAddressSuggestionSelect(suggestion)}
+                        data-testid={`business-address-suggestion-${index}`}
+                      >
+                        <div className="font-medium text-sm text-gray-900">
+                          {suggestion.display_name}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1 flex items-center">
+                          <MapPin className="w-3 h-3 mr-1" />
+                          {suggestion.address?.country || 'Unknown country'}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                🌍 International support: Type addresses from UK, Canada, Australia, or US for automatic address completion
               </div>
             </div>
 
