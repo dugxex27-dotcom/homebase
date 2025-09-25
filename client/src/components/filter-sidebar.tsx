@@ -5,12 +5,14 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Star } from "lucide-react";
+import { getDistanceOptions, getDistanceUnit, extractCountryFromAddress, convertDistanceForStorage } from '@shared/distance-utils';
 
 interface FilterSidebarProps {
   onFiltersChange: (filters: any) => void;
+  userCountry?: string; // Optional prop to pass user's country for distance units
 }
 
-export default function FilterSidebar({ onFiltersChange }: FilterSidebarProps) {
+export default function FilterSidebar({ onFiltersChange, userCountry = 'US' }: FilterSidebarProps) {
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [minRating, setMinRating] = useState<number | undefined>();
   const [hasEmergencyServices, setHasEmergencyServices] = useState(false);
@@ -82,11 +84,14 @@ export default function FilterSidebar({ onFiltersChange }: FilterSidebarProps) {
   };
 
   const applyFilters = () => {
+    // Convert display distance to storage format if needed
+    const storageDistance = maxDistance ? convertDistanceForStorage(maxDistance, userCountry) : undefined;
+    
     onFiltersChange({
       services: selectedServices.length > 0 ? selectedServices : undefined,
       minRating,
       hasEmergencyServices: hasEmergencyServices || undefined,
-      maxDistance,
+      maxDistance: storageDistance,
     });
   };
 
@@ -98,18 +103,22 @@ export default function FilterSidebar({ onFiltersChange }: FilterSidebarProps) {
         <div className="space-y-6">
           {/* Distance Filter */}
           <div>
-            <Label className="text-sm font-medium text-foreground mb-3 block">Distance from you</Label>
+            <Label className="text-sm font-medium text-foreground mb-3 block">Distance from you ({getDistanceUnit(userCountry)})</Label>
             <Select onValueChange={(value) => setMaxDistance(parseFloat(value))}>
               <SelectTrigger className="border-muted" style={{ color: '#ffffff' }}>
                 <SelectValue placeholder="Any distance" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="5">Within 5 miles</SelectItem>
-                <SelectItem value="10">Within 10 miles</SelectItem>
-                <SelectItem value="25">Within 25 miles</SelectItem>
-                <SelectItem value="50">Within 50 miles</SelectItem>
+                {getDistanceOptions(userCountry).map((option) => (
+                  <SelectItem key={option.value} value={option.value.toString()}>
+                    Within {option.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
+            <div className="text-xs text-gray-500 mt-1">
+              🌍 {userCountry === 'US' ? 'Using miles for US locations' : 'Using kilometers for international locations'}
+            </div>
           </div>
 
 

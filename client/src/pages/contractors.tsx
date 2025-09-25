@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronLeft, ChevronRight, Search, ChevronDown, X, Home } from "lucide-react";
 import type { Contractor, House } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
+import { getDistanceOptions, getDistanceUnit, extractCountryFromAddress, convertDistanceForStorage } from '@shared/distance-utils';
 
 export default function Contractors() {
   const [location] = useLocation();
@@ -30,6 +31,9 @@ export default function Contractors() {
   const [servicesDropdownOpen, setServicesDropdownOpen] = useState<boolean>(false);
   const [selectedHouseId, setSelectedHouseId] = useState<string>('');
   const servicesDropdownRef = useRef<HTMLDivElement>(null);
+  
+  // Country detection for distance units
+  const [userCountry, setUserCountry] = useState<string>('US');
 
   // Fetch houses for authenticated homeowners
   const { data: houses = [], isLoading: housesLoading } = useQuery<House[]>({
@@ -43,6 +47,19 @@ export default function Contractors() {
       setSelectedHouseId(houses[0].id);
     }
   }, [houses, selectedHouseId]);
+
+  // Detect country from selected house address
+  useEffect(() => {
+    if (selectedHouseId && houses.length > 0) {
+      const selectedHouse = houses.find(house => house.id === selectedHouseId);
+      if (selectedHouse && selectedHouse.address) {
+        const detectedCountry = extractCountryFromAddress(selectedHouse.address);
+        if (detectedCountry) {
+          setUserCountry(detectedCountry);
+        }
+      }
+    }
+  }, [selectedHouseId, houses]);
 
   // Services list from FilterSidebar
   const services = [
@@ -330,7 +347,7 @@ export default function Contractors() {
 
               {/* Distance Filter */}
               <div>
-                <label className="text-sm font-medium text-foreground mb-3 block">Distance from you</label>
+                <label className="text-sm font-medium text-foreground mb-3 block">Distance from you ({getDistanceUnit(userCountry)})</label>
                 <select 
                   className="w-full px-3 py-2 border border-muted rounded-md"
                   style={{ color: '#ffffff', backgroundColor: '#1e1e20' }}
@@ -341,11 +358,15 @@ export default function Contractors() {
                   data-testid="filter-distance"
                 >
                   <option value="">Any distance</option>
-                  <option value="5">Within 5 miles</option>
-                  <option value="10">Within 10 miles</option>
-                  <option value="25">Within 25 miles</option>
-                  <option value="50">Within 50 miles</option>
+                  {getDistanceOptions(userCountry).map((option) => (
+                    <option key={option.value} value={option.value.toString()}>
+                      Within {option.label}
+                    </option>
+                  ))}
                 </select>
+                <div className="text-xs text-gray-500 mt-1">
+                  🌍 {userCountry === 'US' ? 'Using miles for US locations' : 'Using kilometers for international locations'}
+                </div>
               </div>
 
               {/* Rating Filter */}
@@ -457,7 +478,9 @@ export default function Contractors() {
                     const newFilters: any = {};
                     
                     if (selectedDistance) {
-                      newFilters.maxDistance = parseFloat(selectedDistance);
+                      // Convert display distance to storage format (always store in miles)
+                      const storageDistance = convertDistanceForStorage(parseFloat(selectedDistance), userCountry);
+                      newFilters.maxDistance = storageDistance;
                     }
                     
                     if (selectedRating) {
