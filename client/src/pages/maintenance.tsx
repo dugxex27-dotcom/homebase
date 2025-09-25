@@ -2042,7 +2042,9 @@ export default function Maintenance() {
                     <div className="text-sm" style={{ color: '#b6a6f4' }}>
                       <div className="flex items-center gap-2">
                         <MapPin className="w-4 h-4" style={{ color: '#2c0f5b' }} />
-                        <span style={{ color: '#2c0f5b' }}>Pacific Northwest</span>
+                        <span style={{ color: '#2c0f5b' }}>
+                          {CLIMATE_ZONES.find(z => z.value === selectedZone)?.label || 'Loading region...'}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2 mt-1">
                         <Home className="w-4 h-4" style={{ color: '#2c0f5b' }} />
