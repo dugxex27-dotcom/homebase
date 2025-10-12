@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated, requireRole, requirePropertyOwner } from "./replitAuth";
 import { z } from "zod";
 import { randomUUID } from "crypto";
-import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema } from "@shared/schema";
+import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema } from "@shared/schema";
 import pushRoutes from "./push-routes";
 import { pushService } from "./push-service";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
@@ -2675,6 +2675,174 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching regional maintenance task:", error);
       res.status(500).json({ message: "Failed to fetch regional maintenance task" });
+    }
+  });
+
+  // Task completion endpoints for achievements
+  app.get('/api/task-completions', async (req: any, res) => {
+    try {
+      const homeownerId = req.session?.user?.id;
+      if (!homeownerId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const completions = await storage.getTaskCompletions(homeownerId, req.query.houseId as string);
+      res.json(completions);
+    } catch (error) {
+      console.error("Error fetching task completions:", error);
+      res.status(500).json({ message: "Failed to fetch task completions" });
+    }
+  });
+
+  app.post('/api/task-completions', async (req: any, res) => {
+    try {
+      const homeownerId = req.session?.user?.id;
+      if (!homeownerId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const completionData = insertTaskCompletionSchema.parse({
+        ...req.body,
+        homeownerId,
+      });
+
+      const completion = await storage.createTaskCompletion(completionData);
+
+      // Check and award achievements
+      const tasks = await storage.getTaskCompletions(homeownerId);
+      
+      // First task achievement
+      if (tasks.length === 1 && !(await storage.hasAchievement(homeownerId, 'first_task'))) {
+        await storage.createAchievement({
+          homeownerId,
+          achievementType: 'first_task',
+          achievementTitle: 'First Task Complete!',
+          achievementDescription: 'You completed your first maintenance task',
+        });
+      }
+
+      // Monthly streak achievement
+      const { currentStreak } = await storage.getMonthlyStreak(homeownerId);
+      if (currentStreak >= 3 && !(await storage.hasAchievement(homeownerId, 'monthly_streak'))) {
+        await storage.createAchievement({
+          homeownerId,
+          achievementType: 'monthly_streak',
+          achievementTitle: 'Streak Master!',
+          achievementDescription: `Completed tasks for ${currentStreak} months in a row`,
+          metadata: JSON.stringify({ streak: currentStreak }),
+        });
+      }
+
+      res.json(completion);
+    } catch (error) {
+      console.error("Error creating task completion:", error);
+      res.status(500).json({ message: "Failed to create task completion" });
+    }
+  });
+
+  app.get('/api/task-completions/streak', async (req: any, res) => {
+    try {
+      const homeownerId = req.session?.user?.id;
+      if (!homeownerId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const streak = await storage.getMonthlyStreak(homeownerId);
+      res.json(streak);
+    } catch (error) {
+      console.error("Error fetching streak:", error);
+      res.status(500).json({ message: "Failed to fetch streak" });
+    }
+  });
+
+  // Achievement endpoints
+  app.get('/api/achievements', async (req: any, res) => {
+    try {
+      const homeownerId = req.session?.user?.id;
+      if (!homeownerId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const achievements = await storage.getAchievements(homeownerId);
+      
+      // Also return progress toward locked achievements
+      const taskCount = (await storage.getTaskCompletions(homeownerId)).length;
+      const contractorCount = await storage.getContractorHireCount(homeownerId);
+      const { currentStreak, longestStreak } = await storage.getMonthlyStreak(homeownerId);
+      
+      res.json({
+        achievements,
+        progress: {
+          tasksCompleted: taskCount,
+          contractorsHired: contractorCount,
+          currentStreak,
+          longestStreak,
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching achievements:", error);
+      res.status(500).json({ message: "Failed to fetch achievements" });
+    }
+  });
+
+  app.post('/api/achievements/contractor-hired', async (req: any, res) => {
+    try {
+      const homeownerId = req.session?.user?.id;
+      if (!homeownerId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const contractorCount = await storage.getContractorHireCount(homeownerId);
+      
+      // Check milestones: 1st, 3rd, 5th, 10th contractor
+      const milestones = [
+        { count: 1, type: 'contractor_hired_1', title: 'First Hire!', description: 'You hired your first contractor' },
+        { count: 3, type: 'contractor_hired_3', title: 'Building Trust', description: 'You hired 3 contractors' },
+        { count: 5, type: 'contractor_hired_5', title: 'Growing Network', description: 'You hired 5 contractors' },
+        { count: 10, type: 'contractor_hired_10', title: 'Community Builder', description: 'You hired 10 contractors' },
+      ];
+
+      for (const milestone of milestones) {
+        if (contractorCount >= milestone.count && !(await storage.hasAchievement(homeownerId, milestone.type))) {
+          await storage.createAchievement({
+            homeownerId,
+            achievementType: milestone.type,
+            achievementTitle: milestone.title,
+            achievementDescription: milestone.description,
+            metadata: JSON.stringify({ contractorCount }),
+          });
+        }
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error checking contractor hire achievement:", error);
+      res.status(500).json({ message: "Failed to check achievement" });
+    }
+  });
+
+  app.post('/api/achievements/referral', async (req: any, res) => {
+    try {
+      const homeownerId = req.session?.user?.id;
+      if (!homeownerId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { referredUserId } = req.body;
+      
+      // Create referral achievement (can have multiple)
+      await storage.createAchievement({
+        homeownerId,
+        achievementType: `referral_${referredUserId}`, // Make it unique per referral
+        achievementTitle: 'Referral Success!',
+        achievementDescription: 'You referred a new user to Home Base',
+        metadata: JSON.stringify({ referredUserId }),
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error creating referral achievement:", error);
+      res.status(500).json({ message: "Failed to create referral achievement" });
     }
   });
 
