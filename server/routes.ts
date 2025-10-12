@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated, requireRole, requirePropertyOwner } from "./replitAuth";
 import { z } from "zod";
 import { randomUUID } from "crypto";
+import rateLimit from "express-rate-limit";
 import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema } from "@shared/schema";
 import pushRoutes from "./push-routes";
 import { pushService } from "./push-service";
@@ -17,6 +18,16 @@ declare module 'express-session' {
     isAuthenticated?: boolean;
   }
 }
+
+// Strict rate limiting for authentication endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit each IP to 5 login attempts per windowMs
+  message: 'Too many login attempts, please try again after 15 minutes',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true, // Don't count successful logins
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Skip OAuth setup to prevent browser crashes
@@ -162,7 +173,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Simple contractor demo login (no OAuth)
-  app.post('/api/auth/contractor-demo-login', async (req, res) => {
+  app.post('/api/auth/contractor-demo-login', authLimiter, async (req, res) => {
     try {
       const { email, name, company } = req.body;
       
@@ -193,7 +204,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Simple homeowner demo login
-  app.post('/api/auth/homeowner-demo-login', async (req, res) => {
+  app.post('/api/auth/homeowner-demo-login', authLimiter, async (req, res) => {
     try {
       const { email, name, role } = req.body;
       
