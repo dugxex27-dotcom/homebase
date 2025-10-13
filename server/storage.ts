@@ -596,7 +596,18 @@ export class MemStorage implements IStorage {
       }
     ];
 
-    contractorData.forEach(contractor => {
+    const memberSinceDates = [
+      new Date('2023-01-15'), // Mike Thompson - oldest member
+      new Date('2023-06-20'), // Sarah Martinez
+      new Date('2022-11-10'), // David Chen - very experienced
+      new Date('2023-03-05'), // Emily Rodriguez
+      new Date('2023-09-12'), // Marcus Johnson
+      new Date('2024-02-18'), // Rachel Green - newer member
+      new Date('2024-05-22'), // Alex Thompson - newest
+      new Date('2023-08-14'), // Maria Rodriguez
+    ];
+
+    contractorData.forEach((contractor, index) => {
       const id = randomUUID();
       const contractorWithId: Contractor = { 
         ...contractor, 
@@ -609,7 +620,8 @@ export class MemStorage implements IStorage {
         serviceRadius: (contractor as any).serviceRadius ?? 25,
         businessLogo: null,
         projectPhotos: [],
-        googleBusinessUrl: null
+        googleBusinessUrl: null,
+        createdAt: memberSinceDates[index] || new Date()
       };
       this.contractors.set(id, contractorWithId);
     });
@@ -856,7 +868,8 @@ export class MemStorage implements IStorage {
       serviceRadius: contractor.serviceRadius ?? 25,
       businessLogo: contractor.businessLogo || null,
       projectPhotos: contractor.projectPhotos || [],
-      googleBusinessUrl: contractor.googleBusinessUrl || null
+      googleBusinessUrl: contractor.googleBusinessUrl || null,
+      createdAt: new Date()
     };
     this.contractors.set(id, newContractor);
     return newContractor;

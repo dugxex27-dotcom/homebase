@@ -1,9 +1,10 @@
-import { Star, MapPin, Shield, Mail, TrendingUp } from "lucide-react";
+import { Star, MapPin, Shield, Mail, TrendingUp, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
 import ContactContractorButton from "@/components/contact-contractor-button";
 import type { Contractor } from "@shared/schema";
+import { format } from "date-fns";
 
 interface ContractorCardProps {
   contractor: Contractor & { isBoosted?: boolean };
@@ -26,6 +27,16 @@ export default function ContractorCard({ contractor }: ContractorCardProps) {
         ))}
       </div>
     );
+  };
+
+  const formatMemberSince = (date: Date | string | null | undefined) => {
+    if (!date) return null;
+    try {
+      const dateObj = typeof date === 'string' ? new Date(date) : date;
+      return format(dateObj, 'MMMM yyyy');
+    } catch {
+      return null;
+    }
   };
 
   return (
@@ -82,6 +93,12 @@ export default function ContractorCard({ contractor }: ContractorCardProps) {
               <Shield className="w-4 h-4 mr-2 text-primary/60" />
               <span>Licensed & Insured • {contractor.experience} years experience</span>
             </div>
+            {contractor.createdAt && formatMemberSince(contractor.createdAt) && (
+              <div className="flex items-center text-sm text-muted-foreground">
+                <Calendar className="w-4 h-4 mr-2 text-primary/60" />
+                <span>Member since {formatMemberSince(contractor.createdAt)}</span>
+              </div>
+            )}
           </div>
 
           <div className="mb-3">

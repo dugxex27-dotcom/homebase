@@ -120,6 +120,8 @@ export const contractors = pgTable("contractors", {
   licenses: text("licenses"), // JSON string of licensing info per regulatory body
   insuranceInfo: text("insurance_info"), // JSON string of insurance details by region
   postalCode: text("postal_code"), // For international address support
+  
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const products = pgTable("products", {
