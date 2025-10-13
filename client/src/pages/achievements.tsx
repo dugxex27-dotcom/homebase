@@ -3,6 +3,7 @@ import { Trophy, Star, Users, Repeat, Gift, Lock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import Header from "@/components/header";
 
 interface Achievement {
   id: string;
@@ -30,12 +31,15 @@ export default function Achievements() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 p-8">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-4xl font-bold mb-2">Achievements</h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-8">Loading your achievements...</p>
+      <>
+        <Header />
+        <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 p-8">
+          <div className="max-w-7xl mx-auto">
+            <h1 className="text-4xl font-bold mb-2">Achievements</h1>
+            <p className="text-gray-600 dark:text-gray-400 mb-8">Loading your achievements...</p>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -108,16 +112,18 @@ export default function Achievements() {
   const referralAchievements = achievements.filter(a => a.achievementType.startsWith('referral_'));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-            Achievements
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Track your home maintenance milestones and accomplishments
-          </p>
-        </div>
+    <>
+      <Header />
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 p-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+              Achievements
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Track your home maintenance milestones and accomplishments
+            </p>
+          </div>
 
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -258,5 +264,6 @@ export default function Achievements() {
         )}
       </div>
     </div>
+    </>
   );
 }
