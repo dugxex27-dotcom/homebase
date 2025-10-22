@@ -18,8 +18,33 @@ import {
   Mail,
   CheckCircle,
   AlertCircle,
-  Wrench
+  Wrench,
+  Home
 } from "lucide-react";
+
+const HOME_AREAS = [
+  { value: "hvac", label: "HVAC System" },
+  { value: "plumbing", label: "Plumbing" },
+  { value: "electrical", label: "Electrical" },
+  { value: "roof", label: "Roof" },
+  { value: "foundation", label: "Foundation" },
+  { value: "siding", label: "Siding/Exterior" },
+  { value: "windows", label: "Windows" },
+  { value: "doors", label: "Doors" },
+  { value: "flooring", label: "Flooring" },
+  { value: "kitchen", label: "Kitchen" },
+  { value: "bathroom", label: "Bathroom" },
+  { value: "basement", label: "Basement" },
+  { value: "attic", label: "Attic" },
+  { value: "garage", label: "Garage" },
+  { value: "landscaping", label: "Landscaping/Yard" },
+  { value: "driveway", label: "Driveway/Walkways" },
+  { value: "gutters", label: "Gutters" },
+  { value: "chimney", label: "Chimney" },
+  { value: "septic", label: "Septic System" },
+  { value: "well", label: "Well/Water System" },
+  { value: "other", label: "Other" }
+];
 
 interface ServiceRecord {
   id: string;
@@ -31,6 +56,7 @@ interface ServiceRecord {
   customerEmail: string;
   serviceType: string;
   serviceDescription: string;
+  homeArea?: string;
   serviceDate: string;
   duration: string;
   cost: string;
@@ -51,6 +77,7 @@ export default function HomeownerServiceRecords() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [serviceTypeFilter, setServiceTypeFilter] = useState<string>("all");
+  const [homeAreaFilter, setHomeAreaFilter] = useState<string>("all");
   
   // Load service records for homeowner
   const { data: serviceRecords = [], isLoading } = useQuery<ServiceRecord[]>({
@@ -65,7 +92,8 @@ export default function HomeownerServiceRecords() {
                          (record.contractorName && record.contractorName.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesStatus = statusFilter === 'all' || record.status === statusFilter;
     const matchesServiceType = serviceTypeFilter === 'all' || record.serviceType === serviceTypeFilter;
-    return matchesSearch && matchesStatus && matchesServiceType;
+    const matchesHomeArea = homeAreaFilter === 'all' || record.homeArea === homeAreaFilter;
+    return matchesSearch && matchesStatus && matchesServiceType && matchesHomeArea;
   });
 
   // Get unique service types for filter
@@ -116,7 +144,7 @@ export default function HomeownerServiceRecords() {
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Search</label>
                 <Input
@@ -124,12 +152,13 @@ export default function HomeownerServiceRecords() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="border-amber-200 focus:border-amber-400 focus:ring-amber-400"
+                  data-testid="input-search-service-records"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Status</label>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="border-amber-200 focus:border-amber-400">
+                  <SelectTrigger className="border-amber-200 focus:border-amber-400" data-testid="select-status-filter">
                     <SelectValue placeholder="All statuses" />
                   </SelectTrigger>
                   <SelectContent>
@@ -143,13 +172,27 @@ export default function HomeownerServiceRecords() {
               <div>
                 <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Service Type</label>
                 <Select value={serviceTypeFilter} onValueChange={setServiceTypeFilter}>
-                  <SelectTrigger className="border-amber-200 focus:border-amber-400">
+                  <SelectTrigger className="border-amber-200 focus:border-amber-400" data-testid="select-service-type-filter">
                     <SelectValue placeholder="All types" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Types</SelectItem>
                     {serviceTypes.map((type) => (
                       <SelectItem key={type} value={type}>{type}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Home Area</label>
+                <Select value={homeAreaFilter} onValueChange={setHomeAreaFilter}>
+                  <SelectTrigger className="border-amber-200 focus:border-amber-400" data-testid="select-home-area-filter">
+                    <SelectValue placeholder="All areas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Areas</SelectItem>
+                    {HOME_AREAS.map((area) => (
+                      <SelectItem key={area.value} value={area.value}>{area.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -189,7 +232,7 @@ export default function HomeownerServiceRecords() {
               <FileText className="mx-auto h-16 w-16 text-gray-400 mb-4" />
               <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">No Service Records Found</h3>
               <p className="text-gray-500 dark:text-gray-400">
-                {searchTerm || statusFilter !== 'all' || serviceTypeFilter !== 'all' 
+                {searchTerm || statusFilter !== 'all' || serviceTypeFilter !== 'all' || homeAreaFilter !== 'all'
                   ? "Try adjusting your filters to see more results."
                   : "No service records have been added to your account yet."}
               </p>
@@ -252,6 +295,15 @@ export default function HomeownerServiceRecords() {
 
                     {/* Service Details */}
                     <div className="grid grid-cols-2 gap-4 text-sm">
+                      {record.homeArea && (
+                        <div className="flex items-center gap-2">
+                          <Home className="w-4 h-4 text-amber-600" />
+                          <span className="text-gray-600 dark:text-gray-400">Area:</span>
+                          <span className="font-medium text-gray-700 dark:text-gray-300">
+                            {HOME_AREAS.find(a => a.value === record.homeArea)?.label || record.homeArea}
+                          </span>
+                        </div>
+                      )}
                       <div className="flex items-center gap-2">
                         <Clock className="w-4 h-4 text-amber-600" />
                         <span className="text-gray-600 dark:text-gray-400">Duration:</span>

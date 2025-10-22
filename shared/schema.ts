@@ -304,6 +304,7 @@ export const serviceRecords = pgTable("service_records", {
   customerEmail: text("customer_email"),
   serviceType: text("service_type").notNull(),
   serviceDescription: text("service_description").notNull(),
+  homeArea: text("home_area"), // What part of home was serviced (roof, HVAC, plumbing, etc.)
   serviceDate: text("service_date").notNull(),
   duration: text("duration"),
   cost: decimal("cost", { precision: 10, scale: 2 }).notNull().default("0"),

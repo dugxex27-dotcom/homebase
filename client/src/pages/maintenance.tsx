@@ -377,6 +377,9 @@ export default function Maintenance() {
   const [isApplianceManualDialogOpen, setIsApplianceManualDialogOpen] = useState(false);
   const [editingApplianceManual, setEditingApplianceManual] = useState<HomeApplianceManual | null>(null);
   const [selectedApplianceId, setSelectedApplianceId] = useState<string>("");
+  
+  // Service logs filter state
+  const [homeAreaFilter, setHomeAreaFilter] = useState<string>("all");
 
   // Use authenticated user's ID  
   const homeownerId = (user as any)?.id;
@@ -3041,6 +3044,21 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             </Button>
           </div>
 
+          {/* Home Area Filter */}
+          <div className="mb-4">
+            <Select value={homeAreaFilter} onValueChange={setHomeAreaFilter}>
+              <SelectTrigger className="w-full md:w-64" style={{ backgroundColor: '#f2f2f2' }} data-testid="select-home-area-filter-logs">
+                <SelectValue placeholder="Filter by home area" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Home Areas</SelectItem>
+                {HOME_AREAS.map((area) => (
+                  <SelectItem key={area.value} value={area.value}>{area.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           {maintenanceLogsLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[...Array(3)].map((_, i) => (
@@ -3056,91 +3074,104 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                 ))}
               </div>
             ) : maintenanceLogs && maintenanceLogs.length > 0 ? (
-              <div className="space-y-4">
-                {maintenanceLogs.map((log) => (
-                  <Card key={log.id} className="hover:shadow-md transition-shadow" style={{ backgroundColor: '#f2f2f2' }}>
-                    <CardContent className="p-6">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex items-start gap-3">
-                          <div className="bg-primary/10 p-2 rounded">
-                            <Wrench className="w-5 h-5 text-primary" />
-                          </div>
-                          <div>
-                            <h4 className="font-semibold text-foreground mb-1">
-                              {log.serviceDescription}
-                            </h4>
-                            <div className="flex items-center gap-4 text-sm" style={{ color: '#2c0f5b' }}>
-                              <span className="flex items-center gap-1">
-                                <Calendar className="w-4 h-4" />
-                                {new Date(log.serviceDate).toLocaleDateString()}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <MapPin className="w-4 h-4" />
-                                {getHomeAreaLabel(log.homeArea)}
-                              </span>
-                              <span className="px-2 py-1 rounded-full text-xs" style={{ backgroundColor: '#2c0f5b20', color: '#2c0f5b' }}>
-                                {getServiceTypeLabel(log.serviceType)}
-                              </span>
+              (() => {
+                const filteredLogs = maintenanceLogs.filter(log => homeAreaFilter === "all" || log.homeArea === homeAreaFilter);
+                return filteredLogs.length > 0 ? (
+                  <div className="space-y-4">
+                    {filteredLogs.map((log) => (
+                      <Card key={log.id} className="hover:shadow-md transition-shadow" style={{ backgroundColor: '#f2f2f2' }}>
+                        <CardContent className="p-6">
+                          <div className="flex justify-between items-start mb-4">
+                            <div className="flex items-start gap-3">
+                              <div className="bg-primary/10 p-2 rounded">
+                                <Wrench className="w-5 h-5 text-primary" />
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-foreground mb-1">
+                                  {log.serviceDescription}
+                                </h4>
+                                <div className="flex items-center gap-4 text-sm" style={{ color: '#2c0f5b' }}>
+                                  <span className="flex items-center gap-1">
+                                    <Calendar className="w-4 h-4" />
+                                    {new Date(log.serviceDate).toLocaleDateString()}
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <MapPin className="w-4 h-4" />
+                                    {getHomeAreaLabel(log.homeArea)}
+                                  </span>
+                                  <span className="px-2 py-1 rounded-full text-xs" style={{ backgroundColor: '#2c0f5b20', color: '#2c0f5b' }}>
+                                    {getServiceTypeLabel(log.serviceType)}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex gap-1">
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => handleEditMaintenanceLog(log)}
+                                style={{ color: '#2c0f5b' }}
+                                className="hover:opacity-90"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                onClick={() => deleteMaintenanceLogMutation.mutate(log.id)}
+                                disabled={deleteMaintenanceLogMutation.isPending}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
                             </div>
                           </div>
-                        </div>
-                        <div className="flex gap-1">
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            onClick={() => handleEditMaintenanceLog(log)}
-                            style={{ color: '#2c0f5b' }}
-                            className="hover:opacity-90"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            onClick={() => deleteMaintenanceLogMutation.mutate(log.id)}
-                            disabled={deleteMaintenanceLogMutation.isPending}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        {log.cost && (
-                          <div className="flex items-center gap-2">
-                            <DollarSign className="w-4 h-4 text-muted-foreground" />
-                            <span className="font-medium">${log.cost}</span>
+                          
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            {log.cost && (
+                              <div className="flex items-center gap-2">
+                                <DollarSign className="w-4 h-4 text-muted-foreground" />
+                                <span className="font-medium">${log.cost}</span>
+                              </div>
+                            )}
+                            {log.contractorName && (
+                              <div className="flex items-center gap-2">
+                                <User className="w-4 h-4 text-muted-foreground" />
+                                <span>{log.contractorName}</span>
+                              </div>
+                            )}
+                            {log.contractorCompany && (
+                              <div className="flex items-center gap-2">
+                                <Building2 className="w-4 h-4 text-muted-foreground" />
+                                <span>{log.contractorCompany}</span>
+                              </div>
+                            )}
+                            {log.nextServiceDue && (
+                              <div className="flex items-center gap-2">
+                                <Clock className="w-4 h-4 text-muted-foreground" />
+                                <span>Due: {new Date(log.nextServiceDue).toLocaleDateString()}</span>
+                              </div>
+                            )}
                           </div>
-                        )}
-                        {log.contractorName && (
-                          <div className="flex items-center gap-2">
-                            <User className="w-4 h-4 text-muted-foreground" />
-                            <span>{log.contractorName}</span>
-                          </div>
-                        )}
-                        {log.contractorCompany && (
-                          <div className="flex items-center gap-2">
-                            <Building2 className="w-4 h-4 text-muted-foreground" />
-                            <span>{log.contractorCompany}</span>
-                          </div>
-                        )}
-                        {log.nextServiceDue && (
-                          <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-muted-foreground" />
-                            <span>Due: {new Date(log.nextServiceDue).toLocaleDateString()}</span>
-                          </div>
-                        )}
-                      </div>
-                      
-                      {log.notes && (
-                        <div className="mt-4 p-3 bg-muted rounded text-sm">
-                          <span className="text-muted-foreground">{log.notes}</span>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                          
+                          {log.notes && (
+                            <div className="mt-4 p-3 bg-muted rounded text-sm">
+                              <span className="text-muted-foreground">{log.notes}</span>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <FileText className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium mb-2" style={{ color: '#ffffff' }}>No service records for this home area</h3>
+                    <p className="mb-4" style={{ color: '#b6a6f4' }}>
+                      Try selecting a different home area or clear the filter to see all records.
+                    </p>
+                  </div>
+                );
+              })()
             ) : (
               <div className="text-center py-12">
                 <FileText className="w-16 h-16 mx-auto text-muted-foreground mb-4" />

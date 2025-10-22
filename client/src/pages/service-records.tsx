@@ -32,6 +32,7 @@ interface ServiceRecord {
   customerEmail: string;
   serviceType: string;
   serviceDescription: string;
+  homeArea?: string;
   serviceDate: string;
   duration: string;
   cost: number;
@@ -67,6 +68,30 @@ const SERVICE_TYPES = [
   "Custom Service"
 ];
 
+const HOME_AREAS = [
+  { value: "hvac", label: "HVAC System" },
+  { value: "plumbing", label: "Plumbing" },
+  { value: "electrical", label: "Electrical" },
+  { value: "roof", label: "Roof" },
+  { value: "foundation", label: "Foundation" },
+  { value: "siding", label: "Siding/Exterior" },
+  { value: "windows", label: "Windows" },
+  { value: "doors", label: "Doors" },
+  { value: "flooring", label: "Flooring" },
+  { value: "kitchen", label: "Kitchen" },
+  { value: "bathroom", label: "Bathroom" },
+  { value: "basement", label: "Basement" },
+  { value: "attic", label: "Attic" },
+  { value: "garage", label: "Garage" },
+  { value: "landscaping", label: "Landscaping/Yard" },
+  { value: "driveway", label: "Driveway/Walkways" },
+  { value: "gutters", label: "Gutters" },
+  { value: "chimney", label: "Chimney" },
+  { value: "septic", label: "Septic System" },
+  { value: "well", label: "Well/Water System" },
+  { value: "other", label: "Other" }
+];
+
 export default function ServiceRecords() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -82,6 +107,7 @@ export default function ServiceRecords() {
     customerEmail: '',
     serviceType: '',
     serviceDescription: '',
+    homeArea: '',
     serviceDate: '',
     duration: '',
     cost: '',
@@ -172,6 +198,7 @@ export default function ServiceRecords() {
       customerEmail: '',
       serviceType: '',
       serviceDescription: '',
+      homeArea: '',
       serviceDate: '',
       duration: '',
       cost: '',
@@ -218,6 +245,7 @@ export default function ServiceRecords() {
       customerEmail: record.customerEmail,
       serviceType: record.serviceType,
       serviceDescription: record.serviceDescription,
+      homeArea: record.homeArea || '',
       serviceDate: record.serviceDate,
       duration: record.duration,
       cost: record.cost.toString(),
@@ -406,6 +434,20 @@ export default function ServiceRecords() {
                         required
                         style={{ backgroundColor: '#ffffff' }}
                       />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="homeArea" style={{ color: 'white' }}>Home Area</Label>
+                      <Select value={formData.homeArea} onValueChange={(value) => handleInputChange('homeArea', value)}>
+                        <SelectTrigger style={{ backgroundColor: '#1560a2', color: 'white' }} className="hover:bg-[#afd6f9] hover:text-black transition-colors" data-testid="select-home-area">
+                          <SelectValue placeholder="Select home area" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {HOME_AREAS.map((area) => (
+                            <SelectItem key={area.value} value={area.value}>{area.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
