@@ -139,7 +139,7 @@ export default function SignIn() {
   };
 
   const handleGoogleLogin = () => {
-    window.location.href = '/api/login';
+    window.location.href = '/auth/google';
   };
 
   const handleDemoLogin = async (role: 'homeowner' | 'contractor') => {
