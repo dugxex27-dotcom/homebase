@@ -385,6 +385,7 @@ export default function Contractors() {
                     <option value="3">3+ stars</option>
                   </select>
                 </div>
+                <div className="text-xs mt-1 invisible" aria-hidden="true">Spacer</div>
               </div>
 
               {/* Services Filter */}
@@ -448,6 +449,7 @@ export default function Contractors() {
                   </div>
                 )}
                 </div>
+                <div className="text-xs mt-1 invisible" aria-hidden="true">Spacer</div>
               </div>
 
               {/* Emergency Services */}
@@ -470,6 +472,7 @@ export default function Contractors() {
                     </label>
                   </div>
                 </div>
+                <div className="text-xs mt-1 invisible" aria-hidden="true">Spacer</div>
               </div>
 
               {/* Apply Filters Button */}
@@ -510,6 +513,7 @@ export default function Contractors() {
                     Apply Filters
                   </button>
                 </div>
+                <div className="text-xs mt-1 invisible" aria-hidden="true">Spacer</div>
               </div>
             </div>
           </div>
