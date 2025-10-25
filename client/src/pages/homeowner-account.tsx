@@ -256,11 +256,9 @@ export default function HomeownerAccount() {
           <p style={{ color: '#b6a6f4' }}>Manage your profile information and preferences</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Profile Information */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Basic Profile */}
-            <Card style={{ backgroundColor: '#f2f2f2' }}>
+        <div className="space-y-6 max-w-4xl mx-auto">
+          {/* Basic Profile */}
+          <Card style={{ backgroundColor: '#f2f2f2' }}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <User className="w-5 h-5" />
@@ -411,11 +409,9 @@ export default function HomeownerAccount() {
                 </div>
               </CardContent>
             </Card>
-          </div>
 
           {/* Notification Preferences */}
-          <div className="space-y-6">
-            <Card style={{ backgroundColor: '#f2f2f2' }}>
+          <Card style={{ backgroundColor: '#f2f2f2' }}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Bell className="w-5 h-5" />
@@ -829,7 +825,6 @@ export default function HomeownerAccount() {
                 </div>
               </CardContent>
             </Card>
-          </div>
         </div>
       </div>
     </div>
