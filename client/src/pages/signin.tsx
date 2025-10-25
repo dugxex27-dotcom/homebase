@@ -142,22 +142,18 @@ export default function SignIn() {
     window.location.href = '/auth/google';
   };
 
-  const handleDemoLogin = async (role: 'homeowner' | 'contractor') => {
+  const handleDemoLogin = async () => {
     try {
-      const endpoint = role === 'contractor' 
-        ? '/api/auth/contractor-demo-login'
-        : '/api/auth/homeowner-demo-login';
-      
-      const body = role === 'contractor'
-        ? { email: 'demo@contractor.com', name: 'Demo Contractor', company: 'Demo Company' }
-        : { email: 'demo@homeowner.com', name: 'Demo Homeowner', role: 'homeowner' };
-      
-      const response = await apiRequest(endpoint, 'POST', body);
+      const response = await apiRequest('/api/auth/homeowner-demo-login', 'POST', {
+        email: 'demo@homeowner.com',
+        name: 'Demo Homeowner',
+        role: 'homeowner'
+      });
       
       if (response.ok) {
         toast({
           title: "Demo login successful",
-          description: `Logged in as demo ${role}.`,
+          description: "Logged in as demo homeowner.",
         });
         window.location.reload();
       }
@@ -480,33 +476,21 @@ export default function SignIn() {
               </button>
             </div>
 
-            {/* Demo Login Buttons */}
+            {/* Demo Login Button */}
             <div className="pt-4 border-t">
               <p className="text-center text-sm text-muted-foreground mb-3">
                 Demo Login (for testing)
               </p>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => handleDemoLogin('homeowner')}
-                  data-testid="button-demo-homeowner"
-                  style={{ color: '#ffffff' }}
-                >
-                  Homeowner Demo
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => handleDemoLogin('contractor')}
-                  data-testid="button-demo-contractor"
-                  style={{ color: '#ffffff' }}
-                >
-                  Contractor Demo
-                </Button>
-              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={handleDemoLogin}
+                data-testid="button-demo-homeowner"
+                style={{ color: '#ffffff' }}
+              >
+                Homeowner Demo
+              </Button>
             </div>
           </CardContent>
         </Card>

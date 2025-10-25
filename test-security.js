@@ -31,11 +31,13 @@ async function makeRequest(endpoint, options = {}) {
 }
 
 async function loginUser(email, name, role = 'homeowner') {
-  const endpoint = role === 'contractor' 
-    ? '/api/auth/contractor-demo-login' 
-    : '/api/auth/homeowner-demo-login';
-    
-  const response = await makeRequest(endpoint, {
+  // Note: Only homeowner demo login is supported
+  // Contractor test users should use standard registration
+  if (role === 'contractor') {
+    throw new Error('Contractor demo login is no longer supported. Use standard registration instead.');
+  }
+  
+  const response = await makeRequest('/api/auth/homeowner-demo-login', {
     method: 'POST',
     body: JSON.stringify({ email, name, role })
   });

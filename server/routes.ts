@@ -178,37 +178,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Simple contractor demo login (no OAuth)
-  app.post('/api/auth/contractor-demo-login', authLimiter, async (req, res) => {
-    try {
-      const { email, name, company } = req.body;
-      
-      if (!email || !name || !company) {
-        return res.status(400).json({ message: "Missing required fields" });
-      }
-
-      // Create a demo contractor user
-      const contractorId = `demo-contractor-${Date.now()}`;
-      const user = await storage.upsertUser({
-        id: contractorId,
-        email: email,
-        firstName: name.split(' ')[0],
-        lastName: name.split(' ').slice(1).join(' '),
-        profileImageUrl: null,
-        role: 'contractor'
-      });
-
-      // Create a simple session (for demo purposes)
-      req.session.user = user;
-      req.session.isAuthenticated = true;
-
-      res.json({ success: true, user });
-    } catch (error) {
-      console.error("Error creating contractor demo user:", error);
-      res.status(500).json({ message: "Failed to create contractor account" });
-    }
-  });
-
   // Simple homeowner demo login
   app.post('/api/auth/homeowner-demo-login', authLimiter, async (req, res) => {
     try {
