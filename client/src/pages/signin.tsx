@@ -179,7 +179,8 @@ export default function SignIn() {
           title: "Demo login successful",
           description: "Logged in as demo contractor.",
         });
-        window.location.href = '/contractor-dashboard';
+        // Reload the page to properly initialize the session
+        window.location.reload();
       }
     } catch (error) {
       toast({

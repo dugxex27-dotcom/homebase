@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import type { Product, User, House } from "@shared/schema";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 
 const AVAILABLE_SERVICES = [
   "Appliance Installation",
@@ -74,9 +74,17 @@ const AVAILABLE_SERVICES = [
 export default function Home() {
   const { user } = useAuth();
   const typedUser = user as User | undefined;
+  const [, setLocation] = useLocation();
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [showServiceDropdown, setShowServiceDropdown] = useState(false);
   const serviceDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Redirect contractors to their dashboard
+  useEffect(() => {
+    if (typedUser?.role === 'contractor') {
+      setLocation('/contractor-dashboard');
+    }
+  }, [typedUser, setLocation]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
