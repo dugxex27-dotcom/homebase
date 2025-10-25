@@ -2660,6 +2660,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                                           deleteTaskOverrideMutation.mutate(taskId);
                                         }}
                                         className="text-xs"
+                                        style={{ color: '#ffffff', borderColor: '#ffffff' }}
                                         data-testid={`button-reset-${taskId}`}
                                       >
                                         Reset to Default
@@ -2669,7 +2670,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
                                   {/* Frequency Control */}
                                   <div>
-                                    <label className="text-sm font-medium mb-2 block">
+                                    <label className="text-sm font-medium mb-2 block" style={{ color: '#ffffff' }}>
                                       Task Frequency
                                     </label>
                                     <Select
@@ -2706,7 +2707,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
                                   {/* Show current customization status */}
                                   {currentOverride && (
-                                    <div className="text-xs text-muted-foreground bg-blue-50 dark:bg-blue-900/20 p-2 rounded">
+                                    <div className="text-xs bg-blue-50 dark:bg-blue-900/20 p-2 rounded" style={{ color: '#ffffff' }}>
                                       <strong>Current customization:</strong>
                                       {currentOverride.isEnabled ? 
                                         ` Enabled, ${currentOverride.frequencyType || 'default'} frequency` :
