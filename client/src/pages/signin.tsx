@@ -238,6 +238,7 @@ export default function SignIn() {
                             placeholder="Enter your email"
                             {...field}
                             data-testid="input-email"
+                            style={{ color: '#ffffff' }}
                           />
                         </FormControl>
                         <FormMessage />
