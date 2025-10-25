@@ -64,6 +64,9 @@ function Router() {
     <Switch>
       <Route path="/" component={Home} />
       
+      {/* Complete profile route - accessible to authenticated users */}
+      <Route path="/complete-profile" component={CompleteProfile} />
+      
       {/* Public routes */}
       <Route path="/house-transfer/:token" component={HouseTransferAccept} />
       
