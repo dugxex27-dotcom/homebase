@@ -53,6 +53,7 @@ Preferred communication style: Simple, everyday language.
     - Detailed profiles with personal, professional, and service offering information.
     - Comprehensive proposal management system (create, edit, delete, status tracking).
     - Service radius configuration in 5-mile increments.
+    - No seed/demo contractors - all contractors register through standard registration process.
 - **Homeowner Features**:
     - Multi-property support with individual maintenance schedules.
     - Automatic climate zone detection based on property address using geocoding.
