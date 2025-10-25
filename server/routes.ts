@@ -30,8 +30,8 @@ const authLimiter = rateLimit({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Skip OAuth setup to prevent browser crashes
-  // await setupAuth(app);
+  // Set up OAuth authentication
+  await setupAuth(app);
 
   // Auth routes
   app.get('/api/auth/user', async (req: any, res) => {
