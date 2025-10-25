@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated, requireRole, requirePropertyOwner } from "./replitAuth";
+import { setupGoogleAuth } from "./googleAuth";
 import { z } from "zod";
 import { randomUUID } from "crypto";
 import rateLimit from "express-rate-limit";
@@ -30,8 +31,8 @@ const authLimiter = rateLimit({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Set up OAuth authentication
-  await setupAuth(app);
+  // Set up Google OAuth authentication (replaces Replit Auth)
+  await setupGoogleAuth(app);
 
   // Auth routes
   app.get('/api/auth/user', async (req: any, res) => {
@@ -55,12 +56,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Demo logout
-  app.post('/api/auth/logout', (req, res) => {
-    req.session.destroy((err) => {
+  app.post('/api/auth/logout', (req: any, res) => {
+    req.logout((err: any) => {
       if (err) {
-        return res.status(500).json({ message: "Could not log out" });
+        console.error('Passport logout error:', err);
       }
-      res.json({ success: true });
+      req.session.destroy((sessionErr: any) => {
+        if (sessionErr) {
+          return res.status(500).json({ message: "Could not log out" });
+        }
+        res.json({ success: true });
+      });
     });
   });
 
