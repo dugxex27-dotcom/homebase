@@ -2552,8 +2552,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                             className="mt-1"
                           />
                           <CardTitle className={`text-lg font-semibold ${
-                            completed ? 'text-green-700 dark:text-green-300 line-through' : 'text-foreground'
-                          }`}>
+                            completed ? 'line-through' : ''
+                          }`} style={{ color: '#ffffff' }}>
                             {task.title}
                           </CardTitle>
                         </div>
@@ -2574,14 +2574,14 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <p className="text-muted-foreground leading-relaxed">
+                      <p className="leading-relaxed" style={{ color: '#ffffff' }}>
                         {task.description}
                       </p>
 
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div className="flex items-center">
-                          <Clock className="w-4 h-4 mr-2 text-muted-foreground" />
-                          <span>{task.estimatedTime}</span>
+                          <Clock className="w-4 h-4 mr-2" style={{ color: '#ffffff' }} />
+                          <span style={{ color: '#ffffff' }}>{task.estimatedTime}</span>
                         </div>
                         <div className="flex items-center">
                           <Badge variant="secondary" className={getDifficultyColor(task.difficulty)}>
@@ -2590,8 +2590,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                         </div>
                         {task.cost && (
                           <div className="flex items-center">
-                            <DollarSign className="w-4 h-4 mr-2 text-muted-foreground" />
-                            <span>{task.cost}</span>
+                            <DollarSign className="w-4 h-4 mr-2" style={{ color: '#ffffff' }} />
+                            <span style={{ color: '#ffffff' }}>{task.cost}</span>
                           </div>
                         )}
                         <div className="flex items-center">
@@ -2604,8 +2604,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       {task.tools && task.tools.length > 0 && (
                         <div>
                           <div className="flex items-center mb-2">
-                            <Wrench className="w-4 h-4 mr-2 text-muted-foreground" />
-                            <span className="text-sm font-medium">Tools needed:</span>
+                            <Wrench className="w-4 h-4 mr-2" style={{ color: '#ffffff' }} />
+                            <span className="text-sm font-medium" style={{ color: '#ffffff' }}>Tools needed:</span>
                           </div>
                           <div className="flex flex-wrap gap-1">
                             {task.tools.map((tool, index) => (
@@ -2621,8 +2621,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       <Collapsible open={showCustomizeTask === task.id}>
                         <CollapsibleContent>
                           <div className="border rounded-lg p-4 bg-slate-50 dark:bg-slate-800">
-                            <h4 className="font-medium mb-3 flex items-center">
-                              <Settings className="w-4 h-4 mr-2" />
+                            <h4 className="font-medium mb-3 flex items-center" style={{ color: '#ffffff' }}>
+                              <Settings className="w-4 h-4 mr-2" style={{ color: '#ffffff' }} />
                               Customize This Task
                             </h4>
                             
@@ -2648,7 +2648,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                                         }}
                                         data-testid={`checkbox-enable-${taskId}`}
                                       />
-                                      <label htmlFor={`enable-${taskId}`} className="text-sm font-medium">
+                                      <label htmlFor={`enable-${taskId}`} className="text-sm font-medium" style={{ color: '#ffffff' }}>
                                         Enable this task
                                       </label>
                                     </div>
