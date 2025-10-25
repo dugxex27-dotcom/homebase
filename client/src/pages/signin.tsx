@@ -82,7 +82,7 @@ export default function SignIn() {
       if (role === 'contractor') {
         setLocation('/contractor-dashboard');
       } else {
-        setLocation('/dashboard');
+        setLocation('/');
       }
     },
     onError: (error: Error) => {
@@ -118,7 +118,7 @@ export default function SignIn() {
       if (role === 'contractor') {
         setLocation('/contractor-dashboard');
       } else {
-        setLocation('/dashboard');
+        setLocation('/');
       }
     },
     onError: (error: Error) => {

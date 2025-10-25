@@ -125,7 +125,7 @@ export async function setupGoogleAuth(app: Express) {
           const redirectPath =
             user.role === 'contractor'
               ? '/contractor-dashboard'
-              : '/dashboard';
+              : '/';
           res.redirect(redirectPath);
         });
       } catch (error) {
