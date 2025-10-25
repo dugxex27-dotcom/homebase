@@ -568,6 +568,7 @@ export default function HomeownerAccount() {
                       size="sm"
                       data-testid="button-share-text"
                       className="flex items-center gap-2"
+                      style={{ color: '#6B7280' }}
                     >
                       <MessageSquare className="w-4 h-4" />
                       Text Message
