@@ -345,7 +345,7 @@ export default function Contractors() {
                 <label className="text-sm font-medium text-foreground mb-3 block">Distance from you ({getDistanceUnit(userCountry)})</label>
                 <div>
                   <select 
-                    className="w-full px-3 py-2 border border-muted rounded-md"
+                    className="w-full h-[42px] px-3 py-2 border border-muted rounded-md"
                     style={{ color: '#ffffff', backgroundColor: '#1e1e20' }}
                     value={selectedDistance}
                     onChange={(e) => {
@@ -371,7 +371,7 @@ export default function Contractors() {
                 <label className="text-sm font-medium text-foreground mb-3 block">Minimum Rating</label>
                 <div>
                   <select 
-                    className="w-full px-3 py-2 border border-muted rounded-md"
+                    className="w-full h-[42px] px-3 py-2 border border-muted rounded-md"
                     style={{ color: '#ffffff', backgroundColor: '#1e1e20' }}
                     value={selectedRating}
                     onChange={(e) => {
@@ -393,7 +393,7 @@ export default function Contractors() {
                 <div>
                   <button
                   type="button"
-                  className="w-full px-3 py-2 border border-muted rounded-md text-left flex items-center justify-between"
+                  className="w-full h-[42px] px-3 py-2 border border-muted rounded-md text-left flex items-center justify-between"
                   style={{ color: '#ffffff', backgroundColor: '#1e1e20' }}
                   onClick={() => setServicesDropdownOpen(!servicesDropdownOpen)}
                   data-testid="filter-services"
@@ -454,7 +454,7 @@ export default function Contractors() {
               <div className="flex flex-col h-full">
                 <label className="text-sm font-medium text-foreground mb-3 block">Emergency Services</label>
                 <div>
-                  <div className="flex items-center space-x-2">
+                  <div className="h-[42px] flex items-center space-x-2">
                     <input 
                       type="checkbox" 
                       id="emergency-services"
@@ -479,7 +479,7 @@ export default function Contractors() {
                 </label>
                 <div>
                   <button 
-                    className="w-full py-2 px-4 rounded-md text-white font-medium hover:opacity-90"
+                    className="w-full h-[42px] px-4 rounded-md text-white font-medium hover:opacity-90"
                     style={{ backgroundColor: '#3c258e' }}
                     onClick={() => {
                       const newFilters: any = {};
