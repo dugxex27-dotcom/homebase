@@ -502,6 +502,7 @@ export default function SignIn() {
                   className="flex-1"
                   onClick={() => handleDemoLogin('contractor')}
                   data-testid="button-demo-contractor"
+                  style={{ color: '#ffffff' }}
                 >
                   Contractor Demo
                 </Button>
