@@ -179,7 +179,7 @@ export default function SignIn() {
           title: "Demo login successful",
           description: "Logged in as demo contractor.",
         });
-        setLocation('/contractor-dashboard');
+        window.location.href = '/contractor-dashboard';
       }
     } catch (error) {
       toast({
