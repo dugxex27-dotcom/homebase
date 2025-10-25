@@ -316,6 +316,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Complete profile for OAuth users
+  app.post('/api/auth/complete-profile', async (req: any, res) => {
+    try {
+      if (!req.session?.isAuthenticated || !req.session?.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { zipCode, role } = req.body;
+      
+      if (!zipCode || !role) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      const userId = req.session.user.id;
+      const currentUser = await storage.getUser(userId);
+      
+      if (!currentUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Update user with zip code and role
+      const updatedUser = await storage.upsertUser({
+        ...currentUser,
+        zipCode,
+        role: role as 'homeowner' | 'contractor'
+      });
+
+      // Update session
+      req.session.user = updatedUser;
+
+      res.json({ success: true, role: updatedUser.role });
+    } catch (error) {
+      console.error("Error completing profile:", error);
+      res.status(500).json({ message: "Failed to complete profile" });
+    }
+  });
+
   // Admin middleware
   const requireAdmin: any = (req: any, res: any, next: any) => {
     if (!req.session?.isAuthenticated || !req.session?.user) {
