@@ -172,10 +172,10 @@ export default function Achievements() {
           {/* Category Tabs */}
           <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="mb-8">
             <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-4 mb-6" style={{ backgroundColor: '#f2f2f2' }}>
-              <TabsTrigger value="all" data-testid="tab-all">All</TabsTrigger>
-              <TabsTrigger value="seasonal" data-testid="tab-seasonal">Seasonal</TabsTrigger>
-              <TabsTrigger value="financial savvy" data-testid="tab-financial">Financial</TabsTrigger>
-              <TabsTrigger value="organization" data-testid="tab-organization">Organization</TabsTrigger>
+              <TabsTrigger value="all" data-testid="tab-all" className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm text-[#e9d5ff]">All</TabsTrigger>
+              <TabsTrigger value="seasonal" data-testid="tab-seasonal" className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm text-[#e9d5ff]">Seasonal</TabsTrigger>
+              <TabsTrigger value="financial savvy" data-testid="tab-financial" className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm text-[#e9d5ff]">Financial</TabsTrigger>
+              <TabsTrigger value="organization" data-testid="tab-organization" className="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm text-[#e9d5ff]">Organization</TabsTrigger>
             </TabsList>
 
             <TabsContent value={selectedCategory}>
