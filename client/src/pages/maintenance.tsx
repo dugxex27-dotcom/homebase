@@ -2602,7 +2602,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       {task.tools && task.tools.length > 0 && (
                         <div>
                           <div className="flex items-center mb-2">
-                            <Wrench className="w-4 h-4 mr-2" style={{ color: '#ffffff' }} />
+                            <Wrench className="w-4 h-4 mr-2" style={{ color: '#ef4444' }} />
                             <span className="text-sm font-medium text-[#2c0f5b]" style={{ color: '#2c0f5b' }}>Tools needed:</span>
                           </div>
                           <div className="flex flex-wrap gap-1">
