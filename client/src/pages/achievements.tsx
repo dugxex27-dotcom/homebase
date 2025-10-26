@@ -172,7 +172,7 @@ export default function Achievements() {
           {/* Category Tabs */}
           <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="mb-8">
             <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-4 mb-6" style={{ backgroundColor: '#f2f2f2' }}>
-              <TabsTrigger value="all" data-testid="tab-all" className="text-[#4b435c] bg-[#2c0f5b8f]">All</TabsTrigger>
+              <TabsTrigger value="all" data-testid="tab-all" className="text-[#4b435c] bg-[#2c0f5b87]">All</TabsTrigger>
               <TabsTrigger value="seasonal" data-testid="tab-seasonal" className="text-[#4b435c] bg-[#2c0f5b8f]">Seasonal</TabsTrigger>
               <TabsTrigger value="financial savvy" data-testid="tab-financial" className="text-[#4b435c] bg-[#2c0f5b8f]">Financial</TabsTrigger>
               <TabsTrigger value="organization" data-testid="tab-organization" className="text-[#4b435c] bg-[#2c0f5b8f]">Organization</TabsTrigger>
