@@ -343,7 +343,7 @@ export default function Contractors() {
 
               {/* Distance Filter */}
               <div className="flex flex-col h-full">
-                <label className="text-sm font-medium text-foreground mb-3 block">Distance from you ({getDistanceUnit(userCountry)})</label>
+                <label className="text-sm font-medium text-foreground mb-3 block whitespace-nowrap">Distance from you ({getDistanceUnit(userCountry)})</label>
                 <div>
                   <select 
                     className="w-full h-[42px] px-3 py-2 border border-muted rounded-md"
