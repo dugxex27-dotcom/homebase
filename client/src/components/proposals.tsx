@@ -327,6 +327,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
                               placeholder="Kitchen renovation proposal"
                               {...field}
                               data-testid="input-proposal-title"
+                              style={{ backgroundColor: 'white', color: '#000000' }}
                             />
                           </FormControl>
                           <FormMessage />
@@ -341,7 +342,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
                           <FormLabel style={{ color: 'white' }}>Service Type</FormLabel>
                           <FormControl>
                             <Select value={field.value} onValueChange={field.onChange}>
-                              <SelectTrigger data-testid="select-service-type">
+                              <SelectTrigger data-testid="select-service-type" style={{ backgroundColor: 'white', color: '#000000' }}>
                                 <SelectValue placeholder="Select service type" />
                               </SelectTrigger>
                               <SelectContent>
@@ -378,6 +379,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
                             placeholder="Brief overview of the project"
                             {...field}
                             data-testid="textarea-proposal-description"
+                            style={{ backgroundColor: 'white', color: '#000000' }}
                           />
                         </FormControl>
                         <FormMessage />
@@ -397,6 +399,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
                             rows={4}
                             {...field}
                             data-testid="textarea-proposal-scope"
+                            style={{ backgroundColor: 'white', color: '#000000' }}
                           />
                         </FormControl>
                         <FormMessage />
@@ -418,6 +421,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
                               placeholder="0.00"
                               {...field}
                               data-testid="input-estimated-cost"
+                              style={{ backgroundColor: 'white', color: '#000000' }}
                             />
                           </FormControl>
                           <FormMessage />
@@ -435,6 +439,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
                               placeholder="2-3 days, 1 week, etc."
                               {...field}
                               data-testid="input-estimated-duration"
+                              style={{ backgroundColor: 'white', color: '#000000' }}
                             />
                           </FormControl>
                           <FormMessage />
@@ -454,6 +459,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
                             placeholder="Pipes, fittings, sealant, labor"
                             {...field}
                             data-testid="input-materials"
+                            style={{ backgroundColor: 'white', color: '#000000' }}
                           />
                         </FormControl>
                         <FormMessage />
@@ -474,6 +480,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
                               {...field}
                               value={field.value || ""}
                               data-testid="input-warranty-period"
+                              style={{ backgroundColor: 'white', color: '#000000' }}
                             />
                           </FormControl>
                           <FormMessage />
@@ -491,6 +498,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
                               type="date"
                               {...field}
                               data-testid="input-valid-until"
+                              style={{ backgroundColor: 'white', color: '#000000' }}
                             />
                           </FormControl>
                           <FormMessage />
@@ -507,7 +515,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
                         <FormLabel style={{ color: 'white' }}>Status</FormLabel>
                         <FormControl>
                           <Select value={field.value} onValueChange={field.onChange}>
-                            <SelectTrigger data-testid="select-status">
+                            <SelectTrigger data-testid="select-status" style={{ backgroundColor: 'white', color: '#000000' }}>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -536,6 +544,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
                             {...field}
                             value={field.value || ""}
                             data-testid="textarea-customer-notes"
+                            style={{ backgroundColor: 'white', color: '#000000' }}
                           />
                         </FormControl>
                         <FormMessage />
@@ -555,6 +564,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
                             {...field}
                             value={field.value || ""}
                             data-testid="textarea-internal-notes"
+                            style={{ backgroundColor: 'white', color: '#000000' }}
                           />
                         </FormControl>
                         <FormMessage />
