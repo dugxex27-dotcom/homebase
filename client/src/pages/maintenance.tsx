@@ -2572,7 +2572,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <p className="leading-relaxed" style={{ color: '#ffffff' }}>
+                      <p className="leading-relaxed" style={{ color: '#2c0f5b' }}>
                         {task.description}
                       </p>
 
