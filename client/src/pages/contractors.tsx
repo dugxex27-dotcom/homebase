@@ -389,7 +389,7 @@ export default function Contractors() {
               </div>
 
               {/* Services Filter */}
-              <div className="flex flex-col h-full relative lg:col-span-2" ref={servicesDropdownRef}>
+              <div className="flex flex-col h-full relative" ref={servicesDropdownRef}>
                 <label className="text-sm font-medium text-foreground mb-3 block">Services</label>
                 <div>
                   <button
