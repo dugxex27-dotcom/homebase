@@ -411,7 +411,7 @@ export default function Contractors() {
                 </button>
                 
                 {servicesDropdownOpen && (
-                  <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-80 overflow-y-auto">
+                  <div className="absolute z-50 w-full mt-6 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-80 overflow-y-auto">
                     <div className="p-2">
                       <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-200 dark:border-gray-700">
                         <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
