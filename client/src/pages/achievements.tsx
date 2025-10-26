@@ -172,10 +172,10 @@ export default function Achievements() {
           {/* Category Tabs */}
           <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="mb-8">
             <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-4 mb-6" style={{ backgroundColor: '#f2f2f2' }}>
-              <TabsTrigger value="all" data-testid="tab-all" className="text-[#4b435c] bg-[#e9d5ff]">All</TabsTrigger>
-              <TabsTrigger value="seasonal" data-testid="tab-seasonal" className="text-[#4b435c] bg-[#e9d5ff]">Seasonal</TabsTrigger>
-              <TabsTrigger value="financial savvy" data-testid="tab-financial" className="text-[#4b435c] bg-[#e9d5ff]">Financial</TabsTrigger>
-              <TabsTrigger value="organization" data-testid="tab-organization" className="text-[#4b435c] bg-[#e9d5ff]">Organization</TabsTrigger>
+              <TabsTrigger value="all" data-testid="tab-all" className="text-[#4b435c]" style={{ backgroundColor: '#e9d5ff' }}>All</TabsTrigger>
+              <TabsTrigger value="seasonal" data-testid="tab-seasonal" className="text-[#4b435c]" style={{ backgroundColor: '#e9d5ff' }}>Seasonal</TabsTrigger>
+              <TabsTrigger value="financial savvy" data-testid="tab-financial" className="text-[#4b435c]" style={{ backgroundColor: '#e9d5ff' }}>Financial</TabsTrigger>
+              <TabsTrigger value="organization" data-testid="tab-organization" className="text-[#4b435c]" style={{ backgroundColor: '#e9d5ff' }}>Organization</TabsTrigger>
             </TabsList>
 
             <TabsContent value={selectedCategory}>
