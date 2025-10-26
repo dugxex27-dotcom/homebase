@@ -3787,7 +3787,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                             type="date"
                             {...field} 
                             value={field.value || ""}
-                            style={{ backgroundColor: '#ffffff' }}
+                            style={{ backgroundColor: '#ffffff', color: '#000000' }}
                           />
                         </FormControl>
                         <FormMessage />
