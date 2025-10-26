@@ -307,9 +307,9 @@ export function Proposals({ contractorId }: ProposalsProps) {
                 Create Proposal
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" style={{ backgroundColor: '#1560a2' }}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" style={{ backgroundColor: 'white' }}>
               <DialogHeader>
-                <DialogTitle style={{ color: 'white' }}>
+                <DialogTitle>
                   {editingProposal ? "Edit Proposal" : "Create New Proposal"}
                 </DialogTitle>
               </DialogHeader>
@@ -321,7 +321,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
                       name="title"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel style={{ color: 'white' }}>Title</FormLabel>
+                          <FormLabel>Title</FormLabel>
                           <FormControl>
                             <Input
                               placeholder="Kitchen renovation proposal"
@@ -338,7 +338,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
                       name="serviceType"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel style={{ color: 'white' }}>Service Type</FormLabel>
+                          <FormLabel>Service Type</FormLabel>
                           <FormControl>
                             <Select value={field.value} onValueChange={field.onChange}>
                               <SelectTrigger data-testid="select-service-type">
@@ -372,7 +372,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
                     name="description"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel style={{ color: 'white' }}>Description</FormLabel>
+                        <FormLabel>Description</FormLabel>
                         <FormControl>
                           <Textarea
                             placeholder="Brief overview of the project"
@@ -390,7 +390,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
                     name="scope"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel style={{ color: 'white' }}>Scope of Work</FormLabel>
+                        <FormLabel>Scope of Work</FormLabel>
                         <FormControl>
                           <Textarea
                             placeholder="Detailed scope of work including specific tasks, materials, and deliverables"
@@ -410,7 +410,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
                       name="estimatedCost"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel style={{ color: 'white' }}>Estimated Cost ($)</FormLabel>
+                          <FormLabel>Estimated Cost ($)</FormLabel>
                           <FormControl>
                             <Input
                               type="number"
@@ -429,7 +429,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
                       name="estimatedDuration"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel style={{ color: 'white' }}>Estimated Duration</FormLabel>
+                          <FormLabel>Estimated Duration</FormLabel>
                           <FormControl>
                             <Input
                               placeholder="2-3 days, 1 week, etc."
@@ -448,7 +448,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
                     name="materials"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel style={{ color: 'white' }}>Materials (comma-separated)</FormLabel>
+                        <FormLabel>Materials (comma-separated)</FormLabel>
                         <FormControl>
                           <Input
                             placeholder="Pipes, fittings, sealant, labor"
@@ -467,7 +467,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
                       name="warrantyPeriod"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel style={{ color: 'white' }}>Warranty Period</FormLabel>
+                          <FormLabel>Warranty Period</FormLabel>
                           <FormControl>
                             <Input
                               placeholder="1 year, 6 months, etc."
@@ -485,7 +485,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
                       name="validUntil"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel style={{ color: 'white' }}>Valid Until</FormLabel>
+                          <FormLabel>Valid Until</FormLabel>
                           <FormControl>
                             <Input
                               type="date"
@@ -504,7 +504,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
                     name="status"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel style={{ color: 'white' }}>Status</FormLabel>
+                        <FormLabel>Status</FormLabel>
                         <FormControl>
                           <Select value={field.value} onValueChange={field.onChange}>
                             <SelectTrigger data-testid="select-status">
@@ -529,7 +529,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
                     name="customerNotes"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel style={{ color: 'white' }}>Customer Notes</FormLabel>
+                        <FormLabel>Customer Notes</FormLabel>
                         <FormControl>
                           <Textarea
                             placeholder="Notes visible to the customer about this job"
@@ -548,7 +548,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
                     name="internalNotes"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel style={{ color: 'white' }}>Internal Notes</FormLabel>
+                        <FormLabel>Internal Notes</FormLabel>
                         <FormControl>
                           <Textarea
                             placeholder="Private notes for internal use only"
