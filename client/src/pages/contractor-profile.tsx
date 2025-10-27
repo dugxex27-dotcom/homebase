@@ -702,7 +702,7 @@ export default function ContractorProfile() {
                 )}
                 {/* Business address suggestions dropdown */}
                 {showSuggestions && addressSuggestions.length > 0 && (
-                  <div className="absolute z-50 w-full mt-1 max-h-60 overflow-auto bg-white border border-gray-300 rounded-md shadow-lg">
+                  <div className="absolute z-50 w-full mt-1 max-h-60 overflow-y-auto overflow-x-hidden bg-white border border-gray-300 rounded-md shadow-lg">
                     {addressSuggestions.map((suggestion, index) => {
                       const addr = suggestion.address;
                       const parts = [];
@@ -722,14 +722,14 @@ export default function ContractorProfile() {
                       return (
                         <div
                           key={index}
-                          className="px-4 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                          className="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
                           onClick={() => handleBusinessAddressSuggestionSelect(suggestion)}
                           data-testid={`business-address-suggestion-${index}`}
                         >
-                          <div className="font-medium text-sm text-gray-900">
+                          <div className="font-medium text-sm text-gray-900 break-words">
                             {streetAddress}
                           </div>
-                          <div className="text-xs text-gray-500 mt-1">
+                          <div className="text-xs text-gray-500 mt-1 break-words">
                             {locationParts.join(' • ')}
                           </div>
                         </div>
