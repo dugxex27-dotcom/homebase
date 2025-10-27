@@ -1,11 +1,13 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
+import connectPg from "connect-pg-simple";
 import passport from "passport";
 import helmet from "helmet";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { db } from "./db";
 
 const app = express();
 
@@ -76,7 +78,15 @@ app.use(express.urlencoded({ extended: false }));
 
 // Session configuration with enhanced security
 const isProduction = process.env.NODE_ENV === 'production';
+const PgSession = connectPg(session);
+
 app.use(session({
+  store: new PgSession({
+    conObject: {
+      connectionString: process.env.DATABASE_URL,
+    },
+    createTableIfMissing: true,
+  }),
   secret: process.env.SESSION_SECRET || 'demo-session-secret-key-for-development',
   resave: false,
   saveUninitialized: false,
