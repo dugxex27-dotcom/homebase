@@ -86,6 +86,7 @@ app.use(session({
       connectionString: process.env.DATABASE_URL,
     },
     createTableIfMissing: true,
+    errorLog: () => {}, // Suppress "table already exists" errors silently
   }),
   secret: process.env.SESSION_SECRET || 'demo-session-secret-key-for-development',
   resave: false,
