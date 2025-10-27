@@ -331,32 +331,26 @@ export default function ContractorProfile() {
     if (zipcode) addressParts.push(zipcode);
     
     const fullAddress = addressParts.join(', ');
+    const zipCode = zipcode || '';
+    const countryCode = addr.country_code?.toUpperCase() || 'US';
     
-    setFormData(prev => ({ ...prev, address: fullAddress }));
+    setDetectedCountry(countryCode);
+    setFormData(prev => ({
+      ...prev,
+      address: fullAddress,
+      city: city || town || village || hamlet || '',
+      state: state,
+      zipCode: zipCode
+    }));
+    
     setShowSuggestions(false);
     setAddressSuggestions([]);
     
-    // Auto-populate city, state, zip from the selected suggestion
-    if (addr) {
-      const cityValue = city || town || village || hamlet || '';
-      const zipCode = addr.postcode || '';
-      const countryCode = addr.country_code?.toUpperCase() || 'US';
-      
-      setDetectedCountry(countryCode);
-      setFormData(prev => ({
-        ...prev,
-        address: cleanAddress,
-        city: city,
-        state: state,
-        zipCode: zipCode
-      }));
-      
-      const distanceUnit = getDistanceUnit(countryCode);
-      toast({
-        title: "Address selected",
-        description: `Auto-filled city, state, and zip code. Distance units: ${distanceUnit}`,
-      });
-    }
+    const distanceUnit = getDistanceUnit(countryCode);
+    toast({
+      title: "Address selected",
+      description: `Auto-filled city, state, and zip code. Distance units: ${distanceUnit}`,
+    });
   };
 
   const updateProfileMutation = useMutation({
