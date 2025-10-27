@@ -702,7 +702,7 @@ export default function ContractorProfile() {
                 )}
                 {/* Business address suggestions dropdown */}
                 {showSuggestions && addressSuggestions.length > 0 && (
-                  <div className="absolute z-50 w-full mt-1 max-h-60 overflow-y-auto overflow-x-hidden bg-white border border-gray-300 rounded-md shadow-lg">
+                  <div className="absolute z-50 w-full mt-1 max-h-60 overflow-y-auto bg-white border border-gray-300 rounded-md shadow-lg">
                     {addressSuggestions.map((suggestion, index) => {
                       const addr = suggestion.address;
                       const parts = [];
@@ -710,7 +710,7 @@ export default function ContractorProfile() {
                       if (addr?.road) parts.push(addr.road);
                       else if (addr?.street) parts.push(addr.street);
                       const streetAddress = parts.join(' ') || suggestion.display_name.split(',')[0];
-                      const town = addr?.city || addr?.town || addr?.village || '';
+                      const town = addr?.city || addr?.town || addr?.village || addr?.hamlet || '';
                       const county = addr?.county || '';
                       const zipcode = addr?.postcode || '';
                       
@@ -726,10 +726,10 @@ export default function ContractorProfile() {
                           onClick={() => handleBusinessAddressSuggestionSelect(suggestion)}
                           data-testid={`business-address-suggestion-${index}`}
                         >
-                          <div className="font-medium text-sm text-gray-900 break-words">
+                          <div className="font-medium text-sm text-gray-900 break-words whitespace-normal">
                             {streetAddress}
                           </div>
-                          <div className="text-xs text-gray-500 mt-1 break-words">
+                          <div className="text-xs text-gray-500 mt-1 break-words whitespace-normal">
                             {locationParts.join(' • ')}
                           </div>
                         </div>
