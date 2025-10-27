@@ -301,14 +301,22 @@ export default function Contractors() {
           <div className="bg-card rounded-xl shadow-sm border p-6 mb-8">
             <h3 className="text-lg font-semibold text-foreground mb-6">Find Your Perfect Contractor</h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
-              {/* Home Selector - Only show for authenticated homeowners with houses */}
-              {isAuthenticated && userRole === 'homeowner' && houses.length > 0 && (
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-3 block">
-                    <Home className="inline w-4 h-4 mr-1" style={{ color: '#b6a6f4' }} />
-                    Choose Home
-                  </label>
+            {/* House Selection Banner - Only show for authenticated homeowners with houses */}
+            {isAuthenticated && userRole === 'homeowner' && houses.length > 0 && selectedHouseId && (
+              <div className="col-span-full mb-4 p-4 rounded-lg" style={{ backgroundColor: '#3d1f6b', border: '2px solid #b6a6f4' }}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Home className="w-5 h-5" style={{ color: '#b6a6f4' }} />
+                    <div>
+                      <p className="text-sm font-medium" style={{ color: '#b6a6f4' }}>Searching near:</p>
+                      <p className="text-lg font-bold text-white">
+                        {houses.find((h: House) => h.id === selectedHouseId)?.name}
+                      </p>
+                      <p className="text-sm" style={{ color: '#d1c9f0' }}>
+                        {houses.find((h: House) => h.id === selectedHouseId)?.address}
+                      </p>
+                    </div>
+                  </div>
                   <Select 
                     value={selectedHouseId} 
                     onValueChange={(value) => {
@@ -324,8 +332,8 @@ export default function Contractors() {
                     }}
                     data-testid="filter-home"
                   >
-                    <SelectTrigger className="w-full" style={{ backgroundColor: '#1e1e20', color: '#ffffff' }}>
-                      <SelectValue placeholder="Select a property..." />
+                    <SelectTrigger className="w-64" style={{ backgroundColor: '#1e1e20', color: '#ffffff' }}>
+                      <SelectValue placeholder="Change property..." />
                     </SelectTrigger>
                     <SelectContent>
                       {houses.map((house: House) => (
@@ -339,7 +347,10 @@ export default function Contractors() {
                     </SelectContent>
                   </Select>
                 </div>
-              )}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
 
               {/* Distance Filter */}
               <div className="flex flex-col h-full">

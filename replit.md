@@ -50,15 +50,23 @@ Preferred communication style: Simple, everyday language.
     - Captures: search term, service type, user zip code, timestamp, context
     - Powers admin dashboard insights and geographic trends
 - **Contractor Features**:
-    - Detailed profiles with personal, professional, and service offering information.
-    - Comprehensive proposal management system (create, edit, delete, status tracking).
-    - Service radius configuration in 5-mile increments.
-    - No seed/demo contractors - all contractors register through standard registration process.
+    - Detailed profiles with personal, professional, and service offering information
+    - Address autocomplete with OpenStreetMap Nominatim supporting international addresses (US, UK, Canada, Australia)
+    - Full address display including hamlets, villages, towns, cities, counties, states, and postal codes
+    - Comprehensive proposal management system (create, edit, delete, status tracking)
+    - Service radius configuration in 5-mile increments
+    - Upsert pattern for contractor profile creation (automatically creates profile on first save)
+    - No seed/demo contractors - all contractors register through standard registration process
 - **Homeowner Features**:
-    - Multi-property support with individual maintenance schedules.
-    - Automatic climate zone detection based on property address using geocoding.
-    - Address autocomplete functionality for property setup.
-    - Centralized service records tracking.
+    - Multi-property support with individual maintenance schedules
+    - Automatic climate zone detection based on property address using geocoding
+    - Address autocomplete functionality for property setup
+    - Centralized service records tracking
+    - **Contractor Search Integration**: House selection from maintenance schedule automatically used when finding contractors
+        - Prominent banner displays currently selected house and address
+        - Dropdown allows switching between properties
+        - Auto-populates contractor search location from selected house
+        - Seamless navigation from maintenance schedule to contractor finder with preserved house context
 - **Marketplace**: Functionality for listing and browsing DIY products with search analytics.
 - **Maintenance Guidance**: Seasonal home maintenance schedule with location-based recommendations.
 - **Notifications**: Enhanced system for appointments and maintenance task alerts, with priority levels and house-specific filtering.
