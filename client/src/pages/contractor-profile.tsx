@@ -280,13 +280,44 @@ export default function ContractorProfile() {
   };
 
   const handleBusinessAddressSuggestionSelect = (suggestion: any) => {
-    const fullAddress = suggestion.display_name;
-    setFormData(prev => ({ ...prev, address: fullAddress }));
+    // Extract clean street address from components instead of using verbose display_name
+    const addr = suggestion.address;
+    let cleanAddress = '';
+    
+    // Build a clean street address (house number + street name)
+    const parts = [];
+    if (addr?.house_number) parts.push(addr.house_number);
+    if (addr?.road) parts.push(addr.road);
+    else if (addr?.street) parts.push(addr.street);
+    
+    cleanAddress = parts.join(' ') || suggestion.display_name.split(',')[0];
+    
+    setFormData(prev => ({ ...prev, address: cleanAddress }));
     setShowSuggestions(false);
     setAddressSuggestions([]);
     
-    // Auto-geocode the selected address to populate other fields
-    geocodeBusinessAddress(fullAddress);
+    // Auto-populate city, state, zip from the selected suggestion
+    if (addr) {
+      const city = addr.city || addr.town || addr.village || '';
+      const state = addr.state || addr.province || '';
+      const zipCode = addr.postcode || '';
+      const countryCode = addr.country_code?.toUpperCase() || 'US';
+      
+      setDetectedCountry(countryCode);
+      setFormData(prev => ({
+        ...prev,
+        address: cleanAddress,
+        city: city,
+        state: state,
+        zipCode: zipCode
+      }));
+      
+      const distanceUnit = getDistanceUnit(countryCode);
+      toast({
+        title: "Address selected",
+        description: `Auto-filled city, state, and zip code. Distance units: ${distanceUnit}`,
+      });
+    }
   };
 
   const updateProfileMutation = useMutation({
