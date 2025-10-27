@@ -312,6 +312,9 @@ export default function Contractors() {
                       <p className="text-lg font-bold text-white">
                         {houses.find((h: House) => h.id === selectedHouseId)?.name}
                       </p>
+                      <p className="text-sm" style={{ color: '#d1c9f0' }}>
+                        {houses.find((h: House) => h.id === selectedHouseId)?.address}
+                      </p>
                     </div>
                   </div>
                   <Select 
