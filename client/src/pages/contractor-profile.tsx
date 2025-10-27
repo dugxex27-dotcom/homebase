@@ -672,42 +672,6 @@ export default function ContractorProfile() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label htmlFor="city">City *</Label>
-                <Input
-                  id="city"
-                  value={formData.city}
-                  onChange={(e) => handleInputChange('city', e.target.value)}
-                  placeholder="Springfield"
-                  required
-                  style={{ backgroundColor: '#ffffff' }}
-                />
-              </div>
-              <div>
-                <Label htmlFor="state">State *</Label>
-                <Input
-                  id="state"
-                  value={formData.state}
-                  onChange={(e) => handleInputChange('state', e.target.value)}
-                  placeholder="IL"
-                  required
-                  style={{ backgroundColor: '#ffffff' }}
-                />
-              </div>
-              <div>
-                <Label htmlFor="zipCode">ZIP Code *</Label>
-                <Input
-                  id="zipCode"
-                  value={formData.zipCode}
-                  onChange={(e) => handleInputChange('zipCode', e.target.value)}
-                  placeholder="62704"
-                  required
-                  style={{ backgroundColor: '#ffffff' }}
-                />
-              </div>
-            </div>
-
             <div>
               <Label htmlFor="serviceRadius">Service Radius ({getDistanceUnit(detectedCountry)}) *</Label>
               <Select onValueChange={(value) => {
