@@ -82,14 +82,22 @@ const isProduction = process.env.NODE_ENV === 'production';
 // Use PostgreSQL session store if DATABASE_URL is available
 let sessionStore;
 if (process.env.DATABASE_URL) {
-  const PgSession = connectPgSimple(session);
-  sessionStore = new PgSession({
-    conObject: {
-      connectionString: process.env.DATABASE_URL,
-    },
-    // Don't auto-create table - it already exists
-    createTableIfMissing: false,
-  });
+  try {
+    const PgSession = connectPgSimple(session);
+    sessionStore = new PgSession({
+      conObject: {
+        connectionString: process.env.DATABASE_URL,
+      },
+      // Don't auto-create table - it already exists
+      createTableIfMissing: false,
+    });
+    log('PostgreSQL session store initialized');
+  } catch (error) {
+    console.error('Failed to initialize PostgreSQL session store:', error);
+    log('Falling back to memory store (not recommended for production)');
+    // Fall back to default memory store
+    sessionStore = undefined;
+  }
 }
 
 app.use(session({
