@@ -1280,8 +1280,36 @@ export class MemStorage implements IStorage {
 
   async updateContractorProfile(contractorId: string, profileData: Partial<InsertContractor>): Promise<Contractor> {
     const existingContractor = this.contractors.get(contractorId);
+    
     if (!existingContractor) {
-      throw new Error('Contractor not found');
+      // Create new contractor profile if it doesn't exist (upsert pattern)
+      const newContractor: Contractor = {
+        id: contractorId,
+        businessName: profileData.businessName || '',
+        contactName: profileData.contactName || '',
+        email: profileData.email || '',
+        phone: profileData.phone || '',
+        address: profileData.address || '',
+        city: profileData.city || '',
+        state: profileData.state || '',
+        zipCode: profileData.zipCode || '',
+        serviceRadius: profileData.serviceRadius || 25,
+        servicesOffered: profileData.servicesOffered || [],
+        hasEmergencyServices: profileData.hasEmergencyServices || false,
+        website: profileData.website || '',
+        facebook: profileData.facebook || '',
+        instagram: profileData.instagram || '',
+        linkedin: profileData.linkedin || '',
+        googleBusinessUrl: profileData.googleBusinessUrl || '',
+        bio: profileData.bio || '',
+        yearsExperience: profileData.yearsExperience || '',
+        profileImage: profileData.profileImage || '',
+        businessLogo: profileData.businessLogo || '',
+        projectPhotos: profileData.projectPhotos || [],
+      };
+      
+      this.contractors.set(contractorId, newContractor);
+      return newContractor;
     }
 
     const updatedContractor: Contractor = {
