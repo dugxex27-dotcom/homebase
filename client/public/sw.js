@@ -1,36 +1,66 @@
 // Service Worker for Push Notifications
-const CACHE_NAME = 'homebase-v1';
-const urlsToCache = [
-  '/',
-  '/static/js/bundle.js',
-  '/static/css/main.css',
-  '/icon-192x192.png',
-  '/icon-512x512.png'
-];
+const CACHE_NAME = 'homebase-v2-oct2025';
 
-// Install event - cache resources
+// Install event - skip caching, just install immediately
 self.addEventListener('install', event => {
+  console.log('[Service Worker] Installing...');
+  // Skip waiting to activate immediately
+  self.skipWaiting();
+});
+
+// Activate event - clean up old caches
+self.addEventListener('activate', event => {
+  console.log('[Service Worker] Activating...');
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
-      })
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cacheName => {
+          if (cacheName !== CACHE_NAME) {
+            console.log('[Service Worker] Deleting old cache:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    }).then(() => {
+      // Take control of all clients immediately
+      return self.clients.claim();
+    })
   );
 });
 
-// Fetch event - serve from cache when offline
+// Fetch event - NETWORK FIRST strategy (don't cache HTML/JS/CSS)
 self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url);
+  
+  // Don't cache app shell files - always fetch fresh
+  if (
+    url.pathname.endsWith('.html') ||
+    url.pathname.endsWith('.js') ||
+    url.pathname.endsWith('.css') ||
+    url.pathname.startsWith('/assets/')
+  ) {
+    // Network only for critical files
+    event.respondWith(fetch(event.request));
+    return;
+  }
+  
+  // For other resources (images, icons), try network first, fall back to cache
   event.respondWith(
-    caches.match(event.request)
+    fetch(event.request)
       .then(response => {
-        // Cache hit - return response
-        if (response) {
-          return response;
+        // Cache successful responses
+        if (response.ok && url.pathname.match(/\.(png|jpg|jpeg|svg|ico)$/)) {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, responseClone);
+          });
         }
-        return fetch(event.request);
-      }
-    )
+        return response;
+      })
+      .catch(() => {
+        // Network failed, try cache
+        return caches.match(event.request);
+      })
   );
 });
 
