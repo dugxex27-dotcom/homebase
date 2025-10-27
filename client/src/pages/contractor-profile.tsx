@@ -182,29 +182,25 @@ export default function ContractorProfile() {
 
     setIsLoadingSuggestions(true);
     try {
-      // Use LocationIQ API for business address suggestions with focus on UK, Canada, Australia, US
-      const response = await fetch(
-        `https://us1.locationiq.com/v1/search.php?key=${import.meta.env.VITE_LOCATIONIQ_API_KEY || 'pk.3e1d1a4cb7bf7b8b11e0e0a2d9f4e5c6'}&q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=5&countrycodes=gb,ca,au,us`
+      // Use OpenStreetMap Nominatim for business address suggestions
+      const nominatimResponse = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1&countrycodes=gb,ca,au,us`,
+        {
+          headers: {
+            'User-Agent': 'HomeBase/1.0'
+          }
+        }
       );
       
-      if (!response.ok) {
-        // Fallback to OpenStreetMap Nominatim
-        const nominatimResponse = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1&countrycodes=gb,ca,au,us`
-        );
-        if (nominatimResponse.ok) {
-          const data = await nominatimResponse.json();
-          setAddressSuggestions(data);
-          setShowSuggestions(true);
-        }
-      } else {
-        const data = await response.json();
+      if (nominatimResponse.ok) {
+        const data = await nominatimResponse.json();
         setAddressSuggestions(data);
-        setShowSuggestions(true);
+        setShowSuggestions(data.length > 0);
       }
     } catch (error) {
       console.error('Error fetching business address suggestions:', error);
       setAddressSuggestions([]);
+      setShowSuggestions(false);
     } finally {
       setIsLoadingSuggestions(false);
     }
@@ -212,53 +208,48 @@ export default function ContractorProfile() {
 
   const geocodeBusinessAddress = async (address: string) => {
     try {
-      // Use LocationIQ for business address geocoding
-      const response = await fetch(
-        `https://us1.locationiq.com/v1/search.php?key=${import.meta.env.VITE_LOCATIONIQ_API_KEY || 'pk.3e1d1a4cb7bf7b8b11e0e0a2d9f4e5c6'}&q=${encodeURIComponent(address)}&format=json&limit=1&addressdetails=1`
+      // Use OpenStreetMap Nominatim for business address geocoding
+      const nominatimResponse = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1&addressdetails=1`,
+        {
+          headers: {
+            'User-Agent': 'HomeBase/1.0'
+          }
+        }
       );
       
-      let result = null;
-      if (!response.ok) {
-        // Fallback to OpenStreetMap Nominatim
-        const nominatimResponse = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1&addressdetails=1`
-        );
-        if (nominatimResponse.ok) {
-          const data = await nominatimResponse.json();
-          result = data[0];
-        }
-      } else {
-        const data = await response.json();
-        result = data[0];
-      }
+      if (nominatimResponse.ok) {
+        const data = await nominatimResponse.json();
+        const result = data[0];
 
-      if (result) {
-        const addressDetails = result.address;
-        
-        // Auto-populate city, state, and zip code from geocoded address
-        if (addressDetails) {
-          const city = addressDetails.city || addressDetails.town || addressDetails.village || '';
-          const state = addressDetails.state || addressDetails.province || '';
-          const zipCode = addressDetails.postcode || '';
+        if (result) {
+          const addressDetails = result.address;
           
-          // Detect country for distance units
-          const countryCode = addressDetails.country_code?.toUpperCase() || extractCountryFromAddress(result.display_name);
-          if (countryCode) {
-            setDetectedCountry(countryCode);
+          // Auto-populate city, state, and zip code from geocoded address
+          if (addressDetails) {
+            const city = addressDetails.city || addressDetails.town || addressDetails.village || '';
+            const state = addressDetails.state || addressDetails.province || '';
+            const zipCode = addressDetails.postcode || '';
+            
+            // Detect country for distance units
+            const countryCode = addressDetails.country_code?.toUpperCase() || extractCountryFromAddress(result.display_name);
+            if (countryCode) {
+              setDetectedCountry(countryCode);
+            }
+            
+            setFormData(prev => ({
+              ...prev,
+              city: city,
+              state: state,
+              zipCode: zipCode
+            }));
+            
+            const distanceUnit = getDistanceUnit(countryCode);
+            toast({
+              title: "Address details populated",
+              description: `Auto-filled city, state, and zip code from ${addressDetails.country}. Distance units: ${distanceUnit}`,
+            });
           }
-          
-          setFormData(prev => ({
-            ...prev,
-            city: city,
-            state: state,
-            zipCode: zipCode
-          }));
-          
-          const distanceUnit = getDistanceUnit(countryCode);
-          toast({
-            title: "Address details populated",
-            description: `Auto-filled city, state, and zip code from ${addressDetails.country}. Distance units: ${distanceUnit}`,
-          });
         }
       }
     } catch (error) {
