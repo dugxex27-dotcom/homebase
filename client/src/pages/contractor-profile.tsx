@@ -1098,7 +1098,6 @@ export default function ContractorProfile() {
               <Label htmlFor="website">Website URL</Label>
               <Input
                 id="website"
-                type="url"
                 value={formData.website}
                 onChange={(e) => handleInputChange('website', e.target.value)}
                 placeholder="https://www.abcconstruction.com"
@@ -1110,7 +1109,6 @@ export default function ContractorProfile() {
               <Label htmlFor="googleBusinessUrl">Google Business Page</Label>
               <Input
                 id="googleBusinessUrl"
-                type="url"
                 value={formData.googleBusinessUrl}
                 onChange={(e) => handleInputChange('googleBusinessUrl', e.target.value)}
                 placeholder="https://business.google.com/your-business"
