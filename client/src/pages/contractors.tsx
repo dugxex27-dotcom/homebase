@@ -196,6 +196,7 @@ export default function Contractors() {
     queryKey: filters.searchQuery || filters.searchLocation 
       ? ['/api/contractors/search', filters]
       : ['/api/contractors', filters],
+    enabled: !authLoading && (!isAuthenticated || userRole !== 'homeowner' || !housesLoading),
     queryFn: async () => {
       const params = new URLSearchParams();
       
