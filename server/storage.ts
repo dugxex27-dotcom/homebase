@@ -3035,9 +3035,8 @@ class DbStorage implements IStorage {
     this.deleteNotification = this.memStorage.deleteNotification.bind(this.memStorage);
     this.getUnreadNotifications = this.memStorage.getUnreadNotifications.bind(this.memStorage);
     this.markNotificationAsRead = this.memStorage.markNotificationAsRead.bind(this.memStorage);
-    this.searchContractors = this.memStorage.searchContractors.bind(this.memStorage);
+    // searchContractors, getContractorProfile, and updateContractorProfile now use database-backed methods (defined below)
     this.searchProducts = this.memStorage.searchProducts.bind(this.memStorage);
-    // getContractorProfile and updateContractorProfile now use database-backed methods (defined below)
     this.getServiceRecords = this.memStorage.getServiceRecords.bind(this.memStorage);
     this.getServiceRecord = this.memStorage.getServiceRecord.bind(this.memStorage);
     this.createServiceRecord = this.memStorage.createServiceRecord.bind(this.memStorage);
@@ -3238,6 +3237,28 @@ class DbStorage implements IStorage {
     });
   }
 
+  // Contractor search - DATABASE BACKED for persistence
+  async searchContractors(query: string, location?: string): Promise<Contractor[]> {
+    let results = await db.select().from(contractors);
+    
+    return results.filter(contractor => {
+      const matchesQuery = query === "" || 
+        contractor.name.toLowerCase().includes(query.toLowerCase()) ||
+        contractor.company.toLowerCase().includes(query.toLowerCase()) ||
+        contractor.bio.toLowerCase().includes(query.toLowerCase()) ||
+        contractor.services.some(service => service.toLowerCase().includes(query.toLowerCase()));
+      
+      const matchesLocation = !location || 
+        contractor.location.toLowerCase().includes(location.toLowerCase());
+      
+      // Only show contractors whose service area overlaps with homeowner's location
+      const withinServiceArea = !contractor.distance || 
+        contractor.serviceRadius >= parseFloat(contractor.distance);
+      
+      return matchesQuery && matchesLocation && withinServiceArea;
+    });
+  }
+
   // Contractor profile operations - DATABASE BACKED for persistence
   async getContractorProfile(contractorId: string): Promise<Contractor | undefined> {
     const result = await db.select().from(contractors).where(eq(contractors.id, contractorId)).limit(1);
@@ -3247,20 +3268,27 @@ class DbStorage implements IStorage {
   async updateContractorProfile(contractorId: string, profileData: Partial<InsertContractor>): Promise<Contractor> {
     const existingContractor = await this.getContractorProfile(contractorId);
     
+    // Build location from city and state if not provided
+    const location = profileData.location || 
+      (profileData.city && profileData.state ? `${profileData.city}, ${profileData.state}` : '');
+    
+    // Convert yearsExperience string to experience number
+    const experience = profileData.experience !== undefined 
+      ? profileData.experience 
+      : (profileData.yearsExperience ? parseInt(profileData.yearsExperience as any) || 0 : 0);
+    
     if (!existingContractor) {
       // Create new contractor profile if it doesn't exist (upsert pattern)
       const newContractor = {
         id: contractorId,
-        businessName: profileData.businessName || '',
-        contactName: profileData.contactName || '',
+        name: profileData.name || '',
+        company: profileData.company || '',
         email: profileData.email || '',
         phone: profileData.phone || '',
-        address: profileData.address || '',
-        city: profileData.city || '',
-        state: profileData.state || '',
-        zipCode: profileData.zipCode || '',
+        location: location,
+        postalCode: profileData.postalCode || '',
         serviceRadius: profileData.serviceRadius || 25,
-        servicesOffered: profileData.servicesOffered || [],
+        services: profileData.services || [],
         hasEmergencyServices: profileData.hasEmergencyServices || false,
         website: profileData.website || '',
         facebook: profileData.facebook || '',
@@ -3268,8 +3296,15 @@ class DbStorage implements IStorage {
         linkedin: profileData.linkedin || '',
         googleBusinessUrl: profileData.googleBusinessUrl || '',
         bio: profileData.bio || '',
-        yearsExperience: profileData.yearsExperience || '',
+        experience: experience,
         profileImage: profileData.profileImage || '',
+        businessLogo: profileData.businessLogo || '',
+        projectPhotos: profileData.projectPhotos || [],
+        licenseNumber: profileData.licenseNumber || '',
+        licenseMunicipality: profileData.licenseMunicipality || '',
+        isLicensed: profileData.isLicensed !== undefined ? profileData.isLicensed : true,
+        rating: profileData.rating || '0.00',
+        reviewCount: profileData.reviewCount || 0,
       };
       
       await db.insert(contractors).values(newContractor);
@@ -3279,6 +3314,8 @@ class DbStorage implements IStorage {
       const updatedData = {
         ...existingContractor,
         ...profileData,
+        location: location || existingContractor.location,
+        experience: experience,
       };
       
       await db.update(contractors).set(updatedData).where(eq(contractors.id, contractorId));

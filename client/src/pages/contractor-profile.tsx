@@ -98,16 +98,17 @@ export default function ContractorProfile() {
   const typedUser = user as UserType | undefined;
   
   const [formData, setFormData] = useState({
-    businessName: '',
-    contactName: '',
+    company: '',
+    name: '',
     email: '',
     phone: '',
     address: '',
     city: '',
     state: '',
-    zipCode: '',
+    postalCode: '',
+    location: '',
     serviceRadius: 25,
-    servicesOffered: [] as string[],
+    services: [] as string[],
     hasEmergencyServices: false,
     website: '',
     facebook: '',
@@ -118,7 +119,13 @@ export default function ContractorProfile() {
     yearsExperience: '',
     profileImage: '',
     businessLogo: '',
-    projectPhotos: [] as string[]
+    projectPhotos: [] as string[],
+    licenseNumber: '',
+    licenseMunicipality: '',
+    isLicensed: true,
+    rating: '0',
+    reviewCount: 0,
+    experience: 0
   });
 
   const [customService, setCustomService] = useState('');
@@ -238,11 +245,11 @@ export default function ContractorProfile() {
         if (result) {
           const addressDetails = result.address;
           
-          // Auto-populate city, state, and zip code from geocoded address
+          // Auto-populate city, state, and postal code from geocoded address
           if (addressDetails) {
             const city = addressDetails.city || addressDetails.town || addressDetails.village || '';
             const state = addressDetails.state || addressDetails.province || '';
-            const zipCode = addressDetails.postcode || '';
+            const postalCode = addressDetails.postcode || '';
             
             // Detect country for distance units
             const countryCode = addressDetails.country_code?.toUpperCase() || extractCountryFromAddress(result.display_name);
@@ -254,7 +261,8 @@ export default function ContractorProfile() {
               ...prev,
               city: city,
               state: state,
-              zipCode: zipCode
+              postalCode: postalCode,
+              location: `${city}, ${state}`
             }));
             
             const distanceUnit = getDistanceUnit(countryCode);
@@ -331,16 +339,18 @@ export default function ContractorProfile() {
     if (zipcode) addressParts.push(zipcode);
     
     const fullAddress = addressParts.join(', ');
-    const zipCode = zipcode || '';
+    const postalCode = zipcode || '';
     const countryCode = addr.country_code?.toUpperCase() || 'US';
+    const cityValue = city || town || village || hamlet || '';
     
     setDetectedCountry(countryCode);
     setFormData(prev => ({
       ...prev,
       address: fullAddress,
-      city: city || town || village || hamlet || '',
+      city: cityValue,
       state: state,
-      zipCode: zipCode
+      postalCode: postalCode,
+      location: `${cityValue}, ${state}`
     }));
     
     setShowSuggestions(false);
@@ -422,17 +432,17 @@ export default function ContractorProfile() {
   const handleServiceToggle = (service: string, checked: boolean) => {
     setFormData(prev => ({
       ...prev,
-      servicesOffered: checked 
-        ? [...prev.servicesOffered, service]
-        : prev.servicesOffered.filter(s => s !== service)
+      services: checked 
+        ? [...prev.services, service]
+        : prev.services.filter(s => s !== service)
     }));
   };
 
   const addCustomService = () => {
-    if (customService.trim() && !formData.servicesOffered.includes(customService.trim())) {
+    if (customService.trim() && !formData.services.includes(customService.trim())) {
       setFormData(prev => ({
         ...prev,
-        servicesOffered: [...prev.servicesOffered, customService.trim()]
+        services: [...prev.services, customService.trim()]
       }));
       setCustomService('');
     }
@@ -441,7 +451,7 @@ export default function ContractorProfile() {
   const removeService = (service: string) => {
     setFormData(prev => ({
       ...prev,
-      servicesOffered: prev.servicesOffered.filter(s => s !== service)
+      services: prev.services.filter(s => s !== service)
     }));
   };
 
@@ -624,22 +634,24 @@ export default function ContractorProfile() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="businessName">Business Name *</Label>
+                <Label htmlFor="company">Business Name *</Label>
                 <Input
-                  id="businessName"
-                  value={formData.businessName}
-                  onChange={(e) => handleInputChange('businessName', e.target.value)}
+                  id="company"
+                  data-testid="input-company"
+                  value={formData.company}
+                  onChange={(e) => handleInputChange('company', e.target.value)}
                   placeholder="ABC Construction LLC"
                   required
                   style={{ backgroundColor: '#ffffff' }}
                 />
               </div>
               <div>
-                <Label htmlFor="contactName">Contact Name *</Label>
+                <Label htmlFor="name">Contact Name *</Label>
                 <Input
-                  id="contactName"
-                  value={formData.contactName}
-                  onChange={(e) => handleInputChange('contactName', e.target.value)}
+                  id="name"
+                  data-testid="input-name"
+                  value={formData.name}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
                   placeholder="John Smith"
                   required
                   style={{ backgroundColor: '#ffffff' }}
@@ -937,7 +949,7 @@ export default function ContractorProfile() {
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium text-gray-900 mb-1">
-                    {formData.businessName || "Your Business Name"}
+                    {formData.company || "Your Business Name"}
                   </p>
                   <p className="text-xs text-gray-600">Logo preview with business name</p>
                 </div>
@@ -1062,7 +1074,8 @@ export default function ContractorProfile() {
                 <div key={service} className="flex items-center space-x-2 p-1">
                   <Checkbox
                     id={service}
-                    checked={formData.servicesOffered.includes(service)}
+                    data-testid={`checkbox-service-${service}`}
+                    checked={formData.services.includes(service)}
                     onCheckedChange={(checked) => handleServiceToggle(service, checked as boolean)}
                   />
                   <Label htmlFor={service} className="text-sm leading-tight">{service}</Label>
@@ -1080,14 +1093,15 @@ export default function ContractorProfile() {
                   placeholder="Add custom service..."
                   onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomService())}
                   style={{ backgroundColor: '#ffffff' }}
+                  data-testid="input-custom-service"
                 />
-                <Button type="button" onClick={addCustomService} size="sm" style={{ backgroundColor: '#1560a2', color: 'white' }} className="hover:opacity-90">
+                <Button type="button" onClick={addCustomService} size="sm" style={{ backgroundColor: '#1560a2', color: 'white' }} className="hover:opacity-90" data-testid="button-add-custom-service">
                   <Plus className="w-4 h-4" />
                 </Button>
               </div>
-              {formData.servicesOffered.filter(s => !AVAILABLE_SERVICES.includes(s)).length > 0 && (
+              {formData.services.filter(s => !AVAILABLE_SERVICES.includes(s)).length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-2">
-                  {formData.servicesOffered
+                  {formData.services
                     .filter(s => !AVAILABLE_SERVICES.includes(s))
                     .map((service) => (
                       <div key={service} className="bg-amber-100 text-amber-800 px-2 py-1 rounded-md text-sm flex items-center gap-1">
@@ -1096,6 +1110,7 @@ export default function ContractorProfile() {
                           type="button"
                           onClick={() => removeService(service)}
                           className="text-amber-600 hover:text-amber-800"
+                          data-testid={`button-remove-service-${service}`}
                         >
                           <X className="w-3 h-3" />
                         </button>
