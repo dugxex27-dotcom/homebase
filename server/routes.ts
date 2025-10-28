@@ -181,18 +181,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Simple homeowner demo login
   app.post('/api/auth/homeowner-demo-login', authLimiter, async (req, res) => {
     try {
-      const { email, name, role } = req.body;
+      const demoEmail = 'demo@homeowner.com';
       
-      // Create a demo homeowner user
-      const homeownerId = `demo-homeowner-${Date.now()}`;
-      const user = await storage.upsertUser({
-        id: homeownerId,
-        email: email || 'demo@homeowner.com',
-        firstName: (name || 'Demo Homeowner').split(' ')[0],
-        lastName: (name || 'Demo Homeowner').split(' ').slice(1).join(' '),
-        profileImageUrl: null,
-        role: role || 'homeowner'
-      });
+      // Check if demo user already exists
+      let user = await storage.getUserByEmail(demoEmail);
+      
+      // If not, create demo user
+      if (!user) {
+        user = await storage.upsertUser({
+          id: `demo-homeowner-${Date.now()}`,
+          email: demoEmail,
+          firstName: 'Demo',
+          lastName: 'Homeowner',
+          profileImageUrl: null,
+          role: 'homeowner'
+        });
+      }
 
       // Create a simple session
       req.session.user = user;
@@ -208,18 +212,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Simple contractor demo login
   app.post('/api/auth/contractor-demo-login', authLimiter, async (req, res) => {
     try {
-      const { email, name, role } = req.body;
+      const demoEmail = 'demo@contractor.com';
       
-      // Create a demo contractor user
-      const contractorId = `demo-contractor-${Date.now()}`;
-      const user = await storage.upsertUser({
-        id: contractorId,
-        email: email || 'demo@contractor.com',
-        firstName: (name || 'Demo Contractor').split(' ')[0],
-        lastName: (name || 'Demo Contractor').split(' ').slice(1).join(' '),
-        profileImageUrl: null,
-        role: role || 'contractor'
-      });
+      // Check if demo user already exists
+      let user = await storage.getUserByEmail(demoEmail);
+      
+      // If not, create demo user
+      if (!user) {
+        user = await storage.upsertUser({
+          id: `demo-contractor-${Date.now()}`,
+          email: demoEmail,
+          firstName: 'Demo',
+          lastName: 'Contractor',
+          profileImageUrl: null,
+          role: 'contractor'
+        });
+      }
 
       // Create a simple session
       req.session.user = user;
