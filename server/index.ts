@@ -83,18 +83,14 @@ const isProduction = process.env.NODE_ENV === 'production';
 let sessionStore;
 if (process.env.DATABASE_URL) {
   const PgSession = connectPgSimple(session);
+  
+  // Use existing "sessions" table (note: plural)
   sessionStore = new PgSession({
     conObject: {
       connectionString: process.env.DATABASE_URL,
     },
-    // Try to create table if missing, ignore errors if already exists
-    createTableIfMissing: true,
-    errorLog: (err: Error) => {
-      // Only log errors that aren't "already exists" errors
-      if (!err.message.includes('already exists')) {
-        console.error('Session store error:', err);
-      }
-    }
+    tableName: 'sessions', // Match existing table name
+    createTableIfMissing: false, // Table already exists
   });
   log('PostgreSQL session store initialized');
 }
