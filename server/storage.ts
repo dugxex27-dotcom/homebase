@@ -2985,8 +2985,8 @@ class DbStorage implements IStorage {
   constructor() {
     this.memStorage = new MemStorage();
     
-    // Bind all MemStorage methods
-    this.getContractors = this.memStorage.getContractors.bind(this.memStorage);
+    // Bind all MemStorage methods (except database-backed ones)
+    // getContractors now uses database-backed method (defined below)
     this.getContractor = this.memStorage.getContractor.bind(this.memStorage);
     this.createContractor = this.memStorage.createContractor.bind(this.memStorage);
     this.getContractorLicenses = this.memStorage.getContractorLicenses.bind(this.memStorage);
@@ -3237,7 +3237,57 @@ class DbStorage implements IStorage {
     });
   }
 
-  // Contractor search - DATABASE BACKED for persistence
+  // Contractor operations - DATABASE BACKED for persistence
+  async getContractors(filters?: {
+    services?: string[];
+    location?: string;
+    minRating?: number;
+    hasEmergencyServices?: boolean;
+    maxDistance?: number;
+  }): Promise<(Contractor & { isBoosted?: boolean })[]> {
+    let results = await db.select().from(contractors);
+
+    if (filters) {
+      if (filters.services && filters.services.length > 0) {
+        results = results.filter(contractor =>
+          filters.services!.some(service =>
+            contractor.services.some(contractorService =>
+              contractorService.toLowerCase().includes(service.toLowerCase())
+            )
+          )
+        );
+      }
+
+      if (filters.minRating) {
+        results = results.filter(contractor =>
+          parseFloat(contractor.rating) >= filters.minRating!
+        );
+      }
+
+      if (filters.hasEmergencyServices !== undefined) {
+        results = results.filter(contractor =>
+          contractor.hasEmergencyServices === filters.hasEmergencyServices
+        );
+      }
+
+      if (filters.maxDistance) {
+        results = results.filter(contractor =>
+          contractor.distance ? parseFloat(contractor.distance) <= filters.maxDistance! : true
+        );
+      }
+
+      // Only show contractors whose service area overlaps with homeowner's location
+      results = results.filter(contractor => {
+        if (!contractor.distance) return true;
+        const distanceToHomeowner = parseFloat(contractor.distance);
+        return contractor.serviceRadius >= distanceToHomeowner;
+      });
+    }
+
+    // Add isBoosted flag (set to false for now - boost logic would go here)
+    return results.map(contractor => ({ ...contractor, isBoosted: false }));
+  }
+
   async searchContractors(query: string, location?: string): Promise<Contractor[]> {
     let results = await db.select().from(contractors);
     
