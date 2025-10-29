@@ -111,7 +111,7 @@ export default function ContractorDetail() {
               <div className="relative">
                 {contractor.businessLogo || contractor.profileImage ? (
                   <img
-                    src={contractor.businessLogo || contractor.profileImage}
+                    src={(contractor.businessLogo || contractor.profileImage) || ''}
                     alt={`${contractor.company} logo`}
                     className="w-32 h-32 rounded-2xl object-cover border-4 border-blue-100 dark:border-blue-900/30"
                   />
