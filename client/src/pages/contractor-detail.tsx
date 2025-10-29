@@ -349,7 +349,7 @@ export default function ContractorDetail() {
                       href={contractor.googleBusinessUrl} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      onClick={() => trackSocialClick(contractor.id, 'google')}
+                      onClick={() => trackSocialClick(contractor.id, 'google_business')}
                       className="flex items-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group"
                       data-testid="link-google-business"
                     >

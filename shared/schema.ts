@@ -115,6 +115,12 @@ export const contractors = pgTable("contractors", {
   profileImage: text("profile_image"),
   businessLogo: text("business_logo"),
   projectPhotos: text("project_photos").array().default(sql`ARRAY[]::text[]`),
+  
+  // Website and social media
+  website: text("website"),
+  facebook: text("facebook"),
+  instagram: text("instagram"),
+  linkedin: text("linkedin"),
   googleBusinessUrl: text("google_business_url"),
   
   // International expansion fields
