@@ -3258,7 +3258,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     <FormItem>
                       <FormLabel style={{ color: 'white' }}>Service Description</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g., Annual HVAC tune-up, Gutter cleaning, Roof repair" {...field} style={{ backgroundColor: 'white' }} />
+                        <Input placeholder="e.g., Annual HVAC tune-up, Gutter cleaning, Roof repair" {...field} style={{ backgroundColor: 'white', color: '#000000' }} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -3273,7 +3273,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       <FormItem>
                         <FormLabel style={{ color: 'white' }}>Service Date</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} value={field.value || ""} style={{ backgroundColor: 'white' }} />
+                          <Input type="date" {...field} value={field.value || ""} style={{ backgroundColor: 'white', color: '#000000' }} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -3294,7 +3294,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                             {...field}
                             value={field.value || ""}
                             onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                            style={{ backgroundColor: 'white' }}
+                            style={{ backgroundColor: 'white', color: '#000000' }}
                           />
                         </FormControl>
                         <FormMessage />
@@ -3311,7 +3311,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       <FormItem>
                         <FormLabel style={{ color: 'white' }}>Contractor Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="Contractor or technician name" {...field} value={field.value || ""} style={{ backgroundColor: 'white' }} />
+                          <Input placeholder="Contractor or technician name" {...field} value={field.value || ""} style={{ backgroundColor: 'white', color: '#000000' }} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -3325,7 +3325,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       <FormItem>
                         <FormLabel style={{ color: 'white' }}>Company</FormLabel>
                         <FormControl>
-                          <Input placeholder="Company or service provider" {...field} value={field.value || ""} style={{ backgroundColor: 'white' }} />
+                          <Input placeholder="Company or service provider" {...field} value={field.value || ""} style={{ backgroundColor: 'white', color: '#000000' }} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -3341,7 +3341,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       <FormItem>
                         <FormLabel style={{ color: 'white' }}>Warranty Period</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g., 1 year, 6 months" {...field} value={field.value || ""} style={{ backgroundColor: 'white' }} />
+                          <Input placeholder="e.g., 1 year, 6 months" {...field} value={field.value || ""} style={{ backgroundColor: 'white', color: '#000000' }} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -3355,7 +3355,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       <FormItem>
                         <FormLabel style={{ color: 'white' }}>Next Service Due</FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} value={field.value || ""} style={{ backgroundColor: 'white' }} />
+                          <Input type="date" {...field} value={field.value || ""} style={{ backgroundColor: 'white', color: '#000000' }} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -3372,7 +3372,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       <FormControl>
                         <textarea 
                           className="flex min-h-[80px] w-full rounded-md border border-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                          style={{ backgroundColor: 'white' }}
+                          style={{ backgroundColor: 'white', color: '#000000' }}
                           placeholder="Any additional notes about the service..."
                           {...field}
                           value={field.value || ""}
