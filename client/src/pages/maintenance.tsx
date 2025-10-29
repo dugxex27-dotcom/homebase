@@ -3208,13 +3208,13 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                         <FormLabel style={{ color: 'white' }}>Service Type</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <SelectTrigger style={{ backgroundColor: '#ffffff' }}>
+                            <SelectTrigger style={{ backgroundColor: '#ffffff', color: '#000000' }}>
                               <SelectValue placeholder="Select service type" />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent>
+                          <SelectContent style={{ backgroundColor: '#ffffff' }}>
                             {SERVICE_TYPES.map((type) => (
-                              <SelectItem key={type.value} value={type.value}>
+                              <SelectItem key={type.value} value={type.value} style={{ color: '#000000' }}>
                                 {type.label}
                               </SelectItem>
                             ))}
@@ -3233,13 +3233,13 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                         <FormLabel style={{ color: 'white' }}>Home Area</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <SelectTrigger style={{ backgroundColor: '#ffffff' }}>
+                            <SelectTrigger style={{ backgroundColor: '#ffffff', color: '#000000' }}>
                               <SelectValue placeholder="Select home area" />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent>
+                          <SelectContent style={{ backgroundColor: '#ffffff' }}>
                             {HOME_AREAS.map((area) => (
-                              <SelectItem key={area.value} value={area.value}>
+                              <SelectItem key={area.value} value={area.value} style={{ color: '#000000' }}>
                                 {area.label}
                               </SelectItem>
                             ))}
