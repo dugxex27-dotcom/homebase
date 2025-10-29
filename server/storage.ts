@@ -3471,9 +3471,11 @@ class DbStorage implements IStorage {
       return (await this.getContractorProfile(contractorId))!;
     } else {
       // Update existing contractor profile
+      // Remove fields that should never be updated by user
+      const { id, createdAt, updatedAt, rating, reviewCount, distance, ...cleanProfileData } = profileData as any;
+      
       const updatedData = {
-        ...existingContractor,
-        ...profileData,
+        ...cleanProfileData,
         address: profileData.address ?? existingContractor.address,
         city: profileData.city ?? existingContractor.city,
         state: profileData.state ?? existingContractor.state,
