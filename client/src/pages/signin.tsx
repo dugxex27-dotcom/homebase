@@ -358,8 +358,9 @@ export default function SignIn() {
                           <Input
                             type="email"
                             placeholder="Enter your email"
+                            autoComplete="email"
                             {...field}
-                            data-testid="input-email"
+                            data-testid="input-register-email"
                             style={{ color: '#ffffff' }}
                           />
                         </FormControl>
