@@ -2148,18 +2148,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/contractor/profile', async (req: any, res) => {
     try {
+      console.log('[DEBUG] PUT /api/contractor/profile - Session:', {
+        isAuthenticated: req.session?.isAuthenticated,
+        role: req.session?.user?.role,
+        userId: req.session?.user?.id
+      });
+      
       if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
+        console.log('[DEBUG] Unauthorized - session check failed');
         return res.status(401).json({ message: "Unauthorized" });
       }
 
       const contractorId = req.session.user.id;
       const profileData = req.body;
+      
+      console.log('[DEBUG] Updating contractor profile:', contractorId, 'with data keys:', Object.keys(profileData));
 
       const updatedProfile = await storage.updateContractorProfile(contractorId, profileData);
+      console.log('[DEBUG] Profile updated successfully');
       res.json(updatedProfile);
     } catch (error) {
-      console.error("Error updating contractor profile:", error);
-      res.status(500).json({ message: "Failed to update profile" });
+      console.error("[ERROR] Error updating contractor profile:", error);
+      console.error("[ERROR] Error stack:", error instanceof Error ? error.stack : 'No stack trace');
+      res.status(500).json({ message: "Failed to update profile", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
