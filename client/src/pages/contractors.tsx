@@ -194,10 +194,14 @@ export default function Contractors() {
     }
   };
 
+  // Track if filters have been applied at least once
+  const [hasAppliedFilters, setHasAppliedFilters] = useState(false);
+
   const { data: contractors, isLoading, error } = useQuery<(Contractor & { isBoosted?: boolean })[]>({
     queryKey: filters.searchQuery || filters.searchLocation 
       ? ['/api/contractors/search', filters]
       : ['/api/contractors', filters],
+    enabled: hasAppliedFilters || !!filters.searchQuery || !!filters.searchLocation, // Only fetch when filters applied or search params exist
     queryFn: async () => {
       const params = new URLSearchParams();
       
@@ -518,6 +522,7 @@ export default function Contractors() {
                       }
                       
                       handleFiltersChange(newFilters);
+                      setHasAppliedFilters(true); // Enable contractor search
                       setServicesDropdownOpen(false);
                     }}
                     data-testid="button-apply-filters"
@@ -560,7 +565,20 @@ export default function Contractors() {
           </div>
         </div>
 
-        {isLoading ? (
+        {!hasAppliedFilters && !filters.searchQuery && !filters.searchLocation ? (
+              <div className="text-center py-16 bg-card rounded-xl shadow-sm border">
+                <div className="max-w-md mx-auto">
+                  <Search className="w-16 h-16 mx-auto mb-4" style={{ color: '#b6a6f4' }} />
+                  <h3 className="text-xl font-semibold mb-2 text-foreground">Ready to Find Contractors?</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Use the filters above to search for contractors by distance, services, rating, and more.
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Select your preferences and click "Apply Filters" to see available contractors.
+                  </p>
+                </div>
+              </div>
+            ) : isLoading ? (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {[...Array(4)].map((_, i) => (
                   <div key={i} className="bg-gray-50 dark:bg-gray-800 rounded-xl shadow-sm border border-gray-300 dark:border-gray-700 p-6 animate-pulse">
