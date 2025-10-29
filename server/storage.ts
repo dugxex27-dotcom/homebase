@@ -2998,8 +2998,7 @@ class DbStorage implements IStorage {
     this.memStorage = new MemStorage();
     
     // Bind all MemStorage methods (except database-backed ones)
-    // getContractors now uses database-backed method (defined below)
-    this.getContractor = this.memStorage.getContractor.bind(this.memStorage);
+    // getContractors and getContractor now use database-backed methods (defined below)
     this.createContractor = this.memStorage.createContractor.bind(this.memStorage);
     this.getContractorLicenses = this.memStorage.getContractorLicenses.bind(this.memStorage);
     this.getContractorLicense = this.memStorage.getContractorLicense.bind(this.memStorage);
@@ -3486,6 +3485,12 @@ class DbStorage implements IStorage {
       await db.update(contractors).set(updatedData).where(eq(contractors.id, contractorId));
       return (await this.getContractorProfile(contractorId))!;
     }
+  }
+
+  // Get contractor by ID - DATABASE BACKED
+  async getContractor(id: string): Promise<Contractor | undefined> {
+    const result = await db.select().from(contractors).where(eq(contractors.id, id)).limit(1);
+    return result[0];
   }
 
   // Methods delegated to MemStorage (bound in constructor)
