@@ -27,10 +27,14 @@ import { trackProfileView, trackSocialClick } from "@/lib/analytics";
 // Utility to ensure URL has proper protocol
 function ensureHttps(url: string | null | undefined): string | undefined {
   if (!url) return undefined;
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    return url;
+  const trimmedUrl = url.trim();
+  if (trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://')) {
+    console.log('[ensureHttps] URL already has protocol:', trimmedUrl);
+    return trimmedUrl;
   }
-  return `https://${url}`;
+  const result = `https://${trimmedUrl}`;
+  console.log('[ensureHttps] Added https:// to URL:', result);
+  return result;
 }
 
 export default function ContractorDetail() {
