@@ -106,6 +106,9 @@ export const contractors = pgTable("contractors", {
   services: text("services").array().notNull(),
   phone: text("phone").notNull(),
   email: text("email").notNull(),
+  address: text("address"), // Street address
+  city: text("city"), // City
+  state: text("state"), // State/Province
   licenseNumber: text("license_number").notNull(),
   licenseMunicipality: text("license_municipality").notNull(),
   isLicensed: boolean("is_licensed").notNull().default(true),
