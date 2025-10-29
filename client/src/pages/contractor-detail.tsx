@@ -94,16 +94,16 @@ export default function ContractorDetail() {
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-8">
             <div className="flex items-start space-x-6">
               <div className="relative">
-                {contractor.profileImage ? (
+                {contractor.businessLogo || contractor.profileImage ? (
                   <img
-                    src={contractor.profileImage}
-                    alt={`${contractor.name} profile photo`}
+                    src={contractor.businessLogo || contractor.profileImage}
+                    alt={`${contractor.company} logo`}
                     className="w-32 h-32 rounded-2xl object-cover border-4 border-blue-100 dark:border-blue-900/30"
                   />
                 ) : (
                   <div className="w-32 h-32 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
                     <span className="text-2xl font-bold text-white">
-                      {contractor.name.split(' ').map(n => n[0]).join('')}
+                      {contractor.company.split(' ').map(n => n[0]).join('')}
                     </span>
                   </div>
                 )}
@@ -115,8 +115,8 @@ export default function ContractorDetail() {
               <div className="flex-1">
                 <div className="flex justify-between items-start mb-6">
                   <div>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{contractor.name}</h1>
-                    <p className="text-xl text-gray-600 dark:text-gray-300 mb-4">{contractor.company}</p>
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{contractor.company}</h1>
+                    <p className="text-xl text-gray-600 dark:text-gray-300 mb-4">Contact: {contractor.name}</p>
                     <div className="flex items-center space-x-6 mb-4">
                       <div className="flex items-center">
                         {renderStars(contractor.rating)}
@@ -181,8 +181,8 @@ export default function ContractorDetail() {
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-lg">
             <CardHeader>
               <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
-                <User className="h-6 w-6 mr-3 text-blue-600 dark:text-blue-400" />
-                About {contractor.name}
+                <Building className="h-6 w-6 mr-3 text-blue-600 dark:text-blue-400" />
+                About {contractor.company}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -202,32 +202,61 @@ export default function ContractorDetail() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="flex items-center text-gray-600 dark:text-gray-300">
-                  <MapPin className="w-5 h-5 mr-3 text-blue-500" />
+                <div className="flex items-start text-gray-600 dark:text-gray-300">
+                  <User className="w-5 h-5 mr-3 text-blue-500 mt-1" />
+                  <div>
+                    <div className="font-medium">Contact Person</div>
+                    <div className="text-sm">{contractor.name}</div>
+                  </div>
+                </div>
+                <div className="flex items-start text-gray-600 dark:text-gray-300">
+                  <Phone className="w-5 h-5 mr-3 text-green-500 mt-1" />
+                  <div>
+                    <div className="font-medium">Phone</div>
+                    <div className="text-sm">{contractor.phone}</div>
+                  </div>
+                </div>
+                <div className="flex items-start text-gray-600 dark:text-gray-300">
+                  <Mail className="w-5 h-5 mr-3 text-purple-500 mt-1" />
+                  <div>
+                    <div className="font-medium">Email</div>
+                    <div className="text-sm">{contractor.email}</div>
+                  </div>
+                </div>
+                <div className="flex items-start text-gray-600 dark:text-gray-300">
+                  <MapPin className="w-5 h-5 mr-3 text-blue-500 mt-1" />
                   <div>
                     <div className="font-medium">Location</div>
                     <div className="text-sm">{contractor.location}</div>
                   </div>
                 </div>
-                <div className="flex items-center text-gray-600 dark:text-gray-300">
-                  <Building className="w-5 h-5 mr-3 text-green-500" />
+                <div className="flex items-start text-gray-600 dark:text-gray-300">
+                  <Building className="w-5 h-5 mr-3 text-green-500 mt-1" />
                   <div>
                     <div className="font-medium">Experience</div>
                     <div className="text-sm">{contractor.experience}+ years</div>
                   </div>
                 </div>
-                <div className="flex items-center text-gray-600 dark:text-gray-300">
-                  <Shield className="w-5 h-5 mr-3 text-purple-500" />
+                <div className="flex items-start text-gray-600 dark:text-gray-300">
+                  <Shield className="w-5 h-5 mr-3 text-purple-500 mt-1" />
                   <div>
-                    <div className="font-medium">Licensing</div>
-                    <div className="text-sm">Licensed</div>
+                    <div className="font-medium">License</div>
+                    <div className="text-sm">{contractor.licenseNumber}</div>
+                    <div className="text-xs text-gray-500">{contractor.licenseMunicipality}</div>
                   </div>
                 </div>
-                <div className="flex items-center text-gray-600 dark:text-gray-300">
-                  <Wrench className="w-5 h-5 mr-3 text-orange-500" />
+                <div className="flex items-start text-gray-600 dark:text-gray-300">
+                  <Wrench className="w-5 h-5 mr-3 text-orange-500 mt-1" />
                   <div>
-                    <div className="font-medium">Services</div>
-                    <div className="text-sm">{contractor.services.length} specialties</div>
+                    <div className="font-medium">Service Radius</div>
+                    <div className="text-sm">{contractor.serviceRadius} miles</div>
+                  </div>
+                </div>
+                <div className="flex items-start text-gray-600 dark:text-gray-300">
+                  <Shield className="w-5 h-5 mr-3 text-red-500 mt-1" />
+                  <div>
+                    <div className="font-medium">Emergency Services</div>
+                    <div className="text-sm">{contractor.hasEmergencyServices ? 'Available 24/7' : 'Not Available'}</div>
                   </div>
                 </div>
               </div>
