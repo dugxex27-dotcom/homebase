@@ -379,10 +379,14 @@ export default function ContractorProfile() {
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      console.log('[DEBUG] Starting profile update mutation');
+      console.log('======================================');
+      console.log('[DEBUG] SAVE BUTTON CLICKED - Starting profile update mutation');
+      console.log('[DEBUG] Current user:', typedUser);
       console.log('[DEBUG] User companyId:', typedUser?.companyId);
+      console.log('[DEBUG] User authenticated:', !!typedUser);
       console.log('[DEBUG] Has businessLogo:', !!data.businessLogo);
       console.log('[DEBUG] Project photos count:', data.projectPhotos?.length || 0);
+      console.log('======================================');
       
       // Separate contractor data from company data
       let { businessLogo, projectPhotos, ...contractorData } = data;
