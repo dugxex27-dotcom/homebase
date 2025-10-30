@@ -37,8 +37,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ success: true, message: "Test endpoint works!" });
   });
 
-  // Set up Google OAuth authentication (replaces Replit Auth)
-  await setupGoogleAuth(app);
+  // Set up Replit Auth (handles Google OAuth via Replit)
+  await setupAuth(app);
 
   // Auth routes
   app.get('/api/auth/user', async (req: any, res) => {

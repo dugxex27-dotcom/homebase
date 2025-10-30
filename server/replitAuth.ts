@@ -40,7 +40,8 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
       maxAge: sessionTtl,
     },
   });
@@ -89,10 +90,8 @@ async function upsertUser(claims: any) {
 }
 
 export async function setupAuth(app: Express) {
-  app.set("trust proxy", 1);
-  app.use(getSession());
-  app.use(passport.initialize());
-  app.use(passport.session());
+  // Session and passport are already initialized in server/index.ts
+  // Just set up the OAuth strategy and routes here
 
   const config = await getOidcConfig();
 
@@ -189,7 +188,13 @@ export async function setupAuth(app: Express) {
 
   app.get("/api/logout", (req, res) => {
     req.logout(() => {
-      res.redirect("/signin");
+      req.session.destroy((err) => {
+        if (err) {
+          console.error("Session destroy error:", err);
+        }
+        res.clearCookie('connect.sid');
+        res.redirect("/signin");
+      });
     });
   });
 }
