@@ -477,6 +477,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   };
 
+  // Serve public object storage files
+  app.get('/public/*', async (req, res) => {
+    try {
+      const filePath = req.path.replace('/public/', ''); // Remove /public/ prefix
+      const objectStorage = new ObjectStorageService();
+      
+      const file = await objectStorage.searchPublicObject(filePath);
+      if (!file) {
+        return res.status(404).json({ message: "File not found" });
+      }
+      
+      await objectStorage.downloadObject(file, res);
+    } catch (error) {
+      console.error("Error serving public file:", error);
+      res.status(500).json({ message: "Failed to serve file" });
+    }
+  });
+
   // Image upload endpoint for contractor profiles
   app.post('/api/upload/image', isAuthenticated, async (req: any, res) => {
     try {
@@ -699,7 +717,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!contractor) {
         return res.status(404).json({ message: "Contractor not found" });
       }
-      res.json(contractor);
+      
+      // Fetch company data to include businessLogo and projectPhotos
+      let contractorWithCompanyData = { ...contractor };
+      if ((contractor as any).companyId) {
+        const company = await storage.getCompany((contractor as any).companyId);
+        if (company) {
+          contractorWithCompanyData = {
+            ...contractor,
+            businessLogo: company.businessLogo || '',
+            projectPhotos: company.projectPhotos || []
+          };
+        }
+      }
+      
+      res.json(contractorWithCompanyData);
     } catch (error) {
       console.error('[ERROR] Failed to fetch contractor:', error);
       res.status(500).json({ message: "Failed to fetch contractor" });

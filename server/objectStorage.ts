@@ -87,6 +87,35 @@ export class ObjectStorageService {
     return null;
   }
 
+  // Upload a file to object storage
+  async uploadFile(path: string, buffer: Buffer, contentType: string): Promise<void> {
+    try {
+      // Get public search paths to determine the bucket
+      const searchPaths = this.getPublicObjectSearchPaths();
+      if (searchPaths.length === 0) {
+        throw new Error("No public object search paths configured");
+      }
+      
+      // Use the first search path to construct the full path
+      const fullPath = `${searchPaths[0]}/${path}`;
+      const { bucketName, objectName } = parseObjectPath(fullPath);
+      
+      const bucket = objectStorageClient.bucket(bucketName);
+      const file = bucket.file(objectName);
+      
+      // Upload the file
+      await file.save(buffer, {
+        contentType,
+        metadata: {
+          cacheControl: 'public, max-age=31536000', // 1 year
+        },
+      });
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      throw error;
+    }
+  }
+
   // Downloads an object to the response.
   async downloadObject(file: File, res: Response, cacheTtlSec: number = 3600) {
     try {
