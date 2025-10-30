@@ -184,9 +184,23 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
-  // For demo purposes, use session-based authentication instead of OAuth
+  // Check session-based authentication (email/password login)
   if (req.session?.isAuthenticated && req.session?.user) {
     return next();
+  }
+
+  // Check passport user (Google OAuth login)
+  if (req.user) {
+    // Sync passport user to session format for consistent access
+    const userId = (req.user as any).id || (req.user as any).claims?.sub;
+    if (userId) {
+      const fullUser = await storage.getUser(userId);
+      if (fullUser) {
+        req.session.isAuthenticated = true;
+        req.session.user = fullUser;
+        return next();
+      }
+    }
   }
 
   return res.status(401).json({ message: "Unauthorized" });
