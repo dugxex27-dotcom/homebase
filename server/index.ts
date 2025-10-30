@@ -74,8 +74,9 @@ const generalLimiter = rateLimit({
 app.use('/api/', generalLimiter);
 
 // Increase body size limit to support base64 image uploads (business logos and project photos)
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: false, limit: '50mb' }));
+// Using 100mb to accommodate multiple large photos
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ extended: false, limit: '100mb' }));
 
 // Session configuration with enhanced security
 const isProduction = process.env.NODE_ENV === 'production';
