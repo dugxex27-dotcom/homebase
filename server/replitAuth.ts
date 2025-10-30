@@ -92,8 +92,10 @@ async function upsertUser(claims: any) {
 export async function setupAuth(app: Express) {
   // Session and passport are already initialized in server/index.ts
   // Just set up the OAuth strategy and routes here
-
+  console.log('[AUTH] Setting up Replit Auth...');
+  
   const config = await getOidcConfig();
+  console.log('[AUTH] OIDC config loaded');
 
   const verify: VerifyFunction = async (
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
@@ -107,7 +109,9 @@ export async function setupAuth(app: Express) {
 
   // Only set up OAuth strategies if REPLIT_DOMAINS is available
   if (process.env.REPLIT_DOMAINS) {
-    for (const domain of process.env.REPLIT_DOMAINS.split(",")) {
+    const domains = process.env.REPLIT_DOMAINS.split(",");
+    console.log('[AUTH] Configuring OAuth for domains:', domains);
+    for (const domain of domains) {
       const strategy = new Strategy(
         {
           name: `replitauth:${domain}`,
@@ -118,7 +122,11 @@ export async function setupAuth(app: Express) {
         verify,
       );
       passport.use(strategy);
+      console.log('[AUTH] Registered strategy for domain:', domain);
     }
+    console.log('[AUTH] Replit Auth configured successfully');
+  } else {
+    console.warn('[AUTH] REPLIT_DOMAINS not set - OAuth will not work!');
   }
 
   passport.serializeUser((user: Express.User, cb) => cb(null, user));
