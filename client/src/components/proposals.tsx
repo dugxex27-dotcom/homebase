@@ -28,6 +28,14 @@ interface ProposalsProps {
   contractorId: string;
 }
 
+interface ContactedHomeowner {
+  id: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  lastContactedAt: Date;
+}
+
 export function Proposals({ contractorId }: ProposalsProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -35,6 +43,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
   const [editingProposal, setEditingProposal] = useState<Proposal | null>(null);
   const [showSignature, setShowSignature] = useState(false);
   const [signingProposal, setSigningProposal] = useState<Proposal | null>(null);
+  const [customerSearch, setCustomerSearch] = useState("");
 
   const form = useForm<ProposalFormData>({
     resolver: zodResolver(proposalFormSchema),
@@ -52,11 +61,16 @@ export function Proposals({ contractorId }: ProposalsProps) {
       status: "draft",
       customerNotes: "",
       internalNotes: "",
+      homeownerId: "",
     },
   });
 
   const { data: proposals = [], isLoading } = useQuery<Proposal[]>({
     queryKey: ["/api/proposals", contractorId],
+  });
+
+  const { data: contactedHomeowners = [], isLoading: isLoadingHomeowners } = useQuery<ContactedHomeowner[]>({
+    queryKey: ["/api/contractors", contractorId, "contacted-homeowners"],
   });
 
   const createMutation = useMutation({
@@ -315,6 +329,51 @@ export function Proposals({ contractorId }: ProposalsProps) {
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  {/* Customer Selection Field */}
+                  <FormField
+                    control={form.control}
+                    name="homeownerId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel style={{ color: 'white' }}>Customer *</FormLabel>
+                        <FormControl>
+                          <Select value={field.value || ""} onValueChange={field.onChange}>
+                            <SelectTrigger data-testid="select-customer" style={{ backgroundColor: 'white', color: '#000000' }}>
+                              <SelectValue placeholder="Select a customer who has contacted you" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {isLoadingHomeowners ? (
+                                <SelectItem value="loading" disabled>Loading customers...</SelectItem>
+                              ) : contactedHomeowners.length === 0 ? (
+                                <SelectItem value="none" disabled>No customers have contacted you yet</SelectItem>
+                              ) : (
+                                contactedHomeowners
+                                  .filter(homeowner => {
+                                    if (!customerSearch) return true;
+                                    const searchLower = customerSearch.toLowerCase();
+                                    const fullName = `${homeowner.firstName || ''} ${homeowner.lastName || ''}`.toLowerCase();
+                                    const email = (homeowner.email || '').toLowerCase();
+                                    return fullName.includes(searchLower) || email.includes(searchLower);
+                                  })
+                                  .map((homeowner) => (
+                                    <SelectItem key={homeowner.id} value={homeowner.id}>
+                                      {homeowner.firstName || homeowner.lastName 
+                                        ? `${homeowner.firstName || ''} ${homeowner.lastName || ''}`.trim()
+                                        : homeowner.email || 'Unknown Customer'}
+                                    </SelectItem>
+                                  ))
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <p className="text-xs text-gray-300 mt-1">
+                          Only customers who have contacted you through the platform are shown
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}

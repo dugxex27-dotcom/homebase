@@ -116,6 +116,7 @@ export interface IStorage {
   createMessage(message: InsertMessage): Promise<Message>;
   markMessagesAsRead(conversationId: string, userId: string): Promise<void>;
   getUnreadMessageCount(userId: string): Promise<number>;
+  getContactedHomeowners(contractorId: string): Promise<(User & { lastContactedAt: Date })[]>;
 
   // Review operations
   getContractorReviews(contractorId: string): Promise<ContractorReview[]>;
@@ -1509,6 +1510,32 @@ export class MemStorage implements IStorage {
   async getUnreadMessageCount(userId: string): Promise<number> {
     const messages = Array.from(this.messages.values());
     return messages.filter(m => m.senderId !== userId && !m.isRead).length;
+  }
+
+  async getContactedHomeowners(contractorId: string): Promise<(User & { lastContactedAt: Date })[]> {
+    const conversations = Array.from(this.conversations.values());
+    const contractorConversations = conversations.filter(conv => conv.contractorId === contractorId);
+    
+    const homeownerMap = new Map<string, Date>();
+    contractorConversations.forEach(conv => {
+      const lastContactedAt = conv.lastMessageAt || conv.createdAt;
+      if (lastContactedAt) {
+        const existingDate = homeownerMap.get(conv.homeownerId);
+        if (!existingDate || new Date(lastContactedAt) > existingDate) {
+          homeownerMap.set(conv.homeownerId, new Date(lastContactedAt));
+        }
+      }
+    });
+    
+    const homeowners = Array.from(homeownerMap.entries()).map(([homeownerId, lastContactedAt]) => {
+      const user = this.users.get(homeownerId);
+      if (user) {
+        return { ...user, lastContactedAt };
+      }
+      return null;
+    }).filter((h): h is User & { lastContactedAt: Date } => h !== null);
+    
+    return homeowners.sort((a, b) => b.lastContactedAt.getTime() - a.lastContactedAt.getTime());
   }
 
   // Review methods

@@ -2404,6 +2404,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/contractors/:contractorId/contacted-homeowners', isAuthenticated, async (req: any, res) => {
+    try {
+      const contractorId = req.params.contractorId;
+      const userId = req.session.user.id;
+      
+      // Verify the user is the contractor or has permission
+      if (userId !== contractorId && req.session.user.role !== 'contractor') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const homeowners = await storage.getContactedHomeowners(contractorId);
+      res.json(homeowners);
+    } catch (error) {
+      console.error("Error fetching contacted homeowners:", error);
+      res.status(500).json({ message: "Failed to fetch contacted homeowners" });
+    }
+  });
+
   app.get('/api/conversations/:id', isAuthenticated, async (req: any, res) => {
     try {
       const conversation = await storage.getConversation(req.params.id);
