@@ -3288,12 +3288,14 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                         <FormLabel style={{ color: 'white' }}>Cost</FormLabel>
                         <FormControl>
                           <Input 
-                            type="number" 
-                            step="0.01"
+                            type="text" 
                             placeholder="Service cost" 
                             {...field}
                             value={field.value || ""}
-                            onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                            onChange={e => {
+                              const value = e.target.value;
+                              field.onChange(value ? parseFloat(value) : undefined);
+                            }}
                             style={{ backgroundColor: 'white', color: '#000000' }}
                           />
                         </FormControl>
