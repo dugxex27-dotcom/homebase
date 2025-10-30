@@ -3164,11 +3164,7 @@ class DbStorage implements IStorage {
     this.createContractorLicense = this.memStorage.createContractorLicense.bind(this.memStorage);
     this.updateContractorLicense = this.memStorage.updateContractorLicense.bind(this.memStorage);
     this.deleteContractorLicense = this.memStorage.deleteContractorLicense.bind(this.memStorage);
-    // Company methods
-    this.getCompany = this.memStorage.getCompany.bind(this.memStorage);
-    this.createCompany = this.memStorage.createCompany.bind(this.memStorage);
-    this.updateCompany = this.memStorage.updateCompany.bind(this.memStorage);
-    this.getCompanyEmployees = this.memStorage.getCompanyEmployees.bind(this.memStorage);
+    // Company methods - now database backed (getCompany, createCompany, updateCompany, getCompanyEmployees)
     this.createCompanyInviteCode = this.memStorage.createCompanyInviteCode.bind(this.memStorage);
     this.getCompanyInviteCode = this.memStorage.getCompanyInviteCode.bind(this.memStorage);
     this.getCompanyInviteCodeByCode = this.memStorage.getCompanyInviteCodeByCode.bind(this.memStorage);
@@ -3654,6 +3650,46 @@ class DbStorage implements IStorage {
       await db.update(contractors).set(updatedData).where(eq(contractors.id, contractorId));
       return (await this.getContractorProfile(contractorId))!;
     }
+  }
+
+  // Company operations - DATABASE BACKED for persistence
+  async getCompany(id: string): Promise<Company | undefined> {
+    const result = await db.select().from(companies).where(eq(companies.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createCompany(companyData: InsertCompany): Promise<Company> {
+    const newCompany = {
+      ...companyData,
+      id: randomUUID(),
+      rating: "0",
+      reviewCount: 0,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    await db.insert(companies).values(newCompany);
+    return (await this.getCompany(newCompany.id))!;
+  }
+
+  async updateCompany(id: string, companyData: Partial<InsertCompany>): Promise<Company | undefined> {
+    const existingCompany = await this.getCompany(id);
+    if (!existingCompany) {
+      return undefined;
+    }
+
+    const updatedData = {
+      ...companyData,
+      updatedAt: new Date()
+    };
+    
+    await db.update(companies).set(updatedData).where(eq(companies.id, id));
+    return (await this.getCompany(id))!;
+  }
+
+  async getCompanyEmployees(companyId: string): Promise<User[]> {
+    const result = await db.select().from(users).where(eq(users.companyId, companyId));
+    return result;
   }
 
   // Get contractor by ID - DATABASE BACKED
