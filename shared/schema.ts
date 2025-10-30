@@ -168,7 +168,7 @@ export const customMaintenanceTasks = pgTable("custom_maintenance_tasks", {
   homeownerId: text("homeowner_id").notNull(),
   houseId: text("house_id"), // nullable, if null applies to all houses
   title: text("title").notNull(),
-  description: text("description").notNull(),
+  description: text("description"), // now optional
   category: text("category").notNull(),
   priority: text("priority").notNull().default('medium'), // 'high', 'medium', 'low'
   estimatedTime: text("estimated_time"),
