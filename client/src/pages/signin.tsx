@@ -50,6 +50,7 @@ export default function SignIn() {
       email: "",
       password: "",
     },
+    mode: "onBlur",
   });
 
   const registerForm = useForm<RegisterFormData>({
@@ -64,6 +65,7 @@ export default function SignIn() {
       role: undefined,
       inviteCode: "",
     },
+    mode: "onBlur",
   });
 
   const loginMutation = useMutation({
@@ -351,23 +353,18 @@ export default function SignIn() {
                   <FormField
                     control={registerForm.control}
                     name="email"
-                    render={({ field }) => (
+                    render={({ field: { onChange, onBlur, name, ref } }) => (
                       <FormItem>
                         <FormLabel>Email</FormLabel>
                         <FormControl>
-                          <input
+                          <Input
                             type="text"
                             placeholder="Enter your email"
-                            value={field.value}
-                            onChange={(e) => {
-                              console.log("Email onChange:", e.target.value);
-                              field.onChange(e);
-                            }}
-                            onBlur={field.onBlur}
-                            name={field.name}
-                            ref={field.ref}
+                            onChange={onChange}
+                            onBlur={onBlur}
+                            name={name}
+                            ref={ref}
                             data-testid="input-register-email"
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                             style={{ color: '#ffffff' }}
                           />
                         </FormControl>
