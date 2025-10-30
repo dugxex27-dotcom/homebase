@@ -977,27 +977,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/companies/:id", isAuthenticated, async (req: any, res) => {
     try {
+      console.log('[Company Update] Request received for company:', req.params.id);
+      console.log('[Company Update] Request body:', JSON.stringify(req.body, null, 2));
+      
       const userId = req.session.user.id;
       const company = await storage.getCompany(req.params.id);
 
       if (!company) {
+        console.log('[Company Update] Company not found:', req.params.id);
         return res.status(404).json({ message: "Company not found" });
       }
 
       // Only company owner can update company profile
       if (company.ownerId !== userId) {
+        console.log('[Company Update] Permission denied. Owner:', company.ownerId, 'User:', userId);
         return res.status(403).json({ message: "Only company owner can update company profile" });
       }
 
+      console.log('[Company Update] Validating data...');
       const partialData = insertCompanySchema.partial().omit({ ownerId: true }).parse(req.body);
+      console.log('[Company Update] Validated data:', JSON.stringify(partialData, null, 2));
+      
       const updatedCompany = await storage.updateCompany(req.params.id, partialData);
+      console.log('[Company Update] Update successful. Logo:', updatedCompany?.businessLogo ? 'SET' : 'EMPTY', 'Photos:', updatedCompany?.projectPhotos?.length || 0);
 
       res.json(updatedCompany);
     } catch (error) {
       if (error instanceof z.ZodError) {
+        console.log('[Company Update] Validation error:', error.errors);
         return res.status(400).json({ message: "Invalid company data", errors: error.errors });
       }
-      console.error("Error updating company:", error);
+      console.error("[Company Update] Error updating company:", error);
       res.status(500).json({ message: "Failed to update company" });
     }
   });
