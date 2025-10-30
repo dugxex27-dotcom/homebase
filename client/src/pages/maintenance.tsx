@@ -2579,7 +2579,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     {maintenanceLogs.slice(0, 2).map((log) => (
                       <div key={log.id} className="mt-3 p-3 rounded-lg border-gray-300 dark:border-gray-700" style={{ backgroundColor: '#f2f2f2' }}>
                         <div className="flex justify-between items-start">
-                          <div>
+                          <div className="flex-1">
                             <h4 className="font-medium text-sm" style={{ 
                               color: log.contractorName === 'Sarah Chen' && log.serviceDate === '2024-06-19' ? '#3c258e' : 
                                      log.serviceDescription?.includes('HVAC') || log.serviceDescription?.includes('gutter') ? '#2c0f5b' : '#ffffff' 
@@ -2599,6 +2599,15 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                                 </>
                               )}
                             </div>
+                            {log.createdAt && (
+                              <div className="text-xs text-gray-500 mt-1">
+                                Record added {new Date(log.createdAt).toLocaleDateString('en-US', { 
+                                  year: 'numeric', 
+                                  month: 'short', 
+                                  day: 'numeric' 
+                                })}
+                              </div>
+                            )}
                           </div>
                           {log.cost && (
                             <span className="text-sm font-medium text-green-600 dark:text-green-400">
@@ -3078,6 +3087,16 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                             {appliance.notes}
                           </p>
                         )}
+                        
+                        {appliance.createdAt && (
+                          <div className="text-xs text-gray-500 border-t pt-2">
+                            Added on {new Date(appliance.createdAt).toLocaleDateString('en-US', { 
+                              year: 'numeric', 
+                              month: 'short', 
+                              day: 'numeric' 
+                            })}
+                          </div>
+                        )}
 
                         <div className="flex justify-between items-center pt-2 border-t">
                           <Button
@@ -3251,6 +3270,18 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                           {log.notes && (
                             <div className="mt-4 p-3 bg-muted rounded text-sm">
                               <span className="text-muted-foreground">{log.notes}</span>
+                            </div>
+                          )}
+                          
+                          {log.createdAt && (
+                            <div className="mt-3 text-xs text-gray-500 border-t pt-2">
+                              Record added on {new Date(log.createdAt).toLocaleDateString('en-US', { 
+                                year: 'numeric', 
+                                month: 'short', 
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
                             </div>
                           )}
                         </CardContent>
