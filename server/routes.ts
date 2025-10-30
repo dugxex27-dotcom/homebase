@@ -2639,7 +2639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Check if homeowner can review contractor (requires accepted proposals)
+  // Check if homeowner can review contractor (requires exchanged messages)
   app.get('/api/contractors/:id/can-review', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.session.user.id;
@@ -2651,11 +2651,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ canReview: false, reason: "Only homeowners can review contractors" });
       }
       
-      // Check if homeowner has accepted proposals with this contractor
-      const hasAcceptedProposal = await storage.hasAcceptedProposalWithContractor(userId, contractorId);
+      // Check if homeowner has exchanged messages with this contractor
+      const conversations = await storage.getConversationsByUser(userId);
+      const hasConversation = conversations.some(conv => 
+        (conv.homeownerId === userId && conv.contractorId === contractorId) ||
+        (conv.contractorId === userId && conv.homeownerId === contractorId)
+      );
       
-      if (!hasAcceptedProposal) {
-        return res.json({ canReview: false, reason: "You can only review contractors after accepting their proposals" });
+      if (!hasConversation) {
+        return res.json({ canReview: false, reason: "You can only review contractors after exchanging messages with them" });
       }
       
       res.json({ canReview: true });
@@ -2676,10 +2680,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only homeowners can leave reviews" });
       }
       
-      // Check if homeowner has accepted proposals with this contractor
-      const hasAcceptedProposal = await storage.hasAcceptedProposalWithContractor(userId, contractorId);
-      if (!hasAcceptedProposal) {
-        return res.status(403).json({ message: "You can only review contractors after accepting their proposals" });
+      // Check if homeowner has exchanged messages with this contractor
+      const conversations = await storage.getConversationsByUser(userId);
+      const hasConversation = conversations.some(conv => 
+        (conv.homeownerId === userId && conv.contractorId === contractorId) ||
+        (conv.contractorId === userId && conv.homeownerId === contractorId)
+      );
+      
+      if (!hasConversation) {
+        return res.status(403).json({ message: "You can only review contractors after exchanging messages with them" });
       }
       
       const reviewData = insertContractorReviewSchema.parse({
