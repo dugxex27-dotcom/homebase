@@ -3173,9 +3173,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
               })()
             ) : (
               <div className="text-center py-12">
-                <FileText className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-medium mb-2" style={{ color: '#ffffff' }}>No service records yet</h3>
-                <p className="mb-4" style={{ color: '#b6a6f4' }}>
+                <FileText className="w-16 h-16 mx-auto mb-4" style={{ color: '#000000' }} />
+                <h3 className="text-lg font-medium mb-2" style={{ color: '#000000' }}>No service records yet</h3>
+                <p className="mb-4" style={{ color: '#000000' }}>
                   Start tracking maintenance and repairs to build a complete home service history.
                 </p>
                 <Button onClick={handleAddNewMaintenanceLog} style={{ backgroundColor: '#2c0f5b', color: 'white' }} className="hover:opacity-90">
