@@ -440,13 +440,10 @@ export default function Home() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                        Your location
-                      </label>
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-3 h-4 w-4 z-10" style={{ color: '#b6a6f4' }} />
-                        {userHouses.length > 0 ? (
+                    {userHouses.length > 0 && (
+                      <div className="flex-1">
+                        <div className="relative">
+                          <MapPin className="absolute left-3 top-3 h-4 w-4 z-10" style={{ color: '#b6a6f4' }} />
                           <Select value={selectedHouseId} onValueChange={setSelectedHouseId}>
                             <SelectTrigger 
                               className="pl-10 h-12 text-base border-gray-300 dark:border-gray-600"
@@ -466,17 +463,9 @@ export default function Home() {
                               ))}
                             </SelectContent>
                           </Select>
-                        ) : (
-                          <Input
-                            type="text"
-                            placeholder="City, State or ZIP code"
-                            className="pl-10 h-12 text-base border-gray-300 dark:border-gray-600"
-                            style={{ backgroundColor: '#ffffff', color: '#000000' }}
-                            data-testid="input-location"
-                          />
-                        )}
+                        </div>
                       </div>
-                    </div>
+                    )}
                     <Link href="/contractors" className="lg:self-end">
                       <Button className="text-white px-8 py-3 h-12 text-base rounded-xl font-medium transition-all duration-200 flex items-center justify-center w-full lg:w-auto hover:opacity-90" style={{ backgroundColor: '#2c0f5b' }}>
                         <Search className="mr-2 h-4 w-4" style={{ color: 'white' }} />
