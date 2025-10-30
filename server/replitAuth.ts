@@ -176,8 +176,8 @@ export async function setupAuth(app: Express) {
           
           // Redirect to appropriate dashboard based on role
           const redirectPath = fullUser.role === 'contractor' 
-            ? '/dashboard/contractor' 
-            : '/dashboard/homeowner';
+            ? '/contractor-dashboard' 
+            : '/';
           res.redirect(redirectPath);
         });
       } catch (error) {
