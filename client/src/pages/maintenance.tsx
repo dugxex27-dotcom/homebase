@@ -3172,7 +3172,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                 );
               })()
             ) : (
-              <div className="text-center py-12">
+              <div className="text-center py-12 rounded-lg" style={{ backgroundColor: '#ffffff' }}>
                 <FileText className="w-16 h-16 mx-auto mb-4" style={{ color: '#000000' }} />
                 <h3 className="text-lg font-medium mb-2" style={{ color: '#000000' }}>No service records yet</h3>
                 <p className="mb-4" style={{ color: '#000000' }}>
