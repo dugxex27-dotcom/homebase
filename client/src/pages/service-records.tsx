@@ -260,26 +260,6 @@ export default function ServiceRecords() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validate required fields
-    if (!formData.serviceType) {
-      toast({
-        title: "Service Type Required",
-        description: "Please select a service type.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (!formData.serviceDate) {
-      toast({
-        title: "Service Date Required",
-        description: "Please select a service date.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
     saveRecordMutation.mutate(formData);
   };
 
@@ -418,7 +398,7 @@ export default function ServiceRecords() {
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="serviceType" style={{ color: 'white' }}>Service Type *</Label>
+                        <Label htmlFor="serviceType" style={{ color: 'white' }}>Service Type</Label>
                         <Select value={formData.serviceType} onValueChange={(value) => handleInputChange('serviceType', value)}>
                           <SelectTrigger style={{ backgroundColor: '#1560a2', color: 'white' }} className="hover:bg-[#afd6f9] hover:text-black transition-colors" data-testid="select-service-type">
                             <SelectValue placeholder="Select service type" />
@@ -474,7 +454,7 @@ export default function ServiceRecords() {
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
-                        <Label htmlFor="serviceDate" style={{ color: 'white' }}>Service Date *</Label>
+                        <Label htmlFor="serviceDate" style={{ color: 'white' }}>Service Date</Label>
                         <Input
                           id="serviceDate"
                           type="date"
