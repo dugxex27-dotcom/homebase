@@ -358,7 +358,7 @@ export default function SignIn() {
                         <FormLabel>Email</FormLabel>
                         <FormControl>
                           <Input
-                            type="text"
+                            type="email"
                             placeholder="Enter your email"
                             onChange={onChange}
                             onBlur={onBlur}
