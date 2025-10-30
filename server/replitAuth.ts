@@ -137,6 +137,8 @@ export async function setupAuth(app: Express) {
     if (!process.env.REPLIT_DOMAINS) {
       return res.redirect("/signin");
     }
+    console.log('[AUTH] Login request from hostname:', req.hostname);
+    console.log('[AUTH] Attempting to use strategy: replitauth:' + req.hostname);
     passport.authenticate(`replitauth:${req.hostname}`, {
       prompt: "login consent", 
       scope: ["openid", "email", "profile", "offline_access"],
@@ -148,6 +150,8 @@ export async function setupAuth(app: Express) {
     if (!process.env.REPLIT_DOMAINS) {
       return res.redirect("/signin");
     }
+    console.log('[AUTH] Callback request from hostname:', req.hostname);
+    console.log('[AUTH] Attempting to use strategy: replitauth:' + req.hostname);
     passport.authenticate(`replitauth:${req.hostname}`, async (err: any, user: any) => {
       if (err || !user) {
         console.error("OAuth authentication error:", err);
