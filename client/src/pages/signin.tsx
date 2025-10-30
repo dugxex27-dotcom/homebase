@@ -309,7 +309,7 @@ export default function SignIn() {
               </Form>
             ) : (
               <Form {...registerForm}>
-                <form onSubmit={registerForm.handleSubmit(handleRegisterSubmit)} className="space-y-4">
+                <form key="register-form" onSubmit={registerForm.handleSubmit(handleRegisterSubmit)} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={registerForm.control}
@@ -350,25 +350,22 @@ export default function SignIn() {
                     />
                   </div>
 
-                  <FormField
-                    control={registerForm.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="email"
-                            placeholder="Enter your email"
-                            {...field}
-                            data-testid="input-register-email"
-                            style={{ color: '#ffffff' }}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+                  <div>
+                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Email</label>
+                    <input
+                      type="email"
+                      placeholder="Enter your email"
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 mt-2"
+                      style={{ color: '#ffffff' }}
+                      data-testid="input-register-email"
+                      {...registerForm.register("email")}
+                    />
+                    {registerForm.formState.errors.email && (
+                      <p className="text-sm font-medium text-destructive mt-2">
+                        {registerForm.formState.errors.email.message}
+                      </p>
                     )}
-                  />
+                  </div>
 
                   <FormField
                     control={registerForm.control}
