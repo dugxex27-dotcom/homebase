@@ -119,10 +119,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       });
 
-      console.log('🟢 Test login successful for:', user.email);
       res.json({ success: true, user });
     } catch (error) {
-      console.error('🔴 Test login failed:', error);
+      console.error('Test login failed:', error);
       res.status(500).json({ message: "Test login failed" });
     }
   });
@@ -434,33 +433,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Email/password login
   app.post('/api/auth/login', authLimiter, async (req, res) => {
-    console.error("===== LOGIN HANDLER CALLED =====", new Date().toISOString());
     try {
-      console.log("🔵 Login attempt received:", { email: req.body.email });
       const { email, password } = req.body;
       
       if (!email || !password) {
-        console.log("🔴 Missing email or password");
         return res.status(400).json({ message: "Missing email or password" });
       }
 
-      console.log("🔵 Looking up user:", email);
       const user = await storage.getUserByEmail(email);
-      console.log("🔵 User found:", !!user, "has password:", !!user?.passwordHash);
       
       if (!user || !user.passwordHash) {
-        console.log("🔴 User not found or no password hash");
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
       // Verify password
-      console.log("🔵 Verifying password...");
       const bcrypt = await import('bcryptjs');
       const isValid = await bcrypt.compare(password, user.passwordHash);
-      console.log("🔵 Password valid:", isValid);
       
       if (!isValid) {
-        console.log("🔴 Password mismatch");
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
@@ -468,10 +458,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       req.session.user = user;
       req.session.isAuthenticated = true;
 
-      console.log("🟢 Login successful for:", email);
       res.json({ success: true, user });
     } catch (error) {
-      console.error("🔴 Error logging in:", error);
+      console.error("Error logging in:", error);
       res.status(500).json({ message: "Login failed" });
     }
   });

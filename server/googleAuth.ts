@@ -15,7 +15,6 @@ export async function setupGoogleAuth(app: Express) {
     // Use hardcoded production domain for gotohomebase
     const productionDomain = 'gotohomebase.replit.app';
     const callbackUrl = `https://${productionDomain}/auth/google/callback`;
-    console.log('🔵 Google OAuth callback URL:', callbackUrl);
     return callbackUrl;
   };
 
@@ -30,15 +29,11 @@ export async function setupGoogleAuth(app: Express) {
       },
       async (accessToken, refreshToken, profile, done) => {
         try {
-          console.log('🔵 Google OAuth callback triggered');
-          
           // Extract user info from Google profile
           const email = profile.emails?.[0]?.value;
           const firstName = profile.name?.givenName || '';
           const lastName = profile.name?.familyName || '';
           const profileImageUrl = profile.photos?.[0]?.value || null;
-
-          console.log('🔵 Google profile data:', { email, firstName, lastName });
 
           if (!email) {
             return done(new Error('No email found in Google profile'), undefined);
@@ -46,10 +41,8 @@ export async function setupGoogleAuth(app: Express) {
 
           // Check if user already exists
           let user = await storage.getUserByEmail(email);
-          console.log('🔵 Existing user check:', user ? 'FOUND' : 'NOT FOUND');
 
           if (user) {
-            console.log('🔵 Updating existing user:', user.id);
             // Update existing user with latest Google profile info
             user = await storage.upsertUser({
               ...user,
@@ -57,9 +50,7 @@ export async function setupGoogleAuth(app: Express) {
               lastName: lastName || user.lastName,
               profileImageUrl: profileImageUrl || user.profileImageUrl,
             });
-            console.log('🔵 User updated successfully');
           } else {
-            console.log('🔵 Creating new user from Google profile');
             const newUserData = {
               id: `google_${profile.id}`,
               email,
@@ -69,19 +60,13 @@ export async function setupGoogleAuth(app: Express) {
               role: 'homeowner' as const,
               zipCode: null,
             };
-            console.log('🔵 New user data:', newUserData);
             
             user = await storage.upsertUser(newUserData);
-            console.log('🔵 User created successfully:', user.id);
           }
-
-          // Verify user was saved to database
-          const verifyUser = await storage.getUser(user.id);
-          console.log('🔵 Database verification:', verifyUser ? 'SUCCESS' : 'FAILED');
 
           return done(null, user);
         } catch (error) {
-          console.error('🔴 Google OAuth error:', error);
+          console.error('Google OAuth error:', error);
           return done(error as Error, undefined);
         }
       }
