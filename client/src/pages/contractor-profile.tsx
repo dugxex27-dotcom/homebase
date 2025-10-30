@@ -527,29 +527,78 @@ export default function ContractorProfile() {
     ));
   };
 
-  const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  // Helper function to compress images before upload
+  const compressImage = (file: File, maxWidth: number = 1200, quality: number = 0.8): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          // Calculate new dimensions while maintaining aspect ratio
+          if (width > height) {
+            if (width > maxWidth) {
+              height = (height * maxWidth) / width;
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxWidth) {
+              width = (width * maxWidth) / height;
+              height = maxWidth;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+
+          // Convert to base64 with compression
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+          resolve(compressedDataUrl);
+        };
+        img.onerror = reject;
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit before compression
         toast({
           title: "File Too Large",
-          description: "Logo file must be smaller than 5MB.",
+          description: "Logo file must be smaller than 10MB.",
           variant: "destructive",
         });
         return;
       }
       
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        setLogoPreview(result);
-        setFormData(prev => ({ ...prev, businessLogo: result }));
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressedImage = await compressImage(file, 800, 0.85);
+        setLogoPreview(compressedImage);
+        setFormData(prev => ({ ...prev, businessLogo: compressedImage }));
+        toast({
+          title: "Logo Uploaded",
+          description: "Image compressed and ready to save.",
+        });
+      } catch (error) {
+        toast({
+          title: "Upload Failed",
+          description: "Failed to process image. Please try again.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
-  const handleProjectPhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProjectPhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
       if (formData.projectPhotos.length + files.length > 20) {
@@ -561,27 +610,43 @@ export default function ContractorProfile() {
         return;
       }
 
-      Array.from(files).forEach(file => {
-        if (file.size > 10 * 1024 * 1024) { // 10MB limit per photo
+      const fileArray = Array.from(files);
+      let uploadedCount = 0;
+      
+      for (const file of fileArray) {
+        if (file.size > 10 * 1024 * 1024) { // 10MB limit per photo before compression
           toast({
             title: "File Too Large",
             description: `${file.name} is too large. Photos must be smaller than 10MB.`,
             variant: "destructive",
           });
-          return;
+          continue;
         }
 
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const result = e.target?.result as string;
-          setPhotosPreviews(prev => [...prev, result]);
+        try {
+          const compressedImage = await compressImage(file, 1200, 0.80);
+          setPhotosPreviews(prev => [...prev, compressedImage]);
           setFormData(prev => ({
             ...prev,
-            projectPhotos: [...prev.projectPhotos, result]
+            projectPhotos: [...prev.projectPhotos, compressedImage]
           }));
-        };
-        reader.readAsDataURL(file);
-      });
+          uploadedCount++;
+        } catch (error) {
+          console.error('Error compressing image:', error);
+          toast({
+            title: "Upload Failed",
+            description: `Failed to process ${file.name}. Please try again.`,
+            variant: "destructive",
+          });
+        }
+      }
+      
+      if (uploadedCount > 0) {
+        toast({
+          title: "Photos Uploaded",
+          description: `${uploadedCount} photo(s) compressed and ready to save.`,
+        });
+      }
     }
   };
 
