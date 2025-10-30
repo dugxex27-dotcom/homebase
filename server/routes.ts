@@ -6,7 +6,7 @@ import { setupGoogleAuth } from "./googleAuth";
 import { z } from "zod";
 import { randomUUID } from "crypto";
 import rateLimit from "express-rate-limit";
-import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema } from "@shared/schema";
+import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema } from "@shared/schema";
 import pushRoutes from "./push-routes";
 import { pushService } from "./push-service";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
@@ -687,6 +687,205 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting boost:", error);
       res.status(500).json({ message: "Failed to delete boost" });
+    }
+  });
+
+  // Company routes
+  app.post("/api/companies", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.user.id;
+      const userRole = req.session.user.role;
+
+      if (userRole !== 'contractor') {
+        return res.status(403).json({ message: "Only contractors can create companies" });
+      }
+
+      // Check if user already belongs to a company
+      const user = await storage.getUser(userId);
+      if (user?.companyId) {
+        return res.status(400).json({ message: "You already belong to a company" });
+      }
+
+      const companyData = insertCompanySchema.parse({
+        ...req.body,
+        ownerId: userId
+      });
+
+      const company = await storage.createCompany(companyData);
+
+      // Update user's company info (reuse already-fetched user)
+      await storage.upsertUser({
+        ...user,
+        companyId: company.id,
+        companyRole: 'owner'
+      });
+
+      res.status(201).json(company);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid company data", errors: error.errors });
+      }
+      console.error("Error creating company:", error);
+      res.status(500).json({ message: "Failed to create company" });
+    }
+  });
+
+  app.get("/api/companies/:id", async (req, res) => {
+    try {
+      const company = await storage.getCompany(req.params.id);
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+      res.json(company);
+    } catch (error) {
+      console.error("Error fetching company:", error);
+      res.status(500).json({ message: "Failed to fetch company" });
+    }
+  });
+
+  app.put("/api/companies/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.user.id;
+      const company = await storage.getCompany(req.params.id);
+
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+
+      // Only company owner can update company profile
+      if (company.ownerId !== userId) {
+        return res.status(403).json({ message: "Only company owner can update company profile" });
+      }
+
+      const partialData = insertCompanySchema.partial().omit({ ownerId: true }).parse(req.body);
+      const updatedCompany = await storage.updateCompany(req.params.id, partialData);
+
+      res.json(updatedCompany);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid company data", errors: error.errors });
+      }
+      console.error("Error updating company:", error);
+      res.status(500).json({ message: "Failed to update company" });
+    }
+  });
+
+  app.get("/api/companies/:id/employees", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.user.id;
+      const company = await storage.getCompany(req.params.id);
+
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+
+      // Only company members can view employees
+      const user = await storage.getUser(userId);
+      if (user?.companyId !== req.params.id) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const employees = await storage.getCompanyEmployees(req.params.id);
+      res.json(employees);
+    } catch (error) {
+      console.error("Error fetching company employees:", error);
+      res.status(500).json({ message: "Failed to fetch employees" });
+    }
+  });
+
+  app.delete("/api/companies/:id/employees/:userId", isAuthenticated, async (req: any, res) => {
+    try {
+      const ownerId = req.session.user.id;
+      const company = await storage.getCompany(req.params.id);
+
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+
+      // Only company owner can remove employees
+      if (company.ownerId !== ownerId) {
+        return res.status(403).json({ message: "Only company owner can remove employees" });
+      }
+
+      // Cannot remove the owner
+      if (req.params.userId === ownerId) {
+        return res.status(400).json({ message: "Cannot remove company owner" });
+      }
+
+      // Remove employee from company
+      const employee = await storage.getUser(req.params.userId);
+      if (employee) {
+        await storage.upsertUser({
+          ...employee,
+          companyId: null,
+          companyRole: null
+        });
+      }
+
+      res.json({ message: "Employee removed successfully" });
+    } catch (error) {
+      console.error("Error removing employee:", error);
+      res.status(500).json({ message: "Failed to remove employee" });
+    }
+  });
+
+  app.post("/api/companies/:id/invite-codes", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.user.id;
+      const company = await storage.getCompany(req.params.id);
+
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+
+      // Only company owner can generate invite codes
+      if (company.ownerId !== userId) {
+        return res.status(403).json({ message: "Only company owner can generate invite codes" });
+      }
+
+      const inviteData = insertCompanyInviteCodeSchema.parse({
+        companyId: req.params.id,
+        code: Math.random().toString(36).substring(2, 10).toUpperCase(), // Generate 8-char code
+        createdBy: userId
+      });
+
+      const invite = await storage.createCompanyInviteCode(inviteData);
+      res.status(201).json(invite);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid invite data", errors: error.errors });
+      }
+      console.error("Error creating invite code:", error);
+      res.status(500).json({ message: "Failed to create invite code" });
+    }
+  });
+
+  app.get("/api/companies/invite-codes/:code", async (req, res) => {
+    try {
+      const invite = await storage.getCompanyInviteCodeByCode(req.params.code);
+      
+      if (!invite) {
+        return res.status(404).json({ message: "Invite code not found" });
+      }
+
+      if (!invite.isActive) {
+        return res.status(400).json({ message: "Invite code is no longer active" });
+      }
+
+      if (invite.usedBy) {
+        return res.status(400).json({ message: "Invite code has already been used" });
+      }
+
+      if (invite.expiresAt && new Date(invite.expiresAt) < new Date()) {
+        return res.status(400).json({ message: "Invite code has expired" });
+      }
+
+      // Return invite with company info
+      const company = await storage.getCompany(invite.companyId);
+      res.json({ invite, company });
+    } catch (error) {
+      console.error("Error fetching invite code:", error);
+      res.status(500).json({ message: "Failed to fetch invite code" });
     }
   });
 

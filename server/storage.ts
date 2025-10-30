@@ -1,4 +1,4 @@
-import { type Contractor, type InsertContractor, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type HomeApplianceManual, type InsertHomeApplianceManual, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics, type TaskOverride, type InsertTaskOverride, type Country, type InsertCountry, type Region, type InsertRegion, type ClimateZone, type InsertClimateZone, type RegulatoryBody, type InsertRegulatoryBody, type RegionalMaintenanceTask, type InsertRegionalMaintenanceTask, type TaskCompletion, type InsertTaskCompletion, type Achievement, type InsertAchievement, type AchievementDefinition, type InsertAchievementDefinition, type UserAchievement, type InsertUserAchievement, type SearchAnalytics, type InsertSearchAnalytics, type InviteCode, type InsertInviteCode, users, contractors, countries, regions, climateZones, regulatoryBodies, regionalMaintenanceTasks, taskCompletions, achievements, achievementDefinitions, userAchievements, maintenanceLogs, searchAnalytics, inviteCodes } from "@shared/schema";
+import { type Contractor, type InsertContractor, type Company, type InsertCompany, type CompanyInviteCode, type InsertCompanyInviteCode, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type HomeApplianceManual, type InsertHomeApplianceManual, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics, type TaskOverride, type InsertTaskOverride, type Country, type InsertCountry, type Region, type InsertRegion, type ClimateZone, type InsertClimateZone, type RegulatoryBody, type InsertRegulatoryBody, type RegionalMaintenanceTask, type InsertRegionalMaintenanceTask, type TaskCompletion, type InsertTaskCompletion, type Achievement, type InsertAchievement, type AchievementDefinition, type InsertAchievementDefinition, type UserAchievement, type InsertUserAchievement, type SearchAnalytics, type InsertSearchAnalytics, type InviteCode, type InsertInviteCode, users, contractors, countries, regions, climateZones, regulatoryBodies, regionalMaintenanceTasks, taskCompletions, achievements, achievementDefinitions, userAchievements, maintenanceLogs, searchAnalytics, inviteCodes } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, ne, isNotNull } from "drizzle-orm";
@@ -27,6 +27,18 @@ export interface IStorage {
   createContractorLicense(license: InsertContractorLicense): Promise<ContractorLicense>;
   updateContractorLicense(id: string, contractorId: string, license: Partial<InsertContractorLicense>): Promise<ContractorLicense | undefined>;
   deleteContractorLicense(id: string, contractorId: string): Promise<boolean>;
+  
+  // Company methods
+  getCompany(id: string): Promise<Company | undefined>;
+  createCompany(company: InsertCompany): Promise<Company>;
+  updateCompany(id: string, company: Partial<InsertCompany>): Promise<Company | undefined>;
+  getCompanyEmployees(companyId: string): Promise<User[]>;
+  
+  // Company invite code methods
+  createCompanyInviteCode(inviteCode: InsertCompanyInviteCode): Promise<CompanyInviteCode>;
+  getCompanyInviteCode(id: string): Promise<CompanyInviteCode | undefined>;
+  getCompanyInviteCodeByCode(code: string): Promise<CompanyInviteCode | undefined>;
+  updateCompanyInviteCode(id: string, inviteCode: Partial<InsertCompanyInviteCode>): Promise<CompanyInviteCode | undefined>;
   
   // Product methods
   getProducts(filters?: {
@@ -276,6 +288,8 @@ export interface IStorage {
 
 export class MemStorage implements IStorage {
   private users: Map<string, User>;
+  private companies: Map<string, Company>;
+  private companyInviteCodes: Map<string, CompanyInviteCode>;
   private contractors: Map<string, Contractor>;
   private contractorLicenses: Map<string, ContractorLicense>;
   private products: Map<string, Product>;
@@ -310,6 +324,8 @@ export class MemStorage implements IStorage {
 
   constructor() {
     this.users = new Map();
+    this.companies = new Map();
+    this.companyInviteCodes = new Map();
     this.contractors = new Map();
     this.contractorLicenses = new Map();
     this.products = new Map();
@@ -671,6 +687,91 @@ export class MemStorage implements IStorage {
     }
 
     return this.contractorLicenses.delete(id);
+  }
+
+  // Company methods
+  async getCompany(id: string): Promise<Company | undefined> {
+    return this.companies.get(id);
+  }
+
+  async createCompany(companyData: InsertCompany): Promise<Company> {
+    const newCompany: Company = {
+      ...companyData,
+      id: randomUUID(),
+      rating: "0",
+      reviewCount: 0,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.companies.set(newCompany.id, newCompany);
+    return newCompany;
+  }
+
+  async updateCompany(id: string, companyData: Partial<InsertCompany>): Promise<Company | undefined> {
+    const existingCompany = this.companies.get(id);
+    if (!existingCompany) {
+      return undefined;
+    }
+
+    const updatedCompany: Company = {
+      ...existingCompany,
+      ...companyData,
+      updatedAt: new Date()
+    };
+    this.companies.set(id, updatedCompany);
+    return updatedCompany;
+  }
+
+  async getCompanyEmployees(companyId: string): Promise<User[]> {
+    const employees: User[] = [];
+    for (const user of this.users.values()) {
+      if (user.companyId === companyId) {
+        employees.push(user);
+      }
+    }
+    return employees;
+  }
+
+  // Company invite code methods
+  async createCompanyInviteCode(inviteCodeData: InsertCompanyInviteCode): Promise<CompanyInviteCode> {
+    const newInviteCode: CompanyInviteCode = {
+      ...inviteCodeData,
+      id: randomUUID(),
+      isActive: inviteCodeData.isActive ?? true,
+      usedBy: inviteCodeData.usedBy ?? null,
+      usedAt: inviteCodeData.usedAt ?? null,
+      expiresAt: inviteCodeData.expiresAt ?? null,
+      createdAt: new Date()
+    };
+    this.companyInviteCodes.set(newInviteCode.id, newInviteCode);
+    return newInviteCode;
+  }
+
+  async getCompanyInviteCode(id: string): Promise<CompanyInviteCode | undefined> {
+    return this.companyInviteCodes.get(id);
+  }
+
+  async getCompanyInviteCodeByCode(code: string): Promise<CompanyInviteCode | undefined> {
+    for (const inviteCode of this.companyInviteCodes.values()) {
+      if (inviteCode.code === code) {
+        return inviteCode;
+      }
+    }
+    return undefined;
+  }
+
+  async updateCompanyInviteCode(id: string, inviteCodeData: Partial<InsertCompanyInviteCode>): Promise<CompanyInviteCode | undefined> {
+    const existingInviteCode = this.companyInviteCodes.get(id);
+    if (!existingInviteCode) {
+      return undefined;
+    }
+
+    const updatedInviteCode: CompanyInviteCode = {
+      ...existingInviteCode,
+      ...inviteCodeData
+    };
+    this.companyInviteCodes.set(id, updatedInviteCode);
+    return updatedInviteCode;
   }
 
   async getProducts(filters?: {
@@ -3052,6 +3153,15 @@ class DbStorage implements IStorage {
     this.createContractorLicense = this.memStorage.createContractorLicense.bind(this.memStorage);
     this.updateContractorLicense = this.memStorage.updateContractorLicense.bind(this.memStorage);
     this.deleteContractorLicense = this.memStorage.deleteContractorLicense.bind(this.memStorage);
+    // Company methods
+    this.getCompany = this.memStorage.getCompany.bind(this.memStorage);
+    this.createCompany = this.memStorage.createCompany.bind(this.memStorage);
+    this.updateCompany = this.memStorage.updateCompany.bind(this.memStorage);
+    this.getCompanyEmployees = this.memStorage.getCompanyEmployees.bind(this.memStorage);
+    this.createCompanyInviteCode = this.memStorage.createCompanyInviteCode.bind(this.memStorage);
+    this.getCompanyInviteCode = this.memStorage.getCompanyInviteCode.bind(this.memStorage);
+    this.getCompanyInviteCodeByCode = this.memStorage.getCompanyInviteCodeByCode.bind(this.memStorage);
+    this.updateCompanyInviteCode = this.memStorage.updateCompanyInviteCode.bind(this.memStorage);
     this.getProducts = this.memStorage.getProducts.bind(this.memStorage);
     this.getProduct = this.memStorage.getProduct.bind(this.memStorage);
     this.createProduct = this.memStorage.createProduct.bind(this.memStorage);
