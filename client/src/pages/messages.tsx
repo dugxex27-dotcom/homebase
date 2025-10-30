@@ -15,8 +15,8 @@ import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MessageCircle, Send, User, Calendar, Plus, Users, FileText, DollarSign, Clock } from "lucide-react";
-import type { User as UserType, Conversation, Message, Contractor, Proposal } from "@shared/schema";
+import { MessageCircle, Send, User, Calendar, Plus, Users, FileText, DollarSign, Clock, Star } from "lucide-react";
+import type { User as UserType, Conversation, Message, Contractor, Proposal, ContractorReview } from "@shared/schema";
 
 interface ConversationWithDetails extends Conversation {
   otherPartyName: string;
@@ -34,6 +34,11 @@ export default function Messages() {
     subject: "",
     message: "",
     selectedContractors: [] as string[]
+  });
+  const [reviewForm, setReviewForm] = useState({
+    rating: 5,
+    comment: "",
+    wouldRecommend: true
   });
 
   // Fetch conversations
@@ -59,6 +64,18 @@ export default function Messages() {
     queryKey: ['/api/conversations', selectedConversationId, 'messages'],
     enabled: !!selectedConversationId
   });
+
+  // Get contractor ID from selected conversation
+  const selectedConversation = conversations.find(c => c.id === selectedConversationId);
+  const contractorIdForReview = typedUser?.role === 'homeowner' ? selectedConversation?.contractorId : null;
+
+  // Fetch existing reviews for this contractor from this homeowner
+  const { data: existingReviews = [] } = useQuery<ContractorReview[]>({
+    queryKey: ['/api/reviews/my-reviews'],
+    enabled: !!typedUser && typedUser.role === 'homeowner'
+  });
+
+  const existingReview = existingReviews.find(r => r.contractorId === contractorIdForReview);
 
   // Send message mutation
   const sendMessageMutation = useMutation({
@@ -121,6 +138,40 @@ export default function Messages() {
       message: composeForm.message,
       contractorIds: composeForm.selectedContractors
     });
+  };
+
+  // Submit review mutation
+  const submitReviewMutation = useMutation({
+    mutationFn: async (reviewData: typeof reviewForm) => {
+      return await apiRequest('POST', `/api/contractors/${contractorIdForReview}/reviews`, reviewData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/reviews/my-reviews'] });
+      toast({
+        title: "Review Submitted",
+        description: "Thank you for your review!",
+      });
+      setReviewForm({ rating: 5, comment: "", wouldRecommend: true });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to submit review.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleSubmitReview = () => {
+    if (!reviewForm.comment.trim()) {
+      toast({
+        title: "Error",
+        description: "Please add a comment to your review.",
+        variant: "destructive",
+      });
+      return;
+    }
+    submitReviewMutation.mutate(reviewForm);
   };
 
   const handleContractorSelection = (contractorId: string, checked: boolean) => {
@@ -425,6 +476,7 @@ export default function Messages() {
                           handleSendMessage();
                         }
                       }}
+                      data-testid="input-message"
                     />
                     <Button
                       onClick={handleSendMessage}
@@ -435,11 +487,102 @@ export default function Messages() {
                           : ''
                       }`}
                       style={{ backgroundColor: '#1560a2', color: 'white' }}
+                      data-testid="button-send-message"
                     >
                       <Send className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
+
+                {/* Review Section - Only for homeowners viewing contractor conversations after messages exchanged */}
+                {typedUser?.role === 'homeowner' && contractorIdForReview && messages.length > 0 && (
+                  <div className="p-4 border-t bg-white" data-testid="section-review">
+                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2" style={{ color: '#2c0f5b' }}>
+                      <Star className="h-5 w-5" style={{ color: '#b6a6f4' }} />
+                      {existingReview ? 'Your Review' : 'Leave a Review'}
+                    </h3>
+                    
+                    {existingReview ? (
+                      <div className="bg-gray-50 p-4 rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="flex">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star
+                                key={star}
+                                className={`h-5 w-5 ${star <= existingReview.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-sm text-gray-600">
+                            {new Date(existingReview.createdAt || new Date()).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <p className="text-gray-700">{existingReview.comment}</p>
+                        {existingReview.wouldRecommend && (
+                          <p className="text-sm text-green-600 mt-2">✓ Would recommend</p>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div>
+                          <Label className="text-gray-700">Rating</Label>
+                          <div className="flex gap-1 mt-1">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <button
+                                key={star}
+                                type="button"
+                                onClick={() => setReviewForm(prev => ({ ...prev, rating: star }))}
+                                className="focus:outline-none"
+                                data-testid={`button-rating-${star}`}
+                              >
+                                <Star
+                                  className={`h-6 w-6 cursor-pointer transition-colors ${
+                                    star <= reviewForm.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300 hover:text-yellow-200'
+                                  }`}
+                                />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <Label htmlFor="review-comment" className="text-gray-700">Comment</Label>
+                          <Textarea
+                            id="review-comment"
+                            placeholder="Share your experience with this contractor..."
+                            value={reviewForm.comment}
+                            onChange={(e) => setReviewForm(prev => ({ ...prev, comment: e.target.value }))}
+                            className="resize-none mt-1"
+                            rows={3}
+                            data-testid="input-review-comment"
+                          />
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="would-recommend"
+                            checked={reviewForm.wouldRecommend}
+                            onCheckedChange={(checked) => setReviewForm(prev => ({ ...prev, wouldRecommend: checked === true }))}
+                            data-testid="checkbox-would-recommend"
+                          />
+                          <Label htmlFor="would-recommend" className="text-gray-700 cursor-pointer">
+                            I would recommend this contractor
+                          </Label>
+                        </div>
+                        
+                        <Button
+                          onClick={handleSubmitReview}
+                          disabled={submitReviewMutation.isPending || !reviewForm.comment.trim()}
+                          className="w-full"
+                          style={{ backgroundColor: '#b6a6f4', color: 'white' }}
+                          data-testid="button-submit-review"
+                        >
+                          {submitReviewMutation.isPending ? 'Submitting...' : 'Submit Review'}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </>
           ) : (
