@@ -385,7 +385,51 @@ export default function ContractorProfile() {
       console.log('[DEBUG] Project photos count:', data.projectPhotos?.length || 0);
       
       // Separate contractor data from company data
-      const { businessLogo, projectPhotos, ...contractorData } = data;
+      let { businessLogo, projectPhotos, ...contractorData } = data;
+      
+      // Upload images to Object Storage if they're base64 (new uploads)
+      if (typedUser?.companyId) {
+        // Upload logo if it's base64 data
+        if (businessLogo && businessLogo.startsWith('data:image/')) {
+          console.log('[DEBUG] Uploading logo to Object Storage...');
+          const logoResponse = await fetch('/api/upload/image', {
+            method: 'POST',
+            body: JSON.stringify({ imageData: businessLogo, type: 'logo' }),
+            headers: { 'Content-Type': 'application/json' },
+          });
+          if (logoResponse.ok) {
+            const { url } = await logoResponse.json();
+            businessLogo = url;
+            console.log('[DEBUG] Logo uploaded successfully:', url);
+          } else {
+            throw new Error('Failed to upload logo');
+          }
+        }
+
+        // Upload project photos if they're base64 data
+        const uploadedPhotos: string[] = [];
+        for (const photo of projectPhotos) {
+          if (photo.startsWith('data:image/')) {
+            console.log('[DEBUG] Uploading project photo to Object Storage...');
+            const photoResponse = await fetch('/api/upload/image', {
+              method: 'POST',
+              body: JSON.stringify({ imageData: photo, type: 'photo' }),
+              headers: { 'Content-Type': 'application/json' },
+            });
+            if (photoResponse.ok) {
+              const { url } = await photoResponse.json();
+              uploadedPhotos.push(url);
+              console.log('[DEBUG] Photo uploaded successfully:', url);
+            } else {
+              throw new Error('Failed to upload project photo');
+            }
+          } else {
+            // Already a URL, keep it
+            uploadedPhotos.push(photo);
+          }
+        }
+        projectPhotos = uploadedPhotos;
+      }
       
       // Update contractor profile (without businessLogo and projectPhotos)
       console.log('[DEBUG] Updating contractor profile...');
@@ -406,6 +450,8 @@ export default function ContractorProfile() {
       // Update company with businessLogo and projectPhotos if user has a company
       if (typedUser?.companyId) {
         console.log('[DEBUG] Updating company images for companyId:', typedUser.companyId);
+        console.log('[DEBUG] Logo URL:', businessLogo);
+        console.log('[DEBUG] Photo URLs count:', projectPhotos.length);
         const companyResponse = await fetch(`/api/companies/${typedUser.companyId}`, {
           method: 'PUT',
           body: JSON.stringify({ businessLogo, projectPhotos }),

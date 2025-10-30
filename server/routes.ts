@@ -477,6 +477,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   };
 
+  // Image upload endpoint for contractor profiles
+  app.post('/api/upload/image', isAuthenticated, async (req: any, res) => {
+    try {
+      const { imageData, type } = req.body; // imageData is base64, type is 'logo' or 'photo'
+      
+      if (!imageData || !type) {
+        return res.status(400).json({ message: "Missing imageData or type" });
+      }
+
+      // Extract base64 data (remove data:image/...;base64, prefix)
+      const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+      
+      // Generate unique filename
+      const fileExtension = imageData.match(/^data:image\/(\w+);/)?.[1] || 'jpg';
+      const filename = `${randomUUID()}.${fileExtension}`;
+      const path = `public/contractor-images/${type}s/${filename}`;
+      
+      // Upload to object storage
+      const objectStorage = new ObjectStorageService();
+      await objectStorage.uploadFile(path, buffer, `image/${fileExtension}`);
+      
+      // Return public URL
+      const url = `/public/contractor-images/${type}s/${filename}`;
+      res.json({ url });
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      res.status(500).json({ message: "Failed to upload image" });
+    }
+  });
+
   // Search analytics tracking
   app.post('/api/analytics/search', async (req: any, res) => {
     try {
