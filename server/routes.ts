@@ -433,30 +433,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const { zipCode, role } = req.body;
+      const { 
+        zipCode, role, 
+        companyAction, companyName, companyBio, companyPhone, companyInviteCode 
+      } = req.body;
       
       if (!zipCode || !role) {
         return res.status(400).json({ message: "Missing required fields" });
       }
 
+      // Validate contractor company requirements
+      if (role === 'contractor') {
+        if (!companyAction) {
+          return res.status(400).json({ message: "Contractors must either create or join a company" });
+        }
+        if (companyAction === 'create' && (!companyName || !companyBio || !companyPhone)) {
+          return res.status(400).json({ message: "Company name, bio, and phone are required" });
+        }
+        if (companyAction === 'join' && !companyInviteCode) {
+          return res.status(400).json({ message: "Company invite code is required" });
+        }
+      }
+
       const userId = req.session.user.id;
-      const currentUser = await storage.getUser(userId);
+      let currentUser = await storage.getUser(userId);
       
       if (!currentUser) {
         return res.status(404).json({ message: "User not found" });
       }
 
       // Update user with zip code and role
-      const updatedUser = await storage.upsertUser({
+      currentUser = await storage.upsertUser({
         ...currentUser,
         zipCode,
         role: role as 'homeowner' | 'contractor'
       });
 
-      // Update session
-      req.session.user = updatedUser;
+      // Handle contractor company setup
+      if (role === 'contractor') {
+        if (companyAction === 'create') {
+          // Create new company
+          const company = await storage.createCompany({
+            name: companyName,
+            bio: companyBio,
+            phone: companyPhone,
+            email: currentUser.email,
+            location: zipCode,
+            ownerId: currentUser.id,
+            services: [],
+            licenseNumber: '',
+            licenseMunicipality: '',
+          });
 
-      res.json({ success: true, role: updatedUser.role });
+          // Update user with company info (owners can respond to proposals by default)
+          currentUser = await storage.upsertUser({
+            ...currentUser,
+            companyId: company.id,
+            companyRole: 'owner',
+            canRespondToProposals: true
+          });
+        } else if (companyAction === 'join') {
+          // Validate company invite code
+          const invite = await storage.getCompanyInviteCodeByCode(companyInviteCode);
+          if (!invite || !invite.isActive || invite.usedBy) {
+            return res.status(400).json({ message: "Invalid or already used company invite code" });
+          }
+
+          // Update user with company info
+          currentUser = await storage.upsertUser({
+            ...currentUser,
+            companyId: invite.companyId,
+            companyRole: 'employee'
+          });
+
+          // Mark invite code as used
+          await storage.updateCompanyInviteCode(invite.id, {
+            ...invite,
+            usedBy: currentUser.id,
+            usedAt: new Date(),
+            isActive: false
+          });
+        }
+      }
+
+      // Update session
+      req.session.user = currentUser;
+
+      res.json({ success: true, role: currentUser.role });
     } catch (error) {
       console.error("Error completing profile:", error);
       res.status(500).json({ message: "Failed to complete profile" });
