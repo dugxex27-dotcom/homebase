@@ -221,7 +221,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       req.session.user = user;
       req.session.isAuthenticated = true;
 
-      res.json({ success: true, user });
+      // Save session explicitly
+      req.session.save((err: any) => {
+        if (err) {
+          console.error("Session save error:", err);
+          return res.status(500).json({ message: "Failed to save session" });
+        }
+        res.json({ success: true, user });
+      });
     } catch (error) {
       console.error("Error creating homeowner demo user:", error);
       res.status(500).json({ message: "Failed to create homeowner account" });
@@ -252,7 +259,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       req.session.user = user;
       req.session.isAuthenticated = true;
 
-      res.json({ success: true, user });
+      // Save session explicitly
+      req.session.save((err: any) => {
+        if (err) {
+          console.error("Session save error:", err);
+          return res.status(500).json({ message: "Failed to save session" });
+        }
+        res.json({ success: true, user });
+      });
     } catch (error) {
       console.error("Error creating contractor demo user:", error);
       res.status(500).json({ message: "Failed to create contractor account" });
