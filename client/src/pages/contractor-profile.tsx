@@ -439,6 +439,7 @@ export default function ContractorProfile() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
       });
       if (!profileResponse.ok) {
         const errorText = await profileResponse.text();
@@ -458,6 +459,7 @@ export default function ContractorProfile() {
           headers: {
             'Content-Type': 'application/json',
           },
+          credentials: 'include',
         });
         if (!companyResponse.ok) {
           const errorText = await companyResponse.text();
@@ -470,7 +472,9 @@ export default function ContractorProfile() {
       }
       
       // Save licenses - first get existing licenses to determine creates vs updates
-      const existingResponse = await fetch('/api/contractor/licenses');
+      const existingResponse = await fetch('/api/contractor/licenses', {
+        credentials: 'include',
+      });
       const existingLicenses = existingResponse.ok ? await existingResponse.json() : [];
       const existingLicenseIds = new Set(existingLicenses.map((l: any) => l.id));
       
@@ -483,6 +487,7 @@ export default function ContractorProfile() {
               method: 'PUT',
               body: JSON.stringify(license),
               headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
             });
           } else {
             // Create new license
@@ -490,6 +495,7 @@ export default function ContractorProfile() {
               method: 'POST',
               body: JSON.stringify(license),
               headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
             });
           }
         }
