@@ -528,6 +528,7 @@ export default function Maintenance() {
     resolver: zodResolver(maintenanceLogFormSchema),
     defaultValues: {
       homeownerId,
+      houseId: selectedHouseId || "",
       serviceType: "maintenance",
       serviceDate: new Date().toISOString().split('T')[0],
       homeArea: "",
@@ -1263,6 +1264,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     setEditingMaintenanceLog(log);
     maintenanceLogForm.reset({
       homeownerId: log.homeownerId,
+      houseId: log.houseId,
       serviceType: log.serviceType,
       serviceDate: log.serviceDate,
       homeArea: log.homeArea ?? "",
@@ -1286,6 +1288,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     setEditingMaintenanceLog(null);
     maintenanceLogForm.reset({
       homeownerId,
+      houseId: selectedHouseId,
       serviceType: "maintenance",
       serviceDate: new Date().toISOString().split('T')[0],
       homeArea: "",
