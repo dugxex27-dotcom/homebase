@@ -89,6 +89,23 @@ async function upsertUser(claims: any) {
   delete (global as any).pendingUserRole;
 }
 
+// FIX 2: Hostname normalization helper
+function normalizeHostname(hostname: string, configuredDomains: string[]): string {
+  // Remove port numbers and hash segments
+  const cleanHost = hostname.split(':')[0].split('#')[0];
+  
+  // Check if it matches a configured domain
+  for (const domain of configuredDomains) {
+    if (cleanHost === domain || cleanHost.endsWith('.' + domain)) {
+      return domain;
+    }
+  }
+  
+  // Fallback to first configured domain
+  console.warn('[AUTH] Unknown hostname:', cleanHost, '- falling back to:', configuredDomains[0]);
+  return configuredDomains[0];
+}
+
 export async function setupAuth(app: Express) {
   // Session and passport are already initialized in server/index.ts
   // Just set up the OAuth strategy and routes here
@@ -108,10 +125,11 @@ export async function setupAuth(app: Express) {
   };
 
   // Only set up OAuth strategies if REPLIT_DOMAINS is available
+  let configuredDomains: string[] = [];
   if (process.env.REPLIT_DOMAINS) {
-    const domains = process.env.REPLIT_DOMAINS.split(",");
-    console.log('[AUTH] Configuring OAuth for domains:', domains);
-    for (const domain of domains) {
+    configuredDomains = process.env.REPLIT_DOMAINS.split(",");
+    console.log('[AUTH] Configuring OAuth for domains:', configuredDomains);
+    for (const domain of configuredDomains) {
       const strategy = new Strategy(
         {
           name: `replitauth:${domain}`,
@@ -129,8 +147,29 @@ export async function setupAuth(app: Express) {
     console.warn('[AUTH] REPLIT_DOMAINS not set - OAuth will not work!');
   }
 
-  passport.serializeUser((user: Express.User, cb) => cb(null, user));
-  passport.deserializeUser((user: Express.User, cb) => cb(null, user));
+  // FIX 4: Serialize only user ID, deserialize by fetching from storage
+  passport.serializeUser((user: any, cb) => {
+    const userId = user.id || user.claims?.sub;
+    console.log('[AUTH] Serializing user:', userId);
+    cb(null, userId);
+  });
+  
+  passport.deserializeUser(async (userId: string, cb) => {
+    try {
+      console.log('[AUTH] Deserializing user:', userId);
+      const fullUser = await storage.getUser(userId);
+      if (fullUser) {
+        console.log('[AUTH] User deserialized with companyId:', fullUser.companyId);
+        cb(null, fullUser);
+      } else {
+        console.warn('[AUTH] User not found during deserialization:', userId);
+        cb(new Error('User not found'));
+      }
+    } catch (error) {
+      console.error('[AUTH] Error deserializing user:', error);
+      cb(error);
+    }
+  });
 
   app.get("/api/login", (req, res, next) => {
     console.log('[AUTH] ===== /api/login CALLED =====');
@@ -138,15 +177,21 @@ export async function setupAuth(app: Express) {
     console.log('[AUTH] Request hostname:', req.hostname);
     
     // If no OAuth is configured, redirect to signin page for demo login
-    if (!process.env.REPLIT_DOMAINS) {
+    if (!process.env.REPLIT_DOMAINS || configuredDomains.length === 0) {
       console.log('[AUTH] No REPLIT_DOMAINS - redirecting to signin');
       return res.redirect("/signin");
     }
-    console.log('[AUTH] Login request from hostname:', req.hostname);
-    console.log('[AUTH] Attempting to use strategy: replitauth:' + req.hostname);
+    
+    // FIX 2: Normalize hostname to match registered strategies
+    const normalizedHost = normalizeHostname(req.hostname, configuredDomains);
+    console.log('[AUTH] Raw hostname:', req.hostname, '-> Normalized:', normalizedHost);
+    console.log('[AUTH] Attempting to use strategy: replitauth:' + normalizedHost);
+    
+    // FIX 3: Touch session before OAuth redirect to ensure it's initialized
+    (req.session as any).oauthHost = normalizedHost;
     
     try {
-      passport.authenticate(`replitauth:${req.hostname}`, {
+      passport.authenticate(`replitauth:${normalizedHost}`, {
         prompt: "login consent", 
         scope: ["openid", "email", "profile", "offline_access"],
       })(req, res, next);
@@ -163,13 +208,17 @@ export async function setupAuth(app: Express) {
     console.log('[AUTH] Callback query:', req.query);
     
     // If no OAuth is configured, redirect to signin page
-    if (!process.env.REPLIT_DOMAINS) {
+    if (!process.env.REPLIT_DOMAINS || configuredDomains.length === 0) {
       console.log('[AUTH] No REPLIT_DOMAINS in callback - redirecting');
       return res.redirect("/signin");
     }
-    console.log('[AUTH] Callback request from hostname:', req.hostname);
-    console.log('[AUTH] Attempting to use strategy: replitauth:' + req.hostname);
-    passport.authenticate(`replitauth:${req.hostname}`, async (err: any, user: any) => {
+    
+    // FIX 2: Normalize hostname to match registered strategies
+    const normalizedHost = normalizeHostname(req.hostname, configuredDomains);
+    console.log('[AUTH] Callback - Raw hostname:', req.hostname, '-> Normalized:', normalizedHost);
+    console.log('[AUTH] Attempting to use strategy: replitauth:' + normalizedHost);
+    
+    passport.authenticate(`replitauth:${normalizedHost}`, async (err: any, user: any) => {
       if (err || !user) {
         console.error("OAuth authentication error:", err);
         return res.redirect("/signin");
@@ -183,6 +232,7 @@ export async function setupAuth(app: Express) {
           return res.redirect("/signin");
         }
         
+        // FIX 5: Fetch full user from storage with all fields including companyId
         const fullUser = await storage.getUser(userId);
         if (!fullUser) {
           console.error("User not found in database:", userId);
@@ -190,6 +240,7 @@ export async function setupAuth(app: Express) {
         }
         
         console.log("OAuth callback: User authenticated:", fullUser.email);
+        console.log("OAuth callback: User data - role:", fullUser.role, "companyId:", fullUser.companyId, "companyRole:", fullUser.companyRole);
         
         // Regenerate session to prevent fixation attacks
         req.session.regenerate((regenerateErr) => {
@@ -205,11 +256,12 @@ export async function setupAuth(app: Express) {
               return res.redirect("/signin");
             }
             
-            // Set session data in the format expected by the app
+            // FIX 5: Set session data with full user object including companyId
             (req.session as any).isAuthenticated = true;
             (req.session as any).user = fullUser;
             
             console.log("OAuth callback: Session established for", fullUser.email);
+            console.log("OAuth callback: Session user data - companyId:", fullUser.companyId, "role:", fullUser.role);
             
             // Save session to store before redirecting
             req.session.save((saveErr) => {
@@ -219,6 +271,7 @@ export async function setupAuth(app: Express) {
               }
               
               console.log("OAuth callback: Session saved successfully");
+              console.log("OAuth callback: Final session check - user.companyId:", (req.session as any).user?.companyId);
               
               // Check if user needs to complete profile (add zip code)
               if (!fullUser.zipCode) {

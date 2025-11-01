@@ -73,6 +73,9 @@ const generalLimiter = rateLimit({
 
 app.use('/api/', generalLimiter);
 
+// FIX 1: Trust proxy for Replit's infrastructure
+app.set('trust proxy', 1);
+
 // Increase body size limit to support base64 image uploads (business logos and project photos)
 // Using 100mb to accommodate multiple large photos
 app.use(express.json({ limit: '100mb' }));
