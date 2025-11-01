@@ -403,6 +403,14 @@ export class MemStorage implements IStorage {
       isPremium: userData.isPremium ?? existingUser?.isPremium ?? false,
       stripeCustomerId: userData.stripeCustomerId ?? existingUser?.stripeCustomerId ?? null,
       stripeSubscriptionId: userData.stripeSubscriptionId ?? existingUser?.stripeSubscriptionId ?? null,
+      // Company fields for contractors
+      companyId: userData.companyId ?? existingUser?.companyId ?? null,
+      companyRole: userData.companyRole ?? existingUser?.companyRole ?? null,
+      canRespondToProposals: userData.canRespondToProposals ?? existingUser?.canRespondToProposals ?? false,
+      // Subscription fields
+      subscriptionPlanId: userData.subscriptionPlanId ?? existingUser?.subscriptionPlanId ?? null,
+      subscriptionStatus: userData.subscriptionStatus ?? existingUser?.subscriptionStatus ?? 'inactive',
+      maxHousesAllowed: userData.maxHousesAllowed ?? existingUser?.maxHousesAllowed ?? 2,
     };
     this.users.set(user.id, user);
     return user;
