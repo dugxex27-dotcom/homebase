@@ -3333,25 +3333,60 @@ class DbStorage implements IStorage {
   // User operations - DATABASE BACKED for persistence
   async getUser(id: string): Promise<User | undefined> {
     const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+    const rawUser = result[0];
     
-    // CRITICAL DEBUG: Check if casing conversion is working
-    const user = result[0];
-    if (user) {
-      console.error('[CRITICAL DEBUG getUser] ================');
-      console.error('[CRITICAL DEBUG getUser] User ID:', user.id);
-      console.error('[CRITICAL DEBUG getUser] Email:', user.email);
-      console.error('[CRITICAL DEBUG getUser] companyId (camelCase):', user.companyId);
-      console.error('[CRITICAL DEBUG getUser] company_id (snake_case):', (user as any).company_id);
-      console.error('[CRITICAL DEBUG getUser] Keys:', Object.keys(user).filter(k => k.includes('company')));
-      console.error('[CRITICAL DEBUG getUser] ================');
+    if (!rawUser) {
+      return undefined;
     }
+    
+    // WORKAROUND: Manually map snake_case to camelCase if Drizzle casing fails
+    // This ensures companyId and companyRole are always populated correctly
+    const user: any = { ...rawUser };
+    
+    // If we have snake_case but not camelCase, map it
+    if ((rawUser as any).company_id !== undefined && !user.companyId) {
+      user.companyId = (rawUser as any).company_id;
+      console.error('[FIX] Manually mapped company_id to companyId:', user.companyId);
+    }
+    
+    if ((rawUser as any).company_role !== undefined && !user.companyRole) {
+      user.companyRole = (rawUser as any).company_role;
+      console.error('[FIX] Manually mapped company_role to companyRole:', user.companyRole);
+    }
+    
+    if ((rawUser as any).can_respond_to_proposals !== undefined && user.canRespondToProposals === undefined) {
+      user.canRespondToProposals = (rawUser as any).can_respond_to_proposals;
+    }
+    
+    console.error('[DEBUG getUser] Final user - companyId:', user.companyId, 'companyRole:', user.companyRole);
     
     return user;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
-    return result[0];
+    const rawUser = result[0];
+    
+    if (!rawUser) {
+      return undefined;
+    }
+    
+    // Apply same manual mapping as getUser()
+    const user: any = { ...rawUser };
+    
+    if ((rawUser as any).company_id !== undefined && !user.companyId) {
+      user.companyId = (rawUser as any).company_id;
+    }
+    
+    if ((rawUser as any).company_role !== undefined && !user.companyRole) {
+      user.companyRole = (rawUser as any).company_role;
+    }
+    
+    if ((rawUser as any).can_respond_to_proposals !== undefined && user.canRespondToProposals === undefined) {
+      user.canRespondToProposals = (rawUser as any).can_respond_to_proposals;
+    }
+    
+    return user;
   }
 
   async getUserByReferralCode(referralCode: string): Promise<User | undefined> {
