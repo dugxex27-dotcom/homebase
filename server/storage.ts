@@ -3368,6 +3368,11 @@ class DbStorage implements IStorage {
           referralCode: userData.referralCode ?? existingUser.referralCode,
           referredBy: userData.referredBy ?? existingUser.referredBy,
           referralCount: userData.referralCount ?? existingUser.referralCount,
+          // Company fields - CRITICAL: preserve these for contractors!
+          companyId: userData.companyId ?? existingUser.companyId,
+          companyRole: userData.companyRole ?? existingUser.companyRole,
+          canRespondToProposals: userData.canRespondToProposals ?? existingUser.canRespondToProposals,
+          // Subscription fields
           subscriptionPlanId: userData.subscriptionPlanId ?? existingUser.subscriptionPlanId,
           subscriptionStatus: userData.subscriptionStatus ?? existingUser.subscriptionStatus,
           maxHousesAllowed: userData.maxHousesAllowed ?? existingUser.maxHousesAllowed,
@@ -3399,6 +3404,11 @@ class DbStorage implements IStorage {
           referralCode: userData.referralCode ?? null,
           referredBy: userData.referredBy ?? null,
           referralCount: userData.referralCount ?? 0,
+          // Company fields - for contractors
+          companyId: userData.companyId ?? null,
+          companyRole: userData.companyRole ?? null,
+          canRespondToProposals: userData.canRespondToProposals ?? false,
+          // Subscription fields
           subscriptionPlanId: userData.subscriptionPlanId ?? null,
           subscriptionStatus: userData.subscriptionStatus ?? 'inactive',
           maxHousesAllowed: userData.maxHousesAllowed ?? 2,
