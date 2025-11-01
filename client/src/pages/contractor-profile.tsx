@@ -388,8 +388,13 @@ export default function ContractorProfile() {
       console.log('[DEBUG] Project photos count:', data.projectPhotos?.length || 0);
       console.log('======================================');
       
+      // CRITICAL: Verify user has companyId before proceeding
+      if (!typedUser || !typedUser.companyId) {
+        throw new Error('You must be signed in as a contractor with a company to save profile. Please refresh your session.');
+      }
+      
       // Separate contractor data from company data
-      let { businessLogo, projectPhotos, ...contractorData } = data;
+      let { businessLogo, projectPhotos, ...contractorData} = data;
       
       // Upload images to Object Storage if they're base64 (new uploads)
       if (typedUser?.companyId) {
