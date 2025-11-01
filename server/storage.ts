@@ -3333,10 +3333,20 @@ class DbStorage implements IStorage {
   // User operations - DATABASE BACKED for persistence
   async getUser(id: string): Promise<User | undefined> {
     const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
-    console.log('[DEBUG getUser] Raw DB result:', JSON.stringify(result[0], null, 2));
-    console.log('[DEBUG getUser] companyId field:', result[0]?.companyId);
-    console.log('[DEBUG getUser] company_id field:', (result[0] as any)?.company_id);
-    return result[0];
+    
+    // CRITICAL DEBUG: Check if casing conversion is working
+    const user = result[0];
+    if (user) {
+      console.error('[CRITICAL DEBUG getUser] ================');
+      console.error('[CRITICAL DEBUG getUser] User ID:', user.id);
+      console.error('[CRITICAL DEBUG getUser] Email:', user.email);
+      console.error('[CRITICAL DEBUG getUser] companyId (camelCase):', user.companyId);
+      console.error('[CRITICAL DEBUG getUser] company_id (snake_case):', (user as any).company_id);
+      console.error('[CRITICAL DEBUG getUser] Keys:', Object.keys(user).filter(k => k.includes('company')));
+      console.error('[CRITICAL DEBUG getUser] ================');
+    }
+    
+    return user;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
