@@ -133,21 +133,38 @@ export async function setupAuth(app: Express) {
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
+    console.log('[AUTH] ===== /api/login CALLED =====');
+    console.log('[AUTH] Request headers:', req.headers);
+    console.log('[AUTH] Request hostname:', req.hostname);
+    
     // If no OAuth is configured, redirect to signin page for demo login
     if (!process.env.REPLIT_DOMAINS) {
+      console.log('[AUTH] No REPLIT_DOMAINS - redirecting to signin');
       return res.redirect("/signin");
     }
     console.log('[AUTH] Login request from hostname:', req.hostname);
     console.log('[AUTH] Attempting to use strategy: replitauth:' + req.hostname);
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      prompt: "login consent", 
-      scope: ["openid", "email", "profile", "offline_access"],
-    })(req, res, next);
+    
+    try {
+      passport.authenticate(`replitauth:${req.hostname}`, {
+        prompt: "login consent", 
+        scope: ["openid", "email", "profile", "offline_access"],
+      })(req, res, next);
+    } catch (error) {
+      console.error('[AUTH] Error in passport.authenticate:', error);
+      res.redirect('/signin?error=oauth-failed');
+    }
   });
 
   app.get("/api/callback", (req, res, next) => {
+    console.log('[AUTH] ===== /api/callback CALLED =====');
+    console.log('[AUTH] Callback headers:', req.headers);
+    console.log('[AUTH] Callback hostname:', req.hostname);
+    console.log('[AUTH] Callback query:', req.query);
+    
     // If no OAuth is configured, redirect to signin page
     if (!process.env.REPLIT_DOMAINS) {
+      console.log('[AUTH] No REPLIT_DOMAINS in callback - redirecting');
       return res.redirect("/signin");
     }
     console.log('[AUTH] Callback request from hostname:', req.hostname);
