@@ -40,8 +40,7 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: true,
       maxAge: sessionTtl,
     },
   });
@@ -107,29 +106,21 @@ function normalizeHostname(hostname: string, configuredDomains: string[]): strin
 }
 
 export async function setupAuth(app: Express) {
-  // Session and passport are already initialized in server/index.ts
-  // Just set up the OAuth strategy and routes here
-  console.log('[AUTH] Setting up Replit Auth...');
-  
+  app.set("trust proxy", 1);
+  app.use(getSession());
+  app.use(passport.initialize());
+  app.use(passport.session());
+
   const config = await getOidcConfig();
-  console.log('[AUTH] OIDC config loaded');
 
   const verify: VerifyFunction = async (
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
     verified: passport.AuthenticateCallback
   ) => {
-    const claims = tokens.claims();
-    await upsertUser(claims);
-    
-    // Fetch the full user record from database to get companyId, companyRole, etc.
-    const fullUser = await storage.getUser(claims["sub"]);
-    if (!fullUser) {
-      return verified(new Error("Failed to create user"));
-    }
-    
-    // Add OAuth tokens to user object
-    updateUserSession(fullUser as any, tokens);
-    verified(null, fullUser);
+    const user = {};
+    updateUserSession(user, tokens);
+    await upsertUser(tokens.claims());
+    verified(null, user);
   };
 
   // Keep track of registered strategies

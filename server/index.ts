@@ -1,7 +1,4 @@
 import express, { type Request, Response, NextFunction } from "express";
-import session from "express-session";
-import connectPgSimple from "connect-pg-simple";
-import passport from "passport";
 import helmet from "helmet";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
@@ -80,43 +77,6 @@ app.set('trust proxy', 1);
 // Using 100mb to accommodate multiple large photos
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ extended: false, limit: '100mb' }));
-
-// Session configuration with enhanced security
-const isProduction = process.env.NODE_ENV === 'production';
-
-// Use PostgreSQL session store if DATABASE_URL is available
-let sessionStore;
-if (process.env.DATABASE_URL) {
-  const PgSession = connectPgSimple(session);
-  
-  // Use existing "sessions" table (note: plural)
-  sessionStore = new PgSession({
-    conObject: {
-      connectionString: process.env.DATABASE_URL,
-    },
-    tableName: 'sessions', // Match existing table name
-    createTableIfMissing: false, // Table already exists
-  });
-  log('PostgreSQL session store initialized');
-}
-
-app.use(session({
-  ...(sessionStore && { store: sessionStore }),
-  secret: process.env.SESSION_SECRET || 'demo-session-secret-key-for-development',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: isProduction, // Enable secure cookies in production
-    httpOnly: true,
-    sameSite: 'lax', // CSRF protection
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  },
-  name: 'sessionId', // Obscure session cookie name
-}));
-
-// Initialize Passport for OAuth (must be after session middleware)
-app.use(passport.initialize());
-app.use(passport.session());
 
 app.use((req, res, next) => {
   const start = Date.now();
