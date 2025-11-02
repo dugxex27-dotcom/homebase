@@ -3235,6 +3235,7 @@ class DbStorage implements IStorage {
     this.createMessage = this.memStorage.createMessage.bind(this.memStorage);
     this.markMessagesAsRead = this.memStorage.markMessagesAsRead.bind(this.memStorage);
     this.getUnreadMessageCount = this.memStorage.getUnreadMessageCount.bind(this.memStorage);
+    this.getContactedHomeowners = this.memStorage.getContactedHomeowners.bind(this.memStorage);
     this.getContractorReviews = this.memStorage.getContractorReviews.bind(this.memStorage);
     this.getReviewsByHomeowner = this.memStorage.getReviewsByHomeowner.bind(this.memStorage);
     this.createContractorReview = this.memStorage.createContractorReview.bind(this.memStorage);

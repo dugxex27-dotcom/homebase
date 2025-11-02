@@ -747,7 +747,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const filePath = req.path.replace('/public/', ''); // Remove /public/ prefix
       const objectStorage = new ObjectStorageService();
       
-      const file = await objectStorage.searchPublicObject(filePath);
+      // Try the correct path first
+      let file = await objectStorage.searchPublicObject(filePath);
+      
+      // If not found, try legacy path with double 'public/' (for old uploads)
+      if (!file) {
+        const legacyPath = `public/${filePath}`;
+        file = await objectStorage.searchPublicObject(legacyPath);
+      }
+      
       if (!file) {
         return res.status(404).json({ message: "File not found" });
       }
@@ -783,7 +791,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate unique filename
       const fileExtension = imageData.match(/^data:image\/(\w+);/)?.[1] || 'jpg';
       const filename = `${randomUUID()}.${fileExtension}`;
-      const path = `public/contractor-images/${type}s/${filename}`;
+      const path = `contractor-images/${type}s/${filename}`;
       
       console.log('[IMAGE UPLOAD] Uploading to path:', path);
       
@@ -852,7 +860,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const buffer = Buffer.from(base64Data, 'base64');
       const fileExtension = imageData.match(/^data:image\/(\w+);/)?.[1] || 'jpg';
       const filename = `${randomUUID()}.${fileExtension}`;
-      const path = `public/contractor-images/logos/${filename}`;
+      const path = `contractor-images/logos/${filename}`;
       
       console.log('[UPLOAD-LOGO] Uploading to:', path);
       
