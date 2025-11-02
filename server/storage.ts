@@ -3695,14 +3695,20 @@ class DbStorage implements IStorage {
     const companyUpdates: any = {};
     if (profileData.projectPhotos !== undefined) {
       companyUpdates.projectPhotos = profileData.projectPhotos;
+      console.log('[PHOTO-DEBUG] projectPhotos field found:', profileData.projectPhotos?.length || 0, 'photos');
     }
     if (profileData.businessLogo !== undefined) {
       companyUpdates.businessLogo = profileData.businessLogo;
+      console.log('[PHOTO-DEBUG] businessLogo field found:', profileData.businessLogo ? 'yes' : 'no');
     }
     
     if (Object.keys(companyUpdates).length > 0) {
-      console.log('[DEBUG] Updating company photos for companyId:', user.companyId, companyUpdates);
+      console.log('[PHOTO-DEBUG] Updating company photos for companyId:', user.companyId);
+      console.log('[PHOTO-DEBUG] Updates:', JSON.stringify(companyUpdates, null, 2));
       await this.updateCompany(user.companyId, companyUpdates);
+      console.log('[PHOTO-DEBUG] Company photos update complete');
+    } else {
+      console.log('[PHOTO-DEBUG] No company photo updates to apply');
     }
     
     if (!existingContractor) {
