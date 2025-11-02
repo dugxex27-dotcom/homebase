@@ -194,6 +194,18 @@ export default function ContractorProfile() {
     }
   }, [existingLicenses]);
 
+  // CRITICAL FIX: Warn user if session is missing companyId
+  React.useEffect(() => {
+    if (typedUser && typedUser.role === 'contractor' && !typedUser.companyId) {
+      toast({
+        title: "Session Expired",
+        description: "Please log out and log back in to enable photo uploads. Your session needs to be refreshed.",
+        variant: "destructive",
+        duration: 10000,
+      });
+    }
+  }, [typedUser, toast]);
+
   // Map selected country to country code
   const getCountryCode = (country: string) => {
     const codes: Record<string, string> = {
