@@ -1,0 +1,42 @@
+test-upload:1 Refused to load the script 'https://replit.com/public/js/replit-dev-banner.js' because it violates the following Content Security Policy directive: "script-src 'self' 'unsafe-inline' 'unsafe-eval'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+Understand this error
+index-_dO1HiWY.js:488 ========================================
+index-_dO1HiWY.js:488 [TEST UPLOAD] Starting upload test!
+index-_dO1HiWY.js:488 ========================================
+index-_dO1HiWY.js:488 [TEST UPLOAD] File selected: 631-364-2680_20250803_141931_0000.png Size: 2738053
+index-_dO1HiWY.js:488 [TEST UPLOAD] Starting compression...
+index-_dO1HiWY.js:488 [TEST UPLOAD] Compressed to 161767 characters
+index-_dO1HiWY.js:488 [TEST UPLOAD] Using email: freshandcleangutters@gmail.com
+index-_dO1HiWY.js:488 [TEST UPLOAD] Sending POST to /api/upload-logo-raw (RAW SQL VERSION)
+index-_dO1HiWY.js:488  POST https://gotohomebase.replit.app/api/upload-logo-raw 400 (Bad Request)
+a @ index-_dO1HiWY.js:488
+await in a
+RR @ index-_dO1HiWY.js:37
+IR @ index-_dO1HiWY.js:37
+OR @ index-_dO1HiWY.js:37
+tv @ index-_dO1HiWY.js:37
+P2 @ index-_dO1HiWY.js:37
+(anonymous) @ index-_dO1HiWY.js:37
+Bg @ index-_dO1HiWY.js:40
+X1 @ index-_dO1HiWY.js:37
+zm @ index-_dO1HiWY.js:37
+xg @ index-_dO1HiWY.js:37
+YR @ index-_dO1HiWY.js:37Understand this error
+index-_dO1HiWY.js:488 [TEST UPLOAD] Response status: 400
+index-_dO1HiWY.js:488 [TEST UPLOAD] Response ok: false
+index-_dO1HiWY.js:488 [TEST UPLOAD ERROR] {"error":"User has no company_id in database"}
+a @ index-_dO1HiWY.js:488
+await in a
+RR @ index-_dO1HiWY.js:37
+IR @ index-_dO1HiWY.js:37
+OR @ index-_dO1HiWY.js:37
+tv @ index-_dO1HiWY.js:37
+P2 @ index-_dO1HiWY.js:37
+(anonymous) @ index-_dO1HiWY.js:37
+Bg @ index-_dO1HiWY.js:40
+X1 @ index-_dO1HiWY.js:37
+zm @ index-_dO1HiWY.js:37
+xg @ index-_dO1HiWY.js:37
+YR @ index-_dO1HiWY.js:37Understand this error
+index-_dO1HiWY.js:488 [TEST UPLOAD FAILED] Error: {"error":"User has no company_id in database"}
+    at a (index-_dO1HiWY.js:488:12676)

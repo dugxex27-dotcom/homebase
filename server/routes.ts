@@ -31,7 +31,12 @@ const authLimiter = rateLimit({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  console.error('========================================');
+  console.error('REGISTER ROUTES CALLED - NEW CODE VERSION 2025-11-02-21:28');
+  console.error('========================================');
+  
   // RAW SQL LOGO UPLOAD - Bypasses ALL ORM issues
+  console.error('[STARTUP] Registering /api/upload-logo-raw endpoint');
   app.post('/api/upload-logo-raw', async (req, res) => {
     try {
       console.error('[RAW-UPLOAD] Request received');

@@ -733,10 +733,10 @@ export default function ContractorProfile() {
       // Use hardcoded email to bypass ALL auth issues
       const email = 'freshandcleangutters@gmail.com';
       console.log('[LOGO UPLOAD] Using email:', email);
-      console.log('[LOGO UPLOAD] Sending POST to /api/contractor/upload-logo');
+      console.log('[LOGO UPLOAD] Sending POST to /api/upload-logo-raw');
       
-      // DIRECT upload - no session needed, uses email lookup
-      const uploadResponse = await fetch('/api/contractor/upload-logo', {
+      // DIRECT upload - no session needed, uses email lookup, bypasses ORM
+      const uploadResponse = await fetch('/api/upload-logo-raw', {
         method: 'POST',
         body: JSON.stringify({ 
           imageData: compressedImage,
