@@ -62,12 +62,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Check for session-based authentication (email/password login)
       if (req.session?.isAuthenticated && req.session?.user) {
-        // Ensure isPremium is included in the response
-        const user = req.session.user;
-        if (!user.hasOwnProperty('isPremium')) {
-          user.isPremium = false; // Default for demo users
+        // CRITICAL FIX: Fetch fresh user from storage to apply snake_case -> camelCase mapping
+        const userId = req.session.user.id;
+        const freshUser = await storage.getUser(userId);
+        
+        if (!freshUser) {
+          return res.status(401).json({ message: 'Unauthorized' });
         }
-        return res.json(user);
+        
+        // Ensure isPremium is included in the response
+        if (!freshUser.hasOwnProperty('isPremium')) {
+          (freshUser as any).isPremium = false; // Default for demo users
+        }
+        
+        console.log('[/api/auth/user] Returning user with companyId:', freshUser.companyId);
+        return res.json(freshUser);
       }
 
       // Check for passport authentication (Google OAuth login)
