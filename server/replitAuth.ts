@@ -139,18 +139,20 @@ export async function setupAuth(app: Express) {
   const ensureStrategy = (domain: string) => {
     const strategyName = `replitauth:${domain}`;
     if (!registeredStrategies.has(strategyName)) {
+      const callbackURL = `https://${domain}/api/callback`;
+      console.log('[AUTH] Registering strategy with callback URL:', callbackURL);
       const strategy = new Strategy(
         {
           name: strategyName,
           config,
           scope: "openid email profile offline_access",
-          callbackURL: `https://${domain}/api/callback`,
+          callbackURL: callbackURL,
         },
         verify,
       );
       passport.use(strategy);
       registeredStrategies.add(strategyName);
-      console.log('[AUTH] Registered strategy for domain:', domain);
+      console.log('[AUTH] Strategy registered for domain:', domain);
     }
   };
 
@@ -161,29 +163,33 @@ export async function setupAuth(app: Express) {
     console.log('[OAUTH] /api/login called');
     console.log('[OAUTH] Hostname:', req.hostname);
     console.log('[OAUTH] Protocol:', req.protocol);
-    console.log('[OAUTH] Headers:', req.headers);
     
     ensureStrategy(req.hostname);
     console.log('[OAUTH] Using strategy: replitauth:' + req.hostname);
     
     passport.authenticate(`replitauth:${req.hostname}`, {
-      prompt: "login consent",
       scope: ["openid", "email", "profile", "offline_access"],
     })(req, res, next);
   });
 
   app.get("/api/callback", (req, res, next) => {
-    console.log('[OAUTH] /api/callback called');
+    console.log('[OAUTH] ========= CALLBACK RECEIVED =========');
     console.log('[OAUTH] Callback hostname:', req.hostname);
-    console.log('[OAUTH] Callback query:', req.query);
-    console.log('[OAUTH] Callback error:', req.query.error);
+    console.log('[OAUTH] Callback query:', JSON.stringify(req.query, null, 2));
+    console.log('[OAUTH] Callback session ID:', req.sessionID);
+    
+    if (req.query.error) {
+      console.error('[OAUTH] OAuth error:', req.query.error);
+      console.error('[OAUTH] Error description:', req.query.error_description);
+      return res.redirect('/signin?error=oauth-failed');
+    }
     
     ensureStrategy(req.hostname);
     console.log('[OAUTH] Using callback strategy: replitauth:' + req.hostname);
     
     passport.authenticate(`replitauth:${req.hostname}`, {
       successReturnToOrRedirect: "/",
-      failureRedirect: "/api/login",
+      failureRedirect: "/signin?error=callback-failed",
     })(req, res, next);
   });
 
