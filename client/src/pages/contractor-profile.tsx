@@ -695,9 +695,13 @@ export default function ContractorProfile() {
   };
 
   const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('[LOGO UPLOAD] Handler called');
     const file = event.target.files?.[0];
+    console.log('[LOGO UPLOAD] File selected:', file?.name, 'Size:', file?.size);
+    
     if (file) {
       if (file.size > 10 * 1024 * 1024) { // 10MB limit before compression
+        console.log('[LOGO UPLOAD] File too large, aborting');
         toast({
           title: "File Too Large",
           description: "Logo file must be smaller than 10MB.",
@@ -707,24 +711,34 @@ export default function ContractorProfile() {
       }
       
       try {
+        console.log('[LOGO UPLOAD] Starting upload process');
+        console.log('[LOGO UPLOAD] User email:', typedUser?.email);
+        
         // Show loading toast
         toast({
           title: "Uploading Logo...",
           description: "Please wait while we save your logo.",
         });
         
+        console.log('[LOGO UPLOAD] Compressing image...');
         const compressedImage = await compressImage(file, 800, 0.85);
+        console.log('[LOGO UPLOAD] Image compressed, size:', compressedImage.length, 'chars');
+        
+        const email = typedUser?.email || 'freshandcleangutters@gmail.com';
+        console.log('[LOGO UPLOAD] Making fetch request with email:', email);
         
         // DIRECT upload - no session needed, uses email lookup
         const uploadResponse = await fetch('/api/contractor/upload-logo', {
           method: 'POST',
           body: JSON.stringify({ 
             imageData: compressedImage,
-            email: typedUser?.email || 'freshandcleangutters@gmail.com' // Fallback for testing
+            email: email
           }),
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
         });
+        
+        console.log('[LOGO UPLOAD] Fetch completed, status:', uploadResponse.status);
         
         if (!uploadResponse.ok) {
           const errorData = await uploadResponse.json();
@@ -748,13 +762,15 @@ export default function ContractorProfile() {
         queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
         queryClient.invalidateQueries({ queryKey: ['/api/contractor/profile'] });
       } catch (error) {
-        console.error('Logo upload error:', error);
+        console.error('[LOGO UPLOAD] Catch block - error:', error);
         toast({
           title: "Upload Failed",
           description: error instanceof Error ? error.message : "Failed to save logo. Please try again.",
           variant: "destructive",
         });
       }
+    } else {
+      console.log('[LOGO UPLOAD] No file selected');
     }
   };
 
