@@ -1,4 +1,4 @@
-// v3.0.0 - Photo upload fix with proper toasts (Nov 2, 2025)
+// v4.0.0 - Simplified upload endpoint (Nov 2, 2025) - No session companyId needed
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -706,15 +706,6 @@ export default function ContractorProfile() {
         return;
       }
       
-      if (!typedUser?.companyId) {
-        toast({
-          title: "Session Expired",
-          description: "Please log out and log back in to upload photos.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
       try {
         // Show loading toast
         toast({
@@ -724,48 +715,38 @@ export default function ContractorProfile() {
         
         const compressedImage = await compressImage(file, 800, 0.85);
         
-        // Upload to object storage immediately
-        const uploadResponse = await fetch('/api/upload/image', {
+        // Use simplified endpoint that handles everything (no companyId needed from session)
+        const uploadResponse = await fetch('/api/contractor/upload-logo', {
           method: 'POST',
-          body: JSON.stringify({ imageData: compressedImage, type: 'logo' }),
+          body: JSON.stringify({ imageData: compressedImage }),
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
         });
         
         if (!uploadResponse.ok) {
-          throw new Error('Failed to upload image');
+          const errorData = await uploadResponse.json();
+          throw new Error(errorData.message || 'Failed to upload logo');
         }
         
-        const { url } = await uploadResponse.json();
-        
-        // Save to database immediately
-        const saveResponse = await fetch(`/api/companies/${typedUser.companyId}`, {
-          method: 'PUT',
-          body: JSON.stringify({ businessLogo: url }),
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-        });
-        
-        if (!saveResponse.ok) {
-          throw new Error('Failed to save logo to database');
-        }
+        const { url, company } = await uploadResponse.json();
         
         // Update preview with saved URL
         setLogoPreview(url);
         setFormData(prev => ({ ...prev, businessLogo: url }));
         
         toast({
-          title: "Logo Saved",
-          description: "Your logo has been uploaded and saved to the database.",
+          title: "Logo Saved!",
+          description: "Your business logo has been uploaded and saved successfully.",
         });
         
-        // Invalidate company cache to refetch with new logo
-        queryClient.invalidateQueries({ queryKey: ['/api/companies', typedUser.companyId] });
+        // Invalidate queries to refetch fresh data
+        queryClient.invalidateQueries({ queryKey: ['/api/companies'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/contractor/profile'] });
       } catch (error) {
         console.error('Logo upload error:', error);
         toast({
           title: "Upload Failed",
-          description: "Failed to save logo. Please try again.",
+          description: error instanceof Error ? error.message : "Failed to save logo. Please try again.",
           variant: "destructive",
         });
       }
