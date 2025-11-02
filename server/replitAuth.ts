@@ -118,10 +118,18 @@ export async function setupAuth(app: Express) {
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
     verified: passport.AuthenticateCallback
   ) => {
-    const user = {};
-    updateUserSession(user, tokens);
-    await upsertUser(tokens.claims());
-    verified(null, user);
+    const claims = tokens.claims();
+    await upsertUser(claims);
+    
+    // CRITICAL FIX: Fetch the FULL user object from database (with companyId, companyRole, etc.)
+    const fullUser = await storage.getUser(claims["sub"]);
+    if (!fullUser) {
+      return verified(new Error("Failed to create user"));
+    }
+    
+    // Add OAuth tokens to user object
+    updateUserSession(fullUser, tokens);
+    verified(null, fullUser);
   };
 
   // Only set up OAuth strategies if REPLIT_DOMAINS is available
