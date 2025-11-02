@@ -98,13 +98,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.get('/api/auth/user', async (req: any, res) => {
     try {
+      console.log('[AUTH-DEBUG] /api/auth/user called');
+      console.log('[AUTH-DEBUG] Session exists:', !!req.session);
+      console.log('[AUTH-DEBUG] Session isAuthenticated:', req.session?.isAuthenticated);
+      console.log('[AUTH-DEBUG] Session user exists:', !!req.session?.user);
+      console.log('[AUTH-DEBUG] Session user id:', req.session?.user?.id);
+      console.log('[AUTH-DEBUG] req.user exists:', !!req.user);
+      console.log('[AUTH-DEBUG] req.user id:', (req.user as any)?.id);
+      
       // Check for session-based authentication (email/password login)
       if (req.session?.isAuthenticated && req.session?.user) {
         // CRITICAL FIX: Fetch fresh user from storage to apply snake_case -> camelCase mapping
         const userId = req.session.user.id;
+        console.log('[AUTH-DEBUG] Using session auth, fetching user:', userId);
         const freshUser = await storage.getUser(userId);
         
         if (!freshUser) {
+          console.log('[AUTH-DEBUG] User not found in storage:', userId);
           return res.status(401).json({ message: 'Unauthorized' });
         }
         
@@ -113,18 +123,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           (freshUser as any).isPremium = false; // Default for demo users
         }
         
-        console.log('[/api/auth/user] Returning user with companyId:', freshUser.companyId);
+        console.log('[AUTH-DEBUG] Returning session user with companyId:', freshUser.companyId);
         return res.json(freshUser);
       }
 
       // Check for passport authentication (Google OAuth login)
       if (req.user) {
         const userId = (req.user as any).id || (req.user as any).claims?.sub;
+        console.log('[AUTH-DEBUG] Using passport auth, fetching user:', userId);
         if (userId) {
           const fullUser = await storage.getUser(userId);
-          console.log('[DEBUG] storage.getUser returned:', JSON.stringify(fullUser, null, 2));
-          console.log('[DEBUG] companyId:', fullUser?.companyId);
-          console.log('[DEBUG] companyRole:', fullUser?.companyRole);
+          console.log('[AUTH-DEBUG] Fetched user companyId:', fullUser?.companyId);
           
           if (fullUser) {
             // Sync to session for consistent access
@@ -135,15 +144,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (!fullUser.hasOwnProperty('isPremium')) {
               fullUser.isPremium = false;
             }
+            console.log('[AUTH-DEBUG] Returning passport user with companyId:', fullUser.companyId);
             return res.json(fullUser);
           }
         }
       }
 
       // No authentication found
+      console.log('[AUTH-DEBUG] No authentication found - returning 401');
       return res.status(401).json({ message: "Unauthorized" });
     } catch (error) {
-      console.error("Error fetching user:", error);
+      console.error("[AUTH-DEBUG] Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
     }
   });
