@@ -211,6 +211,32 @@ export default function ContractorDetail() {
             </CardContent>
           </Card>
 
+          {/* Project Photos */}
+          {contractor.projectPhotos && contractor.projectPhotos.length > 0 && (
+            <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
+                  <Building className="h-6 w-6 mr-3 text-purple-600 dark:text-purple-400" />
+                  Project Portfolio
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {contractor.projectPhotos.map((photo, index) => (
+                    <div key={index} className="group relative aspect-square overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-shadow">
+                      <img 
+                        src={photo} 
+                        alt={`Project ${index + 1}`} 
+                        className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-300"
+                        data-testid={`project-photo-${index}`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Professional Details */}
           <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-lg">
             <CardHeader>
