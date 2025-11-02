@@ -776,8 +776,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
       
+      console.log('[UPLOAD-LOGO] Raw user object:', JSON.stringify(user, null, 2));
+      console.log('[UPLOAD-LOGO] user.companyId:', user.companyId);
+      console.log('[UPLOAD-LOGO] user.company_id:', (user as any).company_id);
+      
       if (!user.companyId) {
-        console.log('[UPLOAD-LOGO] User has no company:', user.id);
+        console.log('[UPLOAD-LOGO] User has no companyId - checking for company_id...');
+        console.log('[UPLOAD-LOGO] Full user keys:', Object.keys(user));
         return res.status(400).json({ message: "User must belong to a company to upload logo" });
       }
       
