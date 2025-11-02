@@ -750,10 +750,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DIRECT endpoint - works with email, no session needed
+  console.error('[ROUTES] Registering /api/contractor/upload-logo endpoint');
   app.post('/api/contractor/upload-logo', async (req: any, res) => {
     try {
-      console.log('[UPLOAD-LOGO] Request received');
-      console.log('[UPLOAD-LOGO] Body keys:', Object.keys(req.body));
+      console.error('[UPLOAD-LOGO] REQUEST RECEIVED!');
+      console.error('[UPLOAD-LOGO] Body keys:', Object.keys(req.body));
       
       const { imageData, email } = req.body;
       
