@@ -749,6 +749,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // SIMPLIFIED endpoint that uploads logo and saves to database in one call
+  app.post('/api/contractor/upload-logo', isAuthenticated, async (req: any, res) => {
+    try {
+      console.log('[UPLOAD-LOGO] Request received');
+      
+      // Get user ID from session
+      const userId = req.session?.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      // Fetch FRESH user data from database to get companyId
+      const user = await storage.getUser(userId);
+      if (!user || !user.companyId) {
+        console.log('[UPLOAD-LOGO] User has no company:', userId);
+        return res.status(400).json({ message: "User must belong to a company to upload logo" });
+      }
+      
+      console.log('[UPLOAD-LOGO] User companyId:', user.companyId);
+      
+      const { imageData } = req.body;
+      if (!imageData) {
+        return res.status(400).json({ message: "Missing imageData" });
+      }
+
+      // Upload to object storage
+      const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+      const fileExtension = imageData.match(/^data:image\/(\w+);/)?.[1] || 'jpg';
+      const filename = `${randomUUID()}.${fileExtension}`;
+      const path = `public/contractor-images/logos/${filename}`;
+      
+      const objectStorage = new ObjectStorageService();
+      await objectStorage.uploadFile(path, buffer, `image/${fileExtension}`);
+      const url = `/public/contractor-images/logos/${filename}`;
+      
+      console.log('[UPLOAD-LOGO] Uploaded to:', url);
+      
+      // Save to company database
+      const updatedCompany = await storage.updateCompany(user.companyId, { businessLogo: url });
+      console.log('[UPLOAD-LOGO] Database updated successfully');
+      
+      res.json({ url, company: updatedCompany });
+    } catch (error) {
+      console.error("[UPLOAD-LOGO] Error:", error);
+      res.status(500).json({ message: "Failed to upload logo" });
+    }
+  });
+
   // Search analytics tracking
   app.post('/api/analytics/search', async (req: any, res) => {
     try {
