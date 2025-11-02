@@ -767,22 +767,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Missing email" });
       }
       
-      console.log('[UPLOAD-LOGO] Looking up user by email:', email);
+      console.error('[UPLOAD-LOGO] Looking up user by email:', email);
       
       // Look up user by email (bypasses broken session)
       const user = await storage.getUserByEmail(email);
       if (!user) {
-        console.log('[UPLOAD-LOGO] User not found:', email);
+        console.error('[UPLOAD-LOGO] User not found:', email);
         return res.status(404).json({ message: "User not found" });
       }
       
-      console.log('[UPLOAD-LOGO] Raw user object:', JSON.stringify(user, null, 2));
-      console.log('[UPLOAD-LOGO] user.companyId:', user.companyId);
-      console.log('[UPLOAD-LOGO] user.company_id:', (user as any).company_id);
+      console.error('[UPLOAD-LOGO] Raw user object:', JSON.stringify(user, null, 2));
+      console.error('[UPLOAD-LOGO] user.companyId:', user.companyId);
+      console.error('[UPLOAD-LOGO] user.company_id:', (user as any).company_id);
+      console.error('[UPLOAD-LOGO] Full user keys:', Object.keys(user));
+      
+      // CRITICAL FIX: Manually map company_id if not already mapped
+      if (!user.companyId && (user as any).company_id) {
+        console.error('[UPLOAD-LOGO] MANUALLY MAPPING company_id to companyId');
+        (user as any).companyId = (user as any).company_id;
+      }
       
       if (!user.companyId) {
-        console.log('[UPLOAD-LOGO] User has no companyId - checking for company_id...');
-        console.log('[UPLOAD-LOGO] Full user keys:', Object.keys(user));
+        console.error('[UPLOAD-LOGO] User STILL has no companyId after manual mapping!');
         return res.status(400).json({ message: "User must belong to a company to upload logo" });
       }
       
