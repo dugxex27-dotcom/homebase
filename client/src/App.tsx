@@ -23,6 +23,7 @@ import Achievements from "./pages/achievements";
 import AdminDashboard from "./pages/admin";
 import CompleteProfile from "./pages/complete-profile";
 import ManageTeam from "./pages/manage-team";
+import TestUpload from "./pages/test-upload";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -44,6 +45,7 @@ function Router() {
   if (!isAuthenticated) {
     return (
       <Switch>
+        <Route path="/test-upload" component={TestUpload} />
         <Route path="/complete-profile" component={CompleteProfile} />
         <Route component={SignIn} />
       </Switch>
