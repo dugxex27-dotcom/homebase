@@ -54,6 +54,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // CRITICAL TEST: Force login with correct data
+  app.get('/api/force-login-test', async (req: any, res) => {
+    try {
+      const userId = 'google_103315263202734374496';
+      const freshUser = await storage.getUser(userId);
+      
+      if (!freshUser) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      
+      // Create fresh session with mapped data
+      req.session.regenerate((err: any) => {
+        if (err) {
+          return res.status(500).json({ error: 'Session error' });
+        }
+        
+        req.session.isAuthenticated = true;
+        req.session.user = freshUser;
+        
+        req.session.save((saveErr: any) => {
+          if (saveErr) {
+            return res.status(500).json({ error: 'Save error' });
+          }
+          
+          res.json({
+            success: true,
+            message: 'Session created with fresh user data',
+            companyId: freshUser.companyId,
+            companyRole: freshUser.companyRole,
+            user: freshUser
+          });
+        });
+      });
+    } catch (error) {
+      res.status(500).json({ error: String(error) });
+    }
+  });
+
   // Set up Replit Auth (handles Google OAuth via Replit)
   await setupAuth(app);
 
