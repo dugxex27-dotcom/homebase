@@ -1,4 +1,4 @@
-// v2.0.1 - Auto-save photo uploads
+// v2.0.2 - Force cache bust for upload fix
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
