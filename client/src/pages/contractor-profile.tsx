@@ -673,9 +673,9 @@ export default function ContractorProfile() {
         const compressedImage = await compressImage(file, 800, 0.85);
         
         // Upload to object storage immediately
-        const uploadResponse = await fetch('/api/upload-image', {
+        const uploadResponse = await fetch('/api/upload/image', {
           method: 'POST',
-          body: JSON.stringify({ image: compressedImage }),
+          body: JSON.stringify({ imageData: compressedImage, type: 'logo' }),
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
         });
@@ -764,9 +764,9 @@ export default function ContractorProfile() {
           const compressedImage = await compressImage(file, 1200, 0.80);
           
           // Upload to object storage immediately
-          const uploadResponse = await fetch('/api/upload-image', {
+          const uploadResponse = await fetch('/api/upload/image', {
             method: 'POST',
-            body: JSON.stringify({ image: compressedImage }),
+            body: JSON.stringify({ imageData: compressedImage, type: 'photo' }),
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
           });
