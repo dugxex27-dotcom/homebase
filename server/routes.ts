@@ -1039,11 +1039,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const contractors = await storage.getContractors(filters);
-      console.log('[DEBUG] /api/contractors returning', contractors.length, 'contractors');
-      if (contractors.length > 0) {
-        console.log('[DEBUG] First contractor ID:', contractors[0].id);
+      
+      // Enrich contractors with company logos
+      const enrichedContractors = await Promise.all(
+        contractors.map(async (contractor) => {
+          if ((contractor as any).companyId) {
+            const company = await storage.getCompany((contractor as any).companyId);
+            if (company) {
+              return {
+                ...contractor,
+                businessLogo: company.businessLogo || '',
+                projectPhotos: company.projectPhotos || []
+              };
+            }
+          }
+          return contractor;
+        })
+      );
+      
+      console.log('[DEBUG] /api/contractors returning', enrichedContractors.length, 'contractors');
+      if (enrichedContractors.length > 0) {
+        console.log('[DEBUG] First contractor ID:', enrichedContractors[0].id);
       }
-      res.json(contractors);
+      res.json(enrichedContractors);
     } catch (error) {
       console.error("Error fetching contractors:", error);
       res.status(500).json({ message: "Failed to fetch contractors" });
@@ -1066,19 +1084,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const contractors = await storage.searchContractors(query, location, services);
       
-      console.log('[CONTRACTOR SEARCH] Results count:', contractors.length);
-      console.log('[CONTRACTOR SEARCH] Results:', contractors.map(c => ({ 
+      // Enrich contractors with company logos
+      const enrichedContractors = await Promise.all(
+        contractors.map(async (contractor) => {
+          if ((contractor as any).companyId) {
+            const company = await storage.getCompany((contractor as any).companyId);
+            if (company) {
+              return {
+                ...contractor,
+                businessLogo: company.businessLogo || '',
+                projectPhotos: company.projectPhotos || []
+              };
+            }
+          }
+          return contractor;
+        })
+      );
+      
+      console.log('[CONTRACTOR SEARCH] Results count:', enrichedContractors.length);
+      console.log('[CONTRACTOR SEARCH] Results:', enrichedContractors.map(c => ({ 
         id: c.id, 
         company: c.company, 
         location: c.location,
         postalCode: (c as any).postalCode,
         distance: c.distance,
         serviceRadius: c.serviceRadius,
-        services: c.services
+        services: c.services,
+        businessLogo: (c as any).businessLogo
       })));
       console.log('[CONTRACTOR SEARCH] ==================');
       
-      res.json(contractors);
+      res.json(enrichedContractors);
     } catch (error) {
       console.error('[CONTRACTOR SEARCH] Error:', error);
       res.status(500).json({ message: "Failed to search contractors" });
