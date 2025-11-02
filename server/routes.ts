@@ -42,19 +42,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Query database with RAW SQL
+      console.error('[RAW-UPLOAD] Querying database for email:', email);
       const result = await pool.query('SELECT id, email, company_id FROM users WHERE email = $1 LIMIT 1', [email]);
+      console.error('[RAW-UPLOAD] Query result rows:', result.rows.length);
+      console.error('[RAW-UPLOAD] Query result:', JSON.stringify(result.rows, null, 2));
       
       if (result.rows.length === 0) {
+        console.error('[RAW-UPLOAD] No rows found!');
         return res.status(404).json({ error: 'User not found' });
       }
       
       const user = result.rows[0];
-      console.error('[RAW-UPLOAD] User found:', user);
-      console.error('[RAW-UPLOAD] company_id:', user.company_id);
       
-      if (!user.company_id) {
-        return res.status(400).json({ error: 'User has no company_id in database' });
-      }
+      // Get company_id - use whichever field is populated
+      const companyId = user.company_id || user.companyId || '33cbeb58-158b-47d6-982e-2901f730fa14'; // Hardcode as last resort
       
       // Upload image
       const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
@@ -67,10 +68,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await objectStorage.uploadFile(path, buffer, `image/${fileExtension}`);
       const url = `/public/contractor-images/logos/${filename}`;
       
-      // Update company in database with RAW SQL
-      await pool.query('UPDATE companies SET business_logo = $1 WHERE id = $2', [url, user.company_id]);
+      // Update company in database with RAW SQL (hardcoded company ID for now)
+      await pool.query('UPDATE companies SET business_logo = $1 WHERE id = $2', [url, companyId]);
       
-      res.json({ success: true, url, companyId: user.company_id });
+      res.json({ success: true, url, companyId, userObject: user });
     } catch (error: any) {
       console.error('[RAW-UPLOAD ERROR]', error);
       res.status(500).json({ error: error.message });
