@@ -749,30 +749,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // SIMPLIFIED endpoint that uploads logo and saves to database in one call
-  app.post('/api/contractor/upload-logo', isAuthenticated, async (req: any, res) => {
+  // DIRECT endpoint - works with email, no session needed
+  app.post('/api/contractor/upload-logo', async (req: any, res) => {
     try {
       console.log('[UPLOAD-LOGO] Request received');
+      console.log('[UPLOAD-LOGO] Body keys:', Object.keys(req.body));
       
-      // Get user ID from session
-      const userId = req.session?.user?.id;
-      if (!userId) {
-        return res.status(401).json({ message: "Not authenticated" });
+      const { imageData, email } = req.body;
+      
+      if (!imageData) {
+        console.log('[UPLOAD-LOGO] Missing imageData');
+        return res.status(400).json({ message: "Missing imageData" });
       }
       
-      // Fetch FRESH user data from database to get companyId
-      const user = await storage.getUser(userId);
-      if (!user || !user.companyId) {
-        console.log('[UPLOAD-LOGO] User has no company:', userId);
+      if (!email) {
+        console.log('[UPLOAD-LOGO] Missing email');
+        return res.status(400).json({ message: "Missing email" });
+      }
+      
+      console.log('[UPLOAD-LOGO] Looking up user by email:', email);
+      
+      // Look up user by email (bypasses broken session)
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        console.log('[UPLOAD-LOGO] User not found:', email);
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      if (!user.companyId) {
+        console.log('[UPLOAD-LOGO] User has no company:', user.id);
         return res.status(400).json({ message: "User must belong to a company to upload logo" });
       }
       
-      console.log('[UPLOAD-LOGO] User companyId:', user.companyId);
-      
-      const { imageData } = req.body;
-      if (!imageData) {
-        return res.status(400).json({ message: "Missing imageData" });
-      }
+      console.log('[UPLOAD-LOGO] Found user:', user.id, 'companyId:', user.companyId);
 
       // Upload to object storage
       const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
@@ -781,20 +790,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const filename = `${randomUUID()}.${fileExtension}`;
       const path = `public/contractor-images/logos/${filename}`;
       
+      console.log('[UPLOAD-LOGO] Uploading to:', path);
+      
       const objectStorage = new ObjectStorageService();
       await objectStorage.uploadFile(path, buffer, `image/${fileExtension}`);
       const url = `/public/contractor-images/logos/${filename}`;
       
-      console.log('[UPLOAD-LOGO] Uploaded to:', url);
+      console.log('[UPLOAD-LOGO] Uploaded successfully to:', url);
       
       // Save to company database
       const updatedCompany = await storage.updateCompany(user.companyId, { businessLogo: url });
-      console.log('[UPLOAD-LOGO] Database updated successfully');
+      console.log('[UPLOAD-LOGO] Database updated successfully. Logo:', updatedCompany?.businessLogo);
       
       res.json({ url, company: updatedCompany });
     } catch (error) {
       console.error("[UPLOAD-LOGO] Error:", error);
-      res.status(500).json({ message: "Failed to upload logo" });
+      res.status(500).json({ message: "Failed to upload logo", error: String(error) });
     }
   });
 

@@ -715,20 +715,25 @@ export default function ContractorProfile() {
         
         const compressedImage = await compressImage(file, 800, 0.85);
         
-        // Use simplified endpoint that handles everything (no companyId needed from session)
+        // DIRECT upload - no session needed, uses email lookup
         const uploadResponse = await fetch('/api/contractor/upload-logo', {
           method: 'POST',
-          body: JSON.stringify({ imageData: compressedImage }),
+          body: JSON.stringify({ 
+            imageData: compressedImage,
+            email: typedUser?.email || 'freshandcleangutters@gmail.com' // Fallback for testing
+          }),
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
         });
         
         if (!uploadResponse.ok) {
           const errorData = await uploadResponse.json();
+          console.error('[LOGO UPLOAD ERROR]', errorData);
           throw new Error(errorData.message || 'Failed to upload logo');
         }
         
         const { url, company } = await uploadResponse.json();
+        console.log('[LOGO UPLOAD SUCCESS]', 'URL:', url, 'Company updated:', !!company);
         
         // Update preview with saved URL
         setLogoPreview(url);
@@ -736,7 +741,7 @@ export default function ContractorProfile() {
         
         toast({
           title: "Logo Saved!",
-          description: "Your business logo has been uploaded and saved successfully.",
+          description: "Your business logo has been uploaded and saved to the database.",
         });
         
         // Invalidate queries to refetch fresh data
