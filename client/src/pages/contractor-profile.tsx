@@ -1,4 +1,4 @@
-// v2.0.2 - Force cache bust for upload fix
+// v3.0.0 - Photo upload fix with proper toasts (Nov 2, 2025)
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -414,6 +414,10 @@ export default function ContractorProfile() {
         // Upload logo if it's base64 data
         if (businessLogo && businessLogo.startsWith('data:image/')) {
           console.log('[DEBUG] Uploading logo to Object Storage...');
+          toast({
+            title: "Uploading Logo...",
+            description: "Please wait while we save your business logo.",
+          });
           const logoResponse = await fetch('/api/upload/image', {
             method: 'POST',
             body: JSON.stringify({ imageData: businessLogo, type: 'logo' }),
@@ -423,6 +427,10 @@ export default function ContractorProfile() {
             const { url } = await logoResponse.json();
             businessLogo = url;
             console.log('[DEBUG] Logo uploaded successfully:', url);
+            toast({
+              title: "Logo Uploaded",
+              description: "Your business logo has been saved successfully.",
+            });
           } else {
             throw new Error('Failed to upload logo');
           }
@@ -430,6 +438,13 @@ export default function ContractorProfile() {
 
         // Upload project photos if they're base64 data
         const uploadedPhotos: string[] = [];
+        const photosToUpload = projectPhotos.filter(p => p.startsWith('data:image/')).length;
+        if (photosToUpload > 0) {
+          toast({
+            title: "Uploading Photos...",
+            description: `Uploading ${photosToUpload} project photo${photosToUpload > 1 ? 's' : ''}...`,
+          });
+        }
         for (const photo of projectPhotos) {
           if (photo.startsWith('data:image/')) {
             console.log('[DEBUG] Uploading project photo to Object Storage...');
@@ -449,6 +464,12 @@ export default function ContractorProfile() {
             // Already a URL, keep it
             uploadedPhotos.push(photo);
           }
+        }
+        if (photosToUpload > 0) {
+          toast({
+            title: "Photos Uploaded",
+            description: `Successfully uploaded ${photosToUpload} project photo${photosToUpload > 1 ? 's' : ''}.`,
+          });
         }
         projectPhotos = uploadedPhotos;
       }
