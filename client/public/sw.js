@@ -1,5 +1,5 @@
 // Service Worker for Push Notifications
-const CACHE_NAME = 'homebase-v2-oct2025';
+const CACHE_NAME = 'homebase-v3-nov2-2025';
 
 // Install event - skip caching, just install immediately
 self.addEventListener('install', event => {
