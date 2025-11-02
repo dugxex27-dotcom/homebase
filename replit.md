@@ -22,6 +22,9 @@ Preferred communication style: Simple, everyday language.
 - **Frontend**: React 18 with TypeScript, Wouter for routing, TanStack Query for state management, and Tailwind CSS for styling. Vite is used for fast development and optimized builds.
 - **Backend**: Node.js with Express.js, written in TypeScript with ES modules. Implements a RESTful API with JSON responses.
 - **Database**: PostgreSQL, integrated with Drizzle ORM for type-safe operations and Drizzle Kit for schema management.
+    - **Database Field Mapping**: Manual snake_case ↔ camelCase conversion implemented in `server/storage.ts` for user fields (companyId, companyRole, canRespondToProposals) due to Drizzle ORM automatic casing not working in version 0.39.1
+    - Mapping applied in `DbStorage.getUser()` and `DbStorage.getUserByEmail()` to ensure consistency
+    - All API endpoints that return user data fetch fresh data via `storage.getUser()` to apply mapping
 - **Data Flow**: Client requests use TanStack Query, Express routes handle processing, data access is via Drizzle ORM to PostgreSQL, and responses are JSON. Shared TypeScript types ensure end-to-end type safety.
 - **Security**: Enterprise-grade security with Helmet.js headers (CSP, HSTS, X-Frame-Options), express-rate-limit for API protection (100 req/15min general, 5 req/15min auth), CORS whitelist validation, secure session cookies (httpOnly, sameSite), SQL injection and XSS pattern detection, and comprehensive input validation via Zod schemas with custom security utilities.
 
