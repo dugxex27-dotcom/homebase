@@ -126,25 +126,39 @@ export async function setupAuth(app: Express) {
   // Keep track of registered strategies
   const registeredStrategies = new Set<string>();
 
-  // Helper function to ensure strategy exists for a domain
-  const ensureStrategy = (domain: string) => {
-    const strategyName = `replitauth:${domain}`;
-    if (!registeredStrategies.has(strategyName)) {
-      const callbackURL = `https://${domain}/api/callback`;
-      console.log('[AUTH] Registering strategy with callback URL:', callbackURL);
-      const strategy = new Strategy(
-        {
-          name: strategyName,
-          config,
-          scope: "openid email profile offline_access",
-          callbackURL: callbackURL,
-        },
-        verify,
-      );
-      passport.use(strategy);
-      registeredStrategies.add(strategyName);
-      console.log('[AUTH] Strategy registered for domain:', domain);
+  // Get all configured domains
+  const domains = process.env.REPLIT_DOMAINS?.split(',') || [];
+  console.log('[AUTH] Configured domains:', domains);
+  
+  // Register a strategy for each domain
+  for (const domain of domains) {
+    const strategyName = `replitauth:${domain.trim()}`;
+    const callbackURL = `https://${domain.trim()}/api/callback`;
+    console.log('[AUTH] Pre-registering strategy for domain:', domain.trim(), 'with callback:', callbackURL);
+    
+    const strategy = new Strategy(
+      {
+        name: strategyName,
+        config,
+        scope: "openid email profile offline_access",
+        callbackURL: callbackURL,
+      },
+      verify,
+    );
+    passport.use(strategy);
+    console.log('[AUTH] Strategy pre-registered:', strategyName);
+  }
+  
+  // Helper function to get strategy for a domain
+  const getStrategyName = (hostname: string) => {
+    // Find matching domain from configured domains
+    const matchedDomain = domains.find(d => d.trim() === hostname);
+    if (matchedDomain) {
+      return `replitauth:${matchedDomain.trim()}`;
     }
+    // Fallback to hostname
+    console.warn('[AUTH] No pre-registered domain for hostname:', hostname);
+    return `replitauth:${hostname}`;
   };
 
   passport.serializeUser((user: Express.User, cb) => cb(null, user));
@@ -155,10 +169,10 @@ export async function setupAuth(app: Express) {
     console.log('[OAUTH] Hostname:', req.hostname);
     console.log('[OAUTH] Protocol:', req.protocol);
     
-    ensureStrategy(req.hostname);
-    console.log('[OAUTH] Using strategy: replitauth:' + req.hostname);
+    const strategyName = getStrategyName(req.hostname);
+    console.log('[OAUTH] Using strategy:', strategyName);
     
-    passport.authenticate(`replitauth:${req.hostname}`, {
+    passport.authenticate(strategyName, {
       scope: ["openid", "email", "profile", "offline_access"],
     })(req, res, next);
   });
@@ -175,10 +189,10 @@ export async function setupAuth(app: Express) {
       return res.redirect('/signin?error=oauth-failed');
     }
     
-    ensureStrategy(req.hostname);
-    console.log('[OAUTH] Using callback strategy: replitauth:' + req.hostname);
+    const strategyName = getStrategyName(req.hostname);
+    console.log('[OAUTH] Using callback strategy:', strategyName);
     
-    passport.authenticate(`replitauth:${req.hostname}`, {
+    passport.authenticate(strategyName, {
       successReturnToOrRedirect: "/",
       failureRedirect: "/signin?error=callback-failed",
     })(req, res, next);
