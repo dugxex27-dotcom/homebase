@@ -2364,6 +2364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const houses = await storage.getHouses(homeownerId);
       res.json(houses);
     } catch (error) {
+      console.error("[ERROR] Failed to fetch houses:", error);
       res.status(500).json({ message: "Failed to fetch houses" });
     }
   });
