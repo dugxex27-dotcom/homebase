@@ -94,6 +94,7 @@ export const companies = pgTable("companies", {
   isLicensed: boolean("is_licensed").notNull().default(true),
   licenses: text("licenses"), // JSON string of licensing info per regulatory body
   insuranceInfo: text("insurance_info"), // JSON string of insurance details by region
+  referralCode: varchar("referral_code").unique(), // Company-wide referral code (shared by all employees)
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

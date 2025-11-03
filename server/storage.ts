@@ -33,6 +33,7 @@ export interface IStorage {
   createCompany(company: InsertCompany): Promise<Company>;
   updateCompany(id: string, company: Partial<InsertCompany>): Promise<Company | undefined>;
   getCompanyEmployees(companyId: string): Promise<User[]>;
+  getCompanyByReferralCode(code: string): Promise<Company | undefined>;
   
   // Company invite code methods
   createCompanyInviteCode(inviteCode: InsertCompanyInviteCode): Promise<CompanyInviteCode>;
@@ -3808,6 +3809,11 @@ class DbStorage implements IStorage {
   async getCompanyEmployees(companyId: string): Promise<User[]> {
     const result = await db.select().from(users).where(eq(users.companyId, companyId));
     return result;
+  }
+
+  async getCompanyByReferralCode(code: string): Promise<Company | undefined> {
+    const result = await db.select().from(companies).where(eq(companies.referralCode, code)).limit(1);
+    return result[0];
   }
 
   // Get contractor by ID - DATABASE BACKED

@@ -323,7 +323,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // If user doesn't have a referral code, generate one
+      // For contractors, use the company's referral code instead of personal code
+      if (user.role === 'contractor' && user.companyId) {
+        const company = await storage.getCompany(user.companyId);
+        if (company) {
+          // If company doesn't have a referral code, generate one
+          if (!company.referralCode) {
+            let newCode = generateUniqueReferralCode();
+            let attempts = 0;
+            const maxAttempts = 10;
+
+            // Ensure uniqueness by checking against existing codes
+            while (attempts < maxAttempts) {
+              const existingUser = await storage.getUserByReferralCode?.(newCode);
+              const existingCompany = await storage.getCompanyByReferralCode?.(newCode);
+              if (!existingUser && !existingCompany) {
+                break; // Code is unique
+              }
+              newCode = generateUniqueReferralCode();
+              attempts++;
+            }
+
+            if (attempts >= maxAttempts) {
+              return res.status(500).json({ message: "Failed to generate unique referral code" });
+            }
+
+            // Update company with new referral code
+            await storage.updateCompany(user.companyId, { referralCode: newCode });
+            
+            return res.json({ 
+              referralCode: newCode,
+              referralCount: user.referralCount || 0,
+              referralLink: `${req.protocol}://${req.get('host')}/?ref=${newCode}`
+            });
+          }
+          
+          // Return company's existing referral code
+          return res.json({ 
+            referralCode: company.referralCode,
+            referralCount: user.referralCount || 0,
+            referralLink: `${req.protocol}://${req.get('host')}/?ref=${company.referralCode}`
+          });
+        }
+      }
+
+      // For homeowners, use personal referral code
       if (!user.referralCode) {
         let newCode = generateUniqueReferralCode();
         let attempts = 0;
@@ -332,7 +376,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Ensure uniqueness by checking against existing codes
         while (attempts < maxAttempts) {
           const existingUser = await storage.getUserByReferralCode?.(newCode);
-          if (!existingUser) {
+          const existingCompany = await storage.getCompanyByReferralCode?.(newCode);
+          if (!existingUser && !existingCompany) {
             break; // Code is unique
           }
           newCode = generateUniqueReferralCode();
