@@ -1,7 +1,7 @@
 import { type Contractor, type InsertContractor, type Company, type InsertCompany, type CompanyInviteCode, type InsertCompanyInviteCode, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type HomeApplianceManual, type InsertHomeApplianceManual, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics, type TaskOverride, type InsertTaskOverride, type Country, type InsertCountry, type Region, type InsertRegion, type ClimateZone, type InsertClimateZone, type RegulatoryBody, type InsertRegulatoryBody, type RegionalMaintenanceTask, type InsertRegionalMaintenanceTask, type TaskCompletion, type InsertTaskCompletion, type Achievement, type InsertAchievement, type AchievementDefinition, type InsertAchievementDefinition, type UserAchievement, type InsertUserAchievement, type SearchAnalytics, type InsertSearchAnalytics, type InviteCode, type InsertInviteCode, users, contractors, companies, countries, regions, climateZones, regulatoryBodies, regionalMaintenanceTasks, taskCompletions, achievements, achievementDefinitions, userAchievements, maintenanceLogs, searchAnalytics, inviteCodes, houses, homeSystems, customMaintenanceTasks, serviceRecords } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
-import { eq, ne, isNotNull, and } from "drizzle-orm";
+import { eq, ne, isNotNull, and, or, isNull } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -3837,6 +3837,8 @@ class DbStorage implements IStorage {
     let query = db.select().from(homeSystems);
     
     if (homeownerId && houseId) {
+      // Return systems for this homeowner that belong to this specific house
+      // Note: homeSystems.houseId is NOT NULL, so all systems must belong to a specific house
       return await query.where(and(eq(homeSystems.homeownerId, homeownerId), eq(homeSystems.houseId, houseId)));
     } else if (homeownerId) {
       return await query.where(eq(homeSystems.homeownerId, homeownerId));
@@ -3891,11 +3893,18 @@ class DbStorage implements IStorage {
     let query = db.select().from(customMaintenanceTasks);
     
     if (homeownerId && houseId) {
-      return await query.where(and(eq(customMaintenanceTasks.homeownerId, homeownerId), eq(customMaintenanceTasks.houseId, houseId)));
+      // Return tasks for this homeowner that either belong to this house OR apply to all houses (NULL houseId)
+      return await query.where(
+        and(
+          eq(customMaintenanceTasks.homeownerId, homeownerId),
+          or(eq(customMaintenanceTasks.houseId, houseId), isNull(customMaintenanceTasks.houseId))
+        )
+      );
     } else if (homeownerId) {
       return await query.where(eq(customMaintenanceTasks.homeownerId, homeownerId));
     } else if (houseId) {
-      return await query.where(eq(customMaintenanceTasks.houseId, houseId));
+      // Return tasks that either belong to this house OR apply to all houses (NULL houseId)
+      return await query.where(or(eq(customMaintenanceTasks.houseId, houseId), isNull(customMaintenanceTasks.houseId)));
     }
     
     return await query;
@@ -3941,6 +3950,8 @@ class DbStorage implements IStorage {
     let query = db.select().from(maintenanceLogs);
     
     if (homeownerId && houseId) {
+      // Return logs for this homeowner that belong to this specific house
+      // Note: maintenanceLogs.houseId is NOT NULL, so all logs must belong to a specific house
       return await query.where(and(eq(maintenanceLogs.homeownerId, homeownerId), eq(maintenanceLogs.houseId, houseId)));
     } else if (homeownerId) {
       return await query.where(eq(maintenanceLogs.homeownerId, homeownerId));
