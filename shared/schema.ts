@@ -67,6 +67,7 @@ export const companies = pgTable("companies", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   bio: text("bio").notNull(),
+  experience: integer("experience").notNull().default(0), // Years of experience
   location: text("location").notNull(),
   ownerId: varchar("owner_id").notNull(), // User ID of the company owner
   rating: decimal("rating", { precision: 3, scale: 2 }).notNull().default("0"),

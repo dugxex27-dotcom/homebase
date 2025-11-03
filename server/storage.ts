@@ -3671,7 +3671,7 @@ class DbStorage implements IStorage {
       throw new Error('User must belong to a company to update contractor profile');
     }
     
-    // CRITICAL FIX: Update company-level data (projectPhotos, businessLogo) to persist across sessions
+    // CRITICAL FIX: Update company-level data (projectPhotos, businessLogo, bio, experience) to persist across sessions
     const companyUpdates: any = {};
     if (profileData.projectPhotos !== undefined) {
       companyUpdates.projectPhotos = profileData.projectPhotos;
@@ -3681,14 +3681,22 @@ class DbStorage implements IStorage {
       companyUpdates.businessLogo = profileData.businessLogo;
       console.log('[PHOTO-DEBUG] businessLogo field found:', profileData.businessLogo ? 'yes' : 'no');
     }
+    if (profileData.bio !== undefined) {
+      companyUpdates.bio = profileData.bio;
+      console.log('[PROFILE-DEBUG] bio field found:', profileData.bio ? 'yes' : 'no');
+    }
+    if (experience !== undefined && experience !== null) {
+      companyUpdates.experience = experience;
+      console.log('[PROFILE-DEBUG] experience field found:', experience, 'years');
+    }
     
     if (Object.keys(companyUpdates).length > 0) {
-      console.log('[PHOTO-DEBUG] Updating company photos for companyId:', user.companyId);
-      console.log('[PHOTO-DEBUG] Updates:', JSON.stringify(companyUpdates, null, 2));
+      console.log('[PROFILE-DEBUG] Updating company data for companyId:', user.companyId);
+      console.log('[PROFILE-DEBUG] Updates:', JSON.stringify(companyUpdates, null, 2));
       await this.updateCompany(user.companyId, companyUpdates);
-      console.log('[PHOTO-DEBUG] Company photos update complete');
+      console.log('[PROFILE-DEBUG] Company data update complete');
     } else {
-      console.log('[PHOTO-DEBUG] No company photo updates to apply');
+      console.log('[PROFILE-DEBUG] No company data updates to apply');
     }
     
     if (!existingContractor) {
