@@ -26,6 +26,7 @@ Preferred communication style: Simple, everyday language.
     - Mapping applied in `DbStorage.getUser()` and `DbStorage.getUserByEmail()` to ensure consistency
     - All API endpoints that return user data fetch fresh data via `storage.getUser()` to apply mapping
     - **Photo Persistence Fix**: Contractor profile photos (projectPhotos, businessLogo) are now persisted to the database-backed `companies` table instead of the in-memory `contractors` table via `updateContractorProfile()` calling `updateCompany()`, ensuring photos survive logout/server restarts
+    - **Project Photos Upload Fix**: Fixed bug where adding new photos to contractor profile was removing existing photos. The upload handler now correctly preserves all existing photos when appending new ones to the projectPhotos array
     - **House Persistence Fix**: Houses are now stored in PostgreSQL database instead of in-memory storage. Database-backed methods implemented in DbStorage class (`getHouses`, `getHouse`, `createHouse`, `updateHouse`, `deleteHouse`) ensure properties persist across sessions and server restarts
     - **Home Maintenance Data Persistence**: Home systems, custom maintenance tasks, maintenance logs, and service records are now all database-backed for full persistence across sessions. All CRUD operations for these entities now write to PostgreSQL, ensuring data survives logout/server restarts
 - **Data Flow**: Client requests use TanStack Query, Express routes handle processing, data access is via Drizzle ORM to PostgreSQL, and responses are JSON. Shared TypeScript types ensure end-to-end type safety.
@@ -40,6 +41,15 @@ Preferred communication style: Simple, everyday language.
         - Complete-profile flow for OAuth users missing zip code/role
         - Data preservation: existing zipCode and role persist across repeat OAuth logins
         - Requires environment variables: REPLIT_DOMAINS, REPL_ID, ISSUER_URL
+    - **Password Reset System**:
+        - "Forgot Password?" link on sign-in page opens two-step reset dialog
+        - Step 1: Request reset code via email address
+        - Step 2: Enter 6-digit code and set new password
+        - Reset tokens stored in `password_reset_tokens` table with 15-minute expiration
+        - Single-use tokens (marked as used after successful reset)
+        - Rate-limited endpoints for security
+        - Development mode: reset codes logged to server console for testing
+        - Production ready: email delivery mechanism to be configured (SendGrid, SES, etc.)
     - Zip code capture during registration for geographic analytics
     - Optional invite code system with usage tracking
     - Secure session management with httpOnly cookies
