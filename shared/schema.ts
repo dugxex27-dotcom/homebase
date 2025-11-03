@@ -151,6 +151,19 @@ export const users = pgTable("users", {
   index("IDX_users_company_id").on(table.companyId),
 ]);
 
+// Password reset tokens table
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email").notNull(),
+  token: varchar("token").notNull().unique(), // 6-digit code
+  expiresAt: timestamp("expires_at").notNull(), // Tokens expire after 15 minutes
+  used: boolean("used").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_password_reset_tokens_email").on(table.email),
+  index("IDX_password_reset_tokens_token").on(table.token),
+]);
+
 export const contractors = pgTable("contractors", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(), // References users.id

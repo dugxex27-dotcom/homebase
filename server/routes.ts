@@ -6,11 +6,12 @@ import { setupGoogleAuth } from "./googleAuth";
 import { z } from "zod";
 import { randomUUID } from "crypto";
 import rateLimit from "express-rate-limit";
-import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema } from "@shared/schema";
+import { eq } from "drizzle-orm";
+import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, passwordResetTokens } from "@shared/schema";
 import pushRoutes from "./push-routes";
 import { pushService } from "./push-service";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
-import { pool } from "./db";
+import { pool, db } from "./db";
 
 // Extend session data interface
 declare module 'express-session' {
@@ -695,6 +696,113 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error logging in:", error);
       res.status(500).json({ message: "Login failed" });
+    }
+  });
+
+  // Forgot password - Request reset code
+  app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      // Check if user exists
+      const user = await storage.getUserByEmail(email);
+      
+      if (!user) {
+        // Return success even if user doesn't exist (security best practice)
+        return res.json({ success: true, message: "If an account exists with this email, a reset code has been sent." });
+      }
+
+      // Generate 6-digit code
+      const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      // Store reset token in database (expires in 15 minutes)
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+      await db.insert(passwordResetTokens).values({
+        email,
+        token: resetCode,
+        expiresAt,
+        used: false,
+      });
+
+      // TODO: Send email with reset code
+      // For now, we'll log it to console for development
+      console.log(`[PASSWORD RESET] Reset code for ${email}: ${resetCode}`);
+      
+      res.json({ 
+        success: true, 
+        message: "Reset code sent to your email",
+        // TEMPORARY: Remove this in production when email is configured
+        resetCode: process.env.NODE_ENV === 'development' ? resetCode : undefined
+      });
+    } catch (error) {
+      console.error("Error requesting password reset:", error);
+      res.status(500).json({ message: "Failed to process password reset request" });
+    }
+  });
+
+  // Reset password with code
+  app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
+    try {
+      const { email, resetCode, newPassword } = req.body;
+      
+      if (!email || !resetCode || !newPassword) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      // Validate password length
+      if (newPassword.length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters" });
+      }
+
+      // Find valid reset token
+      const tokens = await db
+        .select()
+        .from(passwordResetTokens)
+        .where(eq(passwordResetTokens.email, email))
+        .orderBy(passwordResetTokens.createdAt);
+
+      const validToken = tokens.find(t => 
+        t.token === resetCode && 
+        !t.used && 
+        new Date(t.expiresAt) > new Date()
+      );
+
+      if (!validToken) {
+        return res.status(400).json({ message: "Invalid or expired reset code" });
+      }
+
+      // Get user
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Hash new password
+      const bcrypt = await import('bcryptjs');
+      const passwordHash = await bcrypt.hash(newPassword, 10);
+
+      // Update user password
+      await storage.upsertUser({
+        ...user,
+        passwordHash,
+      });
+
+      // Mark token as used
+      await db
+        .update(passwordResetTokens)
+        .set({ used: true })
+        .where(eq(passwordResetTokens.id, validToken.id));
+
+      console.log(`[PASSWORD RESET] Password successfully reset for ${email}`);
+      
+      res.json({ success: true, message: "Password reset successful" });
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      res.status(500).json({ message: "Failed to reset password" });
     }
   });
 

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { SiGoogle } from "react-icons/si";
@@ -19,6 +20,20 @@ import logoImage from '@assets/homebase-logo_1756861910640.png';
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(1, "Password is required"),
+});
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+});
+
+const resetPasswordSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  resetCode: z.string().min(6, "Reset code must be 6 characters"),
+  newPassword: z.string().min(6, "Password must be at least 6 characters"),
+  confirmPassword: z.string().min(1, "Please confirm your password"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
 });
 
 const registerSchema = z.object({
@@ -72,12 +87,18 @@ const registerSchema = z.object({
 
 type LoginFormData = z.infer<typeof loginSchema>;
 type RegisterFormData = z.infer<typeof registerSchema>;
+type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
+type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
 
 export default function SignIn() {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetStep, setResetStep] = useState<'request' | 'reset'>('request');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
@@ -108,6 +129,23 @@ export default function SignIn() {
       companyInviteCode: "",
     },
     mode: "onBlur",
+  });
+
+  const forgotPasswordForm = useForm<ForgotPasswordFormData>({
+    resolver: zodResolver(forgotPasswordSchema),
+    defaultValues: {
+      email: "",
+    },
+  });
+
+  const resetPasswordForm = useForm<ResetPasswordFormData>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: {
+      email: "",
+      resetCode: "",
+      newPassword: "",
+      confirmPassword: "",
+    },
   });
 
   const loginMutation = useMutation({
@@ -185,12 +223,68 @@ export default function SignIn() {
     },
   });
 
+  const forgotPasswordMutation = useMutation({
+    mutationFn: async (data: ForgotPasswordFormData) => {
+      const response = await apiRequest("/api/auth/forgot-password", "POST", data);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Reset code sent",
+        description: "A password reset code has been sent to your email. Please check your inbox.",
+      });
+      // Move to reset step and pre-fill email
+      setResetStep('reset');
+      resetPasswordForm.setValue('email', forgotPasswordForm.getValues('email'));
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Request failed",
+        description: error.message || "Could not process your request. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (data: ResetPasswordFormData) => {
+      const response = await apiRequest("/api/auth/reset-password", "POST", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Password reset successful",
+        description: "Your password has been reset. You can now sign in with your new password.",
+      });
+      // Close dialog and reset forms
+      setShowForgotPassword(false);
+      setResetStep('request');
+      forgotPasswordForm.reset();
+      resetPasswordForm.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Reset failed",
+        description: error.message || "Invalid reset code. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleLoginSubmit = (data: LoginFormData) => {
     loginMutation.mutate(data);
   };
 
   const handleRegisterSubmit = (data: RegisterFormData) => {
     registerMutation.mutate(data);
+  };
+
+  const handleForgotPasswordSubmit = (data: ForgotPasswordFormData) => {
+    forgotPasswordMutation.mutate(data);
+  };
+
+  const handleResetPasswordSubmit = (data: ResetPasswordFormData) => {
+    resetPasswordMutation.mutate(data);
   };
 
   const handleGoogleLogin = () => {
@@ -359,6 +453,17 @@ export default function SignIn() {
                       </FormItem>
                     )}
                   />
+
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotPassword(true)}
+                      className="text-sm text-primary hover:underline"
+                      data-testid="link-forgot-password"
+                    >
+                      Forgot password?
+                    </button>
+                  </div>
 
                   <Button
                     type="submit"
@@ -756,6 +861,195 @@ export default function SignIn() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Forgot Password Dialog */}
+        <Dialog open={showForgotPassword} onOpenChange={(open) => {
+          setShowForgotPassword(open);
+          if (!open) {
+            setResetStep('request');
+            forgotPasswordForm.reset();
+            resetPasswordForm.reset();
+          }
+        }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {resetStep === 'request' ? 'Reset Your Password' : 'Enter Reset Code'}
+              </DialogTitle>
+              <DialogDescription>
+                {resetStep === 'request' 
+                  ? 'Enter your email address and we\'ll send you a password reset code.'
+                  : 'Enter the 6-digit code sent to your email and choose a new password.'}
+              </DialogDescription>
+            </DialogHeader>
+
+            {resetStep === 'request' ? (
+              <Form {...forgotPasswordForm}>
+                <form onSubmit={forgotPasswordForm.handleSubmit(handleForgotPasswordSubmit)} className="space-y-4">
+                  <FormField
+                    control={forgotPasswordForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email Address</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="email"
+                            placeholder="Enter your email"
+                            {...field}
+                            data-testid="input-forgot-email"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowForgotPassword(false)}
+                      className="flex-1"
+                      data-testid="button-cancel-forgot"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      className="flex-1"
+                      disabled={forgotPasswordMutation.isPending}
+                      data-testid="button-send-reset-code"
+                    >
+                      {forgotPasswordMutation.isPending ? 'Sending...' : 'Send Reset Code'}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            ) : (
+              <Form {...resetPasswordForm}>
+                <form onSubmit={resetPasswordForm.handleSubmit(handleResetPasswordSubmit)} className="space-y-4">
+                  <FormField
+                    control={resetPasswordForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email Address</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="email"
+                            {...field}
+                            disabled
+                            data-testid="input-reset-email"
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={resetPasswordForm.control}
+                    name="resetCode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Reset Code</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Enter 6-digit code"
+                            {...field}
+                            maxLength={6}
+                            data-testid="input-reset-code"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={resetPasswordForm.control}
+                    name="newPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>New Password</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input
+                              type={showNewPassword ? "text" : "password"}
+                              placeholder="Enter new password"
+                              {...field}
+                              data-testid="input-new-password"
+                              className="pr-10"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowNewPassword(!showNewPassword)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200"
+                              data-testid="button-toggle-new-password"
+                            >
+                              {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={resetPasswordForm.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Confirm Password</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input
+                              type={showConfirmNewPassword ? "text" : "password"}
+                              placeholder="Confirm new password"
+                              {...field}
+                              data-testid="input-confirm-new-password"
+                              className="pr-10"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200"
+                              data-testid="button-toggle-confirm-new-password"
+                            >
+                              {showConfirmNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setResetStep('request')}
+                      className="flex-1"
+                      data-testid="button-back-to-email"
+                    >
+                      Back
+                    </Button>
+                    <Button
+                      type="submit"
+                      className="flex-1"
+                      disabled={resetPasswordMutation.isPending}
+                      data-testid="button-reset-password"
+                    >
+                      {resetPasswordMutation.isPending ? 'Resetting...' : 'Reset Password'}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
