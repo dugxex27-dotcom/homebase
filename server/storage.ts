@@ -3732,8 +3732,13 @@ class DbStorage implements IStorage {
       // Remove fields that should never be updated by user
       const { id, createdAt, updatedAt, rating, reviewCount, distance, ...cleanProfileData } = profileData as any;
       
+      // Filter out undefined values to prevent overwriting existing data with empty defaults
+      const filteredData = Object.fromEntries(
+        Object.entries(cleanProfileData).filter(([_, value]) => value !== undefined)
+      );
+      
       const updatedData = {
-        ...cleanProfileData,
+        ...filteredData,
         address: profileData.address ?? existingContractor.address,
         city: profileData.city ?? existingContractor.city,
         state: profileData.state ?? existingContractor.state,
@@ -3742,6 +3747,25 @@ class DbStorage implements IStorage {
       };
       
       await db.update(contractors).set(updatedData).where(eq(contractors.id, contractorId));
+      
+      // ALSO update the company table with services and location data so search works
+      if (user.companyId) {
+        const companyUpdates: Partial<InsertCompany> = {};
+        if (profileData.services && profileData.services.length > 0) {
+          companyUpdates.services = profileData.services;
+        }
+        if (profileData.address) companyUpdates.address = profileData.address;
+        if (profileData.city) companyUpdates.city = profileData.city;
+        if (profileData.state) companyUpdates.state = profileData.state;
+        if (profileData.postalCode) companyUpdates.postalCode = profileData.postalCode;
+        if (profileData.serviceRadius !== undefined) companyUpdates.serviceRadius = profileData.serviceRadius;
+        
+        if (Object.keys(companyUpdates).length > 0) {
+          console.log('[DEBUG] Updating company with services/location:', companyUpdates);
+          await this.updateCompany(user.companyId, companyUpdates);
+        }
+      }
+      
       return (await this.getContractorProfile(contractorId))!;
     }
   }
