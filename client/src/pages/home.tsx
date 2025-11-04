@@ -319,7 +319,55 @@ export default function Home() {
         </section>
       )}
 
-
+      {/* AI Help Feature - Homeowners Only */}
+      {typedUser?.role === 'homeowner' && (
+        <section className="py-12 bg-gradient-to-br from-purple-100 via-blue-100 to-purple-100">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <Card className="border-2 border-purple-300 bg-gradient-to-r from-purple-50 to-blue-50 shadow-xl">
+              <CardContent className="p-8">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                  <div className="flex-1 text-center md:text-left">
+                    <div className="flex items-center justify-center md:justify-start gap-2 mb-3">
+                      <Sparkles className="w-6 h-6 text-purple-600" />
+                      <h3 className="text-2xl font-bold text-purple-700">Not Sure Who to Contact?</h3>
+                    </div>
+                    <p className="text-gray-700 mb-4">
+                      Let our AI assistant analyze your home problem and recommend the right type of contractor. 
+                      Get instant, expert guidance tailored to your specific situation!
+                    </p>
+                    <div className="flex flex-wrap gap-2 text-sm text-gray-600">
+                      <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Instant Analysis
+                      </Badge>
+                      <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Expert Recommendations
+                      </Badge>
+                      <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Direct Contractor Search
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="flex-shrink-0">
+                    <Link href="/ai-help">
+                      <Button 
+                        size="lg" 
+                        className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-6 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+                        data-testid="button-ai-help"
+                      >
+                        <Sparkles className="w-5 h-5 mr-2" />
+                        Try AI Help Now
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+      )}
 
       {/* Tab Content Section */}
       <section className="py-16" style={{ background: typedUser?.role === 'homeowner' ? '#2c0f5b' : '#1560a2' }}>
@@ -479,58 +527,6 @@ export default function Home() {
           )}
         </div>
       </section>
-
-
-
-      {/* AI Help Feature - Homeowners Only */}
-      {typedUser?.role === 'homeowner' && (
-        <section className="py-12 bg-gradient-to-br from-purple-100 via-blue-100 to-purple-100">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <Card className="border-2 border-purple-300 bg-gradient-to-r from-purple-50 to-blue-50 shadow-xl">
-              <CardContent className="p-8">
-                <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                  <div className="flex-1 text-center md:text-left">
-                    <div className="flex items-center justify-center md:justify-start gap-2 mb-3">
-                      <Sparkles className="w-6 h-6 text-purple-600" />
-                      <h3 className="text-2xl font-bold text-purple-700">Not Sure Who to Contact?</h3>
-                    </div>
-                    <p className="text-gray-700 mb-4">
-                      Let our AI assistant analyze your home problem and recommend the right type of contractor. 
-                      Get instant, expert guidance tailored to your specific situation!
-                    </p>
-                    <div className="flex flex-wrap gap-2 text-sm text-gray-600">
-                      <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Instant Analysis
-                      </Badge>
-                      <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Expert Recommendations
-                      </Badge>
-                      <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Direct Contractor Search
-                      </Badge>
-                    </div>
-                  </div>
-                  <div className="flex-shrink-0">
-                    <Link href="/ai-help">
-                      <Button 
-                        size="lg" 
-                        className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-6 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
-                        data-testid="button-ai-help"
-                      >
-                        <Sparkles className="w-5 h-5 mr-2" />
-                        Try AI Help Now
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
-      )}
 
       {/* Additional Features Section */}
       <section style={{ background: typedUser?.role === 'homeowner' ? '#2c0f5b' : '#1560a2', paddingTop: '14px', paddingBottom: '30px' }}>
