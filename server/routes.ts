@@ -3674,6 +3674,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       const message = await storage.createMessage(messageData);
+      
+      // Create notification for contractor when homeowner sends a message
+      if (userType === 'homeowner') {
+        const homeownerUser = await storage.getUser(userId);
+        const homeownerName = homeownerUser?.name || 'A homeowner';
+        
+        await storage.createNotification({
+          contractorId: conversation.contractorId,
+          type: 'message',
+          title: 'New Message',
+          message: `${homeownerName} sent you a message`,
+          link: '/messages',
+          priority: 'medium'
+        });
+      }
+      
+      // Create notification for homeowner when contractor sends a message
+      if (userType === 'contractor') {
+        const contractorUser = await storage.getUser(userId);
+        const company = contractorUser?.companyId 
+          ? await storage.getCompany(contractorUser.companyId)
+          : null;
+        const contractorName = company?.name || contractorUser?.name || 'A contractor';
+        
+        await storage.createNotification({
+          homeownerId: conversation.homeownerId,
+          type: 'message',
+          title: 'New Message',
+          message: `${contractorName} sent you a message`,
+          link: '/messages',
+          priority: 'medium'
+        });
+      }
+      
       res.status(201).json(message);
     } catch (error) {
       if (error instanceof z.ZodError) {
