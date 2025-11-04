@@ -3273,11 +3273,7 @@ class DbStorage implements IStorage {
     this.updateContractorReview = this.memStorage.updateContractorReview.bind(this.memStorage);
     this.deleteContractorReview = this.memStorage.deleteContractorReview.bind(this.memStorage);
     this.getContractorAverageRating = this.memStorage.getContractorAverageRating.bind(this.memStorage);
-    this.getProposals = this.memStorage.getProposals.bind(this.memStorage);
-    this.getProposal = this.memStorage.getProposal.bind(this.memStorage);
-    this.createProposal = this.memStorage.createProposal.bind(this.memStorage);
-    this.updateProposal = this.memStorage.updateProposal.bind(this.memStorage);
-    this.deleteProposal = this.memStorage.deleteProposal.bind(this.memStorage);
+    // Proposal operations now database-backed - implemented below
     // Home systems now database-backed - implemented below
     this.getPushSubscriptions = this.memStorage.getPushSubscriptions.bind(this.memStorage);
     this.getPushSubscription = this.memStorage.getPushSubscription.bind(this.memStorage);
@@ -4347,6 +4343,40 @@ class DbStorage implements IStorage {
       );
     }
     return await db.select().from(serviceRecords).where(eq(serviceRecords.homeownerId, homeownerId));
+  }
+
+  // Proposal operations (database-backed)
+  async getProposals(contractorId?: string, homeownerId?: string): Promise<Proposal[]> {
+    if (contractorId) {
+      return await db.select().from(proposals).where(eq(proposals.contractorId, contractorId));
+    }
+    if (homeownerId) {
+      return await db.select().from(proposals).where(eq(proposals.homeownerId, homeownerId));
+    }
+    return await db.select().from(proposals);
+  }
+
+  async getProposal(id: string): Promise<Proposal | undefined> {
+    const result = await db.select().from(proposals).where(eq(proposals.id, id));
+    return result[0];
+  }
+
+  async createProposal(proposalData: InsertProposal): Promise<Proposal> {
+    const result = await db.insert(proposals).values(proposalData).returning();
+    return result[0];
+  }
+
+  async updateProposal(id: string, proposalData: Partial<InsertProposal>): Promise<Proposal | undefined> {
+    const result = await db.update(proposals)
+      .set({ ...proposalData, updatedAt: new Date() })
+      .where(eq(proposals.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteProposal(id: string): Promise<boolean> {
+    const result = await db.delete(proposals).where(eq(proposals.id, id)).returning();
+    return result.length > 0;
   }
 
   // Methods delegated to MemStorage (bound in constructor)
