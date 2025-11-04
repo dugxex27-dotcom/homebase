@@ -47,7 +47,14 @@ Preferred communication style: Simple, everyday language.
     - **Contractor Search Integration**: Auto-populates contractor search location from the selected house.
 - **Marketplace**: Functionality for listing and browsing DIY products with search analytics.
 - **Maintenance Guidance**: Seasonal home maintenance schedule with location-based recommendations.
-- **Notifications**: Enhanced bi-directional notification system for homeowners (appointment reminders, maintenance alerts) and contractors (new message alerts) with real-time updates and a notification bell.
+- **Notifications**: Enhanced bi-directional notification system:
+    - **Homeowner Notifications**: Appointment reminders, maintenance task alerts, message replies from contractors, and high-priority proposal notifications
+    - **Contractor Notifications**: New message alerts when homeowners send messages
+    - **Features**: Real-time updates (30s polling), session-based authentication, notification bell with unread badge, immediate cache updates after read/delete
+- **Proposal System**: 
+    - **For Contractors**: Create and send detailed proposals from message conversations with scope, cost, duration, materials, and warranty information
+    - **For Homeowners**: Clickable proposal list in messages page opens detailed dialog showing full proposal information (scope, materials, notes, etc.) with accept/reject buttons
+    - **Notifications**: Homeowners receive high-priority notifications when contractors create or send proposals
 - **API Endpoints**: Structured for contractors, products, houses, notifications, proposals, search analytics, and admin functions.
 
 ## External Dependencies
