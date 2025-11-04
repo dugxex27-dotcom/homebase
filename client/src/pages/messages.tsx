@@ -50,6 +50,8 @@ export default function Messages() {
   });
   const [isReviewSectionOpen, setIsReviewSectionOpen] = useState(false);
   const [isProposalDialogOpen, setIsProposalDialogOpen] = useState(false);
+  const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
+  const [isProposalDetailOpen, setIsProposalDetailOpen] = useState(false);
 
   // Proposal form setup (without contractorId/homeownerId as they'll be added on submit)
   const proposalFormSchema = z.object({
@@ -324,6 +326,66 @@ export default function Messages() {
     createProposalMutation.mutate(proposalData);
   };
 
+  // Accept proposal mutation (homeowners only)
+  const acceptProposalMutation = useMutation({
+    mutationFn: async (proposalId: string) => {
+      const response = await fetch(`/api/proposals/${proposalId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status: 'accepted' })
+      });
+      if (!response.ok) throw new Error('Failed to accept proposal');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/proposals'] });
+      setIsProposalDetailOpen(false);
+      setSelectedProposal(null);
+      toast({
+        title: "Proposal Accepted",
+        description: "The contractor has been notified of your acceptance.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to accept proposal.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Reject proposal mutation (homeowners only)
+  const rejectProposalMutation = useMutation({
+    mutationFn: async (proposalId: string) => {
+      const response = await fetch(`/api/proposals/${proposalId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status: 'rejected' })
+      });
+      if (!response.ok) throw new Error('Failed to reject proposal');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/proposals'] });
+      setIsProposalDetailOpen(false);
+      setSelectedProposal(null);
+      toast({
+        title: "Proposal Rejected",
+        description: "The contractor has been notified.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reject proposal.",
+        variant: "destructive",
+      });
+    }
+  });
+
   const handleContractorSelection = (contractorId: string, checked: boolean) => {
     setComposeForm(prev => ({
       ...prev,
@@ -460,7 +522,15 @@ export default function Messages() {
                     </div>
                   ) : (
                     proposals.map((proposal) => (
-                      <div key={proposal.id} className="p-4 border-b hover:bg-gray-50">
+                      <div 
+                        key={proposal.id} 
+                        className="p-4 border-b hover:bg-gray-50 cursor-pointer transition-colors"
+                        onClick={() => {
+                          setSelectedProposal(proposal);
+                          setIsProposalDetailOpen(true);
+                        }}
+                        data-testid={`proposal-item-${proposal.id}`}
+                      >
                         <div className="mb-2">
                           <div className="flex items-center justify-between">
                             <h3 className="font-medium text-gray-900">{proposal.title}</h3>
@@ -475,7 +545,7 @@ export default function Messages() {
                               {proposal.status}
                             </Badge>
                           </div>
-                          <p className="text-sm text-gray-600 mt-1">{proposal.description}</p>
+                          <p className="text-sm text-gray-600 mt-1 line-clamp-2">{proposal.description}</p>
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 mt-2">
                           <div className="flex items-center gap-1">
@@ -1092,6 +1162,133 @@ export default function Messages() {
         </Card>
       </div>
       </div>
+
+      {/* Proposal Detail Dialog (Homeowners only) */}
+      <Dialog open={isProposalDetailOpen} onOpenChange={setIsProposalDetailOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Proposal Details</DialogTitle>
+            <DialogDescription>
+              Review the full proposal from the contractor
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedProposal && (
+            <div className="space-y-4 mt-4">
+              {/* Status Badge */}
+              <div className="flex items-center justify-between">
+                <Badge variant={
+                  selectedProposal.status === 'sent' ? 'default' :
+                  selectedProposal.status === 'accepted' ? 'default' :
+                  selectedProposal.status === 'rejected' ? 'destructive' :
+                  'secondary'
+                } style={
+                  selectedProposal.status === 'accepted' ? { backgroundColor: '#10b981', color: 'white' } : {}
+                }>
+                  {selectedProposal.status}
+                </Badge>
+                <span className="text-sm text-gray-500">
+                  Valid until: {new Date(selectedProposal.validUntil).toLocaleDateString()}
+                </span>
+              </div>
+
+              {/* Title & Description */}
+              <div>
+                <h3 className="text-lg font-semibold mb-2">{selectedProposal.title}</h3>
+                <p className="text-gray-700">{selectedProposal.description}</p>
+              </div>
+
+              {/* Key Details */}
+              <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <Label className="text-sm text-gray-600">Service Type</Label>
+                  <p className="font-medium">{selectedProposal.serviceType}</p>
+                </div>
+                <div>
+                  <Label className="text-sm text-gray-600">Estimated Cost</Label>
+                  <p className="font-medium text-lg">${parseFloat(selectedProposal.estimatedCost).toLocaleString()}</p>
+                </div>
+                <div>
+                  <Label className="text-sm text-gray-600">Estimated Duration</Label>
+                  <p className="font-medium">{selectedProposal.estimatedDuration}</p>
+                </div>
+                {selectedProposal.warrantyPeriod && (
+                  <div>
+                    <Label className="text-sm text-gray-600">Warranty Period</Label>
+                    <p className="font-medium">{selectedProposal.warrantyPeriod}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Scope of Work */}
+              <div>
+                <Label className="font-semibold mb-2 block">Scope of Work</Label>
+                <div className="p-4 bg-white border rounded-lg">
+                  <p className="whitespace-pre-wrap text-gray-700">{selectedProposal.scope}</p>
+                </div>
+              </div>
+
+              {/* Materials */}
+              {selectedProposal.materials && selectedProposal.materials.length > 0 && (
+                <div>
+                  <Label className="font-semibold mb-2 block">Materials</Label>
+                  <ul className="list-disc list-inside space-y-1 p-4 bg-white border rounded-lg">
+                    {selectedProposal.materials.map((material, index) => (
+                      <li key={index} className="text-gray-700">{material}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Customer Notes */}
+              {selectedProposal.customerNotes && (
+                <div>
+                  <Label className="font-semibold mb-2 block">Notes for You</Label>
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="whitespace-pre-wrap text-gray-700">{selectedProposal.customerNotes}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              {selectedProposal.status === 'sent' && (
+                <div className="flex gap-3 pt-4 border-t">
+                  <Button
+                    onClick={() => acceptProposalMutation.mutate(selectedProposal.id)}
+                    disabled={acceptProposalMutation.isPending || rejectProposalMutation.isPending}
+                    className="flex-1"
+                    style={{ backgroundColor: '#10b981', color: 'white' }}
+                    data-testid="button-accept-proposal"
+                  >
+                    {acceptProposalMutation.isPending ? 'Accepting...' : 'Accept Proposal'}
+                  </Button>
+                  <Button
+                    onClick={() => rejectProposalMutation.mutate(selectedProposal.id)}
+                    disabled={acceptProposalMutation.isPending || rejectProposalMutation.isPending}
+                    variant="outline"
+                    className="flex-1"
+                    data-testid="button-reject-proposal"
+                  >
+                    {rejectProposalMutation.isPending ? 'Rejecting...' : 'Reject Proposal'}
+                  </Button>
+                </div>
+              )}
+
+              {selectedProposal.status === 'accepted' && (
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-center">
+                  <p className="text-green-800 font-medium">✓ You accepted this proposal</p>
+                </div>
+              )}
+
+              {selectedProposal.status === 'rejected' && (
+                <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-center">
+                  <p className="text-gray-600">You rejected this proposal</p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

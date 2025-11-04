@@ -2171,6 +2171,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         contractorId: userId
       });
       const proposal = await storage.createProposal(proposalData);
+      
+      // Create notification for homeowner when proposal is created
+      if (proposal.homeownerId) {
+        const contractorUser = await storage.getUser(userId);
+        const company = contractorUser?.companyId 
+          ? await storage.getCompany(contractorUser.companyId)
+          : null;
+        const contractorName = company?.name || contractorUser?.name || 'A contractor';
+        
+        await storage.createNotification({
+          homeownerId: proposal.homeownerId,
+          type: 'proposal',
+          title: 'New Proposal',
+          message: `${contractorName} sent you a proposal: ${proposal.title}`,
+          link: '/messages',
+          priority: 'high'
+        });
+      }
+      
       res.status(201).json(proposal);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -2183,11 +2202,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/proposals/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.session.user.id;
       const partialData = insertProposalSchema.partial().parse(req.body);
       const oldProposal = await storage.getProposal(req.params.id);
       const proposal = await storage.updateProposal(req.params.id, partialData);
       if (!proposal) {
         return res.status(404).json({ message: "Proposal not found" });
+      }
+      
+      // Create notification when proposal status changes to "sent"
+      if (oldProposal && oldProposal.status !== 'sent' && proposal.status === 'sent' && proposal.homeownerId) {
+        const contractorUser = await storage.getUser(userId);
+        const company = contractorUser?.companyId 
+          ? await storage.getCompany(contractorUser.companyId)
+          : null;
+        const contractorName = company?.name || contractorUser?.name || 'A contractor';
+        
+        await storage.createNotification({
+          homeownerId: proposal.homeownerId,
+          type: 'proposal',
+          title: 'New Proposal',
+          message: `${contractorName} sent you a proposal: ${proposal.title}`,
+          link: '/messages',
+          priority: 'high'
+        });
       }
       
       if (oldProposal && oldProposal.status !== 'accepted' && proposal.status === 'accepted' && proposal.homeownerId) {
