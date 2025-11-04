@@ -1346,7 +1346,7 @@ export default function Messages() {
       <Dialog open={isProposalDetailOpen} onOpenChange={setIsProposalDetailOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Proposal Details</DialogTitle>
+            <DialogTitle className="text-purple-400">Proposal Details</DialogTitle>
             <DialogDescription>
               Review the full proposal from the contractor
             </DialogDescription>
