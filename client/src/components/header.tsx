@@ -121,7 +121,7 @@ export default function Header() {
           </nav>
 
           <div className="flex items-center space-x-4">
-            {isAuthenticated && typedUser?.role === 'homeowner' && <Notifications />}
+            {isAuthenticated && (typedUser?.role === 'homeowner' || typedUser?.role === 'contractor') && <Notifications />}
             
             {isAuthenticated && typedUser && (
               <div className="flex items-center space-x-2">

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Bell, X, Clock, Calendar, User, Building2, Wrench, AlertTriangle, CheckCircle } from "lucide-react";
+import { Bell, X, Clock, Calendar, User, Building2, Wrench, AlertTriangle, CheckCircle, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -10,35 +10,28 @@ import {
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { Notification } from "@shared/schema";
+import type { Notification, User as UserType } from "@shared/schema";
+import { useAuth } from "@/hooks/useAuth";
 
 interface NotificationsProps {
   homeownerId?: string;
 }
 
-export function Notifications({ homeownerId = "demo-homeowner-123" }: NotificationsProps) {
+export function Notifications({ homeownerId }: NotificationsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const typedUser = user as UserType | undefined;
 
   // Fetch unread notifications
   const { data: unreadNotifications = [], isLoading } = useQuery<Notification[]>({
-    queryKey: ['/api/notifications/unread', { homeownerId }],
-    queryFn: async () => {
-      const response = await fetch(`/api/notifications/unread?homeownerId=${homeownerId}`);
-      if (!response.ok) throw new Error('Failed to fetch notifications');
-      return response.json();
-    },
+    queryKey: ['/api/notifications/unread'],
     refetchInterval: 30000, // Check for new notifications every 30 seconds
   });
 
   // Fetch all notifications when popover is open
   const { data: allNotifications = [] } = useQuery<Notification[]>({
-    queryKey: ['/api/notifications', { homeownerId }],
-    queryFn: async () => {
-      const response = await fetch(`/api/notifications?homeownerId=${homeownerId}`);
-      if (!response.ok) throw new Error('Failed to fetch notifications');
-      return response.json();
-    },
+    queryKey: ['/api/notifications'],
     enabled: isOpen,
   });
 
@@ -53,6 +46,7 @@ export function Notifications({ homeownerId = "demo-homeowner-123" }: Notificati
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications/unread'] });
     },
   });
 
@@ -66,6 +60,7 @@ export function Notifications({ homeownerId = "demo-homeowner-123" }: Notificati
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications/unread'] });
     },
   });
 
@@ -78,7 +73,9 @@ export function Notifications({ homeownerId = "demo-homeowner-123" }: Notificati
   };
 
   const getNotificationIcon = (notification: Notification) => {
-    if (notification.category === "maintenance") {
+    if (notification.type === "message") {
+      return <MessageCircle className="w-4 h-4 text-blue-600" />;
+    } else if (notification.category === "maintenance") {
       switch (notification.type) {
         case "maintenance_overdue":
           return <AlertTriangle className="w-4 h-4 text-red-800" />;

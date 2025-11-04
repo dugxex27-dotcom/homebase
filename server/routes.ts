@@ -2372,24 +2372,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Notification routes
-  app.get("/api/notifications", async (req, res) => {
+  app.get("/api/notifications", isAuthenticated, async (req: any, res) => {
     try {
-      const homeownerId = req.query.homeownerId as string;
-      const notifications = await storage.getNotifications(homeownerId);
-      res.json(notifications);
+      const userId = req.session.user.id;
+      const userRole = req.session.user.role;
+      
+      // Get notifications based on user role
+      if (userRole === 'homeowner') {
+        const notifications = await storage.getNotifications(userId);
+        res.json(notifications);
+      } else if (userRole === 'contractor') {
+        const notifications = await storage.getContractorNotifications(userId);
+        res.json(notifications);
+      } else {
+        res.status(400).json({ message: "Invalid user role" });
+      }
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch notifications" });
     }
   });
 
-  app.get("/api/notifications/unread", async (req, res) => {
+  app.get("/api/notifications/unread", isAuthenticated, async (req: any, res) => {
     try {
-      const homeownerId = req.query.homeownerId as string;
-      if (!homeownerId) {
-        return res.status(400).json({ message: "homeownerId is required" });
+      const userId = req.session.user.id;
+      const userRole = req.session.user.role;
+      
+      // Get unread notifications based on user role
+      if (userRole === 'homeowner') {
+        const notifications = await storage.getUnreadNotifications(userId);
+        res.json(notifications);
+      } else if (userRole === 'contractor') {
+        const notifications = await storage.getUnreadContractorNotifications(userId);
+        res.json(notifications);
+      } else {
+        res.status(400).json({ message: "Invalid user role" });
       }
-      const notifications = await storage.getUnreadNotifications(homeownerId);
-      res.json(notifications);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch unread notifications" });
     }

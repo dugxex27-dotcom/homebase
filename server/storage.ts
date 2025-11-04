@@ -101,6 +101,8 @@ export interface IStorage {
   updateNotification(id: string, notification: Partial<InsertNotification>): Promise<Notification | undefined>;
   deleteNotification(id: string): Promise<boolean>;
   getUnreadNotifications(homeownerId: string): Promise<Notification[]>;
+  getContractorNotifications(contractorId: string): Promise<Notification[]>;
+  getUnreadContractorNotifications(contractorId: string): Promise<Notification[]>;
   markNotificationAsRead(id: string): Promise<boolean>;
   
   // Search methods
@@ -1222,6 +1224,20 @@ export class MemStorage implements IStorage {
     return notifications.filter(notification => 
       notification.homeownerId === homeownerId && !notification.isRead
     ).sort((a, b) => new Date(a.scheduledFor).getTime() - new Date(b.scheduledFor).getTime());
+  }
+
+  async getContractorNotifications(contractorId: string): Promise<Notification[]> {
+    const notifications = Array.from(this.notifications.values());
+    return notifications.filter(notification => 
+      notification.contractorId === contractorId
+    ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  async getUnreadContractorNotifications(contractorId: string): Promise<Notification[]> {
+    const notifications = Array.from(this.notifications.values());
+    return notifications.filter(notification => 
+      notification.contractorId === contractorId && !notification.isRead
+    );
   }
 
   async markNotificationAsRead(id: string): Promise<boolean> {
@@ -3242,6 +3258,8 @@ class DbStorage implements IStorage {
     this.updateNotification = this.memStorage.updateNotification.bind(this.memStorage);
     this.deleteNotification = this.memStorage.deleteNotification.bind(this.memStorage);
     this.getUnreadNotifications = this.memStorage.getUnreadNotifications.bind(this.memStorage);
+    this.getContractorNotifications = this.memStorage.getContractorNotifications.bind(this.memStorage);
+    this.getUnreadContractorNotifications = this.memStorage.getUnreadContractorNotifications.bind(this.memStorage);
     this.markNotificationAsRead = this.memStorage.markNotificationAsRead.bind(this.memStorage);
     // searchContractors, getContractorProfile, updateContractorProfile, and getConversations now use database-backed methods (defined below)
     this.searchProducts = this.memStorage.searchProducts.bind(this.memStorage);
