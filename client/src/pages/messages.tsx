@@ -1366,7 +1366,7 @@ export default function Messages() {
                 }>
                   {selectedProposal.status}
                 </Badge>
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-red-500">
                   Valid until: {new Date(selectedProposal.validUntil).toLocaleDateString()}
                 </span>
               </div>
