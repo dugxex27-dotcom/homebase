@@ -4437,9 +4437,16 @@ Important: Only recommend service types from the available list. Be specific and
         max_completion_tokens: 500
       });
 
+      console.log('[AI] Response received:', JSON.stringify(response, null, 2));
+      console.log('[AI] Choices:', response.choices);
+      console.log('[AI] First choice:', response.choices[0]);
+      
       const content = response.choices[0]?.message?.content;
+      console.log('[AI] Content:', content);
+      
       if (!content) {
         console.error('[AI] No content in AI response');
+        console.error('[AI] Full response object:', JSON.stringify(response, null, 2));
         return res.status(500).json({ 
           message: "AI service returned an empty response. Please try again.",
           details: "No response content"
