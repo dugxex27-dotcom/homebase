@@ -3578,7 +3578,8 @@ class DbStorage implements IStorage {
         licenseNumber: companies.licenseNumber,
         zipCode: users.zipCode,
         userId: users.id,
-        userName: users.name,
+        userFirstName: users.firstName,
+        userLastName: users.lastName,
       })
       .from(companies)
       .innerJoin(users, eq(users.companyId, companies.id))
@@ -3587,7 +3588,7 @@ class DbStorage implements IStorage {
     // Transform company data to contractor format
     let results = companyResults.map(c => ({
       id: c.userId,
-      name: c.userName || '',
+      name: `${c.userFirstName || ''} ${c.userLastName || ''}`.trim() || 'Contractor',
       company: c.companyName,
       bio: c.bio,
       services: c.services || [],
