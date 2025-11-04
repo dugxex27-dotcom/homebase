@@ -752,16 +752,20 @@ export function Proposals({ contractorId }: ProposalsProps) {
                       variant="outline"
                       onClick={() => handleEdit(proposal)}
                       data-testid={`button-edit-proposal-${proposal.id}`}
+                      className="h-8 px-3 text-xs"
                     >
-                      <Edit className="h-4 w-4" />
+                      <Edit className="w-3 h-3 mr-1" />
+                      Edit
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => handleDelete(proposal.id)}
                       data-testid={`button-delete-proposal-${proposal.id}`}
+                      className="h-8 px-3 text-xs"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="w-3 h-3 mr-1" />
+                      Delete
                     </Button>
                     
                     {/* File Upload for Proposals */}
