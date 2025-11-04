@@ -133,6 +133,7 @@ export default function Contractors() {
     if (searchQuery || searchLocation) {
       // Use search endpoint when there are search parameters
       setFilters({ searchQuery, searchLocation });
+      setHasAppliedFilters(true); // Enable search when URL params exist
       hasInitializedFromUrl.current = true;
     }
   }, [location]);
@@ -156,20 +157,8 @@ export default function Contractors() {
     }
   }, [houses, selectedHouseId]);
 
-  // Auto-set location filter when a house is initially selected
-  const hasSetInitialLocation = useRef(false);
-  useEffect(() => {
-    if (selectedHouseId && houses.length > 0 && !hasSetInitialLocation.current) {
-      const selectedHouse = houses.find((h: House) => h.id === selectedHouseId);
-      if (selectedHouse) {
-        setFilters((prev: any) => ({ 
-          ...prev, 
-          searchLocation: selectedHouse.address 
-        }));
-        hasSetInitialLocation.current = true;
-      }
-    }
-  }, [selectedHouseId, houses]);
+  // Don't auto-set location filter - wait for user to search
+  // (This prevents showing contractors without an explicit search)
 
   // Handle click outside to close services dropdown
   useEffect(() => {
@@ -201,7 +190,7 @@ export default function Contractors() {
     queryKey: filters.searchQuery || filters.searchLocation 
       ? ['/api/contractors/search', filters]
       : ['/api/contractors', filters],
-    enabled: hasAppliedFilters || !!filters.searchQuery || !!filters.searchLocation, // Only fetch when filters applied or search params exist
+    enabled: hasAppliedFilters, // Only fetch when user has explicitly applied filters
     queryFn: async () => {
       const params = new URLSearchParams();
       
