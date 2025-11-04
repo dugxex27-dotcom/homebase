@@ -3560,7 +3560,56 @@ class DbStorage implements IStorage {
   }
 
   async searchContractors(query: string, location?: string, services?: string[]): Promise<Contractor[]> {
-    let results = await db.select().from(contractors);
+    // Query companies and join with users to get owner info and zip code
+    const companyResults = await db
+      .select({
+        companyId: companies.id,
+        companyName: companies.name,
+        bio: companies.bio,
+        services: companies.services,
+        serviceRadius: companies.serviceRadius,
+        rating: companies.rating,
+        reviewCount: companies.reviewCount,
+        businessHours: companies.businessHours,
+        hasEmergencyServices: companies.hasEmergencyServices,
+        businessLogo: companies.businessLogo,
+        projectPhotos: companies.projectPhotos,
+        phoneNumber: companies.phoneNumber,
+        email: companies.email,
+        licenseNumber: companies.licenseNumber,
+        insuranceExpiry: companies.insuranceExpiry,
+        zipCode: users.zipCode,
+        userId: users.id,
+        userName: users.name,
+      })
+      .from(companies)
+      .innerJoin(users, eq(users.companyId, companies.id))
+      .where(eq(users.companyRole, 'owner'));
+    
+    // Transform company data to contractor format
+    let results = companyResults.map(c => ({
+      id: c.userId,
+      name: c.userName || '',
+      company: c.companyName,
+      bio: c.bio,
+      services: c.services || [],
+      location: c.zipCode || '',
+      postalCode: c.zipCode || '',
+      serviceRadius: c.serviceRadius,
+      rating: c.rating,
+      reviewCount: c.reviewCount,
+      yearsExperience: 0, // Not stored in companies table
+      licenseNumber: c.licenseNumber || '',
+      insuranceExpiry: c.insuranceExpiry ? new Date(c.insuranceExpiry) : null,
+      hasEmergencyServices: c.hasEmergencyServices,
+      businessHours: c.businessHours || {},
+      email: c.email,
+      phone: c.phoneNumber || '',
+      businessLogo: c.businessLogo || '',
+      projectPhotos: c.projectPhotos || [],
+      distance: undefined as string | undefined,
+      companyId: c.companyId,
+    }));
     
     // If location is provided, geocode it and calculate distances
     if (location) {
@@ -3574,14 +3623,11 @@ class DbStorage implements IStorage {
             if (contractor.postalCode || contractor.location) {
               // Try to get contractor coordinates
               const contractorLocation = contractor.postalCode || contractor.location;
-              // For now, we'll use a simple approach - in production, you'd geocode each contractor's location
-              // and store lat/lon in the database for performance
               
               // Simple distance estimation based on zip code proximity (placeholder)
-              // Real implementation would geocode contractor location and use haversine formula
               const distance = this.estimateDistanceByZipCode(
                 location, 
-                contractor.postalCode || contractor.location
+                contractorLocation
               );
               
               return { ...contractor, distance: distance.toString() };
