@@ -48,6 +48,7 @@ export default function Messages() {
     comment: "",
     wouldRecommend: true
   });
+  const [isReviewSectionOpen, setIsReviewSectionOpen] = useState(false);
   const [isProposalDialogOpen, setIsProposalDialogOpen] = useState(false);
 
   // Proposal form setup (without contractorId/homeownerId as they'll be added on submit)
@@ -968,88 +969,112 @@ export default function Messages() {
                 {/* Review Section - Only for homeowners viewing contractor conversations after messages exchanged */}
                 {typedUser?.role === 'homeowner' && contractorIdForReview && messages.length > 0 && (
                   <div className="p-4 border-t bg-white" data-testid="section-review">
-                    <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2" style={{ color: '#2c0f5b' }}>
-                      <Star className="h-5 w-5" style={{ color: '#b6a6f4' }} />
-                      {existingReview ? 'Your Review' : 'Leave a Review'}
-                    </h3>
-                    
-                    {existingReview ? (
-                      <div className="bg-gray-50 p-4 rounded-lg">
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="flex">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <Star
-                                key={star}
-                                className={`h-5 w-5 ${star <= existingReview.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
-                              />
-                            ))}
-                          </div>
-                          <span className="text-sm text-gray-600">
-                            {new Date(existingReview.createdAt || new Date()).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <p className="text-gray-700">{existingReview.comment}</p>
-                        {existingReview.wouldRecommend && (
-                          <p className="text-sm text-green-600 mt-2">✓ Would recommend</p>
-                        )}
-                      </div>
+                    {!isReviewSectionOpen ? (
+                      <Button
+                        onClick={() => setIsReviewSectionOpen(true)}
+                        variant="outline"
+                        className="w-full"
+                        data-testid="button-open-review"
+                      >
+                        <Star className="h-4 w-4 mr-2" style={{ color: '#b6a6f4' }} />
+                        {existingReview ? 'View Your Review' : 'Leave a Review'}
+                      </Button>
                     ) : (
-                      <div className="space-y-3">
-                        <div>
-                          <Label className="text-gray-700">Rating</Label>
-                          <div className="flex gap-1 mt-1">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <button
-                                key={star}
-                                type="button"
-                                onClick={() => setReviewForm(prev => ({ ...prev, rating: star }))}
-                                className="focus:outline-none"
-                                data-testid={`button-rating-${star}`}
-                              >
-                                <Star
-                                  className={`h-6 w-6 cursor-pointer transition-colors ${
-                                    star <= reviewForm.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300 hover:text-yellow-200'
-                                  }`}
-                                />
-                              </button>
-                            ))}
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="font-semibold text-gray-900 flex items-center gap-2" style={{ color: '#2c0f5b' }}>
+                            <Star className="h-5 w-5" style={{ color: '#b6a6f4' }} />
+                            {existingReview ? 'Your Review' : 'Leave a Review'}
+                          </h3>
+                          <Button
+                            onClick={() => setIsReviewSectionOpen(false)}
+                            variant="ghost"
+                            size="sm"
+                            data-testid="button-close-review"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        
+                        {existingReview ? (
+                          <div className="bg-gray-50 p-4 rounded-lg">
+                            <div className="flex items-center gap-2 mb-2">
+                              <div className="flex">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <Star
+                                    key={star}
+                                    className={`h-5 w-5 ${star <= existingReview.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                                  />
+                                ))}
+                              </div>
+                              <span className="text-sm text-gray-600">
+                                {new Date(existingReview.createdAt || new Date()).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <p className="text-gray-700">{existingReview.comment}</p>
+                            {existingReview.wouldRecommend && (
+                              <p className="text-sm text-green-600 mt-2">✓ Would recommend</p>
+                            )}
                           </div>
-                        </div>
-                        
-                        <div>
-                          <Label htmlFor="review-comment" className="text-gray-700">Comment</Label>
-                          <Textarea
-                            id="review-comment"
-                            placeholder="Share your experience with this contractor..."
-                            value={reviewForm.comment}
-                            onChange={(e) => setReviewForm(prev => ({ ...prev, comment: e.target.value }))}
-                            className="resize-none mt-1"
-                            rows={3}
-                            data-testid="input-review-comment"
-                          />
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <Checkbox
-                            id="would-recommend"
-                            checked={reviewForm.wouldRecommend}
-                            onCheckedChange={(checked) => setReviewForm(prev => ({ ...prev, wouldRecommend: checked === true }))}
-                            data-testid="checkbox-would-recommend"
-                          />
-                          <Label htmlFor="would-recommend" className="text-gray-700 cursor-pointer">
-                            I would recommend this contractor
-                          </Label>
-                        </div>
-                        
-                        <Button
-                          onClick={handleSubmitReview}
-                          disabled={submitReviewMutation.isPending || !reviewForm.comment.trim()}
-                          className="w-full"
-                          style={{ backgroundColor: '#b6a6f4', color: 'white' }}
-                          data-testid="button-submit-review"
-                        >
-                          {submitReviewMutation.isPending ? 'Submitting...' : 'Submit Review'}
-                        </Button>
+                        ) : (
+                          <div className="space-y-3">
+                            <div>
+                              <Label className="text-gray-700">Rating</Label>
+                              <div className="flex gap-1 mt-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <button
+                                    key={star}
+                                    type="button"
+                                    onClick={() => setReviewForm(prev => ({ ...prev, rating: star }))}
+                                    className="focus:outline-none"
+                                    data-testid={`button-rating-${star}`}
+                                  >
+                                    <Star
+                                      className={`h-6 w-6 cursor-pointer transition-colors ${
+                                        star <= reviewForm.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300 hover:text-yellow-200'
+                                      }`}
+                                    />
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <Label htmlFor="review-comment" className="text-gray-700">Comment</Label>
+                              <Textarea
+                                id="review-comment"
+                                placeholder="Share your experience with this contractor..."
+                                value={reviewForm.comment}
+                                onChange={(e) => setReviewForm(prev => ({ ...prev, comment: e.target.value }))}
+                                className="resize-none mt-1"
+                                rows={3}
+                                data-testid="input-review-comment"
+                              />
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              <Checkbox
+                                id="would-recommend"
+                                checked={reviewForm.wouldRecommend}
+                                onCheckedChange={(checked) => setReviewForm(prev => ({ ...prev, wouldRecommend: checked === true }))}
+                                data-testid="checkbox-would-recommend"
+                              />
+                              <Label htmlFor="would-recommend" className="text-gray-700 cursor-pointer">
+                                I would recommend this contractor
+                              </Label>
+                            </div>
+                            
+                            <Button
+                              onClick={handleSubmitReview}
+                              disabled={submitReviewMutation.isPending || !reviewForm.comment.trim()}
+                              className="w-full"
+                              style={{ backgroundColor: '#b6a6f4', color: 'white' }}
+                              data-testid="button-submit-review"
+                            >
+                              {submitReviewMutation.isPending ? 'Submitting...' : 'Submit Review'}
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
