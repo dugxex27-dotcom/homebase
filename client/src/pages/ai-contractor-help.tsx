@@ -98,7 +98,7 @@ export default function AIContractorHelp() {
                 value={problem}
                 onChange={(e) => setProblem(e.target.value)}
                 placeholder="Example: My toilet keeps running and won't stop filling with water..."
-                className="min-h-[150px] resize-none text-white"
+                className="min-h-[150px] resize-none text-white placeholder:text-white/70"
                 disabled={recommendationMutation.isPending}
                 data-testid="textarea-problem-description"
               />
