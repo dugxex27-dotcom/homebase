@@ -96,6 +96,19 @@ Preferred communication style: Simple, everyday language.
     - Automatic climate zone detection based on property address using geocoding
     - Address autocomplete functionality for property setup
     - Centralized service records tracking
+    - **AI Contractor Recommendation** ("Who Should I Contact?"):
+        - AI-powered feature to help homeowners determine which contractor type to contact
+        - Uses GPT-5 via Replit AI Integrations (billed to Replit credits, no API key needed)
+        - Homeowners describe their problem in natural language
+        - AI analyzes the problem and provides:
+            - Possible causes of the issue
+            - 1-3 recommended contractor service types from available services
+            - Explanation of why those contractors are recommended
+        - Direct navigation to contractor search with pre-filled service type
+        - Prominently featured on homeowner dashboard with gradient CTA card
+        - Backend endpoint: POST /api/ai/contractor-recommendation
+        - Frontend route: /ai-help (homeowner-only)
+        - Enhanced error handling with structured error messages
     - **House-Based Data Organization**: All maintenance data is separated and filtered by the homeowner's selected property
         - Maintenance tasks, appliances, custom tasks, maintenance logs, and service records are all filtered by selected house
         - House selection dropdown on each page allows switching between properties
