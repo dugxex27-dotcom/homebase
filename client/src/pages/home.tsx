@@ -318,7 +318,7 @@ export default function Home() {
       )}
       {/* AI Help Feature - Homeowners Only */}
       {typedUser?.role === 'homeowner' && (
-        <section className="bg-gradient-to-br from-purple-100 via-blue-100 to-purple-100 pt-[40px] pb-[40px] mt-[10px] mb-[10px]">
+        <section className="bg-gradient-to-br from-purple-100 via-blue-100 to-purple-100 pt-[40px] pb-[40px] mt-[60px] mb-[10px]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <Card className="border-2 border-purple-300 bg-gradient-to-r from-purple-50 to-blue-50 shadow-xl">
               <CardContent className="p-8">
