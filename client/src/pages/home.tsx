@@ -141,7 +141,6 @@ export default function Home() {
     <div className="min-h-screen" style={{ background: typedUser?.role === 'homeowner' ? '#2c0f5b' : '#1560a2' }}>
       <Header />
       <HeroSection />
-      
       {/* Homeowner Achievements Section */}
       {typedUser?.role === 'homeowner' && achievementsData?.achievements && achievementsData.achievements.length > 0 && (
         <section className="py-12" style={{ backgroundColor: '#2c0f5b' }}>
@@ -201,7 +200,6 @@ export default function Home() {
           </div>
         </section>
       )}
-      
       {/* Contractor Dashboard - shown directly after hero for contractors */}
       {typedUser?.role === 'contractor' && (
         <section className="py-16" style={{ backgroundColor: '#1560a2' }}>
@@ -318,10 +316,9 @@ export default function Home() {
           </div>
         </section>
       )}
-
       {/* AI Help Feature - Homeowners Only */}
       {typedUser?.role === 'homeowner' && (
-        <section className="pt-16 pb-12 bg-gradient-to-br from-purple-100 via-blue-100 to-purple-100">
+        <section className="bg-gradient-to-br from-purple-100 via-blue-100 to-purple-100 pt-[40px] pb-[40px] mt-[10px] mb-[10px]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <Card className="border-2 border-purple-300 bg-gradient-to-r from-purple-50 to-blue-50 shadow-xl">
               <CardContent className="p-8">
@@ -368,7 +365,6 @@ export default function Home() {
           </div>
         </section>
       )}
-
       {/* Tab Content Section */}
       <section className="py-16" style={{ background: typedUser?.role === 'homeowner' ? '#2c0f5b' : '#1560a2' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -527,7 +523,6 @@ export default function Home() {
           )}
         </div>
       </section>
-
       {/* Additional Features Section */}
       <section style={{ background: typedUser?.role === 'homeowner' ? '#2c0f5b' : '#1560a2', paddingTop: '14px', paddingBottom: '30px' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -549,7 +544,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {typedUser?.role === 'homeowner' ? (
               // Homeowner Features
-              <>
+              (<>
                 <Card className="bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-600">
                   <CardContent className="p-8 text-center">
                     <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#2c0f5b' }}>
@@ -561,7 +556,6 @@ export default function Home() {
                     </p>
                   </CardContent>
                 </Card>
-
                 <Card className="bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-600">
                   <CardContent className="p-8 text-center">
                     <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#2c0f5b' }}>
@@ -573,7 +567,6 @@ export default function Home() {
                     </p>
                   </CardContent>
                 </Card>
-
                 <Card className="bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-600">
                   <CardContent className="p-8 text-center">
                     <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#2c0f5b' }}>
@@ -585,10 +578,10 @@ export default function Home() {
                     </p>
                   </CardContent>
                 </Card>
-              </>
+              </>)
             ) : (
               // Contractor Features
-              <>
+              (<>
                 <Card className="border-gray-300 dark:border-gray-600" style={{ backgroundColor: '#f2f2f2' }}>
                   <CardContent className="p-8 text-center">
                     <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#1560a2' }}>
@@ -600,7 +593,6 @@ export default function Home() {
                     </p>
                   </CardContent>
                 </Card>
-
                 <Card className="border-gray-300 dark:border-gray-600" style={{ backgroundColor: '#f2f2f2' }}>
                   <CardContent className="p-8 text-center">
                     <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#1560a2' }}>
@@ -612,7 +604,6 @@ export default function Home() {
                     </p>
                   </CardContent>
                 </Card>
-
                 <Card className="border-gray-300 dark:border-gray-600" style={{ backgroundColor: '#f2f2f2' }}>
                   <CardContent className="p-8 text-center">
                     <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#1560a2' }}>
@@ -624,12 +615,11 @@ export default function Home() {
                     </p>
                   </CardContent>
                 </Card>
-              </>
+              </>)
             )}
           </div>
         </div>
       </section>
-
       {/* Footer */}
       <footer className="text-white py-16" style={{ backgroundColor: '#2c0f5b' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
