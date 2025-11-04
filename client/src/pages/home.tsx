@@ -486,6 +486,9 @@ export default function Home() {
                     </div>
                     {userHouses.length > 0 && (
                       <div className="flex-1">
+                        <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                          Select your home
+                        </label>
                         <div className="relative">
                           <MapPin className="absolute left-3 top-3 h-4 w-4 z-10" style={{ color: '#b6a6f4' }} />
                           <Select value={selectedHouseId} onValueChange={setSelectedHouseId}>
