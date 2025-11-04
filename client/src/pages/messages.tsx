@@ -1401,7 +1401,7 @@ export default function Messages() {
 
               {/* Scope of Work */}
               <div>
-                <Label className="font-semibold mb-2 block">Scope of Work</Label>
+                <Label className="font-semibold mb-2 block text-white">Scope of Work</Label>
                 <div className="p-4 bg-white border rounded-lg">
                   <p className="whitespace-pre-wrap text-gray-700">{selectedProposal.scope}</p>
                 </div>
