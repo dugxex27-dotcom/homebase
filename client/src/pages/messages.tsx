@@ -1374,7 +1374,7 @@ export default function Messages() {
               {/* Title & Description */}
               <div>
                 <h3 className="text-lg font-semibold mb-2 text-purple-400">{selectedProposal.title}</h3>
-                <p className="text-gray-700">{selectedProposal.description}</p>
+                <p className="text-white">{selectedProposal.description}</p>
               </div>
 
               {/* Key Details */}
