@@ -780,20 +780,18 @@ export function Proposals({ contractorId }: ProposalsProps) {
                       Files
                     </ObjectUploader>
 
-                    {/* Contract Upload (contractor only) */}
-                    {!proposal.contractFilePath && (
-                      <ObjectUploader
-                        maxNumberOfFiles={1}
-                        onGetUploadParameters={handleGetUploadParameters}
-                        onComplete={(files) => handleContractUpload(files, proposal.id)}
-                        fileType="contract"
-                        acceptedFileTypes={[".pdf", ".doc", ".docx"]}
-                        buttonClassName="h-8 px-3 text-xs"
-                      >
-                        <FileText className="w-3 h-3 mr-1" />
-                        Contract
-                      </ObjectUploader>
-                    )}
+                    {/* Images Upload (contractor only) */}
+                    <ObjectUploader
+                      maxNumberOfFiles={10}
+                      onGetUploadParameters={handleGetUploadParameters}
+                      onComplete={(files) => handleFileUploadComplete(files, proposal.id)}
+                      fileType="proposal-images"
+                      acceptedFileTypes={["image/*"]}
+                      buttonClassName="h-8 px-3 text-xs"
+                    >
+                      <ImageIcon className="w-3 h-3 mr-1" />
+                      Images
+                    </ObjectUploader>
 
                     {/* Show contract status if uploaded */}
                     {proposal.contractFilePath && (
