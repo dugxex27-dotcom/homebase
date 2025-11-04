@@ -3238,11 +3238,11 @@ class DbStorage implements IStorage {
     this.deleteNotification = this.memStorage.deleteNotification.bind(this.memStorage);
     this.getUnreadNotifications = this.memStorage.getUnreadNotifications.bind(this.memStorage);
     this.markNotificationAsRead = this.memStorage.markNotificationAsRead.bind(this.memStorage);
-    // searchContractors, getContractorProfile, and updateContractorProfile now use database-backed methods (defined below)
+    // searchContractors, getContractorProfile, updateContractorProfile, and getConversations now use database-backed methods (defined below)
     this.searchProducts = this.memStorage.searchProducts.bind(this.memStorage);
     // Service records now database-backed - implemented below
     this.getCustomerServiceRecords = this.memStorage.getCustomerServiceRecords.bind(this.memStorage);
-    this.getConversations = this.memStorage.getConversations.bind(this.memStorage);
+    // getConversations now database-backed - implemented below
     this.getConversation = this.memStorage.getConversation.bind(this.memStorage);
     this.createConversation = this.memStorage.createConversation.bind(this.memStorage);
     this.getMessages = this.memStorage.getMessages.bind(this.memStorage);
@@ -3745,6 +3745,34 @@ class DbStorage implements IStorage {
       console.error('Geocoding error:', error);
       return null;
     }
+  }
+
+  // Get conversations - DATABASE BACKED to properly fetch company names
+  async getConversations(userId: string, userType: 'homeowner' | 'contractor'): Promise<(Conversation & { otherPartyName: string; unreadCount: number })[]> {
+    // Get conversations from memory storage first
+    const conversations = await this.memStorage.getConversations(userId, userType);
+    
+    // Enrich with company names for contractors
+    const enriched = await Promise.all(
+      conversations.map(async (conv) => {
+        if (userType === 'homeowner') {
+          // Get contractor's company name from database
+          const contractorUser = await this.getUser(conv.contractorId);
+          if (contractorUser && contractorUser.companyId) {
+            const company = await this.getCompany(contractorUser.companyId);
+            if (company) {
+              return {
+                ...conv,
+                otherPartyName: company.name
+              };
+            }
+          }
+        }
+        return conv;
+      })
+    );
+    
+    return enriched;
   }
 
   // Contractor profile operations - DATABASE BACKED for persistence
