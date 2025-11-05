@@ -18,6 +18,18 @@ const profileSchema = z.object({
   role: z.enum(["homeowner", "contractor"], {
     required_error: "Please select your role",
   }),
+  companyName: z.string().optional(),
+  companyBio: z.string().optional(),
+  companyPhone: z.string().optional(),
+}).refine((data) => {
+  // If contractor, require company fields
+  if (data.role === "contractor") {
+    return data.companyName && data.companyBio && data.companyPhone;
+  }
+  return true;
+}, {
+  message: "Company name, bio, and phone are required for contractors",
+  path: ["companyName"],
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
@@ -30,6 +42,9 @@ export default function CompleteProfile() {
     defaultValues: {
       zipCode: "",
       role: "homeowner",
+      companyName: "",
+      companyBio: "",
+      companyPhone: "",
     },
   });
 
@@ -151,6 +166,72 @@ export default function CompleteProfile() {
                     </FormItem>
                   )}
                 />
+
+                {/* Company fields for contractors */}
+                {selectedRole === 'contractor' && (
+                  <>
+                    <div className="text-sm text-muted-foreground mb-2">
+                      Create your company profile (team members can be added later via invite)
+                    </div>
+                    
+                    <FormField
+                      control={form.control}
+                      name="companyName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Company Name</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="e.g., ABC Plumbing"
+                              {...field}
+                              data-testid="input-company-name"
+                              style={{ color: '#ffffff' }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="companyBio"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Company Bio</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Brief description of your company"
+                              {...field}
+                              data-testid="input-company-bio"
+                              style={{ color: '#ffffff' }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="companyPhone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Company Phone</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="(555) 123-4567"
+                              {...field}
+                              data-testid="input-company-phone"
+                              style={{ color: '#ffffff' }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </>
+                )}
 
                 <Button
                   type="submit"
