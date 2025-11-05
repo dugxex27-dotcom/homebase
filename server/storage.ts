@@ -1,4 +1,4 @@
-import { type Contractor, type InsertContractor, type Company, type InsertCompany, type CompanyInviteCode, type InsertCompanyInviteCode, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type HomeApplianceManual, type InsertHomeApplianceManual, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type HomeownerConnectionCode, type InsertHomeownerConnectionCode, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics, type TaskOverride, type InsertTaskOverride, type Country, type InsertCountry, type Region, type InsertRegion, type ClimateZone, type InsertClimateZone, type RegulatoryBody, type InsertRegulatoryBody, type RegionalMaintenanceTask, type InsertRegionalMaintenanceTask, type TaskCompletion, type InsertTaskCompletion, type Achievement, type InsertAchievement, type AchievementDefinition, type InsertAchievementDefinition, type UserAchievement, type InsertUserAchievement, type SearchAnalytics, type InsertSearchAnalytics, type InviteCode, type InsertInviteCode, users, contractors, companies, contractorLicenses, countries, regions, climateZones, regulatoryBodies, regionalMaintenanceTasks, taskCompletions, achievements, achievementDefinitions, userAchievements, maintenanceLogs, searchAnalytics, inviteCodes, houses, homeSystems, customMaintenanceTasks, serviceRecords, homeownerConnectionCodes, conversations, messages, proposals } from "@shared/schema";
+import { type Contractor, type InsertContractor, type Company, type InsertCompany, type CompanyInviteCode, type InsertCompanyInviteCode, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type HomeApplianceManual, type InsertHomeApplianceManual, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type HomeownerConnectionCode, type InsertHomeownerConnectionCode, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics, type TaskOverride, type InsertTaskOverride, type Country, type InsertCountry, type Region, type InsertRegion, type ClimateZone, type InsertClimateZone, type RegulatoryBody, type InsertRegulatoryBody, type RegionalMaintenanceTask, type InsertRegionalMaintenanceTask, type TaskCompletion, type InsertTaskCompletion, type Achievement, type InsertAchievement, type AchievementDefinition, type InsertAchievementDefinition, type UserAchievement, type InsertUserAchievement, type SearchAnalytics, type InsertSearchAnalytics, type InviteCode, type InsertInviteCode, users, contractors, companies, contractorLicenses, countries, regions, climateZones, regulatoryBodies, regionalMaintenanceTasks, taskCompletions, achievements, achievementDefinitions, userAchievements, maintenanceLogs, searchAnalytics, inviteCodes, houses, homeSystems, customMaintenanceTasks, serviceRecords, homeownerConnectionCodes, conversations, messages, proposals, houseTransfers } from "@shared/schema";
 import { randomUUID, randomBytes } from "crypto";
 import { db } from "./db";
 import { eq, ne, isNotNull, and, or, isNull, not } from "drizzle-orm";
@@ -195,6 +195,7 @@ export interface IStorage {
     appointmentsTransferred: number;
     customTasksTransferred: number;
     homeSystemsTransferred: number;
+    serviceRecordsTransferred: number;
   }>;
   getHousesCount(homeownerId: string): Promise<number>;
 
@@ -2196,6 +2197,7 @@ export class MemStorage implements IStorage {
     appointmentsTransferred: number;
     customTasksTransferred: number;
     homeSystemsTransferred: number;
+    serviceRecordsTransferred: number;
   }> {
     // First, transfer the house ownership
     const house = this.houses.get(houseId);
@@ -2216,6 +2218,7 @@ export class MemStorage implements IStorage {
     let appointmentsTransferred = 0;
     let customTasksTransferred = 0;
     let homeSystemsTransferred = 0;
+    let serviceRecordsTransferred = 0;
 
     // Transfer maintenance logs
     for (const [id, log] of this.maintenanceLogs.entries()) {
@@ -2277,12 +2280,16 @@ export class MemStorage implements IStorage {
       }
     }
 
+    // Transfer service records (database-backed, handled by DbStorage)
+    // MemStorage doesn't have service records, so this stays at 0 for in-memory
+
     return {
       maintenanceLogsTransferred,
       appliancesTransferred,
       appointmentsTransferred,
       customTasksTransferred,
       homeSystemsTransferred,
+      serviceRecordsTransferred,
     };
   }
 
@@ -4526,6 +4533,114 @@ class DbStorage implements IStorage {
     }
 
     throw new Error('Failed to generate unique connection code');
+  }
+
+  // House transfer operations - DATABASE BACKED for persistence
+  private generateTransferToken(): string {
+    return randomBytes(32).toString('base64url');
+  }
+
+  async createHouseTransfer(transferData: InsertHouseTransfer): Promise<HouseTransfer> {
+    const token = this.generateTransferToken();
+    const transfer = await db.insert(houseTransfers).values({
+      ...transferData,
+      token,
+    }).returning();
+    return transfer[0];
+  }
+
+  async getHouseTransfer(id: string): Promise<HouseTransfer | undefined> {
+    const result = await db.select().from(houseTransfers).where(eq(houseTransfers.id, id));
+    return result[0];
+  }
+
+  async getHouseTransferByToken(token: string): Promise<HouseTransfer | undefined> {
+    const result = await db.select().from(houseTransfers).where(eq(houseTransfers.token, token));
+    return result[0];
+  }
+
+  async getHouseTransfersForUser(homeownerId: string): Promise<HouseTransfer[]> {
+    const result = await db.select().from(houseTransfers)
+      .where(or(
+        eq(houseTransfers.fromHomeownerId, homeownerId),
+        eq(houseTransfers.toHomeownerId, homeownerId)
+      ));
+    return result;
+  }
+
+  async updateHouseTransfer(id: string, updateData: Partial<HouseTransfer>): Promise<HouseTransfer | undefined> {
+    const result = await db.update(houseTransfers)
+      .set({ ...updateData, updatedAt: new Date() })
+      .where(eq(houseTransfers.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async transferHouseOwnership(houseId: string, fromHomeownerId: string, toHomeownerId: string): Promise<{
+    maintenanceLogsTransferred: number;
+    appliancesTransferred: number;
+    appointmentsTransferred: number;
+    customTasksTransferred: number;
+    homeSystemsTransferred: number;
+    serviceRecordsTransferred: number;
+  }> {
+    // Transfer house ownership
+    await db.update(houses)
+      .set({ homeownerId: toHomeownerId })
+      .where(and(eq(houses.id, houseId), eq(houses.homeownerId, fromHomeownerId)));
+
+    // Transfer maintenance logs
+    const logsResult = await db.update(maintenanceLogs)
+      .set({ homeownerId: toHomeownerId })
+      .where(and(eq(maintenanceLogs.houseId, houseId), eq(maintenanceLogs.homeownerId, fromHomeownerId)))
+      .returning();
+
+    // Transfer home appliances (in-memory)
+    let appliancesTransferred = 0;
+    for (const [id, appliance] of this.memStorage['homeAppliances'].entries()) {
+      if (appliance.houseId === houseId && appliance.homeownerId === fromHomeownerId) {
+        const updated = { ...appliance, homeownerId: toHomeownerId };
+        this.memStorage['homeAppliances'].set(id, updated);
+        appliancesTransferred++;
+      }
+    }
+
+    // Transfer contractor appointments (in-memory)
+    let appointmentsTransferred = 0;
+    for (const [id, appointment] of this.memStorage['contractorAppointments'].entries()) {
+      if (appointment.houseId === houseId && appointment.homeownerId === fromHomeownerId) {
+        const updated = { ...appointment, homeownerId: toHomeownerId };
+        this.memStorage['contractorAppointments'].set(id, updated);
+        appointmentsTransferred++;
+      }
+    }
+
+    // Transfer custom tasks
+    const tasksResult = await db.update(customMaintenanceTasks)
+      .set({ homeownerId: toHomeownerId })
+      .where(and(eq(customMaintenanceTasks.houseId, houseId), eq(customMaintenanceTasks.homeownerId, fromHomeownerId)))
+      .returning();
+
+    // Transfer home systems
+    const systemsResult = await db.update(homeSystems)
+      .set({ homeownerId: toHomeownerId })
+      .where(and(eq(homeSystems.houseId, houseId), eq(homeSystems.homeownerId, fromHomeownerId)))
+      .returning();
+
+    // Transfer service records
+    const recordsResult = await db.update(serviceRecords)
+      .set({ homeownerId: toHomeownerId })
+      .where(and(eq(serviceRecords.houseId, houseId), eq(serviceRecords.homeownerId, fromHomeownerId)))
+      .returning();
+
+    return {
+      maintenanceLogsTransferred: logsResult.length,
+      appliancesTransferred,
+      appointmentsTransferred,
+      customTasksTransferred: tasksResult.length,
+      homeSystemsTransferred: systemsResult.length,
+      serviceRecordsTransferred: recordsResult.length,
+    };
   }
 
   // Methods delegated to MemStorage (bound in constructor)

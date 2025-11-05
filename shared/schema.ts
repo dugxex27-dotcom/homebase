@@ -625,16 +625,19 @@ export const houseTransfers = pgTable("house_transfers", {
   toHomeownerEmail: text("to_homeowner_email").notNull(), // email of recipient
   toHomeownerId: text("to_homeowner_id"), // nullable until accepted
   token: text("token").notNull().unique(), // secure token for transfer acceptance
-  status: text("status").notNull().default("pending"), // "pending", "completed", "cancelled", "expired"
+  status: text("status").notNull().default("pending"), // "pending", "accepted", "completed", "cancelled", "expired"
   expiresAt: timestamp("expires_at").notNull(), // when the transfer token expires
   completedAt: timestamp("completed_at"), // when transfer was completed
+  transferNote: text("transfer_note"), // optional note from sender
   // Transfer counts for audit trail
   maintenanceLogsTransferred: integer("maintenance_logs_transferred").default(0),
   appliancesTransferred: integer("appliances_transferred").default(0),
   appointmentsTransferred: integer("appointments_transferred").default(0),
   customTasksTransferred: integer("custom_tasks_transferred").default(0),
   homeSystemsTransferred: integer("home_systems_transferred").default(0),
+  serviceRecordsTransferred: integer("service_records_transferred").default(0),
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   // Ensure no duplicate pending transfers for same house
   uniqueIndex("idx_house_transfers_pending").on(table.houseId, table.status).where(eq(table.status, "pending")),
@@ -802,12 +805,14 @@ export const insertAchievementSchema = createInsertSchema(achievements).omit({
 export const insertHouseTransferSchema = createInsertSchema(houseTransfers).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
   completedAt: true,
   maintenanceLogsTransferred: true,
   appliancesTransferred: true,
   appointmentsTransferred: true,
   customTasksTransferred: true,
   homeSystemsTransferred: true,
+  serviceRecordsTransferred: true,
 });
 
 // Contractor Analytics table for tracking profile interactions
