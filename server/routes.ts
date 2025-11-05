@@ -3510,97 +3510,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Homeowner connection code routes
-  app.post('/api/homeowner-connection-codes', isAuthenticated, async (req: any, res) => {
+  // Permanent connection code routes (attached to user account)
+  app.get('/api/permanent-connection-code', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.session.user.id;
       const userRole = req.session.user.role;
       
-      // Only homeowners can create connection codes
-      if (userRole !== 'homeowner') {
-        return res.status(403).json({ message: "Only homeowners can create connection codes" });
-      }
-      
-      // Validate request body
-      const validationSchema = z.object({
-        houseId: z.string().optional(),
-        expiresIn: z.number().min(1).max(168).optional(), // 1 hour to 1 week
-        usageLimit: z.number().min(1).max(100).optional(),
-      });
-      
-      const validated = validationSchema.parse(req.body);
-      const { houseId, expiresIn, usageLimit } = validated;
-      
-      // Generate a cryptographically secure random 8-character alphanumeric code
-      const crypto = await import('crypto');
-      const generateSecureCode = (): string => {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        const bytes = crypto.randomBytes(8);
-        let code = '';
-        for (let i = 0; i < 8; i++) {
-          code += chars[bytes[i] % chars.length];
-        }
-        return code;
-      };
-      
-      // Try to generate a unique code (retry up to 5 times on collision)
-      let code: string;
-      let attempts = 0;
-      while (attempts < 5) {
-        code = generateSecureCode();
-        const existing = await storage.getHomeownerConnectionCodeByCode(code);
-        if (!existing) {
-          break;
-        }
-        attempts++;
-      }
-      
-      if (attempts === 5) {
-        return res.status(500).json({ message: "Failed to generate unique code, please try again" });
-      }
-      
-      // Calculate expiration date (default 24 hours from now)
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + (expiresIn || 24));
-      
-      const connectionCode = await storage.createHomeownerConnectionCode({
-        homeownerId: userId,
-        houseId: houseId || null,
-        code: code!,
-        expiresAt,
-        isActive: true,
-        usageLimit: usageLimit || 1,
-      });
-      
-      res.json(connectionCode);
-    } catch (error) {
-      console.error("Error creating connection code:", error);
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid request data", errors: error.errors });
-      }
-      res.status(500).json({ message: "Failed to create connection code" });
-    }
-  });
-
-  app.get('/api/homeowner-connection-codes', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.session.user.id;
-      const userRole = req.session.user.role;
-      
-      // Only homeowners can view their connection codes
+      // Only homeowners can view their permanent connection code
       if (userRole !== 'homeowner') {
         return res.status(403).json({ message: "Only homeowners can view connection codes" });
       }
       
-      const codes = await storage.getHomeownerConnectionCodes(userId);
-      res.json(codes);
+      const code = await storage.getOrCreatePermanentConnectionCode(userId);
+      res.json({ code });
     } catch (error) {
-      console.error("Error fetching connection codes:", error);
-      res.status(500).json({ message: "Failed to fetch connection codes" });
+      console.error("Error fetching permanent connection code:", error);
+      res.status(500).json({ message: "Failed to fetch connection code" });
     }
   });
 
-  app.post('/api/homeowner-connection-codes/validate', isAuthenticated, authLimiter, async (req: any, res) => {
+  app.post('/api/permanent-connection-code/regenerate', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.user.id;
+      const userRole = req.session.user.role;
+      
+      // Only homeowners can regenerate their connection code
+      if (userRole !== 'homeowner') {
+        return res.status(403).json({ message: "Only homeowners can regenerate connection codes" });
+      }
+      
+      const code = await storage.regeneratePermanentConnectionCode(userId);
+      res.json({ code });
+    } catch (error) {
+      console.error("Error regenerating connection code:", error);
+      res.status(500).json({ message: "Failed to regenerate connection code" });
+    }
+  });
+
+  app.post('/api/permanent-connection-code/validate', isAuthenticated, authLimiter, async (req: any, res) => {
     try {
       const userRole = req.session.user.role;
       
@@ -3617,70 +3564,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validated = validationSchema.parse(req.body);
       const { code } = validated;
       
-      const result = await storage.validateAndUseConnectionCode(code);
+      const result = await storage.validatePermanentConnectionCode(code);
       
       if (!result) {
-        return res.status(400).json({ message: "Invalid, expired, or used connection code" });
+        return res.status(400).json({ message: "Invalid connection code" });
       }
       
-      // Get homeowner details
-      const homeowner = await storage.getUser(result.homeownerId);
-      if (!homeowner) {
-        return res.status(404).json({ message: "Homeowner not found" });
-      }
-      
-      // Get house details if houseId is provided
-      let house = null;
-      if (result.houseId) {
-        house = await storage.getHouse(result.houseId);
-      }
-      
-      res.json({
-        homeownerId: result.homeownerId,
-        houseId: result.houseId,
-        homeownerName: `${homeowner.firstName} ${homeowner.lastName}`,
-        homeownerEmail: homeowner.email,
-        homeownerZipCode: homeowner.zipCode,
-        house: house ? {
-          id: house.id,
-          nickname: house.nickname,
-          address: house.address,
-          city: house.city,
-          state: house.state,
-          zipCode: house.zipCode
-        } : null
-      });
+      res.json(result);
     } catch (error) {
       console.error("Error validating connection code:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid code format", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to validate connection code" });
-    }
-  });
-
-  app.delete('/api/homeowner-connection-codes/:id', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.session.user.id;
-      const userRole = req.session.user.role;
-      const { id } = req.params;
-      
-      // Only homeowners can deactivate their connection codes
-      if (userRole !== 'homeowner') {
-        return res.status(403).json({ message: "Only homeowners can deactivate connection codes" });
-      }
-      
-      // Verify the code belongs to the homeowner
-      const code = await storage.getHomeownerConnectionCode(id);
-      if (!code || code.homeownerId !== userId) {
-        return res.status(404).json({ message: "Connection code not found" });
-      }
-      
-      const success = await storage.deactivateConnectionCode(id);
-      res.json({ success });
-    } catch (error) {
-      console.error("Error deactivating connection code:", error);
-      res.status(500).json({ message: "Failed to deactivate connection code" });
     }
   });
 
