@@ -35,6 +35,7 @@ import {
   Plus
 } from "lucide-react";
 import PushNotificationManager from "@/components/push-notification-manager";
+import { HomeownerConnectionCodes } from "@/components/ConnectionCodes";
 
 export default function HomeownerAccount() {
   const { user } = useAuth();
@@ -803,6 +804,9 @@ export default function HomeownerAccount() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Contractor Connection Codes */}
+            <HomeownerConnectionCodes />
 
             {/* Account Overview */}
             <Card>

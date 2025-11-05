@@ -2,6 +2,7 @@ import Header from "@/components/header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Proposals } from "@/components/proposals";
+import { ContractorCodeEntry } from "@/components/ConnectionCodes";
 
 import { useAuth } from "@/hooks/useAuth";
 import { Calendar, FileText, User, Star } from "lucide-react";
@@ -35,6 +36,11 @@ export default function ContractorDashboard() {
         {/* Proposals Section */}
         <div className="mb-8">
           <Proposals contractorId={typedUser.id} />
+        </div>
+
+        {/* Connection Code Entry */}
+        <div className="mb-8">
+          <ContractorCodeEntry />
         </div>
 
         <div className="grid grid-cols-1 gap-6">
