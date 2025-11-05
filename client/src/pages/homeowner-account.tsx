@@ -761,10 +761,10 @@ export default function HomeownerAccount() {
                 {/* Incoming Transfers (pending acceptance) */}
                 {Array.isArray(transfers) && (transfers as any).filter((t: any) => t.status === 'pending' && t.toHomeownerEmail === (user as any)?.email).length > 0 && (
                   <div>
-                    <h4 className="font-medium mb-3 text-blue-600">Incoming House Transfers</h4>
+                    <h4 className="font-medium mb-3 text-purple-600">Incoming House Transfers</h4>
                     <div className="space-y-2">
                       {Array.isArray(transfers) && (transfers as any).filter((t: any) => t.status === 'pending' && t.toHomeownerEmail === (user as any)?.email).map((transfer: any) => (
-                        <div key={transfer.id} className="flex flex-col gap-3 p-4 border rounded-lg bg-blue-50">
+                        <div key={transfer.id} className="flex flex-col gap-3 p-4 border rounded-lg bg-purple-50">
                           <div className="flex-1">
                             <p className="font-medium text-sm" data-testid={`transfer-from-${transfer.id}`}>
                               From: {transfer.fromHomeownerId}
@@ -812,10 +812,10 @@ export default function HomeownerAccount() {
                 {/* Transfers Awaiting Confirmation */}
                 {Array.isArray(transfers) && (transfers as any).filter((t: any) => t.status === 'accepted').length > 0 && (
                   <div>
-                    <h4 className="font-medium mb-3 text-orange-600">Transfers Awaiting Your Confirmation</h4>
+                    <h4 className="font-medium mb-3 text-purple-600">Transfers Awaiting Your Confirmation</h4>
                     <div className="space-y-2">
                       {Array.isArray(transfers) && (transfers as any).filter((t: any) => t.status === 'accepted').map((transfer: any) => (
-                        <div key={transfer.id} className="flex items-center justify-between p-3 border rounded-lg bg-orange-50">
+                        <div key={transfer.id} className="flex items-center justify-between p-3 border rounded-lg bg-purple-50">
                           <div className="flex-1">
                             <p className="font-medium text-sm" data-testid={`transfer-email-${transfer.id}`}>
                               To: {transfer.toHomeownerEmail}
