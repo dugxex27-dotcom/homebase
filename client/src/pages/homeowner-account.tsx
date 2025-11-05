@@ -72,7 +72,7 @@ export default function HomeownerAccount() {
   // Update profile mutation
   const updateProfileMutation = useMutation({
     mutationFn: async (data: typeof profileData) => {
-      return await apiRequest('PATCH', '/api/homeowner/profile', data);
+      return await apiRequest('/api/homeowner/profile', 'PATCH', data);
     },
     onSuccess: () => {
       toast({
@@ -93,7 +93,7 @@ export default function HomeownerAccount() {
   // Update notification preferences mutation
   const updateNotificationsMutation = useMutation({
     mutationFn: async (prefs: typeof notificationPrefs) => {
-      return await apiRequest('PATCH', '/api/homeowner/notifications/preferences', prefs);
+      return await apiRequest('/api/homeowner/notifications/preferences', 'PATCH', prefs);
     },
     onSuccess: () => {
       toast({
