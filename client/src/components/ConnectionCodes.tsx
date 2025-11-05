@@ -76,7 +76,7 @@ export function HomeownerConnectionCodes() {
   const createMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest("/api/homeowner-connection-codes", "POST", {
-        houseId: selectedHouse || null,
+        houseId: selectedHouse === "all" ? null : (selectedHouse || null),
         expiresIn,
         usageLimit,
       });
@@ -243,7 +243,7 @@ export function HomeownerConnectionCodes() {
                   <SelectValue placeholder="All properties" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All properties</SelectItem>
+                  <SelectItem value="all">All properties</SelectItem>
                   {houses.map((house) => (
                     <SelectItem key={house.id} value={house.id}>
                       {house.nickname || house.address}
