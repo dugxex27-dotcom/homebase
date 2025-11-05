@@ -1789,6 +1789,7 @@ export default function ContractorProfile() {
                   data-testid="button-copy-contractor-code"
                   title="Copy referral code"
                   type="button"
+                  style={{ backgroundColor: '#1560a2', color: 'white', borderColor: '#1560a2' }}
                 >
                   <Copy className="w-4 h-4" />
                 </Button>
