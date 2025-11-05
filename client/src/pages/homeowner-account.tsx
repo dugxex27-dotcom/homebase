@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
@@ -68,6 +68,19 @@ export default function HomeownerAccount() {
     toHomeownerEmail: "",
     transferNote: "",
   });
+
+  // Sync profile data with user data when it changes
+  useEffect(() => {
+    if (user) {
+      setProfileData({
+        firstName: (user as any)?.firstName || "",
+        lastName: (user as any)?.lastName || "",
+        email: (user as any)?.email || "",
+        phone: (user as any)?.phone || "",
+        address: (user as any)?.address || ""
+      });
+    }
+  }, [user]);
 
   // Update profile mutation
   const updateProfileMutation = useMutation({
