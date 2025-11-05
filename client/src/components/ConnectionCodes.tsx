@@ -99,6 +99,7 @@ export function HomeownerConnectionCodes() {
                       size="sm"
                       onClick={() => copyToClipboard(codeData.code)}
                       data-testid="button-copy-code"
+                      style={{ color: 'white' }}
                     >
                       <Copy className="h-4 w-4 mr-2" />
                       Copy Code
@@ -108,6 +109,7 @@ export function HomeownerConnectionCodes() {
                       size="sm"
                       onClick={() => setShowQRDialog(true)}
                       data-testid="button-view-qr"
+                      style={{ color: 'white' }}
                     >
                       <QrCode className="h-4 w-4 mr-2" />
                       View QR Code
