@@ -1798,7 +1798,7 @@ export default function ContractorProfile() {
             {/* Share Options */}
             <div>
               <Label style={{ color: '#1560a2' }}>Share with Your Network</Label>
-              <div className="grid grid-cols-2 gap-2 mt-2">
+              <div className="grid grid-cols-2 gap-2 mt-2 p-3 rounded-lg" style={{ backgroundColor: '#1560a2' }}>
                 <Button
                   onClick={shareViaText}
                   variant="outline"
@@ -1806,6 +1806,7 @@ export default function ContractorProfile() {
                   data-testid="button-contractor-share-text"
                   className="flex items-center gap-2"
                   type="button"
+                  style={{ backgroundColor: 'white', borderColor: 'white' }}
                 >
                   <MessageSquare className="w-4 h-4" />
                   Text Message
@@ -1816,7 +1817,7 @@ export default function ContractorProfile() {
                   size="sm"
                   data-testid="button-contractor-share-whatsapp"
                   className="flex items-center gap-2"
-                  style={{ color: '#25D366' }}
+                  style={{ color: '#25D366', backgroundColor: 'white', borderColor: 'white' }}
                   type="button"
                 >
                   <Share2 className="w-4 h-4" />
@@ -1828,7 +1829,7 @@ export default function ContractorProfile() {
                   size="sm"
                   data-testid="button-contractor-share-facebook"
                   className="flex items-center gap-2"
-                  style={{ color: '#1877F2' }}
+                  style={{ color: '#1877F2', backgroundColor: 'white', borderColor: 'white' }}
                   type="button"
                 >
                   <Share2 className="w-4 h-4" />
@@ -1840,7 +1841,7 @@ export default function ContractorProfile() {
                   size="sm"
                   data-testid="button-contractor-share-twitter"
                   className="flex items-center gap-2"
-                  style={{ color: '#1DA1F2' }}
+                  style={{ color: '#1DA1F2', backgroundColor: 'white', borderColor: 'white' }}
                   type="button"
                 >
                   <Share2 className="w-4 h-4" />
