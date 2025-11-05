@@ -128,6 +128,7 @@ export const users = pgTable("users", {
   referralCode: varchar("referral_code").unique(),
   referredBy: varchar("referred_by"), // referral code of user who referred this user
   referralCount: integer("referral_count").notNull().default(0),
+  connectionCode: varchar("connection_code", { length: 8 }).unique(), // Permanent code for homeowners to share with contractors
   // Company fields for contractors
   companyId: varchar("company_id").references(() => companies.id, { onDelete: 'set null' }),
   companyRole: text("company_role"), // 'owner' or 'employee' (nullable for homeowners)
