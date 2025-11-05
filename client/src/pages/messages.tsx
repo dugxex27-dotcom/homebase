@@ -1369,7 +1369,7 @@ export default function Messages() {
 
       {/* Proposal Detail Dialog (Homeowners only) */}
       <Dialog open={isProposalDetailOpen} onOpenChange={setIsProposalDetailOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto [&>button]:text-white">
           <DialogHeader>
             <DialogTitle className="text-purple-400">Proposal Details</DialogTitle>
             <DialogDescription>
