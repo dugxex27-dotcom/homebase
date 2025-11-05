@@ -124,6 +124,8 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   role: text("role").notNull().default("homeowner"), // "homeowner" or "contractor"
   passwordHash: varchar("password_hash"),
+  phone: varchar("phone", { length: 20 }),
+  address: text("address"),
   zipCode: varchar("zip_code", { length: 10 }),
   referralCode: varchar("referral_code").unique(),
   referredBy: varchar("referred_by"), // referral code of user who referred this user

@@ -1160,6 +1160,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: email,
         firstName: firstName,
         lastName: lastName,
+        phone: phone,
+        address: address,
         profileImageUrl: req.session.user.profileImageUrl,
         role: 'homeowner'
       });

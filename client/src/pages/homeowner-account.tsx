@@ -47,8 +47,8 @@ export default function HomeownerAccount() {
     firstName: (user as any)?.firstName || "",
     lastName: (user as any)?.lastName || "",
     email: (user as any)?.email || "",
-    phone: "",
-    address: ""
+    phone: (user as any)?.phone || "",
+    address: (user as any)?.address || ""
   });
 
   // Notification preferences state
