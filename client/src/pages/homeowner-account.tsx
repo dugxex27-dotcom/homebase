@@ -238,9 +238,30 @@ export default function HomeownerAccount() {
     }
   });
 
+  const acceptTransferMutation = useMutation({
+    mutationFn: async (transferId: string) => {
+      return await apiRequest(`/api/house-transfers/${transferId}/accept`, 'POST');
+    },
+    onSuccess: () => {
+      toast({
+        title: "Transfer Accepted",
+        description: "You've accepted the house transfer. The sender must now confirm to complete the transfer.",
+      });
+      refetchTransfers();
+      queryClient.invalidateQueries({ queryKey: ['/api/houses'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to accept house transfer.",
+        variant: "destructive",
+      });
+    }
+  });
+
   const confirmTransferMutation = useMutation({
     mutationFn: async (transferId: string) => {
-      return await apiRequest('POST', `/api/house-transfers/${transferId}/confirm`);
+      return await apiRequest(`/api/house-transfers/${transferId}/confirm`, 'POST');
     },
     onSuccess: (data: any) => {
       toast({
@@ -736,6 +757,57 @@ export default function HomeownerAccount() {
                     </div>
                   </DialogContent>
                 </Dialog>
+
+                {/* Incoming Transfers (pending acceptance) */}
+                {transfers && (transfers as any).filter((t: any) => t.status === 'pending' && t.toHomeownerEmail === (user as any)?.email).length > 0 && (
+                  <div>
+                    <h4 className="font-medium mb-3 text-blue-600">Incoming House Transfers</h4>
+                    <div className="space-y-2">
+                      {(transfers as any).filter((t: any) => t.status === 'pending' && t.toHomeownerEmail === (user as any)?.email).map((transfer: any) => (
+                        <div key={transfer.id} className="flex flex-col gap-3 p-4 border rounded-lg bg-blue-50">
+                          <div className="flex-1">
+                            <p className="font-medium text-sm" data-testid={`transfer-from-${transfer.id}`}>
+                              From: {transfer.fromHomeownerId}
+                            </p>
+                            {transfer.transferNote && (
+                              <p className="text-sm text-gray-600 mt-1 italic">
+                                "{transfer.transferNote}"
+                              </p>
+                            )}
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Received on {new Date(transfer.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 justify-end">
+                            <Button 
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                // Reject transfer logic would go here
+                                toast({
+                                  title: "Not Implemented",
+                                  description: "Reject functionality coming soon.",
+                                  variant: "destructive",
+                                });
+                              }}
+                              data-testid={`button-reject-${transfer.id}`}
+                            >
+                              Decline
+                            </Button>
+                            <Button 
+                              size="sm"
+                              onClick={() => acceptTransferMutation.mutate(transfer.id)}
+                              disabled={acceptTransferMutation.isPending}
+                              data-testid={`button-accept-${transfer.id}`}
+                            >
+                              {acceptTransferMutation.isPending ? "Accepting..." : "Accept Transfer"}
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Transfers Awaiting Confirmation */}
                 {transfers && (transfers as any).filter((t: any) => t.status === 'accepted').length > 0 && (
