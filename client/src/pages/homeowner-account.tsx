@@ -644,7 +644,7 @@ export default function HomeownerAccount() {
                   <Home className="h-5 w-5" />
                   House Transfers
                 </CardTitle>
-                <CardDescription>Transfer house ownership to another homeowner</CardDescription>
+                <CardDescription>Transfer house ownership to another homeowner. Transfer all maintenance records and tasks to new homeowner. New homeowner must have a Homebase account</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Create Transfer Button */}
