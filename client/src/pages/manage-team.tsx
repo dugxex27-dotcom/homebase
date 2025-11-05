@@ -161,10 +161,10 @@ export default function ManageTeam() {
 
   if (companyLoading || membersLoading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen" style={{ backgroundColor: '#1560a2' }}>
         <Header />
         <div className="flex items-center justify-center h-96">
-          <div className="text-muted-foreground">Loading...</div>
+          <div style={{ color: '#afd6f9' }}>Loading...</div>
         </div>
       </div>
     );
@@ -189,30 +189,30 @@ export default function ManageTeam() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen" style={{ backgroundColor: '#1560a2' }}>
       <Header />
       
       <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2" data-testid="text-manage-team-title">
+          <h1 className="text-3xl font-bold mb-2" style={{ color: 'white' }} data-testid="text-manage-team-title">
             Manage Team
           </h1>
-          <p className="text-muted-foreground">
+          <p style={{ color: '#afd6f9' }}>
             {isOwner ? "Manage your company profile and team members" : "View your company and team"}
           </p>
         </div>
 
         {/* Company Information */}
-        <Card className="mb-6">
+        <Card className="mb-6" style={{ backgroundColor: '#f2f2f2' }}>
           <CardHeader>
-            <CardTitle>Company Information</CardTitle>
-            <CardDescription>
+            <CardTitle style={{ color: '#1560a2' }}>Company Information</CardTitle>
+            <CardDescription style={{ color: '#000000' }}>
               {isOwner ? "Update your company details" : "Company details"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="company-name">Company Name</Label>
+              <Label htmlFor="company-name" style={{ color: '#1560a2' }}>Company Name</Label>
               <Input
                 id="company-name"
                 defaultValue={company.name}
@@ -223,10 +223,11 @@ export default function ManageTeam() {
                   }
                 }}
                 data-testid="input-company-name"
+                style={{ backgroundColor: 'white', color: '#000000' }}
               />
             </div>
             <div>
-              <Label htmlFor="company-bio">Company Bio</Label>
+              <Label htmlFor="company-bio" style={{ color: '#1560a2' }}>Company Bio</Label>
               <Textarea
                 id="company-bio"
                 defaultValue={company.bio}
@@ -238,11 +239,12 @@ export default function ManageTeam() {
                   }
                 }}
                 data-testid="input-company-bio"
+                style={{ backgroundColor: 'white', color: '#000000' }}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="company-phone">Phone</Label>
+                <Label htmlFor="company-phone" style={{ color: '#1560a2' }}>Phone</Label>
                 <Input
                   id="company-phone"
                   defaultValue={company.phone}
@@ -253,10 +255,11 @@ export default function ManageTeam() {
                     }
                   }}
                   data-testid="input-company-phone"
+                  style={{ backgroundColor: 'white', color: '#000000' }}
                 />
               </div>
               <div>
-                <Label htmlFor="company-email">Email</Label>
+                <Label htmlFor="company-email" style={{ color: '#1560a2' }}>Email</Label>
                 <Input
                   id="company-email"
                   defaultValue={company.email}
@@ -267,6 +270,7 @@ export default function ManageTeam() {
                     }
                   }}
                   data-testid="input-company-email"
+                  style={{ backgroundColor: 'white', color: '#000000' }}
                 />
               </div>
             </div>
@@ -274,14 +278,14 @@ export default function ManageTeam() {
         </Card>
 
         {/* Team Members */}
-        <Card className="mb-6">
+        <Card className="mb-6" style={{ backgroundColor: '#f2f2f2' }}>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="w-5 h-5" />
+              <CardTitle className="flex items-center gap-2" style={{ color: '#1560a2' }}>
+                <Users className="w-5 h-5" style={{ color: '#1560a2' }} />
                 Team Members ({teamMembers?.length || 0})
               </CardTitle>
-              <CardDescription>
+              <CardDescription style={{ color: '#000000' }}>
                 {isOwner ? "Manage your team and their permissions" : "View your team members"}
               </CardDescription>
             </div>
@@ -415,10 +419,10 @@ export default function ManageTeam() {
 
         {/* Active Invite Codes (Owner Only) */}
         {isOwner && inviteCodes && inviteCodes.length > 0 && (
-          <Card>
+          <Card style={{ backgroundColor: '#f2f2f2' }}>
             <CardHeader>
-              <CardTitle>Active Invite Codes</CardTitle>
-              <CardDescription>
+              <CardTitle style={{ color: '#1560a2' }}>Active Invite Codes</CardTitle>
+              <CardDescription style={{ color: '#000000' }}>
                 These codes can be used by new team members to join your company
               </CardDescription>
             </CardHeader>
