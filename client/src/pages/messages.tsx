@@ -413,7 +413,7 @@ export default function Messages() {
       // Always convert materials string to array (handles empty string case)
       materials: (data.materials || "").split(',').map(item => item.trim()).filter(item => item.length > 0),
       estimatedCost: parseFloat(data.estimatedCost).toString(),
-      status: "draft" as const,
+      status: "sent" as const,
     };
     
     createProposalMutation.mutate(proposalData);
