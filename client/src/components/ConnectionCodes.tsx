@@ -79,9 +79,7 @@ export function HomeownerConnectionCodes() {
       <Card>
         <CardHeader>
           <CardTitle>Your Contractor Connection Code</CardTitle>
-          <CardDescription>
-            Share this permanent code with contractors so they can add service records to your account
-          </CardDescription>
+          <CardDescription>Share this permanent code with contractors so they can add service records to your account.  Contractor must be a Homebase user</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {isLoading ? (
@@ -99,7 +97,7 @@ export function HomeownerConnectionCodes() {
                       size="sm"
                       onClick={() => copyToClipboard(codeData.code)}
                       data-testid="button-copy-code"
-                      style={{ color: 'white' }}
+                      style={{ backgroundColor: '#2c0f5b', color: 'white', borderColor: '#2c0f5b' }}
                     >
                       <Copy className="h-4 w-4 mr-2" />
                       Copy Code
@@ -109,7 +107,7 @@ export function HomeownerConnectionCodes() {
                       size="sm"
                       onClick={() => setShowQRDialog(true)}
                       data-testid="button-view-qr"
-                      style={{ color: 'white' }}
+                      style={{ backgroundColor: '#2c0f5b', color: 'white', borderColor: '#2c0f5b' }}
                     >
                       <QrCode className="h-4 w-4 mr-2" />
                       View QR Code
@@ -143,7 +141,6 @@ export function HomeownerConnectionCodes() {
           )}
         </CardContent>
       </Card>
-
       {/* QR Code Dialog */}
       <Dialog open={showQRDialog} onOpenChange={setShowQRDialog}>
         <DialogContent data-testid="dialog-qr-code">
