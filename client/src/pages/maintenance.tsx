@@ -2226,7 +2226,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                                       }}
                                       data-testid={`select-frequency-${taskId}`}
                                     >
-                                      <SelectTrigger className="w-full">
+                                      <SelectTrigger className="w-full" style={{ color: '#ffffff' }}>
                                         <SelectValue placeholder="Select frequency" />
                                       </SelectTrigger>
                                       <SelectContent>
