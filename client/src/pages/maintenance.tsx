@@ -2195,7 +2195,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                                           deleteTaskOverrideMutation.mutate(taskId);
                                         }}
                                         className="text-xs"
-                                        style={{ color: '#2c0f5b', borderColor: '#2c0f5b' }}
+                                        style={{ color: '#ffffff', borderColor: '#2c0f5b' }}
                                         data-testid={`button-reset-${taskId}`}
                                       >
                                         Reset to Default
