@@ -2109,14 +2109,14 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <p className="leading-relaxed" style={{ color: '#ffffff' }}>
+                      <p className="leading-relaxed" style={{ color: '#2c0f5b' }}>
                         {task.description}
                       </p>
 
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div className="flex items-center">
                           <Clock className="w-4 h-4 mr-2" style={{ color: '#fbbf24' }} />
-                          <span style={{ color: '#ffffff' }} className="text-[#ffffff]">{task.estimatedTime}</span>
+                          <span style={{ color: '#2c0f5b' }} className="text-[#2c0f5b]">{task.estimatedTime}</span>
                         </div>
                         <div className="flex items-center">
                           <Badge variant="secondary" className={getDifficultyColor(task.difficulty)}>
@@ -2126,7 +2126,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                         {task.cost && (
                           <div className="flex items-center">
                             <DollarSign className="w-4 h-4 mr-2" style={{ color: '#10b981' }} />
-                            <span style={{ color: '#ffffff' }}>{task.cost}</span>
+                            <span style={{ color: '#2c0f5b' }}>{task.cost}</span>
                           </div>
                         )}
                         <div className="flex items-center">
@@ -2140,7 +2140,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                         <div>
                           <div className="flex items-center mb-2">
                             <Wrench className="w-4 h-4 mr-2" style={{ color: '#ef4444' }} />
-                            <span className="text-sm font-medium text-[#ffffff]" style={{ color: '#ffffff' }}>Tools needed:</span>
+                            <span className="text-sm font-medium text-[#2c0f5b]" style={{ color: '#2c0f5b' }}>Tools needed:</span>
                           </div>
                           <div className="flex flex-wrap gap-1">
                             {task.tools.map((tool, index) => (
