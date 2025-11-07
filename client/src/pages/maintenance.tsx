@@ -1384,11 +1384,11 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     const allClimateZones = ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"];
     
     // Convert seasonal tasks to MaintenanceTask objects
-    monthData.seasonal.forEach((taskTitle, index) => {
+    monthData.seasonal.forEach((taskItem, index) => {
       tasks.push({
         id: `seasonal-${month}-${index}`,
-        title: taskTitle,
-        description: taskTitle, // Using title as description
+        title: taskItem.title,
+        description: taskItem.description,
         month: month,
         climateZones: allClimateZones,
         priority: monthData.priority,
@@ -1401,11 +1401,11 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     });
     
     // Convert weather-specific tasks to MaintenanceTask objects
-    monthData.weatherSpecific.forEach((taskTitle, index) => {
+    monthData.weatherSpecific.forEach((taskItem, index) => {
       tasks.push({
         id: `weather-${month}-${index}`,
-        title: taskTitle,
-        description: taskTitle, // Using title as description
+        title: taskItem.title,
+        description: taskItem.description,
         month: month,
         climateZones: allClimateZones,
         priority: monthData.priority,
