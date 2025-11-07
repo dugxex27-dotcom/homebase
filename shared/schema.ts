@@ -271,6 +271,7 @@ export const taskOverrides = pgTable("task_overrides", {
   frequencyType: text("frequency_type"), // override default frequency: 'monthly', 'quarterly', 'biannually', 'annually', 'custom'
   frequencyValue: integer("frequency_value"), // for custom frequency in days
   specificMonths: text("specific_months").array(), // override which months the task appears in (1-12)
+  customDescription: text("custom_description"), // user's custom description overriding the default
   notes: text("notes"), // user's personal notes about the customization
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

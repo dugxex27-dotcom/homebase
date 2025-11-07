@@ -2062,6 +2062,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                 const completed = isTaskCompleted(task.id);
                 const previousContractor = findPreviousContractor(task.category, task.title);
                 const isCustomTask = task.id.startsWith('custom-');
+                const taskOverride = getTaskOverride(task.title, taskOverrides);
+                const displayDescription = taskOverride?.customDescription || task.description;
                 
                 return (
                   <Card 
@@ -2110,7 +2112,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <p className="leading-relaxed" style={{ color: '#2c0f5b' }}>
-                        {task.description}
+                        {displayDescription}
                       </p>
 
                       <div className="grid grid-cols-2 gap-4 text-sm">
@@ -2240,6 +2242,34 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                                     </Select>
                                   </div>
 
+                                  {/* Custom Description */}
+                                  <div>
+                                    <label className="text-sm font-medium mb-2 block" style={{ color: '#2c0f5b' }}>
+                                      Custom Description (Optional)
+                                    </label>
+                                    <textarea
+                                      className="w-full p-2 border rounded-md min-h-[80px]"
+                                      placeholder="Enter custom instructions for this task..."
+                                      defaultValue={currentOverride?.customDescription || ''}
+                                      onBlur={(e) => {
+                                        const newDescription = e.target.value.trim();
+                                        if (newDescription !== (currentOverride?.customDescription || '')) {
+                                          upsertTaskOverrideMutation.mutate({
+                                            taskId,
+                                            isEnabled: isTaskEnabled(task.title, taskOverrides),
+                                            frequencyType: currentOverride?.frequencyType || undefined,
+                                            specificMonths: currentOverride?.specificMonths || undefined,
+                                            customDescription: newDescription || undefined,
+                                          });
+                                        }
+                                      }}
+                                      data-testid={`textarea-description-${taskId}`}
+                                    />
+                                    <p className="text-xs mt-1" style={{ color: '#2c0f5b' }}>
+                                      Leave blank to use the default description
+                                    </p>
+                                  </div>
+
                                   {/* Show current customization status */}
                                   {currentOverride && (
                                     <div className="text-xs bg-blue-50 dark:bg-blue-900/20 p-2 rounded" style={{ color: '#2c0f5b' }}>
@@ -2248,6 +2278,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                                         ` Enabled, ${currentOverride.frequencyType || 'default'} frequency` :
                                         ' Disabled'
                                       }
+                                      {currentOverride.customDescription && (
+                                        <div className="mt-1">Custom description: Yes</div>
+                                      )}
                                       {currentOverride.notes && (
                                         <div className="mt-1">Note: {currentOverride.notes}</div>
                                       )}

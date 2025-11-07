@@ -2449,6 +2449,7 @@ export class MemStorage implements IStorage {
           frequencyType: overrideData.frequencyType || null,
           frequencyValue: overrideData.frequencyValue || null,
           specificMonths: overrideData.specificMonths || null,
+          customDescription: overrideData.customDescription || null,
           notes: overrideData.notes || null,
         })
         .onConflictDoUpdate({
@@ -2458,6 +2459,7 @@ export class MemStorage implements IStorage {
             frequencyType: overrideData.frequencyType || null,
             frequencyValue: overrideData.frequencyValue || null,
             specificMonths: overrideData.specificMonths || null,
+            customDescription: overrideData.customDescription || null,
             notes: overrideData.notes || null,
             updatedAt: new Date(),
           },
