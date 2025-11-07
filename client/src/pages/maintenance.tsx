@@ -2241,6 +2241,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                                             taskId,
                                             isEnabled: isTaskEnabled(task.title, taskOverrides),
                                             frequencyType: value,
+                                            specificMonths: currentOverride?.specificMonths || undefined,
                                           });
                                         }
                                       }}
@@ -2259,6 +2260,50 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                                       </SelectContent>
                                     </Select>
                                   </div>
+
+                                  {/* Month Selector for Annual/Custom Tasks */}
+                                  {(currentOverride?.frequencyType === 'annually' || currentOverride?.frequencyType === 'custom') && (
+                                    <div>
+                                      <label className="text-sm font-medium mb-2 block" style={{ color: '#2c0f5b' }}>
+                                        Select Months
+                                      </label>
+                                      <div className="grid grid-cols-3 gap-2">
+                                        {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((month, index) => {
+                                          const monthNum = (index + 1).toString();
+                                          const isSelected = currentOverride?.specificMonths?.includes(monthNum) || false;
+                                          return (
+                                            <div key={month} className="flex items-center space-x-2">
+                                              <Checkbox
+                                                id={`month-${taskId}-${monthNum}`}
+                                                checked={isSelected}
+                                                onCheckedChange={(checked) => {
+                                                  const currentMonths = currentOverride?.specificMonths || [];
+                                                  const newMonths = checked
+                                                    ? [...currentMonths, monthNum]
+                                                    : currentMonths.filter(m => m !== monthNum);
+                                                  
+                                                  upsertTaskOverrideMutation.mutate({
+                                                    taskId,
+                                                    isEnabled: isTaskEnabled(task.title, taskOverrides),
+                                                    frequencyType: currentOverride?.frequencyType || undefined,
+                                                    specificMonths: newMonths.length > 0 ? newMonths : undefined,
+                                                    customDescription: currentOverride?.customDescription || undefined,
+                                                  });
+                                                }}
+                                                data-testid={`checkbox-month-${taskId}-${monthNum}`}
+                                              />
+                                              <label htmlFor={`month-${taskId}-${monthNum}`} className="text-xs" style={{ color: '#2c0f5b' }}>
+                                                {month.substring(0, 3)}
+                                              </label>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                      <p className="text-xs mt-2" style={{ color: '#2c0f5b' }}>
+                                        Select which months this task should appear
+                                      </p>
+                                    </div>
+                                  )}
 
                                   {/* Custom Description */}
                                   <div>
