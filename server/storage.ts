@@ -274,7 +274,17 @@ export interface IStorage {
 
   // Authentication methods
   getUserByEmail(email: string): Promise<User | undefined>;
-  createUserWithPassword(data: { email: string, passwordHash: string, firstName: string, lastName: string, role: 'homeowner' | 'contractor', zipCode: string }): Promise<User>;
+  createUserWithPassword(data: { 
+    email: string; 
+    passwordHash: string; 
+    firstName: string; 
+    lastName: string; 
+    role: 'homeowner' | 'contractor'; 
+    zipCode: string;
+    trialEndsAt?: Date;
+    maxHousesAllowed?: number;
+    subscriptionStatus?: string;
+  }): Promise<User>;
 
   // Invite code methods
   validateAndUseInviteCode(code: string): Promise<boolean>;
@@ -3554,7 +3564,17 @@ class DbStorage implements IStorage {
     }
   }
 
-  async createUserWithPassword(data: { email: string, passwordHash: string, firstName: string, lastName: string, role: 'homeowner' | 'contractor', zipCode: string }): Promise<User> {
+  async createUserWithPassword(data: { 
+    email: string; 
+    passwordHash: string; 
+    firstName: string; 
+    lastName: string; 
+    role: 'homeowner' | 'contractor'; 
+    zipCode: string;
+    trialEndsAt?: Date;
+    maxHousesAllowed?: number;
+    subscriptionStatus?: string;
+  }): Promise<User> {
     return this.upsertUser({
       id: randomUUID(),
       email: data.email,
@@ -3563,6 +3583,9 @@ class DbStorage implements IStorage {
       lastName: data.lastName,
       role: data.role,
       zipCode: data.zipCode,
+      trialEndsAt: data.trialEndsAt ?? null,
+      maxHousesAllowed: data.maxHousesAllowed ?? null,
+      subscriptionStatus: data.subscriptionStatus ?? null,
     });
   }
 

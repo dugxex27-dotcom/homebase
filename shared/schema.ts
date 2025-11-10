@@ -137,10 +137,11 @@ export const users = pgTable("users", {
   canRespondToProposals: boolean("can_respond_to_proposals").notNull().default(false), // For employees: owner can toggle
   // Subscription fields
   subscriptionPlanId: varchar("subscription_plan_id").references(() => subscriptionPlans.id, { onDelete: 'set null' }), // FK to subscription_plans.id
-  subscriptionStatus: text("subscription_status").default("inactive"), // "active", "inactive", "cancelled", "past_due"
+  subscriptionStatus: text("subscription_status").default("inactive"), // "active", "inactive", "cancelled", "past_due", "trialing", "grandfathered"
   // Note: maxHousesAllowed and tier info can be derived from the plan, but keeping for performance
-  maxHousesAllowed: integer("max_houses_allowed").notNull().default(2), // Cached from subscription plan
+  maxHousesAllowed: integer("max_houses_allowed"), // Cached from subscription plan (null = unlimited for grandfathered users)
   isPremium: boolean("is_premium").notNull().default(false),
+  trialEndsAt: timestamp("trial_ends_at"), // When the free trial ends (14 days from signup for new users)
   stripeCustomerId: varchar("stripe_customer_id"),
   stripeSubscriptionId: varchar("stripe_subscription_id"),
   stripePriceId: varchar("stripe_price_id"), // Current Stripe price ID for the subscription
