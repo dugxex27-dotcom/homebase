@@ -1,13 +1,14 @@
 import { Link, useLocation } from "wouter";
-import { Users, Package, User as UserIcon, LogOut, MessageCircle, Trophy, Shield } from "lucide-react";
+import { Users, Package, User as UserIcon, LogOut, MessageCircle, Trophy, Shield, Calendar, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Logo from "@/components/logo";
 import { Notifications } from "@/components/notifications";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
 import type { User } from "@shared/schema";
+import { useQuery } from "@tanstack/react-query";
 
 // Helper function for consistent nav link styling
 const getNavLinkClass = (isActive: boolean) => cn(
@@ -25,6 +26,22 @@ export default function Header() {
   // Check if user is admin
   const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || '').split(',').map((e: string) => e.trim()).filter(Boolean);
   const isAdmin = typedUser?.email && adminEmails.includes(typedUser.email);
+
+  // Fetch user details for trial info (only for homeowners)
+  const { data: userData } = useQuery<User>({
+    queryKey: ['/api/user'],
+    queryFn: async () => {
+      const res = await apiRequest('/api/user', 'GET');
+      return res.json();
+    },
+    enabled: !!user && typedUser?.role === 'homeowner',
+  });
+
+  // Calculate trial status (only for homeowners)
+  const trialEndsAt = userData?.trialEndsAt ? new Date(userData.trialEndsAt) : null;
+  const now = new Date();
+  const isTrialActive = trialEndsAt && trialEndsAt > now && userData?.subscriptionStatus === 'trial';
+  const daysRemaining = trialEndsAt ? Math.ceil((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
 
   const handleLogout = async () => {
     try {
@@ -191,6 +208,32 @@ export default function Header() {
           </div>
         </div>
       </div>
+
+      {/* Trial Countdown Banner - Only for homeowners on trial */}
+      {isTrialActive && typedUser?.role === 'homeowner' && (
+        <div className="bg-purple-50 border-b border-purple-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-purple-600" />
+                <span className="text-sm text-purple-900 font-medium">
+                  <strong>{daysRemaining} day{daysRemaining !== 1 ? 's' : ''}</strong> remaining in your free trial
+                </span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.location.href = '/billing'}
+                className="border-purple-600 text-purple-600 hover:bg-purple-100"
+                data-testid="button-trial-upgrade"
+              >
+                <Crown className="h-3 w-3 mr-1" />
+                Choose Plan
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
