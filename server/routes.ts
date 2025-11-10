@@ -2611,12 +2611,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       } else if (user?.role === 'homeowner') {
-        // Non-premium homeowners are limited to 2 properties
-        if (!user?.isPremium && existingHouses.length >= 2) {
-          return res.status(403).json({ 
-            message: "Property limit reached. Upgrade to Platinum to add unlimited properties.",
-            code: "PLAN_LIMIT_EXCEEDED"
-          });
+        // Check subscription status and house limits
+        const subscriptionStatus = user?.subscriptionStatus;
+        const trialEndsAt = user?.trialEndsAt;
+        
+        // Only grandfathered users or explicitly null maxHousesAllowed get unlimited houses
+        if (subscriptionStatus === 'grandfathered' || user?.maxHousesAllowed === null) {
+          // No limit - allow house creation
+        } else {
+          // Default to Base plan (2 houses) if maxHousesAllowed is undefined
+          const maxHouses = user?.maxHousesAllowed ?? 2;
+          
+          if (existingHouses.length >= maxHouses) {
+            // User has reached their plan limit
+            const isTrialing = subscriptionStatus === 'trialing' && trialEndsAt && new Date(trialEndsAt) > new Date();
+            const currentPlan = maxHouses === 2 ? 'base' : maxHouses === 10 ? 'premium' : 'unknown';
+            
+            return res.status(403).json({ 
+              message: isTrialing 
+                ? `Property limit reached. You can add up to ${maxHouses} properties on the Base plan. Upgrade to Premium for up to 10 properties.`
+                : `Property limit reached. Upgrade to add more properties.`,
+              code: "PLAN_LIMIT_EXCEEDED",
+              currentPlan,
+              maxHouses,
+              currentHouses: existingHouses.length,
+              isTrialing
+            });
+          }
         }
       }
       
@@ -2847,13 +2868,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check subscription limits for recipient
       const housesCount = await storage.getHousesCount(homeownerId);
+      const subscriptionStatus = user.subscriptionStatus;
       
-      // Check subscription limits
-      const maxHouses = user.maxHousesAllowed || 2; // Default to basic plan limit
-      if (housesCount >= maxHouses) {
-        return res.status(400).json({ 
-          message: `Cannot accept transfer. Your subscription plan allows maximum ${maxHouses} houses.` 
-        });
+      // Only grandfathered users or explicitly null maxHousesAllowed get unlimited houses
+      if (subscriptionStatus !== 'grandfathered' && user.maxHousesAllowed !== null) {
+        // Default to Base plan (2 houses) if maxHousesAllowed is undefined
+        const maxHouses = user.maxHousesAllowed ?? 2;
+        
+        if (housesCount >= maxHouses) {
+          const isTrialing = subscriptionStatus === 'trialing' && user.trialEndsAt && new Date(user.trialEndsAt) > new Date();
+          const currentPlan = maxHouses === 2 ? 'base' : maxHouses === 10 ? 'premium' : 'unknown';
+          
+          return res.status(403).json({ 
+            message: isTrialing 
+              ? `Cannot accept transfer. You can have up to ${maxHouses} properties on the Base plan. Upgrade to Premium for up to 10 properties.`
+              : `Cannot accept transfer. Upgrade to add more properties.`,
+            code: "PLAN_LIMIT_EXCEEDED",
+            currentPlan,
+            maxHouses,
+            currentHouses: housesCount,
+            isTrialing
+          });
+        }
       }
       
       // Update transfer status to accepted and set recipient ID

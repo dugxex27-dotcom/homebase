@@ -1099,7 +1099,7 @@ export default function MyHome() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-purple-900">
                 <Crown className="h-6 w-6 text-purple-600" />
-                Upgrade to Platinum
+                Upgrade to Premium
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
@@ -1107,15 +1107,15 @@ export default function MyHome() {
                 <div className="bg-purple-50 p-6 rounded-lg">
                   <Crown className="h-12 w-12 text-purple-600 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-purple-900 mb-2">
-                    Manage Multiple Properties
+                    Manage More Properties
                   </h3>
                   <p className="text-gray-600 mb-4">
-                    You've reached the limit of 2 properties on the free plan. Upgrade to Platinum to add unlimited properties and unlock advanced features.
+                    You've reached the limit of 2 properties on the Base plan ($3/month). Upgrade to Premium ($10/month) to manage up to 10 properties and unlock advanced features.
                   </p>
                   <div className="space-y-2 text-left bg-white p-4 rounded border">
                     <div className="flex items-center gap-2">
                       <Crown className="h-4 w-4 text-purple-600" />
-                      <span className="text-sm">Unlimited properties</span>
+                      <span className="text-sm">Up to 10 properties</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Settings className="h-4 w-4 text-purple-600" />
@@ -1144,11 +1144,7 @@ export default function MyHome() {
                 <Button
                   onClick={() => {
                     setShowUpgradeDialog(false);
-                    // TODO: Navigate to subscription page when available
-                    toast({
-                      title: "Upgrade Coming Soon",
-                      description: "Platinum subscription will be available soon!",
-                    });
+                    window.location.href = '/billing';
                   }}
                   style={{ backgroundColor: '#2c0f5b', color: 'white' }}
                   className="hover:opacity-90 flex-1"
