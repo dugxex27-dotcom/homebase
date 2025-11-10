@@ -10,18 +10,31 @@ import { cn } from "@/lib/utils";
 import type { User } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
 
-// Helper function for consistent nav link styling
-const getNavLinkClass = (isActive: boolean) => cn(
-  "relative inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
-  isActive
-    ? "text-primary bg-primary/10 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary"
-    : "text-foreground/70 hover:text-primary hover:bg-primary/5"
-);
-
 export default function Header() {
   const [location] = useLocation();
   const { user, isAuthenticated } = useAuth();
   const typedUser = user as User | undefined;
+
+  // Helper function for consistent nav link styling
+  const getNavLinkClass = (isActive: boolean) => {
+    const isContractor = typedUser?.role === 'contractor';
+    
+    if (isContractor) {
+      return cn(
+        "relative inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+        isActive
+          ? "text-white bg-white/20 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-white"
+          : "text-white/80 hover:text-white hover:bg-white/10"
+      );
+    }
+    
+    return cn(
+      "relative inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+      isActive
+        ? "text-primary bg-primary/10 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary"
+        : "text-foreground/70 hover:text-primary hover:bg-primary/5"
+    );
+  };
 
   // Check if user is admin
   const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || '').split(',').map((e: string) => e.trim()).filter(Boolean);
@@ -64,12 +77,17 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-background border-b border-border shadow-sm sticky top-0 z-50">
+    <header 
+      className={typedUser?.role === 'contractor' 
+        ? 'bg-[#1560a2] text-white border-b border-white/20 shadow-sm sticky top-0 z-50' 
+        : 'bg-background border-b border-border shadow-sm sticky top-0 z-50'
+      }
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
             <Link href="/" aria-label="Home">
-              <Logo className="h-10 w-auto text-primary cursor-pointer hover:opacity-80 transition-opacity" />
+              <Logo className={typedUser?.role === 'contractor' ? 'h-10 w-auto text-white cursor-pointer hover:opacity-80 transition-opacity' : 'h-10 w-auto text-primary cursor-pointer hover:opacity-80 transition-opacity'} />
             </Link>
           </div>
           
@@ -178,10 +196,14 @@ export default function Header() {
             
             {isAuthenticated && typedUser && (
               <div className="flex items-center gap-3">
-                <Badge variant={typedUser.role === 'homeowner' ? 'default' : 'outline-primary'} size="default">
+                <Badge 
+                  variant={typedUser.role === 'homeowner' ? 'default' : 'outline'} 
+                  size="default"
+                  className={typedUser.role === 'contractor' ? 'border-white text-white' : ''}
+                >
                   {typedUser.role === 'homeowner' ? 'Homeowner' : 'Contractor'}
                 </Badge>
-                <span className="text-sm font-medium text-foreground hidden lg:inline">
+                <span className={`text-sm font-medium hidden lg:inline ${typedUser.role === 'contractor' ? 'text-white' : 'text-foreground'}`}>
                   {typedUser.firstName || typedUser.email}
                 </span>
                 <Button
@@ -190,6 +212,7 @@ export default function Header() {
                   onClick={handleLogout}
                   data-testid="button-logout"
                   aria-label="Sign out"
+                  className={typedUser.role === 'contractor' ? 'border-white text-white hover:bg-white/10' : ''}
                 >
                   <LogOut className="w-4 h-4" />
                   <span className="hidden sm:inline">Sign Out</span>
@@ -211,12 +234,12 @@ export default function Header() {
 
       {/* Trial Countdown Banner - For homeowners and contractors on trial */}
       {isTrialActive && (
-        <div className={typedUser?.role === 'homeowner' ? "bg-purple-50 border-b border-purple-200" : "bg-red-50 border-b border-red-200"}>
+        <div className={typedUser?.role === 'homeowner' ? "bg-purple-50 border-b border-purple-200" : "bg-blue-100 border-b border-blue-200"}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Calendar className={`h-4 w-4 ${typedUser?.role === 'homeowner' ? 'text-purple-600' : 'text-red-600'}`} />
-                <span className={`text-sm font-medium ${typedUser?.role === 'homeowner' ? 'text-purple-900' : 'text-red-900'}`}>
+                <Calendar className={`h-4 w-4 ${typedUser?.role === 'homeowner' ? 'text-purple-600' : 'text-blue-700'}`} />
+                <span className={`text-sm font-medium ${typedUser?.role === 'homeowner' ? 'text-purple-900' : 'text-blue-900'}`}>
                   <strong>{daysRemaining} day{daysRemaining !== 1 ? 's' : ''}</strong> remaining in your free trial
                 </span>
               </div>
@@ -224,7 +247,7 @@ export default function Header() {
                 variant="outline"
                 size="sm"
                 onClick={() => window.location.href = '/billing'}
-                className={typedUser?.role === 'homeowner' ? "border-purple-600 text-purple-600 hover:bg-purple-100" : "border-red-600 text-red-600 hover:bg-red-100"}
+                className={typedUser?.role === 'homeowner' ? "border-purple-600 text-purple-600 hover:bg-purple-100" : "border-blue-700 text-blue-700 hover:bg-blue-200"}
                 data-testid="button-trial-upgrade"
               >
                 <Crown className="h-3 w-3 mr-1" />
