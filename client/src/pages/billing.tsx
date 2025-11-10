@@ -11,7 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { User } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 
-type Plan = 'trial' | 'base' | 'premium' | 'grandfathered';
+type Plan = 'trial' | 'base' | 'premium' | 'contractor' | 'grandfathered';
 
 export default function Billing() {
   const { user } = useAuth();
@@ -31,13 +31,22 @@ export default function Billing() {
   // Calculate trial status
   const trialEndsAt = userData?.trialEndsAt ? new Date(userData.trialEndsAt) : null;
   const now = new Date();
-  const isTrialActive = trialEndsAt && trialEndsAt > now && userData?.subscriptionStatus === 'trial';
+  const isTrialActive = trialEndsAt && trialEndsAt > now && userData?.subscriptionStatus === 'trialing';
   const daysRemaining = trialEndsAt ? Math.ceil((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+
+  const isContractor = userData?.role === 'contractor';
 
   // Determine current plan
   const getCurrentPlan = (): Plan => {
     if (userData?.subscriptionStatus === 'grandfathered') return 'grandfathered';
     if (isTrialActive) return 'trial';
+    
+    // Contractors have their own plan type
+    if (isContractor) {
+      return 'contractor';
+    }
+    
+    // Homeowner plans based on maxHousesAllowed
     const maxHouses = userData?.maxHousesAllowed ?? 2;
     if (maxHouses === 10) return 'premium';
     return 'base';
@@ -68,21 +77,27 @@ export default function Billing() {
 
         {/* Page Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-2" style={{ color: '#2c0f5b' }}>
+          <h1 className="text-4xl font-bold mb-2" style={{ color: isContractor ? '#b91c1c' : '#2c0f5b' }}>
             Subscription & Billing
           </h1>
           <p className="text-gray-600">
-            Choose the plan that's right for your property management needs
+            {isContractor 
+              ? 'Manage your contractor subscription'
+              : 'Choose the plan that fits your property management needs'
+            }
           </p>
         </div>
 
         {/* Trial Alert */}
         {isTrialActive && (
-          <Alert className="mb-6 border-purple-200 bg-purple-50">
-            <Calendar className="h-4 w-4 text-purple-600" />
-            <AlertDescription className="text-purple-900">
+          <Alert className={`mb-6 ${isContractor ? 'border-red-200 bg-red-50' : 'border-purple-200 bg-purple-50'}`}>
+            <Calendar className={`h-4 w-4 ${isContractor ? 'text-red-600' : 'text-purple-600'}`} />
+            <AlertDescription className={isContractor ? 'text-red-900' : 'text-purple-900'}>
               <strong>Free Trial Active:</strong> You have {daysRemaining} day{daysRemaining !== 1 ? 's' : ''} remaining in your 14-day trial. 
-              Select a plan below to continue managing your properties after your trial ends.
+              {isContractor 
+                ? ' Subscribe below to continue accessing your contractor features after your trial ends.'
+                : ' Select a plan below to continue managing your properties after your trial ends.'
+              }
             </AlertDescription>
           </Alert>
         )}
@@ -91,21 +106,94 @@ export default function Billing() {
         {currentPlan !== 'trial' && (
           <Card className="mb-8">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2" style={{ color: '#2c0f5b' }}>
+              <CardTitle className="flex items-center gap-2" style={{ color: isContractor ? '#b91c1c' : '#2c0f5b' }}>
                 {currentPlan === 'grandfathered' && <Crown className="h-5 w-5 text-yellow-600" />}
-                Current Plan: {currentPlan === 'grandfathered' ? 'Grandfathered' : currentPlan === 'premium' ? 'Premium' : 'Base'}
+                Current Plan: {currentPlan === 'grandfathered' ? 'Grandfathered' : currentPlan === 'contractor' ? 'Contractor' : currentPlan === 'premium' ? 'Premium' : 'Base'}
               </CardTitle>
               <CardDescription>
-                {currentPlan === 'grandfathered' && "You have unlimited access to all features as a valued early adopter."}
+                {currentPlan === 'grandfathered' && (isContractor 
+                  ? "You have unlimited access to all contractor features as a valued early adopter."
+                  : "You have unlimited access to all features as a valued early adopter."
+                )}
                 {currentPlan === 'premium' && "You're on the Premium plan with access to up to 10 properties."}
                 {currentPlan === 'base' && "You're on the Base plan with access to up to 2 properties."}
+                {currentPlan === 'contractor' && "You're subscribed to the Contractor plan ($10/month)."}
               </CardDescription>
             </CardHeader>
           </Card>
         )}
 
-        {/* Plan Comparison */}
-        {currentPlan !== 'grandfathered' && (
+        {/* Contractor Plan Card */}
+        {isContractor && currentPlan !== 'grandfathered' && (
+          <div className="max-w-2xl mx-auto mb-8">
+            <Card className="relative">
+              <CardHeader>
+                <CardTitle className="text-2xl flex items-center gap-2" style={{ color: '#b91c1c' }}>
+                  <Crown className="h-6 w-6 text-red-600" />
+                  Contractor Plan
+                </CardTitle>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-bold" style={{ color: '#b91c1c' }}>$10</span>
+                  <span className="text-gray-600">/month</span>
+                </div>
+                <CardDescription>Professional contractor access to Home Base</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-3 mb-6">
+                  <li className="flex items-start gap-2">
+                    <Check className="h-5 w-5 text-red-600 mt-0.5" />
+                    <span><strong>14-day free trial</strong></span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="h-5 w-5 text-red-600 mt-0.5" />
+                    <span>Unlimited client connections</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="h-5 w-5 text-red-600 mt-0.5" />
+                    <span>Professional contractor profile</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="h-5 w-5 text-red-600 mt-0.5" />
+                    <span>Service record management</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="h-5 w-5 text-red-600 mt-0.5" />
+                    <span>Proposal creation tools</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="h-5 w-5 text-red-600 mt-0.5" />
+                    <span>Direct messaging with homeowners</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="h-5 w-5 text-red-600 mt-0.5" />
+                    <span>Company & team management</span>
+                  </li>
+                </ul>
+                {currentPlan === 'trial' && (
+                  <Button
+                    onClick={() => handleSubscribe('premium')}
+                    style={{ backgroundColor: '#b91c1c', color: 'white' }}
+                    className="w-full hover:opacity-90"
+                    data-testid="button-subscribe-contractor"
+                  >
+                    <Crown className="h-4 w-4 mr-2" />
+                    Subscribe Now
+                  </Button>
+                )}
+                {currentPlan === 'contractor' && (
+                  <div className="text-center p-4 bg-red-50 rounded-lg border border-red-200">
+                    <p className="text-sm text-red-900 font-medium">
+                      ✓ Active Subscription
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Homeowner Plan Comparison */}
+        {!isContractor && currentPlan !== 'grandfathered' && (
           <div className="grid md:grid-cols-2 gap-6 mb-8">
             {/* Base Plan */}
             <Card 

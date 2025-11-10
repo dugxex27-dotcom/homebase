@@ -76,10 +76,16 @@ async function upsertUser(claims: any) {
     userData.companyRole = existingUser.companyRole;
     userData.passwordHash = existingUser.passwordHash;
     userData.isPremium = existingUser.isPremium;
+    userData.trialEndsAt = existingUser.trialEndsAt;
+    userData.subscriptionStatus = existingUser.subscriptionStatus;
+    userData.maxHousesAllowed = existingUser.maxHousesAllowed;
   } else {
-    // New user defaults
+    // New user defaults - give all new users a 14-day trial
     userData.role = (global as any).pendingUserRole || 'homeowner';
     userData.zipCode = null;
+    userData.trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000); // 14 days from now
+    userData.subscriptionStatus = 'trialing';
+    userData.maxHousesAllowed = userData.role === 'homeowner' ? 2 : undefined; // Base plan: 2 houses during trial
   }
 
   await storage.upsertUser(userData);

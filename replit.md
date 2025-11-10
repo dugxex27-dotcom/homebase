@@ -61,7 +61,25 @@ Preferred communication style: Simple, everyday language.
     - **For Contractors**: Enter or scan homeowner-provided codes to validate connection and add service records. Upon validation, contractor receives homeowner details (name, email, zip code).
     - **Features**: Permanent codes (no expiration/usage limits), automatic generation on first access, QR code generation with qrcode library, one code per homeowner account
     - **Database**: Connection code stored in `users.connection_code` field with unique constraint
-- **API Endpoints**: Structured for contractors, products, houses, notifications, proposals, connection codes, search analytics, and admin functions.
+- **Billing and Subscription System**:
+    - **Homeowner Plans**:
+        - 14-day free trial for all new signups
+        - Base Plan: $3/month for up to 2 properties
+        - Premium Plan: $10/month for up to 10 properties
+        - Grandfathered users: Unlimited access for early adopters (3 users)
+    - **Contractor Plans**:
+        - 14-day free trial for all new signups
+        - Single plan: $10/month
+        - Grandfathered contractors: Unlimited access for early adopters (3 contractors)
+    - **Features**:
+        - Trial countdown banner in header (purple for homeowners, red for contractors)
+        - House limit enforcement at API level with proper error codes
+        - Upgrade dialog when hitting property limits
+        - Role-based billing page showing appropriate plans
+        - Trial preservation during subscription flows
+        - Database fields: `trialEndsAt`, `subscriptionStatus` ('trialing' | 'active' | 'grandfathered'), `maxHousesAllowed`
+    - **Pending**: Stripe integration (requires API keys)
+- **API Endpoints**: Structured for contractors, products, houses, notifications, proposals, connection codes, search analytics, billing/subscriptions, and admin functions.
 
 ## External Dependencies
 

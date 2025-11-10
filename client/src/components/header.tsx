@@ -27,20 +27,20 @@ export default function Header() {
   const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || '').split(',').map((e: string) => e.trim()).filter(Boolean);
   const isAdmin = typedUser?.email && adminEmails.includes(typedUser.email);
 
-  // Fetch user details for trial info (only for homeowners)
+  // Fetch user details for trial info (both homeowners and contractors)
   const { data: userData } = useQuery<User>({
     queryKey: ['/api/user'],
     queryFn: async () => {
       const res = await apiRequest('/api/user', 'GET');
       return res.json();
     },
-    enabled: !!user && typedUser?.role === 'homeowner',
+    enabled: !!user && (typedUser?.role === 'homeowner' || typedUser?.role === 'contractor'),
   });
 
-  // Calculate trial status (only for homeowners)
+  // Calculate trial status (both homeowners and contractors)
   const trialEndsAt = userData?.trialEndsAt ? new Date(userData.trialEndsAt) : null;
   const now = new Date();
-  const isTrialActive = trialEndsAt && trialEndsAt > now && userData?.subscriptionStatus === 'trial';
+  const isTrialActive = trialEndsAt && trialEndsAt > now && userData?.subscriptionStatus === 'trialing';
   const daysRemaining = trialEndsAt ? Math.ceil((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
 
   const handleLogout = async () => {
@@ -209,14 +209,14 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Trial Countdown Banner - Only for homeowners on trial */}
-      {isTrialActive && typedUser?.role === 'homeowner' && (
-        <div className="bg-purple-50 border-b border-purple-200">
+      {/* Trial Countdown Banner - For homeowners and contractors on trial */}
+      {isTrialActive && (
+        <div className={typedUser?.role === 'homeowner' ? "bg-purple-50 border-b border-purple-200" : "bg-red-50 border-b border-red-200"}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-purple-600" />
-                <span className="text-sm text-purple-900 font-medium">
+                <Calendar className={`h-4 w-4 ${typedUser?.role === 'homeowner' ? 'text-purple-600' : 'text-red-600'}`} />
+                <span className={`text-sm font-medium ${typedUser?.role === 'homeowner' ? 'text-purple-900' : 'text-red-900'}`}>
                   <strong>{daysRemaining} day{daysRemaining !== 1 ? 's' : ''}</strong> remaining in your free trial
                 </span>
               </div>
@@ -224,11 +224,11 @@ export default function Header() {
                 variant="outline"
                 size="sm"
                 onClick={() => window.location.href = '/billing'}
-                className="border-purple-600 text-purple-600 hover:bg-purple-100"
+                className={typedUser?.role === 'homeowner' ? "border-purple-600 text-purple-600 hover:bg-purple-100" : "border-red-600 text-red-600 hover:bg-red-100"}
                 data-testid="button-trial-upgrade"
               >
                 <Crown className="h-3 w-3 mr-1" />
-                Choose Plan
+                {typedUser?.role === 'homeowner' ? 'Choose Plan' : 'Subscribe Now'}
               </Button>
             </div>
           </div>

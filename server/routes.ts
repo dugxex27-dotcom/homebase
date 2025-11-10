@@ -658,10 +658,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const bcrypt = await import('bcryptjs');
       const passwordHash = await bcrypt.hash(password, 10);
 
-      // Create user with trial period for homeowners
-      const trialEndsAt = role === 'homeowner' 
-        ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) // 14 days from now
-        : undefined;
+      // Create user with trial period (14 days for both homeowners and contractors)
+      const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000); // 14 days from now
         
       let user = await storage.createUserWithPassword({
         email,
@@ -672,7 +670,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         zipCode,
         trialEndsAt,
         maxHousesAllowed: role === 'homeowner' ? 2 : undefined, // Base plan: 2 houses during trial
-        subscriptionStatus: role === 'homeowner' ? 'trialing' : undefined
+        subscriptionStatus: 'trialing' // Both homeowners and contractors start with trial
       });
 
       // Handle contractor company setup - always create a new company
