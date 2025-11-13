@@ -30,7 +30,7 @@ Preferred communication style: Simple, everyday language.
 - **Security**: Enterprise-grade security with Helmet.js, `express-rate-limit`, CORS validation, secure session cookies, SQL injection/XSS pattern detection, and Zod for input validation.
 
 ### Key Features and Specifications
-- **User Management**: Distinct Homeowner and Contractor roles.
+- **User Management**: Three distinct user roles (Homeowner, Contractor, Real Estate Agent).
 - **Authentication System**:
     - Email/password registration with bcrypt hashing.
     - Google OAuth integration via Replit Auth, including a complete-profile flow for OAuth users and data preservation.
@@ -79,7 +79,46 @@ Preferred communication style: Simple, everyday language.
         - Trial preservation during subscription flows
         - Database fields: `trialEndsAt`, `subscriptionStatus` ('trialing' | 'active' | 'grandfathered'), `maxHousesAllowed`
     - **Pending**: Stripe integration (requires API keys)
-- **API Endpoints**: Structured for contractors, products, houses, notifications, proposals, connection codes, search analytics, billing/subscriptions, and admin functions.
+- **Real Estate Agent Affiliate System**:
+    - **Agent Role**: Third user type focused solely on earning referral commissions (no subscription required)
+    - **Referral Tracking**:
+        - Auto-generated unique 8-character referral codes for each agent (format: ABCDEFGHJKLMNPQRSTUVWXYZ23456789)
+        - Shareable referral links with QR code generation (using qrcode library)
+        - Referral capture via ?ref=CODE URL parameter during homeowner/contractor signup
+        - Automatic creation of affiliate_referral records linking agent to referred user
+    - **Payout Structure**:
+        - $10 flat commission per referred signup after 4 consecutive months of active subscription
+        - Consecutive month tracking via subscription_cycle_events table
+        - Payout eligibility automatically calculated when consecutiveMonthsPaid >= 4
+        - Automated payouts via Stripe Connect (pending Stripe API keys)
+    - **Agent Dashboard**:
+        - Total referrals, active subscribers, trial users count
+        - Total earnings (sum of paid affiliate payouts)
+        - Pending earnings (eligible but unpaid referrals)
+        - Detailed referral list with status badges (trial, active, voided)
+        - Progress tracking toward 4-month payout threshold
+        - Shareable referral link with copy/share buttons
+        - QR code generation and download for offline sharing
+    - **Database Tables**:
+        - `agent_profiles`: Agent metadata, commission rate (default 10%), Stripe Connect account ID
+        - `affiliate_referrals`: Links agents to referred users with status, signup date, trial end, consecutive months paid
+        - `subscription_cycle_events`: Tracks each billing cycle for consecutive month calculation
+        - `affiliate_payouts`: Payment records with amount, status, Stripe transfer ID, payout date
+    - **API Endpoints**:
+        - GET /api/agent/profile - Current agent's profile
+        - GET /api/agent/referrals - All referrals with user details
+        - GET /api/agent/stats - Aggregated earnings and referral statistics
+        - GET /api/referral/validate/:code - Public endpoint for referral code validation
+    - **Signup Flow**:
+        - Landing page with "Real Estate Agent" card routes to /signin?role=agent
+        - Agent signup auto-generates referral code, creates agent profile, skips trial/subscription
+        - Homeowner/contractor signup with ?ref=CODE validates referral and creates affiliate_referral record
+        - Referral status starts as 'trial' and transitions to 'active' after first payment
+    - **Future Automation** (requires Stripe webhooks):
+        - Automatic subscription cycle event logging on successful payments
+        - Consecutive month counter increment/reset based on payment history
+        - Automatic payout creation and Stripe Transfer when referral hits 4 months
+- **API Endpoints**: Structured for contractors, products, houses, notifications, proposals, connection codes, search analytics, billing/subscriptions, agent/affiliate system, and admin functions.
 
 ## External Dependencies
 
