@@ -712,6 +712,82 @@ export default function AgentAccount() {
             </CardContent>
           </Card>
         )}
+
+        {/* Cancel Account */}
+        <Card className="border-red-200 shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-red-600">Cancel Account</CardTitle>
+            <CardDescription className="text-gray-600 dark:text-gray-400">
+              Permanently cancel your real estate agent account. This action cannot be undone.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="destructive" data-testid="button-cancel-account">
+                  Cancel My Account
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Are you absolutely sure?</DialogTitle>
+                  <DialogDescription>
+                    This will permanently cancel your Home Base agent account. You will lose access to:
+                    <ul className="list-disc list-inside mt-2 space-y-1">
+                      <li>Your referral code and earnings</li>
+                      <li>All referral tracking and statistics</li>
+                      <li>Pending commission payouts</li>
+                      <li>Your verification status</li>
+                    </ul>
+                    <p className="mt-3 font-semibold text-red-600">
+                      This action cannot be undone.
+                    </p>
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex justify-end gap-2">
+                  <DialogTrigger asChild>
+                    <Button variant="outline" data-testid="button-cancel-account-dialog-no">
+                      No, Keep My Account
+                    </Button>
+                  </DialogTrigger>
+                  <Button 
+                    variant="destructive"
+                    onClick={async () => {
+                      try {
+                        const response = await fetch('/api/account', { method: 'DELETE' });
+                        if (response.ok) {
+                          toast({
+                            title: "Account Cancelled",
+                            description: "Your account has been cancelled. You will be redirected to the home page.",
+                          });
+                          setTimeout(() => {
+                            window.location.href = '/';
+                          }, 2000);
+                        } else {
+                          const data = await response.json();
+                          toast({
+                            title: "Error",
+                            description: data.message || "Failed to cancel account",
+                            variant: "destructive",
+                          });
+                        }
+                      } catch (error) {
+                        toast({
+                          title: "Error",
+                          description: "An error occurred while cancelling your account",
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                    data-testid="button-cancel-account-dialog-yes"
+                  >
+                    Yes, Cancel My Account
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );
