@@ -16,6 +16,9 @@ import ServiceRecords from "./pages/service-records";
 import CustomerServiceRecords from "./pages/customer-service-records";
 import HomeownerServiceRecords from "./pages/homeowner-service-records";
 import SignIn from "./pages/signin";
+import SignInHomeowner from "./pages/signin-homeowner";
+import SignInContractor from "./pages/signin-contractor";
+import SignInAgent from "./pages/signin-agent";
 import HomeownerAccount from "./pages/homeowner-account";
 import Messages from "./pages/messages";
 import MyHome from "./pages/my-home";
@@ -61,6 +64,9 @@ function Router() {
   if (!isAuthenticated) {
     return (
       <Switch>
+        <Route path="/signin/homeowner" component={SignInHomeowner} />
+        <Route path="/signin/contractor" component={SignInContractor} />
+        <Route path="/signin/agent" component={SignInAgent} />
         <Route path="/signin" component={SignIn} />
         <Route path="/test-upload" component={TestUpload} />
         <Route path="/complete-profile" component={CompleteProfile} />
