@@ -66,13 +66,13 @@ export default function Header() {
       if (response.ok) {
         // Clear all cached queries
         queryClient.clear();
-        // Redirect to signin page
-        window.location.href = '/signin';
+        // Redirect to landing page
+        window.location.href = '/';
       }
     } catch (error) {
       console.error('Logout error:', error);
-      // Fallback: redirect to signin
-      window.location.href = '/signin';
+      // Fallback: redirect to landing page
+      window.location.href = '/';
     }
   };
 
