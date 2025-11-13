@@ -4968,6 +4968,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     "Windows & Door Installation"
   ];
 
+  // Topic validation helper for AI requests
+  const isHomeMaintenanceRelated = (text: string): { valid: boolean; reason?: string } => {
+    const normalizedText = text.toLowerCase().trim();
+    
+    // Allowed topic keywords - home, construction, maintenance related
+    const allowedKeywords = [
+      'home', 'house', 'property', 'room', 'wall', 'floor', 'ceiling', 'roof', 'foundation',
+      'plumbing', 'electrical', 'hvac', 'heating', 'cooling', 'air', 'water', 'leak', 'drain',
+      'contractor', 'repair', 'fix', 'broken', 'install', 'replace', 'maintenance', 'remodel',
+      'construction', 'building', 'renovation', 'improvement', 'upgrade', 'service',
+      'window', 'door', 'siding', 'gutter', 'deck', 'patio', 'garage', 'basement', 'attic',
+      'kitchen', 'bathroom', 'appliance', 'fixture', 'paint', 'drywall', 'insulation',
+      'landscaping', 'lawn', 'yard', 'tree', 'fence', 'concrete', 'masonry', 'brick',
+      'flooring', 'carpet', 'tile', 'wood', 'cabinet', 'counter', 'sink', 'toilet', 'shower',
+      'furnace', 'boiler', 'ac', 'thermostat', 'duct', 'vent', 'pipe', 'wiring', 'outlet',
+      'smart home', 'security system', 'camera', 'alarm', 'detector', 'smoke', 'carbon monoxide',
+      'mold', 'moisture', 'humidity', 'ventilation', 'energy', 'efficiency', 'solar'
+    ];
+    
+    // Blocked topic keywords - clearly off-topic
+    const blockedKeywords = [
+      'weather forecast', 'stock market', 'cryptocurrency', 'bitcoin', 'recipe', 'cooking',
+      'joke', 'funny', 'entertainment', 'movie', 'music', 'sports', 'politics', 'election',
+      'health advice', 'medical', 'doctor', 'medicine', 'disease', 'symptom',
+      'legal advice', 'lawyer', 'court', 'lawsuit', 'tax', 'accounting',
+      'relationship', 'dating', 'marriage', 'therapy', 'mental health',
+      'travel', 'vacation', 'hotel', 'flight', 'restaurant', 'shopping'
+    ];
+    
+    // Check for blocked topics first
+    for (const blocked of blockedKeywords) {
+      if (normalizedText.includes(blocked)) {
+        return { 
+          valid: false, 
+          reason: 'This question appears to be about topics outside home maintenance and construction. Please ask about home repairs, maintenance, or contractor services.' 
+        };
+      }
+    }
+    
+    // Check for allowed topics
+    const hasAllowedKeyword = allowedKeywords.some(keyword => normalizedText.includes(keyword));
+    
+    // If very short and no allowed keywords, likely off-topic
+    if (normalizedText.length < 20 && !hasAllowedKeyword) {
+      return { 
+        valid: false, 
+        reason: 'Please describe a specific home maintenance, repair, or construction issue you need help with.' 
+      };
+    }
+    
+    // If longer text without any allowed keywords, probably off-topic
+    if (normalizedText.length >= 20 && !hasAllowedKeyword) {
+      return { 
+        valid: false, 
+        reason: 'I can only help with home maintenance, repair, and contractor-related questions. Please describe a home-related issue.' 
+      };
+    }
+    
+    return { valid: true };
+  };
+
   app.post('/api/ai/contractor-recommendation', isAuthenticated, async (req: any, res) => {
     try {
       const { problem } = req.body;
@@ -4978,9 +5039,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Validate topic before making API call
+      const topicValidation = isHomeMaintenanceRelated(problem);
+      if (!topicValidation.valid) {
+        console.log('[AI] Rejected off-topic query');
+        return res.status(400).json({ 
+          code: 'OFF_TOPIC',
+          message: topicValidation.reason,
+          examples: [
+            'My toilet keeps running and won\'t stop',
+            'Water stains on my ceiling',
+            'Need to remodel my kitchen',
+            'HVAC system not cooling properly'
+          ]
+        });
+      }
+
       console.log('[AI] Processing contractor recommendation request');
 
-      const systemPrompt = `You are a helpful home maintenance expert assistant. Your job is to analyze home problems and recommend which type of contractor the homeowner should contact.
+      const systemPrompt = `You are a HOME MAINTENANCE EXPERT ASSISTANT. Your ONLY purpose is to help homeowners with home repair, maintenance, and construction issues.
+
+**STRICT TOPIC BOUNDARIES:**
+✅ ALLOWED TOPICS ONLY:
+- Home repairs, maintenance, and construction issues
+- Contractor recommendations for home services
+- Building, remodeling, renovation questions
+- Appliance installation and repair
+- Plumbing, electrical, HVAC, roofing issues
+- Landscaping, lawn care, outdoor structures
+- Smart home devices related to home infrastructure
+- Home safety and security systems
+- Energy efficiency and home improvements
+
+❌ REFUSE ALL OTHER TOPICS:
+- Weather forecasts, news, current events
+- Recipes, cooking, food preparation
+- Entertainment, jokes, games, trivia
+- Medical, health, or legal advice
+- Financial, tax, or investment advice
+- Relationship or personal advice
+- General knowledge not related to homes
+- Any topic outside home/construction/maintenance
+
+**REFUSAL PROTOCOL:**
+If the question is clearly off-topic, respond with this JSON format:
+{
+  "possibleCauses": "This question is outside my area of expertise.",
+  "recommendedServices": [],
+  "explanation": "I can only help with home maintenance, repair, and contractor-related questions. Please ask about specific home issues like plumbing problems, electrical repairs, remodeling projects, or maintenance needs."
+}
+
+**FOR BORDERLINE CASES:**
+If unclear whether the question relates to home maintenance, ask a clarifying question in the explanation field before refusing.
+
+**YOUR ACTUAL JOB (for valid home questions):**
+You are a helpful home maintenance expert assistant. Your job is to analyze home problems and recommend which type of contractor the homeowner should contact.
 
 Available contractor service types:
 ${AVAILABLE_SERVICES.join(', ')}

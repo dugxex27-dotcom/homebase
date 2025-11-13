@@ -28,9 +28,26 @@ export default function AIContractorHelp() {
         'POST',
         { problem: problemDescription }
       );
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw errorData;
+      }
+      
       return response.json();
     },
     onSuccess: (data: AIRecommendation) => {
+      // Check if this is a refusal from AI
+      if (data.recommendedServices && data.recommendedServices.length === 0) {
+        toast({
+          title: "Off-Topic Question",
+          description: data.explanation || "Please ask about home maintenance or contractor-related issues.",
+          variant: "destructive",
+        });
+        setRecommendation(null);
+        return;
+      }
+      
       setRecommendation(data);
       toast({
         title: "Recommendation Ready",
@@ -38,6 +55,26 @@ export default function AIContractorHelp() {
       });
     },
     onError: (error: any) => {
+      // Handle OFF_TOPIC errors with helpful examples
+      if (error.code === 'OFF_TOPIC') {
+        toast({
+          title: "Please Ask About Home Issues",
+          description: error.message || "I can only help with home maintenance and contractor-related questions.",
+          variant: "destructive",
+        });
+        
+        // Show examples in the UI
+        if (error.examples && error.examples.length > 0) {
+          setTimeout(() => {
+            toast({
+              title: "Example Questions:",
+              description: error.examples.slice(0, 2).join('\n• '),
+            });
+          }, 500);
+        }
+        return;
+      }
+      
       toast({
         title: "Error",
         description: error.message || "Failed to get recommendation. Please try again.",
