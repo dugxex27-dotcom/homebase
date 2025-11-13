@@ -1849,6 +1849,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Agent verification routes
+  app.get("/api/agent/verification-status", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.user?.id;
+      const userRole = req.session?.user?.role;
+
+      if (userRole !== 'agent') {
+        return res.status(403).json({ message: "Forbidden: Agent access only" });
+      }
+
+      const status = await storage.getAgentVerificationStatus(userId);
+      if (!status) {
+        return res.status(404).json({ message: "Verification status not found" });
+      }
+
+      res.json(status);
+    } catch (error) {
+      console.error("Error fetching verification status:", error);
+      res.status(500).json({ message: "Failed to fetch verification status" });
+    }
+  });
+
+  app.post("/api/agent/submit-verification", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.user?.id;
+      const userRole = req.session?.user?.role;
+
+      if (userRole !== 'agent') {
+        return res.status(403).json({ message: "Forbidden: Agent access only" });
+      }
+
+      const { licenseNumber, licenseState, licenseExpiration, stateIdStorageKey, stateIdOriginalFilename, stateIdMimeType, stateIdFileSize, stateIdChecksum } = req.body;
+
+      if (!licenseNumber || !licenseState || !licenseExpiration || !stateIdStorageKey) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      const agentProfile = await storage.getAgentProfile(userId);
+      if (!agentProfile) {
+        return res.status(404).json({ message: "Agent profile not found" });
+      }
+
+      const updated = await storage.submitAgentVerification(userId, {
+        licenseNumber,
+        licenseState,
+        licenseExpiration: new Date(licenseExpiration),
+        stateIdStorageKey,
+        stateIdOriginalFilename,
+        stateIdMimeType,
+        stateIdFileSize,
+        stateIdChecksum,
+      });
+
+      // Create audit record
+      await storage.createVerificationAudit({
+        agentProfileId: agentProfile.id,
+        agentId: userId,
+        action: 'submitted',
+        previousStatus: agentProfile.verificationStatus,
+        newStatus: 'pending_review',
+        notes: 'Agent submitted verification request',
+        metadata: { userAgent: req.headers['user-agent'], ip: req.ip },
+      });
+
+      res.json({ message: "Verification submitted successfully", profile: updated });
+    } catch (error) {
+      console.error("Error submitting verification:", error);
+      res.status(500).json({ message: "Failed to submit verification" });
+    }
+  });
+
   app.get("/api/referral/validate/:code", async (req, res) => {
     try {
       const { code } = req.params;

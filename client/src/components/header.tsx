@@ -199,6 +199,15 @@ export default function Header() {
                 >
                   Dashboard
                 </Link>
+                <Link 
+                  href="/agent-account" 
+                  className={getNavLinkClass(location === '/agent-account')}
+                  aria-current={location === '/agent-account' ? 'page' : undefined}
+                  data-testid="link-agent-account"
+                >
+                  <UserIcon className="w-4 h-4" />
+                  Account
+                </Link>
               </>
             )}
           </nav>

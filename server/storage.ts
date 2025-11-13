@@ -1,4 +1,4 @@
-import { type Contractor, type InsertContractor, type Company, type InsertCompany, type CompanyInviteCode, type InsertCompanyInviteCode, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type HomeApplianceManual, type InsertHomeApplianceManual, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type HomeownerConnectionCode, type InsertHomeownerConnectionCode, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics, type TaskOverride, type InsertTaskOverride, type Country, type InsertCountry, type Region, type InsertRegion, type ClimateZone, type InsertClimateZone, type RegulatoryBody, type InsertRegulatoryBody, type RegionalMaintenanceTask, type InsertRegionalMaintenanceTask, type TaskCompletion, type InsertTaskCompletion, type Achievement, type InsertAchievement, type AchievementDefinition, type InsertAchievementDefinition, type UserAchievement, type InsertUserAchievement, type SearchAnalytics, type InsertSearchAnalytics, type InviteCode, type InsertInviteCode, type AgentProfile, type InsertAgentProfile, type AffiliateReferral, type InsertAffiliateReferral, type SubscriptionCycleEvent, type InsertSubscriptionCycleEvent, type AffiliatePayout, type InsertAffiliatePayout, users, contractors, companies, contractorLicenses, countries, regions, climateZones, regulatoryBodies, regionalMaintenanceTasks, taskCompletions, achievements, achievementDefinitions, userAchievements, maintenanceLogs, searchAnalytics, inviteCodes, agentProfiles, affiliateReferrals, subscriptionCycleEvents, affiliatePayouts, houses, homeSystems, customMaintenanceTasks, taskOverrides, serviceRecords, homeownerConnectionCodes, conversations, messages, proposals, houseTransfers } from "@shared/schema";
+import { type Contractor, type InsertContractor, type Company, type InsertCompany, type CompanyInviteCode, type InsertCompanyInviteCode, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type HomeApplianceManual, type InsertHomeApplianceManual, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type HomeownerConnectionCode, type InsertHomeownerConnectionCode, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics, type TaskOverride, type InsertTaskOverride, type Country, type InsertCountry, type Region, type InsertRegion, type ClimateZone, type InsertClimateZone, type RegulatoryBody, type InsertRegulatoryBody, type RegionalMaintenanceTask, type InsertRegionalMaintenanceTask, type TaskCompletion, type InsertTaskCompletion, type Achievement, type InsertAchievement, type AchievementDefinition, type InsertAchievementDefinition, type UserAchievement, type InsertUserAchievement, type SearchAnalytics, type InsertSearchAnalytics, type InviteCode, type InsertInviteCode, type AgentProfile, type InsertAgentProfile, type AffiliateReferral, type InsertAffiliateReferral, type SubscriptionCycleEvent, type InsertSubscriptionCycleEvent, type AffiliatePayout, type InsertAffiliatePayout, users, contractors, companies, contractorLicenses, countries, regions, climateZones, regulatoryBodies, regionalMaintenanceTasks, taskCompletions, achievements, achievementDefinitions, userAchievements, maintenanceLogs, searchAnalytics, inviteCodes, agentProfiles, affiliateReferrals, subscriptionCycleEvents, affiliatePayouts, agentVerificationAudits, houses, homeSystems, customMaintenanceTasks, taskOverrides, serviceRecords, homeownerConnectionCodes, conversations, messages, proposals, houseTransfers } from "@shared/schema";
 import { randomUUID, randomBytes } from "crypto";
 import { db } from "./db";
 import { eq, ne, isNotNull, and, or, isNull, not, desc } from "drizzle-orm";
@@ -336,6 +336,30 @@ export interface IStorage {
     totalEarnings: number;
     pendingEarnings: number;
   }>;
+  
+  // Agent verification operations
+  submitAgentVerification(agentId: string, data: {
+    licenseNumber: string;
+    licenseState: string;
+    licenseExpiration: Date;
+    stateIdStorageKey: string;
+    stateIdOriginalFilename: string;
+    stateIdMimeType: string;
+    stateIdFileSize: number;
+    stateIdChecksum: string;
+  }): Promise<AgentProfile | undefined>;
+  getAgentVerificationStatus(agentId: string): Promise<{
+    verificationStatus: string;
+    licenseNumber?: string | null;
+    licenseState?: string | null;
+    licenseExpiration?: Date | null;
+    verificationRequestedAt?: Date | null;
+    reviewNotes?: string | null;
+  } | undefined>;
+  
+  // Agent verification audit operations
+  createVerificationAudit(audit: InsertAgentVerificationAudit): Promise<AgentVerificationAudit>;
+  getVerificationAudits(agentId: string): Promise<AgentVerificationAudit[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -3321,6 +3345,79 @@ export class MemStorage implements IStorage {
       .where(eq(agentProfiles.agentId, agentId))
       .returning();
     return updated;
+  }
+
+  // Agent verification operations
+  async submitAgentVerification(agentId: string, data: {
+    licenseNumber: string;
+    licenseState: string;
+    licenseExpiration: Date;
+    stateIdStorageKey: string;
+    stateIdOriginalFilename: string;
+    stateIdMimeType: string;
+    stateIdFileSize: number;
+    stateIdChecksum: string;
+  }): Promise<AgentProfile | undefined> {
+    const now = new Date();
+    const [updated] = await db
+      .update(agentProfiles)
+      .set({
+        licenseNumber: data.licenseNumber,
+        licenseState: data.licenseState,
+        licenseExpiration: data.licenseExpiration,
+        stateIdStorageKey: data.stateIdStorageKey,
+        stateIdOriginalFilename: data.stateIdOriginalFilename,
+        stateIdMimeType: data.stateIdMimeType,
+        stateIdFileSize: data.stateIdFileSize,
+        stateIdChecksum: data.stateIdChecksum,
+        stateIdUploadedAt: now,
+        verificationStatus: 'pending_review',
+        verificationRequestedAt: now,
+        updatedAt: now,
+      })
+      .where(eq(agentProfiles.agentId, agentId))
+      .returning();
+    return updated;
+  }
+
+  async getAgentVerificationStatus(agentId: string): Promise<{
+    verificationStatus: string;
+    licenseNumber?: string | null;
+    licenseState?: string | null;
+    licenseExpiration?: Date | null;
+    verificationRequestedAt?: Date | null;
+    reviewNotes?: string | null;
+  } | undefined> {
+    const [profile] = await db
+      .select({
+        verificationStatus: agentProfiles.verificationStatus,
+        licenseNumber: agentProfiles.licenseNumber,
+        licenseState: agentProfiles.licenseState,
+        licenseExpiration: agentProfiles.licenseExpiration,
+        verificationRequestedAt: agentProfiles.verificationRequestedAt,
+        reviewNotes: agentProfiles.reviewNotes,
+      })
+      .from(agentProfiles)
+      .where(eq(agentProfiles.agentId, agentId))
+      .limit(1);
+    return profile;
+  }
+
+  // Agent verification audit operations
+  async createVerificationAudit(audit: InsertAgentVerificationAudit): Promise<AgentVerificationAudit> {
+    const [created] = await db
+      .insert(agentVerificationAudits)
+      .values(audit)
+      .returning();
+    return created;
+  }
+
+  async getVerificationAudits(agentId: string): Promise<AgentVerificationAudit[]> {
+    return await db
+      .select()
+      .from(agentVerificationAudits)
+      .where(eq(agentVerificationAudits.agentId, agentId))
+      .orderBy(desc(agentVerificationAudits.createdAt));
   }
 
   // Affiliate referral operations

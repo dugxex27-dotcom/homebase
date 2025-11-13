@@ -1061,10 +1061,35 @@ export const agentProfiles = pgTable("agent_profiles", {
   agentId: varchar("agent_id").notNull().unique().references(() => users.id, { onDelete: 'cascade' }),
   stripeConnectAccountId: varchar("stripe_connect_account_id"),
   stripeOnboardingComplete: boolean("stripe_onboarding_complete").notNull().default(false),
+  
+  // Verification fields
+  licenseNumber: text("license_number"),
+  licenseState: text("license_state"),
+  licenseExpiration: timestamp("license_expiration"),
+  verificationStatus: text("verification_status").notNull().default("not_submitted"), // 'not_submitted', 'pending_review', 'approved', 'rejected', 'resubmit_required'
+  
+  // State ID document metadata
+  stateIdStorageKey: text("state_id_storage_key"), // Object storage reference
+  stateIdOriginalFilename: text("state_id_original_filename"),
+  stateIdMimeType: text("state_id_mime_type"),
+  stateIdFileSize: integer("state_id_file_size"),
+  stateIdUploadedAt: timestamp("state_id_uploaded_at"),
+  stateIdChecksum: text("state_id_checksum"),
+  
+  // Verification timestamps
+  verificationRequestedAt: timestamp("verification_requested_at"),
+  verifiedAt: timestamp("verified_at"),
+  lastRejectedAt: timestamp("last_rejected_at"),
+  
+  // Admin review fields
+  reviewedByAdminId: varchar("reviewed_by_admin_id").references(() => users.id, { onDelete: 'set null' }),
+  reviewNotes: text("review_notes"),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   index("IDX_agent_profiles_agent_id").on(table.agentId),
+  index("IDX_agent_profiles_verification_status").on(table.verificationStatus),
 ]);
 
 export const insertAgentProfileSchema = createInsertSchema(agentProfiles).omit({ id: true, createdAt: true, updatedAt: true });
@@ -1139,3 +1164,27 @@ export const affiliatePayouts = pgTable("affiliate_payouts", {
 export const insertAffiliatePayoutSchema = createInsertSchema(affiliatePayouts).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertAffiliatePayout = z.infer<typeof insertAffiliatePayoutSchema>;
 export type AffiliatePayout = typeof affiliatePayouts.$inferSelect;
+
+// Agent verification audits table - tracks all verification review actions for compliance
+export const agentVerificationAudits = pgTable("agent_verification_audits", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentProfileId: varchar("agent_profile_id").notNull().references(() => agentProfiles.id, { onDelete: 'cascade' }),
+  agentId: varchar("agent_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  action: text("action").notNull(), // 'submitted', 'approved', 'rejected', 'resubmit_requested'
+  previousStatus: text("previous_status").notNull(),
+  newStatus: text("new_status").notNull(),
+  reviewedByAdminId: varchar("reviewed_by_admin_id").references(() => users.id, { onDelete: 'set null' }),
+  reviewerEmail: text("reviewer_email"), // Store email for audit even if admin deleted
+  notes: text("notes"),
+  metadata: jsonb("metadata"), // Store additional context (IP, user agent, etc.)
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_agent_verification_audits_agent_id").on(table.agentId),
+  index("IDX_agent_verification_audits_profile_id").on(table.agentProfileId),
+  index("IDX_agent_verification_audits_action").on(table.action),
+  index("IDX_agent_verification_audits_created_at").on(table.createdAt),
+]);
+
+export const insertAgentVerificationAuditSchema = createInsertSchema(agentVerificationAudits).omit({ id: true, createdAt: true });
+export type InsertAgentVerificationAudit = z.infer<typeof insertAgentVerificationAuditSchema>;
+export type AgentVerificationAudit = typeof agentVerificationAudits.$inferSelect;
