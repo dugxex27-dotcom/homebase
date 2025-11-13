@@ -122,7 +122,7 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
-  role: text("role").notNull().default("homeowner"), // "homeowner" or "contractor"
+  role: text("role").notNull().default("homeowner"), // "homeowner", "contractor", or "agent"
   passwordHash: varchar("password_hash"),
   phone: varchar("phone", { length: 20 }),
   address: text("address"),
@@ -1054,3 +1054,88 @@ export const inviteCodes = pgTable("invite_codes", {
 export const insertInviteCodeSchema = createInsertSchema(inviteCodes).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertInviteCode = z.infer<typeof insertInviteCodeSchema>;
 export type InviteCode = typeof inviteCodes.$inferSelect;
+
+// Agent profiles table for real estate agents (affiliates)
+export const agentProfiles = pgTable("agent_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull().unique().references(() => users.id, { onDelete: 'cascade' }),
+  stripeConnectAccountId: varchar("stripe_connect_account_id"),
+  stripeOnboardingComplete: boolean("stripe_onboarding_complete").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_agent_profiles_agent_id").on(table.agentId),
+]);
+
+export const insertAgentProfileSchema = createInsertSchema(agentProfiles).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertAgentProfile = z.infer<typeof insertAgentProfileSchema>;
+export type AgentProfile = typeof agentProfiles.$inferSelect;
+
+// Affiliate referrals table - tracks each referral made by an agent
+export const affiliateReferrals = pgTable("affiliate_referrals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  referredUserId: varchar("referred_user_id").notNull().unique().references(() => users.id, { onDelete: 'cascade' }),
+  referredUserRole: text("referred_user_role").notNull(), // 'homeowner' or 'contractor'
+  referralCode: varchar("referral_code").notNull(), // The agent's referral code used
+  status: text("status").notNull().default("trial"), // 'trial', 'month_1', 'month_2', 'month_3', 'eligible', 'payout_pending', 'paid', 'voided'
+  signupDate: timestamp("signup_date").notNull().defaultNow(),
+  trialEndDate: timestamp("trial_end_date"),
+  firstPaymentDate: timestamp("first_payment_date"),
+  consecutiveMonthsPaid: integer("consecutive_months_paid").notNull().default(0),
+  lastPaymentDate: timestamp("last_payment_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_affiliate_referrals_agent_id").on(table.agentId),
+  index("IDX_affiliate_referrals_referred_user_id").on(table.referredUserId),
+  index("IDX_affiliate_referrals_status").on(table.status),
+]);
+
+export const insertAffiliateReferralSchema = createInsertSchema(affiliateReferrals).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertAffiliateReferral = z.infer<typeof insertAffiliateReferralSchema>;
+export type AffiliateReferral = typeof affiliateReferrals.$inferSelect;
+
+// Subscription cycle events - tracks individual payment cycles for consecutive month calculation
+export const subscriptionCycleEvents = pgTable("subscription_cycle_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  stripeSubscriptionId: varchar("stripe_subscription_id"),
+  stripeInvoiceId: varchar("stripe_invoice_id").unique(),
+  periodStart: timestamp("period_start").notNull(),
+  periodEnd: timestamp("period_end").notNull(),
+  status: text("status").notNull(), // 'paid', 'failed', 'voided'
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_subscription_cycle_events_user_id").on(table.userId),
+  index("IDX_subscription_cycle_events_subscription_id").on(table.stripeSubscriptionId),
+  index("IDX_subscription_cycle_events_status").on(table.status),
+  index("IDX_subscription_cycle_events_user_period").on(table.userId, table.periodStart),
+]);
+
+export const insertSubscriptionCycleEventSchema = createInsertSchema(subscriptionCycleEvents).omit({ id: true, createdAt: true });
+export type InsertSubscriptionCycleEvent = z.infer<typeof insertSubscriptionCycleEventSchema>;
+export type SubscriptionCycleEvent = typeof subscriptionCycleEvents.$inferSelect;
+
+// Affiliate payouts table - tracks $10 payments to agents when referrals hit 4-month milestone
+export const affiliatePayouts = pgTable("affiliate_payouts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  affiliateReferralId: varchar("affiliate_referral_id").notNull().unique().references(() => affiliateReferrals.id, { onDelete: 'cascade' }),
+  agentId: varchar("agent_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull().default("10.00"),
+  status: text("status").notNull().default("pending"), // 'pending', 'processing', 'paid', 'failed'
+  stripeTransferId: varchar("stripe_transfer_id"),
+  errorMessage: text("error_message"),
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_affiliate_payouts_agent_id").on(table.agentId),
+  index("IDX_affiliate_payouts_referral_id").on(table.affiliateReferralId),
+  index("IDX_affiliate_payouts_status").on(table.status),
+]);
+
+export const insertAffiliatePayoutSchema = createInsertSchema(affiliatePayouts).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertAffiliatePayout = z.infer<typeof insertAffiliatePayoutSchema>;
+export type AffiliatePayout = typeof affiliatePayouts.$inferSelect;

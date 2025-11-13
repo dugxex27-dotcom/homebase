@@ -1,7 +1,7 @@
-import { type Contractor, type InsertContractor, type Company, type InsertCompany, type CompanyInviteCode, type InsertCompanyInviteCode, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type HomeApplianceManual, type InsertHomeApplianceManual, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type HomeownerConnectionCode, type InsertHomeownerConnectionCode, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics, type TaskOverride, type InsertTaskOverride, type Country, type InsertCountry, type Region, type InsertRegion, type ClimateZone, type InsertClimateZone, type RegulatoryBody, type InsertRegulatoryBody, type RegionalMaintenanceTask, type InsertRegionalMaintenanceTask, type TaskCompletion, type InsertTaskCompletion, type Achievement, type InsertAchievement, type AchievementDefinition, type InsertAchievementDefinition, type UserAchievement, type InsertUserAchievement, type SearchAnalytics, type InsertSearchAnalytics, type InviteCode, type InsertInviteCode, users, contractors, companies, contractorLicenses, countries, regions, climateZones, regulatoryBodies, regionalMaintenanceTasks, taskCompletions, achievements, achievementDefinitions, userAchievements, maintenanceLogs, searchAnalytics, inviteCodes, houses, homeSystems, customMaintenanceTasks, taskOverrides, serviceRecords, homeownerConnectionCodes, conversations, messages, proposals, houseTransfers } from "@shared/schema";
+import { type Contractor, type InsertContractor, type Company, type InsertCompany, type CompanyInviteCode, type InsertCompanyInviteCode, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type HomeApplianceManual, type InsertHomeApplianceManual, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type HomeownerConnectionCode, type InsertHomeownerConnectionCode, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics, type TaskOverride, type InsertTaskOverride, type Country, type InsertCountry, type Region, type InsertRegion, type ClimateZone, type InsertClimateZone, type RegulatoryBody, type InsertRegulatoryBody, type RegionalMaintenanceTask, type InsertRegionalMaintenanceTask, type TaskCompletion, type InsertTaskCompletion, type Achievement, type InsertAchievement, type AchievementDefinition, type InsertAchievementDefinition, type UserAchievement, type InsertUserAchievement, type SearchAnalytics, type InsertSearchAnalytics, type InviteCode, type InsertInviteCode, type AgentProfile, type InsertAgentProfile, type AffiliateReferral, type InsertAffiliateReferral, type SubscriptionCycleEvent, type InsertSubscriptionCycleEvent, type AffiliatePayout, type InsertAffiliatePayout, users, contractors, companies, contractorLicenses, countries, regions, climateZones, regulatoryBodies, regionalMaintenanceTasks, taskCompletions, achievements, achievementDefinitions, userAchievements, maintenanceLogs, searchAnalytics, inviteCodes, agentProfiles, affiliateReferrals, subscriptionCycleEvents, affiliatePayouts, houses, homeSystems, customMaintenanceTasks, taskOverrides, serviceRecords, homeownerConnectionCodes, conversations, messages, proposals, houseTransfers } from "@shared/schema";
 import { randomUUID, randomBytes } from "crypto";
 import { db } from "./db";
-import { eq, ne, isNotNull, and, or, isNull, not } from "drizzle-orm";
+import { eq, ne, isNotNull, and, or, isNull, not, desc } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -303,6 +303,38 @@ export interface IStorage {
     contractorCount: number;
     topSearches: Array<{ searchTerm: string; count: number }>;
     signupsByZip: Array<{ zipCode: string; count: number }>;
+  }>;
+
+  // Agent profile operations
+  getAgentProfile(agentId: string): Promise<AgentProfile | undefined>;
+  createAgentProfile(profile: InsertAgentProfile): Promise<AgentProfile>;
+  updateAgentProfile(agentId: string, profile: Partial<InsertAgentProfile>): Promise<AgentProfile | undefined>;
+  
+  // Affiliate referral operations
+  getAffiliateReferrals(agentId: string): Promise<AffiliateReferral[]>;
+  getAffiliateReferral(id: string): Promise<AffiliateReferral | undefined>;
+  getAffiliateReferralByUserId(userId: string): Promise<AffiliateReferral | undefined>;
+  createAffiliateReferral(referral: InsertAffiliateReferral): Promise<AffiliateReferral>;
+  updateAffiliateReferral(id: string, referral: Partial<InsertAffiliateReferral>): Promise<AffiliateReferral | undefined>;
+  
+  // Subscription cycle event operations
+  getSubscriptionCycleEvents(userId: string): Promise<SubscriptionCycleEvent[]>;
+  createSubscriptionCycleEvent(event: InsertSubscriptionCycleEvent): Promise<SubscriptionCycleEvent>;
+  getLastPaymentEvent(userId: string): Promise<SubscriptionCycleEvent | undefined>;
+  
+  // Affiliate payout operations
+  getAffiliatePayouts(agentId: string): Promise<AffiliatePayout[]>;
+  getAffiliatePayout(id: string): Promise<AffiliatePayout | undefined>;
+  createAffiliatePayout(payout: InsertAffiliatePayout): Promise<AffiliatePayout>;
+  updateAffiliatePayout(id: string, payout: Partial<InsertAffiliatePayout>): Promise<AffiliatePayout | undefined>;
+  getPendingPayouts(): Promise<AffiliatePayout[]>;
+  
+  // Agent dashboard stats
+  getAgentStats(agentId: string): Promise<{
+    totalReferrals: number;
+    activeReferrals: number;
+    totalEarnings: number;
+    pendingEarnings: number;
   }>;
 }
 
@@ -3261,6 +3293,186 @@ export class MemStorage implements IStorage {
       contractorCount,
       topSearches,
       signupsByZip,
+    };
+  }
+
+  // Agent profile operations
+  async getAgentProfile(agentId: string): Promise<AgentProfile | undefined> {
+    const [profile] = await db
+      .select()
+      .from(agentProfiles)
+      .where(eq(agentProfiles.agentId, agentId))
+      .limit(1);
+    return profile;
+  }
+
+  async createAgentProfile(profile: InsertAgentProfile): Promise<AgentProfile> {
+    const [created] = await db
+      .insert(agentProfiles)
+      .values(profile)
+      .returning();
+    return created;
+  }
+
+  async updateAgentProfile(agentId: string, profile: Partial<InsertAgentProfile>): Promise<AgentProfile | undefined> {
+    const [updated] = await db
+      .update(agentProfiles)
+      .set({ ...profile, updatedAt: new Date() })
+      .where(eq(agentProfiles.agentId, agentId))
+      .returning();
+    return updated;
+  }
+
+  // Affiliate referral operations
+  async getAffiliateReferrals(agentId: string): Promise<AffiliateReferral[]> {
+    return await db
+      .select()
+      .from(affiliateReferrals)
+      .where(eq(affiliateReferrals.agentId, agentId));
+  }
+
+  async getAffiliateReferral(id: string): Promise<AffiliateReferral | undefined> {
+    const [referral] = await db
+      .select()
+      .from(affiliateReferrals)
+      .where(eq(affiliateReferrals.id, id))
+      .limit(1);
+    return referral;
+  }
+
+  async getAffiliateReferralByUserId(userId: string): Promise<AffiliateReferral | undefined> {
+    const [referral] = await db
+      .select()
+      .from(affiliateReferrals)
+      .where(eq(affiliateReferrals.referredUserId, userId))
+      .limit(1);
+    return referral;
+  }
+
+  async createAffiliateReferral(referral: InsertAffiliateReferral): Promise<AffiliateReferral> {
+    const [created] = await db
+      .insert(affiliateReferrals)
+      .values(referral)
+      .returning();
+    return created;
+  }
+
+  async updateAffiliateReferral(id: string, referral: Partial<InsertAffiliateReferral>): Promise<AffiliateReferral | undefined> {
+    const [updated] = await db
+      .update(affiliateReferrals)
+      .set({ ...referral, updatedAt: new Date() })
+      .where(eq(affiliateReferrals.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Subscription cycle event operations
+  async getSubscriptionCycleEvents(userId: string): Promise<SubscriptionCycleEvent[]> {
+    return await db
+      .select()
+      .from(subscriptionCycleEvents)
+      .where(eq(subscriptionCycleEvents.userId, userId));
+  }
+
+  async createSubscriptionCycleEvent(event: InsertSubscriptionCycleEvent): Promise<SubscriptionCycleEvent> {
+    const [created] = await db
+      .insert(subscriptionCycleEvents)
+      .values(event)
+      .returning();
+    return created;
+  }
+
+  async getLastPaymentEvent(userId: string): Promise<SubscriptionCycleEvent | undefined> {
+    const [lastEvent] = await db
+      .select()
+      .from(subscriptionCycleEvents)
+      .where(and(
+        eq(subscriptionCycleEvents.userId, userId),
+        eq(subscriptionCycleEvents.status, 'paid')
+      ))
+      .orderBy(desc(subscriptionCycleEvents.periodStart))
+      .limit(1);
+    return lastEvent;
+  }
+
+  // Affiliate payout operations
+  async getAffiliatePayouts(agentId: string): Promise<AffiliatePayout[]> {
+    return await db
+      .select()
+      .from(affiliatePayouts)
+      .where(eq(affiliatePayouts.agentId, agentId));
+  }
+
+  async getAffiliatePayout(id: string): Promise<AffiliatePayout | undefined> {
+    const [payout] = await db
+      .select()
+      .from(affiliatePayouts)
+      .where(eq(affiliatePayouts.id, id))
+      .limit(1);
+    return payout;
+  }
+
+  async createAffiliatePayout(payout: InsertAffiliatePayout): Promise<AffiliatePayout> {
+    const [created] = await db
+      .insert(affiliatePayouts)
+      .values(payout)
+      .returning();
+    return created;
+  }
+
+  async updateAffiliatePayout(id: string, payout: Partial<InsertAffiliatePayout>): Promise<AffiliatePayout | undefined> {
+    const [updated] = await db
+      .update(affiliatePayouts)
+      .set({ ...payout, updatedAt: new Date() })
+      .where(eq(affiliatePayouts.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getPendingPayouts(): Promise<AffiliatePayout[]> {
+    return await db
+      .select()
+      .from(affiliatePayouts)
+      .where(eq(affiliatePayouts.status, 'pending'));
+  }
+
+  // Agent dashboard stats
+  async getAgentStats(agentId: string): Promise<{
+    totalReferrals: number;
+    activeReferrals: number;
+    totalEarnings: number;
+    pendingEarnings: number;
+  }> {
+    const referrals = await db
+      .select()
+      .from(affiliateReferrals)
+      .where(eq(affiliateReferrals.agentId, agentId));
+
+    const payouts = await db
+      .select()
+      .from(affiliatePayouts)
+      .where(eq(affiliatePayouts.agentId, agentId));
+
+    const totalReferrals = referrals.length;
+    const activeReferrals = referrals.filter(r => 
+      r.status !== 'voided' && r.status !== 'paid'
+    ).length;
+
+    const paidPayouts = payouts.filter(p => p.status === 'paid');
+    const totalEarnings = paidPayouts.reduce((sum, p) => 
+      sum + parseFloat(p.amount || '0'), 0
+    );
+
+    const pendingPayoutsFiltered = payouts.filter(p => p.status === 'pending');
+    const pendingEarnings = pendingPayoutsFiltered.reduce((sum, p) => 
+      sum + parseFloat(p.amount || '0'), 0
+    );
+
+    return {
+      totalReferrals,
+      activeReferrals,
+      totalEarnings,
+      pendingEarnings,
     };
   }
 }

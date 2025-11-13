@@ -27,6 +27,7 @@ import ManageTeam from "./pages/manage-team";
 import TestUpload from "./pages/test-upload";
 import AIContractorHelp from "./pages/ai-contractor-help";
 import Billing from "./pages/billing";
+import Landing from "./pages/landing";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -55,13 +56,15 @@ function Router() {
     );
   }
 
-  // Show sign-in page if not authenticated
+  // Show landing page and auth pages if not authenticated
   if (!isAuthenticated) {
     return (
       <Switch>
+        <Route path="/signin" component={SignIn} />
         <Route path="/test-upload" component={TestUpload} />
         <Route path="/complete-profile" component={CompleteProfile} />
-        <Route component={SignIn} />
+        <Route path="/" component={Landing} />
+        <Route component={Landing} />
       </Switch>
     );
   }

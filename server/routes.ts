@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { storage, type IStorage } from "./storage";
 import { setupAuth, isAuthenticated, requireRole, requirePropertyOwner } from "./replitAuth";
 import { setupGoogleAuth } from "./googleAuth";
 import { z } from "zod";
@@ -302,13 +302,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Generate unique referral code utility function
-  function generateUniqueReferralCode(): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let result = '';
-    for (let i = 0; i < 8; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
+  async function generateUniqueReferralCode(storage: IStorage): Promise<string> {
+    const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Exclude similar chars
+    let attempts = 0;
+    
+    while (attempts < 10) {
+      let code = '';
+      for (let i = 0; i < 8; i++) {
+        code += characters.charAt(Math.floor(Math.random() * characters.length));
+      }
+      
+      // Check if code already exists
+      const existing = await storage.getUserByReferralCode(code);
+      if (!existing) {
+        return code;
+      }
+      attempts++;
     }
-    return result;
+    
+    throw new Error('Failed to generate unique referral code');
   }
 
   // Get current user data
@@ -619,12 +631,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/auth/register', authLimiter, async (req, res) => {
     try {
       const { 
-        email, password, firstName, lastName, role, zipCode, inviteCode,
+        email, password, firstName, lastName, role, zipCode, inviteCode, referralCode,
         companyName, companyBio, companyPhone
       } = req.body;
       
       if (!email || !password || !firstName || !lastName || !role || !zipCode) {
         return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      // Validate role
+      if (!['homeowner', 'contractor', 'agent'].includes(role)) {
+        return res.status(400).json({ message: "Invalid role. Must be homeowner, contractor, or agent" });
       }
 
       // Validate contractor company requirements - must create a company
@@ -654,47 +671,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Validate referral code if provided (for homeowners/contractors)
+      let referringAgent = null;
+      if (referralCode && (role === 'homeowner' || role === 'contractor')) {
+        referringAgent = await storage.getUserByReferralCode(referralCode);
+        if (!referringAgent || referringAgent.role !== 'agent') {
+          return res.status(400).json({ message: "Invalid referral code" });
+        }
+      }
+
       // Hash password with bcrypt
       const bcrypt = await import('bcryptjs');
       const passwordHash = await bcrypt.hash(password, 10);
 
-      // Create user with trial period (14 days for both homeowners and contractors)
-      const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000); // 14 days from now
+      // Create user based on role
+      let user;
+      
+      if (role === 'agent') {
+        // Agents don't have trial/subscription - they are affiliates
+        const agentReferralCode = await generateUniqueReferralCode(storage);
         
-      let user = await storage.createUserWithPassword({
-        email,
-        passwordHash,
-        firstName,
-        lastName,
-        role: role as 'homeowner' | 'contractor',
-        zipCode,
-        trialEndsAt,
-        maxHousesAllowed: role === 'homeowner' ? 2 : undefined, // Base plan: 2 houses during trial
-        subscriptionStatus: 'trialing' // Both homeowners and contractors start with trial
-      });
-
-      // Handle contractor company setup - always create a new company
-      if (role === 'contractor') {
-        // Create new company
-        const company = await storage.createCompany({
-          name: companyName,
-          bio: companyBio,
-          phone: companyPhone,
-          email: email,
-          location: zipCode,
-          ownerId: user.id,
-          services: [],
-          licenseNumber: '',
-          licenseMunicipality: '',
+        user = await storage.createUserWithPassword({
+          email,
+          passwordHash,
+          firstName,
+          lastName,
+          role: 'agent',
+          zipCode,
+          referralCode: agentReferralCode,
+          subscriptionStatus: 'inactive', // Agents don't subscribe
+          trialEndsAt: null,
+          maxHousesAllowed: null
+        });
+        
+        // Create agent profile
+        await storage.createAgentProfile({
+          userId: user.id,
+          agentType: 'individual',
+          commissionRate: '10.00', // Default 10% commission
+          status: 'active'
+        });
+      } else {
+        // Homeowners and contractors get 14-day trial
+        const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+        
+        user = await storage.createUserWithPassword({
+          email,
+          passwordHash,
+          firstName,
+          lastName,
+          role: role as 'homeowner' | 'contractor',
+          zipCode,
+          trialEndsAt,
+          maxHousesAllowed: role === 'homeowner' ? 2 : undefined, // Base plan: 2 houses during trial
+          subscriptionStatus: 'trialing'
         });
 
-        // Update user with company info (owners can respond to proposals by default)
-        user = await storage.upsertUser({
-          ...user,
-          companyId: company.id,
-          companyRole: 'owner',
-          canRespondToProposals: true
-        });
+        // Handle contractor company setup - always create a new company
+        if (role === 'contractor') {
+          // Create new company
+          const company = await storage.createCompany({
+            name: companyName,
+            bio: companyBio,
+            phone: companyPhone,
+            email: email,
+            location: zipCode,
+            ownerId: user.id,
+            services: [],
+            licenseNumber: '',
+            licenseMunicipality: '',
+          });
+
+          // Update user with company info (owners can respond to proposals by default)
+          user = await storage.upsertUser({
+            ...user,
+            companyId: company.id,
+            companyRole: 'owner',
+            canRespondToProposals: true
+          });
+        }
+
+        // Create affiliate referral record if referred by an agent
+        if (referringAgent) {
+          const signupDate = new Date();
+          const trialEndDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+          
+          await storage.createAffiliateReferral({
+            agentId: referringAgent.id,
+            referredUserId: user.id,
+            signupDate,
+            trialEndDate,
+            status: 'trial'
+          });
+        }
       }
 
       // Create session
