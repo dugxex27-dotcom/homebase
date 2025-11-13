@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
@@ -17,7 +18,7 @@ import { insertMaintenanceLogSchema, insertCustomMaintenanceTaskSchema, insertHo
 import type { MaintenanceLog, House, CustomMaintenanceTask, HomeSystem, TaskOverride, HomeAppliance, HomeApplianceManual } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, Settings, Plus, Edit, Trash2, Home, FileText, Building2, User, Building, Phone, MessageSquare, AlertTriangle, Thermometer, Cloud, Monitor, Book, ExternalLink, Upload, Trophy } from "lucide-react";
+import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, Settings, Plus, Edit, Trash2, Home, FileText, Building2, User, Building, Phone, MessageSquare, AlertTriangle, Thermometer, Cloud, Monitor, Book, ExternalLink, Upload, Trophy, Mail, Handshake } from "lucide-react";
 import { AppointmentScheduler } from "@/components/appointment-scheduler";
 import { CustomMaintenanceTasks } from "@/components/custom-maintenance-tasks";
 import { US_MAINTENANCE_DATA, getRegionFromClimateZone, getCurrentMonthTasks } from "@shared/location-maintenance-data";
@@ -472,6 +473,27 @@ export default function Maintenance() {
       return response.json();
     },
     enabled: isAuthenticated && !!homeownerId && !!selectedHouseId && !isContractor
+  });
+
+  // Referring agent query (only for homeowners)
+  const { data: referringAgent, isLoading: referringAgentLoading, isError: referringAgentError } = useQuery<{
+    firstName: string;
+    lastName: string;
+    email: string | null;
+    phone: string | null;
+    referralCode: string;
+  } | null>({
+    queryKey: ['/api/referring-agent'],
+    queryFn: async () => {
+      const response = await fetch('/api/referring-agent');
+      if (response.status === 404) {
+        return null;
+      }
+      if (!response.ok) throw new Error('Failed to fetch referring agent');
+      return response.json();
+    },
+    enabled: isAuthenticated && !!homeownerId && !isContractor,
+    retry: false
   });
 
 
@@ -1980,6 +2002,98 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                 </CollapsibleContent>
               </Collapsible>
             </div>
+
+            {/* Referring Agent Card */}
+            {referringAgentLoading && (
+              <div className="mb-6">
+                <Card className="border-blue-200 dark:border-blue-800/30 animate-pulse" style={{ backgroundColor: '#f2f2f2' }}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-gray-300 dark:bg-gray-700"></div>
+                      <div className="flex-1 space-y-2">
+                        <div className="h-5 bg-gray-300 dark:bg-gray-700 rounded w-1/3"></div>
+                        <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-1/2"></div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {referringAgentError && !referringAgentLoading && (
+              <div className="mb-6">
+                <Alert variant="destructive" className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription className="text-sm text-red-800 dark:text-red-300">
+                    Unable to load referring agent information. Please try again later.
+                  </AlertDescription>
+                </Alert>
+              </div>
+            )}
+
+            {referringAgent && !referringAgentLoading && (
+              <div className="mb-6">
+                <Card className="border-blue-200 dark:border-blue-800/30" style={{ backgroundColor: '#f2f2f2' }}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg" style={{ backgroundColor: '#2c0f5b' }}>
+                          <Handshake className="w-5 h-5" style={{ color: '#b6a6f4' }} />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold" style={{ color: '#2c0f5b' }}>
+                            Your Real Estate Agent
+                          </h3>
+                          <p className="text-sm" style={{ color: '#666666' }}>
+                            {referringAgent.firstName} {referringAgent.lastName}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-xs bg-purple-100 dark:bg-purple-900/30 px-2 py-1 rounded" style={{ color: '#2c0f5b' }}>
+                              Referral Code: {referringAgent.referralCode}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        {referringAgent.email && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            asChild
+                            data-testid="button-email-agent"
+                            style={{ backgroundColor: '#2c0f5b', color: 'white', borderColor: '#2c0f5b' }}
+                          >
+                            <a href={`mailto:${referringAgent.email}`}>
+                              <Mail className="w-4 h-4 mr-1" />
+                              Email
+                            </a>
+                          </Button>
+                        )}
+                        {referringAgent.phone && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            asChild
+                            data-testid="button-call-agent"
+                            style={{ backgroundColor: '#2c0f5b', color: 'white', borderColor: '#2c0f5b' }}
+                          >
+                            <a href={`tel:${referringAgent.phone}`}>
+                              <Phone className="w-4 h-4 mr-1" />
+                              Call
+                            </a>
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                      <p className="text-sm" style={{ color: '#666666' }}>
+                        Thank you for joining Home Base through {referringAgent.firstName}'s referral! Feel free to reach out if you have any questions.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
             {/* Service Records Quick Access */}
             {maintenanceLogs && maintenanceLogs.length > 0 && (
