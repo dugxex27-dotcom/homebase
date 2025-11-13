@@ -409,6 +409,7 @@ export default function AgentAccount() {
                   <Button
                     type="submit"
                     className="w-full"
+                    style={{ backgroundColor: '#059669' }}
                     disabled={submitVerificationMutation.isPending || isUploading || !uploadId}
                     data-testid="button-submit-verification"
                   >
