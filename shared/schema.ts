@@ -1062,6 +1062,11 @@ export const agentProfiles = pgTable("agent_profiles", {
   stripeConnectAccountId: varchar("stripe_connect_account_id"),
   stripeOnboardingComplete: boolean("stripe_onboarding_complete").notNull().default(false),
   
+  // Contact information fields
+  phone: text("phone"),
+  website: text("website"),
+  officeAddress: text("office_address"),
+  
   // Verification fields
   licenseNumber: text("license_number"),
   licenseState: text("license_state"),
@@ -1108,6 +1113,15 @@ export const agentVerificationSubmissionSchema = z.object({
 });
 
 export type AgentVerificationSubmission = z.infer<typeof agentVerificationSubmissionSchema>;
+
+// Agent contact information update validation schema
+export const agentContactInfoSchema = z.object({
+  phone: z.string().max(20).trim().optional().or(z.literal('')),
+  website: z.string().url({ message: "Please enter a valid URL (e.g., https://example.com)" }).max(2048).trim().optional().or(z.literal('')),
+  officeAddress: z.string().max(255).trim().optional().or(z.literal('')),
+});
+
+export type AgentContactInfo = z.infer<typeof agentContactInfoSchema>;
 
 // Affiliate referrals table - tracks each referral made by an agent
 export const affiliateReferrals = pgTable("affiliate_referrals", {

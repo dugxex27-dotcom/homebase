@@ -1816,6 +1816,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/agent/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.user?.id;
+      const userRole = req.session?.user?.role;
+
+      if (userRole !== 'agent') {
+        return res.status(403).json({ message: "Forbidden: Agent access only" });
+      }
+
+      // Import and use validation schema
+      const { agentContactInfoSchema } = await import("@shared/schema");
+      
+      // Validate request body with Zod
+      const validationResult = agentContactInfoSchema.safeParse(req.body);
+      
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          errors: validationResult.error.flatten().fieldErrors 
+        });
+      }
+
+      const validatedData = validationResult.data;
+
+      // Convert empty strings to null for cleaner database storage
+      const updateData = {
+        phone: validatedData.phone?.trim() || null,
+        website: validatedData.website?.trim() || null,
+        officeAddress: validatedData.officeAddress?.trim() || null,
+      };
+
+      const updatedProfile = await storage.updateAgentProfile(userId, updateData);
+      
+      if (!updatedProfile) {
+        return res.status(404).json({ message: "Agent profile not found" });
+      }
+
+      res.json({ message: "Contact information updated successfully", profile: updatedProfile });
+    } catch (error) {
+      console.error("Error updating agent profile:", error);
+      res.status(500).json({ message: "Failed to update agent profile" });
+    }
+  });
+
   app.get("/api/agent/referrals", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.session?.user?.id;
