@@ -4004,6 +4004,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get referring agent for homeowner
+  app.get('/api/referring-agent', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.user.id;
+      const userRole = req.session.user.role;
+      
+      // Only homeowners can view their referring agent
+      if (userRole !== 'homeowner') {
+        return res.status(403).json({ message: "Only homeowners can view referring agent information" });
+      }
+      
+      const referringAgent = await storage.getReferringAgentForHomeowner(userId);
+      
+      if (!referringAgent) {
+        return res.status(404).json({ message: "No referring agent found" });
+      }
+      
+      res.json(referringAgent);
+    } catch (error) {
+      console.error("Error fetching referring agent:", error);
+      res.status(500).json({ message: "Failed to fetch referring agent information" });
+    }
+  });
+
   // Messaging API endpoints
   app.get('/api/conversations', isAuthenticated, async (req: any, res) => {
     try {
