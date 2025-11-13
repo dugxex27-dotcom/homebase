@@ -109,7 +109,7 @@ export default function Landing() {
                 Earn commissions by referring homeowners and contractors to Home Base
               </p>
               <ul className="text-left space-y-2 mb-6 text-sm text-gray-700">
-                <li>✓ Earn $10 per referral</li>
+                <li>✓ Earn referral bonuses</li>
                 <li>✓ Track your referrals</li>
                 <li>✓ Automated payouts</li>
                 <li>✓ Unique referral link</li>
