@@ -912,6 +912,82 @@ export default function HomeownerAccount() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Cancel Account */}
+            <Card className="border-red-200">
+              <CardHeader>
+                <CardTitle className="text-red-600">Cancel Account</CardTitle>
+                <CardDescription>
+                  Permanently cancel your Home Base account. This action cannot be undone.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="destructive" data-testid="button-cancel-account">
+                      Cancel My Account
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Are you absolutely sure?</DialogTitle>
+                      <DialogDescription>
+                        This will permanently cancel your Home Base account. Your subscription will be cancelled and you will lose access to:
+                        <ul className="list-disc list-inside mt-2 space-y-1">
+                          <li>All your properties and maintenance schedules</li>
+                          <li>Service records and contractor conversations</li>
+                          <li>Custom maintenance tasks and reminders</li>
+                          <li>Your referral rewards and achievements</li>
+                        </ul>
+                        <p className="mt-3 font-semibold text-red-600">
+                          This action cannot be undone.
+                        </p>
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex justify-end gap-2">
+                      <DialogTrigger asChild>
+                        <Button variant="outline" data-testid="button-cancel-account-dialog-no">
+                          No, Keep My Account
+                        </Button>
+                      </DialogTrigger>
+                      <Button 
+                        variant="destructive"
+                        onClick={async () => {
+                          try {
+                            const response = await fetch('/api/account', { method: 'DELETE' });
+                            if (response.ok) {
+                              toast({
+                                title: "Account Cancelled",
+                                description: "Your account has been cancelled. You will be redirected to the home page.",
+                              });
+                              setTimeout(() => {
+                                window.location.href = '/';
+                              }, 2000);
+                            } else {
+                              const data = await response.json();
+                              toast({
+                                title: "Error",
+                                description: data.message || "Failed to cancel account",
+                                variant: "destructive",
+                              });
+                            }
+                          } catch (error) {
+                            toast({
+                              title: "Error",
+                              description: "An error occurred while cancelling your account",
+                              variant: "destructive",
+                            });
+                          }
+                        }}
+                        data-testid="button-cancel-account-dialog-yes"
+                      >
+                        Yes, Cancel My Account
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </CardContent>
+            </Card>
         </div>
       </div>
     </div>
