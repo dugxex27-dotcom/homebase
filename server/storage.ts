@@ -314,7 +314,7 @@ export interface IStorage {
   getAffiliateReferrals(agentId: string): Promise<AffiliateReferral[]>;
   getAffiliateReferral(id: string): Promise<AffiliateReferral | undefined>;
   getAffiliateReferralByUserId(userId: string): Promise<AffiliateReferral | undefined>;
-  getReferringAgentForHomeowner(homeownerId: string): Promise<{ firstName: string; lastName: string; email: string | null; phone: string | null; referralCode: string | null; profileImageUrl: string | null; } | undefined>;
+  getReferringAgentForHomeowner(homeownerId: string): Promise<{ firstName: string; lastName: string; email: string | null; phone: string | null; website: string | null; officeAddress: string | null; referralCode: string | null; profileImageUrl: string | null; } | undefined>;
   createAffiliateReferral(referral: InsertAffiliateReferral): Promise<AffiliateReferral>;
   updateAffiliateReferral(id: string, referral: Partial<InsertAffiliateReferral>): Promise<AffiliateReferral | undefined>;
   
@@ -3532,7 +3532,7 @@ export class MemStorage implements IStorage {
     return referral;
   }
 
-  async getReferringAgentForHomeowner(homeownerId: string): Promise<{ firstName: string; lastName: string; email: string | null; phone: string | null; referralCode: string | null; profileImageUrl: string | null; } | undefined> {
+  async getReferringAgentForHomeowner(homeownerId: string): Promise<{ firstName: string; lastName: string; email: string | null; phone: string | null; website: string | null; officeAddress: string | null; referralCode: string | null; profileImageUrl: string | null; } | undefined> {
     // Get the affiliate referral record for this homeowner
     const referral = await this.getAffiliateReferralByUserId(homeownerId);
     if (!referral) {
@@ -3545,11 +3545,16 @@ export class MemStorage implements IStorage {
       return undefined;
     }
 
+    // Get the agent's profile for contact information
+    const agentProfile = await this.getAgentProfile(referral.agentId);
+
     return {
       firstName: agent.firstName || 'Agent',
       lastName: agent.lastName || '',
       email: agent.email,
-      phone: agent.phone,
+      phone: agentProfile?.phone || null,
+      website: agentProfile?.website || null,
+      officeAddress: agentProfile?.officeAddress || null,
       referralCode: agent.referralCode,
       profileImageUrl: agent.profileImageUrl,
     };
