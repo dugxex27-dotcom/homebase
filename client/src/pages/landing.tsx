@@ -58,17 +58,17 @@ export default function Landing() {
 
           {/* Contractor Card */}
           <Card 
-            className="hover:shadow-lg transition-all cursor-pointer border-2 hover:border-red-400"
+            className="hover:shadow-lg transition-all cursor-pointer border-2 hover:border-blue-400"
             onClick={() => handleRoleSelection('contractor')}
             data-testid="card-role-contractor"
           >
             <CardContent className="p-8 text-center">
               <div className="mb-6 flex justify-center">
-                <div className="p-4 rounded-full bg-red-100">
-                  <Wrench className="h-12 w-12 text-red-600" />
+                <div className="p-4 rounded-full bg-blue-100">
+                  <Wrench className="h-12 w-12 text-blue-600" />
                 </div>
               </div>
-              <h2 className="text-2xl font-bold mb-3" style={{ color: '#b91c1c' }}>
+              <h2 className="text-2xl font-bold mb-3" style={{ color: '#1560a2' }}>
                 I'm a Contractor
               </h2>
               <p className="text-gray-600 mb-6">
@@ -82,7 +82,7 @@ export default function Landing() {
               </ul>
               <Button 
                 className="w-full"
-                style={{ backgroundColor: '#b91c1c', color: 'white' }}
+                style={{ backgroundColor: '#1560a2', color: 'white' }}
                 data-testid="button-contractor-signup"
               >
                 Get Started
