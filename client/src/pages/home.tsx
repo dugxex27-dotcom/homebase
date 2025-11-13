@@ -80,10 +80,12 @@ export default function Home() {
   const [selectedHouseId, setSelectedHouseId] = useState<string>('');
   const serviceDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Redirect contractors to their dashboard
+  // Redirect contractors and agents to their dashboards
   useEffect(() => {
     if (typedUser?.role === 'contractor') {
       setLocation('/contractor-dashboard');
+    } else if (typedUser?.role === 'agent') {
+      setLocation('/agent-dashboard');
     }
   }, [typedUser, setLocation]);
 
