@@ -5,7 +5,7 @@ import Logo from "@/components/logo";
 
 export default function Landing() {
   const handleRoleSelection = (role: 'homeowner' | 'contractor' | 'agent') => {
-    window.location.href = `/signin?role=${role}`;
+    window.location.href = `/signin/${role}`;
   };
 
   return (
