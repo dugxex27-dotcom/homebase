@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import Header from "@/components/header";
@@ -1903,6 +1905,83 @@ export default function ContractorProfile() {
           </Button>
         </div>
       </form>
+
+      {/* Cancel Account */}
+      <Card className="border-red-200 mt-8">
+        <CardHeader>
+          <CardTitle className="text-red-600">Cancel Account</CardTitle>
+          <CardDescription>
+            Permanently cancel your contractor account. This action cannot be undone.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="destructive" data-testid="button-cancel-account">
+                Cancel My Account
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Are you absolutely sure?</DialogTitle>
+                <DialogDescription>
+                  This will permanently cancel your Home Base contractor account. Your subscription will be cancelled and you will lose access to:
+                  <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li>Your contractor profile and company information</li>
+                    <li>All customer conversations and proposals</li>
+                    <li>Service records and job history</li>
+                    <li>Your referral rewards</li>
+                  </ul>
+                  <p className="mt-3 font-semibold text-red-600">
+                    This action cannot be undone.
+                  </p>
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex justify-end gap-2">
+                <DialogTrigger asChild>
+                  <Button variant="outline" data-testid="button-cancel-account-dialog-no">
+                    No, Keep My Account
+                  </Button>
+                </DialogTrigger>
+                <Button 
+                  variant="destructive"
+                  onClick={async () => {
+                    try {
+                      const response = await fetch('/api/account', { method: 'DELETE' });
+                      if (response.ok) {
+                        toast({
+                          title: "Account Cancelled",
+                          description: "Your account has been cancelled. You will be redirected to the home page.",
+                        });
+                        setTimeout(() => {
+                          window.location.href = '/';
+                        }, 2000);
+                      } else {
+                        const data = await response.json();
+                        toast({
+                          title: "Error",
+                          description: data.message || "Failed to cancel account",
+                          variant: "destructive",
+                        });
+                      }
+                    } catch (error) {
+                      toast({
+                        title: "Error",
+                        description: "An error occurred while cancelling your account",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                  data-testid="button-cancel-account-dialog-yes"
+                >
+                  Yes, Cancel My Account
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </CardContent>
+      </Card>
+
       </div>
     </div>
   );
