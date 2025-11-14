@@ -127,6 +127,10 @@ export default function ContractorProfile() {
     licenseNumber: '',
     licenseMunicipality: '',
     isLicensed: true,
+    insuranceCarrier: '',
+    insurancePolicyNumber: '',
+    insuranceExpiryDate: '',
+    insuranceCoverageAmount: '',
     rating: '0',
     reviewCount: 0,
     experience: 0
@@ -1403,6 +1407,82 @@ export default function ContractorProfile() {
               <Plus className="w-4 h-4 mr-2" />
               Add Another License
             </Button>
+          </CardContent>
+        </Card>
+
+        {/* Insurance & Compliance */}
+        <Card style={{ backgroundColor: '#f2f2f2' }}>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2" style={{ color: '#1560a2' }}>
+              <Shield className="w-5 h-5" style={{ color: '#1560a2' }} />
+              Insurance & Compliance
+            </CardTitle>
+            <CardDescription className="text-sm text-gray-600">
+              Complete your insurance information to get verified. Verified contractors are more likely to be hired.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="insuranceCarrier">Insurance Carrier *</Label>
+                <Input
+                  id="insuranceCarrier"
+                  data-testid="input-insurance-carrier"
+                  value={formData.insuranceCarrier}
+                  onChange={(e) => setFormData({ ...formData, insuranceCarrier: e.target.value })}
+                  placeholder="e.g., State Farm, Allstate"
+                  style={{ backgroundColor: '#ffffff' }}
+                />
+              </div>
+              <div>
+                <Label htmlFor="insurancePolicyNumber">Policy Number *</Label>
+                <Input
+                  id="insurancePolicyNumber"
+                  data-testid="input-insurance-policy-number"
+                  value={formData.insurancePolicyNumber}
+                  onChange={(e) => setFormData({ ...formData, insurancePolicyNumber: e.target.value })}
+                  placeholder="POL-123456789"
+                  style={{ backgroundColor: '#ffffff' }}
+                />
+              </div>
+              <div>
+                <Label htmlFor="insuranceExpiryDate">Expiry Date *</Label>
+                <Input
+                  id="insuranceExpiryDate"
+                  data-testid="input-insurance-expiry-date"
+                  type="date"
+                  value={formData.insuranceExpiryDate}
+                  onChange={(e) => setFormData({ ...formData, insuranceExpiryDate: e.target.value })}
+                  min={new Date().toISOString().split('T')[0]}
+                  style={{ backgroundColor: '#ffffff' }}
+                />
+              </div>
+              <div>
+                <Label htmlFor="insuranceCoverageAmount">Coverage Amount *</Label>
+                <Select 
+                  value={formData.insuranceCoverageAmount}
+                  onValueChange={(value) => setFormData({ ...formData, insuranceCoverageAmount: value })}
+                >
+                  <SelectTrigger id="insuranceCoverageAmount" data-testid="select-insurance-coverage" style={{ backgroundColor: '#ffffff' }}>
+                    <SelectValue placeholder="Select coverage" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="$500K">$500,000</SelectItem>
+                    <SelectItem value="$1M">$1,000,000</SelectItem>
+                    <SelectItem value="$2M">$2,000,000</SelectItem>
+                    <SelectItem value="$3M">$3,000,000</SelectItem>
+                    <SelectItem value="$5M">$5,000,000</SelectItem>
+                    <SelectItem value="$10M+">$10,000,000+</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+              <p className="text-sm text-blue-800">
+                <Shield className="w-4 h-4 inline mr-2" />
+                <strong>Why this matters:</strong> Contractors with verified insurance and active licenses earn a "Verified" badge, which builds trust and increases booking rates by up to 40%.
+              </p>
+            </div>
           </CardContent>
         </Card>
 
