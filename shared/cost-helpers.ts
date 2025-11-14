@@ -2,6 +2,7 @@
 
 import { getCostEstimate, CostEstimate } from './cost-baselines';
 import { MaintenanceTaskItem } from './location-maintenance-data';
+import { getTaskPriority, TaskPriority } from './priority-classifier';
 
 /**
  * Infer category from task title and description
@@ -166,36 +167,37 @@ export function inferTaskDifficulty(title: string, description: string): 'easy' 
 }
 
 /**
- * Enrich a maintenance task with cost estimate based on its category and difficulty
+ * Enrich a maintenance task with cost estimate and priority based on its category and difficulty
  */
 export function enrichTaskWithCost(
   task: MaintenanceTaskItem,
-  region?: string
+  region?: string,
+  fallbackPriority: TaskPriority = 'medium'
 ): MaintenanceTaskItem {
-  // If task already has cost estimate, return as-is
-  if (task.costEstimate) {
-    return task;
-  }
-  
   // Infer category and difficulty from task content
   const category = inferTaskCategory(task.title, task.description);
   const difficulty = inferTaskDifficulty(task.title, task.description);
   
-  // Get cost estimate
-  const costEstimate = getCostEstimate(category, difficulty, region);
+  // Get cost estimate (only if not already present)
+  const costEstimate = task.costEstimate || getCostEstimate(category, difficulty, region);
+  
+  // Get priority using classifier (respects existing priority, checks overrides, then classifies)
+  const priority = getTaskPriority(task, fallbackPriority);
   
   return {
     ...task,
     costEstimate,
+    priority,
   };
 }
 
 /**
- * Enrich an array of maintenance tasks with cost estimates
+ * Enrich an array of maintenance tasks with cost estimates and priorities
  */
 export function enrichTasksWithCosts(
   tasks: MaintenanceTaskItem[],
-  region?: string
+  region?: string,
+  fallbackPriority: TaskPriority = 'medium'
 ): MaintenanceTaskItem[] {
-  return tasks.map(task => enrichTaskWithCost(task, region));
+  return tasks.map(task => enrichTaskWithCost(task, region, fallbackPriority));
 }
