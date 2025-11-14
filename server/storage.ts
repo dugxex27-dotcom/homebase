@@ -7,7 +7,10 @@ export interface IStorage {
   // User operations (required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   getUserByReferralCode(referralCode: string): Promise<User | undefined>;
+  getUserByStripeCustomerId(stripeCustomerId: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+  updateUserSubscriptionStatus(userId: string, status: string): Promise<User | undefined>;
+  updateUserStripeSubscription(userId: string, subscriptionId: string, priceId: string): Promise<User | undefined>;
   
   // Contractor methods
   getContractors(filters?: {
@@ -4636,6 +4639,28 @@ class DbStorage implements IStorage {
       });
       throw error;
     }
+  }
+
+  async getUserByStripeCustomerId(stripeCustomerId: string): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.stripeCustomerId, stripeCustomerId)).limit(1);
+    return result[0];
+  }
+
+  async updateUserSubscriptionStatus(userId: string, status: string): Promise<User | undefined> {
+    await db.update(users).set({ 
+      subscriptionStatus: status,
+      updatedAt: new Date(),
+    }).where(eq(users.id, userId));
+    return this.getUser(userId);
+  }
+
+  async updateUserStripeSubscription(userId: string, subscriptionId: string, priceId: string): Promise<User | undefined> {
+    await db.update(users).set({ 
+      stripeSubscriptionId: subscriptionId,
+      stripePriceId: priceId,
+      updatedAt: new Date(),
+    }).where(eq(users.id, userId));
+    return this.getUser(userId);
   }
 
   async createUserWithPassword(data: { 

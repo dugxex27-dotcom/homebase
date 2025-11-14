@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage, type IStorage } from "./storage";
@@ -8,14 +9,19 @@ import { z } from "zod";
 import { randomUUID } from "crypto";
 import rateLimit from "express-rate-limit";
 import { eq, and, or, lte, isNull } from "drizzle-orm";
-import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, maintenanceTasks, customMaintenanceTasks, insertSupportTicketSchema } from "@shared/schema";
+import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, maintenanceTasks, customMaintenanceTasks, insertSupportTicketSchema, insertSubscriptionCycleEventSchema } from "@shared/schema";
 import pushRoutes from "./push-routes";
 import { pushService } from "./push-service";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { pool, db } from "./db";
 import OpenAI from "openai";
 import multer from "multer";
+import Stripe from "stripe";
 import { geocodeAddress, calculateDistance } from "./geocoding-service";
+
+const stripe = process.env.STRIPE_SECRET_KEY 
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-11-20.acacia" })
+  : null;
 
 // Configure multer for memory storage
 const upload = multer({ 
@@ -168,6 +174,134 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Set up Replit Auth (handles Google OAuth via Replit)
   await setupAuth(app);
+
+  // Stripe webhook handler - Uses raw body parser for signature verification
+  app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), async (req: any, res) => {
+    if (!stripe) {
+      return res.status(500).json({ error: 'Stripe not configured' });
+    }
+
+    const sig = req.headers['stripe-signature'];
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+    if (!webhookSecret) {
+      console.error('[STRIPE WEBHOOK] No webhook secret configured');
+      return res.status(500).json({ error: 'Webhook secret not configured' });
+    }
+
+    let event: Stripe.Event;
+
+    try {
+      event = stripe.webhooks.constructEvent(req.body, sig as string, webhookSecret);
+    } catch (err: any) {
+      console.error('[STRIPE WEBHOOK] Signature verification failed:', err.message);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    console.log('[STRIPE WEBHOOK] Event received:', event.type);
+
+    try {
+      switch (event.type) {
+        case 'invoice.paid': {
+          const invoice = event.data.object as Stripe.Invoice;
+          const subscriptionId = invoice.subscription as string;
+          const customerId = invoice.customer as string;
+
+          const user = await storage.getUserByStripeCustomerId(customerId);
+          if (!user) {
+            console.error('[STRIPE WEBHOOK] User not found for customer:', customerId);
+            break;
+          }
+
+          await storage.createSubscriptionCycleEvent({
+            userId: user.id,
+            stripeSubscriptionId: subscriptionId,
+            stripeInvoiceId: invoice.id,
+            periodStart: new Date(invoice.period_start * 1000),
+            periodEnd: new Date(invoice.period_end * 1000),
+            status: 'paid',
+            amount: (invoice.amount_paid / 100).toFixed(2),
+          });
+
+          await storage.updateUserSubscriptionStatus(user.id, 'active');
+          console.log('[STRIPE WEBHOOK] Invoice paid processed for user:', user.email);
+          break;
+        }
+
+        case 'invoice.payment_failed': {
+          const invoice = event.data.object as Stripe.Invoice;
+          const subscriptionId = invoice.subscription as string;
+          const customerId = invoice.customer as string;
+
+          const user = await storage.getUserByStripeCustomerId(customerId);
+          if (!user) {
+            console.error('[STRIPE WEBHOOK] User not found for customer:', customerId);
+            break;
+          }
+
+          await storage.createSubscriptionCycleEvent({
+            userId: user.id,
+            stripeSubscriptionId: subscriptionId,
+            stripeInvoiceId: invoice.id,
+            periodStart: new Date(invoice.period_start * 1000),
+            periodEnd: new Date(invoice.period_end * 1000),
+            status: 'failed',
+            amount: (invoice.amount_due / 100).toFixed(2),
+          });
+
+          await storage.updateUserSubscriptionStatus(user.id, 'past_due');
+          console.log('[STRIPE WEBHOOK] Payment failed processed for user:', user.email);
+          break;
+        }
+
+        case 'customer.subscription.updated': {
+          const subscription = event.data.object as Stripe.Subscription;
+          const customerId = subscription.customer as string;
+
+          const user = await storage.getUserByStripeCustomerId(customerId);
+          if (!user) {
+            console.error('[STRIPE WEBHOOK] User not found for customer:', customerId);
+            break;
+          }
+
+          const priceId = subscription.items.data[0]?.price.id;
+          await storage.updateUserStripeSubscription(user.id, subscription.id, priceId || '');
+          
+          let status = 'active';
+          if (subscription.status === 'canceled') status = 'cancelled';
+          else if (subscription.status === 'past_due') status = 'past_due';
+          else if (subscription.status === 'trialing') status = 'trialing';
+          
+          await storage.updateUserSubscriptionStatus(user.id, status);
+          console.log('[STRIPE WEBHOOK] Subscription updated for user:', user.email, 'Status:', status);
+          break;
+        }
+
+        case 'customer.subscription.deleted': {
+          const subscription = event.data.object as Stripe.Subscription;
+          const customerId = subscription.customer as string;
+
+          const user = await storage.getUserByStripeCustomerId(customerId);
+          if (!user) {
+            console.error('[STRIPE WEBHOOK] User not found for customer:', customerId);
+            break;
+          }
+
+          await storage.updateUserSubscriptionStatus(user.id, 'cancelled');
+          console.log('[STRIPE WEBHOOK] Subscription deleted for user:', user.email);
+          break;
+        }
+
+        default:
+          console.log('[STRIPE WEBHOOK] Unhandled event type:', event.type);
+      }
+
+      res.json({ received: true });
+    } catch (error: any) {
+      console.error('[STRIPE WEBHOOK] Error processing event:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
 
   // Auth routes
   app.get('/api/auth/user', async (req: any, res) => {

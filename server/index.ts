@@ -76,8 +76,21 @@ app.set('trust proxy', 1);
 
 // Increase body size limit to support base64 image uploads (business logos and project photos)
 // Using 100mb to accommodate multiple large photos
-app.use(express.json({ limit: '100mb' }));
-app.use(express.urlencoded({ extended: false, limit: '100mb' }));
+// IMPORTANT: Skip JSON parsing for Stripe webhook to preserve raw body for signature verification
+app.use((req, res, next) => {
+  if (req.path === '/api/webhooks/stripe') {
+    next();
+  } else {
+    express.json({ limit: '100mb' })(req, res, next);
+  }
+});
+app.use((req, res, next) => {
+  if (req.path === '/api/webhooks/stripe') {
+    next();
+  } else {
+    express.urlencoded({ extended: false, limit: '100mb' })(req, res, next);
+  }
+});
 
 app.use((req, res, next) => {
   const start = Date.now();
