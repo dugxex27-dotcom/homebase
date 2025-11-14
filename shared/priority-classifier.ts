@@ -66,7 +66,8 @@ const LOW_PRIORITY_KEYWORDS = [
 const MEDIUM_PRIORITY_KEYWORDS = [
   'inspect', 'test', 'check', 'monitor', 'maintain', 'service',
   'efficiency', 'performance', 'preventive', 'routine maintenance',
-  'filter replacement', 'weatherstrip', 'insulation', 'energy savings'
+  'filter replacement', 'weatherstrip', 'insulation', 'energy savings',
+  'flush', 'lubricate', 'replace', 'repair', 'ensure', 'verify'
 ];
 
 /**
@@ -104,6 +105,7 @@ export function classifyTaskPriority(
 ): TaskPriority {
   // Combine title and description for analysis
   const combinedText = `${task.title} ${task.description}`;
+  const lowerText = combinedText.toLowerCase();
   
   // Calculate keyword scores
   const scores = calculateKeywordScores(combinedText);
@@ -113,14 +115,19 @@ export function classifyTaskPriority(
     return 'high';
   }
   
-  // Low priority if ANY low-priority keywords found (relaxed from ≥2)
-  // BUT not if high-priority keywords also present
-  if (scores.lowScore > 0 && scores.highScore === 0) {
-    // If medium keywords also present, low must strictly dominate (ties go to medium)
-    if (scores.mediumScore > 0 && scores.lowScore <= scores.mediumScore) {
-      return 'medium';
-    }
+  // Low priority only if MULTIPLE low keywords OR explicit aesthetic cues
+  // This prevents "Clean and inspect" from being classified as LOW
+  if (scores.lowScore >= 2 && scores.highScore === 0 && scores.mediumScore === 0) {
     return 'low';
+  }
+  
+  // Also low if contains explicit aesthetic/organizational signals
+  if (scores.highScore === 0 && scores.mediumScore === 0) {
+    if (lowerText.includes('aesthetic') || lowerText.includes('appearance') ||
+        lowerText.includes('curb appeal') || lowerText.includes('cosmetic') ||
+        lowerText.includes('organize') || lowerText.includes('optional')) {
+      return 'low';
+    }
   }
   
   // Medium priority if medium keywords found
@@ -129,8 +136,6 @@ export function classifyTaskPriority(
   }
   
   // Additional heuristics based on task content
-  const lowerText = combinedText.toLowerCase();
-  
   // High priority patterns
   if (
     lowerText.includes('prevent') && (lowerText.includes('damage') || lowerText.includes('failure')) ||
@@ -173,9 +178,10 @@ export function getTaskPriority(
     return task.priority;
   }
   
-  // 2. Check for manual overrides
+  // 2. Check for manual overrides (case-insensitive)
+  const lowerTitle = task.title.toLowerCase();
   for (const [titleSubstring, overridePriority] of Object.entries(PRIORITY_OVERRIDES)) {
-    if (task.title.includes(titleSubstring)) {
+    if (lowerTitle.includes(titleSubstring.toLowerCase())) {
       return overridePriority;
     }
   }
