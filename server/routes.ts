@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { WebSocketServer, WebSocket } from "ws";
 import { storage, type IStorage } from "./storage";
 import { setupAuth, isAuthenticated, requireRole, requirePropertyOwner } from "./replitAuth";
 import { setupGoogleAuth } from "./googleAuth";
@@ -5660,5 +5661,125 @@ Important: Only recommend service types from the available list. Match problems 
   });
 
   const httpServer = createServer(app);
+  
+  // WebSocket server for real-time messaging
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  
+  // Store active WebSocket connections with user info
+  const clients = new Map<string, { userId: string; ws: WebSocket; conversations: Set<string> }>();
+  
+  wss.on('connection', (ws: WebSocket) => {
+    let clientId: string | null = null;
+    let userId: string | null = null;
+    
+    console.log('[WebSocket] New connection established');
+    
+    ws.on('message', async (data: Buffer) => {
+      try {
+        const message = JSON.parse(data.toString());
+        
+        // Handle client authentication
+        if (message.type === 'auth') {
+          userId = message.userId;
+          clientId = randomUUID();
+          clients.set(clientId, { userId, ws, conversations: new Set() });
+          console.log(`[WebSocket] Client authenticated: userId=${userId}, clientId=${clientId}`);
+          ws.send(JSON.stringify({ type: 'auth_success', clientId }));
+          return;
+        }
+        
+        // Handle joining a conversation
+        if (message.type === 'join_conversation') {
+          if (clientId && clients.has(clientId)) {
+            const client = clients.get(clientId)!;
+            client.conversations.add(message.conversationId);
+            console.log(`[WebSocket] Client ${clientId} joined conversation ${message.conversationId}`);
+            ws.send(JSON.stringify({ type: 'joined_conversation', conversationId: message.conversationId }));
+          }
+          return;
+        }
+        
+        // Handle leaving a conversation
+        if (message.type === 'leave_conversation') {
+          if (clientId && clients.has(clientId)) {
+            const client = clients.get(clientId)!;
+            client.conversations.delete(message.conversationId);
+            console.log(`[WebSocket] Client ${clientId} left conversation ${message.conversationId}`);
+          }
+          return;
+        }
+        
+        // Handle new message broadcast
+        if (message.type === 'new_message') {
+          const { conversationId, messageData } = message;
+          console.log(`[WebSocket] Broadcasting new message in conversation ${conversationId}`);
+          
+          // Broadcast to all clients in this conversation
+          clients.forEach((client) => {
+            if (client.conversations.has(conversationId) && client.ws.readyState === WebSocket.OPEN) {
+              client.ws.send(JSON.stringify({
+                type: 'message_received',
+                conversationId,
+                message: messageData
+              }));
+            }
+          });
+        }
+        
+        // Handle typing indicator
+        if (message.type === 'typing') {
+          const { conversationId, isTyping } = message;
+          
+          // Broadcast typing status to other clients in the conversation
+          clients.forEach((client) => {
+            if (client.userId !== userId && client.conversations.has(conversationId) && client.ws.readyState === WebSocket.OPEN) {
+              client.ws.send(JSON.stringify({
+                type: 'user_typing',
+                conversationId,
+                userId,
+                isTyping
+              }));
+            }
+          });
+        }
+        
+        // Handle read receipt
+        if (message.type === 'mark_read') {
+          const { conversationId, messageIds } = message;
+          console.log(`[WebSocket] Marking messages as read in conversation ${conversationId}`);
+          
+          // Broadcast read receipt to other clients
+          clients.forEach((client) => {
+            if (client.userId !== userId && client.conversations.has(conversationId) && client.ws.readyState === WebSocket.OPEN) {
+              client.ws.send(JSON.stringify({
+                type: 'messages_read',
+                conversationId,
+                messageIds,
+                readBy: userId
+              }));
+            }
+          });
+        }
+        
+      } catch (error) {
+        console.error('[WebSocket] Error processing message:', error);
+        ws.send(JSON.stringify({ type: 'error', message: 'Failed to process message' }));
+      }
+    });
+    
+    ws.on('close', () => {
+      if (clientId) {
+        clients.delete(clientId);
+        console.log(`[WebSocket] Client disconnected: ${clientId}`);
+      }
+    });
+    
+    ws.on('error', (error) => {
+      console.error('[WebSocket] Connection error:', error);
+    });
+  });
+  
+  console.log('[WebSocket] Server initialized on path /ws');
+  
   return httpServer;
 }
