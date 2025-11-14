@@ -67,7 +67,7 @@ export default function HomeHealthScore({ houseId }: HomeHealthScoreProps) {
   return (
     <Card className="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950 dark:to-blue-950 border-purple-200 dark:border-purple-800">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center gap-2 w-full">
+        <CardTitle className="tracking-tight text-foreground flex items-center gap-2 w-full text-[23px] text-center font-bold">
           <Home className="h-5 w-5 text-purple-600 dark:text-purple-400" />
           Home Health Score
         </CardTitle>
