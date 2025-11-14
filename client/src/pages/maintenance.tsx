@@ -472,6 +472,7 @@ interface TaskCardProps {
   deleteTaskOverrideMutation: any;
   toast: any;
   taskOverrides: TaskOverride[] | undefined;
+  selectedHouseId: string;
 }
 
 function TaskCard({
@@ -492,6 +493,7 @@ function TaskCard({
   deleteTaskOverrideMutation,
   toast,
   taskOverrides,
+  selectedHouseId,
 }: TaskCardProps) {
   const [showReadDetails, setShowReadDetails] = useState(false);
   
@@ -2887,6 +2889,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     deleteTaskOverrideMutation={deleteTaskOverrideMutation}
                     toast={toast}
                     taskOverrides={taskOverrides}
+                    selectedHouseId={selectedHouseId}
                   />
                 );
               })}
