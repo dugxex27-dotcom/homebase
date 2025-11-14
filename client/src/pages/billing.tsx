@@ -117,7 +117,7 @@ export default function Billing() {
                 )}
                 {currentPlan === 'premium' && "You're on the Premium plan with access to up to 10 properties."}
                 {currentPlan === 'base' && "You're on the Base plan with access to up to 2 properties."}
-                {currentPlan === 'contractor' && "You're subscribed to the Contractor plan ($10/month)."}
+                {currentPlan === 'contractor' && "You're subscribed to the Contractor plan ($20/month)."}
               </CardDescription>
             </CardHeader>
           </Card>
@@ -133,7 +133,7 @@ export default function Billing() {
                   Contractor Plan
                 </CardTitle>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold" style={{ color: '#b91c1c' }}>$10</span>
+                  <span className="text-4xl font-bold" style={{ color: '#b91c1c' }}>$20</span>
                   <span className="text-gray-600">/month</span>
                 </div>
                 <CardDescription>Professional contractor access to Home Base</CardDescription>
@@ -210,7 +210,7 @@ export default function Billing() {
                   )}
                 </div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold" style={{ color: '#2c0f5b' }}>$3</span>
+                  <span className="text-4xl font-bold" style={{ color: '#2c0f5b' }}>$5</span>
                   <span className="text-gray-600">/month</span>
                 </div>
                 <CardDescription>Perfect for managing a primary residence</CardDescription>
@@ -345,6 +345,12 @@ export default function Billing() {
               <h3 className="font-semibold mb-1" style={{ color: '#2c0f5b' }}>14-Day Free Trial</h3>
               <p className="text-gray-600">
                 All new accounts start with a 14-day free trial. No credit card required to start.
+              </p>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-1" style={{ color: '#2c0f5b' }}>Referral Rewards</h3>
+              <p className="text-gray-600">
+                For every active paying subscriber you refer, you'll receive $1 off your monthly subscription. Discounts are applied automatically each billing cycle.
               </p>
             </div>
             <div>

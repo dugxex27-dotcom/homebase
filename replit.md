@@ -2,7 +2,7 @@
 
 ## Overview
 
-Home Base is a full-stack web application designed to connect homeowners with specialized contractors, provide a marketplace for DIY products, and offer comprehensive seasonal maintenance guidance. It aims to deliver a sophisticated user experience with an Anthropologie-inspired aesthetic, supporting multi-property management for homeowners and detailed proposal management for contractors to enhance efficiency and organization for both user types.
+Home Base is a full-stack web application connecting homeowners with contractors, offering a DIY product marketplace, and providing seasonal home maintenance guidance. It features an Anthropologie-inspired aesthetic, supports multi-property management for homeowners, and includes detailed proposal management for contractors, aiming to enhance efficiency and organization for all user types.
 
 ## User Preferences
 
@@ -11,135 +11,43 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### Design and UI/UX
-- **Aesthetic**: Modern purple/blue gradient theme with a custom HomeBase logo featuring a house-shaped design with a blue gradient "H" on a purple background. The design is clean, professional, and optimized for a consistent user experience.
+- **Aesthetic**: Modern purple/blue gradient theme with a custom HomeBase logo. Clean, professional, and optimized for a consistent user experience.
 - **Components**: Utilizes `shadcn/ui` built on Radix UI for a consistent and sophisticated look.
-- **Theming**: Supports light/dark mode with a purple-based color palette (primary: `hsl(260, 65%, 55%)`) for the homeowner interface and a red theme for the contractor interface.
-- **Navigation**: Role-based dashboards (Homeowner and Contractor) provide tailored content and quick actions.
-- **Sign-in Page**: Features role selection buttons with left-aligned text, consistent padding, and wrapped subcopy for readability.
-- **Messages Page**: Includes a collapsible review section, allowing homeowners to leave reviews for contractors while maximizing messaging space.
+- **Theming**: Supports light/dark mode with a purple-based color palette for homeowners and a red theme for contractors.
+- **Navigation**: Role-based dashboards for Homeowner and Contractor.
 
 ### Technical Implementation
-- **Frontend**: React 18 with TypeScript, Wouter for routing, TanStack Query for state management, and Tailwind CSS for styling. Vite is used for development and builds.
-- **Backend**: Node.js with Express.js, written in TypeScript with ES modules, implementing a RESTful API with JSON responses.
-- **Database**: PostgreSQL with Drizzle ORM for type-safe operations and Drizzle Kit for schema management.
-    - **Persistence**: All critical data, including contractor profiles, contractor licenses, project photos, houses, home maintenance data (systems, tasks, logs, service records), conversations, and messages, are persisted in PostgreSQL.
-    - **Contractor Licenses**: Database-backed storage in `contractor_licenses` table with full CRUD operations (create, read, update, soft-delete). Multiple licenses per contractor are supported with type, number, municipality, state, and expiry date tracking.
-    - **Contractor Search**: Enhanced `searchContractors()` to query the `companies` table, joining with `users` for zip codes, and implementing a two-way radius check for accurate matching.
-    - **Messaging**: Conversations and messages are stored in PostgreSQL, ensuring persistence. Automatic notifications are sent for new messages, linking directly to the messages page.
-- **Data Flow**: Client requests use TanStack Query, Express routes handle processing, Drizzle ORM accesses PostgreSQL, and responses are JSON, with shared TypeScript types ensuring end-to-end type safety.
+- **Frontend**: React 18 with TypeScript, Wouter for routing, TanStack Query for state management, and Tailwind CSS for styling. Vite for development.
+- **Backend**: Node.js with Express.js, TypeScript, and ES modules, implementing a RESTful API with JSON responses.
+- **Database**: PostgreSQL with Drizzle ORM for type-safe operations and Drizzle Kit for schema management. Persistence for all critical data including contractor profiles, licenses, project photos, home maintenance data, conversations, and messages.
+- **Data Flow**: Client requests use TanStack Query, Express routes process, Drizzle ORM accesses PostgreSQL, with shared TypeScript types for end-to-end type safety.
 - **Security**: Enterprise-grade security with Helmet.js, `express-rate-limit`, CORS validation, secure session cookies, SQL injection/XSS pattern detection, and Zod for input validation.
 
-### Key Features and Specifications
-- **User Management**: Three distinct user roles (Homeowner, Contractor, Real Estate Agent).
-- **Authentication System**:
-    - Email/password registration with bcrypt hashing.
-    - Google OAuth integration via Replit Auth, including a complete-profile flow for OAuth users and data preservation.
-    - A two-step password reset system with email verification, secure tokens, and rate-limiting.
-    - Zip code capture for geographic analytics.
-    - Optional invite code system.
-- **Admin Dashboard**: Provides user analytics, signup trends by zip code, top search terms, recent searches, and invite code management.
-- **Search Analytics**: Automatic tracking of contractor directory and marketplace product searches to power admin insights.
-- **Company-Based Contractor Architecture**: All contractors must belong to a company. Features company ownership, multi-user support for employees, and dedicated API endpoints for company management.
+### Feature Specifications
+- **User Management**: Three distinct roles: Homeowner, Contractor, Real Estate Agent.
+- **Authentication**: Email/password with bcrypt, Google OAuth via Replit Auth, two-step password reset, and optional invite codes.
+- **Admin Dashboard**: User analytics, signup trends, search insights, and invite code management.
+- **Company-Based Contractor Architecture**: Contractors belong to companies, supporting multi-user access and dedicated API endpoints.
 - **Homeowner Features**:
-    - Multi-property support with individual maintenance schedules and climate zone detection.
-    - Centralized service records tracking.
-    - **Home Health Score**: Gamified maintenance tracking system that calculates a health score for each property based on completed and missed maintenance tasks. Score formula: (completed tasks × 4) - (missed tasks × 4). Displays prominently on home page and maintenance page with color-coded status indicators (green/yellow/red) and detailed task counts. Encourages consistent home maintenance through visual feedback.
-    - **DIY Savings Tracker**: Financial tracking system that calculates total money saved from DIY maintenance tasks. Features:
-        - Displays total cumulative savings and number of DIY tasks completed
-        - Shows average savings per task
-        - Professional cost estimates with regional multipliers (Northeast, South, Midwest, West)
-        - Savings calculated as (professional low estimate - materials high estimate)
-        - Prominent card display after Home Health Score with green gradient for savings visualization
-        - Loading, error, and empty states with encouraging messaging
-        - Automatic tracking via `completionMethod` field on task completions (defaults to 'professional')
-        - GET /api/houses/:id/diy-savings endpoint returns totalSavings and taskCount
-    - **AI Contractor Recommendation**: An AI-powered feature (using GPT-5 via Replit AI) that analyzes homeowner problems and recommends contractor types with explanations, integrating directly into contractor search.
-    - **House-Based Data Organization**: All maintenance data is filtered and organized by the homeowner's selected property.
-    - **Contractor Search Integration**: Auto-populates contractor search location from the selected house.
-- **Marketplace**: Functionality for listing and browsing DIY products with search analytics.
-- **Maintenance Guidance**: Seasonal home maintenance schedule with location-based recommendations.
-    - **Individual Task Priorities**: Traffic light color-coded priority badges (red for high, yellow for medium, green for low) on each maintenance task
-    - Task priorities are set individually based on safety criticality and urgency, with fallback to month-level priority
-    - Implemented for January and February in both Northeast and Pacific Northwest regions
-    - Priority system helps homeowners identify the most critical tasks to complete first
-- **Notifications**: Enhanced bi-directional notification system:
-    - **Homeowner Notifications**: Appointment reminders, maintenance task alerts, message replies from contractors, and high-priority proposal notifications
-    - **Contractor Notifications**: New message alerts when homeowners send messages
-    - **Features**: Real-time updates (30s polling), session-based authentication, notification bell with unread badge, immediate cache updates after read/delete
-- **Proposal System**: 
-    - **For Contractors**: Create and send detailed proposals from message conversations with scope, cost, duration, materials, and warranty information
-    - **For Homeowners**: Clickable proposal list in messages page opens detailed dialog showing full proposal information (scope, materials, notes, etc.) with accept/reject buttons
-    - **Notifications**: Homeowners receive high-priority notifications when contractors create or send proposals
-- **Permanent Connection Code System**: Each homeowner has a permanent, user-attached connection code for simplified contractor access:
-    - **For Homeowners**: Every homeowner automatically gets a unique 8-character permanent code attached to their account. Displayed with QR code for easy sharing. Optional code regeneration available if needed.
-    - **For Contractors**: Enter or scan homeowner-provided codes to validate connection and add service records. Upon validation, contractor receives homeowner details (name, email, zip code).
-    - **Features**: Permanent codes (no expiration/usage limits), automatic generation on first access, QR code generation with qrcode library, one code per homeowner account
-    - **Database**: Connection code stored in `users.connection_code` field with unique constraint
-- **Billing and Subscription System**:
-    - **Homeowner Plans**:
-        - 14-day free trial for all new signups
-        - Base Plan: $3/month for up to 2 properties
-        - Premium Plan: $10/month for up to 10 properties
-        - Grandfathered users: Unlimited access for early adopters (3 users)
-    - **Contractor Plans**:
-        - 14-day free trial for all new signups
-        - Single plan: $10/month
-        - Grandfathered contractors: Unlimited access for early adopters (3 contractors)
-    - **Features**:
-        - Trial countdown banner in header (purple for homeowners, red for contractors)
-        - House limit enforcement at API level with proper error codes
-        - Upgrade dialog when hitting property limits
-        - Role-based billing page showing appropriate plans
-        - Trial preservation during subscription flows
-        - Database fields: `trialEndsAt`, `subscriptionStatus` ('trialing' | 'active' | 'grandfathered'), `maxHousesAllowed`
-    - **Pending**: Stripe integration (requires API keys)
+    - Multi-property support with climate zone detection and centralized service records.
+    - **Home Health Score**: Gamified maintenance tracking, calculating a score based on completed/missed tasks.
+    - **DIY Savings Tracker**: Financial tracking of money saved from DIY tasks, including professional cost estimates and regional multipliers.
+    - **AI Contractor Recommendation**: AI-powered (GPT-5 via Replit AI) recommendations for contractor types based on homeowner problems.
+    - **Permanent Connection Code System**: Unique 8-character code for homeowners to share with contractors for service record access.
+- **Marketplace**: Listing and browsing DIY products.
+- **Maintenance Guidance**: Seasonal home maintenance schedules with location-based and individual task priorities (traffic light system).
+- **Notifications**: Bi-directional system for homeowners (reminders, task alerts, messages, proposals) and contractors (new messages). Real-time updates with unread badges.
+- **Proposal System**: Contractors create detailed proposals from messages; homeowners view and accept/reject proposals within the app.
+- **Billing and Subscription**:
+    - 14-day free trial for all new signups.
+    - Tiered plans for homeowners and a single plan for contractors.
+    - Referral discount system: $1/month discount per active referred subscriber.
 - **Real Estate Agent Affiliate System**:
-    - **Agent Role**: Third user type focused solely on earning referral commissions (no subscription required)
-    - **Profile Picture Upload**:
-        - Agents can upload profile pictures via Profile Settings card in account page
-        - Storage in object storage with key pattern: `profile-pictures/{userId}/{uuid}.{ext}`
-        - Supported formats: JPEG, PNG, WEBP (max 5MB)
-        - Auto-upload on file select with preview and loading spinner
-        - Profile images display in homeowner maintenance page when agent referred them
-        - Fallback to User icon if no picture or load error
-        - profileImageUrl stored in users table (not agent_profiles)
-    - **Referral Tracking**:
-        - Auto-generated unique 8-character referral codes for each agent (format: ABCDEFGHJKLMNPQRSTUVWXYZ23456789)
-        - Shareable referral links with QR code generation (using qrcode library)
-        - Referral capture via ?ref=CODE URL parameter during homeowner/contractor signup
-        - Automatic creation of affiliate_referral records linking agent to referred user
-    - **Payout Structure**:
-        - $10 flat commission per referred signup after 4 consecutive months of active subscription
-        - Consecutive month tracking via subscription_cycle_events table
-        - Payout eligibility automatically calculated when consecutiveMonthsPaid >= 4
-        - Automated payouts via Stripe Connect (pending Stripe API keys)
-    - **Agent Dashboard**:
-        - Total referrals, active subscribers, trial users count
-        - Total earnings (sum of paid affiliate payouts)
-        - Pending earnings (eligible but unpaid referrals)
-        - Detailed referral list with status badges (trial, active, voided)
-        - Progress tracking toward 4-month payout threshold
-        - Shareable referral link with copy/share buttons
-        - QR code generation and download for offline sharing
-    - **Database Tables**:
-        - `agent_profiles`: Agent metadata, commission rate (default 10%), Stripe Connect account ID
-        - `affiliate_referrals`: Links agents to referred users with status, signup date, trial end, consecutive months paid
-        - `subscription_cycle_events`: Tracks each billing cycle for consecutive month calculation
-        - `affiliate_payouts`: Payment records with amount, status, Stripe transfer ID, payout date
-    - **API Endpoints**:
-        - GET /api/agent/profile - Current agent's profile
-        - GET /api/agent/referrals - All referrals with user details
-        - GET /api/agent/stats - Aggregated earnings and referral statistics
-        - GET /api/referral/validate/:code - Public endpoint for referral code validation
-    - **Signup Flow**:
-        - Landing page with "Real Estate Agent" card routes to /signin?role=agent
-        - Agent signup auto-generates referral code, creates agent profile, skips trial/subscription
-        - Homeowner/contractor signup with ?ref=CODE validates referral and creates affiliate_referral record
-        - Referral status starts as 'trial' and transitions to 'active' after first payment
-    - **Future Automation** (requires Stripe webhooks):
-        - Automatic subscription cycle event logging on successful payments
-        - Consecutive month counter increment/reset based on payment history
-        - Automatic payout creation and Stripe Transfer when referral hits 4 months
+    - Agent role for earning referral commissions (no subscription).
+    - Profile picture uploads for agents.
+    - Unique referral codes and shareable links with QR codes.
+    - Payout structure: $10 per referred signup after 4 consecutive months of active subscription.
+    - Agent Dashboard for tracking referrals, earnings, and payout progress.
 - **API Endpoints**: Structured for contractors, products, houses, notifications, proposals, connection codes, search analytics, billing/subscriptions, agent/affiliate system, and admin functions.
 
 ## External Dependencies
@@ -147,7 +55,7 @@ Preferred communication style: Simple, everyday language.
 ### Frontend
 - **React Ecosystem**: React, React DOM, Wouter
 - **State Management**: TanStack React Query
-- **UI & Styling**: Radix UI, shadcn/ui, Tailwind CSS, class-variance-authority, clsx
+- **UI & Styling**: Radix UI, shadcn/ui, Tailwind CSS
 - **Forms**: React Hook Form
 - **Utilities**: date-fns, lucide-react
 
@@ -161,5 +69,5 @@ Preferred communication style: Simple, everyday language.
 
 ### Third-Party Services
 - **Geocoding**: OpenStreetMap Nominatim
-- **Address Autocomplete**: Google Places API (primary), OpenStreetMap (fallback)
+- **Address Autocomplete**: Google Places API, OpenStreetMap
 - **AI**: Replit AI Integrations (for GPT-5)
