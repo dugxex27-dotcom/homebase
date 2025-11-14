@@ -19,7 +19,7 @@ import { insertMaintenanceLogSchema, insertCustomMaintenanceTaskSchema, insertHo
 import type { MaintenanceLog, House, CustomMaintenanceTask, HomeSystem, TaskOverride, HomeAppliance, HomeApplianceManual } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, Settings, Plus, Edit, Trash2, Home, FileText, Building2, User, Building, Phone, MessageSquare, AlertTriangle, Thermometer, Cloud, Monitor, Book, ExternalLink, Upload, Trophy, Mail, Handshake, Globe, TrendingDown, PiggyBank } from "lucide-react";
+import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, Settings, Plus, Edit, Trash2, Home, FileText, Building2, User, Building, Phone, MessageSquare, AlertTriangle, Thermometer, Cloud, Monitor, Book, ExternalLink, Upload, Trophy, Mail, Handshake, Globe, TrendingDown, PiggyBank, Truck, CheckCircle2, Circle } from "lucide-react";
 import { AppointmentScheduler } from "@/components/appointment-scheduler";
 import { CustomMaintenanceTasks } from "@/components/custom-maintenance-tasks";
 import { US_MAINTENANCE_DATA, getRegionFromClimateZone, getCurrentMonthTasks } from "@shared/location-maintenance-data";
@@ -444,6 +444,408 @@ function DIYSavingsTracker({ houseId }: { houseId: string }) {
         </div>
       </div>
     </section>
+  );
+}
+
+// Task Card Component - New Layout based on mockup
+interface TaskCardProps {
+  task: MaintenanceTask;
+  completed: boolean;
+  isCustomTask: boolean;
+  displayDescription: string;
+  previousContractor: any;
+  taskOverride: TaskOverride | undefined;
+  onToggleComplete: () => void;
+  onCustomize: () => void;
+  onViewContractor: (id: string) => void;
+  showCustomizeTask: string | null;
+  getTaskOverride: (taskTitle: string, overrides: TaskOverride[] | undefined) => TaskOverride | undefined;
+  isTaskEnabled: (taskTitle: string, overrides: TaskOverride[] | undefined) => boolean;
+  generateTaskId: (title: string) => string;
+  upsertTaskOverrideMutation: any;
+  deleteTaskOverrideMutation: any;
+  toast: any;
+  taskOverrides: TaskOverride[] | undefined;
+}
+
+function TaskCard({
+  task,
+  completed,
+  isCustomTask,
+  displayDescription,
+  previousContractor,
+  taskOverride,
+  onToggleComplete,
+  onCustomize,
+  onViewContractor,
+  showCustomizeTask,
+  getTaskOverride,
+  isTaskEnabled,
+  generateTaskId,
+  upsertTaskOverrideMutation,
+  deleteTaskOverrideMutation,
+  toast,
+  taskOverrides,
+}: TaskCardProps) {
+  const [showReadDetails, setShowReadDetails] = useState(false);
+  
+  // Calculate progress - for now use completed state as 0/1, structured for future step tracking
+  const currentProgress = completed ? 1 : 0;
+  const totalSteps = 1; // Future: this could come from task.steps?.length or similar
+
+  return (
+    <Card 
+      className={`hover:shadow-md transition-all ${
+        completed ? 'border-green-200 dark:border-green-800' : 'border-gray-300 dark:border-gray-700'
+      }`}
+      style={{ backgroundColor: completed ? '#dcfce7' : '#f2f2f2' }}
+      data-testid={`card-task-${task.id}`}
+    >
+      <CardHeader className="pb-3">
+        {/* Header: Title + Priority Badge */}
+        <div className="flex justify-between items-start gap-4">
+          <CardTitle className="tracking-tight text-xl font-bold flex-1" style={{ color: '#2c0f5b' }} data-testid={`title-task-${generateTaskId(task.title)}`}>
+            {task.title}
+          </CardTitle>
+          {task.priority === 'high' && (
+            <Badge className="bg-red-500 text-white hover:bg-red-600 font-semibold px-3 py-1" data-testid={`badge-priority-${task.priority}`}>
+              HIGH PRIORITY
+            </Badge>
+          )}
+          {task.priority === 'medium' && (
+            <Badge className="bg-amber-500 text-white hover:bg-amber-600 font-semibold px-3 py-1" data-testid={`badge-priority-${task.priority}`}>
+              MEDIUM PRIORITY
+            </Badge>
+          )}
+          {task.priority === 'low' && (
+            <Badge className="bg-blue-500 text-white hover:bg-blue-600 font-semibold px-3 py-1" data-testid={`badge-priority-${task.priority}`}>
+              LOW PRIORITY
+            </Badge>
+          )}
+        </div>
+        
+        {/* Progress Indicator */}
+        <div className="text-sm text-gray-600 mt-2 font-medium">
+          {currentProgress}/{totalSteps} Steps Complete
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        {/* Description */}
+        <p className="leading-relaxed text-gray-700" style={{ color: '#2c0f5b' }}>
+          {displayDescription}
+        </p>
+
+        {/* Progress Indicator (secondary display as shown in mockup) */}
+        <div className="text-sm text-gray-500">
+          {currentProgress}/{totalSteps} Steps Complete
+        </div>
+
+        {/* Read Details Link */}
+        <button
+          onClick={() => setShowReadDetails(!showReadDetails)}
+          className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center gap-1 transition-colors"
+          data-testid={`button-read-details-${task.id}`}
+        >
+          Read Details
+          <ChevronDown className={`w-4 h-4 transition-transform ${showReadDetails ? 'rotate-180' : ''}`} />
+        </button>
+
+        {/* Cost & Effort Section */}
+        {task.costEstimate && (
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200">
+            <h4 className="text-sm font-bold mb-3" style={{ color: '#2c0f5b' }}>Cost & Effort</h4>
+            <div className="flex flex-wrap items-center gap-4 text-sm">
+              {/* DIY Cost */}
+              <div className="flex items-center gap-2">
+                <Wrench className="w-4 h-4 text-gray-600" />
+                <span className="font-medium text-gray-700">DIY Cost:</span>
+                <span className="font-semibold text-gray-900">
+                  {formatDIYSavings(task.costEstimate)}
+                </span>
+                <span className="text-gray-500 text-xs">(Supplies)</span>
+              </div>
+
+              {/* Pro Cost */}
+              <div className="flex items-center gap-2">
+                <Truck className="w-4 h-4 text-gray-600" />
+                <span className="font-medium text-gray-700">Pro Cost:</span>
+                <span className="font-semibold text-gray-900">
+                  {formatCostEstimate(task.costEstimate)}
+                </span>
+              </div>
+
+              {/* Find Contractor Link */}
+              <a
+                href={`/contractors?category=${encodeURIComponent(task.category)}&service=${encodeURIComponent(task.title)}`}
+                className="text-blue-600 hover:text-blue-700 font-medium underline ml-auto"
+                data-testid={`link-find-contractor-${task.id}`}
+              >
+                Find Contractor
+              </a>
+
+              {/* Difficulty */}
+              <div className="flex items-center gap-2 ml-4">
+                <Clock className="w-4 h-4 text-amber-500" />
+                <span className="font-medium text-gray-700">{task.difficulty}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Primary CTA Button */}
+        <Button
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-6 text-base"
+          onClick={onToggleComplete}
+          data-testid={`button-view-checklist-${task.id}`}
+        >
+          {completed ? (
+            <>
+              <CheckCircle2 className="w-5 h-5 mr-2" />
+              Task Completed - View Details
+            </>
+          ) : (
+            <>
+              <Circle className="w-5 h-5 mr-2" />
+              View Full Checklist & Instructions
+            </>
+          )}
+        </Button>
+
+        {/* Read Details Collapsible Content */}
+        <Collapsible open={showReadDetails}>
+          <CollapsibleContent>
+            <div className="border-t pt-4 space-y-4">
+              {/* Additional Task Info */}
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="flex items-center">
+                  <Clock className="w-4 h-4 mr-2" style={{ color: '#fbbf24' }} />
+                  <span style={{ color: '#2c0f5b' }}>{task.estimatedTime}</span>
+                </div>
+                {task.cost && (
+                  <div className="flex items-center">
+                    <DollarSign className="w-4 h-4 mr-2" style={{ color: '#10b981' }} />
+                    <span style={{ color: '#2c0f5b' }}>{task.cost}</span>
+                  </div>
+                )}
+                <div className="flex items-center">
+                  <Badge variant="outline" className="text-xs">
+                    {task.category}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Tools Needed */}
+              {task.tools && task.tools.length > 0 && (
+                <div>
+                  <div className="flex items-center mb-2">
+                    <Wrench className="w-4 h-4 mr-2" style={{ color: '#ef4444' }} />
+                    <span className="text-sm font-medium" style={{ color: '#2c0f5b' }}>Tools needed:</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {task.tools.map((tool, index) => (
+                      <Badge key={index} variant="secondary" className="text-xs">
+                        {tool}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Customization Panel */}
+              {!isCustomTask && (
+                <div className="border rounded-lg p-4 bg-slate-50 dark:bg-slate-800">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-medium flex items-center" style={{ color: '#2c0f5b' }}>
+                      <Settings className="w-4 h-4 mr-2" />
+                      Customize This Task
+                    </h4>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={onCustomize}
+                      className="text-xs"
+                    >
+                      {showCustomizeTask === task.id ? 'Hide' : 'Show'} Options
+                    </Button>
+                  </div>
+
+                  <Collapsible open={showCustomizeTask === task.id}>
+                    <CollapsibleContent>
+                      {(() => {
+                        const currentOverride = getTaskOverride(task.title, taskOverrides);
+                        const taskId = generateTaskId(task.title);
+                        
+                        return (
+                          <div className="space-y-4">
+                            {/* Enable/Disable Task */}
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`enable-${taskId}`}
+                                  checked={isTaskEnabled(task.title, taskOverrides)}
+                                  onCheckedChange={(checked) => {
+                                    upsertTaskOverrideMutation.mutate({
+                                      taskId,
+                                      isEnabled: checked as boolean,
+                                      frequencyType: currentOverride?.frequencyType || undefined,
+                                      specificMonths: currentOverride?.specificMonths || undefined,
+                                    });
+                                  }}
+                                  data-testid={`checkbox-enable-${taskId}`}
+                                />
+                                <label htmlFor={`enable-${taskId}`} className="text-sm font-medium" style={{ color: '#2c0f5b' }}>
+                                  Enable this task
+                                </label>
+                              </div>
+                              {currentOverride && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => deleteTaskOverrideMutation.mutate(taskId)}
+                                  className="text-xs"
+                                  data-testid={`button-reset-${taskId}`}
+                                >
+                                  Reset to Default
+                                </Button>
+                              )}
+                            </div>
+
+                            {/* Frequency Selector */}
+                            <div>
+                              <label className="text-sm font-medium mb-2 block" style={{ color: '#2c0f5b' }}>
+                                Task Frequency
+                              </label>
+                              <Select
+                                value={currentOverride?.frequencyType || 'default'}
+                                onValueChange={(value) => {
+                                  if (value === 'default') {
+                                    if (currentOverride) {
+                                      deleteTaskOverrideMutation.mutate(taskId);
+                                    }
+                                  } else {
+                                    upsertTaskOverrideMutation.mutate({
+                                      taskId,
+                                      isEnabled: isTaskEnabled(task.title, taskOverrides),
+                                      frequencyType: value,
+                                      specificMonths: currentOverride?.specificMonths || undefined,
+                                    });
+                                  }
+                                }}
+                                data-testid={`select-frequency-${taskId}`}
+                              >
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder="Select frequency" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="default">Default (As Shown)</SelectItem>
+                                  <SelectItem value="monthly">Monthly</SelectItem>
+                                  <SelectItem value="quarterly">Quarterly</SelectItem>
+                                  <SelectItem value="biannually">Twice per Year</SelectItem>
+                                  <SelectItem value="annually">Once per Year</SelectItem>
+                                  <SelectItem value="custom">Custom</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {/* Custom Description */}
+                            <div>
+                              <label className="text-sm font-medium mb-2 block" style={{ color: '#2c0f5b' }}>
+                                Custom Description (Optional)
+                              </label>
+                              <textarea
+                                className="w-full p-2 border rounded-md min-h-[80px]"
+                                placeholder="Enter custom instructions for this task..."
+                                defaultValue={currentOverride?.customDescription || ''}
+                                onBlur={(e) => {
+                                  const newDescription = e.target.value.trim();
+                                  if (newDescription !== (currentOverride?.customDescription || '')) {
+                                    upsertTaskOverrideMutation.mutate({
+                                      taskId,
+                                      isEnabled: isTaskEnabled(task.title, taskOverrides),
+                                      frequencyType: currentOverride?.frequencyType || undefined,
+                                      specificMonths: currentOverride?.specificMonths || undefined,
+                                      customDescription: newDescription || undefined,
+                                    });
+                                  }
+                                }}
+                                data-testid={`textarea-description-${taskId}`}
+                              />
+                              <p className="text-xs mt-1" style={{ color: '#2c0f5b' }}>
+                                Leave blank to use the default description
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </CollapsibleContent>
+                  </Collapsible>
+                </div>
+              )}
+
+              {/* Previous Contractor Section */}
+              {previousContractor && (
+                <div className="rounded-lg p-3" style={{ backgroundColor: '#2c0f5b' }}>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center mb-2">
+                        <User className="w-4 h-4 mr-2 text-white" />
+                        <span className="text-sm font-medium text-white">
+                          Previous contractor used for {previousContractor.serviceType}
+                        </span>
+                      </div>
+                      <div className="text-sm text-white">
+                        <div className="font-medium">
+                          {previousContractor.contractorName}
+                          {previousContractor.contractorCompany && (
+                            <span className="font-normal"> - {previousContractor.contractorCompany}</span>
+                          )}
+                        </div>
+                        <div className="text-xs mt-1">
+                          Last service: {new Date(previousContractor.lastServiceDate).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 ml-4">
+                      {previousContractor.contractorId ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs"
+                          style={{ backgroundColor: '#b6a6f4', color: '#ffffff', borderColor: '#b6a6f4' }}
+                          onClick={() => onViewContractor(previousContractor.contractorId)}
+                          data-testid={`button-view-contractor-${task.id}`}
+                        >
+                          <User className="w-3 h-3 mr-1" />
+                          View Profile
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs"
+                          style={{ backgroundColor: '#b6a6f4', color: '#ffffff', borderColor: '#b6a6f4' }}
+                          onClick={() => {
+                            toast({
+                              title: "Contact Contractor",
+                              description: `You can contact ${previousContractor.contractorName} for this service again. Check your previous service records for contact details.`
+                            });
+                          }}
+                          data-testid={`button-contact-contractor-${task.id}`}
+                        >
+                          <MessageSquare className="w-3 h-3 mr-1" />
+                          Contact Again
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      </CardContent>
+    </Card>
   );
 }
 
