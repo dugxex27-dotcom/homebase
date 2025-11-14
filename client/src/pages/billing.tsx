@@ -11,12 +11,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { User } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 
-type Plan = 'trial' | 'base' | 'premium' | 'contractor' | 'grandfathered';
+type Plan = 'trial' | 'base' | 'premium' | 'premium_plus' | 'contractor' | 'grandfathered';
 
 export default function Billing() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
-  const [selectedPlan, setSelectedPlan] = useState<'base' | 'premium'>('base');
+  const [selectedPlan, setSelectedPlan] = useState<'base' | 'premium' | 'premium_plus'>('base');
 
   // Fetch user details to get trial and subscription info
   const { data: userData } = useQuery<User>({
@@ -48,13 +48,14 @@ export default function Billing() {
     
     // Homeowner plans based on maxHousesAllowed
     const maxHouses = userData?.maxHousesAllowed ?? 2;
-    if (maxHouses === 10) return 'premium';
+    if (maxHouses >= 7) return 'premium_plus';
+    if (maxHouses >= 3) return 'premium';
     return 'base';
   };
 
   const currentPlan = getCurrentPlan();
 
-  const handleSubscribe = (plan: 'base' | 'premium') => {
+  const handleSubscribe = (plan: 'base' | 'premium' | 'premium_plus') => {
     // TODO: Implement Stripe checkout when keys are available
     console.log('Subscribe to plan:', plan);
     // This will be replaced with Stripe integration
@@ -108,14 +109,15 @@ export default function Billing() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2" style={{ color: isContractor ? '#b91c1c' : '#2c0f5b' }}>
                 {currentPlan === 'grandfathered' && <Crown className="h-5 w-5 text-yellow-600" />}
-                Current Plan: {currentPlan === 'grandfathered' ? 'Grandfathered' : currentPlan === 'contractor' ? 'Contractor' : currentPlan === 'premium' ? 'Premium' : 'Base'}
+                Current Plan: {currentPlan === 'grandfathered' ? 'Grandfathered' : currentPlan === 'contractor' ? 'Contractor' : currentPlan === 'premium_plus' ? 'Premium Plus' : currentPlan === 'premium' ? 'Premium' : 'Base'}
               </CardTitle>
               <CardDescription>
                 {currentPlan === 'grandfathered' && (isContractor 
                   ? "You have unlimited access to all contractor features as a valued early adopter."
                   : "You have unlimited access to all features as a valued early adopter."
                 )}
-                {currentPlan === 'premium' && "You're on the Premium plan with access to up to 10 properties."}
+                {currentPlan === 'premium_plus' && "You're on the Premium Plus plan with access to 7+ properties."}
+                {currentPlan === 'premium' && "You're on the Premium plan with access to 3-6 properties."}
                 {currentPlan === 'base' && "You're on the Base plan with access to up to 2 properties."}
                 {currentPlan === 'contractor' && "You're subscribed to the Contractor plan ($20/month)."}
               </CardDescription>
