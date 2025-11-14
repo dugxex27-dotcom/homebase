@@ -532,12 +532,12 @@ function TaskCard({
               </Badge>
             )}
             {task.priority === 'medium' && (
-              <Badge className="bg-amber-500 text-white hover:bg-amber-600 font-semibold px-3 py-1" data-testid={`badge-priority-${task.priority}`}>
+              <Badge className="bg-yellow-500 text-white hover:bg-yellow-600 font-semibold px-3 py-1" data-testid={`badge-priority-${task.priority}`}>
                 MEDIUM PRIORITY
               </Badge>
             )}
             {task.priority === 'low' && (
-              <Badge className="bg-blue-500 text-white hover:bg-blue-600 font-semibold px-3 py-1" data-testid={`badge-priority-${task.priority}`}>
+              <Badge className="bg-green-500 text-white hover:bg-green-600 font-semibold px-3 py-1" data-testid={`badge-priority-${task.priority}`}>
                 LOW PRIORITY
               </Badge>
             )}
