@@ -55,6 +55,8 @@ interface MaintenanceTask {
   cost: string | null;
   systemRequirements?: string[];
   costEstimate?: CostEstimate;
+  impact?: string; // What happens if not completed
+  impactCost?: string; // Potential costs if not done
 }
 
 
@@ -575,6 +577,33 @@ function TaskCard({
         <p className="leading-relaxed text-gray-700" style={{ color: '#2c0f5b' }}>
           {displayDescription}
         </p>
+
+        {/* Impact & Consequences Section - What happens if not done */}
+        {(task.impact || task.impactCost) && (
+          <div className="bg-red-50 dark:bg-red-950 rounded-lg p-4 border-2 border-red-200 dark:border-red-800">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h4 className="text-sm font-bold text-red-900 dark:text-red-100 mb-2">
+                  If Not Completed
+                </h4>
+                {task.impact && (
+                  <p className="text-sm text-red-800 dark:text-red-200 mb-2">
+                    {task.impact}
+                  </p>
+                )}
+                {task.impactCost && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <DollarSign className="w-4 h-4 text-red-700 dark:text-red-300" />
+                    <span className="text-sm font-semibold text-red-900 dark:text-red-100">
+                      Potential Cost: {task.impactCost}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Read Details Link */}
         <button
@@ -1965,6 +1994,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
         tools: null,
         cost: null,
         costEstimate: taskItem.costEstimate,
+        impact: taskItem.impact,
+        impactCost: taskItem.impactCost,
       });
     });
     
@@ -1986,6 +2017,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
         tools: null,
         cost: null,
         costEstimate: taskItem.costEstimate,
+        impact: taskItem.impact,
+        impactCost: taskItem.impactCost,
       });
     });
 
