@@ -4340,13 +4340,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Calculate total savings from DIY task completions
       const diyLogs = logs.filter(log => log.completionMethod === 'diy' && log.diySavingsAmount);
       const totalSavings = diyLogs.reduce((sum, log) => sum + parseFloat(log.diySavingsAmount || '0'), 0);
-      const diyTasksCompleted = diyLogs.length;
-      const averageSavingsPerTask = diyTasksCompleted > 0 ? totalSavings / diyTasksCompleted : 0;
+      const taskCount = diyLogs.length;
       
       res.json({
         totalSavings: parseFloat(totalSavings.toFixed(2)),
-        diyTasksCompleted,
-        averageSavingsPerTask: parseFloat(averageSavingsPerTask.toFixed(2))
+        taskCount
       });
     } catch (error) {
       console.error("Error fetching DIY savings:", error);
