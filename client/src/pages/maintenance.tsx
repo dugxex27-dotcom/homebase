@@ -502,26 +502,53 @@ function TaskCard({
       data-testid={`card-task-${task.id}`}
     >
       <CardHeader className="pb-3">
-        {/* Header: Title + Priority Badge */}
+        {/* Custom Task Badge */}
+        {isCustomTask && (
+          <Badge className="mb-3 w-fit" style={{ backgroundColor: '#b6a6f4', color: '#2c0f5b' }} data-testid="badge-custom-task">
+            Custom Task
+          </Badge>
+        )}
+        
+        {/* Header: Title + Priority Badge + Edit Button */}
         <div className="flex justify-between items-start gap-4">
           <CardTitle className="tracking-tight text-xl font-bold flex-1" style={{ color: '#2c0f5b' }} data-testid={`title-task-${generateTaskId(task.title)}`}>
             {task.title}
           </CardTitle>
-          {task.priority === 'high' && (
-            <Badge className="bg-red-500 text-white hover:bg-red-600 font-semibold px-3 py-1" data-testid={`badge-priority-${task.priority}`}>
-              HIGH PRIORITY
-            </Badge>
-          )}
-          {task.priority === 'medium' && (
-            <Badge className="bg-amber-500 text-white hover:bg-amber-600 font-semibold px-3 py-1" data-testid={`badge-priority-${task.priority}`}>
-              MEDIUM PRIORITY
-            </Badge>
-          )}
-          {task.priority === 'low' && (
-            <Badge className="bg-blue-500 text-white hover:bg-blue-600 font-semibold px-3 py-1" data-testid={`badge-priority-${task.priority}`}>
-              LOW PRIORITY
-            </Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {task.priority === 'high' && (
+              <Badge className="bg-red-500 text-white hover:bg-red-600 font-semibold px-3 py-1" data-testid={`badge-priority-${task.priority}`}>
+                HIGH PRIORITY
+              </Badge>
+            )}
+            {task.priority === 'medium' && (
+              <Badge className="bg-amber-500 text-white hover:bg-amber-600 font-semibold px-3 py-1" data-testid={`badge-priority-${task.priority}`}>
+                MEDIUM PRIORITY
+              </Badge>
+            )}
+            {task.priority === 'low' && (
+              <Badge className="bg-blue-500 text-white hover:bg-blue-600 font-semibold px-3 py-1" data-testid={`badge-priority-${task.priority}`}>
+                LOW PRIORITY
+              </Badge>
+            )}
+            {/* Edit button for custom tasks */}
+            {isCustomTask && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  document.querySelector('[data-custom-tasks-section]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  toast({
+                    title: "Edit Custom Task",
+                    description: "Use the Edit button in the Custom Maintenance Tasks section below to modify this task."
+                  });
+                }}
+                className="p-1 h-7 w-7"
+                data-testid={`button-edit-custom-${task.id}`}
+              >
+                <Edit className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
         </div>
         
         {/* Progress Indicator */}
@@ -2759,8 +2786,89 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                 const displayDescription = taskOverride?.customDescription || task.description;
                 
                 return (
-                  <Card 
-                    key={task.id} 
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    completed={completed}
+                    isCustomTask={isCustomTask}
+                    displayDescription={displayDescription}
+                    previousContractor={previousContractor}
+                    taskOverride={taskOverride}
+                    onToggleComplete={() => toggleTaskCompletion(task.id)}
+                    onCustomize={() => setShowCustomizeTask(showCustomizeTask === task.id ? null : task.id)}
+                    onViewContractor={(id) => window.open(`/contractor-profile/${id}`, '_blank')}
+                    showCustomizeTask={showCustomizeTask}
+                    getTaskOverride={getTaskOverride}
+                    isTaskEnabled={isTaskEnabled}
+                    generateTaskId={generateTaskId}
+                    upsertTaskOverrideMutation={upsertTaskOverrideMutation}
+                    deleteTaskOverrideMutation={deleteTaskOverrideMutation}
+                    toast={toast}
+                    taskOverrides={taskOverrides}
+                  />
+                );
+              })}
+
+              {filteredTasks.length === 0 && (
+                <div className="col-span-full text-center py-12">
+                  <Calendar className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2" style={{ color: '#ffffff' }}>
+                    No tasks for this month and location
+                  </h3>
+                  <p style={{ color: '#b6a6f4' }}>
+                    Try selecting a different month or climate zone to see recommended maintenance tasks.
+                  </p>
+                </div>
+              )}
+            </div>
+
+
+        {/* Custom Maintenance Tasks Section */}
+        <div className="mt-12" data-custom-tasks-section>
+          <CustomMaintenanceTasks 
+            homeownerId={homeownerId} 
+            houseId={selectedHouseId}
+          />
+        </div>
+
+        {/* Appliances Section */}
+        {selectedHouseId && (
+          <div className="mt-12">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-2">Home Appliances</h2>
+                <p className="text-lg" style={{ color: '#b6a6f4' }}>
+                  Track appliances, manuals, and maintenance schedules
+                </p>
+              </div>
+              <Button
+                onClick={() => {
+                  setEditingAppliance(null);
+                  applianceForm.reset({
+                    homeownerId,
+                    houseId: selectedHouseId,
+                    name: "",
+                    make: "",
+                    model: "",
+                    serialNumber: "",
+                    purchaseDate: "",
+                    installDate: "",
+                    yearInstalled: undefined,
+                    notes: "",
+                    location: "",
+                    warrantyExpiration: "",
+                    lastServiceDate: "",
+                  });
+                  setIsApplianceDialogOpen(true);
+                }}
+                style={{ backgroundColor: '#2c0f5b', color: 'white', borderColor: '#2c0f5b' }}
+                className="hover:opacity-90"
+                data-testid="button-add-appliance"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Appliance
+              </Button>
+            </div> 
                     className={`hover:shadow-md transition-all ${
                       completed ? 'border-green-200 dark:border-green-800' : 'border-gray-300 dark:border-gray-700'
                     }`}
