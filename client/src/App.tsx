@@ -42,6 +42,11 @@ const AgentAccount = lazy(() => import("./pages/agent-account"));
 
 // Lazy-loaded pages - Admin
 const AdminDashboard = lazy(() => import("./pages/admin"));
+const AdminSupport = lazy(() => import("./pages/admin-support"));
+
+// Lazy-loaded pages - Support
+const Support = lazy(() => import("./pages/support"));
+const SupportTicketDetail = lazy(() => import("./pages/support-ticket-detail"));
 
 // Lazy-loaded pages - Auth
 const Landing = lazy(() => import("./pages/landing"));
@@ -110,10 +115,18 @@ function Router() {
         <Route path="/my-home" component={MyHome} />
         <Route path="/maintenance" component={Maintenance} />
         <Route path="/household-profile/:id" component={HouseholdProfile} />
+        <Route path="/support/:id" component={SupportTicketDetail} />
+        <Route path="/support" component={Support} />
         <Route path="/signin" component={SignIn} />
         
-        {/* Admin route */}
-        {isAdmin && <Route path="/admin" component={AdminDashboard} />}
+        {/* Admin routes */}
+        {isAdmin && (
+          <>
+            <Route path="/admin/support/:id" component={AdminSupport} />
+            <Route path="/admin/support" component={AdminSupport} />
+            <Route path="/admin" component={AdminDashboard} />
+          </>
+        )}
         
         {/* Homeowner-specific routes */}
         {typedUser?.role === 'homeowner' && (

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Users, Package, User as UserIcon, LogOut, MessageCircle, Trophy, Shield, Calendar, Crown } from "lucide-react";
+import { Users, Package, User as UserIcon, LogOut, MessageCircle, Trophy, Shield, Calendar, Crown, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Logo from "@/components/logo";
 import { Notifications } from "@/components/notifications";
@@ -151,6 +151,15 @@ export default function Header() {
                   <UserIcon className="w-4 h-4" />
                   Account
                 </Link>
+                <Link 
+                  href="/support" 
+                  className={getNavLinkClass(location.startsWith('/support'))}
+                  aria-current={location.startsWith('/support') ? 'page' : undefined}
+                  data-testid="link-support"
+                >
+                  <HelpCircle className="w-4 h-4" />
+                  Support
+                </Link>
               </>
             )}
             {typedUser?.role === 'contractor' && (
@@ -187,6 +196,15 @@ export default function Header() {
                   <UserIcon className="w-4 h-4" />
                   Profile
                 </Link>
+                <Link 
+                  href="/support" 
+                  className={getNavLinkClass(location.startsWith('/support'))}
+                  aria-current={location.startsWith('/support') ? 'page' : undefined}
+                  data-testid="link-support"
+                >
+                  <HelpCircle className="w-4 h-4" />
+                  Support
+                </Link>
               </>
             )}
             {typedUser?.role === 'agent' && (
@@ -207,6 +225,15 @@ export default function Header() {
                 >
                   <UserIcon className="w-4 h-4" />
                   Account
+                </Link>
+                <Link 
+                  href="/support" 
+                  className={getNavLinkClass(location.startsWith('/support'))}
+                  aria-current={location.startsWith('/support') ? 'page' : undefined}
+                  data-testid="link-support"
+                >
+                  <HelpCircle className="w-4 h-4" />
+                  Support
                 </Link>
               </>
             )}
