@@ -113,7 +113,12 @@ function normalizeHostname(hostname: string, configuredDomains: string[]): strin
 
 export async function setupAuth(app: Express) {
   app.set("trust proxy", 1);
-  app.use(getSession());
+  
+  // Store session parser for WebSocket authentication
+  const sessionParser = getSession();
+  app.set('sessionParser', sessionParser);
+  app.use(sessionParser);
+  
   app.use(passport.initialize());
   app.use(passport.session());
 

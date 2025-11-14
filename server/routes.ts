@@ -5662,31 +5662,61 @@ Important: Only recommend service types from the available list. Match problems 
 
   const httpServer = createServer(app);
   
-  // WebSocket server for real-time messaging
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  // WebSocket server for real-time messaging with session validation
+  const wss = new WebSocketServer({ 
+    noServer: true  // We'll handle upgrade manually for session validation
+  });
   
   // Store active WebSocket connections with user info
   const clients = new Map<string, { userId: string; ws: WebSocket; conversations: Set<string> }>();
   
-  wss.on('connection', (ws: WebSocket) => {
-    let clientId: string | null = null;
-    let userId: string | null = null;
+  // Handle WebSocket upgrade with session validation
+  httpServer.on('upgrade', (request, socket, head) => {
+    // Only handle /ws path
+    if (request.url !== '/ws') {
+      socket.destroy();
+      return;
+    }
     
-    console.log('[WebSocket] New connection established');
+    // Parse session from the request
+    const sessionParser = app.get('sessionParser');
+    sessionParser(request, {} as any, () => {
+      const session = (request as any).session;
+      
+      // Validate authenticated session
+      if (!session || !session.user || !session.user.id) {
+        console.log('[WebSocket] Rejected unauthenticated connection attempt');
+        socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+        socket.destroy();
+        return;
+      }
+      
+      const authenticatedUserId = session.user.id;
+      console.log('[WebSocket] Authenticated connection for user:', authenticatedUserId);
+      
+      // Complete the WebSocket upgrade
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        // Attach userId to the WebSocket for later use
+        (ws as any).userId = authenticatedUserId;
+        wss.emit('connection', ws, request);
+      });
+    });
+  });
+  
+  wss.on('connection', (ws: WebSocket) => {
+    // Get the authenticated userId from the WebSocket
+    const userId = (ws as any).userId as string;
+    const clientId = randomUUID();
+    
+    clients.set(clientId, { userId, ws, conversations: new Set() });
+    console.log(`[WebSocket] Client connected: userId=${userId}, clientId=${clientId}`);
+    
+    // Send auth success
+    ws.send(JSON.stringify({ type: 'auth_success', clientId, userId }));
     
     ws.on('message', async (data: Buffer) => {
       try {
         const message = JSON.parse(data.toString());
-        
-        // Handle client authentication
-        if (message.type === 'auth') {
-          userId = message.userId;
-          clientId = randomUUID();
-          clients.set(clientId, { userId, ws, conversations: new Set() });
-          console.log(`[WebSocket] Client authenticated: userId=${userId}, clientId=${clientId}`);
-          ws.send(JSON.stringify({ type: 'auth_success', clientId }));
-          return;
-        }
         
         // Handle joining a conversation
         if (message.type === 'join_conversation') {
