@@ -428,6 +428,28 @@ export interface IStorage {
     lead: CrmLead;
     notes: CrmNote[];
   } | undefined>;
+  
+  // Error Tracking operations
+  getErrorLogs(filters?: {
+    errorType?: string;
+    severity?: string;
+    resolved?: boolean;
+    userId?: string;
+    limit?: number;
+  }): Promise<ErrorLog[]>;
+  getErrorLog(id: string): Promise<ErrorLog | undefined>;
+  createErrorLog(error: InsertErrorLog): Promise<ErrorLog>;
+  updateErrorLog(id: string, error: Partial<InsertErrorLog>): Promise<ErrorLog | undefined>;
+  
+  // Error Breadcrumb operations
+  getErrorBreadcrumbs(errorLogId: string): Promise<ErrorBreadcrumb[]>;
+  createErrorBreadcrumb(breadcrumb: InsertErrorBreadcrumb): Promise<ErrorBreadcrumb>;
+  
+  // Error Log with breadcrumbs (for detailed view)
+  getErrorLogWithBreadcrumbs(id: string): Promise<{
+    error: ErrorLog;
+    breadcrumbs: ErrorBreadcrumb[];
+  } | undefined>;
 }
 
 export class MemStorage implements IStorage {

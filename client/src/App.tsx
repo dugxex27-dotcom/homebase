@@ -35,6 +35,8 @@ const ContractorDashboard = lazy(() => import("./pages/contractor-dashboard"));
 const ContractorProfile = lazy(() => import("./pages/contractor-profile"));
 const ServiceRecords = lazy(() => import("./pages/service-records"));
 const ManageTeam = lazy(() => import("./pages/manage-team"));
+const ContractorCRM = lazy(() => import("./pages/contractor-crm"));
+const CrmLeadDetail = lazy(() => import("./pages/crm-lead-detail"));
 
 // Lazy-loaded pages - Agent
 const AgentDashboard = lazy(() => import("./pages/agent-dashboard"));
@@ -147,6 +149,8 @@ function Router() {
         {typedUser?.role === 'contractor' && (
           <>
             <Route path="/contractor-dashboard" component={ContractorDashboard} />
+            <Route path="/crm/leads/:id" component={CrmLeadDetail} />
+            <Route path="/crm" component={ContractorCRM} />
             <Route path="/contractor-profile" component={ContractorProfile} />
             <Route path="/service-records" component={ServiceRecords} />
             <Route path="/manage-team" component={ManageTeam} />

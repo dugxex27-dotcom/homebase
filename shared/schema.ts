@@ -1442,3 +1442,50 @@ export const crmNotes = pgTable("crm_notes", {
 export const insertCrmNoteSchema = createInsertSchema(crmNotes).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertCrmNote = z.infer<typeof insertCrmNoteSchema>;
 export type CrmNote = typeof crmNotes.$inferSelect;
+
+// Error Logs table - for tracking client and server errors
+export const errorLogs = pgTable("error_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  errorType: text("error_type").notNull(), // 'client', 'api', 'server'
+  errorMessage: text("error_message").notNull(),
+  errorStack: text("error_stack"), // Full stack trace
+  url: text("url"), // URL where error occurred
+  userAgent: text("user_agent"), // Browser info
+  userId: varchar("user_id").references(() => users.id, { onDelete: 'set null' }), // Null for anonymous errors
+  userEmail: text("user_email"), // Denormalized for quick reference
+  userRole: text("user_role"), // 'homeowner', 'contractor', 'agent', null
+  severity: text("severity").notNull().default("error"), // 'info', 'warning', 'error', 'critical'
+  resolved: boolean("resolved").notNull().default(false),
+  resolvedAt: timestamp("resolved_at"),
+  resolvedBy: varchar("resolved_by").references(() => users.id, { onDelete: 'set null' }),
+  notes: text("notes"), // Admin notes about the error
+  metadata: jsonb("metadata"), // Additional context (component name, props, etc.)
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_error_logs_type").on(table.errorType),
+  index("IDX_error_logs_severity").on(table.severity),
+  index("IDX_error_logs_resolved").on(table.resolved),
+  index("IDX_error_logs_user_id").on(table.userId),
+  index("IDX_error_logs_created_at").on(table.createdAt),
+]);
+
+export const insertErrorLogSchema = createInsertSchema(errorLogs).omit({ id: true, createdAt: true });
+export type InsertErrorLog = z.infer<typeof insertErrorLogSchema>;
+export type ErrorLog = typeof errorLogs.$inferSelect;
+
+// Error Breadcrumbs table - user events leading to errors
+export const errorBreadcrumbs = pgTable("error_breadcrumbs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  errorLogId: varchar("error_log_id").notNull().references(() => errorLogs.id, { onDelete: 'cascade' }),
+  timestamp: timestamp("timestamp").notNull(),
+  eventType: text("event_type").notNull(), // 'navigation', 'click', 'api_call', 'user_input'
+  message: text("message").notNull(),
+  data: jsonb("data"), // Additional event data
+}, (table) => [
+  index("IDX_error_breadcrumbs_error_log_id").on(table.errorLogId),
+  index("IDX_error_breadcrumbs_timestamp").on(table.timestamp),
+]);
+
+export const insertErrorBreadcrumbSchema = createInsertSchema(errorBreadcrumbs).omit({ id: true });
+export type InsertErrorBreadcrumb = z.infer<typeof insertErrorBreadcrumbSchema>;
+export type ErrorBreadcrumb = typeof errorBreadcrumbs.$inferSelect;

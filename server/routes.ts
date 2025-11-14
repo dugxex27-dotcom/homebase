@@ -1534,6 +1534,279 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return replies[category] || null;
   }
 
+  // CRM Lead Management routes - For contractors to manage their leads/prospects
+  
+  // GET /api/crm/leads - List all leads for contractor with filters
+  app.get('/api/crm/leads', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.session.user.role !== 'contractor') {
+        return res.status(403).json({ message: "Only contractors can access CRM features" });
+      }
+
+      const { status, priority, source, searchQuery } = req.query;
+      
+      const leads = await storage.getCrmLeads(req.session.user.id, {
+        status: status as string,
+        priority: priority as string,
+        source: source as string,
+        searchQuery: searchQuery as string,
+      });
+      
+      res.json(leads);
+    } catch (error) {
+      console.error("Error fetching CRM leads:", error);
+      res.status(500).json({ message: "Failed to fetch leads" });
+    }
+  });
+
+  // POST /api/crm/leads - Create new lead
+  app.post('/api/crm/leads', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.session.user.role !== 'contractor') {
+        return res.status(403).json({ message: "Only contractors can access CRM features" });
+      }
+
+      // Validate request body
+      const leadData = insertCrmLeadSchema.parse({
+        ...req.body,
+        contractorUserId: req.session.user.id,
+        companyId: req.body.shareWithCompany ? req.session.user.companyId : null,
+      });
+
+      const lead = await storage.createCrmLead(leadData);
+      res.status(201).json(lead);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(422).json({ message: "Validation error", errors: error.errors });
+      }
+      console.error("Error creating CRM lead:", error);
+      res.status(500).json({ message: "Failed to create lead" });
+    }
+  });
+
+  // GET /api/crm/leads/:id - Get lead with notes
+  app.get('/api/crm/leads/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.session.user.role !== 'contractor') {
+        return res.status(403).json({ message: "Only contractors can access CRM features" });
+      }
+
+      const leadData = await storage.getCrmLeadWithNotes(req.params.id);
+      
+      if (!leadData) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+
+      // Check access: owned by user OR shared with their company
+      const userCompanyId = req.session.user.companyId;
+      const canAccess = leadData.lead.contractorUserId === req.session.user.id ||
+        (userCompanyId && leadData.lead.companyId === userCompanyId);
+      
+      if (!canAccess) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      res.json(leadData);
+    } catch (error) {
+      console.error("Error fetching CRM lead:", error);
+      res.status(500).json({ message: "Failed to fetch lead" });
+    }
+  });
+
+  // PATCH /api/crm/leads/:id - Update lead
+  app.patch('/api/crm/leads/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.session.user.role !== 'contractor') {
+        return res.status(403).json({ message: "Only contractors can access CRM features" });
+      }
+
+      const lead = await storage.getCrmLead(req.params.id);
+      
+      if (!lead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+
+      // Check write access: owned by user OR (shared with company AND user is owner/manager)
+      const userCompanyId = req.session.user.companyId;
+      const userCompanyRole = req.session.user.companyRole;
+      const canWrite = lead.contractorUserId === req.session.user.id ||
+        (userCompanyId && lead.companyId === userCompanyId && 
+         (userCompanyRole === 'owner' || userCompanyRole === 'manager'));
+      
+      if (!canWrite) {
+        return res.status(403).json({ message: "Access denied - insufficient permissions" });
+      }
+
+      // Auto-update lastContactedAt when status changes
+      const updateData = { ...req.body };
+      if (req.body.status && req.body.status !== lead.status) {
+        updateData.lastContactedAt = new Date();
+      }
+
+      const updatedLead = await storage.updateCrmLead(req.params.id, updateData);
+      res.json(updatedLead);
+    } catch (error) {
+      console.error("Error updating CRM lead:", error);
+      res.status(500).json({ message: "Failed to update lead" });
+    }
+  });
+
+  // DELETE /api/crm/leads/:id - Delete lead
+  app.delete('/api/crm/leads/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.session.user.role !== 'contractor') {
+        return res.status(403).json({ message: "Only contractors can access CRM features" });
+      }
+
+      const lead = await storage.getCrmLead(req.params.id);
+      
+      if (!lead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+
+      // Check write access (same as update)
+      const userCompanyId = req.session.user.companyId;
+      const userCompanyRole = req.session.user.companyRole;
+      const canWrite = lead.contractorUserId === req.session.user.id ||
+        (userCompanyId && lead.companyId === userCompanyId && 
+         (userCompanyRole === 'owner' || userCompanyRole === 'manager'));
+      
+      if (!canWrite) {
+        return res.status(403).json({ message: "Access denied - insufficient permissions" });
+      }
+
+      await storage.deleteCrmLead(req.params.id);
+      res.json({ success: true, message: "Lead deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting CRM lead:", error);
+      res.status(500).json({ message: "Failed to delete lead" });
+    }
+  });
+
+  // POST /api/crm/leads/:leadId/notes - Add note to lead
+  app.post('/api/crm/leads/:leadId/notes', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.session.user.role !== 'contractor') {
+        return res.status(403).json({ message: "Only contractors can access CRM features" });
+      }
+
+      const lead = await storage.getCrmLead(req.params.leadId);
+      
+      if (!lead) {
+        return res.status(404).json({ message: "Lead not found" });
+      }
+
+      // Check write access
+      const userCompanyId = req.session.user.companyId;
+      const userCompanyRole = req.session.user.companyRole;
+      const canWrite = lead.contractorUserId === req.session.user.id ||
+        (userCompanyId && lead.companyId === userCompanyId && 
+         (userCompanyRole === 'owner' || userCompanyRole === 'manager'));
+      
+      if (!canWrite) {
+        return res.status(403).json({ message: "Access denied - insufficient permissions" });
+      }
+
+      // Validate and create note
+      const noteData = insertCrmNoteSchema.parse({
+        leadId: req.params.leadId,
+        userId: req.session.user.id,
+        content: req.body.content,
+        noteType: req.body.noteType || 'general',
+        isPinned: req.body.isPinned || false,
+      });
+
+      const note = await storage.createCrmNote(noteData);
+      res.status(201).json(note);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(422).json({ message: "Validation error", errors: error.errors });
+      }
+      console.error("Error creating CRM note:", error);
+      res.status(500).json({ message: "Failed to create note" });
+    }
+  });
+
+  // PATCH /api/crm/notes/:id - Update note
+  app.patch('/api/crm/notes/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.session.user.role !== 'contractor') {
+        return res.status(403).json({ message: "Only contractors can access CRM features" });
+      }
+
+      // Get note and verify it exists
+      const notes = Array.from((storage as any).memStorage?.crmNotes?.values() || []);
+      const note = notes.find((n: any) => n.id === req.params.id);
+      
+      if (!note) {
+        return res.status(404).json({ message: "Note not found" });
+      }
+
+      // Get lead to check access
+      const lead = await storage.getCrmLead(note.leadId);
+      if (!lead) {
+        return res.status(404).json({ message: "Associated lead not found" });
+      }
+
+      // Check write access
+      const userCompanyId = req.session.user.companyId;
+      const userCompanyRole = req.session.user.companyRole;
+      const canWrite = lead.contractorUserId === req.session.user.id ||
+        (userCompanyId && lead.companyId === userCompanyId && 
+         (userCompanyRole === 'owner' || userCompanyRole === 'manager'));
+      
+      if (!canWrite) {
+        return res.status(403).json({ message: "Access denied - insufficient permissions" });
+      }
+
+      const updatedNote = await storage.updateCrmNote(req.params.id, req.body);
+      res.json(updatedNote);
+    } catch (error) {
+      console.error("Error updating CRM note:", error);
+      res.status(500).json({ message: "Failed to update note" });
+    }
+  });
+
+  // DELETE /api/crm/notes/:id - Delete note
+  app.delete('/api/crm/notes/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.session.user.role !== 'contractor') {
+        return res.status(403).json({ message: "Only contractors can access CRM features" });
+      }
+
+      // Get note and verify it exists
+      const notes = Array.from((storage as any).memStorage?.crmNotes?.values() || []);
+      const note = notes.find((n: any) => n.id === req.params.id);
+      
+      if (!note) {
+        return res.status(404).json({ message: "Note not found" });
+      }
+
+      // Get lead to check access
+      const lead = await storage.getCrmLead(note.leadId);
+      if (!lead) {
+        return res.status(404).json({ message: "Associated lead not found" });
+      }
+
+      // Check write access
+      const userCompanyId = req.session.user.companyId;
+      const userCompanyRole = req.session.user.companyRole;
+      const canWrite = lead.contractorUserId === req.session.user.id ||
+        (userCompanyId && lead.companyId === userCompanyId && 
+         (userCompanyRole === 'owner' || userCompanyRole === 'manager'));
+      
+      if (!canWrite) {
+        return res.status(403).json({ message: "Access denied - insufficient permissions" });
+      }
+
+      await storage.deleteCrmNote(req.params.id);
+      res.json({ success: true, message: "Note deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting CRM note:", error);
+      res.status(500).json({ message: "Failed to delete note" });
+    }
+  });
+
   // Homeowner profile routes
   app.patch('/api/homeowner/profile', async (req: any, res) => {
     try {
