@@ -1792,7 +1792,7 @@ export default function ContractorProfile() {
                 </span>
               </div>
               <Progress value={progressPercentage} className="h-3 mb-2" />
-              <p className="text-sm text-center" style={{ color: referralsRemaining === 0 ? '#10b981' : '#6b7280' }}>
+              <p className="text-center text-[20px]" style={{ color: referralsRemaining === 0 ? '#10b981' : '#6b7280' }}>
                 {referralsRemaining === 0 ? (
                   <span className="font-bold">🎉 You've earned a free subscription!</span>
                 ) : (
