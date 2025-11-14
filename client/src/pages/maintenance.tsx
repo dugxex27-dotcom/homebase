@@ -371,70 +371,70 @@ function DIYSavingsTracker({ houseId }: { houseId: string }) {
   }).format(data?.totalSavings || 0);
 
   return (
-    <section className="py-8" style={{ backgroundColor: '#2c0f5b' }}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="py-4 sm:py-8" style={{ backgroundColor: '#2c0f5b' }}>
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto">
           <Card style={{ backgroundColor: '#f2f2f2' }} data-testid="diy-savings-tracker">
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-full bg-gradient-to-br from-green-500 to-emerald-600">
-                  <PiggyBank className="w-6 h-6 text-white" />
+            <CardHeader className="pb-3 sm:pb-6">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-2 sm:p-3 rounded-full bg-gradient-to-br from-green-500 to-emerald-600">
+                  <PiggyBank className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                 </div>
-                <CardTitle style={{ color: '#2c0f5b' }} className="flex-1">DIY Savings Tracker</CardTitle>
+                <CardTitle style={{ color: '#2c0f5b' }} className="flex-1 text-lg sm:text-xl">DIY Savings Tracker</CardTitle>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               {isLoading ? (
-                <div className="flex items-center justify-center py-8">
+                <div className="flex items-center justify-center py-6 sm:py-8">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto" style={{ borderColor: '#6d28d9' }}></div>
                     <p className="mt-4 text-sm text-gray-600">Loading savings data...</p>
                   </div>
                 </div>
               ) : isError ? (
-                <div className="flex items-center justify-center py-8">
+                <div className="flex items-center justify-center py-6 sm:py-8">
                   <div className="text-center">
-                    <AlertTriangle className="w-12 h-12 text-yellow-600 mx-auto mb-4" />
+                    <AlertTriangle className="w-10 h-10 sm:w-12 sm:h-12 text-yellow-600 mx-auto mb-4" />
                     <p className="text-sm font-medium text-gray-700">Unable to load savings data</p>
                     <p className="text-xs text-gray-500 mt-2">Please try refreshing the page</p>
                   </div>
                 </div>
               ) : (data?.totalSavings === 0 && data?.taskCount === 0) ? (
-                <div className="flex items-center justify-center py-8">
+                <div className="flex items-center justify-center py-6 sm:py-8">
                   <div className="text-center">
-                    <PiggyBank className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <PiggyBank className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-sm font-medium text-gray-700">No DIY savings yet</p>
                     <p className="text-xs text-gray-500 mt-2">Complete maintenance tasks yourself to start saving money!</p>
                   </div>
                 </div>
               ) : (
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="text-center md:text-left">
-                    <p className="text-sm font-medium text-gray-600 mb-2">Total DIY Savings</p>
-                    <div className="flex items-baseline gap-2 justify-center md:justify-start">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                  <div className="text-center sm:text-left">
+                    <p className="text-xs sm:text-sm font-medium text-gray-600 mb-1 sm:mb-2">Total DIY Savings</p>
+                    <div className="flex items-baseline gap-1 sm:gap-2 justify-center sm:justify-start">
                       <span 
-                        className="text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent"
+                        className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent"
                         data-testid="total-savings-amount"
                       >
                         {formattedSavings}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-2">Money saved by doing it yourself</p>
+                    <p className="text-xs text-gray-500 mt-1 sm:mt-2">Money saved by doing it yourself</p>
                   </div>
-                  <div className="text-center md:text-left">
-                    <p className="text-sm font-medium text-gray-600 mb-2">DIY Tasks Completed</p>
-                    <div className="flex items-baseline gap-2 justify-center md:justify-start">
+                  <div className="text-center sm:text-left">
+                    <p className="text-xs sm:text-sm font-medium text-gray-600 mb-1 sm:mb-2">DIY Tasks Completed</p>
+                    <div className="flex items-baseline gap-1 sm:gap-2 justify-center sm:justify-start flex-wrap">
                       <span 
-                        className="text-4xl font-bold"
+                        className="text-2xl sm:text-3xl md:text-4xl font-bold"
                         style={{ color: '#2c0f5b' }}
                         data-testid="diy-task-count"
                       >
                         {data?.taskCount || 0}
                       </span>
-                      <span className="text-lg text-gray-500">tasks</span>
+                      <span className="text-base sm:text-lg text-gray-500">tasks</span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-2">
-                      Avg savings: {data && data.taskCount > 0 ? new Intl.NumberFormat('en-US', {
+                    <p className="text-xs text-gray-500 mt-1 sm:mt-2">
+                      Avg: {data && data.taskCount > 0 ? new Intl.NumberFormat('en-US', {
                         style: 'currency',
                         currency: 'USD',
                         minimumFractionDigits: 0,
