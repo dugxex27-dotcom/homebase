@@ -7,7 +7,7 @@ import { z } from "zod";
 import { randomUUID } from "crypto";
 import rateLimit from "express-rate-limit";
 import { eq, and, or, lte, isNull } from "drizzle-orm";
-import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, passwordResetTokens, taskCompletions, maintenanceTasks, customMaintenanceTasks } from "@shared/schema";
+import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, maintenanceTasks, customMaintenanceTasks } from "@shared/schema";
 import pushRoutes from "./push-routes";
 import { pushService } from "./push-service";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
@@ -3354,6 +3354,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(response);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch maintenance tasks" });
+    }
+  });
+
+  // Update household profile for a house
+  app.patch("/api/houses/:id/profile", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+    try {
+      // Verify the house belongs to the authenticated user
+      const existingHouse = await storage.getHouse(req.params.id);
+      if (!existingHouse || existingHouse.homeownerId !== req.session.user.id) {
+        return res.status(404).json({ message: "House not found" });
+      }
+
+      // Validate request body with household profile schema
+      const validatedData = updateHouseholdProfileSchema.parse(req.body);
+      
+      // Update house with household profile data
+      const house = await storage.updateHouse(req.params.id, validatedData);
+      if (!house) {
+        return res.status(404).json({ message: "House not found" });
+      }
+      res.json(house);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid request data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update household profile" });
+    }
+  });
+
+  // Get generated maintenance schedule for a house
+  app.get("/api/houses/:id/schedule", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+    try {
+      const house = await storage.getHouse(req.params.id);
+      if (!house || house.homeownerId !== req.session.user.id) {
+        return res.status(404).json({ message: "House not found" });
+      }
+
+      // Generate maintenance schedule using the algorithm
+      const { generateMaintenanceSchedule } = await import("../shared/maintenance-scheduler");
+      const schedule = generateMaintenanceSchedule(house);
+      
+      res.json({
+        house: {
+          id: house.id,
+          name: house.name,
+          address: house.address,
+        },
+        schedule,
+      });
+    } catch (error) {
+      console.error("[ERROR] Failed to generate maintenance schedule:", error);
+      res.status(500).json({ message: "Failed to generate maintenance schedule" });
     }
   });
 

@@ -1,4 +1,4 @@
-import { type SelectHouse } from './schema';
+import { type House } from './schema';
 
 export interface MaintenanceTask {
   id: string;
@@ -49,7 +49,7 @@ function getSeasonMonth(season: string): number {
   return seasonMonths[season] || 1;
 }
 
-export function generateMaintenanceSchedule(house: SelectHouse): AnnualMaintenanceSchedule {
+export function generateMaintenanceSchedule(house: House): AnnualMaintenanceSchedule {
   const tasks: ScheduledTask[] = [];
   
   // Calculate ages from installation years
