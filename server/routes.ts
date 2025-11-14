@@ -1807,6 +1807,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Error Tracking routes - For logging and monitoring errors
+  app.post('/api/errors', async (req: any, res) => {
+    try {
+      const errorData = req.body;
+      
+      // Add user context if authenticated
+      const userId = req.session?.user?.id || null;
+      const userEmail = req.session?.user?.email || null;
+      const userRole = req.session?.user?.role || null;
+      
+      const error = await storage.createErrorLog({
+        ...errorData,
+        userId,
+        userEmail,
+        userRole,
+        userAgent: req.headers['user-agent'] || null,
+      });
+      
+      // Create breadcrumbs if provided
+      if (errorData.breadcrumbs && Array.isArray(errorData.breadcrumbs)) {
+        for (const breadcrumb of errorData.breadcrumbs) {
+          await storage.createErrorBreadcrumb({
+            errorLogId: error.id,
+            timestamp: new Date(breadcrumb.timestamp),
+            eventType: breadcrumb.eventType,
+            message: breadcrumb.message,
+            data: breadcrumb.data || null,
+          });
+        }
+      }
+      
+      res.json({ success: true, errorId: error.id });
+    } catch (error) {
+      console.error("Error logging error:", error);
+      res.status(500).json({ message: "Failed to log error" });
+    }
+  });
+
+  app.get('/api/errors', async (req: any, res) => {
+    try {
+      // Only allow admins to view errors
+      if (!req.session?.isAuthenticated || req.session?.user?.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const filters = {
+        errorType: req.query.errorType as string,
+        severity: req.query.severity as string,
+        resolved: req.query.resolved === 'true' ? true : req.query.resolved === 'false' ? false : undefined,
+        userId: req.query.userId as string,
+        limit: req.query.limit ? parseInt(req.query.limit as string) : 100,
+      };
+      
+      const errors = await storage.getErrorLogs(filters);
+      res.json(errors);
+    } catch (error) {
+      console.error("Error fetching errors:", error);
+      res.status(500).json({ message: "Failed to fetch errors" });
+    }
+  });
+
+  app.get('/api/errors/:id', async (req: any, res) => {
+    try {
+      // Only allow admins to view errors
+      if (!req.session?.isAuthenticated || req.session?.user?.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const errorWithBreadcrumbs = await storage.getErrorLogWithBreadcrumbs(req.params.id);
+      
+      if (!errorWithBreadcrumbs) {
+        return res.status(404).json({ message: "Error not found" });
+      }
+      
+      res.json(errorWithBreadcrumbs);
+    } catch (error) {
+      console.error("Error fetching error details:", error);
+      res.status(500).json({ message: "Failed to fetch error details" });
+    }
+  });
+
+  app.patch('/api/errors/:id', async (req: any, res) => {
+    try {
+      // Only allow admins to update errors
+      if (!req.session?.isAuthenticated || req.session?.user?.role !== 'admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const updateData: any = {};
+      
+      if (req.body.resolved !== undefined) {
+        updateData.resolved = req.body.resolved;
+        if (req.body.resolved) {
+          updateData.resolvedAt = new Date();
+          updateData.resolvedBy = req.session.user.id;
+        }
+      }
+      
+      if (req.body.notes !== undefined) {
+        updateData.notes = req.body.notes;
+      }
+      
+      const updatedError = await storage.updateErrorLog(req.params.id, updateData);
+      
+      if (!updatedError) {
+        return res.status(404).json({ message: "Error not found" });
+      }
+      
+      res.json(updatedError);
+    } catch (error) {
+      console.error("Error updating error:", error);
+      res.status(500).json({ message: "Failed to update error" });
+    }
+  });
+
   // Homeowner profile routes
   app.patch('/api/homeowner/profile', async (req: any, res) => {
     try {

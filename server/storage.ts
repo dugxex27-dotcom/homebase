@@ -5946,6 +5946,94 @@ class DbStorage implements IStorage {
     this.uploadedFiles.delete(uploadId);
   }
 
+  // Error Tracking operations
+  async getErrorLogs(filters?: {
+    errorType?: string;
+    severity?: string;
+    resolved?: boolean;
+    userId?: string;
+    limit?: number;
+  }): Promise<ErrorLog[]> {
+    let query = db.select().from(errorLogs);
+    
+    const conditions = [];
+    if (filters?.errorType) {
+      conditions.push(eq(errorLogs.errorType, filters.errorType));
+    }
+    if (filters?.severity) {
+      conditions.push(eq(errorLogs.severity, filters.severity));
+    }
+    if (filters?.resolved !== undefined) {
+      conditions.push(eq(errorLogs.resolved, filters.resolved));
+    }
+    if (filters?.userId) {
+      conditions.push(eq(errorLogs.userId, filters.userId));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+    
+    // Always order by most recent first
+    query = query.orderBy(desc(errorLogs.createdAt)) as any;
+    
+    // Apply limit if specified
+    if (filters?.limit) {
+      query = query.limit(filters.limit) as any;
+    }
+    
+    const result = await query;
+    return result;
+  }
+
+  async getErrorLog(id: string): Promise<ErrorLog | undefined> {
+    const result = await db.select().from(errorLogs).where(eq(errorLogs.id, id));
+    return result[0];
+  }
+
+  async createErrorLog(error: InsertErrorLog): Promise<ErrorLog> {
+    const result = await db.insert(errorLogs).values(error).returning();
+    return result[0];
+  }
+
+  async updateErrorLog(id: string, error: Partial<InsertErrorLog>): Promise<ErrorLog | undefined> {
+    const result = await db.update(errorLogs)
+      .set(error)
+      .where(eq(errorLogs.id, id))
+      .returning();
+    return result[0];
+  }
+
+  // Error Breadcrumb operations
+  async getErrorBreadcrumbs(errorLogId: string): Promise<ErrorBreadcrumb[]> {
+    const result = await db.select()
+      .from(errorBreadcrumbs)
+      .where(eq(errorBreadcrumbs.errorLogId, errorLogId))
+      .orderBy(errorBreadcrumbs.timestamp);
+    return result;
+  }
+
+  async createErrorBreadcrumb(breadcrumb: InsertErrorBreadcrumb): Promise<ErrorBreadcrumb> {
+    const result = await db.insert(errorBreadcrumbs).values(breadcrumb).returning();
+    return result[0];
+  }
+
+  // Error Log with breadcrumbs (for detailed view)
+  async getErrorLogWithBreadcrumbs(id: string): Promise<{
+    error: ErrorLog;
+    breadcrumbs: ErrorBreadcrumb[];
+  } | undefined> {
+    const error = await this.getErrorLog(id);
+    if (!error) return undefined;
+    
+    const breadcrumbs = await this.getErrorBreadcrumbs(id);
+    
+    return {
+      error,
+      breadcrumbs,
+    };
+  }
+
   // Methods delegated to MemStorage (bound in constructor)
 }
 
