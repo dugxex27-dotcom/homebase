@@ -44,11 +44,72 @@ export default function Messages() {
   const [otherUserTyping, setOtherUserTyping] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Additional state for compose, proposals, and reviews
+  const [isComposeDialogOpen, setIsComposeDialogOpen] = useState(false);
+  const [composeForm, setComposeForm] = useState({
+    subject: "",
+    message: "",
+    selectedContractors: [] as string[]
+  });
+  const [isProposalDialogOpen, setIsProposalDialogOpen] = useState(false);
+  const [reviewForm, setReviewForm] = useState({
+    rating: 5,
+    comment: "",
+    wouldRecommend: true
+  });
+  const [isReviewSectionOpen, setIsReviewSectionOpen] = useState(false);
+  
+  // Proposal form schema and setup
+  const proposalFormSchema = z.object({
+    title: z.string().min(1, "Title is required"),
+    description: z.string().min(1, "Description is required"),
+    scope: z.string().min(1, "Scope of work is required"),
+    serviceType: z.string().min(1, "Service type is required"),
+    estimatedCost: z.string().min(1, "Estimated cost is required"),
+    estimatedDuration: z.string().min(1, "Estimated duration is required"),
+    validUntil: z.string().min(1, "Valid until date is required"),
+    materials: z.string().optional(),
+    warrantyPeriod: z.string().optional(),
+    customerNotes: z.string().optional(),
+    internalNotes: z.string().optional(),
+  });
+
+  type ProposalFormData = z.infer<typeof proposalFormSchema>;
+
+  const proposalForm = useForm<ProposalFormData>({
+    resolver: zodResolver(proposalFormSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      scope: "",
+      estimatedCost: "",
+      estimatedDuration: "",
+      materials: "",
+      warrantyPeriod: "",
+      validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      serviceType: "",
+      customerNotes: "",
+      internalNotes: "",
+    },
+  });
 
   // Fetch conversations
   const { data: conversations = [], isLoading: conversationsLoading } = useQuery<ConversationWithDetails[]>({
     queryKey: ['/api/conversations'],
     enabled: !!typedUser
+  });
+
+  // Fetch contractors for homeowners to compose new messages
+  const { data: contractors = [] } = useQuery<Contractor[]>({
+    queryKey: ['/api/contractors'],
+    enabled: !!typedUser && typedUser.role === 'homeowner'
+  });
+
+  // Fetch proposals for homeowners
+  const { data: proposals = [] } = useQuery<Proposal[]>({
+    queryKey: ['/api/proposals'],
+    enabled: !!typedUser && typedUser.role === 'homeowner'
   });
 
   // Fetch messages for selected conversation
@@ -57,6 +118,18 @@ export default function Messages() {
     enabled: !!selectedConversationId,
     refetchInterval: false  // We'll use WebSocket for real-time updates
   });
+  
+  // Get contractor ID from selected conversation
+  const selectedConversation = conversations.find(c => c.id === selectedConversationId);
+  const contractorIdForReview = typedUser?.role === 'homeowner' ? selectedConversation?.contractorId : null;
+
+  // Fetch existing reviews for this contractor from this homeowner
+  const { data: existingReviews = [] } = useQuery<ContractorReview[]>({
+    queryKey: ['/api/reviews/my-reviews'],
+    enabled: !!typedUser && typedUser.role === 'homeowner'
+  });
+
+  const existingReview = existingReviews.find(r => r.contractorId === contractorIdForReview);
 
   // WebSocket callbacks
   const handleNewMessage = useCallback((conversationId: string, message: Message) => {
@@ -263,6 +336,105 @@ export default function Messages() {
     });
   };
 
+  // Compose new conversation mutation (homeowners only)
+  const composeConversationMutation = useMutation({
+    mutationFn: async (data: typeof composeForm) => {
+      return await apiRequest('POST', '/api/conversations', {
+        contractorIds: data.selectedContractors,
+        subject: data.subject,
+        message: data.message
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
+      setIsComposeDialogOpen(false);
+      setComposeForm({ subject: "", message: "", selectedContractors: [] });
+      toast({
+        title: "Success",
+        description: "Conversation started successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to start conversation.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Create proposal mutation (contractors only)
+  const createProposalMutation = useMutation({
+    mutationFn: async (proposalData: any) => {
+      const response = await fetch(`/api/proposals`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(proposalData)
+      });
+      if (!response.ok) throw new Error('Failed to create proposal');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/proposals'] });
+      setIsProposalDialogOpen(false);
+      proposalForm.reset();
+      toast({
+        title: "Proposal Created",
+        description: "Your proposal has been created successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create proposal.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleCreateProposal = (data: ProposalFormData) => {
+    if (!selectedConversation) return;
+    
+    const proposalData = {
+      ...data,
+      homeownerId: selectedConversation.homeownerId,
+      contractorId: typedUser?.id,
+      materials: (data.materials || "").split(',').map(item => item.trim()).filter(item => item.length > 0),
+      estimatedCost: parseFloat(data.estimatedCost).toString(),
+      status: "sent" as const,
+    };
+    
+    createProposalMutation.mutate(proposalData);
+  };
+
+  // Submit review mutation (homeowners only)
+  const submitReviewMutation = useMutation({
+    mutationFn: async (reviewData: typeof reviewForm) => {
+      return await apiRequest('POST', `/api/contractors/${contractorIdForReview}/reviews`, reviewData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/reviews/my-reviews'] });
+      setReviewForm({ rating: 5, comment: "", wouldRecommend: true });
+      setIsReviewSectionOpen(false);
+      toast({
+        title: "Review Submitted",
+        description: "Thank you for your feedback!",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to submit review.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleSubmitReview = () => {
+    submitReviewMutation.mutate(reviewForm);
+  };
+
   // Handle typing indicator with debounce
   const handleTypingChange = (value: string) => {
     setNewMessage(value);
@@ -341,11 +513,105 @@ export default function Messages() {
           
           {/* Left Panel - Conversation List */}
           <div className="lg:col-span-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                 <MessageCircle className="h-5 w-5" />
                 Conversations
               </h2>
+              
+              {/* Compose Button - Homeowners only */}
+              {typedUser.role === 'homeowner' && (
+                <Dialog open={isComposeDialogOpen} onOpenChange={setIsComposeDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" variant="default" className="bg-purple-600 hover:bg-purple-700" data-testid="button-compose">
+                      <Plus className="h-4 w-4 mr-1" />
+                      New
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Start a New Conversation</DialogTitle>
+                      <DialogDescription>Select contractors and send them a message</DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="subject">Subject *</Label>
+                        <Input
+                          id="subject"
+                          value={composeForm.subject}
+                          onChange={(e) => setComposeForm({...composeForm, subject: e.target.value})}
+                          placeholder="e.g., Plumbing repair needed"
+                          data-testid="input-compose-subject"
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="message">Message *</Label>
+                        <Textarea
+                          id="message"
+                          value={composeForm.message}
+                          onChange={(e) => setComposeForm({...composeForm, message: e.target.value})}
+                          placeholder="Describe your issue or request..."
+                          rows={4}
+                          data-testid="textarea-compose-message"
+                        />
+                      </div>
+                      
+                      <div>
+                        <Label>Select Contractors *</Label>
+                        <ScrollArea className="h-48 border rounded-md p-3">
+                          {contractors.length === 0 ? (
+                            <p className="text-sm text-gray-500">No contractors available</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {contractors.map((contractor) => (
+                                <div key={contractor.id} className="flex items-center space-x-2">
+                                  <Checkbox
+                                    id={`contractor-${contractor.id}`}
+                                    checked={composeForm.selectedContractors.includes(contractor.id)}
+                                    onCheckedChange={(checked) => {
+                                      setComposeForm(prev => ({
+                                        ...prev,
+                                        selectedContractors: checked
+                                          ? [...prev.selectedContractors, contractor.id]
+                                          : prev.selectedContractors.filter(id => id !== contractor.id)
+                                      }));
+                                    }}
+                                    data-testid={`checkbox-contractor-${contractor.id}`}
+                                  />
+                                  <label htmlFor={`contractor-${contractor.id}`} className="text-sm font-medium leading-none">
+                                    {contractor.companyName || contractor.businessName}
+                                  </label>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </ScrollArea>
+                      </div>
+                      
+                      <div className="flex justify-end space-x-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setIsComposeDialogOpen(false)}
+                          data-testid="button-cancel-compose"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={() => composeConversationMutation.mutate(composeForm)}
+                          disabled={composeConversationMutation.isPending || !composeForm.subject || !composeForm.message || composeForm.selectedContractors.length === 0}
+                          className="bg-purple-600 hover:bg-purple-700"
+                          data-testid="button-send-compose"
+                        >
+                          {composeConversationMutation.isPending ? "Sending..." : "Send Message"}
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
             </div>
             
             <ScrollArea className="h-[calc(700px-73px)]">
@@ -410,6 +676,135 @@ export default function Messages() {
                         {conversations.find(c => c.id === selectedConversationId)?.subject}
                       </p>
                     </div>
+                    
+                    {/* Create Proposal Button - Contractors only */}
+                    {typedUser.role === 'contractor' && (
+                      <Dialog open={isProposalDialogOpen} onOpenChange={setIsProposalDialogOpen}>
+                        <DialogTrigger asChild>
+                          <Button size="sm" className="bg-blue-600 hover:bg-blue-700" data-testid="button-create-proposal">
+                            <FileText className="h-4 w-4 mr-1" />
+                            Create Proposal
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-blue-600">
+                          <DialogHeader>
+                            <DialogTitle style={{ color: 'white' }}>
+                              Create Proposal for {selectedConversation?.otherPartyName}
+                            </DialogTitle>
+                            <DialogDescription style={{ color: 'rgba(255,255,255,0.9)' }}>
+                              Create a detailed proposal for this homeowner
+                            </DialogDescription>
+                          </DialogHeader>
+                          
+                          <Form {...proposalForm}>
+                            <form onSubmit={proposalForm.handleSubmit(handleCreateProposal)} className="space-y-4">
+                              <FormField
+                                control={proposalForm.control}
+                                name="title"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel style={{ color: 'white' }}>Title *</FormLabel>
+                                    <FormControl>
+                                      <Input {...field} data-testid="input-proposal-title" className="bg-white text-black" />
+                                    </FormControl>
+                                    <FormMessage style={{ color: '#ffcccc' }} />
+                                  </FormItem>
+                                )}
+                              />
+                              
+                              <FormField
+                                control={proposalForm.control}
+                                name="serviceType"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel style={{ color: 'white' }}>Service Type *</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                      <FormControl>
+                                        <SelectTrigger data-testid="select-service-type" className="bg-white text-black">
+                                          <SelectValue placeholder="Select service type" />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        <SelectItem value="plumbing">Plumbing</SelectItem>
+                                        <SelectItem value="electrical">Electrical</SelectItem>
+                                        <SelectItem value="hvac">HVAC</SelectItem>
+                                        <SelectItem value="roofing">Roofing</SelectItem>
+                                        <SelectItem value="landscaping">Landscaping</SelectItem>
+                                        <SelectItem value="general-contracting">General Contracting</SelectItem>
+                                        <SelectItem value="other">Other</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                    <FormMessage style={{ color: '#ffcccc' }} />
+                                  </FormItem>
+                                )}
+                              />
+                              
+                              <FormField
+                                control={proposalForm.control}
+                                name="estimatedCost"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel style={{ color: 'white' }}>Estimated Cost ($) *</FormLabel>
+                                    <FormControl>
+                                      <Input type="number" step="0.01" {...field} data-testid="input-estimated-cost" className="bg-white text-black" />
+                                    </FormControl>
+                                    <FormMessage style={{ color: '#ffcccc' }} />
+                                  </FormItem>
+                                )}
+                              />
+                              
+                              <FormField
+                                control={proposalForm.control}
+                                name="estimatedDuration"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel style={{ color: 'white' }}>Estimated Duration *</FormLabel>
+                                    <FormControl>
+                                      <Input placeholder="2-3 days, 1 week, etc." {...field} data-testid="input-estimated-duration" className="bg-white text-black" />
+                                    </FormControl>
+                                    <FormMessage style={{ color: '#ffcccc' }} />
+                                  </FormItem>
+                                )}
+                              />
+                              
+                              <FormField
+                                control={proposalForm.control}
+                                name="validUntil"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel style={{ color: 'white' }}>Valid Until *</FormLabel>
+                                    <FormControl>
+                                      <Input type="date" {...field} data-testid="input-valid-until" className="bg-white text-black" />
+                                    </FormControl>
+                                    <FormMessage style={{ color: '#ffcccc' }} />
+                                  </FormItem>
+                                )}
+                              />
+                              
+                              <div className="flex justify-end space-x-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() => setIsProposalDialogOpen(false)}
+                                  data-testid="button-cancel-proposal"
+                                  className="bg-white text-black"
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  type="submit"
+                                  disabled={createProposalMutation.isPending}
+                                  data-testid="button-submit-proposal"
+                                  className="bg-white text-blue-600 hover:bg-gray-100"
+                                >
+                                  {createProposalMutation.isPending ? "Creating..." : "Create Proposal"}
+                                </Button>
+                              </div>
+                            </form>
+                          </Form>
+                        </DialogContent>
+                      </Dialog>
+                    )}
                   </div>
                 </div>
 
@@ -519,6 +914,90 @@ export default function Messages() {
                     </div>
                   )}
                 </ScrollArea>
+
+                {/* Review Section - Homeowners only */}
+                {typedUser.role === 'homeowner' && messages.length > 0 && contractorIdForReview && !existingReview && (
+                  <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                    {!isReviewSectionOpen ? (
+                      <Button
+                        onClick={() => setIsReviewSectionOpen(true)}
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        data-testid="button-open-review"
+                      >
+                        <Star className="h-4 w-4 mr-2" />
+                        Leave a Review for {selectedConversation?.otherPartyName}
+                      </Button>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-semibold text-gray-900 dark:text-white">Leave a Review</h3>
+                          <Button
+                            onClick={() => setIsReviewSectionOpen(false)}
+                            variant="ghost"
+                            size="sm"
+                            data-testid="button-close-review"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        
+                        <div>
+                          <Label>Rating</Label>
+                          <div className="flex gap-2 mt-2">
+                            {[1, 2, 3, 4, 5].map((rating) => (
+                              <button
+                                key={rating}
+                                type="button"
+                                onClick={() => setReviewForm({...reviewForm, rating})}
+                                className="focus:outline-none"
+                                data-testid={`button-rating-${rating}`}
+                              >
+                                <Star
+                                  className={`h-8 w-8 ${rating <= reviewForm.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                                />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <Label htmlFor="review-comment">Comment *</Label>
+                          <Textarea
+                            id="review-comment"
+                            value={reviewForm.comment}
+                            onChange={(e) => setReviewForm({...reviewForm, comment: e.target.value})}
+                            placeholder="Share your experience with this contractor..."
+                            rows={3}
+                            data-testid="textarea-review-comment"
+                          />
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id="would-recommend"
+                            checked={reviewForm.wouldRecommend}
+                            onCheckedChange={(checked) => setReviewForm({...reviewForm, wouldRecommend: checked as boolean})}
+                            data-testid="checkbox-would-recommend"
+                          />
+                          <Label htmlFor="would-recommend" className="cursor-pointer">
+                            I would recommend this contractor
+                          </Label>
+                        </div>
+                        
+                        <Button
+                          onClick={handleSubmitReview}
+                          disabled={submitReviewMutation.isPending || !reviewForm.comment.trim()}
+                          className="w-full bg-purple-600 hover:bg-purple-700"
+                          data-testid="button-submit-review"
+                        >
+                          {submitReviewMutation.isPending ? 'Submitting...' : 'Submit Review'}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Message Composer */}
                 <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
