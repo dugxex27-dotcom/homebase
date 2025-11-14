@@ -1334,3 +1334,50 @@ export const agentVerificationAudits = pgTable("agent_verification_audits", {
 export const insertAgentVerificationAuditSchema = createInsertSchema(agentVerificationAudits).omit({ id: true, createdAt: true });
 export type InsertAgentVerificationAudit = z.infer<typeof insertAgentVerificationAuditSchema>;
 export type AgentVerificationAudit = typeof agentVerificationAudits.$inferSelect;
+
+// Support tickets table - customer support ticket system
+export const supportTickets = pgTable("support_tickets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  category: text("category").notNull(), // 'billing', 'technical', 'feature_request', 'account', 'contractor', 'general'
+  priority: text("priority").notNull().default("medium"), // 'low', 'medium', 'high', 'urgent'
+  status: text("status").notNull().default("open"), // 'open', 'in_progress', 'waiting_on_customer', 'resolved', 'closed'
+  subject: text("subject").notNull(),
+  description: text("description").notNull(),
+  assignedToAdminId: varchar("assigned_to_admin_id").references(() => users.id, { onDelete: 'set null' }),
+  assignedToAdminEmail: text("assigned_to_admin_email"), // Store email for display
+  metadata: jsonb("metadata"), // Store additional context (browser info, page URL, etc.)
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  closedAt: timestamp("closed_at"),
+}, (table) => [
+  index("IDX_support_tickets_user_id").on(table.userId),
+  index("IDX_support_tickets_status").on(table.status),
+  index("IDX_support_tickets_category").on(table.category),
+  index("IDX_support_tickets_assigned_to").on(table.assignedToAdminId),
+  index("IDX_support_tickets_created_at").on(table.createdAt),
+]);
+
+export const insertSupportTicketSchema = createInsertSchema(supportTickets).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertSupportTicket = z.infer<typeof insertSupportTicketSchema>;
+export type SupportTicket = typeof supportTickets.$inferSelect;
+
+// Ticket replies table - messages/replies to support tickets
+export const ticketReplies = pgTable("ticket_replies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ticketId: varchar("ticket_id").notNull().references(() => supportTickets.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  content: text("content").notNull(),
+  isInternal: boolean("is_internal").notNull().default(false), // True for admin-only notes
+  isAutomated: boolean("is_automated").notNull().default(false), // True for automated replies
+  metadata: jsonb("metadata"), // Store additional context (attachments, etc.)
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_ticket_replies_ticket_id").on(table.ticketId),
+  index("IDX_ticket_replies_user_id").on(table.userId),
+  index("IDX_ticket_replies_created_at").on(table.createdAt),
+]);
+
+export const insertTicketReplySchema = createInsertSchema(ticketReplies).omit({ id: true, createdAt: true });
+export type InsertTicketReply = z.infer<typeof insertTicketReplySchema>;
+export type TicketReply = typeof ticketReplies.$inferSelect;

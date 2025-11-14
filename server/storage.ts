@@ -1,4 +1,4 @@
-import { type Contractor, type InsertContractor, type Company, type InsertCompany, type CompanyInviteCode, type InsertCompanyInviteCode, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type HomeApplianceManual, type InsertHomeApplianceManual, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type HomeownerConnectionCode, type InsertHomeownerConnectionCode, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics, type TaskOverride, type InsertTaskOverride, type Country, type InsertCountry, type Region, type InsertRegion, type ClimateZone, type InsertClimateZone, type RegulatoryBody, type InsertRegulatoryBody, type RegionalMaintenanceTask, type InsertRegionalMaintenanceTask, type TaskCompletion, type InsertTaskCompletion, type Achievement, type InsertAchievement, type AchievementDefinition, type InsertAchievementDefinition, type UserAchievement, type InsertUserAchievement, type SearchAnalytics, type InsertSearchAnalytics, type InviteCode, type InsertInviteCode, type AgentProfile, type InsertAgentProfile, type AffiliateReferral, type InsertAffiliateReferral, type SubscriptionCycleEvent, type InsertSubscriptionCycleEvent, type AffiliatePayout, type InsertAffiliatePayout, users, contractors, companies, contractorLicenses, countries, regions, climateZones, regulatoryBodies, regionalMaintenanceTasks, taskCompletions, achievements, achievementDefinitions, userAchievements, maintenanceLogs, searchAnalytics, inviteCodes, agentProfiles, affiliateReferrals, subscriptionCycleEvents, affiliatePayouts, agentVerificationAudits, houses, homeSystems, customMaintenanceTasks, taskOverrides, serviceRecords, homeownerConnectionCodes, conversations, messages, proposals, houseTransfers } from "@shared/schema";
+import { type Contractor, type InsertContractor, type Company, type InsertCompany, type CompanyInviteCode, type InsertCompanyInviteCode, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type HomeApplianceManual, type InsertHomeApplianceManual, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type HomeownerConnectionCode, type InsertHomeownerConnectionCode, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics, type TaskOverride, type InsertTaskOverride, type Country, type InsertCountry, type Region, type InsertRegion, type ClimateZone, type InsertClimateZone, type RegulatoryBody, type InsertRegulatoryBody, type RegionalMaintenanceTask, type InsertRegionalMaintenanceTask, type TaskCompletion, type InsertTaskCompletion, type Achievement, type InsertAchievement, type AchievementDefinition, type InsertAchievementDefinition, type UserAchievement, type InsertUserAchievement, type SearchAnalytics, type InsertSearchAnalytics, type InviteCode, type InsertInviteCode, type AgentProfile, type InsertAgentProfile, type AffiliateReferral, type InsertAffiliateReferral, type SubscriptionCycleEvent, type InsertSubscriptionCycleEvent, type AffiliatePayout, type InsertAffiliatePayout, type AgentVerificationAudit, type InsertAgentVerificationAudit, type SupportTicket, type InsertSupportTicket, type TicketReply, type InsertTicketReply, users, contractors, companies, contractorLicenses, countries, regions, climateZones, regulatoryBodies, regionalMaintenanceTasks, taskCompletions, achievements, achievementDefinitions, userAchievements, maintenanceLogs, searchAnalytics, inviteCodes, agentProfiles, affiliateReferrals, subscriptionCycleEvents, affiliatePayouts, agentVerificationAudits, supportTickets, ticketReplies, houses, homeSystems, customMaintenanceTasks, taskOverrides, serviceRecords, homeownerConnectionCodes, conversations, messages, proposals, houseTransfers } from "@shared/schema";
 import { randomUUID, randomBytes } from "crypto";
 import { db } from "./db";
 import { eq, ne, isNotNull, and, or, isNull, not, desc } from "drizzle-orm";
@@ -381,6 +381,29 @@ export interface IStorage {
   // Agent verification audit operations
   createVerificationAudit(audit: InsertAgentVerificationAudit): Promise<AgentVerificationAudit>;
   getVerificationAudits(agentId: string): Promise<AgentVerificationAudit[]>;
+  
+  // Support ticket operations
+  getSupportTickets(filters?: {
+    userId?: string;
+    status?: string;
+    category?: string;
+    priority?: string;
+    assignedToAdminId?: string;
+  }): Promise<SupportTicket[]>;
+  getSupportTicket(id: string): Promise<SupportTicket | undefined>;
+  createSupportTicket(ticket: InsertSupportTicket): Promise<SupportTicket>;
+  updateSupportTicket(id: string, ticket: Partial<InsertSupportTicket>): Promise<SupportTicket | undefined>;
+  
+  // Ticket reply operations
+  getTicketReplies(ticketId: string): Promise<TicketReply[]>;
+  createTicketReply(reply: InsertTicketReply): Promise<TicketReply>;
+  
+  // Support ticket with replies (for detailed view)
+  getSupportTicketWithReplies(id: string): Promise<{
+    ticket: SupportTicket;
+    replies: TicketReply[];
+    user: { id: string; firstName: string | null; lastName: string | null; email: string | null };
+  } | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -418,6 +441,9 @@ export class MemStorage implements IStorage {
   // Auth and analytics Maps
   private inviteCodesMap: Map<string, InviteCode>;
   private searchAnalyticsMap: Map<string, SearchAnalytics>;
+  // Support ticket Maps
+  private supportTickets: Map<string, SupportTicket>;
+  private ticketReplies: Map<string, TicketReply>;
 
   constructor() {
     this.users = new Map();
@@ -454,6 +480,9 @@ export class MemStorage implements IStorage {
     // Initialize auth and analytics Maps
     this.inviteCodesMap = new Map();
     this.searchAnalyticsMap = new Map();
+    // Initialize support ticket Maps
+    this.supportTickets = new Map();
+    this.ticketReplies = new Map();
     this.seedData();
     this.seedServiceRecords();
     this.seedReviews();
@@ -3931,6 +3960,117 @@ export class MemStorage implements IStorage {
       pendingEarnings,
     };
   }
+
+  // Support ticket operations
+  async getSupportTickets(filters?: {
+    userId?: string;
+    status?: string;
+    category?: string;
+    priority?: string;
+    assignedToAdminId?: string;
+  }): Promise<SupportTicket[]> {
+    let tickets = Array.from(this.supportTickets.values());
+    
+    if (filters?.userId) {
+      tickets = tickets.filter(t => t.userId === filters.userId);
+    }
+    if (filters?.status) {
+      tickets = tickets.filter(t => t.status === filters.status);
+    }
+    if (filters?.category) {
+      tickets = tickets.filter(t => t.category === filters.category);
+    }
+    if (filters?.priority) {
+      tickets = tickets.filter(t => t.priority === filters.priority);
+    }
+    if (filters?.assignedToAdminId) {
+      tickets = tickets.filter(t => t.assignedToAdminId === filters.assignedToAdminId);
+    }
+    
+    return tickets.sort((a, b) => 
+      new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+    );
+  }
+
+  async getSupportTicket(id: string): Promise<SupportTicket | undefined> {
+    return this.supportTickets.get(id);
+  }
+
+  async createSupportTicket(ticket: InsertSupportTicket): Promise<SupportTicket> {
+    const id = crypto.randomUUID();
+    const now = new Date();
+    const newTicket: SupportTicket = {
+      id,
+      ...ticket,
+      createdAt: now,
+      updatedAt: now,
+      closedAt: null,
+    };
+    this.supportTickets.set(id, newTicket);
+    return newTicket;
+  }
+
+  async updateSupportTicket(id: string, ticket: Partial<InsertSupportTicket>): Promise<SupportTicket | undefined> {
+    const existing = this.supportTickets.get(id);
+    if (!existing) return undefined;
+    
+    const updated: SupportTicket = {
+      ...existing,
+      ...ticket,
+      updatedAt: new Date(),
+      closedAt: ticket.status === 'closed' || ticket.status === 'resolved' ? new Date() : existing.closedAt,
+    };
+    this.supportTickets.set(id, updated);
+    return updated;
+  }
+
+  // Ticket reply operations
+  async getTicketReplies(ticketId: string): Promise<TicketReply[]> {
+    const replies = Array.from(this.ticketReplies.values())
+      .filter(r => r.ticketId === ticketId)
+      .sort((a, b) => 
+        new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+      );
+    return replies;
+  }
+
+  async createTicketReply(reply: InsertTicketReply): Promise<TicketReply> {
+    const id = crypto.randomUUID();
+    const now = new Date();
+    const newReply: TicketReply = {
+      id,
+      ...reply,
+      createdAt: now,
+    };
+    this.ticketReplies.set(id, newReply);
+    return newReply;
+  }
+
+  // Support ticket with replies (for detailed view)
+  async getSupportTicketWithReplies(id: string): Promise<{
+    ticket: SupportTicket;
+    replies: TicketReply[];
+    user: { id: string; firstName: string | null; lastName: string | null; email: string | null };
+  } | undefined> {
+    const ticket = await this.getSupportTicket(id);
+    if (!ticket) return undefined;
+    
+    const user = await this.getUser(ticket.userId);
+    if (!user) return undefined;
+    
+    const replies = await this.getTicketReplies(id);
+    
+    return {
+      ticket,
+      replies,
+      user: {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+      },
+    };
+  }
 }
 
 // Database-backed storage for users (OAuth persistence)
@@ -4094,6 +4234,14 @@ class DbStorage implements IStorage {
     this.getAgentStats = this.memStorage.getAgentStats.bind(this.memStorage);
     this.submitAgentVerification = this.memStorage.submitAgentVerification.bind(this.memStorage);
     this.getAgentVerificationStatus = this.memStorage.getAgentVerificationStatus.bind(this.memStorage);
+    // Support ticket methods
+    this.getSupportTickets = this.memStorage.getSupportTickets.bind(this.memStorage);
+    this.getSupportTicket = this.memStorage.getSupportTicket.bind(this.memStorage);
+    this.createSupportTicket = this.memStorage.createSupportTicket.bind(this.memStorage);
+    this.updateSupportTicket = this.memStorage.updateSupportTicket.bind(this.memStorage);
+    this.getTicketReplies = this.memStorage.getTicketReplies.bind(this.memStorage);
+    this.createTicketReply = this.memStorage.createTicketReply.bind(this.memStorage);
+    this.getSupportTicketWithReplies = this.memStorage.getSupportTicketWithReplies.bind(this.memStorage);
   }
 
   // User operations - DATABASE BACKED for persistence
