@@ -4,6 +4,9 @@ import { CostEstimate } from './cost-baselines';
 export interface MaintenanceTaskItem {
   title: string;
   description: string;
+  actionSummary?: string; // Single sentence action summary (e.g., "Do these 3 quick checks to winterize your home")
+  steps?: string[]; // Bullet point steps to complete the task
+  toolsAndSupplies?: string[]; // Tools and supplies needed checklist
   costEstimate?: CostEstimate; // Optional professional cost estimate and DIY materials cost
   impact?: string; // What happens if this task is not completed
   impactCost?: string; // Potential costs if task is not done
@@ -30,19 +33,70 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
     monthlyTasks: {
       1: { // January
         seasonal: [
-          { title: 'Check heating system efficiency', description: 'Ensure your heating system is running efficiently during peak winter. Check thermostat settings, listen for unusual noises, and verify all vents are open and unobstructed. Consider scheduling professional maintenance if performance seems reduced.', impact: 'An inefficient or malfunctioning heating system can lead to complete system failure in the middle of winter, leaving your home without heat. This can cause frozen pipes, uncomfortable living conditions, and significantly higher energy bills.', impactCost: '$3,000 - $8,000 for emergency furnace replacement; $500 - $2,000 for frozen pipe repairs' },
+          { 
+            title: 'Check heating system efficiency', 
+            description: 'Ensure your heating system is running efficiently during peak winter. Check thermostat settings, listen for unusual noises, and verify all vents are open and unobstructed. Consider scheduling professional maintenance if performance seems reduced.', 
+            actionSummary: 'Do these 3 quick checks to ensure your heating system runs efficiently all winter.',
+            steps: [
+              'Check thermostat settings and verify temperature is accurate',
+              'Listen for unusual noises like banging, squealing, or rattling',
+              'Verify all vents throughout your home are open and unobstructed'
+            ],
+            toolsAndSupplies: ['Flashlight', 'Notepad (for noting issues)'],
+            impact: 'An inefficient or malfunctioning heating system can lead to complete system failure in the middle of winter, leaving your home without heat. This can cause frozen pipes, uncomfortable living conditions, and significantly higher energy bills.', 
+            impactCost: '$3,000 - $8,000 for emergency furnace replacement; $500 - $2,000 for frozen pipe repairs' 
+          },
           { title: 'Inspect and clean fireplace/chimney', description: 'Remove ash buildup from fireplace and inspect chimney for creosote deposits or blockages. Check damper operation and look for cracks in firebox. Schedule professional chimney sweep if heavily used.' },
-          { title: 'Check for ice dams on roof', description: 'Look for icicles or ice buildup at roof edges that can cause water damage. Clear snow from gutters and roof edges if safe to do so. Ensure attic insulation and ventilation are adequate to prevent warm air from melting snow unevenly.', impact: 'Ice dams can cause severe water damage to your roof, attic, walls, and ceilings. Melting water trapped behind ice can seep under shingles and into your home, leading to stained ceilings, peeling paint, damaged insulation, and potential mold growth.', impactCost: '$2,000 - $10,000+ for water damage repairs and mold remediation' },
+          { 
+            title: 'Check for ice dams on roof', 
+            description: 'Look for icicles or ice buildup at roof edges that can cause water damage. Clear snow from gutters and roof edges if safe to do so. Ensure attic insulation and ventilation are adequate to prevent warm air from melting snow unevenly.', 
+            actionSummary: 'Inspect your roof for ice dams and take these 3 steps to prevent costly water damage.',
+            steps: [
+              'Look for large icicles or ice buildup along roof edges from the ground',
+              'Safely clear snow from gutters using a roof rake (stay on the ground)',
+              'Check attic for adequate insulation and proper ventilation',
+              'Call a professional if you notice significant ice dams'
+            ],
+            toolsAndSupplies: ['Binoculars (for safe inspection)', 'Roof rake with extension pole', 'Flashlight (for attic check)'],
+            impact: 'Ice dams can cause severe water damage to your roof, attic, walls, and ceilings. Melting water trapped behind ice can seep under shingles and into your home, leading to stained ceilings, peeling paint, damaged insulation, and potential mold growth.', 
+            impactCost: '$2,000 - $10,000+ for water damage repairs and mold remediation' 
+          },
           { title: 'Test carbon monoxide detectors', description: 'Press the test button on all CO detectors to verify they are working. Replace batteries if needed. Detectors should be placed near sleeping areas and on every level of your home.' },
           { title: 'Inspect weatherstripping on doors and windows', description: 'Check all door and window seals for gaps, cracks, or worn areas. Replace damaged weatherstripping to prevent heat loss and drafts. Use a lit candle or incense stick near edges to detect air leaks.' },
-          { title: 'Inspect furnace filter and replace if dirty', description: 'Remove furnace filter and hold it up to light - if you cannot see through it clearly, replace it. Dirty filters reduce efficiency and air quality. Most filters should be changed every 1-3 months during heating season.', impact: 'Clogged filters force your furnace to work harder, increasing energy costs by 15-30% and risking system failure. Restricted airflow can cause the heat exchanger to overheat and crack, creating a carbon monoxide leak hazard.', impactCost: '$1,500 - $4,000 for heat exchanger replacement; potential health risks from carbon monoxide exposure' },
+          { 
+            title: 'Inspect furnace filter and replace if dirty', 
+            description: 'Remove furnace filter and hold it up to light - if you cannot see through it clearly, replace it. Dirty filters reduce efficiency and air quality. Most filters should be changed every 1-3 months during heating season.', 
+            actionSummary: 'Complete this 2-minute filter check to keep your furnace running safely and efficiently.',
+            steps: [
+              'Locate and remove your furnace filter',
+              'Hold the filter up to a light source',
+              'Replace if you cannot see light through the filter',
+              'Mark your calendar to check again in 1-3 months'
+            ],
+            toolsAndSupplies: ['Replacement filter (check size first)', 'Permanent marker'],
+            impact: 'Clogged filters force your furnace to work harder, increasing energy costs by 15-30% and risking system failure. Restricted airflow can cause the heat exchanger to overheat and crack, creating a carbon monoxide leak hazard.', 
+            impactCost: '$1,500 - $4,000 for heat exchanger replacement; potential health risks from carbon monoxide exposure' 
+          },
           { title: 'Test GFCI outlets in kitchen, bathrooms, garage, and exterior', description: 'Press the "test" button on each GFCI outlet - it should click and cut power. Then press "reset" to restore power. If it does not trip, the outlet needs replacement for safety.' },
           { title: 'Inspect sump pump (if applicable) — pour water to confirm it activates', description: 'Pour a bucket of water into the sump pit to ensure the pump activates and drains properly. Check that the discharge pipe is clear and draining away from your foundation. Clean the inlet screen if present.' },
           { title: 'Clean washing machine drain filter', description: 'Locate the small access panel at the bottom front of your washer. Place towels underneath, open the panel, and remove the filter. Clean out lint, coins, and debris, then replace the filter and test for leaks.' }
         ],
         weatherSpecific: [
           { title: 'Remove snow from roof if excessive buildup', description: 'If snow accumulation exceeds 2 feet or you notice sagging, carefully remove snow using a roof rake from the ground. Never climb on a snow-covered roof. Focus on removing snow from roof edges to prevent ice dams.' },
-          { title: 'Check pipes for freezing in unheated areas', description: 'Inspect pipes in basements, crawl spaces, attics, and exterior walls. Feel pipes for cold spots. Let faucets drip slightly during extreme cold. Open cabinet doors under sinks to allow warm air circulation.', impact: 'Frozen pipes can burst, causing catastrophic water damage throughout your home. A single burst pipe can release hundreds of gallons of water per hour, damaging floors, walls, furniture, and personal belongings. Insurance claims often denied if preventive measures weren\'t taken.', impactCost: '$5,000 - $70,000+ for water damage restoration, pipe repair, and contents replacement' },
+          { 
+            title: 'Check pipes for freezing in unheated areas', 
+            description: 'Inspect pipes in basements, crawl spaces, attics, and exterior walls. Feel pipes for cold spots. Let faucets drip slightly during extreme cold. Open cabinet doors under sinks to allow warm air circulation.', 
+            actionSummary: 'Take these 4 preventive steps to protect your pipes from freezing and bursting.',
+            steps: [
+              'Inspect pipes in basement, crawl spaces, attic, and along exterior walls',
+              'Feel pipes for cold spots - they should be warm to touch',
+              'During extreme cold, let faucets drip slightly (hot and cold)',
+              'Open cabinet doors under sinks to allow warm air to circulate around pipes'
+            ],
+            toolsAndSupplies: ['Flashlight', 'Pipe insulation foam (if cold spots found)', 'Space heater (for extreme situations)'],
+            impact: 'Frozen pipes can burst, causing catastrophic water damage throughout your home. A single burst pipe can release hundreds of gallons of water per hour, damaging floors, walls, furniture, and personal belongings. Insurance claims often denied if preventive measures weren\'t taken.', 
+            impactCost: '$5,000 - $70,000+ for water damage restoration, pipe repair, and contents replacement' 
+          },
           { title: 'Ensure adequate insulation in attic and basement', description: 'Check attic insulation depth - it should be at least 10-14 inches for cold climates. Look for gaps or compressed areas. Ensure basement rim joists and walls are insulated. Add insulation where needed to prevent heat loss.' },
           { title: 'Monitor humidity levels (30-50%)', description: 'Use a hygrometer to check indoor humidity. Too low causes dry skin and static; too high causes condensation and mold. Run a humidifier if too dry, or improve ventilation and use a dehumidifier if too humid.' },
           { title: 'Check for drafts around windows and doors', description: 'On a windy day, hold a lit candle or incense stick near window and door edges. If smoke wavers, you have air leaks. Seal gaps with caulk or weatherstripping. Consider using temporary plastic window insulation kits.' }
