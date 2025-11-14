@@ -34,6 +34,7 @@ Preferred communication style: Simple, everyday language.
     - **DIY Savings Tracker**: Financial tracking of money saved from DIY tasks, including professional cost estimates and regional multipliers.
     - **AI Contractor Recommendation**: AI-powered (GPT-5 via Replit AI) recommendations for contractor types based on homeowner problems.
     - **Permanent Connection Code System**: Unique 8-character code for homeowners to share with contractors for service record access.
+    - **20-Mile Contractor Filtering**: Geocoded addresses enable distance-based contractor search. Maintenance task "Find Contractor" links automatically filter contractors within 20 miles of selected house for specific service categories. Uses OpenStreetMap Nominatim for geocoding with rate limiting and caching. Gracefully handles missing location data.
 - **Marketplace**: Listing and browsing DIY products.
 - **Maintenance Guidance**: Seasonal home maintenance schedules with location-based and individual task priorities (traffic light system).
 - **Notifications**: Bi-directional system for homeowners (reminders, task alerts, messages, proposals) and contractors (new messages). Real-time updates with unread badges.
