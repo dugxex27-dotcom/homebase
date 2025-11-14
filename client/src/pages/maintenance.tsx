@@ -617,16 +617,6 @@ function TaskCard({
           </div>
         )}
 
-        {/* Read Details Link */}
-        <button
-          onClick={() => setShowReadDetails(!showReadDetails)}
-          className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center gap-1 transition-colors"
-          data-testid={`button-read-details-${task.id}`}
-        >
-          Read Details
-          <ChevronDown className={`w-4 h-4 transition-transform ${showReadDetails ? 'rotate-180' : ''}`} />
-        </button>
-
         {/* Cost & Effort Section - Always Visible */}
         <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200">
           <h4 className="text-sm font-bold mb-3" style={{ color: '#2c0f5b' }}>Cost & Effort</h4>
