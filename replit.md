@@ -43,6 +43,7 @@ Preferred communication style: Simple, everyday language.
 - **Homeowner Features**:
     - Multi-property support with individual maintenance schedules and climate zone detection.
     - Centralized service records tracking.
+    - **Home Health Score**: Gamified maintenance tracking system that calculates a health score for each property based on completed and missed maintenance tasks. Score formula: (completed tasks × 4) - (missed tasks × 4). Displays prominently on home page and maintenance page with color-coded status indicators (green/yellow/red) and detailed task counts. Encourages consistent home maintenance through visual feedback.
     - **AI Contractor Recommendation**: An AI-powered feature (using GPT-5 via Replit AI) that analyzes homeowner problems and recommends contractor types with explanations, integrating directly into contractor search.
     - **House-Based Data Organization**: All maintenance data is filtered and organized by the homeowner's selected property.
     - **Contractor Search Integration**: Auto-populates contractor search location from the selected house.
