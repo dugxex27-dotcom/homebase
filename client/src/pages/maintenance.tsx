@@ -469,6 +469,7 @@ interface TaskCardProps {
   generateTaskId: (title: string) => string;
   upsertTaskOverrideMutation: any;
   deleteTaskOverrideMutation: any;
+  completeTaskMutation: any;
   toast: any;
   taskOverrides: TaskOverride[] | undefined;
   selectedHouseId: string;
@@ -490,6 +491,7 @@ function TaskCard({
   generateTaskId,
   upsertTaskOverrideMutation,
   deleteTaskOverrideMutation,
+  completeTaskMutation,
   toast,
   taskOverrides,
   selectedHouseId,
@@ -668,14 +670,19 @@ function TaskCard({
               <Button
                 className="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 h-auto flex-col items-center justify-center gap-1"
                 onClick={() => {
-                  // TODO: Add handler for DIY completion
-                  console.log('DIY completion clicked');
+                  completeTaskMutation.mutate({
+                    houseId: selectedHouseId,
+                    taskTitle: task.title,
+                    completionMethod: 'diy',
+                    costEstimate: task.costEstimate,
+                  });
                 }}
+                disabled={completeTaskMutation.isPending}
                 data-testid={`button-complete-diy-${task.id}`}
               >
                 <div className="flex items-center gap-2">
                   <Wrench className="w-5 h-5" />
-                  <span>Completed DIY</span>
+                  <span>{completeTaskMutation.isPending ? 'Saving...' : 'Completed DIY'}</span>
                 </div>
                 {task.costEstimate && (
                   <span className="text-xs text-green-100 mt-1">
@@ -687,13 +694,18 @@ function TaskCard({
                 variant="outline"
                 className="border-2 border-purple-600 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950 font-semibold py-3 h-auto"
                 onClick={() => {
-                  // TODO: Add handler for contractor completion
-                  console.log('Contractor completion clicked');
+                  completeTaskMutation.mutate({
+                    houseId: selectedHouseId,
+                    taskTitle: task.title,
+                    completionMethod: 'contractor',
+                    costEstimate: task.costEstimate,
+                  });
                 }}
+                disabled={completeTaskMutation.isPending}
                 data-testid={`button-complete-contractor-${task.id}`}
               >
                 <Truck className="w-5 h-5 mr-2" />
-                <span>Completed by Contractor</span>
+                <span>{completeTaskMutation.isPending ? 'Saving...' : 'Completed by Contractor'}</span>
               </Button>
             </div>
           </div>
@@ -1266,6 +1278,37 @@ export default function Maintenance() {
     },
     onError: () => {
       toast({ title: "Error", description: "Failed to delete maintenance log", variant: "destructive" });
+    },
+  });
+
+  // Complete task with DIY or contractor method
+  const completeTaskMutation = useMutation({
+    mutationFn: async (data: { 
+      houseId: string; 
+      taskTitle: string; 
+      completionMethod: 'diy' | 'contractor';
+      costEstimate?: {
+        proLow?: number;
+        proHigh?: number;
+        materialsLow?: number;
+        materialsHigh?: number;
+      };
+    }) => {
+      const response = await fetch('/api/maintenance-logs/complete-task', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error('Failed to complete task');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/maintenance-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/task-completions'] });
+      toast({ title: "Success", description: "Task marked as complete!" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to complete task", variant: "destructive" });
     },
   });
 
@@ -3022,6 +3065,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     generateTaskId={generateTaskId}
                     upsertTaskOverrideMutation={upsertTaskOverrideMutation}
                     deleteTaskOverrideMutation={deleteTaskOverrideMutation}
+                    completeTaskMutation={completeTaskMutation}
                     toast={toast}
                     taskOverrides={taskOverrides}
                     selectedHouseId={selectedHouseId}
