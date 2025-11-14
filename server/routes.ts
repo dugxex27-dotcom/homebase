@@ -9,7 +9,8 @@ import { z } from "zod";
 import { randomUUID } from "crypto";
 import rateLimit from "express-rate-limit";
 import { eq, and, or, lte, isNull } from "drizzle-orm";
-import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, maintenanceTasks, customMaintenanceTasks, insertSupportTicketSchema, insertSubscriptionCycleEventSchema } from "@shared/schema";
+import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, maintenanceTasks, customMaintenanceTasks, insertSupportTicketSchema, insertSubscriptionCycleEventSchema, completeTaskSchema } from "@shared/schema";
+import { calculateDIYSavingsAmount } from "@shared/cost-helpers";
 import pushRoutes from "./push-routes";
 import { pushService } from "./push-service";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
@@ -3288,6 +3289,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid maintenance log data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create maintenance log" });
+    }
+  });
+
+  // Complete a maintenance task with DIY or contractor method
+  app.post("/api/maintenance-logs/complete-task", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+    try {
+      // Validate request body with Zod schema
+      const validatedData = completeTaskSchema.parse(req.body);
+      const { houseId, taskTitle, completionMethod, costEstimate } = validatedData;
+      
+      // Verify house belongs to user
+      const house = await storage.getHouse(houseId);
+      if (!house || house.homeownerId !== req.session.user.id) {
+        return res.status(403).json({ message: "Access denied to house" });
+      }
+      
+      // Calculate DIY savings using shared helper function
+      let diySavingsAmount: string | null = null;
+      if (completionMethod === 'diy' && costEstimate) {
+        const savingsNumber = calculateDIYSavingsAmount(costEstimate);
+        diySavingsAmount = savingsNumber > 0 ? savingsNumber.toString() : null;
+      }
+      
+      // Calculate contractor cost if applicable
+      let contractorCost: string | null = null;
+      if (completionMethod === 'contractor' && costEstimate) {
+        const { proLow, proHigh } = costEstimate;
+        if (proLow !== undefined && proHigh !== undefined) {
+          contractorCost = ((proLow + proHigh) / 2).toFixed(2);
+        }
+      }
+      
+      // Create maintenance log
+      const logData = {
+        homeownerId: req.session.user.id,
+        houseId,
+        serviceDate: new Date().toISOString().split('T')[0],
+        serviceType: taskTitle,
+        serviceDescription: `Completed ${completionMethod === 'diy' ? 'DIY' : 'by contractor'}`,
+        completionMethod,
+        diySavingsAmount,
+        cost: contractorCost
+      };
+      
+      const log = await storage.createMaintenanceLog(logData);
+      res.status(201).json(log);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid task completion data", errors: error.errors });
+      }
+      console.error("Error completing task:", error);
+      res.status(500).json({ message: "Failed to complete task" });
     }
   });
 

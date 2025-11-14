@@ -781,6 +781,19 @@ export const insertMaintenanceLogSchema = createInsertSchema(maintenanceLogs).om
   diySavingsAmount: z.string().optional(), // Decimal stored as string, nullable
 });
 
+// Schema for task completion endpoint
+export const completeTaskSchema = z.object({
+  houseId: z.string().min(1, "House ID is required"),
+  taskTitle: z.string().min(1, "Task title is required"),
+  completionMethod: z.enum(['diy', 'contractor']),
+  costEstimate: z.object({
+    proLow: z.number().optional(),
+    proHigh: z.number().optional(),
+    materialsLow: z.number().optional(),
+    materialsHigh: z.number().optional(),
+  }).optional(),
+});
+
 export const insertContractorAppointmentSchema = createInsertSchema(contractorAppointments).omit({
   id: true,
   createdAt: true,
