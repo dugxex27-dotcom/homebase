@@ -72,10 +72,7 @@ type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
 
 export default function SignIn() {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
-  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetStep, setResetStep] = useState<'request' | 'reset'>('request');
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -92,39 +89,6 @@ export default function SignIn() {
     mode: "onBlur",
   });
 
-  const registerForm = useForm<RegisterFormData>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: {
-      firstName: "",
-      lastName: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-      zipCode: "",
-      role: undefined,
-      inviteCode: "",
-      referralCode: "",
-      companyName: "",
-      companyBio: "",
-      companyPhone: "",
-    },
-    mode: "onBlur",
-  });
-
-  // Parse URL parameters and pre-fill form on component mount
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const roleParam = urlParams.get('role');
-    const refParam = urlParams.get('ref');
-
-    if (roleParam && (roleParam === 'homeowner' || roleParam === 'contractor' || roleParam === 'agent')) {
-      registerForm.setValue('role', roleParam as 'homeowner' | 'contractor' | 'agent');
-    }
-
-    if (refParam) {
-      registerForm.setValue('referralCode', refParam);
-    }
-  }, [registerForm]);
 
   const forgotPasswordForm = useForm<ForgotPasswordFormData>({
     resolver: zodResolver(forgotPasswordSchema),
@@ -176,50 +140,6 @@ export default function SignIn() {
     },
   });
 
-  const registerMutation = useMutation({
-    mutationFn: async (data: RegisterFormData) => {
-      const response = await apiRequest("/api/auth/register", "POST", {
-        email: data.email,
-        password: data.password,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        role: data.role,
-        zipCode: data.zipCode,
-        inviteCode: data.inviteCode || undefined,
-        referralCode: data.referralCode || undefined,
-        companyName: data.companyName,
-        companyBio: data.companyBio,
-        companyPhone: data.companyPhone,
-      });
-      return response.json();
-    },
-    onSuccess: (data) => {
-      // Invalidate auth query to refresh user state
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
-      
-      toast({
-        title: "Account created!",
-        description: "Welcome to Home Base. Your account has been created successfully.",
-      });
-      
-      // Redirect based on role
-      const role = data.user?.role || 'homeowner';
-      if (role === 'contractor') {
-        setLocation('/contractor-dashboard');
-      } else if (role === 'agent') {
-        setLocation('/agent-dashboard');
-      } else {
-        setLocation('/');
-      }
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Registration failed",
-        description: error.message || "Could not create account. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
 
   const forgotPasswordMutation = useMutation({
     mutationFn: async (data: ForgotPasswordFormData) => {
@@ -273,9 +193,6 @@ export default function SignIn() {
     loginMutation.mutate(data);
   };
 
-  const handleRegisterSubmit = (data: RegisterFormData) => {
-    registerMutation.mutate(data);
-  };
 
   const handleForgotPasswordSubmit = (data: ForgotPasswordFormData) => {
     forgotPasswordMutation.mutate(data);
@@ -345,8 +262,6 @@ export default function SignIn() {
     }
   };
 
-  const selectedRole = registerForm.watch("role");
-  const referralCodeValue = registerForm.watch("referralCode");
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10 flex items-center justify-center p-4">
@@ -366,12 +281,10 @@ export default function SignIn() {
         <Card className="border-0 shadow-xl">
           <CardHeader className="text-center pb-6">
             <CardTitle className="text-2xl text-foreground">
-              {mode === 'login' ? 'Sign In to Your Account' : 'Create Your Account'}
+              Sign In to Your Account
             </CardTitle>
             <p className="text-muted-foreground">
-              {mode === 'login' 
-                ? 'Welcome back! Please sign in to continue' 
-                : 'Join Home Base to get started'}
+              Welcome back! Please sign in to continue
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -398,9 +311,8 @@ export default function SignIn() {
               </div>
             </div>
 
-            {mode === 'login' ? (
-              <Form {...loginForm}>
-                <form onSubmit={loginForm.handleSubmit(handleLoginSubmit)} className="space-y-4">
+            <Form {...loginForm}>
+              <form onSubmit={loginForm.handleSubmit(handleLoginSubmit)} className="space-y-4">
                   <FormField
                     control={loginForm.control}
                     name="email"
@@ -471,318 +383,19 @@ export default function SignIn() {
                   </Button>
                 </form>
               </Form>
-            ) : (
-              <Form {...registerForm}>
-                <form key="register-form" onSubmit={registerForm.handleSubmit(handleRegisterSubmit)} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={registerForm.control}
-                      name="firstName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>First Name</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="First name"
-                              {...field}
-                              data-testid="input-first-name"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
 
-                    <FormField
-                      control={registerForm.control}
-                      name="lastName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Last Name</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Last name"
-                              {...field}
-                              data-testid="input-last-name"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Email</label>
-                    <input
-                      type="email"
-                      placeholder="Enter your email"
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base text-foreground ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 mt-2"
-                      data-testid="input-register-email"
-                      {...registerForm.register("email")}
-                    />
-                    {registerForm.formState.errors.email && (
-                      <p className="text-sm font-medium text-destructive mt-2">
-                        {registerForm.formState.errors.email.message}
-                      </p>
-                    )}
-                  </div>
-
-                  <FormField
-                    control={registerForm.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Input
-                              type={showRegisterPassword ? "text" : "password"}
-                              placeholder="Create a password (min 6 characters)"
-                              {...field}
-                              data-testid="input-password"
-                              className="pr-10"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setShowRegisterPassword(!showRegisterPassword)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                              data-testid="button-toggle-register-password"
-                            >
-                              {showRegisterPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                            </button>
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={registerForm.control}
-                    name="confirmPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Confirm Password</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Input
-                              type={showConfirmPassword ? "text" : "password"}
-                              placeholder="Confirm your password"
-                              {...field}
-                              data-testid="input-confirm-password"
-                              className="pr-10"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                              data-testid="button-toggle-confirm-password"
-                            >
-                              {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                            </button>
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={registerForm.control}
-                    name="zipCode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Zip Code</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Enter your zip code"
-                            {...field}
-                            data-testid="input-zip-code"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={registerForm.control}
-                    name="role"
-                    render={({ field }) => (
-                      <FormItem className="space-y-3">
-                        <FormLabel>I am a</FormLabel>
-                        <FormControl>
-                          <RadioGroup
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                            className="flex flex-col space-y-2"
-                          >
-                            <div className="flex items-center space-x-2">
-                              <RadioGroupItem 
-                                value="homeowner" 
-                                id="homeowner"
-                                data-testid="radio-homeowner"
-                              />
-                              <Label htmlFor="homeowner" className="cursor-pointer">
-                                Homeowner
-                              </Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <RadioGroupItem 
-                                value="contractor" 
-                                id="contractor"
-                                data-testid="radio-contractor"
-                              />
-                              <Label htmlFor="contractor" className="cursor-pointer">
-                                Contractor
-                              </Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <RadioGroupItem 
-                                value="agent" 
-                                id="agent"
-                                data-testid="radio-agent"
-                              />
-                              <Label htmlFor="agent" className="cursor-pointer">
-                                Real Estate Agent
-                              </Label>
-                            </div>
-                          </RadioGroup>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Company fields for contractors */}
-                  {selectedRole === 'contractor' && (
-                    <>
-                      <div className="text-sm text-muted-foreground mb-2">
-                        Create your company profile (team members can be added later via invite)
-                      </div>
-                      
-                      <FormField
-                        control={registerForm.control}
-                        name="companyName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Company Name</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="e.g., ABC Plumbing"
-                                {...field}
-                                data-testid="input-company-name"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={registerForm.control}
-                        name="companyBio"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Company Bio</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="Brief description of your company"
-                                {...field}
-                                data-testid="input-company-bio"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={registerForm.control}
-                        name="companyPhone"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Company Phone</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="(555) 123-4567"
-                                {...field}
-                                data-testid="input-company-phone"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </>
-                  )}
-
-                  <FormField
-                    control={registerForm.control}
-                    name="inviteCode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Invite Code (Optional)</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Enter invite code if you have one"
-                            {...field}
-                            data-testid="input-invite-code"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Referral Code field - shown if ?ref param present */}
-                  {referralCodeValue && (
-                    <FormField
-                      control={registerForm.control}
-                      name="referralCode"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Referral Code</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              readOnly
-                              data-testid="input-referral-code"
-                              className="bg-muted"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
-
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={registerMutation.isPending}
-                    data-testid="button-register"
-                  >
-                    {registerMutation.isPending ? 'Creating account...' : 'Create Account'}
-                  </Button>
-                </form>
-              </Form>
-            )}
-
-            {/* Toggle between login and register */}
+            {/* Sign up link */}
             <div className="text-center text-sm">
               <span className="text-muted-foreground">
-                {mode === 'login' ? "Don't have an account? " : "Already have an account? "}
+                Don't have an account?{' '}
               </span>
-              <button
-                type="button"
-                onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
+              <a
+                href="/onboarding"
                 className="text-primary hover:underline font-medium"
-                data-testid="link-toggle-mode"
+                data-testid="link-create-account"
               >
-                {mode === 'login' ? 'Create one' : 'Sign in'}
-              </button>
+                Create one
+              </a>
             </div>
 
             {/* Demo Login Buttons */}

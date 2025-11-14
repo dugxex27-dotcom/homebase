@@ -33,6 +33,7 @@ import Billing from "./pages/billing";
 import Landing from "./pages/landing";
 import AgentDashboard from "./pages/agent-dashboard";
 import AgentAccount from "./pages/agent-account";
+import Onboarding from "./pages/onboarding";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -65,6 +66,7 @@ function Router() {
   if (!isAuthenticated) {
     return (
       <Switch>
+        <Route path="/onboarding" component={Onboarding} />
         <Route path="/signin/homeowner" component={SignInHomeowner} />
         <Route path="/signin/contractor" component={SignInContractor} />
         <Route path="/signin/agent" component={SignInAgent} />
