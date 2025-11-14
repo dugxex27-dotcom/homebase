@@ -4342,6 +4342,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalSavings = diyLogs.reduce((sum, log) => sum + parseFloat(log.diySavingsAmount || '0'), 0);
       const taskCount = diyLogs.length;
       
+      console.log('[DIY SAVINGS]', { houseId, totalLogs: logs.length, diyLogs: diyLogs.length, totalSavings, taskCount });
+      
+      // Disable caching for this endpoint
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
+      
       res.json({
         totalSavings: parseFloat(totalSavings.toFixed(2)),
         taskCount
