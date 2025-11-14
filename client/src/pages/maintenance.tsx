@@ -372,74 +372,74 @@ function DIYSavingsTracker({ houseId }: { houseId: string }) {
 
   return (
     <section className="py-4 sm:py-8" style={{ backgroundColor: '#2c0f5b' }}>
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+      <div className="w-full mx-auto px-2 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto">
-          <Card style={{ backgroundColor: '#f2f2f2' }} data-testid="diy-savings-tracker">
-            <CardHeader className="pb-3 sm:pb-6">
+          <Card style={{ backgroundColor: '#f2f2f2' }} data-testid="diy-savings-tracker" className="overflow-hidden">
+            <CardHeader className="pb-3 sm:pb-6 px-3 sm:px-6">
               <div className="flex items-center gap-2 sm:gap-3">
-                <div className="p-2 sm:p-3 rounded-full bg-gradient-to-br from-green-500 to-emerald-600">
-                  <PiggyBank className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                <div className="p-2 sm:p-3 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 shrink-0">
+                  <PiggyBank className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
                 </div>
-                <CardTitle style={{ color: '#2c0f5b' }} className="flex-1 text-lg sm:text-xl">DIY Savings Tracker</CardTitle>
+                <CardTitle style={{ color: '#2c0f5b' }} className="flex-1 text-base sm:text-xl truncate">DIY Savings</CardTitle>
               </div>
             </CardHeader>
-            <CardContent className="pt-0">
+            <CardContent className="pt-0 px-3 sm:px-6">
               {isLoading ? (
                 <div className="flex items-center justify-center py-6 sm:py-8">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto" style={{ borderColor: '#6d28d9' }}></div>
-                    <p className="mt-4 text-sm text-gray-600">Loading savings data...</p>
+                    <p className="mt-4 text-sm text-gray-600">Loading...</p>
                   </div>
                 </div>
               ) : isError ? (
                 <div className="flex items-center justify-center py-6 sm:py-8">
                   <div className="text-center">
                     <AlertTriangle className="w-10 h-10 sm:w-12 sm:h-12 text-yellow-600 mx-auto mb-4" />
-                    <p className="text-sm font-medium text-gray-700">Unable to load savings data</p>
-                    <p className="text-xs text-gray-500 mt-2">Please try refreshing the page</p>
+                    <p className="text-sm font-medium text-gray-700">Unable to load</p>
+                    <p className="text-xs text-gray-500 mt-2">Try refreshing</p>
                   </div>
                 </div>
               ) : (data?.totalSavings === 0 && data?.taskCount === 0) ? (
                 <div className="flex items-center justify-center py-6 sm:py-8">
                   <div className="text-center">
                     <PiggyBank className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-sm font-medium text-gray-700">No DIY savings yet</p>
-                    <p className="text-xs text-gray-500 mt-2">Complete maintenance tasks yourself to start saving money!</p>
+                    <p className="text-sm font-medium text-gray-700">No savings yet</p>
+                    <p className="text-xs text-gray-500 mt-2 px-4">Complete tasks yourself to save!</p>
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                  <div className="text-center sm:text-left">
-                    <p className="text-xs sm:text-sm font-medium text-gray-600 mb-1 sm:mb-2">Total DIY Savings</p>
-                    <div className="flex items-baseline gap-1 sm:gap-2 justify-center sm:justify-start">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6">
+                  <div className="text-center sm:text-left min-w-0">
+                    <p className="text-xs sm:text-sm font-medium text-gray-600 mb-1">Total Saved</p>
+                    <div className="flex items-baseline gap-1 justify-center sm:justify-start min-w-0">
                       <span 
-                        className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent"
+                        className="text-xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent truncate"
                         data-testid="total-savings-amount"
                       >
                         {formattedSavings}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1 sm:mt-2">Money saved by doing it yourself</p>
+                    <p className="text-xs text-gray-500 mt-1">Saved doing it yourself</p>
                   </div>
-                  <div className="text-center sm:text-left">
-                    <p className="text-xs sm:text-sm font-medium text-gray-600 mb-1 sm:mb-2">DIY Tasks Completed</p>
-                    <div className="flex items-baseline gap-1 sm:gap-2 justify-center sm:justify-start flex-wrap">
+                  <div className="text-center sm:text-left min-w-0">
+                    <p className="text-xs sm:text-sm font-medium text-gray-600 mb-1">Tasks Done</p>
+                    <div className="flex items-baseline gap-1 justify-center sm:justify-start flex-wrap">
                       <span 
-                        className="text-2xl sm:text-3xl md:text-4xl font-bold"
+                        className="text-xl sm:text-3xl md:text-4xl font-bold"
                         style={{ color: '#2c0f5b' }}
                         data-testid="diy-task-count"
                       >
                         {data?.taskCount || 0}
                       </span>
-                      <span className="text-base sm:text-lg text-gray-500">tasks</span>
+                      <span className="text-sm sm:text-lg text-gray-500">tasks</span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1 sm:mt-2">
+                    <p className="text-xs text-gray-500 mt-1 truncate">
                       Avg: {data && data.taskCount > 0 ? new Intl.NumberFormat('en-US', {
                         style: 'currency',
                         currency: 'USD',
                         minimumFractionDigits: 0,
                         maximumFractionDigits: 0,
-                      }).format(data.totalSavings / data.taskCount) : '$0'} per task
+                      }).format(data.totalSavings / data.taskCount) : '$0'}/task
                     </p>
                   </div>
                 </div>
