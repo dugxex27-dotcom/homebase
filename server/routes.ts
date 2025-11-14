@@ -3325,6 +3325,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const logData = {
         homeownerId: req.session.user.id,
         houseId,
+        homeArea: 'General Maintenance', // Default home area for task completions
         serviceDate: new Date().toISOString().split('T')[0],
         serviceType: taskTitle,
         serviceDescription: `Completed ${completionMethod === 'diy' ? 'DIY' : 'by contractor'}`,
