@@ -3322,8 +3322,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Missed tasks = expected tasks - completed tasks
       const missedCount = Math.max(0, expectedTasksCount - completedCount);
 
-      // Calculate score: +4 per completed, -4 per missed
-      const score = (completedCount * 4) - (missedCount * 4);
+      // Calculate score: +4 per completed, -4 per missed (minimum 0)
+      const score = Math.max(0, (completedCount * 4) - (missedCount * 4));
 
       res.json({
         score,

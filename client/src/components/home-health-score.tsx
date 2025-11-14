@@ -41,7 +41,10 @@ export default function HomeHealthScore({ houseId }: HomeHealthScoreProps) {
 
   if (!scoreData) return null;
 
-  const { score, completedTasks, missedTasks, totalExpectedTasks } = scoreData;
+  const { score: rawScore, completedTasks, missedTasks, totalExpectedTasks } = scoreData;
+  
+  // Ensure score never goes below 0
+  const score = Math.max(0, rawScore);
 
   // Determine score color and status
   let scoreColor = "text-green-600 dark:text-green-400";
@@ -49,7 +52,7 @@ export default function HomeHealthScore({ houseId }: HomeHealthScoreProps) {
   let status = "Excellent";
   let icon = <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />;
 
-  if (score < 0) {
+  if (score === 0 && missedTasks > 0) {
     scoreColor = "text-red-600 dark:text-red-400";
     bgColor = "bg-red-100 dark:bg-red-900/30";
     status = "Needs Attention";
