@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -509,11 +510,19 @@ function TaskCard({
           </Badge>
         )}
         
-        {/* Header: Title + Priority Badge + Edit Button */}
+        {/* Header: Completion Checkbox + Title + Priority Badge + Edit Button */}
         <div className="flex justify-between items-start gap-4">
-          <CardTitle className="tracking-tight text-xl font-bold flex-1" style={{ color: '#2c0f5b' }} data-testid={`title-task-${generateTaskId(task.title)}`}>
-            {task.title}
-          </CardTitle>
+          <div className="flex items-start gap-3 flex-1">
+            <Checkbox
+              checked={completed}
+              onCheckedChange={onToggleComplete}
+              className="mt-1"
+              data-testid={`checkbox-complete-${task.id}`}
+            />
+            <CardTitle className="tracking-tight text-xl font-bold flex-1" style={{ color: '#2c0f5b' }} data-testid={`title-task-${generateTaskId(task.title)}`}>
+              {task.title}
+            </CardTitle>
+          </div>
           <div className="flex items-center gap-2">
             {task.priority === 'high' && (
               <Badge className="bg-red-500 text-white hover:bg-red-600 font-semibold px-3 py-1" data-testid={`badge-priority-${task.priority}`}>
@@ -551,9 +560,13 @@ function TaskCard({
           </div>
         </div>
         
-        {/* Progress Indicator */}
-        <div className="text-sm text-gray-600 mt-2 font-medium">
-          {currentProgress}/{totalSteps} Steps Complete
+        {/* Progress Indicator with Visual Bar */}
+        <div className="mt-4 space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="font-medium text-gray-700">Progress</span>
+            <span className="text-gray-600">{currentProgress}/{totalSteps} Steps</span>
+          </div>
+          <Progress value={(currentProgress / totalSteps) * 100} className="h-2" />
         </div>
       </CardHeader>
 
@@ -562,11 +575,6 @@ function TaskCard({
         <p className="leading-relaxed text-gray-700" style={{ color: '#2c0f5b' }}>
           {displayDescription}
         </p>
-
-        {/* Progress Indicator (secondary display as shown in mockup) */}
-        <div className="text-sm text-gray-500">
-          {currentProgress}/{totalSteps} Steps Complete
-        </div>
 
         {/* Read Details Link */}
         <button
@@ -578,62 +586,62 @@ function TaskCard({
           <ChevronDown className={`w-4 h-4 transition-transform ${showReadDetails ? 'rotate-180' : ''}`} />
         </button>
 
-        {/* Cost & Effort Section */}
-        {task.costEstimate && (
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200">
-            <h4 className="text-sm font-bold mb-3" style={{ color: '#2c0f5b' }}>Cost & Effort</h4>
-            <div className="flex flex-wrap items-center gap-4 text-sm">
-              {/* DIY Cost */}
-              <div className="flex items-center gap-2">
-                <Wrench className="w-4 h-4 text-gray-600" />
-                <span className="font-medium text-gray-700">DIY Cost:</span>
-                <span className="font-semibold text-gray-900">
-                  {formatDIYSavings(task.costEstimate)}
-                </span>
-                <span className="text-gray-500 text-xs">(Supplies)</span>
-              </div>
+        {/* Cost & Effort Section - Always Visible */}
+        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200">
+          <h4 className="text-sm font-bold mb-3" style={{ color: '#2c0f5b' }}>Cost & Effort</h4>
+          <div className="flex flex-wrap items-center gap-4 text-sm">
+            {/* DIY Cost */}
+            <div className="flex items-center gap-2">
+              <Wrench className="w-4 h-4 text-gray-600" />
+              <span className="font-medium text-gray-700">DIY Cost:</span>
+              <span className="font-semibold text-gray-900">
+                {task.costEstimate ? formatDIYSavings(task.costEstimate) : '–'}
+              </span>
+              {task.costEstimate && <span className="text-gray-500 text-xs">(Supplies)</span>}
+            </div>
 
-              {/* Pro Cost */}
-              <div className="flex items-center gap-2">
-                <Truck className="w-4 h-4 text-gray-600" />
-                <span className="font-medium text-gray-700">Pro Cost:</span>
-                <span className="font-semibold text-gray-900">
-                  {formatCostEstimate(task.costEstimate)}
-                </span>
-              </div>
+            {/* Pro Cost */}
+            <div className="flex items-center gap-2">
+              <Truck className="w-4 h-4 text-gray-600" />
+              <span className="font-medium text-gray-700">Pro Cost:</span>
+              <span className="font-semibold text-gray-900">
+                {task.costEstimate ? formatCostEstimate(task.costEstimate) : '–'}
+              </span>
+            </div>
 
-              {/* Find Contractor Link */}
-              <a
-                href={`/contractors?category=${encodeURIComponent(task.category)}&service=${encodeURIComponent(task.title)}`}
-                className="text-blue-600 hover:text-blue-700 font-medium underline ml-auto"
-                data-testid={`link-find-contractor-${task.id}`}
-              >
-                Find Contractor
-              </a>
+            {/* Find Contractor Link */}
+            <a
+              href={`/contractors?category=${encodeURIComponent(task.category)}&service=${encodeURIComponent(task.title)}`}
+              className="text-blue-600 hover:text-blue-700 font-medium underline ml-auto"
+              data-testid={`link-find-contractor-${task.id}`}
+            >
+              Find Contractor
+            </a>
 
-              {/* Difficulty */}
+            {/* Difficulty */}
+            {task.difficulty && (
               <div className="flex items-center gap-2 ml-4">
                 <Clock className="w-4 h-4 text-amber-500" />
                 <span className="font-medium text-gray-700">{task.difficulty}</span>
               </div>
-            </div>
+            )}
           </div>
-        )}
+        </div>
 
         {/* Primary CTA Button */}
         <Button
           className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-6 text-base"
-          onClick={onToggleComplete}
+          onClick={() => setShowReadDetails(!showReadDetails)}
           data-testid={`button-view-checklist-${task.id}`}
         >
-          {completed ? (
+          {showReadDetails ? (
             <>
-              <CheckCircle2 className="w-5 h-5 mr-2" />
-              Task Completed - View Details
+              <ChevronDown className="w-5 h-5 mr-2 rotate-180" />
+              Hide Full Checklist & Instructions
             </>
           ) : (
             <>
-              <Circle className="w-5 h-5 mr-2" />
+              <ChevronDown className="w-5 h-5 mr-2" />
               View Full Checklist & Instructions
             </>
           )}
@@ -2821,89 +2829,6 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                 </div>
               )}
             </div>
-
-
-        {/* Custom Maintenance Tasks Section */}
-        <div className="mt-12" data-custom-tasks-section>
-          <CustomMaintenanceTasks 
-            homeownerId={homeownerId} 
-            houseId={selectedHouseId}
-          />
-        </div>
-
-        {/* Appliances Section */}
-        {selectedHouseId && (
-          <div className="mt-12">
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h2 className="text-2xl font-bold text-white mb-2">Home Appliances</h2>
-                <p className="text-lg" style={{ color: '#b6a6f4' }}>
-                  Track appliances, manuals, and maintenance schedules
-                </p>
-              </div>
-              <Button
-                onClick={() => {
-                  setEditingAppliance(null);
-                  applianceForm.reset({
-                    homeownerId,
-                    houseId: selectedHouseId,
-                    name: "",
-                    make: "",
-                    model: "",
-                    serialNumber: "",
-                    purchaseDate: "",
-                    installDate: "",
-                    yearInstalled: undefined,
-                    notes: "",
-                    location: "",
-                    warrantyExpiration: "",
-                    lastServiceDate: "",
-                  });
-                  setIsApplianceDialogOpen(true);
-                }}
-                style={{ backgroundColor: '#2c0f5b', color: 'white', borderColor: '#2c0f5b' }}
-                className="hover:opacity-90"
-                data-testid="button-add-appliance"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Appliance
-              </Button>
-            </div> 
-                    className={`hover:shadow-md transition-all ${
-                      completed ? 'border-green-200 dark:border-green-800' : 'border-gray-300 dark:border-gray-700'
-                    }`}
-                                        description: `You can contact ${previousContractor.contractorName} for this service again. Check your previous service records for contact details.`
-                                      });
-                                    }}
-                                    data-testid={`button-contact-contractor-${task.id}`}
-                                  >
-                                    <MessageSquare className="w-3 h-3 mr-1" />
-                                    Contact Again
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-
-              {filteredTasks.length === 0 && (
-                <div className="col-span-full text-center py-12">
-                  <Calendar className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium mb-2" style={{ color: '#ffffff' }}>
-                    No tasks for this month and location
-                  </h3>
-                  <p style={{ color: '#b6a6f4' }}>
-                    Try selecting a different month or climate zone to see recommended maintenance tasks.
-                  </p>
-                </div>
-              )}
-            </div>
-
 
 
         {/* Custom Maintenance Tasks Section */}
