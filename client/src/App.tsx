@@ -1,41 +1,55 @@
+import { lazy, useEffect } from "react";
 import { Switch, Route } from "wouter";
-import { useEffect } from "react";
-import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
-import Home from "./pages/home";
-import Contractors from "./pages/contractors";
-import Products from "./pages/products";
-import ContractorProfile from "./pages/contractor-profile";
-import ContractorDetail from "./pages/contractor-detail";
-import Maintenance from "./pages/maintenance";
-import ContractorDashboard from "./pages/contractor-dashboard";
-import ServiceRecords from "./pages/service-records";
-import CustomerServiceRecords from "./pages/customer-service-records";
-import HomeownerServiceRecords from "./pages/homeowner-service-records";
-import SignIn from "./pages/signin";
-import SignInHomeowner from "./pages/signin-homeowner";
-import SignInContractor from "./pages/signin-contractor";
-import SignInAgent from "./pages/signin-agent";
-import HomeownerAccount from "./pages/homeowner-account";
-import Messages from "./pages/messages";
-import MyHome from "./pages/my-home";
-import HouseTransferAccept from "./pages/house-transfer-accept";
-import Achievements from "./pages/achievements";
-import AdminDashboard from "./pages/admin";
-import CompleteProfile from "./pages/complete-profile";
-import ManageTeam from "./pages/manage-team";
-import TestUpload from "./pages/test-upload";
-import AIContractorHelp from "./pages/ai-contractor-help";
-import Billing from "./pages/billing";
-import Landing from "./pages/landing";
-import AgentDashboard from "./pages/agent-dashboard";
-import AgentAccount from "./pages/agent-account";
-import Onboarding from "./pages/onboarding";
-import HouseholdProfile from "./pages/household-profile";
-import NotFound from "@/pages/not-found";
+import { queryClient } from "./lib/queryClient";
+import LoadingFallback from "@/components/loading-fallback";
+import AuthenticatedLayout from "@/layouts/authenticated-layout";
+import UnauthenticatedLayout from "@/layouts/unauthenticated-layout";
+
+// Lazy-loaded pages - Common
+const Home = lazy(() => import("./pages/home"));
+const Messages = lazy(() => import("./pages/messages"));
+const MyHome = lazy(() => import("./pages/my-home"));
+const Maintenance = lazy(() => import("./pages/maintenance"));
+const HouseholdProfile = lazy(() => import("./pages/household-profile"));
+const CompleteProfile = lazy(() => import("./pages/complete-profile"));
+const TestUpload = lazy(() => import("./pages/test-upload"));
+const HouseTransferAccept = lazy(() => import("./pages/house-transfer-accept"));
+const NotFound = lazy(() => import("./pages/not-found"));
+
+// Lazy-loaded pages - Homeowner
+const Contractors = lazy(() => import("./pages/contractors"));
+const Products = lazy(() => import("./pages/products"));
+const ContractorDetail = lazy(() => import("./pages/contractor-detail"));
+const HomeownerServiceRecords = lazy(() => import("./pages/homeowner-service-records"));
+const HomeownerAccount = lazy(() => import("./pages/homeowner-account"));
+const Achievements = lazy(() => import("./pages/achievements"));
+const AIContractorHelp = lazy(() => import("./pages/ai-contractor-help"));
+const Billing = lazy(() => import("./pages/billing"));
+
+// Lazy-loaded pages - Contractor
+const ContractorDashboard = lazy(() => import("./pages/contractor-dashboard"));
+const ContractorProfile = lazy(() => import("./pages/contractor-profile"));
+const ServiceRecords = lazy(() => import("./pages/service-records"));
+const ManageTeam = lazy(() => import("./pages/manage-team"));
+
+// Lazy-loaded pages - Agent
+const AgentDashboard = lazy(() => import("./pages/agent-dashboard"));
+const AgentAccount = lazy(() => import("./pages/agent-account"));
+
+// Lazy-loaded pages - Admin
+const AdminDashboard = lazy(() => import("./pages/admin"));
+
+// Lazy-loaded pages - Auth
+const Landing = lazy(() => import("./pages/landing"));
+const SignIn = lazy(() => import("./pages/signin"));
+const SignInHomeowner = lazy(() => import("./pages/signin-homeowner"));
+const SignInContractor = lazy(() => import("./pages/signin-contractor"));
+const SignInAgent = lazy(() => import("./pages/signin-agent"));
+const Onboarding = lazy(() => import("./pages/onboarding"));
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -53,30 +67,25 @@ function Router() {
 
   // Show loading screen while checking authentication
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-2xl font-bold text-primary mb-2">Home Base</div>
-          <div className="text-muted-foreground">Loading...</div>
-        </div>
-      </div>
-    );
+    return <LoadingFallback />;
   }
 
-  // Show landing page and auth pages if not authenticated
+  // Unauthenticated routes
   if (!isAuthenticated) {
     return (
-      <Switch>
-        <Route path="/onboarding" component={Onboarding} />
-        <Route path="/signin/homeowner" component={SignInHomeowner} />
-        <Route path="/signin/contractor" component={SignInContractor} />
-        <Route path="/signin/agent" component={SignInAgent} />
-        <Route path="/signin" component={SignIn} />
-        <Route path="/test-upload" component={TestUpload} />
-        <Route path="/complete-profile" component={CompleteProfile} />
-        <Route path="/" component={Landing} />
-        <Route component={Landing} />
-      </Switch>
+      <UnauthenticatedLayout>
+        <Switch>
+          <Route path="/onboarding" component={Onboarding} />
+          <Route path="/signin/homeowner" component={SignInHomeowner} />
+          <Route path="/signin/contractor" component={SignInContractor} />
+          <Route path="/signin/agent" component={SignInAgent} />
+          <Route path="/signin" component={SignIn} />
+          <Route path="/test-upload" component={TestUpload} />
+          <Route path="/complete-profile" component={CompleteProfile} />
+          <Route path="/" component={Landing} />
+          <Route component={Landing} />
+        </Switch>
+      </UnauthenticatedLayout>
     );
   }
 
@@ -88,65 +97,62 @@ function Router() {
   const isAdmin = typedUser?.email && adminEmails.includes(typedUser.email);
   
   return (
-    <Switch>
-      <Route path="/" component={Home} />
-      
-      {/* Test upload - always available */}
-      <Route path="/test-upload" component={TestUpload} />
-      
-      {/* Complete profile route - accessible to authenticated users */}
-      <Route path="/complete-profile" component={CompleteProfile} />
-      
-      {/* Public routes */}
-      <Route path="/house-transfer/:token" component={HouseTransferAccept} />
-      
-      {/* Admin route */}
-      {isAdmin && <Route path="/admin" component={AdminDashboard} />}
-      
-      {/* Always available routes */}
-      <Route path="/maintenance" component={Maintenance} />
-      <Route path="/household-profile/:id" component={HouseholdProfile} />
-      <Route path="/messages" component={Messages} />
-      <Route path="/my-home" component={MyHome} />
-      <Route path="/signin" component={SignIn} />
-      
-      {/* Homeowner-specific routes */}
-      {typedUser?.role === 'homeowner' && (
-        <>
-          <Route path="/contractors" component={Contractors} />
-          <Route path="/find-contractors" component={Contractors} />
-          <Route path="/products" component={Products} />
-          <Route path="/contractor/:id" component={ContractorDetail} />
-          <Route path="/service-records" component={HomeownerServiceRecords} />
-          <Route path="/account" component={HomeownerAccount} />
-          <Route path="/achievements" component={Achievements} />
-          <Route path="/ai-help" component={AIContractorHelp} />
-          <Route path="/billing" component={Billing} />
-        </>
-      )}
-      
-      {/* Contractor-specific routes */}
-      {typedUser?.role === 'contractor' && (
-        <>
-          <Route path="/contractor-dashboard" component={ContractorDashboard} />
-          <Route path="/contractor-profile" component={ContractorProfile} />
-          <Route path="/service-records" component={ServiceRecords} />
-          <Route path="/manage-team" component={ManageTeam} />
-        </>
-      )}
-      
-      {/* Agent-specific routes */}
-      {typedUser?.role === 'agent' && (
-        <>
-          <Route path="/agent-dashboard" component={AgentDashboard} />
-          <Route path="/agent-account" component={AgentAccount} />
-          <Route path="/billing" component={Billing} />
-        </>
-      )}
-      
-      {/* 404 fallback */}
-      <Route component={NotFound} />
-    </Switch>
+    <AuthenticatedLayout>
+      <Switch>
+        {/* Home route */}
+        <Route path="/" component={Home} />
+        
+        {/* Shared routes - all authenticated users */}
+        <Route path="/test-upload" component={TestUpload} />
+        <Route path="/complete-profile" component={CompleteProfile} />
+        <Route path="/house-transfer/:token" component={HouseTransferAccept} />
+        <Route path="/messages" component={Messages} />
+        <Route path="/my-home" component={MyHome} />
+        <Route path="/maintenance" component={Maintenance} />
+        <Route path="/household-profile/:id" component={HouseholdProfile} />
+        <Route path="/signin" component={SignIn} />
+        
+        {/* Admin route */}
+        {isAdmin && <Route path="/admin" component={AdminDashboard} />}
+        
+        {/* Homeowner-specific routes */}
+        {typedUser?.role === 'homeowner' && (
+          <>
+            <Route path="/contractors" component={Contractors} />
+            <Route path="/find-contractors" component={Contractors} />
+            <Route path="/products" component={Products} />
+            <Route path="/contractor/:id" component={ContractorDetail} />
+            <Route path="/service-records" component={HomeownerServiceRecords} />
+            <Route path="/account" component={HomeownerAccount} />
+            <Route path="/achievements" component={Achievements} />
+            <Route path="/ai-help" component={AIContractorHelp} />
+            <Route path="/billing" component={Billing} />
+          </>
+        )}
+        
+        {/* Contractor-specific routes */}
+        {typedUser?.role === 'contractor' && (
+          <>
+            <Route path="/contractor-dashboard" component={ContractorDashboard} />
+            <Route path="/contractor-profile" component={ContractorProfile} />
+            <Route path="/service-records" component={ServiceRecords} />
+            <Route path="/manage-team" component={ManageTeam} />
+          </>
+        )}
+        
+        {/* Agent-specific routes */}
+        {typedUser?.role === 'agent' && (
+          <>
+            <Route path="/agent-dashboard" component={AgentDashboard} />
+            <Route path="/agent-account" component={AgentAccount} />
+            <Route path="/billing" component={Billing} />
+          </>
+        )}
+        
+        {/* 404 fallback */}
+        <Route component={NotFound} />
+      </Switch>
+    </AuthenticatedLayout>
   );
 }
 
