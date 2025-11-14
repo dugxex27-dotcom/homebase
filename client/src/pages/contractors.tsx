@@ -122,6 +122,30 @@ export default function Contractors() {
   // Track if we've already initialized filters from URL to prevent resets
   const hasInitializedFromUrl = useRef(false);
 
+  // Map task categories to actual service names in the contractors list
+  const mapCategoryToServices = (category: string): string[] => {
+    const categoryMap: Record<string, string[]> = {
+      'hvac': ['HVAC Installation', 'HVAC Services'],
+      'plumbing': ['Plumbing Services'],
+      'electrical': ['Electrical Services'],
+      'roofing': ['Roofing Services'],
+      'landscaping': ['Lawn & Landscaping', 'Landscape Design'],
+      'painting': ['Interior Painting', 'Exterior Painting'],
+      'flooring': ['Carpet Installation', 'Hardwood Flooring', 'Laminate & Vinyl Flooring', 'Tile Installation'],
+      'exterior': ['Exterior Painting', 'Pressure Washing', 'Siding Installation'],
+      'carpentry': ['Trim & Finish Carpentry', 'Deck Building & Repair'],
+      'foundation': ['Foundation Repair'],
+      'appliance': ['Appliance Repair'],
+      'garage': ['Garage Door Services'],
+      'gutter': ['Gutter Cleaning & Repair'],
+      'insulation': ['Insulation Services'],
+      'tree': ['Tree Service & Trimming']
+    };
+    
+    const lowerCategory = category.toLowerCase();
+    return categoryMap[lowerCategory] || [category];
+  };
+
   // Parse URL parameters on initial load only
   useEffect(() => {
     if (hasInitializedFromUrl.current) return;
@@ -138,7 +162,22 @@ export default function Contractors() {
     const urlFilters: any = {};
     if (searchQuery) urlFilters.searchQuery = searchQuery;
     if (searchLocation) urlFilters.searchLocation = searchLocation;
-    if (category || service) urlFilters.services = [category, service].filter(Boolean);
+    
+    // Map category to actual service names
+    let servicesToFilter: string[] = [];
+    if (category) {
+      servicesToFilter = mapCategoryToServices(category);
+    }
+    if (service) {
+      // Also check if the service itself exists in our services list
+      if (services.includes(service)) {
+        servicesToFilter.push(service);
+      }
+    }
+    if (servicesToFilter.length > 0) {
+      urlFilters.services = Array.from(new Set(servicesToFilter)); // Remove duplicates
+    }
+    
     if (maxDistance) {
       const parsedDistance = parseInt(maxDistance);
       if (!isNaN(parsedDistance) && parsedDistance > 0) {
@@ -157,9 +196,8 @@ export default function Contractors() {
       if (houseId) setSelectedHouseId(houseId);
       if (maxDistance) setSelectedDistance(maxDistance);
       // Pre-select services in UI
-      if (category || service) {
-        const servicesToSelect = [category, service].filter(Boolean);
-        setSelectedServices(servicesToSelect);
+      if (servicesToFilter.length > 0) {
+        setSelectedServices(servicesToFilter);
       }
     }
   }, [location]);
@@ -346,7 +384,6 @@ export default function Contractors() {
                     value={selectedHouseId} 
                     onValueChange={(value) => {
                       setSelectedHouseId(value);
-                      hasSetInitialLocation.current = false;
                       // Update location filter when home changes
                       const selectedHouse = houses.find((h: House) => h.id === value);
                       if (selectedHouse) {
