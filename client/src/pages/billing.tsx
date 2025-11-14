@@ -5,10 +5,11 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Crown, Check, Home, Calendar, ArrowLeft } from "lucide-react";
+import { Crown, Check, Home, Calendar, ArrowLeft, CheckCircle, XCircle, Clock } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import type { User } from "@shared/schema";
+import type { User, SubscriptionCycleEvent } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
+import { format } from "date-fns";
 
 type Plan = 'trial' | 'base' | 'premium' | 'premium_plus' | 'contractor' | 'grandfathered';
 
@@ -22,6 +23,16 @@ export default function Billing() {
     queryKey: ['/api/user'],
     queryFn: async () => {
       const res = await apiRequest('/api/user', 'GET');
+      return res.json();
+    },
+    enabled: !!user,
+  });
+
+  // Fetch billing history
+  const { data: billingHistory = [] } = useQuery<SubscriptionCycleEvent[]>({
+    queryKey: ['/api/billing-history'],
+    queryFn: async () => {
+      const res = await apiRequest('/api/billing-history', 'GET');
       return res.json();
     },
     enabled: !!user,
@@ -403,6 +414,68 @@ export default function Billing() {
               </CardContent>
             </Card>
           </div>
+        )}
+
+        {/* Billing History */}
+        {billingHistory.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle style={{ color: '#2c0f5b' }}>Billing History</CardTitle>
+              <CardDescription>Your payment and subscription history</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {billingHistory.map((event) => (
+                  <div
+                    key={event.id}
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                    data-testid={`billing-event-${event.id}`}
+                  >
+                    <div className="flex items-start gap-3 flex-1">
+                      {event.status === 'paid' && (
+                        <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                      )}
+                      {event.status === 'failed' && (
+                        <XCircle className="h-5 w-5 text-red-600 mt-0.5" />
+                      )}
+                      {event.status === 'voided' && (
+                        <Clock className="h-5 w-5 text-gray-400 mt-0.5" />
+                      )}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium">
+                            {format(new Date(event.periodStart), 'MMM d, yyyy')} - {format(new Date(event.periodEnd), 'MMM d, yyyy')}
+                          </span>
+                          <Badge
+                            className={
+                              event.status === 'paid'
+                                ? 'bg-green-100 text-green-800'
+                                : event.status === 'failed'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }
+                          >
+                            {event.status}
+                          </Badge>
+                        </div>
+                        {event.stripeInvoiceId && (
+                          <p className="text-sm text-gray-600">
+                            Invoice: {event.stripeInvoiceId}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-lg">${parseFloat(event.amount).toFixed(2)}</p>
+                      <p className="text-sm text-gray-500">
+                        {format(new Date(event.createdAt), 'MMM d, h:mm a')}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* FAQ / Additional Info */}

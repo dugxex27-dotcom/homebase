@@ -534,6 +534,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get user's billing history (subscription cycle events)
+  app.get('/api/billing-history', async (req: any, res) => {
+    try {
+      if (!req.session?.isAuthenticated || !req.session?.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const userId = req.session.user.id;
+      const events = await storage.getSubscriptionCycleEvents(userId);
+      
+      // Sort by period start date, most recent first
+      const sortedEvents = events.sort((a, b) => 
+        new Date(b.periodStart).getTime() - new Date(a.periodStart).getTime()
+      );
+
+      return res.json(sortedEvents);
+    } catch (error: any) {
+      console.error('Error fetching billing history:', error);
+      return res.status(500).json({ message: "Failed to fetch billing history" });
+    }
+  });
+
   // Get or create user's referral code
   app.get('/api/user/referral-code', async (req: any, res) => {
     try {
