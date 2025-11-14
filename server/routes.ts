@@ -4335,7 +4335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get all maintenance logs for this house with DIY completions
-      const logs = await storage.getMaintenanceLogs({ homeownerId, houseId });
+      const logs = await storage.getMaintenanceLogs(homeownerId, houseId);
       
       // Calculate total savings from DIY task completions
       const diyLogs = logs.filter(log => log.completionMethod === 'diy' && log.diySavingsAmount);
