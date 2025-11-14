@@ -31,15 +31,21 @@ export const getDistanceOptions = (countryCode?: string) => {
   if (isMetric) {
     return [
       { value: 8, label: '8 km' },    // ~5 miles
-      { value: 16, label: '16 km' },  // ~10 miles  
+      { value: 16, label: '16 km' },  // ~10 miles
+      { value: 24, label: '24 km' },  // ~15 miles
+      { value: 32, label: '32 km' },  // ~20 miles
       { value: 40, label: '40 km' },  // ~25 miles
+      { value: 48, label: '48 km' },  // ~30 miles
       { value: 80, label: '80 km' },  // ~50 miles
     ];
   } else {
     return [
       { value: 5, label: '5 miles' },
       { value: 10, label: '10 miles' },
+      { value: 15, label: '15 miles' },
+      { value: 20, label: '20 miles' },
       { value: 25, label: '25 miles' },
+      { value: 30, label: '30 miles' },
       { value: 50, label: '50 miles' },
     ];
   }
