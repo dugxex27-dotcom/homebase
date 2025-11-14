@@ -3337,6 +3337,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get total DIY savings for a house
+  app.get("/api/houses/:id/diy-savings", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+    try {
+      const houseId = req.params.id;
+      const homeownerId = req.session.user.id;
+      
+      // Verify house ownership
+      const house = await storage.getHouse(houseId);
+      if (!house || house.homeownerId !== homeownerId) {
+        return res.status(404).json({ message: "House not found" });
+      }
+
+      const savings = await storage.getHouseDIYSavings(houseId);
+      
+      res.json(savings);
+    } catch (error) {
+      console.error("Error fetching DIY savings:", error);
+      res.status(500).json({ message: "Failed to fetch DIY savings" });
+    }
+  });
+
   // House Transfer routes
   app.post("/api/house-transfers", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
     try {
