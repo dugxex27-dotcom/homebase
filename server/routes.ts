@@ -8,7 +8,7 @@ import { z } from "zod";
 import { randomUUID } from "crypto";
 import rateLimit from "express-rate-limit";
 import { eq, and, or, lte, isNull } from "drizzle-orm";
-import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, maintenanceTasks, customMaintenanceTasks } from "@shared/schema";
+import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, maintenanceTasks, customMaintenanceTasks, insertSupportTicketSchema } from "@shared/schema";
 import pushRoutes from "./push-routes";
 import { pushService } from "./push-service";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
@@ -1322,6 +1322,217 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch analytics" });
     }
   });
+
+  // Support ticket routes - User endpoints
+  app.get('/api/support/tickets', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.user.id;
+      const tickets = await storage.getSupportTickets({ userId });
+      res.json(tickets);
+    } catch (error) {
+      console.error("Error fetching support tickets:", error);
+      res.status(500).json({ message: "Failed to fetch support tickets" });
+    }
+  });
+
+  app.get('/api/support/tickets/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.session.user.id;
+      
+      const ticketWithReplies = await storage.getSupportTicketWithReplies(id);
+      
+      if (!ticketWithReplies) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+      
+      // Ensure user can only access their own tickets (unless admin)
+      const isAdmin = req.session.user.email && process.env.ADMIN_EMAILS?.split(',').includes(req.session.user.email);
+      if (ticketWithReplies.ticket.userId !== userId && !isAdmin) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      res.json(ticketWithReplies);
+    } catch (error) {
+      console.error("Error fetching support ticket:", error);
+      res.status(500).json({ message: "Failed to fetch support ticket" });
+    }
+  });
+
+  app.post('/api/support/tickets', isAuthenticated, async (req: any, res) => {
+    try {
+      const createTicketSchema = insertSupportTicketSchema.extend({
+        category: z.enum(['billing', 'technical', 'feature_request', 'account', 'contractor', 'general']),
+        priority: z.enum(['low', 'medium', 'high', 'urgent']),
+        subject: z.string().min(5).max(200),
+        description: z.string().min(10).max(5000),
+      });
+      
+      const validatedData = createTicketSchema.parse(req.body);
+      const userId = req.session.user.id;
+      
+      const ticket = await storage.createSupportTicket({
+        ...validatedData,
+        userId,
+      });
+      
+      // Automated reply based on category
+      const autoReplyContent = getAutomatedReply(ticket.category);
+      if (autoReplyContent) {
+        await storage.createTicketReply({
+          ticketId: ticket.id,
+          userId: 'system',
+          content: autoReplyContent,
+          isInternal: false,
+          isAutomated: true,
+        });
+      }
+      
+      res.json(ticket);
+    } catch (error) {
+      console.error("Error creating support ticket:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid ticket data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create support ticket" });
+    }
+  });
+
+  app.post('/api/support/tickets/:id/replies', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.session.user.id;
+      const { content } = req.body;
+      
+      if (!content || content.trim().length < 1) {
+        return res.status(400).json({ message: "Reply content is required" });
+      }
+      
+      // Verify ticket exists and user has access
+      const ticket = await storage.getSupportTicket(id);
+      if (!ticket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+      
+      const isAdmin = req.session.user.email && process.env.ADMIN_EMAILS?.split(',').includes(req.session.user.email);
+      if (ticket.userId !== userId && !isAdmin) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      const reply = await storage.createTicketReply({
+        ticketId: id,
+        userId,
+        content: content.trim(),
+        isInternal: false,
+        isAutomated: false,
+      });
+      
+      // Update ticket status if it was waiting on customer
+      if (ticket.status === 'waiting_on_customer' && ticket.userId === userId) {
+        await storage.updateSupportTicket(id, { status: 'in_progress' });
+      }
+      
+      res.json(reply);
+    } catch (error) {
+      console.error("Error creating ticket reply:", error);
+      res.status(500).json({ message: "Failed to create reply" });
+    }
+  });
+
+  // Support ticket routes - Admin endpoints
+  app.get('/api/admin/support/tickets', requireAdmin, async (req, res) => {
+    try {
+      const { status, category, priority, assignedToAdminId } = req.query;
+      
+      const tickets = await storage.getSupportTickets({
+        status: status as string,
+        category: category as string,
+        priority: priority as string,
+        assignedToAdminId: assignedToAdminId as string,
+      });
+      
+      res.json(tickets);
+    } catch (error) {
+      console.error("Error fetching admin support tickets:", error);
+      res.status(500).json({ message: "Failed to fetch support tickets" });
+    }
+  });
+
+  app.patch('/api/admin/support/tickets/:id', requireAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const updateSchema = z.object({
+        status: z.enum(['open', 'in_progress', 'waiting_on_customer', 'resolved', 'closed']).optional(),
+        priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
+        assignedToAdminId: z.string().nullable().optional(),
+        assignedToAdminEmail: z.string().nullable().optional(),
+      });
+      
+      const validatedData = updateSchema.parse(req.body);
+      const updatedTicket = await storage.updateSupportTicket(id, validatedData);
+      
+      if (!updatedTicket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+      
+      res.json(updatedTicket);
+    } catch (error) {
+      console.error("Error updating support ticket:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid update data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to update support ticket" });
+    }
+  });
+
+  app.post('/api/admin/support/tickets/:id/replies', requireAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { content, isInternal } = req.body;
+      
+      if (!content || content.trim().length < 1) {
+        return res.status(400).json({ message: "Reply content is required" });
+      }
+      
+      // Verify ticket exists
+      const ticket = await storage.getSupportTicket(id);
+      if (!ticket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+      
+      const reply = await storage.createTicketReply({
+        ticketId: id,
+        userId: req.session.user.id,
+        content: content.trim(),
+        isInternal: isInternal || false,
+        isAutomated: false,
+      });
+      
+      // Update ticket status to waiting_on_customer if admin replied publicly
+      if (!isInternal && ticket.status === 'open') {
+        await storage.updateSupportTicket(id, { status: 'waiting_on_customer' });
+      }
+      
+      res.json(reply);
+    } catch (error) {
+      console.error("Error creating admin reply:", error);
+      res.status(500).json({ message: "Failed to create reply" });
+    }
+  });
+
+  // Automated reply helper function
+  function getAutomatedReply(category: string): string | null {
+    const replies: Record<string, string> = {
+      billing: "Thank you for contacting us about a billing issue. Our billing team will review your ticket and respond within 24 hours. In the meantime, you can check your billing history in your account settings.",
+      technical: "Thank you for reporting this technical issue. Our support team has been notified and will investigate. Please include any error messages, screenshots, or steps to reproduce the issue to help us resolve it faster.",
+      feature_request: "Thank you for your feature suggestion! We really appreciate feedback from our users. Our product team reviews all feature requests and will consider it for future updates. You'll receive an update on your request within 3-5 business days.",
+      account: "Thank you for contacting us about your account. Our support team will assist you with your account-related question within 24 hours. For security purposes, please do not share your password in ticket replies.",
+      contractor: "Thank you for reaching out about contractor-related services. Our contractor support team will review your request and respond within 24 hours to help you connect with the right professionals.",
+      general: "Thank you for contacting HomeBase Support. We've received your message and our team will respond within 24-48 hours. If your issue is urgent, please mark the priority as 'urgent' in your ticket.",
+    };
+    
+    return replies[category] || null;
+  }
 
   // Homeowner profile routes
   app.patch('/api/homeowner/profile', async (req: any, res) => {
