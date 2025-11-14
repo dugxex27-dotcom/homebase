@@ -1304,7 +1304,7 @@ export default function Maintenance() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/maintenance-logs'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/task-completions'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/houses'] }); // Refresh house data including DIY savings
       toast({ title: "Success", description: "Task marked as complete!" });
     },
     onError: () => {
@@ -1747,23 +1747,15 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     return `${taskId}-${month}-${year}`;
   };
 
-  // Toggle task completion
+  // Toggle task completion (legacy checkbox - now using completion buttons)
   const toggleTaskCompletion = (taskId: string) => {
     const currentYear = new Date().getFullYear();
     const taskKey = getTaskKey(taskId, selectedMonth, currentYear);
-    const wasCompleted = completedTasks[taskKey] || false;
     
     setCompletedTasks(prev => ({
       ...prev,
       [taskKey]: !prev[taskKey]
     }));
-    
-    if (!wasCompleted && selectedHouseId && (user as any)?.id) {
-      trackTaskCompletionMutation.mutate({
-        taskId,
-        houseId: selectedHouseId
-      });
-    }
   };
 
   // Check if task is completed
