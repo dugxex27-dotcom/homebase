@@ -375,6 +375,21 @@ export const houses = pgTable("houses", {
   postalCode: text("postal_code"), // For international address support
   latitude: decimal("latitude", { precision: 10, scale: 8 }), // Geocoded latitude
   longitude: decimal("longitude", { precision: 11, scale: 8 }), // Geocoded longitude
+  // Household Profile fields for maintenance schedule generation
+  homeType: text("home_type"), // "single_family", "condo", "townhouse", "apartment", "mobile_home", "multi_family"
+  squareFootage: integer("square_footage"), // Total square footage of the home
+  yearBuilt: integer("year_built"), // Year the home was built
+  roofInstalledYear: integer("roof_installed_year"), // Year roof was installed/replaced
+  roofType: text("roof_type"), // "asphalt_shingle", "metal", "tile", "flat", "slate", "wood"
+  hvacInstalledYear: integer("hvac_installed_year"), // Year HVAC system was installed
+  hvacType: text("hvac_type"), // "central_air", "heat_pump", "furnace", "boiler", "ductless", "window_unit"
+  plumbingType: text("plumbing_type"), // "copper", "pex", "cpvc", "galvanized", "mixed"
+  foundationType: text("foundation_type"), // "slab", "crawl_space", "basement", "pier_and_beam"
+  waterHeaterInstalledYear: integer("water_heater_installed_year"), // Year water heater was installed
+  waterHeaterType: text("water_heater_type"), // "tank", "tankless", "hybrid"
+  garageType: text("garage_type"), // "none", "attached", "detached", "carport"
+  numberOfStories: integer("number_of_stories"), // 1, 2, 3, etc.
+  primaryHeatingFuel: text("primary_heating_fuel"), // "natural_gas", "electric", "oil", "propane", "wood", "other"
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -715,6 +730,39 @@ export const insertContractorAppointmentSchema = createInsertSchema(contractorAp
 export const insertHouseSchema = createInsertSchema(houses).omit({
   id: true,
   createdAt: true,
+}).extend({
+  homeType: z.enum(['single_family', 'condo', 'townhouse', 'apartment', 'mobile_home', 'multi_family']).optional(),
+  squareFootage: z.number().int().positive().optional(),
+  yearBuilt: z.number().int().min(1800).max(new Date().getFullYear()).optional(),
+  roofInstalledYear: z.number().int().min(1800).max(new Date().getFullYear()).optional(),
+  roofType: z.enum(['asphalt_shingle', 'metal', 'tile', 'flat', 'slate', 'wood']).optional(),
+  hvacInstalledYear: z.number().int().min(1800).max(new Date().getFullYear()).optional(),
+  hvacType: z.enum(['central_air', 'heat_pump', 'furnace', 'boiler', 'ductless', 'window_unit']).optional(),
+  plumbingType: z.enum(['copper', 'pex', 'cpvc', 'galvanized', 'mixed']).optional(),
+  foundationType: z.enum(['slab', 'crawl_space', 'basement', 'pier_and_beam']).optional(),
+  waterHeaterInstalledYear: z.number().int().min(1800).max(new Date().getFullYear()).optional(),
+  waterHeaterType: z.enum(['tank', 'tankless', 'hybrid']).optional(),
+  garageType: z.enum(['none', 'attached', 'detached', 'carport']).optional(),
+  numberOfStories: z.number().int().positive().max(10).optional(),
+  primaryHeatingFuel: z.enum(['natural_gas', 'electric', 'oil', 'propane', 'wood', 'other']).optional(),
+});
+
+// Update schema specifically for household profile updates
+export const updateHouseholdProfileSchema = z.object({
+  homeType: z.enum(['single_family', 'condo', 'townhouse', 'apartment', 'mobile_home', 'multi_family']).optional(),
+  squareFootage: z.number().int().positive().optional(),
+  yearBuilt: z.number().int().min(1800).max(new Date().getFullYear()).optional(),
+  roofInstalledYear: z.number().int().min(1800).max(new Date().getFullYear()).optional(),
+  roofType: z.enum(['asphalt_shingle', 'metal', 'tile', 'flat', 'slate', 'wood']).optional(),
+  hvacInstalledYear: z.number().int().min(1800).max(new Date().getFullYear()).optional(),
+  hvacType: z.enum(['central_air', 'heat_pump', 'furnace', 'boiler', 'ductless', 'window_unit']).optional(),
+  plumbingType: z.enum(['copper', 'pex', 'cpvc', 'galvanized', 'mixed']).optional(),
+  foundationType: z.enum(['slab', 'crawl_space', 'basement', 'pier_and_beam']).optional(),
+  waterHeaterInstalledYear: z.number().int().min(1800).max(new Date().getFullYear()).optional(),
+  waterHeaterType: z.enum(['tank', 'tankless', 'hybrid']).optional(),
+  garageType: z.enum(['none', 'attached', 'detached', 'carport']).optional(),
+  numberOfStories: z.number().int().positive().max(10).optional(),
+  primaryHeatingFuel: z.enum(['natural_gas', 'electric', 'oil', 'propane', 'wood', 'other']).optional(),
 });
 
 export const insertTaskOverrideSchema = createInsertSchema(taskOverrides).omit({
