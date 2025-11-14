@@ -63,6 +63,7 @@ export function HouseholdProfileEditor({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/houses"] });
       queryClient.invalidateQueries({ queryKey: ["/api/houses", houseId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/houses", houseId, "schedule"] });
       toast({
         title: "Profile Updated",
         description: "Household profile has been updated successfully.",
