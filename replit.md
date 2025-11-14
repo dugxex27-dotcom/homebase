@@ -50,7 +50,27 @@ Preferred communication style: Simple, everyday language.
     - Unique referral codes and shareable links with QR codes.
     - Payout structure: $10 per referred signup after 4 consecutive months of active subscription.
     - Agent Dashboard for tracking referrals, earnings, and payout progress.
-- **API Endpoints**: Structured for contractors, products, houses, notifications, proposals, connection codes, search analytics, billing/subscriptions, agent/affiliate system, and admin functions.
+- **CRM System for Contractors**:
+    - Full CRUD operations for managing leads and prospects.
+    - Company-scoped access control (contractors only see their company's leads).
+    - Lead tracking with notes, status, and contact information.
+    - Integration with contractor dashboard.
+- **Error Tracking and Monitoring** (Nov 2025):
+    - **ErrorBoundary**: React error boundary wraps entire app, catches runtime errors, displays fallback UI with error details.
+    - **Client Error Logger**: Automatic capture of unhandled errors and promise rejections, logs to backend API.
+    - **Database Schema**: `errorLogs` table tracks errors with type, message, stack trace, user context, timestamps.
+    - **Storage Layer**: `createErrorLog()` method for persisting errors.
+    - **Developer Console**: Admin-only page at `/developer-console` displays all logged errors with filtering and search.
+    - **Security**: Console access restricted to users with `isAdmin` flag.
+- **Stripe Billing Reconciliation** (Nov 2025):
+    - **Webhook Handler**: Processes Stripe events (invoice.paid, invoice.payment_failed, subscription updates) with signature verification for security.
+    - **Raw Body Parsing**: Server configured to preserve raw request body for webhook signature validation.
+    - **Database Tracking**: Automatic creation of subscription cycle events for payment tracking and affiliate commission calculation.
+    - **Billing History API**: GET `/api/billing-history` endpoint returns user's payment history sorted by date.
+    - **Billing History UI**: Displays payment cycles with status (paid/failed/voided), dates, amounts, and invoice IDs. Color-coded status badges and icons for visual clarity.
+    - **User Status Updates**: Automatic subscription status updates based on webhook events.
+    - **Payment Transparency**: Users can view complete billing history on billing page.
+- **API Endpoints**: Structured for contractors, products, houses, notifications, proposals, connection codes, search analytics, billing/subscriptions, billing history, error logging, agent/affiliate system, CRM leads, and admin functions.
 
 ## External Dependencies
 
