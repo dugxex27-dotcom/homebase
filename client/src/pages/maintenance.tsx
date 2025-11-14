@@ -3541,7 +3541,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
         {/* House Management Dialog */}
         <Dialog open={isHouseDialogOpen} onOpenChange={setIsHouseDialogOpen}>
-          <DialogContent className="max-w-md text-[#ffffff]">
+          <DialogContent className="max-w-md text-[#2c0f5b]">
             <DialogHeader>
               <DialogTitle>{editingHouse ? 'Edit House' : 'Add New House'}</DialogTitle>
             </DialogHeader>
