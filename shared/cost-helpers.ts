@@ -217,3 +217,29 @@ export function enrichTasksWithCosts(
 ): MaintenanceTaskItem[] {
   return tasks.map(task => enrichTaskWithCost(task, region, fallbackPriority));
 }
+
+/**
+ * Calculate DIY savings amount from a cost estimate
+ * Returns the amount saved by doing the task DIY (professional cost - materials cost)
+ * Returns 0 if savings would be negative or if cost data is incomplete
+ */
+export function calculateDIYSavingsAmount(costEstimate: CostEstimate | undefined): number {
+  if (!costEstimate) return 0;
+  
+  const { proLow, proHigh, materialsLow, materialsHigh } = costEstimate;
+  
+  // Ensure all required cost values exist
+  if (proLow === undefined || proHigh === undefined || materialsLow === undefined || materialsHigh === undefined) {
+    return 0;
+  }
+  
+  // Calculate average professional cost and average materials cost
+  const avgProCost = (proLow + proHigh) / 2;
+  const avgMaterialsCost = (materialsLow + materialsHigh) / 2;
+  
+  // Savings = Pro cost - Materials cost
+  const savings = avgProCost - avgMaterialsCost;
+  
+  // Return 0 if negative (no savings)
+  return Math.max(0, Math.round(savings * 100) / 100); // Round to 2 decimals
+}

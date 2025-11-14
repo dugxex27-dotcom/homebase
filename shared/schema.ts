@@ -345,8 +345,12 @@ export const maintenanceLogs = pgTable("maintenance_logs", {
   receiptUrls: text("receipt_urls").array().default(sql`'{}'::text[]`), // uploaded receipt images
   beforePhotoUrls: text("before_photo_urls").array().default(sql`'{}'::text[]`), // before photos
   afterPhotoUrls: text("after_photo_urls").array().default(sql`'{}'::text[]`), // after photos
+  completionMethod: text("completion_method"), // 'diy' or 'contractor' - how the task was completed (nullable for backward compatibility)
+  diySavingsAmount: decimal("diy_savings_amount", { precision: 10, scale: 2 }), // Amount saved by doing DIY (pro cost - diy cost), null for contractor completions
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_maintenance_logs_completion_method").on(table.completionMethod),
+]);
 
 export const contractorAppointments = pgTable("contractor_appointments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -772,6 +776,9 @@ export const insertHomeApplianceManualSchema = createInsertSchema(homeApplianceM
 export const insertMaintenanceLogSchema = createInsertSchema(maintenanceLogs).omit({
   id: true,
   createdAt: true,
+}).extend({
+  completionMethod: z.enum(['diy', 'contractor']).optional(), // Validate completion method
+  diySavingsAmount: z.string().optional(), // Decimal stored as string, nullable
 });
 
 export const insertContractorAppointmentSchema = createInsertSchema(contractorAppointments).omit({

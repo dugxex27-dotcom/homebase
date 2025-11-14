@@ -660,6 +660,45 @@ function TaskCard({
           </div>
         </div>
 
+        {/* Completion Method Buttons - Only show if task is not completed */}
+        {!completed && (
+          <div className="bg-purple-50 dark:bg-purple-950 border-2 border-purple-200 dark:border-purple-800 rounded-lg p-4">
+            <h4 className="text-sm font-bold mb-3" style={{ color: '#2c0f5b' }}>Mark Task Complete</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <Button
+                className="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 h-auto flex-col items-center justify-center gap-1"
+                onClick={() => {
+                  // TODO: Add handler for DIY completion
+                  console.log('DIY completion clicked');
+                }}
+                data-testid={`button-complete-diy-${task.id}`}
+              >
+                <div className="flex items-center gap-2">
+                  <Wrench className="w-5 h-5" />
+                  <span>Completed DIY</span>
+                </div>
+                {task.costEstimate && (
+                  <span className="text-xs text-green-100 mt-1">
+                    Save {formatCostEstimate(task.costEstimate)} (avg)
+                  </span>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                className="border-2 border-purple-600 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950 font-semibold py-3 h-auto"
+                onClick={() => {
+                  // TODO: Add handler for contractor completion
+                  console.log('Contractor completion clicked');
+                }}
+                data-testid={`button-complete-contractor-${task.id}`}
+              >
+                <Truck className="w-5 h-5 mr-2" />
+                <span>Completed by Contractor</span>
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Primary CTA Button */}
         <Button
           className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-6 text-base"
