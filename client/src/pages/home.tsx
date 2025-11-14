@@ -5,6 +5,7 @@ import Header from "@/components/header";
 import HeroSection from "@/components/hero-section";
 import ProductCard from "@/components/product-card";
 import Logo from "@/components/logo";
+import HomeHealthScore from "@/components/home-health-score";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -118,6 +119,13 @@ export default function Home() {
     enabled: typedUser?.role === 'homeowner',
   });
 
+  // Set default selected house to first house when houses load
+  useEffect(() => {
+    if (userHouses.length > 0 && !selectedHouseId) {
+      setSelectedHouseId(userHouses[0].id);
+    }
+  }, [userHouses, selectedHouseId]);
+
   // Fetch achievements for homeowners
   const { data: achievementsData } = useQuery<any>({
     queryKey: ['/api/achievements/user'],
@@ -143,6 +151,18 @@ export default function Home() {
     <div className="min-h-screen" style={{ background: typedUser?.role === 'homeowner' ? '#2c0f5b' : '#1560a2' }}>
       <Header />
       <HeroSection />
+      
+      {/* Home Health Score Section */}
+      {typedUser?.role === 'homeowner' && selectedHouseId && (
+        <section className="py-12" style={{ backgroundColor: '#2c0f5b' }}>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="max-w-5xl mx-auto">
+              <HomeHealthScore houseId={selectedHouseId} />
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Homeowner Achievements Section */}
       {typedUser?.role === 'homeowner' && achievementsData?.achievements && achievementsData.achievements.length > 0 && (
         <section className="py-12" style={{ backgroundColor: '#2c0f5b' }}>
