@@ -2500,23 +2500,23 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
           {/* Property Selector Card - Only show when properties exist */}
           {houses.length > 0 && (
-            <div className="border rounded-lg p-4 mb-6" style={{ backgroundColor: '#f2f2f2' }}>
-              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+            <div className="border-2 rounded-xl p-8 mb-6 shadow-lg" style={{ backgroundColor: '#f2f2f2', borderColor: '#2c0f5b' }}>
+              <div className="flex flex-col sm:flex-row gap-6 items-start sm:items-center">
                 <div className="flex-1">
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#2c0f5b' }}>
-                    <Building className="inline w-4 h-4 mr-1" style={{ color: '#2c0f5b' }} />
+                  <label className="block text-lg font-semibold mb-3" style={{ color: '#2c0f5b' }}>
+                    <Building className="inline w-6 h-6 mr-2" style={{ color: '#2c0f5b' }} />
                     Select Property
                   </label>
                   <Select value={selectedHouseId} onValueChange={setSelectedHouseId}>
-                    <SelectTrigger className="w-full" style={{ backgroundColor: '#ffffff' }}>
+                    <SelectTrigger className="w-full h-14 text-lg font-medium" style={{ backgroundColor: '#ffffff', borderWidth: '2px', borderColor: '#2c0f5b' }}>
                       <SelectValue placeholder="Choose a property..." />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-[400px]">
                       {houses.map((house: House) => (
-                        <SelectItem key={house.id} value={house.id}>
+                        <SelectItem key={house.id} value={house.id} className="py-4 cursor-pointer">
                           <div className="flex flex-col">
-                            <span className="font-medium">{house.name}</span>
-                            <span className="text-xs text-muted-foreground">{house.address}</span>
+                            <span className="font-semibold text-base">{house.name}</span>
+                            <span className="text-sm text-muted-foreground mt-1">{house.address}</span>
                           </div>
                         </SelectItem>
                       ))}
@@ -2524,67 +2524,67 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                   </Select>
                 </div>
                 
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-3">
                   {/* Contractor constraint message */}
                   {userRole === 'contractor' && houses.length >= 1 && (
-                    <div className="text-xs p-2 rounded bg-blue-50 border border-blue-200 text-blue-700 mb-2">
+                    <div className="text-sm p-3 rounded-lg bg-blue-50 border-2 border-blue-200 text-blue-700 mb-2">
                       Contractors can track maintenance for one personal property
                     </div>
                   )}
-                  <div className="flex gap-2">
+                  <div className="flex gap-3">
                     {/* Only show Add House button for homeowners or contractors with no houses */}
                     {userRole === 'homeowner' && (
                       <Button 
                         variant="outline" 
-                        size="sm" 
+                        size="lg" 
                         onClick={handleAddNewHouse}
-                        className="whitespace-nowrap" style={{ backgroundColor: '#2c0f5b', color: 'white', borderColor: '#2c0f5b' }}
+                        className="whitespace-nowrap text-base" style={{ backgroundColor: '#2c0f5b', color: 'white', borderColor: '#2c0f5b' }}
                       >
-                        <Plus className="w-4 h-4 mr-1" />
+                        <Plus className="w-5 h-5 mr-2" />
                         Add House
                       </Button>
                     )}
                     {selectedHouseId && houses.length > 0 && (
                       <Button 
                         variant="outline" 
-                        size="sm" 
+                        size="lg" 
                         onClick={() => {
                           const selectedHouse = houses.find((h: House) => h.id === selectedHouseId);
                           if (selectedHouse) handleEditHouse(selectedHouse);
                         }}
-                        className="whitespace-nowrap" style={{ backgroundColor: '#2c0f5b', color: 'white', borderColor: '#2c0f5b' }}
+                        className="whitespace-nowrap text-base" style={{ backgroundColor: '#2c0f5b', color: 'white', borderColor: '#2c0f5b' }}
                       >
-                        <Edit className="w-4 h-4 mr-1" />
+                        <Edit className="w-5 h-5 mr-2" />
                         Edit
                       </Button>
                     )}
                     {selectedHouseId && houses.length > 1 && (
                       <Button 
                         variant="outline" 
-                        size="sm" 
+                        size="lg" 
                         onClick={() => {
                           const selectedHouse = houses.find((h: House) => h.id === selectedHouseId);
                           if (selectedHouse) handleDeleteHouse(selectedHouse);
                         }}
-                        className="whitespace-nowrap" style={{ backgroundColor: '#dc2626', color: 'white', borderColor: '#dc2626' }}
+                        className="whitespace-nowrap text-base" style={{ backgroundColor: '#dc2626', color: 'white', borderColor: '#dc2626' }}
                       >
-                        <Trash2 className="w-4 h-4 mr-1" />
+                        <Trash2 className="w-5 h-5 mr-2" />
                         Delete
                       </Button>
                     )}
                   </div>
                   
                   {selectedHouseId && houses.length > 0 && (
-                    <div className="text-sm" style={{ color: '#b6a6f4' }}>
+                    <div className="text-base mt-2" style={{ color: '#b6a6f4' }}>
                       <div className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4" style={{ color: '#2c0f5b' }} />
-                        <span style={{ color: '#2c0f5b' }}>
+                        <MapPin className="w-5 h-5" style={{ color: '#2c0f5b' }} />
+                        <span className="font-medium" style={{ color: '#2c0f5b' }}>
                           {CLIMATE_ZONES.find(z => z.value === selectedZone)?.label || 'Loading region...'}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Home className="w-4 h-4" style={{ color: '#2c0f5b' }} />
-                        <span style={{ color: '#2c0f5b' }}>5 systems configured</span>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Home className="w-5 h-5" style={{ color: '#2c0f5b' }} />
+                        <span className="font-medium" style={{ color: '#2c0f5b' }}>5 systems configured</span>
                       </div>
                     </div>
                   )}
