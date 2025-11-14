@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Users, Package, Calendar, Search, MapPin, Star, CheckCircle, TrendingUp, Shield, Home as HomeIcon, Wrench, Bell, BarChart3, X, ChevronDown, Trophy, Lock, Sparkles } from "lucide-react";
-import Header from "@/components/header";
 import HeroSection from "@/components/hero-section";
 import ProductCard from "@/components/product-card";
 import Logo from "@/components/logo";
@@ -147,17 +146,19 @@ export default function Home() {
     },
   });
 
+  // Find the selected house for Health Score
+  const selectedHouse = userHouses.find(h => h.id === selectedHouseId);
+
   return (
     <div className="min-h-screen" style={{ background: typedUser?.role === 'homeowner' ? '#2c0f5b' : '#1560a2' }}>
-      <Header />
       <HeroSection />
       
       {/* Home Health Score Section */}
-      {typedUser?.role === 'homeowner' && selectedHouseId && (
+      {typedUser?.role === 'homeowner' && selectedHouseId && selectedHouse && (
         <section className="py-12" style={{ backgroundColor: '#2c0f5b' }}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="max-w-5xl mx-auto">
-              <HomeHealthScore houseId={selectedHouseId} />
+              <HomeHealthScore houseId={selectedHouseId} houseName={selectedHouse.name || 'My Home'} />
             </div>
           </div>
         </section>
