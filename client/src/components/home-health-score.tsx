@@ -97,12 +97,6 @@ export default function HomeHealthScore({ houseId }: HomeHealthScoreProps) {
             </span>
           </div>
         </div>
-
-        <div className="mt-3 pt-3 border-t border-purple-200 dark:border-purple-800">
-          <p className="text-xs text-gray-600 dark:text-gray-400">
-            Each completed task adds +4 points. Each missed task subtracts -4 points.
-          </p>
-        </div>
       </CardContent>
     </Card>
   );
