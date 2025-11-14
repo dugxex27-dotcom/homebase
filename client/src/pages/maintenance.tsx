@@ -583,41 +583,8 @@ function TaskCard({
           </p>
         )}
         
-        {/* Steps - Bullet points */}
-        {task.steps && task.steps.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="text-sm font-bold" style={{ color: '#2c0f5b' }}>Steps:</h4>
-            <ul className="space-y-1.5 ml-1">
-              {task.steps.map((step, index) => (
-                <li key={index} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
-                  <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0 text-purple-600 dark:text-purple-400" />
-                  <span>{step}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* Tools and Supplies Checklist */}
-        {task.toolsAndSupplies && task.toolsAndSupplies.length > 0 && (
-          <div className="bg-purple-50 dark:bg-purple-950 rounded-lg p-3 border border-purple-200 dark:border-purple-800">
-            <h4 className="text-sm font-bold mb-2 flex items-center gap-2" style={{ color: '#2c0f5b' }}>
-              <Wrench className="w-4 h-4" />
-              Tools & Supplies Needed:
-            </h4>
-            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-              {task.toolsAndSupplies.map((item, index) => (
-                <li key={index} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                  <div className="w-4 h-4 border-2 border-purple-400 dark:border-purple-600 rounded flex-shrink-0" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {/* Original Description - Only show if no action summary/steps */}
-        {!task.actionSummary && !task.steps && (
+        {/* Original Description - Only show if no action summary */}
+        {!task.actionSummary && (
           <p className="leading-relaxed text-gray-700" style={{ color: '#2c0f5b' }}>
             {displayDescription}
           </p>
@@ -725,6 +692,39 @@ function TaskCard({
         <Collapsible open={showReadDetails}>
           <CollapsibleContent>
             <div className="border-t pt-4 space-y-4">
+              {/* Steps - Bullet points */}
+              {task.steps && task.steps.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-bold" style={{ color: '#2c0f5b' }}>Steps:</h4>
+                  <ul className="space-y-1.5 ml-1">
+                    {task.steps.map((step, index) => (
+                      <li key={index} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+                        <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0 text-purple-600 dark:text-purple-400" />
+                        <span>{step}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Tools and Supplies Checklist */}
+              {task.toolsAndSupplies && task.toolsAndSupplies.length > 0 && (
+                <div className="bg-purple-50 dark:bg-purple-950 rounded-lg p-3 border border-purple-200 dark:border-purple-800">
+                  <h4 className="text-sm font-bold mb-2 flex items-center gap-2" style={{ color: '#2c0f5b' }}>
+                    <Wrench className="w-4 h-4" />
+                    Tools & Supplies Needed:
+                  </h4>
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {task.toolsAndSupplies.map((item, index) => (
+                      <li key={index} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                        <div className="w-4 h-4 border-2 border-purple-400 dark:border-purple-600 rounded flex-shrink-0" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               {/* Additional Task Info */}
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div className="flex items-center">
