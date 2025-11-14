@@ -1381,3 +1381,64 @@ export const ticketReplies = pgTable("ticket_replies", {
 export const insertTicketReplySchema = createInsertSchema(ticketReplies).omit({ id: true, createdAt: true });
 export type InsertTicketReply = z.infer<typeof insertTicketReplySchema>;
 export type TicketReply = typeof ticketReplies.$inferSelect;
+
+// CRM Leads table - for contractors to manage their leads/prospects
+export const crmLeads = pgTable("crm_leads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contractorUserId: varchar("contractor_user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }), // Optional, for company-wide leads
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  email: text("email"),
+  phone: text("phone"),
+  address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  postalCode: text("postal_code"),
+  source: text("source").notNull().default("other"), // 'referral', 'website', 'advertisement', 'social_media', 'repeat_customer', 'other'
+  status: text("status").notNull().default("new"), // 'new', 'contacted', 'qualified', 'proposal_sent', 'won', 'lost', 'not_interested'
+  priority: text("priority").notNull().default("medium"), // 'low', 'medium', 'high', 'urgent'
+  projectType: text("project_type"), // e.g., 'roofing', 'siding', 'gutters'
+  estimatedValue: decimal("estimated_value", { precision: 10, scale: 2 }),
+  followUpDate: timestamp("follow_up_date"),
+  lastContactedAt: timestamp("last_contacted_at"),
+  wonAt: timestamp("won_at"),
+  lostAt: timestamp("lost_at"),
+  lostReason: text("lost_reason"), // Reason for losing the lead
+  tags: text("tags").array().default(sql`ARRAY[]::text[]`), // Custom tags for filtering
+  metadata: jsonb("metadata"), // Store additional custom fields
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_crm_leads_contractor").on(table.contractorUserId),
+  index("IDX_crm_leads_company").on(table.companyId),
+  index("IDX_crm_leads_status").on(table.status),
+  index("IDX_crm_leads_priority").on(table.priority),
+  index("IDX_crm_leads_follow_up_date").on(table.followUpDate),
+  index("IDX_crm_leads_created_at").on(table.createdAt),
+]);
+
+export const insertCrmLeadSchema = createInsertSchema(crmLeads).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertCrmLead = z.infer<typeof insertCrmLeadSchema>;
+export type CrmLead = typeof crmLeads.$inferSelect;
+
+// CRM Notes table - notes associated with leads
+export const crmNotes = pgTable("crm_notes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  leadId: varchar("lead_id").notNull().references(() => crmLeads.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }), // Who wrote the note
+  content: text("content").notNull(),
+  noteType: text("note_type").notNull().default("general"), // 'general', 'call', 'meeting', 'email', 'follow_up'
+  isPinned: boolean("is_pinned").notNull().default(false), // Pin important notes to top
+  metadata: jsonb("metadata"), // Store additional context (call duration, etc.)
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_crm_notes_lead_id").on(table.leadId),
+  index("IDX_crm_notes_user_id").on(table.userId),
+  index("IDX_crm_notes_created_at").on(table.createdAt),
+]);
+
+export const insertCrmNoteSchema = createInsertSchema(crmNotes).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertCrmNote = z.infer<typeof insertCrmNoteSchema>;
+export type CrmNote = typeof crmNotes.$inferSelect;

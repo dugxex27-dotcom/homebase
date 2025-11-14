@@ -404,6 +404,30 @@ export interface IStorage {
     replies: TicketReply[];
     user: { id: string; firstName: string | null; lastName: string | null; email: string | null };
   } | undefined>;
+
+  // CRM Lead operations
+  getCrmLeads(contractorUserId: string, filters?: {
+    status?: string;
+    priority?: string;
+    source?: string;
+    searchQuery?: string;
+  }): Promise<CrmLead[]>;
+  getCrmLead(id: string): Promise<CrmLead | undefined>;
+  createCrmLead(lead: InsertCrmLead): Promise<CrmLead>;
+  updateCrmLead(id: string, lead: Partial<InsertCrmLead>): Promise<CrmLead | undefined>;
+  deleteCrmLead(id: string): Promise<boolean>;
+  
+  // CRM Note operations
+  getCrmNotes(leadId: string): Promise<CrmNote[]>;
+  createCrmNote(note: InsertCrmNote): Promise<CrmNote>;
+  updateCrmNote(id: string, note: Partial<InsertCrmNote>): Promise<CrmNote | undefined>;
+  deleteCrmNote(id: string): Promise<boolean>;
+  
+  // CRM Lead with notes (for detailed view)
+  getCrmLeadWithNotes(id: string): Promise<{
+    lead: CrmLead;
+    notes: CrmNote[];
+  } | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -444,6 +468,9 @@ export class MemStorage implements IStorage {
   // Support ticket Maps
   private supportTickets: Map<string, SupportTicket>;
   private ticketReplies: Map<string, TicketReply>;
+  // CRM Maps
+  private crmLeads: Map<string, CrmLead>;
+  private crmNotes: Map<string, CrmNote>;
 
   constructor() {
     this.users = new Map();
@@ -483,6 +510,9 @@ export class MemStorage implements IStorage {
     // Initialize support ticket Maps
     this.supportTickets = new Map();
     this.ticketReplies = new Map();
+    // Initialize CRM Maps
+    this.crmLeads = new Map();
+    this.crmNotes = new Map();
     this.seedData();
     this.seedServiceRecords();
     this.seedReviews();
@@ -4071,6 +4101,168 @@ export class MemStorage implements IStorage {
       },
     };
   }
+
+  // CRM Lead operations
+  async getCrmLeads(contractorUserId: string, filters?: {
+    status?: string;
+    priority?: string;
+    source?: string;
+    searchQuery?: string;
+  }): Promise<CrmLead[]> {
+    // Get contractor's company if they belong to one
+    const user = await this.getUser(contractorUserId);
+    const companyId = user?.companyId;
+
+    // Get leads owned by contractor OR company-shared leads
+    let leads = Array.from(this.crmLeads.values())
+      .filter(l => 
+        l.contractorUserId === contractorUserId || 
+        (companyId && l.companyId === companyId)
+      );
+
+    // Apply filters
+    if (filters?.status && filters.status !== 'all') {
+      leads = leads.filter(l => l.status === filters.status);
+    }
+    if (filters?.priority && filters.priority !== 'all') {
+      leads = leads.filter(l => l.priority === filters.priority);
+    }
+    if (filters?.source && filters.source !== 'all') {
+      leads = leads.filter(l => l.source === filters.source);
+    }
+    if (filters?.searchQuery) {
+      const query = filters.searchQuery.toLowerCase();
+      leads = leads.filter(l => {
+        const firstName = l.firstName?.toLowerCase() || '';
+        const lastName = l.lastName?.toLowerCase() || '';
+        const email = l.email?.toLowerCase() || '';
+        const phone = l.phone?.toLowerCase() || '';
+        const projectType = l.projectType?.toLowerCase() || '';
+        const tags = l.tags?.map(t => t.toLowerCase()).join(' ') || '';
+        
+        return firstName.includes(query) ||
+          lastName.includes(query) ||
+          email.includes(query) ||
+          phone.includes(query) ||
+          projectType.includes(query) ||
+          tags.includes(query);
+      });
+    }
+
+    // Sort by follow-up date (soonest first), then by created date (newest first)
+    leads.sort((a, b) => {
+      if (a.followUpDate && b.followUpDate) {
+        return new Date(a.followUpDate).getTime() - new Date(b.followUpDate).getTime();
+      }
+      if (a.followUpDate) return -1;
+      if (b.followUpDate) return 1;
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+    });
+
+    return leads;
+  }
+
+  async getCrmLead(id: string): Promise<CrmLead | undefined> {
+    return this.crmLeads.get(id);
+  }
+
+  async createCrmLead(lead: InsertCrmLead): Promise<CrmLead> {
+    const id = crypto.randomUUID();
+    const now = new Date();
+    const newLead: CrmLead = {
+      id,
+      ...lead,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.crmLeads.set(id, newLead);
+    return newLead;
+  }
+
+  async updateCrmLead(id: string, lead: Partial<InsertCrmLead>): Promise<CrmLead | undefined> {
+    const existing = this.crmLeads.get(id);
+    if (!existing) return undefined;
+
+    const updated: CrmLead = {
+      ...existing,
+      ...lead,
+      updatedAt: new Date(),
+      // Set wonAt/lostAt timestamps based on status changes
+      wonAt: lead.status === 'won' && !existing.wonAt ? new Date() : existing.wonAt,
+      lostAt: lead.status === 'lost' && !existing.lostAt ? new Date() : existing.lostAt,
+    };
+    this.crmLeads.set(id, updated);
+    return updated;
+  }
+
+  async deleteCrmLead(id: string): Promise<boolean> {
+    // Also delete associated notes
+    const notes = Array.from(this.crmNotes.values())
+      .filter(n => n.leadId === id);
+    notes.forEach(n => this.crmNotes.delete(n.id));
+    
+    return this.crmLeads.delete(id);
+  }
+
+  // CRM Note operations
+  async getCrmNotes(leadId: string): Promise<CrmNote[]> {
+    const notes = Array.from(this.crmNotes.values())
+      .filter(n => n.leadId === leadId)
+      .sort((a, b) => {
+        // Pinned notes first
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        // Then by created date (newest first)
+        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      });
+    return notes;
+  }
+
+  async createCrmNote(note: InsertCrmNote): Promise<CrmNote> {
+    const id = crypto.randomUUID();
+    const now = new Date();
+    const newNote: CrmNote = {
+      id,
+      ...note,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.crmNotes.set(id, newNote);
+    return newNote;
+  }
+
+  async updateCrmNote(id: string, note: Partial<InsertCrmNote>): Promise<CrmNote | undefined> {
+    const existing = this.crmNotes.get(id);
+    if (!existing) return undefined;
+
+    const updated: CrmNote = {
+      ...existing,
+      ...note,
+      updatedAt: new Date(),
+    };
+    this.crmNotes.set(id, updated);
+    return updated;
+  }
+
+  async deleteCrmNote(id: string): Promise<boolean> {
+    return this.crmNotes.delete(id);
+  }
+
+  // CRM Lead with notes (for detailed view)
+  async getCrmLeadWithNotes(id: string): Promise<{
+    lead: CrmLead;
+    notes: CrmNote[];
+  } | undefined> {
+    const lead = await this.getCrmLead(id);
+    if (!lead) return undefined;
+    
+    const notes = await this.getCrmNotes(id);
+    
+    return {
+      lead,
+      notes,
+    };
+  }
 }
 
 // Database-backed storage for users (OAuth persistence)
@@ -4242,6 +4434,17 @@ class DbStorage implements IStorage {
     this.getTicketReplies = this.memStorage.getTicketReplies.bind(this.memStorage);
     this.createTicketReply = this.memStorage.createTicketReply.bind(this.memStorage);
     this.getSupportTicketWithReplies = this.memStorage.getSupportTicketWithReplies.bind(this.memStorage);
+    // CRM methods
+    this.getCrmLeads = this.memStorage.getCrmLeads.bind(this.memStorage);
+    this.getCrmLead = this.memStorage.getCrmLead.bind(this.memStorage);
+    this.createCrmLead = this.memStorage.createCrmLead.bind(this.memStorage);
+    this.updateCrmLead = this.memStorage.updateCrmLead.bind(this.memStorage);
+    this.deleteCrmLead = this.memStorage.deleteCrmLead.bind(this.memStorage);
+    this.getCrmNotes = this.memStorage.getCrmNotes.bind(this.memStorage);
+    this.createCrmNote = this.memStorage.createCrmNote.bind(this.memStorage);
+    this.updateCrmNote = this.memStorage.updateCrmNote.bind(this.memStorage);
+    this.deleteCrmNote = this.memStorage.deleteCrmNote.bind(this.memStorage);
+    this.getCrmLeadWithNotes = this.memStorage.getCrmLeadWithNotes.bind(this.memStorage);
   }
 
   // User operations - DATABASE BACKED for persistence
