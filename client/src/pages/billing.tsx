@@ -196,7 +196,7 @@ export default function Billing() {
 
         {/* Homeowner Plan Comparison */}
         {!isContractor && currentPlan !== 'grandfathered' && (
-          <div className="grid md:grid-cols-2 gap-6 mb-8">
+          <div className="grid md:grid-cols-3 gap-6 mb-8">
             {/* Base Plan */}
             <Card 
               className={`relative transition-all ${selectedPlan === 'base' ? 'ring-2 ring-purple-600' : ''}`}
@@ -277,10 +277,10 @@ export default function Billing() {
                   )}
                 </div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold" style={{ color: '#2c0f5b' }}>$10</span>
+                  <span className="text-4xl font-bold" style={{ color: '#2c0f5b' }}>$20</span>
                   <span className="text-gray-600">/month</span>
                 </div>
-                <CardDescription>Ideal for landlords and property managers</CardDescription>
+                <CardDescription>Ideal for landlords and rental properties</CardDescription>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-3 mb-6">
@@ -290,7 +290,77 @@ export default function Billing() {
                   </li>
                   <li className="flex items-start gap-2">
                     <Check className="h-5 w-5 text-purple-600 mt-0.5" />
-                    <span>Up to <strong>10 properties</strong></span>
+                    <span><strong>3-6 properties</strong></span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="h-5 w-5 text-purple-600 mt-0.5" />
+                    <span>Full maintenance scheduling</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="h-5 w-5 text-purple-600 mt-0.5" />
+                    <span>Contractor directory access</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="h-5 w-5 text-purple-600 mt-0.5" />
+                    <span>Service record tracking</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="h-5 w-5 text-purple-600 mt-0.5" />
+                    <span>AI contractor recommendations</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="h-5 w-5 text-purple-600 mt-0.5" />
+                    <span><strong>Bulk management tools</strong></span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="h-5 w-5 text-purple-600 mt-0.5" />
+                    <span><strong>Property templates</strong></span>
+                  </li>
+                </ul>
+                {currentPlan !== 'premium' && (
+                  <Button
+                    onClick={() => handleSubscribe('premium')}
+                    style={{ backgroundColor: '#2c0f5b', color: 'white' }}
+                    className="w-full hover:opacity-90"
+                    data-testid="button-subscribe-premium"
+                  >
+                    <Crown className="h-4 w-4 mr-2" />
+                    Upgrade to Premium
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Premium Plus Plan */}
+            <Card 
+              className={`relative transition-all ${selectedPlan === 'premium_plus' ? 'ring-2 ring-purple-600' : ''}`}
+              data-testid="card-plan-premium-plus"
+            >
+              <CardHeader>
+                <div className="flex items-center justify-between mb-2">
+                  <CardTitle className="text-2xl flex items-center gap-2" style={{ color: '#2c0f5b' }}>
+                    <Crown className="h-6 w-6 text-purple-600" />
+                    Premium Plus
+                  </CardTitle>
+                  {currentPlan === 'premium_plus' && (
+                    <Badge variant="secondary">Current Plan</Badge>
+                  )}
+                </div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-bold" style={{ color: '#2c0f5b' }}>$40</span>
+                  <span className="text-gray-600">/month</span>
+                </div>
+                <CardDescription>Perfect for property managers</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-3 mb-6">
+                  <li className="flex items-start gap-2">
+                    <Check className="h-5 w-5 text-purple-600 mt-0.5" />
+                    <span><strong>14-day free trial</strong></span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="h-5 w-5 text-purple-600 mt-0.5" />
+                    <span><strong>7+ properties</strong></span>
                   </li>
                   <li className="flex items-start gap-2">
                     <Check className="h-5 w-5 text-purple-600 mt-0.5" />
@@ -321,15 +391,15 @@ export default function Billing() {
                     <span><strong>Advanced analytics</strong></span>
                   </li>
                 </ul>
-                {currentPlan !== 'premium' && (
+                {currentPlan !== 'premium_plus' && (
                   <Button
-                    onClick={() => handleSubscribe('premium')}
+                    onClick={() => handleSubscribe('premium_plus')}
                     style={{ backgroundColor: '#2c0f5b', color: 'white' }}
                     className="w-full hover:opacity-90"
-                    data-testid="button-subscribe-premium"
+                    data-testid="button-subscribe-premium-plus"
                   >
                     <Crown className="h-4 w-4 mr-2" />
-                    Upgrade to Premium
+                    Upgrade to Premium Plus
                   </Button>
                 )}
               </CardContent>

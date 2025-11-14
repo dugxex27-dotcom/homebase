@@ -175,9 +175,9 @@ export default function HomeownerAccount() {
   const referralLink = (referralData as any)?.referralLink || '';
   const referralCount = (referralData as any)?.referralCount || 0;
   
-  // Calculate subscription cost based on plan
+  // Calculate subscription cost based on plan (3-tier pricing)
   const maxHouses = (userData as any)?.maxHousesAllowed ?? 2;
-  const subscriptionCost = maxHouses === 10 ? 10 : 5; // Premium = $10, Base = $5
+  const subscriptionCost = maxHouses >= 7 ? 40 : maxHouses >= 3 ? 20 : 5; // Premium Plus = $40, Premium = $20, Base = $5
   const referralsNeeded = subscriptionCost;
   const referralsRemaining = Math.max(0, referralsNeeded - referralCount);
   const progressPercentage = Math.min(100, (referralCount / referralsNeeded) * 100);

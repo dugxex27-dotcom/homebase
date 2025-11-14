@@ -40,8 +40,9 @@ Preferred communication style: Simple, everyday language.
 - **Proposal System**: Contractors create detailed proposals from messages; homeowners view and accept/reject proposals within the app.
 - **Billing and Subscription**:
     - 14-day free trial for all new signups.
-    - Tiered plans for homeowners and a single plan for contractors.
-    - Referral discount system: $1/month discount per active referred subscriber.
+    - **Homeowner Plans**: Base ($5/month for up to 2 homes), Premium ($20/month for 3-6 homes), Premium Plus ($40/month for 7+ homes).
+    - **Contractor Plan**: $20/month for full contractor features.
+    - **Referral Rewards**: $1/month discount per active paying referral. Free subscription when referrals equal monthly cost (Base: 5 refs, Premium: 20 refs, Premium Plus: 40 refs, Contractor: 20 refs).
 - **Real Estate Agent Affiliate System**:
     - Agent role for earning referral commissions (no subscription).
     - Profile picture uploads for agents.
