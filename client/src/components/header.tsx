@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Users, Package, User as UserIcon, LogOut, MessageCircle, Trophy, Shield, Calendar, Crown, HelpCircle } from "lucide-react";
+import { Users, Package, User as UserIcon, LogOut, MessageCircle, Trophy, Shield, Calendar, Crown, HelpCircle, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Logo from "@/components/logo";
 import { Notifications } from "@/components/notifications";
@@ -117,6 +117,15 @@ export default function Header() {
             {typedUser?.role === 'homeowner' && (
               <>
                 <Link 
+                  href="/my-home" 
+                  className={getNavLinkClass(location === '/my-home')}
+                  aria-current={location === '/my-home' ? 'page' : undefined}
+                  data-testid="link-home"
+                >
+                  <Home className="w-4 h-4" />
+                  Home
+                </Link>
+                <Link 
                   href="/maintenance" 
                   className={getNavLinkClass(location === '/maintenance')}
                   aria-current={location === '/maintenance' ? 'page' : undefined}
@@ -179,8 +188,10 @@ export default function Header() {
                   href="/contractor-dashboard" 
                   className={getNavLinkClass(location === '/contractor-dashboard')}
                   aria-current={location === '/contractor-dashboard' ? 'page' : undefined}
+                  data-testid="link-home"
                 >
-                  Dashboard
+                  <Home className="w-4 h-4" />
+                  Home
                 </Link>
                 <Link 
                   href="/manage-team" 
@@ -224,9 +235,10 @@ export default function Header() {
                   href="/agent-dashboard" 
                   className={getNavLinkClass(location === '/agent-dashboard')}
                   aria-current={location === '/agent-dashboard' ? 'page' : undefined}
-                  data-testid="link-agent-dashboard"
+                  data-testid="link-home"
                 >
-                  Dashboard
+                  <Home className="w-4 h-4" />
+                  Home
                 </Link>
                 <Link 
                   href="/agent-account" 
