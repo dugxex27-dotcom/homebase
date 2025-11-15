@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { Users, Package, User as UserIcon, LogOut, MessageCircle, Trophy, Shield, Calendar, Crown, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import Logo from "@/components/logo";
 import { Notifications } from "@/components/notifications";
 import { useAuth } from "@/hooks/useAuth";
@@ -289,17 +290,25 @@ export default function Header() {
             {isAuthenticated && (typedUser?.role === 'homeowner' || typedUser?.role === 'contractor') && <Notifications />}
             
             {isAuthenticated && typedUser && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleLogout}
-                data-testid="button-logout"
-                aria-label="Sign out"
-                className={typedUser.role === 'contractor' ? 'border-white bg-white text-[#1560a2] hover:bg-white/90' : ''}
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline">Sign Out</span>
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleLogout}
+                      data-testid="button-logout"
+                      aria-label="Sign out"
+                      className={typedUser.role === 'contractor' ? 'border-white bg-white text-[#1560a2] hover:bg-white/90' : ''}
+                    >
+                      <LogOut className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Sign Out</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
             
             {!isAuthenticated && (
