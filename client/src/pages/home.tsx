@@ -487,7 +487,7 @@ export default function Home() {
       </section>
 
       {/* Legal Disclaimer Section */}
-      <section className="bg-gray-50 dark:bg-gray-900 py-16">
+      <section id="legal-disclaimer" className="bg-gray-50 dark:bg-gray-900 py-16">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
@@ -625,7 +625,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="text-white py-16" style={{ backgroundColor: '#2c0f5b' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
             <div className="text-center">
               <div className="mb-6 flex justify-center">
                 <div className="w-1/4 h-auto" style={{ color: '#b6a6f4' }}>
@@ -665,8 +665,15 @@ export default function Home() {
               <ul className="space-y-3 text-gray-400">
                 <li><Link href="/support" className="transition-colors hover:text-purple-400">Help Center</Link></li>
                 <li><Link href="/support" className="transition-colors hover:text-purple-400">Contact Us</Link></li>
+              </ul>
+            </div>
+
+            <div className="text-center">
+              <h4 className="text-lg font-semibold mb-6 text-white">Legal</h4>
+              <ul className="space-y-3 text-gray-400">
                 <li><Link href="/terms-of-service" className="transition-colors hover:text-purple-400">Terms of Service</Link></li>
                 <li><Link href="/privacy-policy" className="transition-colors hover:text-purple-400">Privacy Policy</Link></li>
+                <li><a href="#legal-disclaimer" className="transition-colors hover:text-purple-400">Legal Disclaimer</a></li>
               </ul>
             </div>
           </div>
