@@ -2609,8 +2609,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     </SelectTrigger>
                     <SelectContent className="max-h-[400px] w-[calc(100vw-2rem)] sm:w-auto sm:min-w-[500px]">
                       {houses.map((house: House) => (
-                        <SelectItem key={house.id} value={house.id} className="py-6 cursor-pointer h-auto min-h-[140px]">
-                          <div className="flex flex-col w-full gap-2">
+                        <SelectItem key={house.id} value={house.id} className="py-8 cursor-pointer h-auto min-h-[180px] items-start">
+                          <div className="flex flex-col w-full gap-2 py-2">
                             <span className="font-semibold text-base break-words leading-relaxed">{house.name}</span>
                             <span className="text-sm text-muted-foreground break-all whitespace-normal leading-relaxed" title={house.address}>
                               {house.address}
@@ -2629,14 +2629,14 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       Contractors can track maintenance for one personal property
                     </div>
                   )}
-                  <div className="flex gap-3">
+                  <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                     {/* Only show Add House button for homeowners or contractors with no houses */}
                     {userRole === 'homeowner' && (
                       <Button 
                         variant="outline" 
                         size="lg" 
                         onClick={handleAddNewHouse}
-                        className="whitespace-nowrap text-base" style={{ backgroundColor: '#2c0f5b', color: 'white', borderColor: '#2c0f5b' }}
+                        className="whitespace-nowrap text-base w-full sm:w-auto" style={{ backgroundColor: '#2c0f5b', color: 'white', borderColor: '#2c0f5b' }}
                       >
                         <Plus className="w-5 h-5 mr-2" />
                         Add House
@@ -2650,7 +2650,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                           const selectedHouse = houses.find((h: House) => h.id === selectedHouseId);
                           if (selectedHouse) handleEditHouse(selectedHouse);
                         }}
-                        className="whitespace-nowrap text-base" style={{ backgroundColor: '#2c0f5b', color: 'white', borderColor: '#2c0f5b' }}
+                        className="whitespace-nowrap text-base w-full sm:w-auto" style={{ backgroundColor: '#2c0f5b', color: 'white', borderColor: '#2c0f5b' }}
                       >
                         <Edit className="w-5 h-5 mr-2" />
                         Edit
@@ -2664,7 +2664,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                           const selectedHouse = houses.find((h: House) => h.id === selectedHouseId);
                           if (selectedHouse) handleDeleteHouse(selectedHouse);
                         }}
-                        className="whitespace-nowrap text-base" style={{ backgroundColor: '#dc2626', color: 'white', borderColor: '#dc2626' }}
+                        className="whitespace-nowrap text-base w-full sm:w-auto" style={{ backgroundColor: '#dc2626', color: 'white', borderColor: '#dc2626' }}
                       >
                         <Trash2 className="w-5 h-5 mr-2" />
                         Delete
