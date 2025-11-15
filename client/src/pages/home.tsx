@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 import { Users, Package, Calendar, Search, MapPin, Star, CheckCircle, TrendingUp, Shield, Home as HomeIcon, Wrench, Bell, BarChart3, X, ChevronDown, Trophy, Lock, Sparkles } from "lucide-react";
 import HeroSection from "@/components/hero-section";
 import ProductCard from "@/components/product-card";
@@ -79,6 +80,8 @@ export default function Home() {
   const [showServiceDropdown, setShowServiceDropdown] = useState(false);
   const [selectedHouseId, setSelectedHouseId] = useState<string>('');
   const serviceDropdownRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   // Redirect contractors and agents to their dashboards
   useEffect(() => {
@@ -135,6 +138,43 @@ export default function Home() {
       return response.json();
     },
     enabled: typedUser?.role === 'homeowner',
+  });
+
+  // Mutation to check historical tasks for achievements
+  const checkAchievementsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/achievements/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) throw new Error('Failed to check achievements');
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/achievements'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/achievements/user'] });
+      
+      if (data.newlyUnlocked && data.newlyUnlocked.length > 0) {
+        toast({
+          title: "🎉 Achievements Synced!",
+          description: `Found ${data.newlyUnlocked.length} new achievement${data.newlyUnlocked.length > 1 ? 's' : ''} from your past tasks!`,
+          duration: 5000,
+        });
+      } else {
+        toast({
+          title: "✓ Achievements Synced",
+          description: "All achievements are up to date!",
+          duration: 3000,
+        });
+      }
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to sync achievements. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   const { data: featuredProducts, isLoading } = useQuery<Product[]>({
@@ -528,6 +568,18 @@ export default function Home() {
               <ul className="space-y-3 text-gray-400">
                 <li><a href="#" className="transition-colors hover:text-purple-400">Help Center</a></li>
                 <li><a href="#" className="transition-colors hover:text-purple-400">Contact Us</a></li>
+                {typedUser?.role === 'homeowner' && (
+                  <li>
+                    <button
+                      onClick={() => checkAchievementsMutation.mutate()}
+                      disabled={checkAchievementsMutation.isPending}
+                      className="transition-colors hover:text-purple-400 cursor-pointer"
+                      data-testid="button-sync-achievements"
+                    >
+                      {checkAchievementsMutation.isPending ? 'Syncing...' : 'Sync Achievements'}
+                    </button>
+                  </li>
+                )}
                 <li><a href="#" className="transition-colors hover:text-purple-400">Terms of Service</a></li>
                 <li><a href="#" className="transition-colors hover:text-purple-400">Privacy Policy</a></li>
               </ul>

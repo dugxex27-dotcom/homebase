@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { 
   Trophy, 
   Star, 
@@ -59,38 +59,10 @@ const iconMap: Record<string, any> = {
 export default function Achievements() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedAchievement, setSelectedAchievement] = useState<AchievementWithProgress | null>(null);
-  const queryClient = useQueryClient();
-  const hasCheckedAchievements = useRef(false);
 
   const { data, isLoading } = useQuery<AchievementsResponse>({
     queryKey: ['/api/achievements'],
   });
-
-  // Mutation to retroactively check all past tasks for achievements
-  const checkAchievementsMutation = useMutation({
-    mutationFn: async () => {
-      const response = await fetch('/api/achievements/check', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (!response.ok) throw new Error('Failed to check achievements');
-      return response.json();
-    },
-    onSuccess: () => {
-      // Refresh achievements data after checking
-      queryClient.invalidateQueries({ queryKey: ['/api/achievements'] });
-    },
-  });
-
-  // Automatically check achievements when page loads to process historical tasks
-  useEffect(() => {
-    // Only run once per mount and not while another check is pending
-    if (!hasCheckedAchievements.current && !checkAchievementsMutation.isPending) {
-      hasCheckedAchievements.current = true;
-      checkAchievementsMutation.mutate();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run once on mount
 
   if (isLoading) {
     return (
