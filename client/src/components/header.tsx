@@ -6,7 +6,7 @@ import { Notifications } from "@/components/notifications";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { cn } from "@/lib/utils";
-import type { User } from "@shared/schema";
+import type { User, Notification } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
 
 export default function Header() {
@@ -48,6 +48,30 @@ export default function Header() {
     },
     enabled: !!user && (typedUser?.role === 'homeowner' || typedUser?.role === 'contractor'),
   });
+
+  // Fetch unread notifications for tab indicators
+  const { data: unreadNotifications = [] } = useQuery<Notification[]>({
+    queryKey: ['/api/notifications/unread'],
+    enabled: isAuthenticated && (typedUser?.role === 'homeowner' || typedUser?.role === 'contractor'),
+    refetchInterval: 30000, // Check every 30 seconds
+  });
+
+  // Helper to check if a tab has unread notifications
+  const hasNotificationsForTab = (tabName: string) => {
+    if (!unreadNotifications.length) return false;
+    
+    switch (tabName) {
+      case 'messages':
+        return unreadNotifications.some(n => n.type === 'message');
+      case 'maintenance':
+        return unreadNotifications.some(n => n.category === 'maintenance');
+      case 'dashboard':
+        // Show for appointment notifications
+        return unreadNotifications.some(n => n.category === 'appointment');
+      default:
+        return false;
+    }
+  };
 
   // Calculate trial status (both homeowners and contractors)
   const trialEndsAt = userData?.trialEndsAt ? new Date(userData.trialEndsAt) : null;
@@ -121,6 +145,9 @@ export default function Header() {
                   aria-current={location === '/maintenance' ? 'page' : undefined}
                 >
                   Maintenance
+                  {hasNotificationsForTab('maintenance') && (
+                    <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500" aria-label="New notifications" />
+                  )}
                 </Link>
                 <Link 
                   href="/contractors" 
@@ -143,6 +170,9 @@ export default function Header() {
                 >
                   <MessageCircle className="w-4 h-4" />
                   Messages
+                  {hasNotificationsForTab('messages') && (
+                    <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500" aria-label="New notifications" />
+                  )}
                 </Link>
                 <Link 
                   href="/achievements" 
@@ -180,6 +210,9 @@ export default function Header() {
                   aria-current={location === '/contractor-dashboard' ? 'page' : undefined}
                 >
                   Dashboard
+                  {hasNotificationsForTab('dashboard') && (
+                    <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500" aria-label="New notifications" />
+                  )}
                 </Link>
                 <Link 
                   href="/manage-team" 
@@ -197,6 +230,9 @@ export default function Header() {
                 >
                   <MessageCircle className="w-4 h-4" />
                   Messages
+                  {hasNotificationsForTab('messages') && (
+                    <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500" aria-label="New notifications" />
+                  )}
                 </Link>
                 <Link 
                   href="/contractor-profile" 
