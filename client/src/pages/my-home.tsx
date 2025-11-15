@@ -696,36 +696,36 @@ export default function MyHome() {
                       onClick={() => !bulkSelectMode && setSelectedHouse(house)}
                       data-testid={`card-house-${house.id}`}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
                           {bulkSelectMode && (
                             <input
                               type="checkbox"
                               checked={selectedForBulk.includes(house.id)}
                               onChange={(e) => handleBulkSelect(house.id, e.target.checked)}
-                              className="h-4 w-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
+                              className="h-4 w-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500 flex-shrink-0"
                               data-testid={`checkbox-bulk-${house.id}`}
                               onClick={(e) => e.stopPropagation()}
                             />
                           )}
-                          <Home className="h-5 w-5" style={{ color: '#2c0f5b' }} />
-                          <div>
+                          <Home className="h-5 w-5 flex-shrink-0" style={{ color: '#2c0f5b' }} />
+                          <div className="min-w-0 flex-1">
                             <h3 className="font-semibold" style={{ color: '#2c0f5b' }}>
                               {house.name}
                               {house.isDefault && (
                                 <Badge variant="secondary" className="ml-2">Default</Badge>
                               )}
                             </h3>
-                            <p className="text-sm flex items-center gap-1" style={{ color: '#2c0f5b' }}>
-                              <MapPin className="h-3 w-3" />
-                              {house.address}
+                            <p className="text-sm flex items-center gap-1 break-words" style={{ color: '#2c0f5b' }}>
+                              <MapPin className="h-3 w-3 flex-shrink-0" />
+                              <span className="break-words">{house.address}</span>
                             </p>
                             <p className="text-sm" style={{ color: '#2c0f5b' }}>
                               Climate Zone: {house.climateZone}
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-shrink-0 sm:self-center">
                           <Button
                             variant="outline"
                             size="sm"
