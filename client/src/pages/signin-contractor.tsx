@@ -217,6 +217,31 @@ export default function SignInContractor() {
     resetPasswordMutation.mutate(data);
   };
 
+  const handleContractorDemoLogin = async () => {
+    try {
+      const response = await apiRequest('/api/auth/contractor-demo-login', 'POST', {
+        email: 'demo@contractor.com',
+        name: 'Demo Contractor',
+        role: 'contractor'
+      });
+      
+      if (response.ok) {
+        await queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+        toast({
+          title: "Demo login successful",
+          description: "Logged in as demo contractor.",
+        });
+        setLocation('/contractor-dashboard');
+      }
+    } catch (error) {
+      toast({
+        title: "Demo login failed",
+        description: "Could not log in. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: '#1560a2' }}>
       <div className="w-full max-w-md">
@@ -532,6 +557,22 @@ export default function SignInContractor() {
                 </Form>
               </TabsContent>
             </Tabs>
+
+            {/* Demo Login Button */}
+            <div className="pt-4 border-t">
+              <p className="text-center text-sm text-muted-foreground mb-3">
+                Demo Login (for testing)
+              </p>
+              <Button
+                type="button"
+                className="w-full text-white"
+                onClick={handleContractorDemoLogin}
+                data-testid="button-demo-contractor-signin"
+                style={{ backgroundColor: '#1560a2' }}
+              >
+                Try Contractor Demo
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
