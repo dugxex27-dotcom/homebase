@@ -32,7 +32,7 @@ export default function BottomNav() {
         { 
           href: '/maintenance', 
           icon: Calendar, 
-          label: 'Schedule',
+          label: 'Maintenance',
           isActive: location === '/maintenance' || location.startsWith('/household-profile')
         },
         { 
