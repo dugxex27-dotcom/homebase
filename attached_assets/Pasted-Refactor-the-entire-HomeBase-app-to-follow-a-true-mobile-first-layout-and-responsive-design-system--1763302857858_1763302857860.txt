@@ -1,0 +1,55 @@
+Refactor the entire HomeBase app to follow a true mobile-first layout and responsive design system. The current UI is designed primarily for desktop, which results in oversized cards, horizontal layouts, and components that are hard to use on mobile. I need the full app updated with the following rules:
+
+1. MOBILE-FIRST APPROACH
+   - All screens and components should be designed for mobile first.
+   - Use a single-column layout by default.
+   - Avoid any horizontal scrolling.
+   - Stack sections vertically with consistent spacing (8–16px).
+
+2. RESPONSIVE BREAKPOINTS
+   - Base: 360–480px (default mobile)
+   - Tablet: 600–900px
+   - Desktop: 1024px+
+   - Scale up from mobile using media queries (min-width), not scale down.
+
+3. CARDS (Maintenance, Contractors, Products, etc.)
+   - Collapse large or complex cards by default.
+   - Reduce padding and visual weight.
+   - Titles, badges, and key info should fit comfortably in one column.
+   - Buttons should be full-width on mobile.
+
+4. NAVIGATION
+   - Implement a bottom nav bar for mobile if appropriate.
+   - Top nav should collapse into a hamburger menu on small screens.
+   - Minimize header height to maintain screen space.
+
+5. TYPOGRAPHY & SIZING
+   - Use a clear hierarchy: 
+     - h1: 20–24px
+     - h2: 16–18px
+     - body: 14–15px
+     - metadata: 12–13px
+   - Ensure readability without large blocks of text.
+
+6. BUTTONS
+   - Full-width buttons on mobile.
+   - Reduce overly large buttons.
+   - Maintain consistent spacing and rounded corners.
+
+7. FORMS & INPUTS
+   - Inputs must span 100% width on mobile.
+   - Reduce padding so they don’t appear oversized.
+
+8. GRIDS & COLUMNS
+   - Replace all multi-column sections (2–3 cards in a row) with single-column stacks on mobile.
+   - Reintroduce grids ONLY at tablet and desktop breakpoints.
+
+9. SPACING SYSTEM
+   - Use a consistent spacing scale: 4, 8, 12, 16, 24.
+   - Remove excessive whitespace.
+
+10. PERFORMANCE
+   - Remove unnecessary nested divs and heavy elements that increase layout load.
+   - Clean up unused CSS or styles that conflict with responsive behavior.
+
+Update all pages and components across the app (Maintenance, Contractors, Products, Messages, Achievements, Account, Support) to follow this unified mobile-first system. Provide updated code for each file you modify.
