@@ -8,9 +8,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Plus, Phone, MessageCircle, Calendar, Search, Filter } from "lucide-react";
+import { Plus, Phone, MessageCircle, Calendar, Search, Filter, Plug, Copy, Check, Trash2, ExternalLink } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertCrmLeadSchema } from "@shared/schema";
@@ -30,6 +31,25 @@ interface CrmLead {
   projectType: string | null;
   estimatedValue: string | null;
   followUpDate: string | null;
+  createdAt: string;
+}
+
+interface CrmIntegration {
+  id: string;
+  platform: string;
+  platformName: string;
+  webhookUrl: string;
+  webhookSecret: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+interface WebhookLog {
+  id: string;
+  integrationId: string;
+  payload: any;
+  success: boolean;
+  errorMessage: string | null;
   createdAt: string;
 }
 
@@ -105,10 +125,17 @@ export default function ContractorCRMPage() {
   const [sourceFilter, setSourceFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
+  const [isAddIntegrationOpen, setIsAddIntegrationOpen] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   // Fetch leads
   const { data: leads, isLoading } = useQuery<CrmLead[]>({
     queryKey: ['/api/crm/leads', { status: statusFilter, priority: priorityFilter, source: sourceFilter, searchQuery }],
+  });
+
+  // Fetch integrations
+  const { data: integrations, isLoading: isLoadingIntegrations } = useQuery<CrmIntegration[]>({
+    queryKey: ['/api/crm/integrations'],
   });
 
   // Create lead mutation
@@ -157,6 +184,49 @@ export default function ContractorCRMPage() {
     createLeadMutation.mutate(data);
   };
 
+  // Create integration mutation
+  const createIntegrationMutation = useMutation({
+    mutationFn: async (data: { platform: string; platformName: string }) => {
+      return await apiRequest('/api/crm/integrations', 'POST', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/integrations'] });
+      setIsAddIntegrationOpen(false);
+      toast({
+        title: "Integration created",
+        description: "Your webhook integration has been set up successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create integration",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete integration mutation
+  const deleteIntegrationMutation = useMutation({
+    mutationFn: async (integrationId: string) => {
+      return await apiRequest(`/api/crm/integrations/${integrationId}`, 'DELETE');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/integrations'] });
+      toast({
+        title: "Integration deleted",
+        description: "The integration has been removed.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete integration",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleQuickAction = (action: string, lead: CrmLead) => {
     if (action === 'call' && lead.phone) {
       window.location.href = `tel:${lead.phone}`;
@@ -168,14 +238,35 @@ export default function ContractorCRMPage() {
     }
   };
 
+  const copyToClipboard = (text: string, fieldName: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(fieldName);
+    setTimeout(() => setCopiedField(null), 2000);
+    toast({
+      title: "Copied!",
+      description: `${fieldName} copied to clipboard`,
+    });
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">CRM - Lead Management</h1>
-          <p className="text-muted-foreground mt-1">Manage your leads and track your sales pipeline</p>
-        </div>
-        <Dialog open={isAddLeadOpen} onOpenChange={setIsAddLeadOpen}>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold">CRM - Lead Management</h1>
+        <p className="text-muted-foreground mt-1">Manage your leads and track your sales pipeline</p>
+      </div>
+
+      <Tabs defaultValue="leads" className="w-full">
+        <TabsList className="mb-6">
+          <TabsTrigger value="leads" data-testid="tab-leads">Leads</TabsTrigger>
+          <TabsTrigger value="integrations" data-testid="tab-integrations">
+            <Plug className="h-4 w-4 mr-2" />
+            Integrations
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="leads">
+          <div className="flex justify-end mb-6">
+            <Dialog open={isAddLeadOpen} onOpenChange={setIsAddLeadOpen}>
           <DialogTrigger asChild>
             <Button data-testid="button-add-lead">
               <Plus className="h-4 w-4 mr-2" />
@@ -561,6 +652,189 @@ export default function ContractorCRMPage() {
           ))
         )}
       </div>
+        </TabsContent>
+
+        <TabsContent value="integrations">
+          <div className="flex justify-end mb-6">
+            <Dialog open={isAddIntegrationOpen} onOpenChange={setIsAddIntegrationOpen}>
+              <DialogTrigger asChild>
+                <Button data-testid="button-add-integration">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Integration
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add CRM Integration</DialogTitle>
+                  <DialogDescription>
+                    Connect your external CRM platform to automatically sync leads to HomeBase
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Platform</label>
+                    <Select onValueChange={(value) => {
+                      const platformNames: Record<string, string> = {
+                        servicetitan: "ServiceTitan",
+                        jobber: "Jobber",
+                        housecallpro: "HouseCall Pro",
+                        hubspot: "HubSpot",
+                        salesforce: "Salesforce",
+                        other: "Other/Custom"
+                      };
+                      createIntegrationMutation.mutate({ 
+                        platform: value, 
+                        platformName: platformNames[value] || value 
+                      });
+                    }}>
+                      <SelectTrigger data-testid="select-platform">
+                        <SelectValue placeholder="Select your CRM platform" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="servicetitan">ServiceTitan</SelectItem>
+                        <SelectItem value="jobber">Jobber</SelectItem>
+                        <SelectItem value="housecallpro">HouseCall Pro</SelectItem>
+                        <SelectItem value="hubspot">HubSpot</SelectItem>
+                        <SelectItem value="salesforce">Salesforce</SelectItem>
+                        <SelectItem value="other">Other/Custom</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {isLoadingIntegrations ? (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                Loading integrations...
+              </CardContent>
+            </Card>
+          ) : integrations && integrations.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Plug className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-lg font-semibold mb-2">No integrations yet</h3>
+                <p className="text-muted-foreground mb-4">
+                  Connect your CRM platform to automatically sync leads to HomeBase
+                </p>
+                <Button onClick={() => setIsAddIntegrationOpen(true)} data-testid="button-add-first-integration">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Your First Integration
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {integrations?.map((integration) => (
+                <Card key={integration.id} data-testid={`integration-card-${integration.id}`}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          <Plug className="h-5 w-5" />
+                          {integration.platformName}
+                        </CardTitle>
+                        <CardDescription className="mt-1">
+                          Created {format(new Date(integration.createdAt), 'MMM d, yyyy')}
+                        </CardDescription>
+                      </div>
+                      <Badge variant={integration.isActive ? "default" : "secondary"}>
+                        {integration.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Webhook URL</label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={integration.webhookUrl}
+                          readOnly
+                          className="font-mono text-sm"
+                          data-testid={`input-webhook-url-${integration.id}`}
+                        />
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => copyToClipboard(integration.webhookUrl, "Webhook URL")}
+                          data-testid={`button-copy-webhook-url-${integration.id}`}
+                        >
+                          {copiedField === `webhook-url-${integration.id}` ? (
+                            <Check className="h-4 w-4" />
+                          ) : (
+                            <Copy className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Webhook Secret</label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={integration.webhookSecret}
+                          readOnly
+                          type="password"
+                          className="font-mono text-sm"
+                          data-testid={`input-webhook-secret-${integration.id}`}
+                        />
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => copyToClipboard(integration.webhookSecret, "Webhook Secret")}
+                          data-testid={`button-copy-webhook-secret-${integration.id}`}
+                        >
+                          {copiedField === `webhook-secret-${integration.id}` ? (
+                            <Check className="h-4 w-4" />
+                          ) : (
+                            <Copy className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Use this secret to verify webhook requests in your CRM platform
+                      </p>
+                    </div>
+
+                    <div className="bg-muted p-4 rounded-lg">
+                      <h4 className="font-semibold mb-2 flex items-center gap-2">
+                        <ExternalLink className="h-4 w-4" />
+                        Setup Instructions
+                      </h4>
+                      <ol className="text-sm space-y-1 list-decimal list-inside text-muted-foreground">
+                        <li>Copy the webhook URL above</li>
+                        <li>Go to your {integration.platformName} webhook settings</li>
+                        <li>Create a new webhook and paste the URL</li>
+                        <li>Add the webhook secret for verification (if supported)</li>
+                        <li>Configure to send lead creation events</li>
+                      </ol>
+                    </div>
+
+                    <div className="flex justify-end">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm(`Delete ${integration.platformName} integration?`)) {
+                            deleteIntegrationMutation.mutate(integration.id);
+                          }
+                        }}
+                        disabled={deleteIntegrationMutation.isPending}
+                        data-testid={`button-delete-integration-${integration.id}`}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Integration
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
