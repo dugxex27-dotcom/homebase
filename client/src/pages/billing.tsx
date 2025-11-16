@@ -73,12 +73,12 @@ export default function Billing() {
 
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(to bottom, #f8f4fc, #faf9fb)' }}>
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 py-6 sm:py-8">
         {/* Back button */}
         <Button
           variant="ghost"
           onClick={() => setLocation('/my-home')}
-          className="mb-6"
+          className="mb-4 sm:mb-6"
           data-testid="button-back"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
@@ -86,11 +86,11 @@ export default function Billing() {
         </Button>
 
         {/* Page Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-2" style={{ color: isContractor ? '#b91c1c' : '#2c0f5b' }}>
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-xl sm:text-2xl lg:text-4xl font-bold mb-2" style={{ color: isContractor ? '#b91c1c' : '#2c0f5b' }}>
             Subscription & Billing
           </h1>
-          <p className="text-gray-600">
+          <p className="text-sm sm:text-base text-gray-600">
             {isContractor 
               ? 'Manage your contractor subscription'
               : 'Choose the plan that fits your property management needs'
@@ -136,18 +136,18 @@ export default function Billing() {
 
         {/* Contractor Plan Card */}
         {isContractor && currentPlan !== 'grandfathered' && (
-          <div className="max-w-2xl mx-auto mb-8">
+          <div className="max-w-2xl mx-auto mb-6 sm:mb-8">
             <Card className="relative">
-              <CardHeader>
-                <CardTitle className="text-2xl flex items-center gap-2" style={{ color: '#b91c1c' }}>
-                  <Crown className="h-6 w-6 text-red-600" />
+              <CardHeader className="pb-4 sm:pb-6">
+                <CardTitle className="text-lg sm:text-xl lg:text-2xl flex items-center gap-2" style={{ color: '#b91c1c' }}>
+                  <Crown className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" />
                   Contractor Plan
                 </CardTitle>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold" style={{ color: '#b91c1c' }}>$20</span>
-                  <span className="text-gray-600">/month</span>
+                  <span className="text-3xl sm:text-4xl font-bold" style={{ color: '#b91c1c' }}>$20</span>
+                  <span className="text-sm sm:text-base text-gray-600">/month</span>
                 </div>
-                <CardDescription>Professional contractor access to Home Base</CardDescription>
+                <CardDescription className="text-xs sm:text-sm">Professional contractor access to Home Base</CardDescription>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-3 mb-6">
@@ -205,26 +205,26 @@ export default function Billing() {
 
         {/* Homeowner Plan Comparison */}
         {!isContractor && currentPlan !== 'grandfathered' && (
-          <div className="grid md:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
             {/* Base Plan */}
             <Card 
               className={`relative transition-all ${selectedPlan === 'base' ? 'ring-2 ring-purple-600' : ''}`}
               data-testid="card-plan-base"
             >
-              <CardHeader>
+              <CardHeader className="pb-4 sm:pb-6">
                 <div className="flex items-center justify-between mb-2">
-                  <CardTitle className="text-2xl" style={{ color: '#2c0f5b' }}>
+                  <CardTitle className="text-lg sm:text-xl lg:text-2xl" style={{ color: '#2c0f5b' }}>
                     Base Plan
                   </CardTitle>
                   {currentPlan === 'base' && (
-                    <Badge variant="secondary">Current Plan</Badge>
+                    <Badge variant="secondary" className="text-xs">Current Plan</Badge>
                   )}
                 </div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold" style={{ color: '#2c0f5b' }}>$5</span>
-                  <span className="text-gray-600">/month</span>
+                  <span className="text-3xl sm:text-4xl font-bold" style={{ color: '#2c0f5b' }}>$5</span>
+                  <span className="text-sm sm:text-base text-gray-600">/month</span>
                 </div>
-                <CardDescription>Perfect for managing a primary residence</CardDescription>
+                <CardDescription className="text-xs sm:text-sm">Perfect for managing a primary residence</CardDescription>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-3 mb-6">
