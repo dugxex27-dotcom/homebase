@@ -867,14 +867,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) {
         const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
         
-        // Create realistic company profile FIRST (before user, since user references it)
+        // Step 1: Create the user WITHOUT companyId first
+        user = await storage.upsertUser({
+          id: demoId,
+          email: demoEmail,
+          firstName: 'David',
+          lastName: 'Martinez',
+          profileImageUrl: null,
+          role: 'contractor',
+          zipCode: '98103',
+          subscriptionStatus: 'trialing',
+          trialEndsAt,
+          companyId: null, // Set to null initially
+          companyRole: null
+        });
+
+        // Step 2: Create the company with the user as owner
         try {
           const existingCompany = await storage.getCompany(companyId);
           if (!existingCompany) {
             await storage.createCompany({
             id: companyId,
             name: 'Precision HVAC & Plumbing',
-            userId: demoId,
+            ownerId: user.id,
             location: 'Seattle, WA',
             address: '1425 Industrial Way, Seattle, WA 98103',
             countryId: 'USA',
@@ -910,25 +925,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             rating: '4.8',
             reviewCount: 127
           });
+            
+            // Step 3: Update the user with the company reference
+            user = await storage.upsertUser({
+              ...user,
+              companyId,
+              companyRole: 'owner'
+            });
           }
         } catch (companyError) {
           console.error("Error creating demo company:", companyError);
         }
-
-        // Now create the user with the company reference
-        user = await storage.upsertUser({
-          id: demoId,
-          email: demoEmail,
-          firstName: 'David',
-          lastName: 'Martinez',
-          profileImageUrl: null,
-          role: 'contractor',
-          zipCode: '98103',
-          subscriptionStatus: 'trialing',
-          trialEndsAt,
-          companyId,
-          companyRole: 'owner'
-        });
       }
 
       // Create a simple session
