@@ -956,6 +956,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Simple agent demo login with realistic agent profile
+  app.post('/api/auth/agent-demo-login', authLimiter, async (req, res) => {
+    try {
+      const demoEmail = 'jessica.roberts@ellisonrealty.com';
+      const demoId = 'demo-agent-permanent-id';
+      
+      // Check if demo user already exists
+      let user = await storage.getUserByEmail(demoEmail);
+      
+      // If not, create demo user with realistic agent profile
+      if (!user) {
+        user = await storage.upsertUser({
+          id: demoId,
+          email: demoEmail,
+          firstName: 'Jessica',
+          lastName: 'Roberts',
+          profileImageUrl: null,
+          role: 'agent',
+          zipCode: '98115',
+          subscriptionStatus: 'active', // Agents don't pay subscription
+          companyId: null,
+          companyRole: null
+        });
+
+        // Create referral code for the agent
+        try {
+          const existingCode = await storage.getUserReferralCode(demoId);
+          if (!existingCode) {
+            const referralCode = await storage.generateUniqueReferralCode();
+            await storage.createUserReferralCode({
+              userId: demoId,
+              referralCode,
+              referralLink: `https://gotohomebase.com/signin?ref=${referralCode}`
+            });
+          }
+
+          // Create some sample referrals for realism
+          const sampleReferralIds = [
+            'sample-referral-1',
+            'sample-referral-2',
+            'sample-referral-3'
+          ];
+
+          for (let i = 0; i < sampleReferralIds.length; i++) {
+            const referralUserId = sampleReferralIds[i];
+            const signupDate = new Date(Date.now() - (90 - i * 30) * 24 * 60 * 60 * 1000);
+            
+            // Create a sample referred user
+            await storage.upsertUser({
+              id: referralUserId,
+              email: `sample.user${i + 1}@example.com`,
+              firstName: `Sample${i + 1}`,
+              lastName: 'User',
+              role: 'homeowner',
+              zipCode: '98116',
+              subscriptionStatus: i === 0 ? 'active' : 'trialing',
+              trialEndsAt: i > 0 ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) : null,
+              maxHousesAllowed: 2
+            });
+
+            // Create referral record
+            await storage.createReferral({
+              agentId: demoId,
+              referredUserId: referralUserId,
+              referredUserEmail: `sample.user${i + 1}@example.com`,
+              signupDate: signupDate.toISOString().split('T')[0],
+              status: i === 0 ? 'qualified' : 'pending'
+            });
+
+            // Create subscription cycles for qualified referral
+            if (i === 0) {
+              for (let month = 0; month < 4; month++) {
+                const cycleStart = new Date(signupDate.getTime() + month * 30 * 24 * 60 * 60 * 1000);
+                const cycleEnd = new Date(cycleStart.getTime() + 30 * 24 * 60 * 60 * 1000);
+                
+                await storage.createSubscriptionCycle({
+                  userId: referralUserId,
+                  cycleStart: cycleStart.toISOString().split('T')[0],
+                  cycleEnd: cycleEnd.toISOString().split('T')[0],
+                  amount: '5.00',
+                  status: 'paid',
+                  stripeInvoiceId: `demo_inv_${month + 1}`
+                });
+              }
+            }
+          }
+        } catch (referralError) {
+          console.error("Error creating demo agent referrals:", referralError);
+        }
+      }
+
+      // Create a simple session
+      req.session.user = user;
+      req.session.isAuthenticated = true;
+
+      // Save session explicitly
+      req.session.save((err: any) => {
+        if (err) {
+          console.error("Session save error:", err);
+          return res.status(500).json({ message: "Failed to save session" });
+        }
+        res.json({ success: true, user });
+      });
+    } catch (error) {
+      console.error("Error creating agent demo user:", error);
+      res.status(500).json({ message: "Failed to create agent account" });
+    }
+  });
+
   // Email/password registration
   app.post('/api/auth/register', authLimiter, async (req, res) => {
     try {

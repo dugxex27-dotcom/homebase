@@ -222,6 +222,30 @@ export default function SignInAgent() {
     resetPasswordMutation.mutate(data);
   };
 
+  const handleAgentDemoLogin = async () => {
+    try {
+      const response = await apiRequest('/api/auth/agent-demo-login', 'POST', {});
+      
+      if (response.ok) {
+        await queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+        toast({
+          title: "Demo login successful",
+          description: "Logged in as demo agent Jessica Roberts.",
+        });
+        setLocation('/agent-dashboard');
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Demo login failed');
+      }
+    } catch (error: any) {
+      toast({
+        title: "Demo login failed",
+        description: error.message || "Could not complete demo login. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const referralCodeValue = registerForm.watch("referralCode");
 
   return (
@@ -504,6 +528,21 @@ export default function SignInAgent() {
                 </Form>
               </TabsContent>
             </Tabs>
+
+            {/* Demo Login Button */}
+            <div className="pt-4 border-t">
+              <p className="text-center text-sm text-muted-foreground mb-3">
+                Demo Login (for testing)
+              </p>
+              <Button
+                type="button"
+                className="w-full"
+                onClick={handleAgentDemoLogin}
+                data-testid="button-demo-agent-signin"
+              >
+                Try Agent Demo
+              </Button>
+            </div>
           </CardContent>
         </Card>
 

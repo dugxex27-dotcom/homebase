@@ -26,6 +26,10 @@ Preferred communication style: Simple, everyday language.
 ### Feature Specifications
 - **User Management**: Three distinct roles: Homeowner, Contractor, Real Estate Agent.
 - **Authentication**: Email/password with bcrypt, Google OAuth via Replit Auth, two-step password reset, and optional invite codes.
+- **Demo Logins** (Nov 2025): One-click demo logins for all three user roles for easy testing:
+    - **Homeowner Demo**: Sarah Anderson with sample houses and maintenance records
+    - **Contractor Demo**: David Martinez with Precision HVAC company profile
+    - **Agent Demo**: Jessica Roberts with sample referrals and commission tracking
 - **Admin Dashboard**: User analytics, signup trends, search insights, and invite code management.
 - **Company-Based Contractor Architecture**: Contractors belong to companies, supporting multi-user access and dedicated API endpoints.
 - **Homeowner Features**:
@@ -50,11 +54,16 @@ Preferred communication style: Simple, everyday language.
     - Unique referral codes and shareable links with QR codes.
     - Payout structure: $10 per referred signup after 4 consecutive months of active subscription.
     - Agent Dashboard for tracking referrals, earnings, and payout progress.
-- **CRM System for Contractors**:
-    - Full CRUD operations for managing leads and prospects.
+- **CRM System for Contractors** (Nov 2025):
+    - **Manual Lead Management**: Full CRUD operations for manually adding and managing leads.
+    - **Webhook Integration System**: Automatic lead syncing from external CRMs (ServiceTitan, Jobber, HubSpot, Salesforce, etc.)
+        - Unique webhook URLs and secrets for each integration
+        - Platform-specific setup instructions
+        - Webhook activity logging for debugging
+        - Copy-to-clipboard functionality for easy setup
+    - **Dual-Tab Interface**: Separate "Leads" and "Integrations" tabs in CRM page
     - Company-scoped access control (contractors only see their company's leads).
-    - Lead tracking with notes, status, and contact information.
-    - Integration with contractor dashboard.
+    - Lead tracking with notes, status, contact information, and follow-up dates.
 - **Error Tracking and Monitoring** (Nov 2025):
     - **ErrorBoundary**: React error boundary wraps entire app, catches runtime errors, displays fallback UI with error details.
     - **Client Error Logger**: Automatic capture of unhandled errors and promise rejections, logs to backend API.
