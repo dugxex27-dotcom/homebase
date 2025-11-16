@@ -1510,3 +1510,55 @@ export const errorBreadcrumbs = pgTable("error_breadcrumbs", {
 export const insertErrorBreadcrumbSchema = createInsertSchema(errorBreadcrumbs).omit({ id: true });
 export type InsertErrorBreadcrumb = z.infer<typeof insertErrorBreadcrumbSchema>;
 export type ErrorBreadcrumb = typeof errorBreadcrumbs.$inferSelect;
+
+// CRM Integrations table - for connecting external CRM platforms
+export const crmIntegrations = pgTable("crm_integrations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contractorUserId: varchar("contractor_user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
+  platform: text("platform").notNull(), // 'servicetitan', 'jobber', 'hubspot', 'webhook', 'custom'
+  platformName: text("platform_name"), // Custom name for webhook integrations
+  isActive: boolean("is_active").notNull().default(true),
+  webhookSecret: text("webhook_secret"), // For validating incoming webhooks
+  apiKey: text("api_key"), // Encrypted API key for OAuth platforms
+  apiSecret: text("api_secret"), // Encrypted API secret
+  accessToken: text("access_token"), // OAuth access token (encrypted)
+  refreshToken: text("refresh_token"), // OAuth refresh token (encrypted)
+  tokenExpiresAt: timestamp("token_expires_at"), // When access token expires
+  lastSyncAt: timestamp("last_sync_at"), // Last successful sync
+  syncFrequency: text("sync_frequency").default("manual"), // 'manual', 'hourly', 'daily', 'weekly'
+  fieldMapping: jsonb("field_mapping"), // Maps external fields to our CRM fields
+  metadata: jsonb("metadata"), // Platform-specific configuration
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_crm_integrations_contractor").on(table.contractorUserId),
+  index("IDX_crm_integrations_company").on(table.companyId),
+  index("IDX_crm_integrations_platform").on(table.platform),
+]);
+
+export const insertCrmIntegrationSchema = createInsertSchema(crmIntegrations).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertCrmIntegration = z.infer<typeof insertCrmIntegrationSchema>;
+export type CrmIntegration = typeof crmIntegrations.$inferSelect;
+
+// Webhook Logs table - tracks incoming webhook requests
+export const webhookLogs = pgTable("webhook_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  integrationId: varchar("integration_id").notNull().references(() => crmIntegrations.id, { onDelete: 'cascade' }),
+  payload: jsonb("payload").notNull(), // Raw webhook payload
+  headers: jsonb("headers"), // HTTP headers from request
+  ipAddress: text("ip_address"), // Source IP
+  status: text("status").notNull(), // 'success', 'failed', 'ignored'
+  errorMessage: text("error_message"), // If processing failed
+  leadId: varchar("lead_id").references(() => crmLeads.id, { onDelete: 'set null' }), // Created lead ID if successful
+  processedAt: timestamp("processed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_webhook_logs_integration").on(table.integrationId),
+  index("IDX_webhook_logs_status").on(table.status),
+  index("IDX_webhook_logs_created_at").on(table.createdAt),
+]);
+
+export const insertWebhookLogSchema = createInsertSchema(webhookLogs).omit({ id: true, createdAt: true });
+export type InsertWebhookLog = z.infer<typeof insertWebhookLogSchema>;
+export type WebhookLog = typeof webhookLogs.$inferSelect;

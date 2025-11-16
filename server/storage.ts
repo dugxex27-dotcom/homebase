@@ -1,4 +1,4 @@
-import { type Contractor, type InsertContractor, type Company, type InsertCompany, type CompanyInviteCode, type InsertCompanyInviteCode, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type HomeApplianceManual, type InsertHomeApplianceManual, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type HomeownerConnectionCode, type InsertHomeownerConnectionCode, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics, type TaskOverride, type InsertTaskOverride, type Country, type InsertCountry, type Region, type InsertRegion, type ClimateZone, type InsertClimateZone, type RegulatoryBody, type InsertRegulatoryBody, type RegionalMaintenanceTask, type InsertRegionalMaintenanceTask, type TaskCompletion, type InsertTaskCompletion, type Achievement, type InsertAchievement, type AchievementDefinition, type InsertAchievementDefinition, type UserAchievement, type InsertUserAchievement, type SearchAnalytics, type InsertSearchAnalytics, type InviteCode, type InsertInviteCode, type AgentProfile, type InsertAgentProfile, type AffiliateReferral, type InsertAffiliateReferral, type SubscriptionCycleEvent, type InsertSubscriptionCycleEvent, type AffiliatePayout, type InsertAffiliatePayout, type AgentVerificationAudit, type InsertAgentVerificationAudit, type SupportTicket, type InsertSupportTicket, type TicketReply, type InsertTicketReply, users, contractors, companies, contractorLicenses, countries, regions, climateZones, regulatoryBodies, regionalMaintenanceTasks, taskCompletions, achievements, achievementDefinitions, userAchievements, maintenanceLogs, searchAnalytics, inviteCodes, agentProfiles, affiliateReferrals, subscriptionCycleEvents, affiliatePayouts, agentVerificationAudits, supportTickets, ticketReplies, houses, homeSystems, customMaintenanceTasks, taskOverrides, serviceRecords, homeownerConnectionCodes, conversations, messages, proposals, houseTransfers } from "@shared/schema";
+import { type Contractor, type InsertContractor, type Company, type InsertCompany, type CompanyInviteCode, type InsertCompanyInviteCode, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type HomeApplianceManual, type InsertHomeApplianceManual, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type HomeownerConnectionCode, type InsertHomeownerConnectionCode, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics, type TaskOverride, type InsertTaskOverride, type Country, type InsertCountry, type Region, type InsertRegion, type ClimateZone, type InsertClimateZone, type RegulatoryBody, type InsertRegulatoryBody, type RegionalMaintenanceTask, type InsertRegionalMaintenanceTask, type TaskCompletion, type InsertTaskCompletion, type Achievement, type InsertAchievement, type AchievementDefinition, type InsertAchievementDefinition, type UserAchievement, type InsertUserAchievement, type SearchAnalytics, type InsertSearchAnalytics, type InviteCode, type InsertInviteCode, type AgentProfile, type InsertAgentProfile, type AffiliateReferral, type InsertAffiliateReferral, type SubscriptionCycleEvent, type InsertSubscriptionCycleEvent, type AffiliatePayout, type InsertAffiliatePayout, type AgentVerificationAudit, type InsertAgentVerificationAudit, type SupportTicket, type InsertSupportTicket, type TicketReply, type InsertTicketReply, users, contractors, companies, contractorLicenses, countries, regions, climateZones, regulatoryBodies, regionalMaintenanceTasks, taskCompletions, achievements, achievementDefinitions, userAchievements, maintenanceLogs, searchAnalytics, inviteCodes, agentProfiles, affiliateReferrals, subscriptionCycleEvents, affiliatePayouts, agentVerificationAudits, supportTickets, ticketReplies, houses, homeSystems, customMaintenanceTasks, taskOverrides, serviceRecords, homeownerConnectionCodes, conversations, messages, proposals, houseTransfers , type CrmLead, type InsertCrmLead, type CrmNote, type InsertCrmNote, type ErrorLog, type InsertErrorLog, type ErrorBreadcrumb, type InsertErrorBreadcrumb, type CrmIntegration, type InsertCrmIntegration, type WebhookLog, type InsertWebhookLog, crmLeads, crmNotes, errorLogs, errorBreadcrumbs, crmIntegrations, webhookLogs } from "@shared/schema";
 import { randomUUID, randomBytes } from "crypto";
 import { db } from "./db";
 import { eq, ne, isNotNull, and, or, isNull, not, desc } from "drizzle-orm";
@@ -426,6 +426,17 @@ export interface IStorage {
   updateCrmNote(id: string, note: Partial<InsertCrmNote>): Promise<CrmNote | undefined>;
   deleteCrmNote(id: string): Promise<boolean>;
   
+  // CRM Integration operations
+  getCrmIntegrations(contractorUserId: string, companyId?: string | null): Promise<CrmIntegration[]>;
+  getCrmIntegration(id: string): Promise<CrmIntegration | undefined>;
+  createCrmIntegration(integration: InsertCrmIntegration): Promise<CrmIntegration>;
+  updateCrmIntegration(id: string, integration: Partial<InsertCrmIntegration>): Promise<CrmIntegration | undefined>;
+  deleteCrmIntegration(id: string): Promise<boolean>;
+  
+  // Webhook Log operations
+  getWebhookLogs(integrationId: string, limit?: number): Promise<WebhookLog[]>;
+  createWebhookLog(log: InsertWebhookLog): Promise<WebhookLog>;
+  
   // CRM Lead with notes (for detailed view)
   getCrmLeadWithNotes(id: string): Promise<{
     lead: CrmLead;
@@ -496,6 +507,8 @@ export class MemStorage implements IStorage {
   // CRM Maps
   private crmLeads: Map<string, CrmLead>;
   private crmNotes: Map<string, CrmNote>;
+  private crmIntegrations: Map<string, CrmIntegration>;
+  private webhookLogs: Map<string, WebhookLog>;
 
   constructor() {
     this.users = new Map();
@@ -538,6 +551,8 @@ export class MemStorage implements IStorage {
     // Initialize CRM Maps
     this.crmLeads = new Map();
     this.crmNotes = new Map();
+    this.crmIntegrations = new Map();
+    this.webhookLogs = new Map();
     this.seedData();
     this.seedServiceRecords();
     this.seedReviews();
@@ -4287,6 +4302,70 @@ export class MemStorage implements IStorage {
       lead,
       notes,
     };
+  }
+
+  // CRM Integration operations
+  async getCrmIntegrations(contractorUserId: string, companyId?: string | null): Promise<CrmIntegration[]> {
+    return Array.from(this.crmIntegrations.values())
+      .filter(i => 
+        i.contractorUserId === contractorUserId || 
+        (companyId && i.companyId === companyId)
+      )
+      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+  }
+
+  async getCrmIntegration(id: string): Promise<CrmIntegration | undefined> {
+    return this.crmIntegrations.get(id);
+  }
+
+  async createCrmIntegration(integration: InsertCrmIntegration): Promise<CrmIntegration> {
+    const id = crypto.randomUUID();
+    const now = new Date();
+    const newIntegration: CrmIntegration = {
+      id,
+      ...integration,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.crmIntegrations.set(id, newIntegration);
+    return newIntegration;
+  }
+
+  async updateCrmIntegration(id: string, integration: Partial<InsertCrmIntegration>): Promise<CrmIntegration | undefined> {
+    const existing = this.crmIntegrations.get(id);
+    if (!existing) return undefined;
+
+    const updated: CrmIntegration = {
+      ...existing,
+      ...integration,
+      updatedAt: new Date(),
+    };
+    this.crmIntegrations.set(id, updated);
+    return updated;
+  }
+
+  async deleteCrmIntegration(id: string): Promise<boolean> {
+    return this.crmIntegrations.delete(id);
+  }
+
+  // Webhook Log operations
+  async getWebhookLogs(integrationId: string, limit = 50): Promise<WebhookLog[]> {
+    return Array.from(this.webhookLogs.values())
+      .filter(log => log.integrationId === integrationId)
+      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+      .slice(0, limit);
+  }
+
+  async createWebhookLog(log: InsertWebhookLog): Promise<WebhookLog> {
+    const id = crypto.randomUUID();
+    const now = new Date();
+    const newLog: WebhookLog = {
+      id,
+      ...log,
+      createdAt: now,
+    };
+    this.webhookLogs.set(id, newLog);
+    return newLog;
   }
 }
 
