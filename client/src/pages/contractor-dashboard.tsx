@@ -68,6 +68,7 @@ export default function ContractorDashboard() {
                 <Button 
                   className="h-20 flex flex-col items-center justify-center space-y-2 text-white hover:opacity-90" 
                   style={{ backgroundColor: '#1560a2' }}
+                  onClick={() => window.location.href = "/messages"}
                   onMouseEnter={(e) => { 
                     e.currentTarget.style.color = '#afd6f9'; 
                     e.currentTarget.querySelectorAll('svg').forEach(svg => svg.style.color = '#afd6f9'); 
@@ -76,6 +77,7 @@ export default function ContractorDashboard() {
                     e.currentTarget.style.color = 'white'; 
                     e.currentTarget.querySelectorAll('svg').forEach(svg => svg.style.color = 'white'); 
                   }}
+                  data-testid="button-schedule"
                 >
                   <Calendar className="h-6 w-6" />
                   <span>View Schedule</span>
@@ -103,8 +105,10 @@ export default function ContractorDashboard() {
                 <Button 
                   className="h-20 flex flex-col items-center justify-center space-y-2 text-white hover:opacity-90" 
                   style={{ backgroundColor: '#1560a2' }}
+                  onClick={() => window.location.href = "/contractor-profile"}
                   onMouseEnter={(e) => { e.currentTarget.style.color = '#afd6f9'; e.currentTarget.querySelectorAll('svg').forEach(svg => svg.style.color = '#afd6f9'); }}
                   onMouseLeave={(e) => { e.currentTarget.style.color = 'white'; e.currentTarget.querySelectorAll('svg').forEach(svg => svg.style.color = 'white'); }}
+                  data-testid="button-reviews"
                 >
                   <Star className="h-6 w-6 text-white" />
                   <span>View Reviews</span>
