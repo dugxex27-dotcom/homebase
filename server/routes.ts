@@ -764,24 +764,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Simple homeowner demo login
+  // Simple homeowner demo login with realistic profile
   app.post('/api/auth/homeowner-demo-login', authLimiter, async (req, res) => {
     try {
-      const demoEmail = 'demo@homeowner.com';
+      const demoEmail = 'sarah.anderson@homebase.com';
+      const demoId = 'demo-homeowner-permanent-id';
       
       // Check if demo user already exists
       let user = await storage.getUserByEmail(demoEmail);
       
-      // If not, create demo user
+      // If not, create demo user with realistic profile
       if (!user) {
+        const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+        
         user = await storage.upsertUser({
-          id: `demo-homeowner-${Date.now()}`,
+          id: demoId,
           email: demoEmail,
-          firstName: 'Demo',
-          lastName: 'Homeowner',
+          firstName: 'Sarah',
+          lastName: 'Anderson',
           profileImageUrl: null,
-          role: 'homeowner'
+          role: 'homeowner',
+          zipCode: '98101',
+          subscriptionStatus: 'trialing',
+          trialEndsAt,
+          maxHousesAllowed: 2,
+          connectionCode: 'DEMO4567'
         });
+
+        // Create sample houses for the demo homeowner
+        try {
+          const house1 = await storage.createHouse({
+            homeownerId: demoId,
+            name: 'Main Residence',
+            address: '2847 Maple Drive, Seattle, WA 98101',
+            climateZone: 'pacific-northwest',
+            homeSystems: ['central-ac', 'gas-furnace', 'gas-water-heater', 'dishwasher', 'garbage-disposal', 'security-system'],
+            isDefault: true,
+            countryId: 'USA',
+            regionId: 'WA',
+            postalCode: '98101',
+            latitude: 47.6062,
+            longitude: -122.3321,
+            yearBuilt: 2008,
+            squareFootage: 2400,
+            bedrooms: 4,
+            bathrooms: 2.5,
+            stories: 2,
+            garageSpaces: 2,
+            lotSize: 0.25,
+            propertyType: 'single-family',
+            roofType: 'asphalt-shingle',
+            roofAge: 8,
+            foundationType: 'slab',
+            exteriorMaterial: 'vinyl-siding',
+            primaryHeatingFuel: 'natural-gas'
+          });
+
+          // Add some service records for realism
+          await storage.createMaintenanceLog({
+            homeownerId: demoId,
+            houseId: house1.id,
+            serviceDate: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            serviceType: 'repair',
+            homeArea: 'hvac',
+            serviceDescription: 'Annual HVAC maintenance and filter replacement',
+            cost: '185.00',
+            contractorName: 'Mike Johnson',
+            contractorCompany: 'Elite Heating & Cooling',
+            notes: 'System is running efficiently. Replaced air filters and cleaned coils.',
+            completionMethod: 'contractor'
+          });
+
+          await storage.createMaintenanceLog({
+            homeownerId: demoId,
+            houseId: house1.id,
+            serviceDate: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            serviceType: 'maintenance',
+            homeArea: 'exterior',
+            serviceDescription: 'Gutter cleaning and inspection',
+            cost: '150.00',
+            contractorName: 'James Wilson',
+            contractorCompany: 'ProGutter Services',
+            notes: 'Cleaned all gutters and downspouts. Found and repaired small leak in north gutter.',
+            completionMethod: 'contractor'
+          });
+
+          await storage.createMaintenanceLog({
+            homeownerId: demoId,
+            houseId: house1.id,
+            serviceDate: new Date(Date.now() - 200 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            serviceType: 'repair',
+            homeArea: 'plumbing',
+            serviceDescription: 'Kitchen faucet replacement',
+            cost: '0.00',
+            contractorName: 'Sarah Anderson',
+            contractorCompany: null,
+            notes: 'Replaced old leaking faucet with new Moen model. Used YouTube tutorial for installation.',
+            completionMethod: 'diy',
+            diySavingsAmount: '275.00'
+          });
+
+        } catch (houseError) {
+          console.error("Error creating demo houses:", houseError);
+        }
       }
 
       // Create a simple session
@@ -802,24 +887,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Simple contractor demo login
+  // Simple contractor demo login with realistic company profile
   app.post('/api/auth/contractor-demo-login', authLimiter, async (req, res) => {
     try {
-      const demoEmail = 'demo@contractor.com';
+      const demoEmail = 'david.martinez@precisionhvac.com';
+      const demoId = 'demo-contractor-permanent-id';
+      const companyId = 'demo-company-permanent-id';
       
       // Check if demo user already exists
       let user = await storage.getUserByEmail(demoEmail);
       
-      // If not, create demo user
+      // If not, create demo user with realistic profile
       if (!user) {
+        const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+        
         user = await storage.upsertUser({
-          id: `demo-contractor-${Date.now()}`,
+          id: demoId,
           email: demoEmail,
-          firstName: 'Demo',
-          lastName: 'Contractor',
+          firstName: 'David',
+          lastName: 'Martinez',
           profileImageUrl: null,
-          role: 'contractor'
+          role: 'contractor',
+          zipCode: '98103',
+          subscriptionStatus: 'trialing',
+          trialEndsAt,
+          companyId,
+          companyRole: 'owner'
         });
+
+        // Create realistic company profile
+        try {
+          await storage.createCompany({
+            id: companyId,
+            name: 'Precision HVAC & Plumbing',
+            userId: demoId,
+            location: 'Seattle, WA',
+            address: '1425 Industrial Way, Seattle, WA 98103',
+            countryId: 'USA',
+            regionId: 'WA',
+            postalCode: '98103',
+            latitude: 47.6597,
+            longitude: -122.3331,
+            website: 'https://precisionhvac.example.com',
+            phone: '(206) 555-0142',
+            email: demoEmail,
+            bio: 'Family-owned HVAC and plumbing company serving Seattle and surrounding areas since 2015. Specializing in residential heating, cooling, and plumbing services with a focus on energy efficiency and customer satisfaction. Our certified technicians provide honest, reliable service at fair prices.',
+            services: ['HVAC Installation', 'HVAC Repair', 'AC Maintenance', 'Furnace Service', 'Plumbing Repair', 'Water Heater Installation', 'Emergency Services'],
+            serviceRadius: 25,
+            hasEmergencyServices: true,
+            isLicensed: true,
+            licenseNumber: 'WA-HVAC-98765',
+            licenseState: 'WA',
+            licenseExpiration: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            isInsured: true,
+            insuranceProvider: 'State Farm Commercial',
+            insuranceExpiration: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            insuranceCoverageAmount: '$2,000,000',
+            businessHours: 'Mon-Fri: 7am-6pm, Sat: 8am-4pm, Sun: Closed',
+            yearsInBusiness: 9,
+            numberOfEmployees: 12,
+            isBonded: true,
+            bondingCompany: 'Travelers Casualty & Surety',
+            certifications: ['NATE Certified', 'EPA 608 Universal', 'Master Plumber', 'Energy Star Partner'],
+            specialties: ['High-efficiency HVAC systems', 'Tankless water heaters', 'Radiant floor heating', 'Smart thermostat installation'],
+            paymentMethods: ['Cash', 'Check', 'Credit Card', 'Financing Available'],
+            warrantyInfo: 'All installations include 1-year labor warranty. Equipment warranties vary by manufacturer (typically 5-10 years).',
+            insuranceInfo: 'Comprehensive general liability and workers compensation insurance. $2M coverage limit.',
+            rating: '4.8',
+            reviewCount: 127
+          });
+
+        } catch (companyError) {
+          console.error("Error creating demo company:", companyError);
+        }
       }
 
       // Create a simple session
