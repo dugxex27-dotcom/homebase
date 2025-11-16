@@ -432,17 +432,6 @@ export default function Home() {
                     </p>
                   </CardContent>
                 </Card>
-                <Card className="bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-600">
-                  <CardContent className="p-8 text-center">
-                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ backgroundColor: '#2c0f5b' }}>
-                      <TrendingUp className="h-8 w-8 text-white" />
-                    </div>
-                    <h3 className="text-xl font-bold mb-3" style={{ color: '#2c0f5b' }}>Cost Savings</h3>
-                    <p className="text-gray-600 dark:text-gray-300">
-                      Preventive maintenance and competitive contractor pricing help you save thousands on home repairs
-                    </p>
-                  </CardContent>
-                </Card>
               </>)
             ) : (
               // Contractor Features
