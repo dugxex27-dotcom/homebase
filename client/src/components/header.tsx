@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Users, Package, User as UserIcon, LogOut, MessageCircle, Trophy, Shield, Calendar, Crown, HelpCircle } from "lucide-react";
+import { Users, Package, User as UserIcon, LogOut, MessageCircle, Trophy, Shield, Calendar, Crown, HelpCircle, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import Logo from "@/components/logo";
 import { Notifications } from "@/components/notifications";
@@ -14,6 +16,7 @@ export default function Header() {
   const [location] = useLocation();
   const { user, isAuthenticated } = useAuth();
   const typedUser = user as User | undefined;
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Helper function for consistent nav link styling
   const getNavLinkClass = (isActive: boolean) => {
@@ -107,13 +110,149 @@ export default function Header() {
         : 'bg-background border-b border-border shadow-sm sticky top-0 z-50'
       }
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <div className="flex items-center">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
+        <div className="flex justify-between items-center h-14 sm:h-16">
+          <div className="flex items-center gap-2">
+            {/* Mobile Menu Button */}
+            {isAuthenticated && typedUser && (
+              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="md:hidden p-2"
+                    aria-label="Open menu"
+                  >
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-64 p-0">
+                  <SheetHeader className={`p-4 border-b ${typedUser.role === 'contractor' ? 'bg-[#1560a2] text-white' : 'bg-primary/5'}`}>
+                    <SheetTitle className={typedUser.role === 'contractor' ? 'text-white' : 'text-primary'}>
+                      Menu
+                    </SheetTitle>
+                  </SheetHeader>
+                  <nav className="flex flex-col p-2" aria-label="Mobile navigation">
+                    {isAdmin && (
+                      <Link href="/admin" onClick={() => setMobileMenuOpen(false)}>
+                        <button className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm ${location === '/admin' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted'}`}>
+                          <Shield className="w-4 h-4" />
+                          Admin
+                        </button>
+                      </Link>
+                    )}
+                    {typedUser.role === 'homeowner' && (
+                      <>
+                        <Link href="/maintenance" onClick={() => setMobileMenuOpen(false)}>
+                          <button className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm ${location === '/maintenance' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted'}`}>
+                            Maintenance
+                            {hasNotificationsForTab('maintenance') && (
+                              <span className="ml-auto h-2 w-2 rounded-full bg-red-500" />
+                            )}
+                          </button>
+                        </Link>
+                        <Link href="/contractors" onClick={() => setMobileMenuOpen(false)}>
+                          <button className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm ${location === '/contractors' || location === '/find-contractors' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted'}`}>
+                            Contractors
+                          </button>
+                        </Link>
+                        <Link href="/products" onClick={() => setMobileMenuOpen(false)}>
+                          <button className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm ${location === '/products' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted'}`}>
+                            Products
+                          </button>
+                        </Link>
+                        <Link href="/messages" onClick={() => setMobileMenuOpen(false)}>
+                          <button className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm ${location === '/messages' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted'}`}>
+                            <MessageCircle className="w-4 h-4" />
+                            Messages
+                            {hasNotificationsForTab('messages') && (
+                              <span className="ml-auto h-2 w-2 rounded-full bg-red-500" />
+                            )}
+                          </button>
+                        </Link>
+                        <Link href="/achievements" onClick={() => setMobileMenuOpen(false)}>
+                          <button className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm ${location === '/achievements' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted'}`}>
+                            <Trophy className="w-4 h-4" />
+                            Achievements
+                          </button>
+                        </Link>
+                        <Link href="/account" onClick={() => setMobileMenuOpen(false)}>
+                          <button className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm ${location === '/account' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted'}`}>
+                            <UserIcon className="w-4 h-4" />
+                            Account
+                          </button>
+                        </Link>
+                        <Link href="/support" onClick={() => setMobileMenuOpen(false)}>
+                          <button className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm ${location.startsWith('/support') ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted'}`}>
+                            <HelpCircle className="w-4 h-4" />
+                            Support
+                          </button>
+                        </Link>
+                      </>
+                    )}
+                    {typedUser.role === 'contractor' && (
+                      <>
+                        <Link href="/contractor-dashboard" onClick={() => setMobileMenuOpen(false)}>
+                          <button className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm ${location === '/contractor-dashboard' ? 'bg-blue-100 text-blue-700 font-medium' : 'hover:bg-muted'}`}>
+                            Dashboard
+                            {hasNotificationsForTab('dashboard') && (
+                              <span className="ml-auto h-2 w-2 rounded-full bg-red-500" />
+                            )}
+                          </button>
+                        </Link>
+                        <Link href="/manage-team" onClick={() => setMobileMenuOpen(false)}>
+                          <button className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm ${location === '/manage-team' ? 'bg-blue-100 text-blue-700 font-medium' : 'hover:bg-muted'}`}>
+                            <Users className="w-4 h-4" />
+                            Manage Team
+                          </button>
+                        </Link>
+                        <Link href="/messages" onClick={() => setMobileMenuOpen(false)}>
+                          <button className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm ${location === '/messages' ? 'bg-blue-100 text-blue-700 font-medium' : 'hover:bg-muted'}`}>
+                            <MessageCircle className="w-4 h-4" />
+                            Messages
+                            {hasNotificationsForTab('messages') && (
+                              <span className="ml-auto h-2 w-2 rounded-full bg-red-500" />
+                            )}
+                          </button>
+                        </Link>
+                        <Link href="/support" onClick={() => setMobileMenuOpen(false)}>
+                          <button className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm ${location.startsWith('/support') ? 'bg-blue-100 text-blue-700 font-medium' : 'hover:bg-muted'}`}>
+                            <HelpCircle className="w-4 h-4" />
+                            Support
+                          </button>
+                        </Link>
+                      </>
+                    )}
+                    {typedUser.role === 'agent' && (
+                      <>
+                        <Link href="/agent-dashboard" onClick={() => setMobileMenuOpen(false)}>
+                          <button className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm ${location === '/agent-dashboard' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted'}`}>
+                            Dashboard
+                          </button>
+                        </Link>
+                        <Link href="/agent-account" onClick={() => setMobileMenuOpen(false)}>
+                          <button className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm ${location === '/agent-account' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted'}`}>
+                            <UserIcon className="w-4 h-4" />
+                            Account
+                          </button>
+                        </Link>
+                        <Link href="/support" onClick={() => setMobileMenuOpen(false)}>
+                          <button className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm ${location.startsWith('/support') ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted'}`}>
+                            <HelpCircle className="w-4 h-4" />
+                            Support
+                          </button>
+                        </Link>
+                      </>
+                    )}
+                  </nav>
+                </SheetContent>
+              </Sheet>
+            )}
+            
             <Link href="/" aria-label="Home" data-testid="link-home-logo">
               <button
                 className={`
-                  p-2 rounded-xl transition-all duration-200 
+                  p-1.5 sm:p-2 rounded-xl transition-all duration-200 
                   ${typedUser?.role === 'contractor' 
                     ? 'hover:bg-white/20 active:bg-white/30' 
                     : 'hover:bg-primary/10 active:bg-primary/20'
@@ -121,7 +260,7 @@ export default function Header() {
                 `}
                 aria-label="Return to homepage"
               >
-                <Logo className={typedUser?.role === 'contractor' ? 'h-10 w-auto text-white' : 'h-10 w-auto text-primary'} />
+                <Logo className={typedUser?.role === 'contractor' ? 'h-8 sm:h-10 w-auto text-white' : 'h-8 sm:h-10 w-auto text-primary'} />
               </button>
             </Link>
           </div>
@@ -278,7 +417,7 @@ export default function Header() {
             )}
           </nav>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {isAuthenticated && (typedUser?.role === 'homeowner' || typedUser?.role === 'contractor') && <Notifications />}
             
             {isAuthenticated && typedUser && (
@@ -291,7 +430,7 @@ export default function Header() {
                       onClick={handleLogout}
                       data-testid="button-logout"
                       aria-label="Sign out"
-                      className={typedUser.role === 'contractor' ? 'border-white bg-white text-[#1560a2] hover:bg-white/90' : ''}
+                      className={`h-8 w-8 p-0 ${typedUser.role === 'contractor' ? 'border-white bg-white text-[#1560a2] hover:bg-white/90' : ''}`}
                     >
                       <LogOut className="w-4 h-4" />
                     </Button>
@@ -307,6 +446,7 @@ export default function Header() {
               <Button 
                 onClick={() => window.location.href = '/signin'}
                 aria-label="Sign in"
+                className="text-sm h-9 px-3 sm:px-4"
               >
                 Sign In
               </Button>
@@ -318,23 +458,24 @@ export default function Header() {
       {/* Trial Countdown Banner - For homeowners and contractors on trial */}
       {isTrialActive && (
         <div className={typedUser?.role === 'homeowner' ? "bg-purple-50 border-b border-purple-200" : "bg-blue-100 border-b border-blue-200"}>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Calendar className={`h-4 w-4 ${typedUser?.role === 'homeowner' ? 'text-purple-600' : 'text-blue-700'}`} />
-                <span className={`text-sm font-medium ${typedUser?.role === 'homeowner' ? 'text-purple-900' : 'text-blue-900'}`}>
-                  <strong>{daysRemaining} day{daysRemaining !== 1 ? 's' : ''}</strong> remaining in your free trial
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
+                <Calendar className={`h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0 ${typedUser?.role === 'homeowner' ? 'text-purple-600' : 'text-blue-700'}`} />
+                <span className={`text-xs sm:text-sm font-medium truncate ${typedUser?.role === 'homeowner' ? 'text-purple-900' : 'text-blue-900'}`}>
+                  <strong>{daysRemaining} day{daysRemaining !== 1 ? 's' : ''}</strong> trial
                 </span>
               </div>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => window.location.href = '/billing'}
-                className={typedUser?.role === 'homeowner' ? "border-purple-600 text-purple-600 hover:bg-purple-100" : "border-blue-700 text-blue-700 hover:bg-blue-200"}
+                className={`text-xs h-7 px-2 sm:px-3 flex-shrink-0 ${typedUser?.role === 'homeowner' ? "border-purple-600 text-purple-600 hover:bg-purple-100" : "border-blue-700 text-blue-700 hover:bg-blue-200"}`}
                 data-testid="button-trial-upgrade"
               >
                 <Crown className="h-3 w-3 mr-1" />
-                {typedUser?.role === 'homeowner' ? 'Choose Plan' : 'Subscribe Now'}
+                <span className="hidden sm:inline">{typedUser?.role === 'homeowner' ? 'Choose Plan' : 'Subscribe'}</span>
+                <span className="sm:hidden">Upgrade</span>
               </Button>
             </div>
           </div>
