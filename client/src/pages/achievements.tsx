@@ -96,9 +96,9 @@ export default function Achievements() {
     return (
       <>
         <div className="min-h-screen" style={{ backgroundColor: '#2c0f5b' }}>
-          <div className="container mx-auto px-4 py-8">
-            <h1 className="text-4xl font-bold mb-2 text-white">Achievements</h1>
-            <p className="text-purple-200 mb-8">Loading your achievements...</p>
+          <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
+            <h1 className="text-xl sm:text-2xl lg:text-4xl font-bold mb-2 text-white">Achievements</h1>
+            <p className="text-sm sm:text-base text-purple-200 mb-6 sm:mb-8">Loading your achievements...</p>
           </div>
         </div>
       </>
