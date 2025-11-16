@@ -452,7 +452,7 @@ function DIYSavingsTracker({ houseId }: { houseId: string }) {
   );
 }
 
-// Task Card Component - New Layout based on mockup
+// Task Card Component - Mobile-First Collapsed Design
 interface TaskCardProps {
   task: MaintenanceTask;
   completed: boolean;
@@ -498,181 +498,112 @@ function TaskCard({
   taskOverrides,
   selectedHouseId,
 }: TaskCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
   const [showReadDetails, setShowReadDetails] = useState(false);
   
   // Calculate progress - for now use completed state as 0/1, structured for future step tracking
   const currentProgress = completed ? 1 : 0;
   const totalSteps = 1; // Future: this could come from task.steps?.length or similar
 
+  const getPriorityBadge = () => {
+    if (task.priority === 'high') {
+      return (
+        <Badge className="bg-red-500 text-white text-xs px-3 py-1 rounded-full font-medium" data-testid={`badge-priority-${task.priority}`}>
+          HIGH PRIORITY
+        </Badge>
+      );
+    }
+    if (task.priority === 'medium') {
+      return (
+        <Badge className="bg-yellow-500 text-white text-xs px-3 py-1 rounded-full font-medium" data-testid={`badge-priority-${task.priority}`}>
+          MEDIUM PRIORITY
+        </Badge>
+      );
+    }
+    if (task.priority === 'low') {
+      return (
+        <Badge className="bg-green-500 text-white text-xs px-3 py-1 rounded-full font-medium" data-testid={`badge-priority-${task.priority}`}>
+          LOW PRIORITY
+        </Badge>
+      );
+    }
+    return null;
+  };
+
   return (
     <>
     <Card 
-      className={`hover:shadow-md transition-all ${
-        completed ? 'border-green-200 dark:border-green-800' : 'border-gray-300 dark:border-gray-700'
-      }`}
-      style={{ backgroundColor: completed ? '#dcfce7' : '#f2f2f2' }}
+      className={`transition-all border-0 shadow-sm ${completed ? 'bg-green-50' : 'bg-white'}`}
       data-testid={`card-task-${task.id}`}
     >
-      <CardHeader className="pb-3">
-        {/* Custom Task Badge */}
-        {isCustomTask && (
-          <Badge className="mb-3 w-fit" style={{ backgroundColor: '#b6a6f4', color: '#2c0f5b' }} data-testid="badge-custom-task">
-            Custom Task
-          </Badge>
-        )}
-        
-        {/* Header: Completion Checkbox + Title + Priority Badge + Edit Button */}
-        <div className="flex justify-between items-start gap-4">
-          <div className="flex items-start gap-3 flex-1">
-            <Checkbox
-              checked={completed}
-              onCheckedChange={onToggleComplete}
-              className="mt-1"
-              data-testid={`checkbox-complete-${task.id}`}
-            />
-            <CardTitle className="tracking-tight text-xl font-bold flex-1" style={{ color: '#2c0f5b' }} data-testid={`title-task-${generateTaskId(task.title)}`}>
-              {task.title}
-            </CardTitle>
-          </div>
-          <div className="flex items-center gap-2">
-            {task.priority === 'high' && (
-              <Badge className="bg-red-500 text-white hover:bg-red-600 font-semibold px-3 py-1" data-testid={`badge-priority-${task.priority}`}>
-                HIGH PRIORITY
-              </Badge>
-            )}
-            {task.priority === 'medium' && (
-              <Badge className="bg-yellow-500 text-white hover:bg-yellow-600 font-semibold px-3 py-1" data-testid={`badge-priority-${task.priority}`}>
-                MEDIUM PRIORITY
-              </Badge>
-            )}
-            {task.priority === 'low' && (
-              <Badge className="bg-green-500 text-white hover:bg-green-600 font-semibold px-3 py-1" data-testid={`badge-priority-${task.priority}`}>
-                LOW PRIORITY
-              </Badge>
-            )}
-            {/* Edit button for custom tasks */}
-            {isCustomTask && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  document.querySelector('[data-custom-tasks-section]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  toast({
-                    title: "Edit Custom Task",
-                    description: "Use the Edit button in the Custom Maintenance Tasks section below to modify this task."
-                  });
-                }}
-                className="p-1 h-7 w-7"
-                data-testid={`button-edit-custom-${task.id}`}
-              >
-                <Edit className="w-4 h-4" />
-              </Button>
+      {/* Collapsed Header - Always Visible */}
+      <div 
+        className="p-4 cursor-pointer"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 flex-1" style={{ color: '#2c0f5b' }} data-testid={`title-task-${generateTaskId(task.title)}`}>
+            {task.title}
+          </h3>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {getPriorityBadge()}
+            {isExpanded ? (
+              <ChevronUp className="w-5 h-5 text-gray-500" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-gray-500" />
             )}
           </div>
         </div>
-        
-        {/* Progress Indicator with Visual Bar */}
-        <div className="mt-4 space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="font-medium text-gray-700">Progress</span>
-            <span className="text-gray-600">{currentProgress}/{totalSteps} Steps</span>
-          </div>
-          <Progress value={(currentProgress / totalSteps) * 100} className="h-2" />
-        </div>
-      </CardHeader>
 
-      <CardContent className="space-y-4">
-        {/* Action Summary - Single sentence */}
-        {task.actionSummary && (
-          <p className="text-base font-semibold text-gray-900 dark:text-gray-100" style={{ color: '#2c0f5b' }}>
-            {task.actionSummary}
-          </p>
-        )}
-        
-        {/* Original Description - Only show if no action summary */}
-        {!task.actionSummary && (
-          <p className="leading-relaxed text-gray-700" style={{ color: '#2c0f5b' }}>
-            {displayDescription}
-          </p>
-        )}
+        {/* Description - 1-2 lines */}
+        <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 line-clamp-2">
+          {task.actionSummary || displayDescription}
+        </p>
+      </div>
 
-        {/* Impact & Consequences Section - What happens if not done */}
-        {(task.impact || task.impactCost) && (
-          <div className="bg-red-50 dark:bg-red-950 rounded-lg p-4 border-2 border-red-200 dark:border-red-800">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <h4 className="text-sm font-bold text-red-900 dark:text-red-100 mb-2">
-                  If Not Completed
-                </h4>
-                {task.impact && (
-                  <p className="text-sm text-red-800 dark:text-red-200 mb-2">
-                    {task.impact}
-                  </p>
-                )}
-                {task.impactCost && (
-                  <div className="flex items-center gap-2 mt-2">
-                    <DollarSign className="w-4 h-4 text-red-700 dark:text-red-300" />
-                    <span className="text-sm font-semibold text-red-900 dark:text-red-100">
-                      Potential Cost: {task.impactCost}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Cost & Effort Section - Always Visible */}
-        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200">
-          <h4 className="text-sm font-bold mb-3" style={{ color: '#2c0f5b' }}>Cost & Effort</h4>
-          <div className="flex flex-wrap items-center gap-4 text-sm">
-            {/* DIY Cost */}
-            <div className="flex items-center gap-2">
-              <Wrench className="w-4 h-4 text-gray-600" />
-              <span className="font-medium text-gray-700">DIY Cost:</span>
+      {/* Expanded Content - Only show when expanded */}
+      {isExpanded && (
+        <div className="px-4 pb-4 space-y-3 border-t pt-3">
+          {/* Cost Information */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm sm:text-base">
+              <span className="font-bold text-gray-900">DIY Cost:</span>
               <span className="font-semibold text-gray-900">
                 {task.costEstimate ? formatDIYSavings(task.costEstimate) : '–'}
               </span>
-              {task.costEstimate && <span className="text-gray-500 text-xs">(Supplies)</span>}
             </div>
-
-            {/* Pro Cost */}
-            <div className="flex items-center gap-2">
-              <Truck className="w-4 h-4 text-gray-600" />
-              <span className="font-medium text-gray-700">Pro Cost:</span>
+            <div className="flex items-center justify-between text-sm sm:text-base">
+              <span className="font-bold text-gray-900">Pro Cost:</span>
               <span className="font-semibold text-gray-900">
-                {task.costEstimate ? formatCostEstimate(task.costEstimate) : '–'}
+                {task.costEstimate ? formatCostEstimate(task.costEstimate) : 'TBD'}
               </span>
             </div>
-
-            {/* Find Contractor Link */}
-            <a
-              href={`/contractors?category=${encodeURIComponent(task.category)}&service=${encodeURIComponent(task.title)}&houseId=${selectedHouseId}&maxDistance=20`}
-              className="text-blue-600 hover:text-blue-700 font-medium underline ml-auto"
-              data-testid={`link-find-contractor-${task.id}`}
-            >
-              Find Contractor
-            </a>
-
-            {/* Difficulty */}
-            {task.difficulty && (
-              <div className="flex items-center gap-2 ml-4">
-                <Clock className="w-4 h-4 text-amber-500" />
-                <span className="font-medium text-gray-700">{task.difficulty}</span>
-              </div>
-            )}
           </div>
-        </div>
 
-        {/* Completion Method Buttons - Only show if task is not completed */}
-        {!completed && (
-          <div className="bg-purple-50 dark:bg-purple-950 border-2 border-purple-200 dark:border-purple-800 rounded-lg p-4">
-            <h4 className="text-sm font-bold mb-3" style={{ color: '#2c0f5b' }}>Mark Task Complete</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Difficulty */}
+          {task.difficulty && (
+            <div className="flex items-center gap-2 text-sm sm:text-base">
+              <Wrench className="w-4 h-4 text-gray-600" />
+              <span className="font-medium text-gray-700">{task.difficulty}</span>
+            </div>
+          )}
+
+          {/* Find Contractor Link */}
+          <a
+            href={`/contractors?category=${encodeURIComponent(task.category)}&service=${encodeURIComponent(task.title)}&houseId=${selectedHouseId}&maxDistance=20`}
+            className="text-blue-600 hover:text-blue-700 font-medium text-sm sm:text-base block"
+            data-testid={`link-find-contractor-${task.id}`}
+          >
+            Find Contractor
+          </a>
+
+          {/* Completion Buttons - Stacked Vertically */}
+          {!completed && (
+            <div className="space-y-2 pt-2">
               <Button
-                className="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 h-auto flex-col items-center justify-center gap-1"
-                onClick={() => {
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 text-sm sm:text-base"
+                onClick={(e) => {
+                  e.stopPropagation();
                   completeTaskMutation.mutate({
                     houseId: selectedHouseId,
                     taskTitle: task.title,
@@ -683,52 +614,41 @@ function TaskCard({
                 disabled={completeTaskMutation.isPending}
                 data-testid={`button-complete-diy-${task.id}`}
               >
-                <div className="flex items-center gap-2">
-                  <Wrench className="w-5 h-5" />
-                  <span>{completeTaskMutation.isPending ? 'Saving...' : 'Completed DIY'}</span>
-                </div>
-                {task.costEstimate && (
-                  <span className="text-xs text-green-100 mt-1">
-                    Save {formatCostEstimate(task.costEstimate)} (avg)
-                  </span>
-                )}
+                {completeTaskMutation.isPending ? 'Saving...' : 'Completed DIY'}
               </Button>
               <Button
-                className="text-white hover:opacity-90 font-semibold py-3 h-auto whitespace-normal text-center border-0"
+                className="w-full text-white hover:opacity-90 font-medium py-3 text-sm sm:text-base border-0"
                 style={{ backgroundColor: '#2c0f5b' }}
-                onClick={() => onContractorComplete(task)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onContractorComplete(task);
+                }}
                 data-testid={`button-complete-contractor-${task.id}`}
               >
-                <Truck className="w-5 h-5 mr-2 flex-shrink-0" />
-                <span>Completed by Contractor</span>
+                Completed by Contractor
               </Button>
             </div>
-          </div>
-        )}
-
-        {/* Primary CTA Button */}
-        <Button
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-6 text-base"
-          onClick={() => setShowReadDetails(!showReadDetails)}
-          data-testid={`button-view-checklist-${task.id}`}
-        >
-          {showReadDetails ? (
-            <>
-              <ChevronDown className="w-5 h-5 mr-2 rotate-180" />
-              Hide Full Checklist & Instructions
-            </>
-          ) : (
-            <>
-              <ChevronDown className="w-5 h-5 mr-2" />
-              View Full Checklist & Instructions
-            </>
           )}
-        </Button>
 
-        {/* Read Details Collapsible Content */}
-        <Collapsible open={showReadDetails}>
-          <CollapsibleContent>
-            <div className="border-t pt-4 space-y-4">
+          {/* View Full Checklist Button */}
+          <Button
+            variant="outline"
+            className="w-full py-3 text-sm sm:text-base font-medium text-blue-600 border-blue-600 hover:bg-blue-50"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowReadDetails(!showReadDetails);
+            }}
+            data-testid={`button-view-checklist-${task.id}`}
+          >
+            {showReadDetails ? 'Hide' : 'View'} Full Checklist
+          </Button>
+        </div>
+      )}
+
+      {/* Full Checklist Collapsible Content */}
+      {showReadDetails && (
+        <div className="px-4 pb-4 border-t pt-3">
+          <div className="space-y-4">
               {/* Steps - Bullet points */}
               {task.steps && task.steps.length > 0 && (
                 <div className="space-y-2">
@@ -987,10 +907,9 @@ function TaskCard({
                   </div>
                 </div>
               )}
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-      </CardContent>
+          </div>
+        </div>
+      )}
     </Card>
     </>
   );
