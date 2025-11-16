@@ -147,21 +147,23 @@ export default function SupportPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-5xl">
-      <div className="flex items-center gap-3 mb-6">
-        <HelpCircle className="h-8 w-8 text-primary" />
-        <h1 className="text-3xl font-bold">Support Center</h1>
+    <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-5xl">
+      <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+        <HelpCircle className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Support Center</h1>
       </div>
 
       <Tabs defaultValue="faq" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="faq" data-testid="tab-faq">
-            <HelpCircle className="h-4 w-4 mr-2" />
-            Frequently Asked Questions
+        <TabsList className="grid w-full grid-cols-2 h-auto">
+          <TabsTrigger value="faq" data-testid="tab-faq" className="text-xs sm:text-sm py-2 sm:py-2.5">
+            <HelpCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Frequently Asked Questions</span>
+            <span className="sm:hidden">FAQs</span>
           </TabsTrigger>
-          <TabsTrigger value="tickets" data-testid="tab-tickets">
-            <Ticket className="h-4 w-4 mr-2" />
-            My Tickets ({tickets.length})
+          <TabsTrigger value="tickets" data-testid="tab-tickets" className="text-xs sm:text-sm py-2 sm:py-2.5">
+            <Ticket className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">My Tickets ({tickets.length})</span>
+            <span className="sm:hidden">Tickets ({tickets.length})</span>
           </TabsTrigger>
         </TabsList>
 
