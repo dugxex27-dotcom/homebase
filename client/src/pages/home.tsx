@@ -153,12 +153,18 @@ export default function Home() {
     <div className="min-h-screen" style={{ background: typedUser?.role === 'homeowner' ? '#2c0f5b' : '#1560a2' }}>
       <HeroSection />
       
-      {/* Home Health Score Section */}
-      {typedUser?.role === 'homeowner' && selectedHouseId && selectedHouse && (
+      {/* Home Health Score Section - All Homes */}
+      {typedUser?.role === 'homeowner' && userHouses.length > 0 && (
         <section className="py-8 sm:py-12" style={{ backgroundColor: '#2c0f5b' }}>
           <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
-            <div className="max-w-5xl mx-auto">
-              <HomeHealthScore houseId={selectedHouseId} houseName={selectedHouse.name || 'My Home'} />
+            <div className="max-w-5xl mx-auto space-y-6">
+              {userHouses.map((house) => (
+                <HomeHealthScore 
+                  key={house.id}
+                  houseId={house.id} 
+                  houseName={house.name || 'My Home'} 
+                />
+              ))}
             </div>
           </div>
         </section>
