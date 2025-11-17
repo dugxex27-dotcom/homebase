@@ -130,7 +130,7 @@ export interface IStorage {
 
   // Permanent connection code operations (attached to user)
   getOrCreatePermanentConnectionCode(userId: string): Promise<string>;
-  validatePermanentConnectionCode(code: string): Promise<{ homeownerId: string; homeownerName: string; homeownerEmail: string; homeownerZipCode: string | null } | null>;
+  validatePermanentConnectionCode(code: string): Promise<{ homeownerId: string; homeownerName: string; homeownerEmail: string; homeownerZipCode: string | null; houses: Array<{id: string; name: string; address: string}> } | null>;
   regeneratePermanentConnectionCode(userId: string): Promise<string>;
 
   // Messaging operations
@@ -5834,18 +5834,26 @@ class DbStorage implements IStorage {
     throw new Error('Failed to generate unique connection code');
   }
 
-  async validatePermanentConnectionCode(code: string): Promise<{ homeownerId: string; homeownerName: string; homeownerEmail: string; homeownerZipCode: string | null } | null> {
+  async validatePermanentConnectionCode(code: string): Promise<{ homeownerId: string; homeownerName: string; homeownerEmail: string; homeownerZipCode: string | null; houses: Array<{id: string; name: string; address: string}> } | null> {
     const user = await db.select().from(users).where(eq(users.connectionCode, code));
     
     if (!user[0] || user[0].role !== 'homeowner') {
       return null;
     }
 
+    // Fetch homeowner's houses
+    const homeownerHouses = await db.select({
+      id: houses.id,
+      name: houses.name,
+      address: houses.address,
+    }).from(houses).where(eq(houses.homeownerId, user[0].id));
+
     return {
       homeownerId: user[0].id,
       homeownerName: `${user[0].firstName || ''} ${user[0].lastName || ''}`.trim() || 'Unknown',
       homeownerEmail: user[0].email || '',
-      homeownerZipCode: user[0].zipCode
+      homeownerZipCode: user[0].zipCode,
+      houses: homeownerHouses
     };
   }
 

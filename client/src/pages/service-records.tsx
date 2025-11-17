@@ -114,6 +114,7 @@ export default function ServiceRecords() {
     serviceDescription: '',
     homeArea: '',
     houseId: '',
+    homeownerId: '',
     serviceDate: '',
     duration: '',
     cost: '',
@@ -125,6 +126,16 @@ export default function ServiceRecords() {
   });
 
   const [materialInput, setMaterialInput] = useState('');
+  
+  // Connection code states for contractors
+  const [connectionCode, setConnectionCode] = useState('');
+  const [linkedHomeowner, setLinkedHomeowner] = useState<{
+    id: string;
+    name: string;
+    email: string;
+    houses: Array<{id: string; name: string; address: string}>;
+  } | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
 
   // Load houses for homeowner
   const { data: houses = [] } = useQuery<House[]>({
@@ -229,6 +240,7 @@ export default function ServiceRecords() {
       serviceDescription: '',
       homeArea: '',
       houseId: selectedHouseId || '',
+      homeownerId: '',
       serviceDate: '',
       duration: '',
       cost: '',
@@ -240,6 +252,66 @@ export default function ServiceRecords() {
     });
     setEditingRecord(null);
     setMaterialInput('');
+    setConnectionCode('');
+    setLinkedHomeowner(null);
+  };
+
+  // Validate connection code and link to homeowner
+  const validateConnectionCode = async () => {
+    if (!connectionCode || connectionCode.length !== 8) {
+      toast({
+        title: "Invalid Code",
+        description: "Please enter an 8-character connection code.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsValidating(true);
+    try {
+      const response = await fetch('/api/permanent-connection-code/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: connectionCode.toUpperCase() }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Invalid connection code');
+      }
+
+      const data = await response.json();
+      
+      setLinkedHomeowner({
+        id: data.homeownerId,
+        name: data.homeownerName,
+        email: data.homeownerEmail,
+        houses: data.houses || [],
+      });
+
+      // Auto-populate customer information from homeowner
+      setFormData(prev => ({
+        ...prev,
+        homeownerId: data.homeownerId,
+        customerName: data.homeownerName,
+        customerEmail: data.homeownerEmail,
+        // If homeowner has only one house, auto-select it
+        houseId: data.houses?.length === 1 ? data.houses[0].id : prev.houseId,
+        customerAddress: data.houses?.length === 1 ? data.houses[0].address : prev.customerAddress,
+      }));
+
+      toast({
+        title: "Connection Successful",
+        description: `Successfully linked to ${data.homeownerName}'s account.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Validation Failed",
+        description: "Invalid connection code. Please check the code and try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsValidating(false);
+    }
   };
 
   const handleInputChange = (field: string, value: string | string[]) => {
@@ -277,6 +349,7 @@ export default function ServiceRecords() {
       serviceDescription: record.serviceDescription,
       homeArea: record.homeArea || '',
       houseId: record.houseId || '',
+      homeownerId: (record as any).homeownerId || '',
       serviceDate: record.serviceDate,
       duration: record.duration,
       cost: record.cost.toString(),
@@ -356,6 +429,108 @@ export default function ServiceRecords() {
               </DialogHeader>
               
               <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Connection Code Section - Contractors Only */}
+                {user?.role === 'contractor' && !editingRecord && (
+                  <Card style={{ backgroundColor: '#f2f2f2', border: '2px solid #1560a2' }}>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2" style={{ color: '#1560a2' }}>
+                        <User className="w-5 h-5" style={{ color: '#1560a2' }} />
+                        Link to Homeowner Account (Optional)
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {!linkedHomeowner ? (
+                        <>
+                          <div className="flex flex-col gap-2">
+                            <Label htmlFor="connectionCode" style={{ color: '#1560a2' }}>
+                              Homeowner Connection Code
+                            </Label>
+                            <p className="text-sm text-gray-600">
+                              Enter the 8-character code provided by the homeowner to link this service record to their account.
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Input
+                              id="connectionCode"
+                              value={connectionCode}
+                              onChange={(e) => setConnectionCode(e.target.value.toUpperCase())}
+                              placeholder="ABC12345"
+                              maxLength={8}
+                              style={{ backgroundColor: '#ffffff' }}
+                              data-testid="input-connection-code"
+                            />
+                            <Button
+                              type="button"
+                              onClick={validateConnectionCode}
+                              disabled={isValidating || connectionCode.length !== 8}
+                              style={{ backgroundColor: '#1560a2', color: 'white' }}
+                              className="hover:opacity-90"
+                              data-testid="button-validate-code"
+                            >
+                              {isValidating ? 'Validating...' : 'Link Account'}
+                            </Button>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-green-100 rounded-full">
+                                <User className="w-5 h-5 text-green-600" />
+                              </div>
+                              <div>
+                                <p className="font-semibold text-green-900">{linkedHomeowner.name}</p>
+                                <p className="text-sm text-green-700">{linkedHomeowner.email}</p>
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setLinkedHomeowner(null);
+                                setConnectionCode('');
+                                setFormData(prev => ({ ...prev, homeownerId: '', houseId: '', customerAddress: '' }));
+                              }}
+                              data-testid="button-unlink"
+                            >
+                              Unlink
+                            </Button>
+                          </div>
+                          {linkedHomeowner.houses.length > 0 && (
+                            <div>
+                              <Label htmlFor="linkedHouseSelect" style={{ color: '#1560a2' }}>
+                                Select Property
+                              </Label>
+                              <Select 
+                                value={formData.houseId} 
+                                onValueChange={(value) => {
+                                  const selectedHouse = linkedHomeowner.houses.find(h => h.id === value);
+                                  handleInputChange('houseId', value);
+                                  if (selectedHouse) {
+                                    handleInputChange('customerAddress', selectedHouse.address);
+                                  }
+                                }}
+                              >
+                                <SelectTrigger style={{ backgroundColor: '#ffffff' }} data-testid="select-linked-house">
+                                  <SelectValue placeholder="Choose a property" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {linkedHomeowner.houses.map((house) => (
+                                    <SelectItem key={house.id} value={house.id}>
+                                      {house.name} - {house.address}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Customer Information */}
                 <Card style={{ backgroundColor: '#1560a2' }}>
                   <CardHeader>
