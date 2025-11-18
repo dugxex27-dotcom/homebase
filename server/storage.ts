@@ -554,7 +554,10 @@ export class MemStorage implements IStorage {
     this.crmIntegrations = new Map();
     this.webhookLogs = new Map();
     this.seedData();
-    this.seedHomeownerDemoData();
+    // Seed demo homeowner data asynchronously
+    this.seedHomeownerDemoData().catch(error => {
+      console.error('[DEMO DATA] Failed to seed homeowner demo data:', error);
+    });
     this.seedReviews();
     
     // Add sample maintenance logs with contractor information after other data is seeded
@@ -2095,26 +2098,29 @@ export class MemStorage implements IStorage {
     );
   }
 
-  private seedHomeownerDemoData() {
+  private async seedHomeownerDemoData() {
     const demoHomeownerId = "demo-homeowner-permanent-id";
     const mainHouseId = "8d44c1d0-af55-4f1c-bada-b70e54c823bc";
     const lakeHouseId = "f5c8a9d2-3e1b-4f7c-a6b3-8d9e5f2c1a4b";
     
-    // 14 service records spread over 6 months with DIY savings totaling $1,360
-    const serviceRecordsData = [
+    // 14 DIY maintenance logs spread over 6 months with total savings of $1,360
+    const diyMaintenanceLogsData = [
       // Main Residence - Month 1 (6 months ago)
       {
         id: randomUUID(),
         homeownerId: demoHomeownerId,
         houseId: mainHouseId,
         serviceType: "Plumbing",
-        description: "Replaced leaky kitchen faucet (DIY)",
-        date: new Date(Date.now() - 175 * 24 * 60 * 60 * 1000),
+        serviceDate: new Date(Date.now() - 175 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        homeArea: "Kitchen",
+        serviceDescription: "Replaced leaky kitchen faucet (DIY)",
         cost: "45.00",
-        contractor: null,
+        contractorName: null,
+        contractorCompany: null,
+        contractorId: null,
+        completionMethod: "diy",
+        diySavingsAmount: "135.00", // $180 - $45
         notes: "Watched YouTube tutorial and replaced faucet myself. Saved on labor costs!",
-        isDIY: true,
-        professionalCostEstimate: "180.00",
         createdAt: new Date(Date.now() - 175 * 24 * 60 * 60 * 1000),
       },
       {
@@ -2122,13 +2128,16 @@ export class MemStorage implements IStorage {
         homeownerId: demoHomeownerId,
         houseId: mainHouseId,
         serviceType: "HVAC",
-        description: "Replaced HVAC air filters (DIY)",
-        date: new Date(Date.now() - 170 * 24 * 60 * 60 * 1000),
+        serviceDate: new Date(Date.now() - 170 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        homeArea: "HVAC System",
+        serviceDescription: "Replaced HVAC air filters (DIY)",
         cost: "35.00",
-        contractor: null,
+        contractorName: null,
+        contractorCompany: null,
+        contractorId: null,
+        completionMethod: "diy",
+        diySavingsAmount: "85.00", // $120 - $35
         notes: "Quarterly maintenance completed",
-        isDIY: true,
-        professionalCostEstimate: "120.00",
         createdAt: new Date(Date.now() - 170 * 24 * 60 * 60 * 1000),
       },
       // Main Residence - Month 2 (5 months ago)
@@ -2137,13 +2146,16 @@ export class MemStorage implements IStorage {
         homeownerId: demoHomeownerId,
         houseId: mainHouseId,
         serviceType: "Electrical",
-        description: "Installed new ceiling fan in bedroom (DIY)",
-        date: new Date(Date.now() - 145 * 24 * 60 * 60 * 1000),
+        serviceDate: new Date(Date.now() - 145 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        homeArea: "Bedroom",
+        serviceDescription: "Installed new ceiling fan in bedroom (DIY)",
         cost: "89.99",
-        contractor: null,
+        contractorName: null,
+        contractorCompany: null,
+        contractorId: null,
+        completionMethod: "diy",
+        diySavingsAmount: "160.01", // $250 - $89.99
         notes: "Home Depot clearance find! Installation was easier than expected.",
-        isDIY: true,
-        professionalCostEstimate: "250.00",
         createdAt: new Date(Date.now() - 145 * 24 * 60 * 60 * 1000),
       },
       {
@@ -2151,13 +2163,16 @@ export class MemStorage implements IStorage {
         homeownerId: demoHomeownerId,
         houseId: mainHouseId,
         serviceType: "Landscaping",
-        description: "Spring yard cleanup and mulching (DIY)",
-        date: new Date(Date.now() - 140 * 24 * 60 * 60 * 1000),
+        serviceDate: new Date(Date.now() - 140 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        homeArea: "Yard",
+        serviceDescription: "Spring yard cleanup and mulching (DIY)",
         cost: "65.00",
-        contractor: null,
+        contractorName: null,
+        contractorCompany: null,
+        contractorId: null,
+        completionMethod: "diy",
+        diySavingsAmount: "135.00", // $200 - $65
         notes: "Spent weekend on yard work - looks great!",
-        isDIY: true,
-        professionalCostEstimate: "200.00",
         createdAt: new Date(Date.now() - 140 * 24 * 60 * 60 * 1000),
       },
       // Lake House - Month 2
@@ -2166,13 +2181,16 @@ export class MemStorage implements IStorage {
         homeownerId: demoHomeownerId,
         houseId: lakeHouseId,
         serviceType: "Plumbing",
-        description: "Fixed running toilet (DIY)",
-        date: new Date(Date.now() - 135 * 24 * 60 * 60 * 1000),
+        serviceDate: new Date(Date.now() - 135 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        homeArea: "Bathroom",
+        serviceDescription: "Fixed running toilet (DIY)",
         cost: "12.50",
-        contractor: null,
+        contractorName: null,
+        contractorCompany: null,
+        contractorId: null,
+        completionMethod: "diy",
+        diySavingsAmount: "82.50", // $95 - $12.50
         notes: "New flapper valve from hardware store",
-        isDIY: true,
-        professionalCostEstimate: "95.00",
         createdAt: new Date(Date.now() - 135 * 24 * 60 * 60 * 1000),
       },
       // Main Residence - Month 3 (4 months ago)
@@ -2181,13 +2199,16 @@ export class MemStorage implements IStorage {
         homeownerId: demoHomeownerId,
         houseId: mainHouseId,
         serviceType: "Painting",
-        description: "Painted living room walls (DIY)",
-        date: new Date(Date.now() - 115 * 24 * 60 * 60 * 1000),
+        serviceDate: new Date(Date.now() - 115 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        homeArea: "Living Room",
+        serviceDescription: "Painted living room walls (DIY)",
         cost: "120.00",
-        contractor: null,
+        contractorName: null,
+        contractorCompany: null,
+        contractorId: null,
+        completionMethod: "diy",
+        diySavingsAmount: "330.00", // $450 - $120
         notes: "Fresh coat of paint makes such a difference!",
-        isDIY: true,
-        professionalCostEstimate: "450.00",
         createdAt: new Date(Date.now() - 115 * 24 * 60 * 60 * 1000),
       },
       {
@@ -2195,13 +2216,16 @@ export class MemStorage implements IStorage {
         homeownerId: demoHomeownerId,
         houseId: mainHouseId,
         serviceType: "General Maintenance",
-        description: "Caulked bathroom tiles (DIY)",
-        date: new Date(Date.now() - 110 * 24 * 60 * 60 * 1000),
+        serviceDate: new Date(Date.now() - 110 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        homeArea: "Bathroom",
+        serviceDescription: "Caulked bathroom tiles (DIY)",
         cost: "8.99",
-        contractor: null,
+        contractorName: null,
+        contractorCompany: null,
+        contractorId: null,
+        completionMethod: "diy",
+        diySavingsAmount: "66.01", // $75 - $8.99
         notes: "Prevented water damage with fresh caulk",
-        isDIY: true,
-        professionalCostEstimate: "75.00",
         createdAt: new Date(Date.now() - 110 * 24 * 60 * 60 * 1000),
       },
       // Main Residence - Month 4 (3 months ago)
@@ -2210,13 +2234,16 @@ export class MemStorage implements IStorage {
         homeownerId: demoHomeownerId,
         houseId: mainHouseId,
         serviceType: "Appliance Repair",
-        description: "Replaced dishwasher spray arm (DIY)",
-        date: new Date(Date.now() - 85 * 24 * 60 * 60 * 1000),
+        serviceDate: new Date(Date.now() - 85 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        homeArea: "Kitchen",
+        serviceDescription: "Replaced dishwasher spray arm (DIY)",
         cost: "22.00",
-        contractor: null,
+        contractorName: null,
+        contractorCompany: null,
+        contractorId: null,
+        completionMethod: "diy",
+        diySavingsAmount: "128.00", // $150 - $22
         notes: "Much cheaper than calling a repair service!",
-        isDIY: true,
-        professionalCostEstimate: "150.00",
         createdAt: new Date(Date.now() - 85 * 24 * 60 * 60 * 1000),
       },
       {
@@ -2224,13 +2251,16 @@ export class MemStorage implements IStorage {
         homeownerId: demoHomeownerId,
         houseId: mainHouseId,
         serviceType: "Flooring",
-        description: "Refinished hardwood floors in hallway (DIY)",
-        date: new Date(Date.now() - 80 * 24 * 60 * 60 * 1000),
+        serviceDate: new Date(Date.now() - 80 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        homeArea: "Hallway",
+        serviceDescription: "Refinished hardwood floors in hallway (DIY)",
         cost: "95.00",
-        contractor: null,
+        contractorName: null,
+        contractorCompany: null,
+        contractorId: null,
+        completionMethod: "diy",
+        diySavingsAmount: "285.00", // $380 - $95
         notes: "Rented sander and did it myself over the weekend",
-        isDIY: true,
-        professionalCostEstimate: "380.00",
         createdAt: new Date(Date.now() - 80 * 24 * 60 * 60 * 1000),
       },
       // Lake House - Month 4
@@ -2239,13 +2269,16 @@ export class MemStorage implements IStorage {
         homeownerId: demoHomeownerId,
         houseId: lakeHouseId,
         serviceType: "Deck & Patio",
-        description: "Power washed and stained deck (DIY)",
-        date: new Date(Date.now() - 75 * 24 * 60 * 60 * 1000),
+        serviceDate: new Date(Date.now() - 75 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        homeArea: "Deck",
+        serviceDescription: "Power washed and stained deck (DIY)",
         cost: "78.00",
-        contractor: null,
+        contractorName: null,
+        contractorCompany: null,
+        contractorId: null,
+        completionMethod: "diy",
+        diySavingsAmount: "242.00", // $320 - $78
         notes: "Deck looks brand new!",
-        isDIY: true,
-        professionalCostEstimate: "320.00",
         createdAt: new Date(Date.now() - 75 * 24 * 60 * 60 * 1000),
       },
       // Main Residence - Month 5 (2 months ago)
@@ -2254,13 +2287,16 @@ export class MemStorage implements IStorage {
         homeownerId: demoHomeownerId,
         houseId: mainHouseId,
         serviceType: "Windows & Doors",
-        description: "Installed weatherstripping on doors (DIY)",
-        date: new Date(Date.now() - 55 * 24 * 60 * 60 * 1000),
+        serviceDate: new Date(Date.now() - 55 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        homeArea: "Doors",
+        serviceDescription: "Installed weatherstripping on doors (DIY)",
         cost: "25.00",
-        contractor: null,
+        contractorName: null,
+        contractorCompany: null,
+        contractorId: null,
+        completionMethod: "diy",
+        diySavingsAmount: "85.00", // $110 - $25
         notes: "Reduced drafts and energy bills",
-        isDIY: true,
-        professionalCostEstimate: "110.00",
         createdAt: new Date(Date.now() - 55 * 24 * 60 * 60 * 1000),
       },
       // Lake House - Month 5
@@ -2269,13 +2305,16 @@ export class MemStorage implements IStorage {
         homeownerId: demoHomeownerId,
         houseId: lakeHouseId,
         serviceType: "General Maintenance",
-        description: "Cleaned and maintained fireplace (DIY)",
-        date: new Date(Date.now() - 50 * 24 * 60 * 60 * 1000),
+        serviceDate: new Date(Date.now() - 50 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        homeArea: "Living Room",
+        serviceDescription: "Cleaned and maintained fireplace (DIY)",
         cost: "15.00",
-        contractor: null,
+        contractorName: null,
+        contractorCompany: null,
+        contractorId: null,
+        completionMethod: "diy",
+        diySavingsAmount: "110.00", // $125 - $15
         notes: "Ready for winter!",
-        isDIY: true,
-        professionalCostEstimate: "125.00",
         createdAt: new Date(Date.now() - 50 * 24 * 60 * 60 * 1000),
       },
       // Main Residence - Month 6 (1 month ago)
@@ -2284,13 +2323,16 @@ export class MemStorage implements IStorage {
         homeownerId: demoHomeownerId,
         houseId: mainHouseId,
         serviceType: "Gutter Cleaning",
-        description: "Cleaned gutters and downspouts (DIY)",
-        date: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
+        serviceDate: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        homeArea: "Exterior",
+        serviceDescription: "Cleaned gutters and downspouts (DIY)",
         cost: "0.00",
-        contractor: null,
+        contractorName: null,
+        contractorCompany: null,
+        contractorId: null,
+        completionMethod: "diy",
+        diySavingsAmount: "150.00", // $150 - $0
         notes: "Used ladder and garden hose - free!",
-        isDIY: true,
-        professionalCostEstimate: "150.00",
         createdAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
       },
       {
@@ -2298,73 +2340,30 @@ export class MemStorage implements IStorage {
         homeownerId: demoHomeownerId,
         houseId: mainHouseId,
         serviceType: "Pest Control",
-        description: "Sealed cracks and applied pest prevention (DIY)",
-        date: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
+        serviceDate: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        homeArea: "Exterior",
+        serviceDescription: "Sealed cracks and applied pest prevention (DIY)",
         cost: "32.00",
-        contractor: null,
+        contractorName: null,
+        contractorCompany: null,
+        contractorId: null,
+        completionMethod: "diy",
+        diySavingsAmount: "143.00", // $175 - $32
         notes: "Preventive maintenance before summer",
-        isDIY: true,
-        professionalCostEstimate: "175.00",
         createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
       },
     ];
 
-    // Add service records to storage
-    serviceRecordsData.forEach(record => {
-      this.serviceRecords.push(record);
-    });
+    // Insert DIY maintenance logs into database
+    try {
+      await Promise.all(diyMaintenanceLogsData.map(async (log) => {
+        await db.insert(maintenanceLogs).values(log).onConflictDoNothing();
+      }));
+      console.log('[DEMO DATA] Inserted 14 DIY maintenance logs for Sarah Anderson');
+    } catch (error) {
+      console.error('[DEMO DATA] Error inserting DIY maintenance logs:', error);
+    }
 
-    // Add some maintenance log entries showing completed tasks
-    const maintenanceLogsData = [
-      {
-        id: randomUUID(),
-        homeownerId: demoHomeownerId,
-        houseId: mainHouseId,
-        taskId: "hvac-filter-check",
-        title: "Replace HVAC Filters",
-        completedAt: new Date(Date.now() - 170 * 24 * 60 * 60 * 1000),
-        notes: "Completed as part of routine maintenance",
-        createdAt: new Date(Date.now() - 170 * 24 * 60 * 60 * 1000),
-        updatedAt: new Date(Date.now() - 170 * 24 * 60 * 60 * 1000),
-      },
-      {
-        id: randomUUID(),
-        homeownerId: demoHomeownerId,
-        houseId: mainHouseId,
-        taskId: "smoke-detector-test",
-        title: "Test Smoke Detectors",
-        completedAt: new Date(Date.now() - 140 * 24 * 60 * 60 * 1000),
-        notes: "All detectors working properly",
-        createdAt: new Date(Date.now() - 140 * 24 * 60 * 60 * 1000),
-        updatedAt: new Date(Date.now() - 140 * 24 * 60 * 60 * 1000),
-      },
-      {
-        id: randomUUID(),
-        homeownerId: demoHomeownerId,
-        houseId: mainHouseId,
-        taskId: "gutter-cleaning",
-        title: "Clean Gutters and Downspouts",
-        completedAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
-        notes: "Removed leaves and debris",
-        createdAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
-        updatedAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
-      },
-      {
-        id: randomUUID(),
-        homeownerId: demoHomeownerId,
-        houseId: lakeHouseId,
-        taskId: "fireplace-maintenance",
-        title: "Inspect and Clean Fireplace",
-        completedAt: new Date(Date.now() - 50 * 24 * 60 * 60 * 1000),
-        notes: "Chimney cleaned and inspected",
-        createdAt: new Date(Date.now() - 50 * 24 * 60 * 60 * 1000),
-        updatedAt: new Date(Date.now() - 50 * 24 * 60 * 60 * 1000),
-      },
-    ];
-
-    maintenanceLogsData.forEach(log => {
-      this.maintenanceLogs.set(log.id, log);
-    });
   }
 
   private seedReviews() {
@@ -6014,12 +6013,64 @@ class DbStorage implements IStorage {
   }
 
   async getServiceRecordsByHomeowner(homeownerId: string, houseId?: string): Promise<ServiceRecord[]> {
-    if (houseId) {
-      return await db.select().from(serviceRecords).where(
-        and(eq(serviceRecords.homeownerId, homeownerId), eq(serviceRecords.houseId, houseId))
-      );
-    }
-    return await db.select().from(serviceRecords).where(eq(serviceRecords.homeownerId, homeownerId));
+    // Query both serviceRecords (contractor work) and maintenanceLogs (DIY work) for homeowners
+    const serviceRecordsQuery = houseId
+      ? db.select().from(serviceRecords).where(
+          and(eq(serviceRecords.homeownerId, homeownerId), eq(serviceRecords.houseId, houseId))
+        )
+      : db.select().from(serviceRecords).where(eq(serviceRecords.homeownerId, homeownerId));
+    
+    const maintenanceLogsQuery = houseId
+      ? db.select().from(maintenanceLogs).where(
+          and(
+            eq(maintenanceLogs.homeownerId, homeownerId),
+            eq(maintenanceLogs.houseId, houseId),
+            eq(maintenanceLogs.completionMethod, 'diy')
+          )
+        )
+      : db.select().from(maintenanceLogs).where(
+          and(
+            eq(maintenanceLogs.homeownerId, homeownerId),
+            eq(maintenanceLogs.completionMethod, 'diy')
+          )
+        );
+
+    const [contractorRecords, diyLogs] = await Promise.all([serviceRecordsQuery, maintenanceLogsQuery]);
+    
+    // Convert maintenanceLogs to ServiceRecord format for display
+    const diyAsServiceRecords: ServiceRecord[] = diyLogs.map(log => ({
+      id: log.id,
+      contractorId: '', // Empty for DIY
+      companyId: null,
+      employeeId: null,
+      homeownerId: log.homeownerId,
+      houseId: log.houseId,
+      customerName: '', // Not applicable for DIY
+      customerAddress: '', // Not applicable for DIY
+      customerPhone: null,
+      customerEmail: null,
+      serviceType: log.serviceType || 'General Maintenance',
+      serviceDescription: log.serviceDescription || '',
+      homeArea: log.homeArea || null,
+      serviceDate: log.serviceDate,
+      duration: null,
+      cost: log.cost?.toString() || '0',
+      status: 'completed',
+      notes: log.notes || null,
+      materialsUsed: [],
+      warrantyPeriod: log.warrantyPeriod || null,
+      followUpDate: null,
+      isVisibleToHomeowner: true,
+      createdAt: log.createdAt || new Date(),
+    }));
+    
+    // Combine and sort by date (most recent first)
+    const allRecords = [...contractorRecords, ...diyAsServiceRecords];
+    return allRecords.sort((a, b) => {
+      const dateA = new Date(a.serviceDate).getTime();
+      const dateB = new Date(b.serviceDate).getTime();
+      return dateB - dateA; // Most recent first
+    });
   }
 
   // Proposal operations (database-backed)
