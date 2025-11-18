@@ -1120,6 +1120,12 @@ export default function Maintenance() {
 
 
 
+  // File upload state for service records
+  const [receiptFiles, setReceiptFiles] = useState<File[]>([]);
+  const [beforePhotoFiles, setBeforePhotoFiles] = useState<File[]>([]);
+  const [afterPhotoFiles, setAfterPhotoFiles] = useState<File[]>([]);
+  const [isUploadingFiles, setIsUploadingFiles] = useState(false);
+
   // Maintenance log form handling
   const maintenanceLogForm = useForm<MaintenanceLogFormData>({
     resolver: zodResolver(maintenanceLogFormSchema),
@@ -1984,6 +1990,10 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       warrantyPeriod: "",
       nextServiceDue: "",
     });
+    // Clear file selections
+    setReceiptFiles([]);
+    setBeforePhotoFiles([]);
+    setAfterPhotoFiles([]);
     setIsMaintenanceLogDialogOpen(true);
   };
 
@@ -2008,11 +2018,77 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     setIsMaintenanceLogDialogOpen(true);
   };
 
-  const onSubmitMaintenanceLog = (data: MaintenanceLogFormData) => {
-    if (editingMaintenanceLog) {
-      updateMaintenanceLogMutation.mutate({ id: editingMaintenanceLog.id, data });
-    } else {
-      createMaintenanceLogMutation.mutate(data);
+  // Helper function to convert File to base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
+  // Upload files to object storage
+  const uploadFiles = async (files: File[]): Promise<string[]> => {
+    if (files.length === 0) return [];
+
+    const filesData = await Promise.all(
+      files.map(async (file) => ({
+        fileData: await fileToBase64(file),
+        fileName: file.name,
+        fileType: file.type,
+      }))
+    );
+
+    const response = await fetch('/api/upload/files', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ files: filesData }),
+    });
+
+    if (!response.ok) throw new Error('Failed to upload files');
+    const result = await response.json();
+    return result.urls || [];
+  };
+
+  const onSubmitMaintenanceLog = async (data: MaintenanceLogFormData) => {
+    try {
+      setIsUploadingFiles(true);
+
+      // Upload all files in parallel
+      const [receiptUrls, beforePhotoUrls, afterPhotoUrls] = await Promise.all([
+        uploadFiles(receiptFiles),
+        uploadFiles(beforePhotoFiles),
+        uploadFiles(afterPhotoFiles),
+      ]);
+
+      // Add file URLs to the maintenance log data
+      const dataWithFiles = {
+        ...data,
+        receiptUrls,
+        beforePhotoUrls,
+        afterPhotoUrls,
+      };
+
+      if (editingMaintenanceLog) {
+        updateMaintenanceLogMutation.mutate({ id: editingMaintenanceLog.id, data: dataWithFiles });
+      } else {
+        createMaintenanceLogMutation.mutate(dataWithFiles);
+      }
+
+      // Clear file selections
+      setReceiptFiles([]);
+      setBeforePhotoFiles([]);
+      setAfterPhotoFiles([]);
+    } catch (error) {
+      console.error('Error uploading files:', error);
+      toast({ 
+        title: "Error", 
+        description: "Failed to upload files. Please try again.", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsUploadingFiles(false);
     }
   };
 
@@ -3453,6 +3529,100 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                               </div>
                             )}
                             
+                            {/* Attachments Display */}
+                            {(log.receiptUrls?.length > 0 || log.beforePhotoUrls?.length > 0 || log.afterPhotoUrls?.length > 0) && (
+                              <div className="mt-4 space-y-3">
+                                {/* Receipts */}
+                                {log.receiptUrls && log.receiptUrls.length > 0 && (
+                                  <div>
+                                    <h5 className="text-sm font-semibold mb-2 flex items-center gap-2" style={{ color: '#2c0f5b' }}>
+                                      <FileText className="w-4 h-4" />
+                                      Receipts ({log.receiptUrls.length})
+                                    </h5>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                      {log.receiptUrls.map((url, index) => (
+                                        <a
+                                          key={index}
+                                          href={url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="block p-2 border rounded hover:bg-gray-50 transition-colors"
+                                          data-testid={`link-receipt-${index}`}
+                                        >
+                                          {url.endsWith('.pdf') ? (
+                                            <div className="flex items-center gap-2 text-sm">
+                                              <FileText className="w-5 h-5 text-red-500" />
+                                              <span className="truncate">Receipt {index + 1}</span>
+                                            </div>
+                                          ) : (
+                                            <img
+                                              src={url}
+                                              alt={`Receipt ${index + 1}`}
+                                              className="w-full h-20 object-cover rounded"
+                                            />
+                                          )}
+                                        </a>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {/* Before Photos */}
+                                {log.beforePhotoUrls && log.beforePhotoUrls.length > 0 && (
+                                  <div>
+                                    <h5 className="text-sm font-semibold mb-2 flex items-center gap-2" style={{ color: '#2c0f5b' }}>
+                                      Before Photos ({log.beforePhotoUrls.length})
+                                    </h5>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                      {log.beforePhotoUrls.map((url, index) => (
+                                        <a
+                                          key={index}
+                                          href={url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="block"
+                                          data-testid={`link-before-photo-${index}`}
+                                        >
+                                          <img
+                                            src={url}
+                                            alt={`Before photo ${index + 1}`}
+                                            className="w-full h-24 object-cover rounded hover:opacity-90 transition-opacity"
+                                          />
+                                        </a>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {/* After Photos */}
+                                {log.afterPhotoUrls && log.afterPhotoUrls.length > 0 && (
+                                  <div>
+                                    <h5 className="text-sm font-semibold mb-2 flex items-center gap-2" style={{ color: '#2c0f5b' }}>
+                                      After Photos ({log.afterPhotoUrls.length})
+                                    </h5>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                      {log.afterPhotoUrls.map((url, index) => (
+                                        <a
+                                          key={index}
+                                          href={url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="block"
+                                          data-testid={`link-after-photo-${index}`}
+                                        >
+                                          <img
+                                            src={url}
+                                            alt={`After photo ${index + 1}`}
+                                            className="w-full h-24 object-cover rounded hover:opacity-90 transition-opacity"
+                                          />
+                                        </a>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            
                             {log.createdAt && (
                               <div className="mt-3 text-xs text-gray-500 border-t pt-2">
                                 Record added on {new Date(log.createdAt).toLocaleDateString('en-US', { 
@@ -3737,6 +3907,128 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                   )}
                 />
 
+                {/* File Upload Section */}
+                <div className="space-y-4 pt-4 border-t" style={{ borderColor: '#b6a6f4' }}>
+                  <h3 className="text-lg font-semibold" style={{ color: 'white' }}>Attachments</h3>
+                  
+                  {/* Receipt Upload */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'white' }}>
+                      Receipts/Invoices
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      multiple
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        setReceiptFiles(prev => [...prev, ...files]);
+                      }}
+                      className="block w-full text-sm text-gray-500
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-full file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-white file:text-purple-700
+                        hover:file:bg-gray-100"
+                      data-testid="input-receipt-files"
+                    />
+                    {receiptFiles.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {receiptFiles.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between text-sm" style={{ color: '#b6a6f4' }}>
+                            <span className="truncate">{file.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => setReceiptFiles(prev => prev.filter((_, i) => i !== index))}
+                              className="ml-2 text-red-400 hover:text-red-300"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Before Photos Upload */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'white' }}>
+                      Before Photos
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        setBeforePhotoFiles(prev => [...prev, ...files]);
+                      }}
+                      className="block w-full text-sm text-gray-500
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-full file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-white file:text-purple-700
+                        hover:file:bg-gray-100"
+                      data-testid="input-before-photos"
+                    />
+                    {beforePhotoFiles.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {beforePhotoFiles.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between text-sm" style={{ color: '#b6a6f4' }}>
+                            <span className="truncate">{file.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => setBeforePhotoFiles(prev => prev.filter((_, i) => i !== index))}
+                              className="ml-2 text-red-400 hover:text-red-300"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* After Photos Upload */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'white' }}>
+                      After Photos
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        setAfterPhotoFiles(prev => [...prev, ...files]);
+                      }}
+                      className="block w-full text-sm text-gray-500
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-full file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-white file:text-purple-700
+                        hover:file:bg-gray-100"
+                      data-testid="input-after-photos"
+                    />
+                    {afterPhotoFiles.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {afterPhotoFiles.map((file, index) => (
+                          <div key={index} className="flex items-center justify-between text-sm" style={{ color: '#b6a6f4' }}>
+                            <span className="truncate">{file.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => setAfterPhotoFiles(prev => prev.filter((_, i) => i !== index))}
+                              className="ml-2 text-red-400 hover:text-red-300"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <div className="flex justify-end space-x-2 pt-4">
                   <Button 
                     type="button" 
@@ -3749,12 +4041,12 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                   </Button>
                   <Button 
                     type="submit" 
-                    disabled={createMaintenanceLogMutation.isPending || updateMaintenanceLogMutation.isPending}
+                    disabled={createMaintenanceLogMutation.isPending || updateMaintenanceLogMutation.isPending || isUploadingFiles}
                     style={{ backgroundColor: '#b6a6f4', color: 'white' }}
                     className="hover:opacity-90"
                     data-testid="button-add-service-record"
                   >
-                    {createMaintenanceLogMutation.isPending || updateMaintenanceLogMutation.isPending ? 'Saving...' : editingMaintenanceLog ? 'Update' : 'Add'} Service Record
+                    {isUploadingFiles ? 'Uploading...' : (createMaintenanceLogMutation.isPending || updateMaintenanceLogMutation.isPending ? 'Saving...' : editingMaintenanceLog ? 'Update' : 'Add')} Service Record
                   </Button>
                 </div>
               </form>
