@@ -554,7 +554,7 @@ export class MemStorage implements IStorage {
     this.crmIntegrations = new Map();
     this.webhookLogs = new Map();
     this.seedData();
-    this.seedServiceRecords();
+    this.seedHomeownerDemoData();
     this.seedReviews();
     
     // Add sample maintenance logs with contractor information after other data is seeded
@@ -612,6 +612,37 @@ export class MemStorage implements IStorage {
   }
 
   private seedData() {
+    // Create demo homeowner user - Sarah Anderson
+    const demoHomeownerId = "demo-homeowner-permanent-id";
+    const demoHomeowner: User = {
+      id: demoHomeownerId,
+      email: "sarah.anderson@email.com",
+      firstName: "Sarah",
+      lastName: "Anderson",
+      role: "homeowner",
+      passwordHash: "$2a$10$7xmrE7Mz3zU4QgP5v4VyK.7TYgZ5RQb8BzqW6rH9nP5Q4vK7Y8b9K", // "demo123"
+      referralCode: "DEMO4567",
+      referredBy: null,
+      referralCount: 2,
+      subscriptionStatus: "active",
+      subscriptionPlanId: "plan_homeowner_base",
+      maxHousesAllowed: 2,
+      isPremium: true,
+      zipCode: "98101",
+      profileImageUrl: null,
+      stripeCustomerId: null,
+      stripeSubscriptionId: null,
+      companyId: null,
+      companyRole: null,
+      canRespondToProposals: false,
+      createdAt: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000), // 6 months ago
+      updatedAt: new Date(),
+      isAdmin: false,
+      inviteCode: null,
+      trialEndDate: null,
+    };
+    this.users.set(demoHomeownerId, demoHomeowner);
+
     // No seed contractors - contractors will register through the app
     const contractorData: InsertContractor[] = [];
 
@@ -675,69 +706,37 @@ export class MemStorage implements IStorage {
       this.products.set(id, productWithId);
     });
 
-    // Add sample houses for multi-house support
-    const sampleHouses: House[] = [
+    // Add Sarah Anderson's two houses
+    const sarahHouses: House[] = [
       {
-        id: "house-1",
-        homeownerId: "demo-homeowner-123",
-        name: "Main House",
-        address: "123 Oak Street, Seattle, WA 98101",
+        id: "8d44c1d0-af55-4f1c-bada-b70e54c823bc",
+        homeownerId: demoHomeownerId,
+        name: "Main Residence",
+        address: "2847 Maple Drive, Seattle, WA 98112",
         climateZone: "Pacific Northwest",
-        homeSystems: ["Central Air", "Gas Heat", "Gas Water Heater", "Dishwasher", "Garbage Disposal"],
+        homeSystems: ["Central Air", "Gas Furnace", "Gas Water Heater", "Dishwasher", "Garbage Disposal", "Refrigerator"],
         isDefault: true,
-        createdAt: new Date(),
+        latitude: "47.6281",
+        longitude: "-122.3121",
+        createdAt: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000), // 6 months ago
       },
       {
-        id: "house-2", 
-        homeownerId: "demo-homeowner-123",
-        name: "Vacation Cabin",
-        address: "456 Mountain View Drive, Snoqualmie, WA 98065",
+        id: "f5c8a9d2-3e1b-4f7c-a6b3-8d9e5f2c1a4b", 
+        homeownerId: demoHomeownerId,
+        name: "Lake House",
+        address: "1523 Lakefront Road, Bellevue, WA 98004",
         climateZone: "Pacific Northwest",
-        homeSystems: ["Electric Heat", "Electric Water Heater", "Wood Stove"],
+        homeSystems: ["Heat Pump", "Electric Water Heater", "Fireplace", "Well Water System"],
         isDefault: false,
-        createdAt: new Date(),
+        latitude: "47.6101",
+        longitude: "-122.2015",
+        createdAt: new Date(Date.now() - 150 * 24 * 60 * 60 * 1000), // 5 months ago
       }
     ];
 
-    sampleHouses.forEach(house => {
+    sarahHouses.forEach(house => {
       this.houses.set(house.id, house);
     });
-
-    // No sample appointments - users will create their own
-
-    // Add sample maintenance task notifications
-    const sampleMaintenanceTasks = [
-      {
-        id: "hvac-filter-january",
-        title: "Replace HVAC Filters",
-        description: "Replace air filters in HVAC system for optimal air quality and system efficiency",
-        month: new Date().getMonth() + 1, // Current month
-        priority: "high",
-        estimatedTime: "30 minutes",
-        category: "HVAC"
-      },
-      {
-        id: "smoke-detector-january", 
-        title: "Test Smoke Detectors",
-        description: "Test all smoke detectors and replace batteries if needed",
-        month: new Date().getMonth() + 1, // Current month
-        priority: "high",
-        estimatedTime: "15 minutes",
-        category: "Safety"
-      },
-      {
-        id: "clean-gutters-january",
-        title: "Clean Gutters and Downspouts",
-        description: "Remove debris from gutters and check for proper drainage",
-        month: new Date().getMonth() + 1, // Current month
-        priority: "medium",
-        estimatedTime: "2-3 hours",
-        category: "Exterior"
-      }
-    ];
-
-    // Create maintenance notifications
-    this.createMaintenanceNotifications("demo-homeowner-123", sampleMaintenanceTasks);
   }
 
   async getContractors(filters?: {
@@ -2096,9 +2095,276 @@ export class MemStorage implements IStorage {
     );
   }
 
-  private seedServiceRecords() {
-    // No sample service records - contractors will create their own
-    this.serviceRecords = [];
+  private seedHomeownerDemoData() {
+    const demoHomeownerId = "demo-homeowner-permanent-id";
+    const mainHouseId = "8d44c1d0-af55-4f1c-bada-b70e54c823bc";
+    const lakeHouseId = "f5c8a9d2-3e1b-4f7c-a6b3-8d9e5f2c1a4b";
+    
+    // 14 service records spread over 6 months with DIY savings totaling $1,360
+    const serviceRecordsData = [
+      // Main Residence - Month 1 (6 months ago)
+      {
+        id: randomUUID(),
+        homeownerId: demoHomeownerId,
+        houseId: mainHouseId,
+        serviceType: "Plumbing",
+        description: "Replaced leaky kitchen faucet (DIY)",
+        date: new Date(Date.now() - 175 * 24 * 60 * 60 * 1000),
+        cost: "45.00",
+        contractor: null,
+        notes: "Watched YouTube tutorial and replaced faucet myself. Saved on labor costs!",
+        isDIY: true,
+        professionalCostEstimate: "180.00",
+        createdAt: new Date(Date.now() - 175 * 24 * 60 * 60 * 1000),
+      },
+      {
+        id: randomUUID(),
+        homeownerId: demoHomeownerId,
+        houseId: mainHouseId,
+        serviceType: "HVAC",
+        description: "Replaced HVAC air filters (DIY)",
+        date: new Date(Date.now() - 170 * 24 * 60 * 60 * 1000),
+        cost: "35.00",
+        contractor: null,
+        notes: "Quarterly maintenance completed",
+        isDIY: true,
+        professionalCostEstimate: "120.00",
+        createdAt: new Date(Date.now() - 170 * 24 * 60 * 60 * 1000),
+      },
+      // Main Residence - Month 2 (5 months ago)
+      {
+        id: randomUUID(),
+        homeownerId: demoHomeownerId,
+        houseId: mainHouseId,
+        serviceType: "Electrical",
+        description: "Installed new ceiling fan in bedroom (DIY)",
+        date: new Date(Date.now() - 145 * 24 * 60 * 60 * 1000),
+        cost: "89.99",
+        contractor: null,
+        notes: "Home Depot clearance find! Installation was easier than expected.",
+        isDIY: true,
+        professionalCostEstimate: "250.00",
+        createdAt: new Date(Date.now() - 145 * 24 * 60 * 60 * 1000),
+      },
+      {
+        id: randomUUID(),
+        homeownerId: demoHomeownerId,
+        houseId: mainHouseId,
+        serviceType: "Landscaping",
+        description: "Spring yard cleanup and mulching (DIY)",
+        date: new Date(Date.now() - 140 * 24 * 60 * 60 * 1000),
+        cost: "65.00",
+        contractor: null,
+        notes: "Spent weekend on yard work - looks great!",
+        isDIY: true,
+        professionalCostEstimate: "200.00",
+        createdAt: new Date(Date.now() - 140 * 24 * 60 * 60 * 1000),
+      },
+      // Lake House - Month 2
+      {
+        id: randomUUID(),
+        homeownerId: demoHomeownerId,
+        houseId: lakeHouseId,
+        serviceType: "Plumbing",
+        description: "Fixed running toilet (DIY)",
+        date: new Date(Date.now() - 135 * 24 * 60 * 60 * 1000),
+        cost: "12.50",
+        contractor: null,
+        notes: "New flapper valve from hardware store",
+        isDIY: true,
+        professionalCostEstimate: "95.00",
+        createdAt: new Date(Date.now() - 135 * 24 * 60 * 60 * 1000),
+      },
+      // Main Residence - Month 3 (4 months ago)
+      {
+        id: randomUUID(),
+        homeownerId: demoHomeownerId,
+        houseId: mainHouseId,
+        serviceType: "Painting",
+        description: "Painted living room walls (DIY)",
+        date: new Date(Date.now() - 115 * 24 * 60 * 60 * 1000),
+        cost: "120.00",
+        contractor: null,
+        notes: "Fresh coat of paint makes such a difference!",
+        isDIY: true,
+        professionalCostEstimate: "450.00",
+        createdAt: new Date(Date.now() - 115 * 24 * 60 * 60 * 1000),
+      },
+      {
+        id: randomUUID(),
+        homeownerId: demoHomeownerId,
+        houseId: mainHouseId,
+        serviceType: "General Maintenance",
+        description: "Caulked bathroom tiles (DIY)",
+        date: new Date(Date.now() - 110 * 24 * 60 * 60 * 1000),
+        cost: "8.99",
+        contractor: null,
+        notes: "Prevented water damage with fresh caulk",
+        isDIY: true,
+        professionalCostEstimate: "75.00",
+        createdAt: new Date(Date.now() - 110 * 24 * 60 * 60 * 1000),
+      },
+      // Main Residence - Month 4 (3 months ago)
+      {
+        id: randomUUID(),
+        homeownerId: demoHomeownerId,
+        houseId: mainHouseId,
+        serviceType: "Appliance Repair",
+        description: "Replaced dishwasher spray arm (DIY)",
+        date: new Date(Date.now() - 85 * 24 * 60 * 60 * 1000),
+        cost: "22.00",
+        contractor: null,
+        notes: "Much cheaper than calling a repair service!",
+        isDIY: true,
+        professionalCostEstimate: "150.00",
+        createdAt: new Date(Date.now() - 85 * 24 * 60 * 60 * 1000),
+      },
+      {
+        id: randomUUID(),
+        homeownerId: demoHomeownerId,
+        houseId: mainHouseId,
+        serviceType: "Flooring",
+        description: "Refinished hardwood floors in hallway (DIY)",
+        date: new Date(Date.now() - 80 * 24 * 60 * 60 * 1000),
+        cost: "95.00",
+        contractor: null,
+        notes: "Rented sander and did it myself over the weekend",
+        isDIY: true,
+        professionalCostEstimate: "380.00",
+        createdAt: new Date(Date.now() - 80 * 24 * 60 * 60 * 1000),
+      },
+      // Lake House - Month 4
+      {
+        id: randomUUID(),
+        homeownerId: demoHomeownerId,
+        houseId: lakeHouseId,
+        serviceType: "Deck & Patio",
+        description: "Power washed and stained deck (DIY)",
+        date: new Date(Date.now() - 75 * 24 * 60 * 60 * 1000),
+        cost: "78.00",
+        contractor: null,
+        notes: "Deck looks brand new!",
+        isDIY: true,
+        professionalCostEstimate: "320.00",
+        createdAt: new Date(Date.now() - 75 * 24 * 60 * 60 * 1000),
+      },
+      // Main Residence - Month 5 (2 months ago)
+      {
+        id: randomUUID(),
+        homeownerId: demoHomeownerId,
+        houseId: mainHouseId,
+        serviceType: "Windows & Doors",
+        description: "Installed weatherstripping on doors (DIY)",
+        date: new Date(Date.now() - 55 * 24 * 60 * 60 * 1000),
+        cost: "25.00",
+        contractor: null,
+        notes: "Reduced drafts and energy bills",
+        isDIY: true,
+        professionalCostEstimate: "110.00",
+        createdAt: new Date(Date.now() - 55 * 24 * 60 * 60 * 1000),
+      },
+      // Lake House - Month 5
+      {
+        id: randomUUID(),
+        homeownerId: demoHomeownerId,
+        houseId: lakeHouseId,
+        serviceType: "General Maintenance",
+        description: "Cleaned and maintained fireplace (DIY)",
+        date: new Date(Date.now() - 50 * 24 * 60 * 60 * 1000),
+        cost: "15.00",
+        contractor: null,
+        notes: "Ready for winter!",
+        isDIY: true,
+        professionalCostEstimate: "125.00",
+        createdAt: new Date(Date.now() - 50 * 24 * 60 * 60 * 1000),
+      },
+      // Main Residence - Month 6 (1 month ago)
+      {
+        id: randomUUID(),
+        homeownerId: demoHomeownerId,
+        houseId: mainHouseId,
+        serviceType: "Gutter Cleaning",
+        description: "Cleaned gutters and downspouts (DIY)",
+        date: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
+        cost: "0.00",
+        contractor: null,
+        notes: "Used ladder and garden hose - free!",
+        isDIY: true,
+        professionalCostEstimate: "150.00",
+        createdAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
+      },
+      {
+        id: randomUUID(),
+        homeownerId: demoHomeownerId,
+        houseId: mainHouseId,
+        serviceType: "Pest Control",
+        description: "Sealed cracks and applied pest prevention (DIY)",
+        date: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
+        cost: "32.00",
+        contractor: null,
+        notes: "Preventive maintenance before summer",
+        isDIY: true,
+        professionalCostEstimate: "175.00",
+        createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
+      },
+    ];
+
+    // Add service records to storage
+    serviceRecordsData.forEach(record => {
+      this.serviceRecords.push(record);
+    });
+
+    // Add some maintenance log entries showing completed tasks
+    const maintenanceLogsData = [
+      {
+        id: randomUUID(),
+        homeownerId: demoHomeownerId,
+        houseId: mainHouseId,
+        taskId: "hvac-filter-check",
+        title: "Replace HVAC Filters",
+        completedAt: new Date(Date.now() - 170 * 24 * 60 * 60 * 1000),
+        notes: "Completed as part of routine maintenance",
+        createdAt: new Date(Date.now() - 170 * 24 * 60 * 60 * 1000),
+        updatedAt: new Date(Date.now() - 170 * 24 * 60 * 60 * 1000),
+      },
+      {
+        id: randomUUID(),
+        homeownerId: demoHomeownerId,
+        houseId: mainHouseId,
+        taskId: "smoke-detector-test",
+        title: "Test Smoke Detectors",
+        completedAt: new Date(Date.now() - 140 * 24 * 60 * 60 * 1000),
+        notes: "All detectors working properly",
+        createdAt: new Date(Date.now() - 140 * 24 * 60 * 60 * 1000),
+        updatedAt: new Date(Date.now() - 140 * 24 * 60 * 60 * 1000),
+      },
+      {
+        id: randomUUID(),
+        homeownerId: demoHomeownerId,
+        houseId: mainHouseId,
+        taskId: "gutter-cleaning",
+        title: "Clean Gutters and Downspouts",
+        completedAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
+        notes: "Removed leaves and debris",
+        createdAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
+        updatedAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000),
+      },
+      {
+        id: randomUUID(),
+        homeownerId: demoHomeownerId,
+        houseId: lakeHouseId,
+        taskId: "fireplace-maintenance",
+        title: "Inspect and Clean Fireplace",
+        completedAt: new Date(Date.now() - 50 * 24 * 60 * 60 * 1000),
+        notes: "Chimney cleaned and inspected",
+        createdAt: new Date(Date.now() - 50 * 24 * 60 * 60 * 1000),
+        updatedAt: new Date(Date.now() - 50 * 24 * 60 * 60 * 1000),
+      },
+    ];
+
+    maintenanceLogsData.forEach(log => {
+      this.maintenanceLogs.set(log.id, log);
+    });
   }
 
   private seedReviews() {
