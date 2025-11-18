@@ -953,6 +953,7 @@ export default function Maintenance() {
   
   // Service logs filter state
   const [homeAreaFilter, setHomeAreaFilter] = useState<string>("all");
+  const [serviceRecordsHouseFilter, setServiceRecordsHouseFilter] = useState<string>("all");
   const [isServiceRecordsExpanded, setIsServiceRecordsExpanded] = useState<boolean>(true);
   const [showAllRecords, setShowAllRecords] = useState<boolean>(false);
 
@@ -993,13 +994,16 @@ export default function Maintenance() {
 
   // Maintenance log queries and mutations (only for homeowners)
   const { data: maintenanceLogs, isLoading: maintenanceLogsLoading } = useQuery<MaintenanceLog[]>({
-    queryKey: ['/api/maintenance-logs', { homeownerId, houseId: selectedHouseId }],
+    queryKey: ['/api/maintenance-logs', { homeownerId, houseId: serviceRecordsHouseFilter === 'all' ? undefined : serviceRecordsHouseFilter }],
     queryFn: async () => {
-      const response = await fetch(`/api/maintenance-logs?houseId=${selectedHouseId}`);
+      const url = serviceRecordsHouseFilter === 'all' 
+        ? '/api/maintenance-logs' 
+        : `/api/maintenance-logs?houseId=${serviceRecordsHouseFilter}`;
+      const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch maintenance logs');
       return response.json();
     },
-    enabled: isAuthenticated && !!homeownerId && !isContractor && !!selectedHouseId
+    enabled: isAuthenticated && !!homeownerId && !isContractor
   });
 
   // Home systems queries (only for homeowners)
@@ -3392,19 +3396,37 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
           <Collapsible open={isServiceRecordsExpanded}>
             <CollapsibleContent>
-              {/* Home Area Filter and Download Options */}
-              <div className="mb-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-            <Select value={homeAreaFilter} onValueChange={setHomeAreaFilter}>
-              <SelectTrigger className="w-full sm:w-64" style={{ backgroundColor: '#f2f2f2' }} data-testid="select-home-area-filter-logs">
-                <SelectValue placeholder="Filter by home area" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Home Areas</SelectItem>
-                {HOME_AREAS.map((area) => (
-                  <SelectItem key={area.value} value={area.value}>{area.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {/* House and Home Area Filters and Download Options */}
+              <div className="mb-4 flex flex-col gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  {/* House Filter */}
+                  {houses.length > 1 && (
+                    <Select value={serviceRecordsHouseFilter} onValueChange={setServiceRecordsHouseFilter}>
+                      <SelectTrigger className="w-full sm:w-64" style={{ backgroundColor: '#f2f2f2' }} data-testid="select-house-filter-service-records">
+                        <SelectValue placeholder="Filter by house" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Houses</SelectItem>
+                        {houses.map((house: House) => (
+                          <SelectItem key={house.id} value={house.id}>{house.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  
+                  {/* Home Area Filter */}
+                  <Select value={homeAreaFilter} onValueChange={setHomeAreaFilter}>
+                    <SelectTrigger className="w-full sm:w-64" style={{ backgroundColor: '#f2f2f2' }} data-testid="select-home-area-filter-logs">
+                      <SelectValue placeholder="Filter by home area" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Home Areas</SelectItem>
+                      {HOME_AREAS.map((area) => (
+                        <SelectItem key={area.value} value={area.value}>{area.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
             
             {/* Download Buttons */}
             {maintenanceLogs && maintenanceLogs.length > 0 && (
