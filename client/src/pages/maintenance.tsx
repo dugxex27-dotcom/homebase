@@ -3369,10 +3369,6 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                 <Plus className="w-4 h-4 mr-2" />
                 Add Service Record
               </Button>
-              <ChevronDown 
-                className={`w-6 h-6 transition-transform ${isServiceRecordsExpanded ? 'rotate-180' : ''}`}
-                style={{ color: '#b6a6f4' }}
-              />
             </div>
           </div>
 
