@@ -1147,7 +1147,7 @@ export default function Maintenance() {
   });
 
   const createMaintenanceLogMutation = useMutation({
-    mutationFn: async (data: MaintenanceLogFormData) => {
+    mutationFn: async (data: MaintenanceLogFormData & { receiptUrls?: string[], beforePhotoUrls?: string[], afterPhotoUrls?: string[] }) => {
       const response = await fetch('/api/maintenance-logs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1160,6 +1160,10 @@ export default function Maintenance() {
       queryClient.invalidateQueries({ queryKey: ['/api/maintenance-logs'] });
       setIsMaintenanceLogDialogOpen(false);
       maintenanceLogForm.reset();
+      // Clear file selections
+      setReceiptFiles([]);
+      setBeforePhotoFiles([]);
+      setAfterPhotoFiles([]);
       toast({ title: "Success", description: "Maintenance log added successfully" });
     },
     onError: () => {
@@ -1168,7 +1172,7 @@ export default function Maintenance() {
   });
 
   const updateMaintenanceLogMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<MaintenanceLogFormData> }) => {
+    mutationFn: async ({ id, data }: { id: string; data: Partial<MaintenanceLogFormData> & { receiptUrls?: string[], beforePhotoUrls?: string[], afterPhotoUrls?: string[] } }) => {
       const response = await fetch(`/api/maintenance-logs/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -1182,6 +1186,10 @@ export default function Maintenance() {
       setIsMaintenanceLogDialogOpen(false);
       setEditingMaintenanceLog(null);
       maintenanceLogForm.reset();
+      // Clear file selections
+      setReceiptFiles([]);
+      setBeforePhotoFiles([]);
+      setAfterPhotoFiles([]);
       toast({ title: "Success", description: "Maintenance log updated successfully" });
     },
     onError: () => {
@@ -1966,6 +1974,10 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       warrantyPeriod: log.warrantyPeriod ?? "",
       nextServiceDue: log.nextServiceDue ?? "",
     });
+    // Clear file selections when editing (they should upload new files if needed)
+    setReceiptFiles([]);
+    setBeforePhotoFiles([]);
+    setAfterPhotoFiles([]);
     setIsMaintenanceLogDialogOpen(true);
   };
 
@@ -3540,7 +3552,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                                       Receipts ({log.receiptUrls.length})
                                     </h5>
                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                      {log.receiptUrls.map((url, index) => (
+                                      {log.receiptUrls.map((url: string, index: number) => (
                                         <a
                                           key={index}
                                           href={url}
@@ -3574,7 +3586,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                                       Before Photos ({log.beforePhotoUrls.length})
                                     </h5>
                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                      {log.beforePhotoUrls.map((url, index) => (
+                                      {log.beforePhotoUrls.map((url: string, index: number) => (
                                         <a
                                           key={index}
                                           href={url}
@@ -3601,7 +3613,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                                       After Photos ({log.afterPhotoUrls.length})
                                     </h5>
                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                      {log.afterPhotoUrls.map((url, index) => (
+                                      {log.afterPhotoUrls.map((url: string, index: number) => (
                                         <a
                                           key={index}
                                           href={url}
