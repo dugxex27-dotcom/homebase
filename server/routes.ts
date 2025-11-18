@@ -1011,9 +1011,147 @@ export async function registerRoutes(app: Express): Promise<Server> {
             completionMethod: 'contractor'
           });
 
+          // Add task completions for seasonal maintenance (for home health score)
+          // Representing 6 months of good home maintenance
+          const currentDate = new Date();
+          const currentYear = currentDate.getFullYear();
+          
+          // Task completions spanning the past 6 months (May through November 2025)
+          const taskCompletionsData = [
+            // May 2025 tasks
+            { taskTitle: 'Inspect and clean air conditioner', taskCategory: 'HVAC', month: 5, completionMethod: 'diy', daysAgo: 180, costSavings: 150 },
+            { taskTitle: 'Check smoke and CO detectors', taskCategory: 'Safety', month: 5, completionMethod: 'diy', daysAgo: 175, costSavings: 0 },
+            
+            // June 2025 tasks
+            { taskTitle: 'Clean gutters and downspouts', taskCategory: 'Exterior', month: 6, completionMethod: 'diy', daysAgo: 150, costSavings: 200 },
+            { taskTitle: 'Inspect roof for damage', taskCategory: 'Exterior', month: 6, completionMethod: 'diy', daysAgo: 145, costSavings: 0 },
+            { taskTitle: 'Service lawn equipment', taskCategory: 'Outdoor', month: 6, completionMethod: 'diy', daysAgo: 140, costSavings: 80 },
+            
+            // July 2025 tasks
+            { taskTitle: 'Check and replace weather stripping', taskCategory: 'Doors & Windows', month: 7, completionMethod: 'diy', daysAgo: 120, costSavings: 120 },
+            { taskTitle: 'Test garage door safety features', taskCategory: 'Safety', month: 7, completionMethod: 'diy', daysAgo: 115, costSavings: 0 },
+            
+            // August 2025 tasks
+            { taskTitle: 'Drain water heater sediment', taskCategory: 'Plumbing', month: 8, completionMethod: 'diy', daysAgo: 90, costSavings: 100 },
+            { taskTitle: 'Clean range hood filters', taskCategory: 'Kitchen', month: 8, completionMethod: 'diy', daysAgo: 85, costSavings: 0 },
+            
+            // September 2025 tasks
+            { taskTitle: 'Inspect and seal driveway cracks', taskCategory: 'Exterior', month: 9, completionMethod: 'diy', daysAgo: 60, costSavings: 250 },
+            { taskTitle: 'Change HVAC filters', taskCategory: 'HVAC', month: 9, completionMethod: 'diy', daysAgo: 55, costSavings: 0 },
+            
+            // October 2025 tasks
+            { taskTitle: 'Inspect furnace before winter', taskCategory: 'HVAC', month: 10, completionMethod: 'professional', daysAgo: 30, costSavings: 0 },
+            { taskTitle: 'Clean and store outdoor furniture', taskCategory: 'Outdoor', month: 10, completionMethod: 'diy', daysAgo: 25, costSavings: 0 },
+            
+            // November 2025 tasks (current month)
+            { taskTitle: 'Check attic insulation', taskCategory: 'Insulation', month: 11, completionMethod: 'diy', daysAgo: 10, costSavings: 0 },
+            { taskTitle: 'Test sump pump operation', taskCategory: 'Plumbing', month: 11, completionMethod: 'diy', daysAgo: 5, costSavings: 0 }
+          ];
+
+          // Insert task completions into database
+          await Promise.all(taskCompletionsData.map(async (task) => {
+            const completedDate = new Date(Date.now() - task.daysAgo * 24 * 60 * 60 * 1000);
+            await db.insert(taskCompletions).values({
+              id: randomUUID(),
+              homeownerId: demoId,
+              houseId: house1.id,
+              taskId: null,
+              taskType: 'maintenance',
+              taskTitle: task.taskTitle,
+              taskCategory: task.taskCategory,
+              completedAt: completedDate,
+              month: task.month,
+              year: currentYear,
+              completionMethod: task.completionMethod,
+              estimatedCost: task.costSavings > 0 ? task.costSavings.toString() : null,
+              actualCost: task.completionMethod === 'professional' ? '150.00' : '0.00',
+              costSavings: task.costSavings > 0 ? task.costSavings.toString() : null,
+              notes: task.completionMethod === 'diy' ? 'Completed as DIY project' : null
+            });
+          }));
+
+          console.log(`[DEMO DATA] Inserted ${taskCompletionsData.length} task completions for Sarah Anderson`);
+
         } catch (houseError) {
           console.error("Error creating demo houses:", houseError);
         }
+      }
+
+      // Add task completions for existing demo users if they don't already have any
+      try {
+        const existingCompletions = await db.select()
+          .from(taskCompletions)
+          .where(eq(taskCompletions.homeownerId, demoId))
+          .limit(1);
+
+        if (existingCompletions.length === 0) {
+          // Get the demo user's main house
+          const houses = await storage.getHouses(demoId);
+          const mainHouse = houses.find((h: any) => h.name === 'Main Residence') || houses[0];
+
+          if (mainHouse) {
+            const currentDate = new Date();
+            const currentYear = currentDate.getFullYear();
+            
+            // Task completions spanning the past 6 months (May through November 2025)
+            const taskCompletionsData = [
+              // May 2025 tasks
+              { taskTitle: 'Inspect and clean air conditioner', taskCategory: 'HVAC', month: 5, completionMethod: 'diy', daysAgo: 180, costSavings: 150 },
+              { taskTitle: 'Check smoke and CO detectors', taskCategory: 'Safety', month: 5, completionMethod: 'diy', daysAgo: 175, costSavings: 0 },
+              
+              // June 2025 tasks
+              { taskTitle: 'Clean gutters and downspouts', taskCategory: 'Exterior', month: 6, completionMethod: 'diy', daysAgo: 150, costSavings: 200 },
+              { taskTitle: 'Inspect roof for damage', taskCategory: 'Exterior', month: 6, completionMethod: 'diy', daysAgo: 145, costSavings: 0 },
+              { taskTitle: 'Service lawn equipment', taskCategory: 'Outdoor', month: 6, completionMethod: 'diy', daysAgo: 140, costSavings: 80 },
+              
+              // July 2025 tasks
+              { taskTitle: 'Check and replace weather stripping', taskCategory: 'Doors & Windows', month: 7, completionMethod: 'diy', daysAgo: 120, costSavings: 120 },
+              { taskTitle: 'Test garage door safety features', taskCategory: 'Safety', month: 7, completionMethod: 'diy', daysAgo: 115, costSavings: 0 },
+              
+              // August 2025 tasks
+              { taskTitle: 'Drain water heater sediment', taskCategory: 'Plumbing', month: 8, completionMethod: 'diy', daysAgo: 90, costSavings: 100 },
+              { taskTitle: 'Clean range hood filters', taskCategory: 'Kitchen', month: 8, completionMethod: 'diy', daysAgo: 85, costSavings: 0 },
+              
+              // September 2025 tasks
+              { taskTitle: 'Inspect and seal driveway cracks', taskCategory: 'Exterior', month: 9, completionMethod: 'diy', daysAgo: 60, costSavings: 250 },
+              { taskTitle: 'Change HVAC filters', taskCategory: 'HVAC', month: 9, completionMethod: 'diy', daysAgo: 55, costSavings: 0 },
+              
+              // October 2025 tasks
+              { taskTitle: 'Inspect furnace before winter', taskCategory: 'HVAC', month: 10, completionMethod: 'professional', daysAgo: 30, costSavings: 0 },
+              { taskTitle: 'Clean and store outdoor furniture', taskCategory: 'Outdoor', month: 10, completionMethod: 'diy', daysAgo: 25, costSavings: 0 },
+              
+              // November 2025 tasks (current month)
+              { taskTitle: 'Check attic insulation', taskCategory: 'Insulation', month: 11, completionMethod: 'diy', daysAgo: 10, costSavings: 0 },
+              { taskTitle: 'Test sump pump operation', taskCategory: 'Plumbing', month: 11, completionMethod: 'diy', daysAgo: 5, costSavings: 0 }
+            ];
+
+            // Insert task completions into database
+            await Promise.all(taskCompletionsData.map(async (task) => {
+              const completedDate = new Date(Date.now() - task.daysAgo * 24 * 60 * 60 * 1000);
+              await db.insert(taskCompletions).values({
+                id: randomUUID(),
+                homeownerId: demoId,
+                houseId: mainHouse.id,
+                taskId: null,
+                taskType: 'maintenance',
+                taskTitle: task.taskTitle,
+                taskCategory: task.taskCategory,
+                completedAt: completedDate,
+                month: task.month,
+                year: currentYear,
+                completionMethod: task.completionMethod,
+                estimatedCost: task.costSavings > 0 ? task.costSavings.toString() : null,
+                actualCost: task.completionMethod === 'professional' ? '150.00' : '0.00',
+                costSavings: task.costSavings > 0 ? task.costSavings.toString() : null,
+                notes: task.completionMethod === 'diy' ? 'Completed as DIY project' : null
+              });
+            }));
+
+            console.log(`[DEMO DATA] Inserted ${taskCompletionsData.length} task completions for Sarah Anderson (existing user)`);
+          }
+        }
+      } catch (taskError) {
+        console.error("Error creating demo task completions:", taskError);
       }
 
       // Create a simple session
