@@ -2366,10 +2366,11 @@ export class MemStorage implements IStorage {
 
     // Add 15 completed seasonal maintenance tasks for home health score calculation
     // Spanning May-November 2025 across both houses
+    // Using deterministic UUIDs for idempotent seeding
     const taskCompletionsData = [
       // Main Residence - May 2025
       {
-        id: randomUUID(),
+        id: "task-comp-demo-001",
         homeownerId: demoHomeownerId,
         houseId: mainHouseId,
         taskType: "maintenance",
@@ -2384,7 +2385,7 @@ export class MemStorage implements IStorage {
         createdAt: new Date(2025, 4, 15),
       },
       {
-        id: randomUUID(),
+        id: "task-comp-demo-002",
         homeownerId: demoHomeownerId,
         houseId: mainHouseId,
         taskType: "maintenance",
@@ -2400,7 +2401,7 @@ export class MemStorage implements IStorage {
       },
       // Lake House - May 2025
       {
-        id: randomUUID(),
+        id: "task-comp-demo-003",
         homeownerId: demoHomeownerId,
         houseId: lakeHouseId,
         taskType: "maintenance",
@@ -2416,7 +2417,7 @@ export class MemStorage implements IStorage {
       },
       // Main Residence - June 2025
       {
-        id: randomUUID(),
+        id: "task-comp-demo-004",
         homeownerId: demoHomeownerId,
         houseId: mainHouseId,
         taskType: "maintenance",
@@ -2431,7 +2432,7 @@ export class MemStorage implements IStorage {
         createdAt: new Date(2025, 5, 10),
       },
       {
-        id: randomUUID(),
+        id: "task-comp-demo-005",
         homeownerId: demoHomeownerId,
         houseId: mainHouseId,
         taskType: "maintenance",
@@ -2447,7 +2448,7 @@ export class MemStorage implements IStorage {
       },
       // Lake House - July 2025
       {
-        id: randomUUID(),
+        id: "task-comp-demo-006",
         homeownerId: demoHomeownerId,
         houseId: lakeHouseId,
         taskType: "maintenance",
@@ -2463,7 +2464,7 @@ export class MemStorage implements IStorage {
       },
       // Main Residence - August 2025
       {
-        id: randomUUID(),
+        id: "task-comp-demo-007",
         homeownerId: demoHomeownerId,
         houseId: mainHouseId,
         taskType: "maintenance",
@@ -2478,7 +2479,7 @@ export class MemStorage implements IStorage {
         createdAt: new Date(2025, 7, 12),
       },
       {
-        id: randomUUID(),
+        id: "task-comp-demo-008",
         homeownerId: demoHomeownerId,
         houseId: mainHouseId,
         taskType: "maintenance",
@@ -2494,7 +2495,7 @@ export class MemStorage implements IStorage {
       },
       // Lake House - September 2025
       {
-        id: randomUUID(),
+        id: "task-comp-demo-009",
         homeownerId: demoHomeownerId,
         houseId: lakeHouseId,
         taskType: "maintenance",
@@ -2510,7 +2511,7 @@ export class MemStorage implements IStorage {
       },
       // Main Residence - October 2025
       {
-        id: randomUUID(),
+        id: "task-comp-demo-010",
         homeownerId: demoHomeownerId,
         houseId: mainHouseId,
         taskType: "maintenance",
@@ -2525,7 +2526,7 @@ export class MemStorage implements IStorage {
         createdAt: new Date(2025, 9, 8),
       },
       {
-        id: randomUUID(),
+        id: "task-comp-demo-011",
         homeownerId: demoHomeownerId,
         houseId: mainHouseId,
         taskType: "maintenance",
@@ -2541,7 +2542,7 @@ export class MemStorage implements IStorage {
       },
       // Lake House - October 2025
       {
-        id: randomUUID(),
+        id: "task-comp-demo-012",
         homeownerId: demoHomeownerId,
         houseId: lakeHouseId,
         taskType: "maintenance",
@@ -2557,7 +2558,7 @@ export class MemStorage implements IStorage {
       },
       // Main Residence - November 2025
       {
-        id: randomUUID(),
+        id: "task-comp-demo-013",
         homeownerId: demoHomeownerId,
         houseId: mainHouseId,
         taskType: "maintenance",
@@ -2572,7 +2573,7 @@ export class MemStorage implements IStorage {
         createdAt: new Date(2025, 10, 5),
       },
       {
-        id: randomUUID(),
+        id: "task-comp-demo-014",
         homeownerId: demoHomeownerId,
         houseId: mainHouseId,
         taskType: "maintenance",
@@ -2588,7 +2589,7 @@ export class MemStorage implements IStorage {
       },
       // Lake House - November 2025
       {
-        id: randomUUID(),
+        id: "task-comp-demo-015",
         homeownerId: demoHomeownerId,
         houseId: lakeHouseId,
         taskType: "maintenance",

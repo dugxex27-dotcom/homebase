@@ -27,7 +27,7 @@ Preferred communication style: Simple, everyday language.
 - **User Management**: Three distinct roles: Homeowner, Contractor, Real Estate Agent.
 - **Authentication**: Email/password with bcrypt, Google OAuth via Replit Auth, two-step password reset, and optional invite codes.
 - **Demo Logins** (Nov 2025): One-click demo logins for all three user roles with realistic 6-month historical data:
-    - **Homeowner Demo**: Sarah Anderson (sarah.anderson@homebase.com, code: DEMO4567) with 2 properties (Main Residence in Seattle with 10 maintenance logs, Lake House in Bellevue with 4 maintenance logs), 14 total service records showing DIY maintenance over 6 months, $1,360 in tracked DIY savings, 15 completed seasonal maintenance tasks spanning May-November 2025 across both properties for home health score calculation (9 tasks for Main Residence, 6 tasks for Lake House)
+    - **Homeowner Demo**: Sarah Anderson (sarah.anderson@homebase.com, code: DEMO4567) with 2 properties (Main Residence in Seattle with 10 maintenance logs, Lake House in Bellevue with 4 maintenance logs), 14 total service records showing DIY maintenance over 6 months, $1,360 in tracked DIY savings, 15 completed seasonal maintenance tasks spanning May-November 2025 across both properties for home health score calculation (10 tasks for Main Residence, 5 tasks for Lake House)
     - **Contractor Demo**: David Martinez with Precision HVAC company profile
     - **Agent Demo**: Jessica Roberts with sample referrals and commission tracking
 - **Admin Dashboard**: User analytics, signup trends, search insights, and invite code management.
