@@ -14,7 +14,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, apiFileUpload, queryClient } from "@/lib/queryClient";
-import { CheckCircle, Clock, XCircle, Upload, AlertCircle, FileCheck, User, Camera, Mail } from "lucide-react";
+import { CheckCircle, Clock, XCircle, Upload, AlertCircle, FileCheck, User, Camera, Mail, Share2, Copy, Gift, DollarSign, QrCode } from "lucide-react";
+import { SiFacebook, SiTwitter, SiWhatsapp } from "react-icons/si";
 
 const US_STATES = [
   { code: "AL", name: "Alabama" }, { code: "AK", name: "Alaska" }, { code: "AZ", name: "Arizona" },
@@ -73,6 +74,57 @@ export default function AgentAccount() {
   const { data: agentProfile, isLoading: isLoadingProfile } = useQuery({
     queryKey: ["/api/agent/profile"],
   });
+
+  // Referral data query for sharing
+  const { data: referralData, isLoading: isLoadingReferral } = useQuery({
+    queryKey: ['/api/user/referral-code'],
+  });
+
+  const referralCode = (referralData as any)?.referralCode || '';
+  const referralLink = (referralData as any)?.referralLink || '';
+  const referralCount = (referralData as any)?.referralCount || 0;
+  
+  // Calculate estimated commission earnings (agents earn $10 per qualified referral)
+  const commissionPerReferral = 10;
+  const estimatedEarnings = referralCount * commissionPerReferral;
+  
+  const shareMessage = `Join me on Home Base! I'm a verified real estate agent and I'd love to help you manage your home maintenance. Use my referral code ${referralCode} to sign up: ${referralLink}`;
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: "Copied!",
+        description: "Referral link copied to clipboard",
+      });
+    } catch (error) {
+      toast({
+        title: "Copy Failed",
+        description: "Please copy the link manually",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const shareViaText = () => {
+    const smsLink = `sms:?body=${encodeURIComponent(shareMessage)}`;
+    window.open(smsLink);
+  };
+
+  const shareViaFacebook = () => {
+    const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(referralLink)}&quote=${encodeURIComponent(shareMessage)}`;
+    window.open(facebookUrl, '_blank', 'width=600,height=400');
+  };
+
+  const shareViaTwitter = () => {
+    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareMessage)}`;
+    window.open(twitterUrl, '_blank', 'width=600,height=400');
+  };
+
+  const shareViaWhatsApp = () => {
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareMessage)}`;
+    window.open(whatsappUrl, '_blank');
+  };
 
   const form = useForm<VerificationFormData>({
     resolver: zodResolver(verificationFormSchema),
@@ -512,6 +564,131 @@ export default function AgentAccount() {
                 </Button>
               </form>
             </Form>
+          </CardContent>
+        </Card>
+
+        {/* Referral Sharing */}
+        <Card className="mb-8 bg-white dark:bg-gray-800 border-emerald-200 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+              <Gift className="w-5 h-5 text-emerald-600" />
+              Share & Earn Commissions
+            </CardTitle>
+            <CardDescription className="text-gray-600 dark:text-gray-400">
+              Share Home Base with your clients and earn $10 commission per referral after 4 months of active subscription
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Referral Stats */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200">
+                <div className="text-3xl font-bold text-emerald-700 dark:text-emerald-400">
+                  {isLoadingReferral ? '...' : referralCount}
+                </div>
+                <div className="text-sm text-emerald-600 dark:text-emerald-500 mt-1">Clients Referred</div>
+              </div>
+              <div className="text-center p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200">
+                <div className="text-3xl font-bold text-emerald-700 dark:text-emerald-400">
+                  ${isLoadingReferral ? '...' : estimatedEarnings}
+                </div>
+                <div className="text-sm text-emerald-600 dark:text-emerald-500 mt-1">Potential Earnings</div>
+              </div>
+            </div>
+
+            {/* Referral Code Display */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Your Referral Code</label>
+              <div className="flex gap-2">
+                <Input
+                  readOnly
+                  value={referralCode}
+                  className="bg-white dark:bg-gray-700 font-mono text-lg text-center text-emerald-700 dark:text-emerald-400 border-emerald-300"
+                  data-testid="input-referral-code"
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => copyToClipboard(referralCode)}
+                  className="border-emerald-500 text-emerald-700 hover:bg-emerald-50"
+                  data-testid="button-copy-code"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Referral Link */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Referral Link</label>
+              <div className="flex gap-2">
+                <Input
+                  readOnly
+                  value={referralLink}
+                  className="bg-white dark:bg-gray-700 text-sm text-emerald-700 dark:text-emerald-400 border-emerald-300"
+                  data-testid="input-referral-link"
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => copyToClipboard(referralLink)}
+                  className="border-emerald-500 text-emerald-700 hover:bg-emerald-50"
+                  data-testid="button-copy-link"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Share Buttons */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Share Via</label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <Button
+                  variant="outline"
+                  className="border-emerald-500 text-emerald-700 hover:bg-emerald-50"
+                  onClick={shareViaText}
+                  data-testid="button-share-text"
+                >
+                  <Mail className="w-4 h-4 mr-2" />
+                  Text
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-blue-500 text-blue-700 hover:bg-blue-50"
+                  onClick={shareViaFacebook}
+                  data-testid="button-share-facebook"
+                >
+                  <SiFacebook className="w-4 h-4 mr-2" />
+                  Facebook
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-sky-500 text-sky-700 hover:bg-sky-50"
+                  onClick={shareViaTwitter}
+                  data-testid="button-share-twitter"
+                >
+                  <SiTwitter className="w-4 h-4 mr-2" />
+                  Twitter
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-green-500 text-green-700 hover:bg-green-50"
+                  onClick={shareViaWhatsApp}
+                  data-testid="button-share-whatsapp"
+                >
+                  <SiWhatsapp className="w-4 h-4 mr-2" />
+                  WhatsApp
+                </Button>
+              </div>
+            </div>
+
+            {/* Info Text */}
+            <div className="mt-4 p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg border border-emerald-200">
+              <p className="text-sm text-emerald-800 dark:text-emerald-300">
+                <DollarSign className="w-4 h-4 inline mr-1" />
+                You'll earn a <strong>$10 commission</strong> for each referred client after they maintain an active subscription for 4 consecutive months. Track your referrals and earnings on your Agent Dashboard.
+              </p>
+            </div>
           </CardContent>
         </Card>
 
