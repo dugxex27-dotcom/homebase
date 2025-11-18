@@ -616,7 +616,7 @@ export class MemStorage implements IStorage {
     const demoHomeownerId = "demo-homeowner-permanent-id";
     const demoHomeowner: User = {
       id: demoHomeownerId,
-      email: "sarah.anderson@email.com",
+      email: "sarah.anderson@homebase.com",
       firstName: "Sarah",
       lastName: "Anderson",
       role: "homeowner",
