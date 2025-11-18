@@ -954,7 +954,6 @@ export default function Maintenance() {
   // Service logs filter state
   const [homeAreaFilter, setHomeAreaFilter] = useState<string>("all");
   const [isServiceRecordsExpanded, setIsServiceRecordsExpanded] = useState<boolean>(false);
-  const [showAllRecords, setShowAllRecords] = useState<boolean>(false);
 
   // Use authenticated user's ID  
   const homeownerId = (user as any)?.id;
@@ -3650,46 +3649,11 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                         </Card>
                       );
 
-                      // Show last 2 records by default, with dropdown for older records
-                      const recentRecords = filteredLogs.slice(0, 2);
-                      const olderRecords = filteredLogs.slice(2);
-
+                      // Show all service records
                       return (
-                        <>
-                          {/* Recent Records (Last 2) - Always Visible */}
-                          <div className="space-y-4">
-                            {recentRecords.map(log => renderServiceCard(log))}
-                          </div>
-
-                          {/* Older Records - Collapsible Dropdown */}
-                          {olderRecords.length > 0 && (
-                            <div className="mt-4">
-                              <Collapsible open={showAllRecords} onOpenChange={setShowAllRecords}>
-                                <CollapsibleTrigger asChild>
-                                  <Button
-                                    variant="outline"
-                                    className="w-full flex items-center justify-center gap-2"
-                                    style={{ backgroundColor: '#f2f2f2', borderColor: '#2c0f5b' }}
-                                    data-testid="button-toggle-older-records"
-                                  >
-                                    <span style={{ color: '#2c0f5b' }}>
-                                      {showAllRecords ? 'Hide' : 'Show'} {olderRecords.length} Older Record{olderRecords.length !== 1 ? 's' : ''}
-                                    </span>
-                                    <ChevronDown 
-                                      className={`w-4 h-4 transition-transform ${showAllRecords ? 'rotate-180' : ''}`}
-                                      style={{ color: '#2c0f5b' }}
-                                    />
-                                  </Button>
-                                </CollapsibleTrigger>
-                                <CollapsibleContent className="mt-4">
-                                  <div className="space-y-4">
-                                    {olderRecords.map(log => renderServiceCard(log))}
-                                  </div>
-                                </CollapsibleContent>
-                              </Collapsible>
-                            </div>
-                          )}
-                        </>
+                        <div className="space-y-4">
+                          {filteredLogs.map(log => renderServiceCard(log))}
+                        </div>
                       );
                     })()}
                   </div>
