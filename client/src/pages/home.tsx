@@ -203,7 +203,7 @@ export default function Home() {
                         {referralCount}/{referralsNeeded}
                       </span>
                     </div>
-                    <Progress value={progressPercentage} className="h-3 mb-2" data-testid="progress-referral-subscription" />
+                    <Progress value={progressPercentage} className="h-6 mb-2" data-testid="progress-referral-subscription" />
                     <p className="text-center text-[18px] sm:text-[20px]" style={{ color: referralsRemaining === 0 ? '#10b981' : '#dc2626' }}>
                       {referralsRemaining === 0 ? (
                         <span className="font-bold">🎉 You've earned a free subscription!</span>
