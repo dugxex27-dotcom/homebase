@@ -225,15 +225,34 @@ export default function HomeownerAccount() {
   };
 
   const downloadImageWithCode = async (imageUrl: string, fileName: string, codePosition: { x: number, y: number }) => {
+    // Guard against missing referral code
+    if (!referralCode) {
+      toast({
+        title: "Referral Code Missing",
+        description: "Please wait for your referral code to load",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.src = imageUrl;
       
+      // Wait for image to load and decode
       await new Promise((resolve, reject) => {
         img.onload = resolve;
         img.onerror = reject;
       });
+      
+      // Ensure image is fully decoded before accessing dimensions
+      await img.decode();
+
+      // Verify image has valid dimensions
+      if (img.width === 0 || img.height === 0) {
+        throw new Error('Image failed to load properly');
+      }
 
       const canvas = document.createElement('canvas');
       canvas.width = img.width;
@@ -254,26 +273,30 @@ export default function HomeownerAccount() {
       ctx.fillText(referralCode, codePosition.x, codePosition.y);
 
       // Convert to blob and download
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = fileName;
-          a.click();
-          URL.revokeObjectURL(url);
-          
-          toast({
-            title: "Downloaded!",
-            description: "Your personalized graphic has been downloaded",
-          });
-        }
-      }, 'image/png');
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(resolve, 'image/png');
+      });
+      
+      if (!blob) {
+        throw new Error('Failed to create image blob');
+      }
+      
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Downloaded!",
+        description: "Your personalized graphic has been downloaded",
+      });
     } catch (error) {
       console.error('Download error:', error);
       toast({
         title: "Download Failed",
-        description: "Please try again",
+        description: error instanceof Error ? error.message : "Please try again",
         variant: "destructive",
       });
     }
