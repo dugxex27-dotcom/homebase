@@ -14,8 +14,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, apiFileUpload, queryClient } from "@/lib/queryClient";
-import { CheckCircle, Clock, XCircle, Upload, AlertCircle, FileCheck, User, Camera, Mail, Share2, Copy, Gift, DollarSign, QrCode } from "lucide-react";
+import { CheckCircle, Clock, XCircle, Upload, AlertCircle, FileCheck, User, Camera, Mail, Share2, Copy, Gift, DollarSign, QrCode, Download, ImageIcon } from "lucide-react";
 import { SiFacebook, SiTwitter, SiWhatsapp } from "react-icons/si";
+
+import instagramPostImg from '@assets/generated_images/Agent_Instagram_referral_post_867b9fb1.png';
+import instagramStoryImg from '@assets/generated_images/Agent_Instagram_story_graphic_6ea21cfb.png';
+import facebookTwitterImg from '@assets/generated_images/Agent_Facebook_Twitter_share_07c75040.png';
 
 const US_STATES = [
   { code: "AL", name: "Alabama" }, { code: "AK", name: "Alaska" }, { code: "AZ", name: "Arizona" },
@@ -124,6 +128,84 @@ export default function AgentAccount() {
   const shareViaWhatsApp = () => {
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareMessage)}`;
     window.open(whatsappUrl, '_blank');
+  };
+
+  const downloadImageWithCode = async (imageUrl: string, fileName: string, codePosition: { x: number, y: number }) => {
+    // Guard against missing referral code
+    if (!referralCode) {
+      toast({
+        title: "Referral Code Missing",
+        description: "Please wait for your referral code to load",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = imageUrl;
+      
+      // Wait for image to load and decode
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+      });
+      
+      // Ensure image is fully decoded before accessing dimensions
+      await img.decode();
+
+      // Verify image has valid dimensions
+      if (img.width === 0 || img.height === 0) {
+        throw new Error('Image failed to load properly');
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        throw new Error('Could not get canvas context');
+      }
+
+      // Draw the image
+      ctx.drawImage(img, 0, 0);
+
+      // Add referral code text
+      ctx.font = 'bold 48px Inter, sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText(referralCode, codePosition.x, codePosition.y);
+
+      // Convert to blob and download
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(resolve, 'image/png');
+      });
+      
+      if (!blob) {
+        throw new Error('Failed to create image blob');
+      }
+      
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Downloaded!",
+        description: "Your personalized graphic has been downloaded",
+      });
+    } catch (error) {
+      console.error('Download error:', error);
+      toast({
+        title: "Download Failed",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      });
+    }
   };
 
   const form = useForm<VerificationFormData>({
@@ -687,6 +769,92 @@ export default function AgentAccount() {
               <p className="text-sm text-emerald-800 dark:text-emerald-300">
                 <DollarSign className="w-4 h-4 inline mr-1" />
                 You'll earn a <strong>$10 commission</strong> for each referred client after they maintain an active subscription for 4 consecutive months. Track your referrals and earnings on your Agent Dashboard.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Shareable Graphics */}
+        <Card className="mb-8 bg-white dark:bg-gray-800 border-emerald-200 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+              <ImageIcon className="w-5 h-5 text-emerald-600" />
+              Shareable Graphics
+            </CardTitle>
+            <CardDescription className="text-gray-600 dark:text-gray-400">
+              Download personalized graphics with your referral code to share on social media
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+              Click download on any graphic below to get a personalized version with your referral code <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400">{referralCode}</span> already included!
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Instagram Post */}
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 space-y-2">
+                <div className="aspect-square rounded overflow-hidden border-2 border-emerald-200">
+                  <img src={instagramPostImg} alt="Instagram Post Template" className="w-full h-full object-cover" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="font-semibold text-sm text-gray-900 dark:text-white">Instagram Post</h4>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Square format - 1080x1080px</p>
+                  <Button
+                    onClick={() => downloadImageWithCode(instagramPostImg, `homebase-agent-instagram-${referralCode}.png`, { x: 540, y: 950 })}
+                    size="sm"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                    data-testid="button-download-agent-instagram-post"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download
+                  </Button>
+                </div>
+              </div>
+
+              {/* Instagram Story */}
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 space-y-2">
+                <div className="aspect-[9/16] rounded overflow-hidden border-2 border-emerald-200 max-h-64">
+                  <img src={instagramStoryImg} alt="Instagram Story Template" className="w-full h-full object-cover" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="font-semibold text-sm text-gray-900 dark:text-white">Instagram Story</h4>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Vertical format - 1080x1920px</p>
+                  <Button
+                    onClick={() => downloadImageWithCode(instagramStoryImg, `homebase-agent-story-${referralCode}.png`, { x: 540, y: 1750 })}
+                    size="sm"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                    data-testid="button-download-agent-instagram-story"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download
+                  </Button>
+                </div>
+              </div>
+
+              {/* Facebook/Twitter */}
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 space-y-2">
+                <div className="aspect-[16/9] rounded overflow-hidden border-2 border-emerald-200">
+                  <img src={facebookTwitterImg} alt="Facebook/Twitter Template" className="w-full h-full object-cover" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="font-semibold text-sm text-gray-900 dark:text-white">Facebook/Twitter</h4>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Horizontal - 1200x630px</p>
+                  <Button
+                    onClick={() => downloadImageWithCode(facebookTwitterImg, `homebase-agent-facebook-${referralCode}.png`, { x: 600, y: 580 })}
+                    size="sm"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+                    data-testid="button-download-agent-facebook-twitter"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 rounded-lg p-3 mt-4">
+              <p className="text-sm text-emerald-800 dark:text-emerald-300">
+                <strong>Tip:</strong> Download these graphics and share them on your social media. When clients sign up using your code, you'll earn $10 commission for each one after 4 months of active subscription!
               </p>
             </div>
           </CardContent>
