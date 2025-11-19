@@ -533,7 +533,7 @@ function TaskCard({
   return (
     <>
     <Card 
-      className={`transition-all border-0 shadow-sm ${completed ? 'bg-green-50' : 'bg-white'}`}
+      className={`transition-all border-0 shadow-sm ${completed ? 'bg-green-100' : 'bg-white'}`}
       data-testid={`card-task-${task.id}`}
     >
       {/* Collapsed Header - Always Visible */}
