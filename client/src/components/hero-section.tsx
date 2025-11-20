@@ -1,7 +1,7 @@
 import Logo from "@/components/logo";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { Wrench, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import type { User } from "@shared/schema";
 
 export default function HeroSection() {
@@ -26,14 +26,14 @@ export default function HeroSection() {
           
           <p className="text-xl mb-8 max-w-3xl mx-auto leading-relaxed" style={{ color: typedUser?.role === 'homeowner' ? '#b6a6f4' : '#9ed0ef' }}>
             {typedUser?.role === 'homeowner' ? (
-              'Connect with skilled contractors, discover quality DIY products, and keep your home running smoothly with our intelligent maintenance scheduling system.'
+              'Connect with skilled local contractors for all your home improvement and maintenance projects. Find trusted professionals in your area ready to help.'
             ) : (
               'Grow your contracting business by connecting with quality clients, showcasing your expertise, and managing your professional reputation in one powerful platform.'
             )}
           </p>
 
           {/* Quick Action Cards */}
-          <div className={`grid grid-cols-1 ${typedUser?.role === 'homeowner' ? 'md:grid-cols-2' : 'md:grid-cols-2'} gap-6 mt-2 max-w-5xl mx-auto`}>
+          <div className={`grid grid-cols-1 ${typedUser?.role === 'homeowner' ? 'md:grid-cols-1 max-w-md' : 'md:grid-cols-2'} gap-6 mt-2 max-w-5xl mx-auto`}>
             {typedUser?.role === 'homeowner' ? (
               // Homeowner Quick Actions
               <>
@@ -45,18 +45,6 @@ export default function HeroSection() {
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Find Contractors</h3>
                     <p className="text-gray-600 dark:text-gray-300 text-sm">
                       Connect with trusted local contractors for any home project
-                    </p>
-                  </div>
-                </Link>
-
-                <Link href="/products">
-                  <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group border border-gray-300 dark:border-gray-700">
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-colors" style={{ backgroundColor: '#2c0f5b' }}>
-                      <Wrench className="h-6 w-6 text-white" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">DIY Products</h3>
-                    <p className="text-gray-600 dark:text-gray-300 text-sm">
-                      Discover quality tools and materials for your home projects
                     </p>
                   </div>
                 </Link>

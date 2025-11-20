@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Users, User as UserIcon, LogOut, MessageCircle, Trophy, Shield, Calendar, Crown, HelpCircle, Menu } from "lucide-react";
+import { Users, User as UserIcon, LogOut, MessageCircle, Trophy, Shield, Calendar, Crown, HelpCircle, Menu, Wrench, Building2, Package, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Notifications } from "@/components/notifications";
@@ -97,10 +97,13 @@ export default function Header() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className={`p-2 ${typedUser?.role === 'contractor' ? 'hover:bg-white/20 text-white' : ''}`}
+                    className={`p-2 relative ${typedUser?.role === 'contractor' ? 'hover:bg-white/20 text-white' : ''}`}
                     aria-label="Open menu"
                   >
                     <Menu className="h-5 w-5" />
+                    {unreadNotifications.length > 0 && (
+                      <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500" aria-label={`${unreadNotifications.length} unread notifications`} />
+                    )}
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="w-64 p-0">
@@ -122,6 +125,7 @@ export default function Header() {
                       <>
                         <Link href="/maintenance" onClick={() => setMobileMenuOpen(false)}>
                           <button className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm ${location === '/maintenance' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted'}`}>
+                            <Wrench className="w-4 h-4" />
                             Maintenance
                             {hasNotificationsForTab('maintenance') && (
                               <span className="ml-auto h-2 w-2 rounded-full bg-red-500" />
@@ -130,11 +134,13 @@ export default function Header() {
                         </Link>
                         <Link href="/contractors" onClick={() => setMobileMenuOpen(false)}>
                           <button className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm ${location === '/contractors' || location === '/find-contractors' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted'}`}>
+                            <Building2 className="w-4 h-4" />
                             Contractors
                           </button>
                         </Link>
                         <Link href="/products" onClick={() => setMobileMenuOpen(false)}>
                           <button className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm ${location === '/products' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted'}`}>
+                            <Package className="w-4 h-4" />
                             Products
                           </button>
                         </Link>
@@ -171,6 +177,7 @@ export default function Header() {
                       <>
                         <Link href="/contractor-dashboard" onClick={() => setMobileMenuOpen(false)}>
                           <button className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm ${location === '/contractor-dashboard' ? 'bg-blue-100 text-blue-700 font-medium' : 'hover:bg-muted'}`}>
+                            <LayoutDashboard className="w-4 h-4" />
                             Dashboard
                             {hasNotificationsForTab('dashboard') && (
                               <span className="ml-auto h-2 w-2 rounded-full bg-red-500" />
@@ -204,6 +211,7 @@ export default function Header() {
                       <>
                         <Link href="/agent-dashboard" onClick={() => setMobileMenuOpen(false)}>
                           <button className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm ${location === '/agent-dashboard' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted'}`}>
+                            <LayoutDashboard className="w-4 h-4" />
                             Dashboard
                           </button>
                         </Link>
@@ -220,13 +228,6 @@ export default function Header() {
                           </button>
                         </Link>
                       </>
-                    )}
-                    
-                    {/* Notifications Section - For homeowners and contractors */}
-                    {(typedUser.role === 'homeowner' || typedUser.role === 'contractor') && (
-                      <div className="px-3 py-2">
-                        <Notifications />
-                      </div>
                     )}
                     
                     {/* Divider */}
@@ -269,16 +270,26 @@ export default function Header() {
             </Link>
           </div>
           
-          {/* Sign In Button for Unauthenticated Users */}
-          {!isAuthenticated && (
-            <Button 
-              onClick={() => window.location.href = '/signin'}
-              aria-label="Sign in"
-              className="text-sm h-9 px-3 sm:px-4"
-            >
-              Sign In
-            </Button>
-          )}
+          {/* Right Side - Notifications and Sign In */}
+          <div className="flex items-center gap-2">
+            {/* Notifications Bell - For homeowners and contractors */}
+            {isAuthenticated && (typedUser?.role === 'homeowner' || typedUser?.role === 'contractor') && (
+              <div className={typedUser?.role === 'contractor' ? 'text-white' : ''}>
+                <Notifications />
+              </div>
+            )}
+            
+              {/* Sign In Button for Unauthenticated Users */}
+            {!isAuthenticated && (
+              <Button 
+                onClick={() => window.location.href = '/signin'}
+                aria-label="Sign in"
+                className="text-sm h-9 px-3 sm:px-4"
+              >
+                Sign In
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
