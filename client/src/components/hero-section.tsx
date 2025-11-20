@@ -1,7 +1,5 @@
 import Logo from "@/components/logo";
-import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { Search } from "lucide-react";
 import type { User } from "@shared/schema";
 
 export default function HeroSection() {
@@ -31,33 +29,6 @@ export default function HeroSection() {
               'Grow your contracting business by connecting with quality clients, showcasing your expertise, and managing your professional reputation in one powerful platform.'
             )}
           </p>
-
-          {/* Quick Action Cards */}
-          <div className={`grid grid-cols-1 ${typedUser?.role === 'homeowner' ? 'md:grid-cols-1 max-w-md' : 'md:grid-cols-2'} gap-6 mt-2 max-w-5xl mx-auto`}>
-            {typedUser?.role === 'homeowner' ? (
-              // Homeowner Quick Actions
-              <>
-                <Link href="/contractors">
-                  <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group border border-gray-300 dark:border-gray-700">
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-colors" style={{ backgroundColor: '#2c0f5b' }}>
-                      <Search className="h-6 w-6 text-white" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Find Contractors</h3>
-                    <p className="text-gray-600 dark:text-gray-300 text-sm">
-                      Connect with trusted local contractors for any home project
-                    </p>
-                  </div>
-                </Link>
-              </>
-            ) : (
-              // Contractor Quick Actions
-              <>
-
-
-
-              </>
-            )}
-          </div>
         </div>
       </div>
     </section>
