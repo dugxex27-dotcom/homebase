@@ -176,10 +176,6 @@ export default function HomeownerPricing() {
                   <Check className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
                   <span className="text-sm"><strong>Everything in Base</strong></span>
                 </li>
-                <li className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">Bulk maintenance scheduling</span>
-                </li>
               </ul>
               {maxHouses >= 3 && maxHouses <= 6 ? (
                 <Button className="w-full" variant="outline" disabled>
