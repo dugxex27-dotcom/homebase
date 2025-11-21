@@ -426,22 +426,6 @@ export default function Contractors() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 sm:gap-6">
 
-              {/* Search Query Input */}
-              <div className="flex flex-col h-full sm:col-span-2">
-                <label className="text-sm font-medium text-foreground mb-3 block">Search</label>
-                <div>
-                  <Input
-                    type="text"
-                    placeholder="e.g. Plumbing, HVAC, Roofing..."
-                    className="w-full h-[42px]"
-                    style={{ color: '#ffffff', backgroundColor: '#1e1e20' }}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    data-testid="input-search-query"
-                  />
-                </div>
-              </div>
-
               {/* Distance Filter */}
               <div className="flex flex-col h-full">
                 <label className="text-sm font-medium text-foreground mb-3 block whitespace-nowrap">Distance ({getDistanceUnit(userCountry)})</label>
@@ -585,10 +569,6 @@ export default function Contractors() {
                     style={{ backgroundColor: '#3c258e' }}
                     onClick={() => {
                       const newFilters: any = {};
-                      
-                      if (searchQuery.trim()) {
-                        newFilters.searchQuery = searchQuery.trim();
-                      }
                       
                       if (selectedDistance) {
                         // Convert display distance to storage format (always store in miles)
