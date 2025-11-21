@@ -37,6 +37,7 @@ Preferred communication style: Simple, everyday language.
     - **Permanent Connection Code System**: Unique 8-character codes for sharing service records with contractors.
     - **20-Mile Contractor Filtering**: Geocoded addresses enable distance-based contractor search for specific service categories.
     - **House Transfer System**: Comprehensive property ownership transfer with all associated data, secured by a token-based system.
+    - **Previously Used Contractors**: When a house is selected, displays a dedicated "Your Contractors at [House Name]" section showing contractors previously used at that property, sorted by most recent work, making it easy to find and re-hire trusted contractors.
 - **Marketplace**: Functionality for listing and browsing DIY products.
 - **Maintenance Guidance**: Seasonal home maintenance schedules with location-based and prioritized tasks.
 - **Service Categories**: Supports 76 distinct service categories.
@@ -50,7 +51,7 @@ Preferred communication style: Simple, everyday language.
 - **CRM System for Contractors**: Includes manual lead management (CRUD) and a webhook integration system for automatic lead syncing from external CRMs, with company-scoped access control.
 - **Error Tracking and Monitoring**: Features a React ErrorBoundary, client-side error logger, and a database schema for tracking errors, accessible via an admin-only developer console.
 - **Stripe Billing Reconciliation**: Processes Stripe webhook events for subscription management, tracks subscription cycles, and provides users with a complete billing history UI.
-- **Gamified Achievement System**: Features 66 achievements across 8 categories (Seasonal, Financial Savvy, Organization, Referral & Community, Milestones, Streaks, Special), with real-time progress tracking, house-based filtering, and retroactive checking. Performance optimized with pre-aggregated savings metrics.
+- **Gamified Achievement System**: Features 66 achievements across 8 categories (Seasonal, Financial Savvy, Organization, Referral & Community, Milestones, Streaks, Special), with real-time progress tracking, house-based filtering (achievements show as unlocked only if the selected house meets the criteria independently), and retroactive checking. Performance optimized with pre-aggregated savings metrics.
 - **API Endpoints**: Comprehensive set of APIs for managing all core functionalities.
 
 ## External Dependencies
