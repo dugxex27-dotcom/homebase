@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useForm } from "react-hook-form";
@@ -84,6 +84,8 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<CustomMaintenanceTask | null>(null);
+  const [deleteTaskConfirmOpen, setDeleteTaskConfirmOpen] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<CustomMaintenanceTask | null>(null);
 
   // Fetch custom maintenance tasks
   const { data: customTasks = [], isLoading } = useQuery<CustomMaintenanceTask[]>({
@@ -199,9 +201,16 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this custom maintenance task?')) {
-      deleteTaskMutation.mutate(id);
+  const handleDelete = (task: CustomMaintenanceTask) => {
+    setTaskToDelete(task);
+    setDeleteTaskConfirmOpen(true);
+  };
+
+  const confirmDeleteTask = () => {
+    if (taskToDelete) {
+      deleteTaskMutation.mutate(taskToDelete.id);
+      setDeleteTaskConfirmOpen(false);
+      setTaskToDelete(null);
     }
   };
 
@@ -533,7 +542,7 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleDelete(task.id)}
+                        onClick={() => handleDelete(task)}
                         className="text-red-600 hover:bg-red-50"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -577,6 +586,18 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
           })}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={deleteTaskConfirmOpen}
+        onOpenChange={setDeleteTaskConfirmOpen}
+        title="Delete Custom Task?"
+        description={`Are you sure you want to delete "${taskToDelete?.title}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={confirmDeleteTask}
+        variant="destructive"
+      />
     </div>
   );
 }

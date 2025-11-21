@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -59,7 +60,7 @@ function StarRating({ rating, onRatingChange, readonly = false }: { rating: numb
   );
 }
 
-function ReviewCard({ review, isOwner, onEdit, onDelete }: { review: ContractorReview; isOwner: boolean; onEdit: (review: ContractorReview) => void; onDelete: (reviewId: string) => void }) {
+function ReviewCard({ review, isOwner, onEdit, onDelete }: { review: ContractorReview; isOwner: boolean; onEdit: (review: ContractorReview) => void; onDelete: (review: ContractorReview) => void }) {
   return (
     <Card className="mb-4">
       <CardHeader className="pb-3">
@@ -82,7 +83,7 @@ function ReviewCard({ review, isOwner, onEdit, onDelete }: { review: ContractorR
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => onDelete(review.id)}
+                onClick={() => onDelete(review)}
               >
                 <Trash2 className="w-4 h-4" />
               </Button>
@@ -317,6 +318,8 @@ export function ContractorReviews({ contractorId, contractorName }: ContractorRe
   const { user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingReview, setEditingReview] = useState<ContractorReview | null>(null);
+  const [deleteReviewConfirmOpen, setDeleteReviewConfirmOpen] = useState(false);
+  const [reviewToDelete, setReviewToDelete] = useState<ContractorReview | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -362,9 +365,16 @@ export function ContractorReviews({ contractorId, contractorName }: ContractorRe
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (reviewId: string) => {
-    if (confirm("Are you sure you want to delete this review?")) {
-      deleteMutation.mutate(reviewId);
+  const handleDelete = (review: ContractorReview) => {
+    setReviewToDelete(review);
+    setDeleteReviewConfirmOpen(true);
+  };
+
+  const confirmDeleteReview = () => {
+    if (reviewToDelete) {
+      deleteMutation.mutate(reviewToDelete.id);
+      setDeleteReviewConfirmOpen(false);
+      setReviewToDelete(null);
     }
   };
 
@@ -455,6 +465,18 @@ export function ContractorReviews({ contractorId, contractorName }: ContractorRe
           })
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={deleteReviewConfirmOpen}
+        onOpenChange={setDeleteReviewConfirmOpen}
+        title="Delete Review?"
+        description="Are you sure you want to delete this review? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={confirmDeleteReview}
+        variant="destructive"
+      />
     </div>
   );
 }

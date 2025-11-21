@@ -8,6 +8,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -44,6 +45,8 @@ export function Proposals({ contractorId }: ProposalsProps) {
   const [showSignature, setShowSignature] = useState(false);
   const [signingProposal, setSigningProposal] = useState<Proposal | null>(null);
   const [customerSearch, setCustomerSearch] = useState("");
+  const [deleteProposalConfirmOpen, setDeleteProposalConfirmOpen] = useState(false);
+  const [proposalToDelete, setProposalToDelete] = useState<Proposal | null>(null);
 
   const form = useForm<ProposalFormData>({
     resolver: zodResolver(proposalFormSchema),
@@ -284,9 +287,16 @@ export function Proposals({ contractorId }: ProposalsProps) {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (window.confirm("Are you sure you want to delete this proposal?")) {
-      deleteMutation.mutate(id);
+  const handleDelete = (proposal: Proposal) => {
+    setProposalToDelete(proposal);
+    setDeleteProposalConfirmOpen(true);
+  };
+
+  const confirmDeleteProposal = () => {
+    if (proposalToDelete) {
+      deleteMutation.mutate(proposalToDelete.id);
+      setDeleteProposalConfirmOpen(false);
+      setProposalToDelete(null);
     }
   };
 
@@ -759,7 +769,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
                     </Button>
                     <Button
                       size="sm"
-                      onClick={() => handleDelete(proposal.id)}
+                      onClick={() => handleDelete(proposal)}
                       data-testid={`button-delete-proposal-${proposal.id}`}
                       className="h-8 px-3 text-xs"
                       style={{ backgroundColor: '#1560a2', color: 'white' }}
@@ -844,6 +854,18 @@ export function Proposals({ contractorId }: ProposalsProps) {
           }}
           documentTitle={signingProposal?.title || "Contract"}
           signerName=""
+        />
+
+        {/* Delete Confirmation Dialog */}
+        <ConfirmDialog
+          open={deleteProposalConfirmOpen}
+          onOpenChange={setDeleteProposalConfirmOpen}
+          title="Delete Proposal?"
+          description={`Are you sure you want to delete the proposal "${proposalToDelete?.title}"? This action cannot be undone.`}
+          confirmText="Delete"
+          cancelText="Cancel"
+          onConfirm={confirmDeleteProposal}
+          variant="destructive"
         />
       </CardContent>
     </Card>
