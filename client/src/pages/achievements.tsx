@@ -121,6 +121,8 @@ const getRemainingText = (achievement: AchievementWithProgress, progress: number
 export default function Achievements() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedAchievement, setSelectedAchievement] = useState<AchievementWithProgress | null>(null);
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [modalCategory, setModalCategory] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const hasCheckedAchievements = useRef(false);
 
@@ -214,7 +216,10 @@ export default function Achievements() {
             <Card 
               style={{ backgroundColor: '#f2f2f2' }}
               className="cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => setSelectedCategory('all')}
+              onClick={() => {
+                setModalCategory('all');
+                setCategoryModalOpen(true);
+              }}
               data-testid="card-total-achievements"
             >
               <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
@@ -230,7 +235,10 @@ export default function Achievements() {
             <Card 
               style={{ backgroundColor: '#f2f2f2' }}
               className="cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => setSelectedCategory('seasonal')}
+              onClick={() => {
+                setModalCategory('Seasonal');
+                setCategoryModalOpen(true);
+              }}
               data-testid="card-seasonal"
             >
               <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
@@ -246,7 +254,10 @@ export default function Achievements() {
             <Card 
               style={{ backgroundColor: '#f2f2f2' }}
               className="cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => setSelectedCategory('financial savvy')}
+              onClick={() => {
+                setModalCategory('Financial Savvy');
+                setCategoryModalOpen(true);
+              }}
               data-testid="card-financial"
             >
               <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
@@ -262,7 +273,10 @@ export default function Achievements() {
             <Card 
               style={{ backgroundColor: '#f2f2f2' }}
               className="cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => setSelectedCategory('organization')}
+              onClick={() => {
+                setModalCategory('Organization');
+                setCategoryModalOpen(true);
+              }}
               data-testid="card-organization"
             >
               <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
@@ -511,6 +525,107 @@ export default function Achievements() {
                   </div>
                 </>
               )}
+            </DialogContent>
+          </Dialog>
+
+          {/* Category Modal - Shows all achievements in a category */}
+          <Dialog open={categoryModalOpen} onOpenChange={setCategoryModalOpen}>
+            <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto" style={{ backgroundColor: '#f2f2f2' }}>
+              <DialogHeader>
+                <DialogTitle className="text-xl sm:text-2xl" style={{ color: '#2c0f5b' }}>
+                  {modalCategory === 'all' ? 'All Achievements' :
+                   modalCategory === 'Seasonal' ? 'Seasonal Badges' :
+                   modalCategory === 'Financial Savvy' ? 'Financial Savvy Achievements' :
+                   modalCategory === 'Organization' ? 'Organization Badges' : 'Achievements'}
+                </DialogTitle>
+                <DialogDescription style={{ color: '#6b7280' }}>
+                  {modalCategory === 'all' ? `${unlockedCount}/${totalCount} achievements unlocked` :
+                   modalCategory === 'Seasonal' ? `${categoryStats.seasonal.unlocked}/${categoryStats.seasonal.total} seasonal badges earned` :
+                   modalCategory === 'Financial Savvy' ? `${categoryStats.financial.unlocked}/${categoryStats.financial.total} financial achievements unlocked` :
+                   modalCategory === 'Organization' ? `${categoryStats.organization.unlocked}/${categoryStats.organization.total} organization badges earned` : ''}
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="grid grid-cols-1 gap-4 mt-4">
+                {(modalCategory === 'all' ? achievements : achievements.filter(a => a.category === modalCategory)).map((achievement) => {
+                  const IconComponent = iconMap[achievement.icon] || Trophy;
+                  const isUnlocked = achievement.isUnlocked;
+                  const progress = achievement.progress || 0;
+                  
+                  return (
+                    <div
+                      key={achievement.key}
+                      className={`p-4 rounded-lg border-2 transition-all ${
+                        isUnlocked
+                          ? 'border-purple-500 bg-gradient-to-br from-purple-50 to-blue-50'
+                          : 'border-gray-300 bg-white opacity-75'
+                      }`}
+                      data-testid={`modal-achievement-${achievement.key}`}
+                    >
+                      <div className="flex items-start gap-4">
+                        <div
+                          className={`p-3 rounded-full shrink-0 ${
+                            isUnlocked
+                              ? 'bg-gradient-to-br from-purple-500 to-blue-500 text-white'
+                              : 'bg-gray-300 text-gray-500'
+                          }`}
+                        >
+                          {isUnlocked ? (
+                            <IconComponent className="w-6 h-6" />
+                          ) : (
+                            <Lock className="w-6 h-6" />
+                          )}
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold mb-1" style={{ color: '#2c0f5b' }}>
+                            {achievement.name}
+                          </h3>
+                          <p className="text-sm mb-2" style={{ color: '#6b7280' }}>
+                            {achievement.description}
+                          </p>
+                          
+                          {!isUnlocked && (
+                            <div>
+                              <div className="flex justify-between items-center mb-1">
+                                <span className="text-xs font-semibold" style={{ color: '#6b7280' }}>
+                                  {getProgressLabel(achievement)}
+                                </span>
+                                <span className="text-xs font-semibold" style={{ color: '#6d28d9' }}>
+                                  {Math.round(progress)}%
+                                </span>
+                              </div>
+                              <Progress 
+                                value={progress} 
+                                className="h-2 mb-1" 
+                                data-testid={`modal-progress-${achievement.key}`}
+                              />
+                              <div className="text-xs" style={{ color: '#6b7280' }}>
+                                {getRemainingText(achievement, progress)}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {isUnlocked && (
+                            <div className="flex items-center gap-2">
+                              <Badge 
+                                className="bg-gradient-to-r from-purple-500 to-blue-500 text-white"
+                              >
+                                Unlocked
+                              </Badge>
+                              {achievement.unlockedAt && (
+                                <span className="text-xs" style={{ color: '#6b7280' }}>
+                                  {new Date(achievement.unlockedAt).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </DialogContent>
           </Dialog>
         </div>
