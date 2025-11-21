@@ -3435,7 +3435,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       
       // From proposals for this house
-      const proposals = await storage.getHomeownerProposals(userId);
+      const proposals = await storage.getProposals(undefined, userId);
       proposals
         .filter((proposal: any) => proposal.houseId === houseId && proposal.contractorId && proposal.status === 'accepted')
         .forEach((proposal: any) => {

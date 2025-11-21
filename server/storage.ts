@@ -2356,6 +2356,61 @@ export class MemStorage implements IStorage {
         notes: "Preventive maintenance before summer",
         createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
       },
+      // CONTRACTOR-PERFORMED SERVICES (to show "Previously Used" contractors)
+      // Main Residence - Contractor HVAC Service (3 months ago)
+      {
+        id: "maint-log-contractor-001",
+        homeownerId: demoHomeownerId,
+        houseId: mainHouseId,
+        serviceType: "HVAC Services",
+        serviceDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        homeArea: "Whole House",
+        serviceDescription: "Annual HVAC maintenance and tune-up",
+        cost: "185.00",
+        contractorName: "Mike Johnson",
+        contractorCompany: "Quality Home Services LLC",
+        contractorId: "85fd0d9c-2a7e-471d-8e58-1555cd52b1d3",
+        completionMethod: "contractor",
+        diySavingsAmount: null,
+        notes: "Great service - system running efficiently",
+        createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
+      },
+      // Main Residence - Contractor Electrical Work (2 months ago)
+      {
+        id: "maint-log-contractor-002",
+        homeownerId: demoHomeownerId,
+        houseId: mainHouseId,
+        serviceType: "Electrical Services",
+        serviceDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        homeArea: "Kitchen",
+        serviceDescription: "Installed new ceiling fan and dimmer switches",
+        cost: "275.00",
+        contractorName: "Mike Johnson",
+        contractorCompany: "Quality Home Services LLC",
+        contractorId: "85fd0d9c-2a7e-471d-8e58-1555cd52b1d3",
+        completionMethod: "contractor",
+        diySavingsAmount: null,
+        notes: "Professional work, highly recommend",
+        createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
+      },
+      // Lake House - Contractor Plumbing (1.5 months ago)
+      {
+        id: "maint-log-contractor-003",
+        homeownerId: demoHomeownerId,
+        houseId: lakeHouseId,
+        serviceType: "Plumbing Services",
+        serviceDate: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        homeArea: "Bathroom",
+        serviceDescription: "Replaced water heater",
+        cost: "1250.00",
+        contractorName: "Sarah Martinez",
+        contractorCompany: "Martinez Plumbing Co.",
+        contractorId: "contractor-demo-002",
+        completionMethod: "contractor",
+        diySavingsAmount: null,
+        notes: "Quick and efficient installation",
+        createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
+      },
     ];
 
     // Insert DIY maintenance logs into database with idempotent seeding
@@ -2363,7 +2418,7 @@ export class MemStorage implements IStorage {
       await Promise.all(diyMaintenanceLogsData.map(async (log) => {
         await db.insert(maintenanceLogs).values(log).onConflictDoNothing();
       }));
-      console.log('[DEMO DATA] Seeded 14 DIY maintenance logs for Sarah Anderson (idempotent)');
+      console.log('[DEMO DATA] Seeded 17 maintenance logs for Sarah Anderson (14 DIY + 3 contractor) (idempotent)');
     } catch (error) {
       console.error('[DEMO DATA] Error inserting DIY maintenance logs:', error);
     }
