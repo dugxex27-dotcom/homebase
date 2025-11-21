@@ -27,8 +27,8 @@ export default function AgentReferral() {
   const referralLink = (referralData as any)?.referralLink || '';
   const referralCount = (referralData as any)?.referralCount || 0;
   
-  // Calculate potential earnings: $10 per referral after 4 months
-  const estimatedEarnings = referralCount * 10;
+  // Calculate potential earnings: $15 per referral after 4 months
+  const estimatedEarnings = referralCount * 15;
   
   const shareMessage = `Join me on Home Base! Use my referral code ${referralCode} when you sign up. As a real estate agent, I earn commissions when my clients subscribe. Sign up here: ${referralLink}`;
 
@@ -258,7 +258,7 @@ export default function AgentReferral() {
               {/* Info Text */}
               <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
                 <p className="text-sm text-green-800">
-                  <strong>💰 Commission Details:</strong> You'll earn a <strong>$10 commission</strong> for each referred client after they maintain an active subscription for 4 consecutive months. Track your referrals and earnings on your Agent Dashboard.
+                  <strong>💰 Commission Details:</strong> You'll earn a <strong>$15 commission</strong> for each referred client after they maintain an active subscription for 4 consecutive months. Track your referrals and earnings on your Agent Dashboard.
                 </p>
               </div>
             </CardContent>
