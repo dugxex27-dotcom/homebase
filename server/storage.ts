@@ -3659,8 +3659,7 @@ export class MemStorage implements IStorage {
           
           const seasonalCompletions = completions.filter(c => months.includes(c.month));
           
-          // For simplicity, assume "all" means at least 5 tasks per season
-          const requiredCount = 5;
+          const requiredCount = criteria.count || 5;
           progress = Math.min(100, (seasonalCompletions.length / requiredCount) * 100);
           isCompleted = seasonalCompletions.length >= requiredCount;
           break;
@@ -3728,6 +3727,164 @@ export class MemStorage implements IStorage {
           const pairsCount = Math.floor(photosCount / 2);
           progress = Math.min(100, (pairsCount / criteria.count) * 100);
           isCompleted = pairsCount >= criteria.count;
+          break;
+        }
+        
+        case 'referrals': {
+          // Get user's referral count
+          const user = await this.getUser(homeownerId);
+          const referralCount = user?.referralCount || 0;
+          
+          progress = Math.min(100, (referralCount / criteria.count) * 100);
+          isCompleted = referralCount >= criteria.count;
+          break;
+        }
+        
+        case 'contractor_hired': {
+          // Count unique contractor hires
+          const proposals = await db.select().from(proposals)
+            .where(eq(proposals.homeownerId, homeownerId))
+            .where(eq(proposals.status, 'accepted'));
+          
+          progress = Math.min(100, (proposals.length / criteria.count) * 100);
+          isCompleted = proposals.length >= criteria.count;
+          break;
+        }
+        
+        case 'multi_property': {
+          // Count user's houses
+          const userHouses = await db.select().from(houses)
+            .where(eq(houses.homeownerId, homeownerId));
+          
+          progress = Math.min(100, (userHouses.length / criteria.count) * 100);
+          isCompleted = userHouses.length >= criteria.count;
+          break;
+        }
+        
+        case 'profile_complete': {
+          // Check if user has added home systems
+          const userHouses = await db.select().from(houses)
+            .where(eq(houses.homeownerId, homeownerId));
+          
+          if (userHouses.length === 0) {
+            progress = 0;
+            isCompleted = false;
+            break;
+          }
+          
+          const systemsData = await db.select().from(homeSystems)
+            .where(eq(homeSystems.houseId, userHouses[0].id));
+          
+          progress = Math.min(100, (systemsData.length / criteria.systems) * 100);
+          isCompleted = systemsData.length >= criteria.systems;
+          break;
+        }
+        
+        case 'streak': {
+          // Calculate consecutive months with task completions
+          const completions = await db.select().from(taskCompletions)
+            .where(eq(taskCompletions.homeownerId, homeownerId));
+          
+          if (completions.length === 0) {
+            progress = 0;
+            isCompleted = false;
+            break;
+          }
+          
+          // Group by year-month
+          const monthSet = new Set(
+            completions.map(c => `${c.year}-${c.month}`)
+          );
+          const uniqueMonths = Array.from(monthSet).sort();
+          
+          // Calculate longest streak
+          let currentStreak = 1;
+          let maxStreak = 1;
+          
+          for (let i = 1; i < uniqueMonths.length; i++) {
+            const [prevYear, prevMonth] = uniqueMonths[i - 1].split('-').map(Number);
+            const [currYear, currMonth] = uniqueMonths[i].split('-').map(Number);
+            
+            // Check if consecutive
+            let isConsecutive = false;
+            if (currYear === prevYear && currMonth === prevMonth + 1) {
+              isConsecutive = true;
+            } else if (currYear === prevYear + 1 && prevMonth === 12 && currMonth === 1) {
+              isConsecutive = true;
+            }
+            
+            if (isConsecutive) {
+              currentStreak++;
+              maxStreak = Math.max(maxStreak, currentStreak);
+            } else {
+              currentStreak = 1;
+            }
+          }
+          
+          progress = Math.min(100, (maxStreak / criteria.months) * 100);
+          isCompleted = maxStreak >= criteria.months;
+          break;
+        }
+        
+        case 'first_task': {
+          // Check if user has completed any task
+          const completions = await db.select().from(taskCompletions)
+            .where(eq(taskCompletions.homeownerId, homeownerId));
+          
+          progress = completions.length > 0 ? 100 : 0;
+          isCompleted = completions.length > 0;
+          break;
+        }
+        
+        case 'total_tasks': {
+          // Count total completed tasks
+          const completions = await db.select().from(taskCompletions)
+            .where(eq(taskCompletions.homeownerId, homeownerId));
+          
+          progress = Math.min(100, (completions.length / criteria.count) * 100);
+          isCompleted = completions.length >= criteria.count;
+          break;
+        }
+        
+        case 'high_priority_safety': {
+          // Count high-priority safety task completions
+          const completions = await db.select().from(taskCompletions)
+            .where(eq(taskCompletions.homeownerId, homeownerId));
+          
+          // Filter for high-priority tasks (would need task data to verify)
+          // For now, assume tasks with specific safety keywords
+          const safetyTasks = completions.filter(c => 
+            c.taskTitle?.toLowerCase().includes('smoke') ||
+            c.taskTitle?.toLowerCase().includes('carbon') ||
+            c.taskTitle?.toLowerCase().includes('detector') ||
+            c.taskTitle?.toLowerCase().includes('safety') ||
+            c.taskTitle?.toLowerCase().includes('emergency')
+          );
+          
+          progress = Math.min(100, (safetyTasks.length / criteria.count) * 100);
+          isCompleted = safetyTasks.length >= criteria.count;
+          break;
+        }
+        
+        case 'early_adopter': {
+          // Check if user signed up before cutoff date
+          const user = await this.getUser(homeownerId);
+          const cutoffDate = new Date(criteria.before);
+          const userCreatedAt = user?.createdAt ? new Date(user.createdAt) : new Date();
+          
+          isCompleted = userCreatedAt < cutoffDate;
+          progress = isCompleted ? 100 : 0;
+          break;
+        }
+        
+        case 'premium_subscription': {
+          // Check if user has premium subscription
+          const user = await this.getUser(homeownerId);
+          const isPremium = user?.subscriptionStatus === 'active' && 
+            (user?.subscriptionPlanId === 'premium' || user?.subscriptionPlanId === 'premium_plus');
+          
+          isCompleted = isPremium;
+          progress = isPremium ? 100 : 0;
           break;
         }
       }

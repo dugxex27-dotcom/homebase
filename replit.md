@@ -82,7 +82,19 @@ Preferred communication style: Simple, everyday language.
     - **Billing History UI**: Displays payment cycles with status (paid/failed/voided), dates, amounts, and invoice IDs. Color-coded status badges and icons for visual clarity.
     - **User Status Updates**: Automatic subscription status updates based on webhook events.
     - **Payment Transparency**: Users can view complete billing history on billing page.
-- **API Endpoints**: Structured for contractors, products, houses, notifications, proposals, connection codes, search analytics, billing/subscriptions, billing history, error logging, agent/affiliate system, CRM leads, and admin functions.
+- **Gamified Achievement System** (Nov 2025):
+    - **32 Total Achievements** across 8 categories with progression tracking
+    - **Seasonal Achievements** (4): Winter Warrior, Spring Renewal, Summer Sentinel, Fall Prepper - unlock by completing 5 seasonal tasks
+    - **Financial Savvy** (5): Budget Boss ($500 saved), Savings Expert ($1,000), Frugal Master ($2,500), DIY Champion (10 under budget), Penny Pincher Pro (25 under budget)
+    - **Organization** (6): Getting Started (3 records), Record Keeper (10 records), Documentation Pro (25 records), Photo Journalist (5 photo pairs), Visual Archivist (15 photo pairs), Receipt Ranger (10 documents)
+    - **Referral & Community** (4): Helpful Neighbor (1 referral), Community Builder (3 referrals), Ambassador (5 referrals), Influencer (10 referrals)
+    - **Milestones** (6): First Step (1 task), Getting Serious (10 tasks), Maintenance Master (25 tasks), Home Hero (50 tasks), Multi-Property Manager (2+ properties), Contractor Connection (first hire)
+    - **Streaks** (3): Monthly Momentum (3 consecutive months), Quarterly Qualifier (6 months), Year-Round Warrior (12 months)
+    - **Special** (4): Early Adopter (signup before 2026), Premium Member (active premium plan), Complete Profile (5+ home systems), Safety First (5 high-priority safety tasks)
+    - **Progress Tracking**: Real-time percentage progress for all achievements, automatic unlocking when criteria met
+    - **Achievement Page**: Purple-themed UI with category tabs, stat cards, progress bars, unlock dates, and achievement detail modals
+    - **Retroactive Checking**: POST `/api/achievements/check` endpoint processes historical data to award missed achievements
+- **API Endpoints**: Structured for contractors, products, houses, notifications, proposals, connection codes, search analytics, billing/subscriptions, billing history, error logging, agent/affiliate system, CRM leads, achievements, and admin functions.
 
 ## External Dependencies
 

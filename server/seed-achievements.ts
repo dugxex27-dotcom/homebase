@@ -1,0 +1,420 @@
+import { db } from "./db";
+import { achievementDefinitions } from "@shared/schema";
+
+interface AchievementDefinition {
+  achievementKey: string;
+  category: string;
+  name: string;
+  description: string;
+  icon: string;
+  criteria: string;
+  points: number;
+  tier: string;
+  sortOrder: number;
+}
+
+const achievements: AchievementDefinition[] = [
+  // SEASONAL MAINTENANCE ACHIEVEMENTS (4)
+  {
+    achievementKey: "winter_warrior",
+    category: "Seasonal",
+    name: "Winter Warrior",
+    description: "Complete 5 winter maintenance tasks (Dec-Feb)",
+    icon: "snowflake",
+    criteria: JSON.stringify({ type: "seasonal_tasks", season: "winter", count: 5 }),
+    points: 15,
+    tier: "bronze",
+    sortOrder: 1
+  },
+  {
+    achievementKey: "spring_renewal",
+    category: "Seasonal",
+    name: "Spring Renewal",
+    description: "Complete 5 spring maintenance tasks (Mar-May)",
+    icon: "leaf",
+    criteria: JSON.stringify({ type: "seasonal_tasks", season: "spring", count: 5 }),
+    points: 15,
+    tier: "bronze",
+    sortOrder: 2
+  },
+  {
+    achievementKey: "summer_sentinel",
+    category: "Seasonal",
+    name: "Summer Sentinel",
+    description: "Complete 5 summer maintenance tasks (Jun-Aug)",
+    icon: "sun",
+    criteria: JSON.stringify({ type: "seasonal_tasks", season: "summer", count: 5 }),
+    points: 15,
+    tier: "bronze",
+    sortOrder: 3
+  },
+  {
+    achievementKey: "fall_prepper",
+    category: "Seasonal",
+    name: "Fall Prepper",
+    description: "Complete 5 fall maintenance tasks (Sep-Nov)",
+    icon: "cloud",
+    criteria: JSON.stringify({ type: "seasonal_tasks", season: "fall", count: 5 }),
+    points: 15,
+    tier: "bronze",
+    sortOrder: 4
+  },
+
+  // FINANCIAL SAVVY ACHIEVEMENTS (5)
+  {
+    achievementKey: "budget_boss",
+    category: "Financial Savvy",
+    name: "Budget Boss",
+    description: "Save $500 total through DIY maintenance",
+    icon: "dollar-sign",
+    criteria: JSON.stringify({ type: "total_savings", amount: 500 }),
+    points: 20,
+    tier: "silver",
+    sortOrder: 5
+  },
+  {
+    achievementKey: "savings_expert",
+    category: "Financial Savvy",
+    name: "Savings Expert",
+    description: "Save $1,000 total through DIY maintenance",
+    icon: "piggy-bank",
+    criteria: JSON.stringify({ type: "total_savings", amount: 1000 }),
+    points: 30,
+    tier: "gold",
+    sortOrder: 6
+  },
+  {
+    achievementKey: "frugal_master",
+    category: "Financial Savvy",
+    name: "Frugal Master",
+    description: "Save $2,500 total through DIY maintenance",
+    icon: "trophy",
+    criteria: JSON.stringify({ type: "total_savings", amount: 2500 }),
+    points: 50,
+    tier: "platinum",
+    sortOrder: 7
+  },
+  {
+    achievementKey: "diy_champion",
+    category: "Financial Savvy",
+    name: "DIY Champion",
+    description: "Complete 10 tasks under professional cost estimates",
+    icon: "wrench",
+    criteria: JSON.stringify({ type: "under_budget", count: 10 }),
+    points: 25,
+    tier: "silver",
+    sortOrder: 8
+  },
+  {
+    achievementKey: "penny_pincher_pro",
+    category: "Financial Savvy",
+    name: "Penny Pincher Pro",
+    description: "Complete 25 tasks under budget",
+    icon: "dollar-sign",
+    criteria: JSON.stringify({ type: "under_budget", count: 25 }),
+    points: 40,
+    tier: "gold",
+    sortOrder: 9
+  },
+
+  // ORGANIZATION & DOCUMENTATION ACHIEVEMENTS (6)
+  {
+    achievementKey: "getting_started",
+    category: "Organization",
+    name: "Getting Started",
+    description: "Create your first 3 service records",
+    icon: "file-text",
+    criteria: JSON.stringify({ type: "logs_created", count: 3 }),
+    points: 10,
+    tier: "bronze",
+    sortOrder: 10
+  },
+  {
+    achievementKey: "record_keeper",
+    category: "Organization",
+    name: "Record Keeper",
+    description: "Create 10 service records",
+    icon: "file-text",
+    criteria: JSON.stringify({ type: "logs_created", count: 10 }),
+    points: 20,
+    tier: "silver",
+    sortOrder: 11
+  },
+  {
+    achievementKey: "documentation_pro",
+    category: "Organization",
+    name: "Documentation Pro",
+    description: "Create 25 service records",
+    icon: "file-text",
+    criteria: JSON.stringify({ type: "logs_created", count: 25 }),
+    points: 35,
+    tier: "gold",
+    sortOrder: 12
+  },
+  {
+    achievementKey: "photo_journalist",
+    category: "Organization",
+    name: "Photo Journalist",
+    description: "Upload 5 before/after photo pairs",
+    icon: "camera",
+    criteria: JSON.stringify({ type: "photos_uploaded", count: 5 }),
+    points: 15,
+    tier: "bronze",
+    sortOrder: 13
+  },
+  {
+    achievementKey: "visual_archivist",
+    category: "Organization",
+    name: "Visual Archivist",
+    description: "Upload 15 before/after photo pairs",
+    icon: "camera",
+    criteria: JSON.stringify({ type: "photos_uploaded", count: 15 }),
+    points: 30,
+    tier: "gold",
+    sortOrder: 14
+  },
+  {
+    achievementKey: "receipt_ranger",
+    category: "Organization",
+    name: "Receipt Ranger",
+    description: "Upload 10 receipts/warranty documents",
+    icon: "file-text",
+    criteria: JSON.stringify({ type: "documents_uploaded", count: 10 }),
+    points: 20,
+    tier: "silver",
+    sortOrder: 15
+  },
+
+  // REFERRAL & COMMUNITY ACHIEVEMENTS (4)
+  {
+    achievementKey: "helpful_neighbor",
+    category: "Referral & Community",
+    name: "Helpful Neighbor",
+    description: "Refer 1 friend to Home Base",
+    icon: "star",
+    criteria: JSON.stringify({ type: "referrals", count: 1 }),
+    points: 15,
+    tier: "bronze",
+    sortOrder: 16
+  },
+  {
+    achievementKey: "community_builder",
+    category: "Referral & Community",
+    name: "Community Builder",
+    description: "Refer 3 friends to Home Base",
+    icon: "star",
+    criteria: JSON.stringify({ type: "referrals", count: 3 }),
+    points: 25,
+    tier: "silver",
+    sortOrder: 17
+  },
+  {
+    achievementKey: "ambassador",
+    category: "Referral & Community",
+    name: "Ambassador",
+    description: "Refer 5 friends to Home Base",
+    icon: "star",
+    criteria: JSON.stringify({ type: "referrals", count: 5 }),
+    points: 40,
+    tier: "gold",
+    sortOrder: 18
+  },
+  {
+    achievementKey: "influencer",
+    category: "Referral & Community",
+    name: "Influencer",
+    description: "Refer 10 friends to Home Base",
+    icon: "trophy",
+    criteria: JSON.stringify({ type: "referrals", count: 10 }),
+    points: 60,
+    tier: "platinum",
+    sortOrder: 19
+  },
+
+  // MILESTONES & ENGAGEMENT ACHIEVEMENTS (6)
+  {
+    achievementKey: "first_step",
+    category: "Milestones",
+    name: "First Step",
+    description: "Complete your first maintenance task",
+    icon: "star",
+    criteria: JSON.stringify({ type: "first_task", count: 1 }),
+    points: 10,
+    tier: "bronze",
+    sortOrder: 20
+  },
+  {
+    achievementKey: "getting_serious",
+    category: "Milestones",
+    name: "Getting Serious",
+    description: "Complete 10 total maintenance tasks",
+    icon: "wrench",
+    criteria: JSON.stringify({ type: "total_tasks", count: 10 }),
+    points: 20,
+    tier: "bronze",
+    sortOrder: 21
+  },
+  {
+    achievementKey: "maintenance_master",
+    category: "Milestones",
+    name: "Maintenance Master",
+    description: "Complete 25 total maintenance tasks",
+    icon: "trophy",
+    criteria: JSON.stringify({ type: "total_tasks", count: 25 }),
+    points: 35,
+    tier: "silver",
+    sortOrder: 22
+  },
+  {
+    achievementKey: "home_hero",
+    category: "Milestones",
+    name: "Home Hero",
+    description: "Complete 50 total maintenance tasks",
+    icon: "trophy",
+    criteria: JSON.stringify({ type: "total_tasks", count: 50 }),
+    points: 50,
+    tier: "gold",
+    sortOrder: 23
+  },
+  {
+    achievementKey: "multi_property_manager",
+    category: "Milestones",
+    name: "Multi-Property Manager",
+    description: "Add 2 or more properties to your account",
+    icon: "star",
+    criteria: JSON.stringify({ type: "multi_property", count: 2 }),
+    points: 25,
+    tier: "silver",
+    sortOrder: 24
+  },
+  {
+    achievementKey: "contractor_connection",
+    category: "Milestones",
+    name: "Contractor Connection",
+    description: "Hire your first contractor through Home Base",
+    icon: "wrench",
+    criteria: JSON.stringify({ type: "contractor_hired", count: 1 }),
+    points: 15,
+    tier: "bronze",
+    sortOrder: 25
+  },
+
+  // STREAK & CONSISTENCY ACHIEVEMENTS (3)
+  {
+    achievementKey: "monthly_momentum",
+    category: "Streaks",
+    name: "Monthly Momentum",
+    description: "Complete tasks in 3 consecutive months",
+    icon: "clock",
+    criteria: JSON.stringify({ type: "streak", months: 3 }),
+    points: 20,
+    tier: "silver",
+    sortOrder: 26
+  },
+  {
+    achievementKey: "quarterly_qualifier",
+    category: "Streaks",
+    name: "Quarterly Qualifier",
+    description: "Complete tasks in 6 consecutive months",
+    icon: "clock",
+    criteria: JSON.stringify({ type: "streak", months: 6 }),
+    points: 35,
+    tier: "gold",
+    sortOrder: 27
+  },
+  {
+    achievementKey: "year_round_warrior",
+    category: "Streaks",
+    name: "Year-Round Warrior",
+    description: "Complete tasks in 12 consecutive months",
+    icon: "trophy",
+    criteria: JSON.stringify({ type: "streak", months: 12 }),
+    points: 60,
+    tier: "platinum",
+    sortOrder: 28
+  },
+
+  // SPECIAL ACHIEVEMENTS (4)
+  {
+    achievementKey: "early_adopter",
+    category: "Special",
+    name: "Early Adopter",
+    description: "Sign up during launch period",
+    icon: "star",
+    criteria: JSON.stringify({ type: "early_adopter", before: "2026-01-01" }),
+    points: 25,
+    tier: "gold",
+    sortOrder: 29
+  },
+  {
+    achievementKey: "premium_member",
+    category: "Special",
+    name: "Premium Member",
+    description: "Upgrade to Premium or Premium Plus plan",
+    icon: "star",
+    criteria: JSON.stringify({ type: "premium_subscription" }),
+    points: 30,
+    tier: "gold",
+    sortOrder: 30
+  },
+  {
+    achievementKey: "complete_profile",
+    category: "Special",
+    name: "Complete Profile",
+    description: "Add all home system information",
+    icon: "star",
+    criteria: JSON.stringify({ type: "profile_complete", systems: 5 }),
+    points: 15,
+    tier: "bronze",
+    sortOrder: 31
+  },
+  {
+    achievementKey: "safety_first",
+    category: "Special",
+    name: "Safety First",
+    description: "Complete 5 high-priority safety tasks",
+    icon: "star",
+    criteria: JSON.stringify({ type: "high_priority_safety", count: 5 }),
+    points: 30,
+    tier: "silver",
+    sortOrder: 32
+  }
+];
+
+async function seedAchievements() {
+  console.log("Starting achievement seeding...");
+  
+  try {
+    // Insert all achievements
+    for (const achievement of achievements) {
+      await db.insert(achievementDefinitions).values(achievement).onConflictDoNothing();
+      console.log(`✓ Seeded: ${achievement.name}`);
+    }
+    
+    console.log("\n✅ Successfully seeded all 32 achievements!");
+    console.log("\nAchievements by category:");
+    console.log("- Seasonal: 4");
+    console.log("- Financial Savvy: 5");
+    console.log("- Organization: 6");
+    console.log("- Referral & Community: 4");
+    console.log("- Milestones: 6");
+    console.log("- Streaks: 3");
+    console.log("- Special: 4");
+    console.log("\nTotal: 32 achievements");
+    
+  } catch (error) {
+    console.error("Error seeding achievements:", error);
+    throw error;
+  }
+}
+
+// Run the seeding
+seedAchievements()
+  .then(() => {
+    console.log("\nSeeding complete!");
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error("Seeding failed:", error);
+    process.exit(1);
+  });
