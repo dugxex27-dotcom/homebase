@@ -205,8 +205,8 @@ export default function Header() {
                             )}
                           </button>
                         </Link>
-                        <Link href="/contractor-profile#referral" onClick={() => setMobileMenuOpen(false)}>
-                          <button className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm ${location === '/contractor-profile' && window.location.hash === '#referral' ? 'bg-blue-100 text-blue-700 font-medium' : 'hover:bg-muted'}`}>
+                        <Link href="/contractor-referral" onClick={() => setMobileMenuOpen(false)}>
+                          <button className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm ${location === '/contractor-referral' ? 'bg-blue-100 text-blue-700 font-medium' : 'hover:bg-muted'}`}>
                             <Gift className="w-4 h-4" />
                             Referral
                           </button>
