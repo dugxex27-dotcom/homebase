@@ -4257,11 +4257,14 @@ export class MemStorage implements IStorage {
         }
       }
       
+      // For house filtering, determine unlock status based on house-specific progress
+      const isHouseUnlocked = progress >= 100;
+      
       results.push({
         achievementKey: def.achievementKey,
         progress,
-        isUnlocked: userAchiev?.isUnlocked || false,
-        unlockedAt: userAchiev?.unlockedAt,
+        isUnlocked: isHouseUnlocked,
+        unlockedAt: isHouseUnlocked && userAchiev?.isUnlocked ? userAchiev.unlockedAt : undefined,
         metadata: userAchiev?.metadata
       });
     }
