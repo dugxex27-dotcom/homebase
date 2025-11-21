@@ -83,13 +83,15 @@ Preferred communication style: Simple, everyday language.
     - **User Status Updates**: Automatic subscription status updates based on webhook events.
     - **Payment Transparency**: Users can view complete billing history on billing page.
 - **Gamified Achievement System** (Nov 2025):
-    - **46 Total Achievements** across 8 categories with progression tracking (expanded from 32)
-    - **Seasonal Achievements** (4): Winter Warrior, Spring Renewal, Summer Sentinel, Fall Prepper - unlock by completing 5 seasonal tasks
+    - **62 Total Achievements** across 8 categories with progression tracking (expanded from 46 in Nov 2025)
+    - **Seasonal Achievements** (16 - EXPANDED!): Tiered progression system for year-round engagement
+        - **Tiered Seasonal** (12): Bronze (3 tasks), Silver (5 tasks), Gold (10 tasks) for Winter, Spring, Summer, Fall
+        - **Special Seasonal** (4): All Seasons Master (tasks in all 4 seasons), Seasonal Perfectionist (15+ tasks in one season), Year-Round Caretaker (3+ per season), Seasonal Consistency (5+ per season)
     - **Financial Savvy** (19 - EXPANDED!): Designed for long-term engagement (6-12+ months to complete all tiers)
         - **Total Savings Tiers** (8): Budget Boss ($500), Savings Expert ($1K), Frugal Master ($2.5K), Savings Titan ($5K), Savings Legend ($10K), Savings Master ($25K), Savings Guru ($50K), Ultimate Saver ($100K)
         - **Under Budget Tiers** (6): DIY Champion (10 tasks), Penny Pincher Pro (25 tasks), Budget Expert (50 tasks), Budget Legend (100 tasks), Budget Master (250 tasks), Budget Champion (500 tasks)
         - **Savings Streaks** (3): Consistent Saver (6 consecutive months with savings), Year-Long Saver (12 months), Savings Marathon (24 months)
-        - **High ROI per Task** (3): Efficiency Expert (avg $200/task), ROI Master (avg $500/task), Value Maximizer (avg $1K/task) - requires minimum 10 tasks
+        - **High ROI per Task** (3): Efficiency Expert (avg $200/task), ROI Master (avg $500/task), Value Maximizer (avg $1K/task) - requires minimum 10 tasks with progressive pre-threshold progress
         - **Quarterly Savings Goals** (3): Quarterly Winner ($1K in a quarter), Quarterly Champion ($2.5K), Quarterly Legend ($5K)
     - **Organization** (6): Getting Started (3 records), Record Keeper (10 records), Documentation Pro (25 records), Photo Journalist (5 photo pairs), Visual Archivist (15 photo pairs), Receipt Ranger (10 documents)
     - **Referral & Community** (4): Helpful Neighbor (1 referral), Community Builder (3 referrals), Ambassador (5 referrals), Influencer (10 referrals)
@@ -99,7 +101,8 @@ Preferred communication style: Simple, everyday language.
     - **Progress Tracking**: Real-time percentage progress for all achievements, automatic unlocking when criteria met
     - **Achievement Page**: Purple-themed UI with category tabs, stat cards, progress bars, unlock dates, and achievement detail modals
     - **Retroactive Checking**: POST `/api/achievements/check` endpoint processes historical data to award missed achievements
-    - **Implementation**: Three new criteria types added: `consecutive_savings_months` (streak tracking), `average_savings_per_task` (ROI tracking), `quarterly_savings` (time-boxed goals)
+    - **Implementation**: Six criteria types: `consecutive_savings_months` (fixed calendar arithmetic for year rollovers), `average_savings_per_task` (progressive ROI tracking), `quarterly_savings`, `all_seasons`, `seasonal_peak`, `year_round`/`seasonal_consistency`
+    - **Performance Optimization** (Nov 2025): Pre-aggregation of savings metrics (totals, monthly buckets, quarterly sums) eliminates O(N*achievements) database scans, improving achievement checking from ~50 queries to 1 per homeowner
 - **API Endpoints**: Structured for contractors, products, houses, notifications, proposals, connection codes, search analytics, billing/subscriptions, billing history, error logging, agent/affiliate system, CRM leads, achievements, and admin functions.
 
 ## External Dependencies
