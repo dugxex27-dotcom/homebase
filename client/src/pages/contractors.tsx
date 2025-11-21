@@ -40,6 +40,12 @@ export default function Contractors() {
     enabled: isAuthenticated && !!homeownerId && userRole === 'homeowner'
   });
 
+  // Fetch contractor stats for homeowners
+  const { data: contractorStats } = useQuery<{ contractorsUsed: number }>({
+    queryKey: ['/api/homeowner/contractors-stats'],
+    enabled: isAuthenticated && !!homeownerId && userRole === 'homeowner'
+  });
+
   // Auto-select first house when houses are loaded
   useEffect(() => {
     if (houses.length > 0 && !selectedHouseId) {
@@ -352,6 +358,15 @@ export default function Contractors() {
             <p className="text-sm sm:text-base lg:text-lg max-w-3xl mx-auto" style={{ color: '#b6a6f4' }}>
               Connect with verified professionals specializing in niche home services
             </p>
+            {isAuthenticated && userRole === 'homeowner' && contractorStats && contractorStats.contractorsUsed > 0 && (
+              <div className="mt-4 sm:mt-6">
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full" style={{ backgroundColor: '#3d1f6b', border: '2px solid #b6a6f4' }}>
+                  <span className="text-sm sm:text-base font-medium text-white">
+                    You've worked with {contractorStats.contractorsUsed} {contractorStats.contractorsUsed === 1 ? 'contractor' : 'contractors'}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </section>

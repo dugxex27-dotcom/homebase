@@ -3399,6 +3399,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get homeowner's contractor usage stats
+  app.get("/api/homeowner/contractors-stats", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.user?.id;
+      const userRole = req.session?.user?.role;
+      
+      if (userRole !== 'homeowner') {
+        return res.status(403).json({ message: "Only homeowners can view contractor stats" });
+      }
+      
+      // Get unique contractor IDs from various sources
+      const uniqueContractorIds = new Set<string>();
+      
+      // From maintenance logs
+      const maintenanceLogs = await storage.getMaintenanceLogs(userId);
+      maintenanceLogs.forEach((log: any) => {
+        if (log.contractorId) {
+          uniqueContractorIds.add(log.contractorId);
+        }
+      });
+      
+      // From proposals (received and accepted)
+      const proposals = await storage.getHomeownerProposals(userId);
+      proposals.forEach((proposal: any) => {
+        if (proposal.contractorId) {
+          uniqueContractorIds.add(proposal.contractorId);
+        }
+      });
+      
+      // From conversations
+      const conversations = await storage.getConversationsForUser(userId, 'homeowner');
+      conversations.forEach((conversation: any) => {
+        if (conversation.contractorId) {
+          uniqueContractorIds.add(conversation.contractorId);
+        }
+      });
+      
+      // From reviews
+      const reviews = await storage.getHomeownerReviews(userId);
+      reviews.forEach((review: any) => {
+        if (review.contractorId) {
+          uniqueContractorIds.add(review.contractorId);
+        }
+      });
+      
+      res.json({
+        contractorsUsed: uniqueContractorIds.size
+      });
+    } catch (error) {
+      console.error("Error fetching contractor stats:", error);
+      res.status(500).json({ message: "Failed to fetch contractor stats" });
+    }
+  });
+
   app.get("/api/contractors/:id", async (req, res) => {
     try {
       console.log('[DEBUG] GET /api/contractors/:id - Looking for contractor ID:', req.params.id);
