@@ -202,6 +202,9 @@ export default function Contractors() {
       setHasAppliedFilters(true);
       hasInitializedFromUrl.current = true;
       
+      // Pre-fill the search query field
+      if (searchQuery) setSearchQuery(searchQuery);
+      
       // Pre-select the house and distance in UI
       if (houseId) setSelectedHouseId(houseId);
       if (maxDistance) setSelectedDistance(maxDistance);

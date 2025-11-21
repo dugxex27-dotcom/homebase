@@ -99,8 +99,8 @@ export default function AIContractorHelp() {
   };
 
   const handleFindContractor = (serviceType: string) => {
-    // Navigate to contractor search with pre-filled service type
-    setLocation(`/find-contractors?service=${encodeURIComponent(serviceType)}`);
+    // Navigate to contractor search with pre-filled service type and search query
+    setLocation(`/find-contractors?q=${encodeURIComponent(serviceType)}&service=${encodeURIComponent(serviceType)}`);
   };
 
   return (
