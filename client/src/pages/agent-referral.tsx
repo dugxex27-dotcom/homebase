@@ -130,9 +130,7 @@ export default function AgentReferral() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="text-sm text-gray-600">
-                Share Home Base with your clients and earn $10 commission per referral after 4 months of active subscription
-              </div>
+              <div className="text-sm text-gray-600">Share Home Base with your clients and earn $15 commission per referral after 4 months of active subscription</div>
               
               {/* Referral Stats */}
               <div className="grid grid-cols-2 gap-4">
