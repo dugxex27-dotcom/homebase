@@ -488,16 +488,6 @@ export default function Home() {
             )}
 
             <div className="text-center">
-              <h4 className="text-base sm:text-lg font-semibold mb-4 sm:mb-6 text-white">For Contractors</h4>
-              <ul className="space-y-2 sm:space-y-3 text-gray-400 text-sm sm:text-base">
-                <li><Link href="/contractor-signin" className="transition-colors hover:text-purple-400">Join Network</Link></li>
-                <li><Link href="/billing" className="transition-colors hover:text-purple-400">Pricing Plans</Link></li>
-                <li><Link href="/support" className="transition-colors hover:text-purple-400">Support Center</Link></li>
-                <li><Link href="/achievements" className="transition-colors hover:text-purple-400">Features</Link></li>
-              </ul>
-            </div>
-
-            <div className="text-center">
               <h4 className="text-base sm:text-lg font-semibold mb-4 sm:mb-6 text-white">Support</h4>
               <ul className="space-y-2 sm:space-y-3 text-gray-400 text-sm sm:text-base">
                 <li><Link href="/support" className="transition-colors hover:text-purple-400">Help Center</Link></li>
