@@ -9,7 +9,7 @@ export default function HeroSection() {
   return (
     <section style={{ 
       background: typedUser?.role === 'homeowner' 
-        ? 'linear-gradient(135deg, #8B7BC8 0%, #9B8DD4 50%, #8B7BC8 100%)' 
+        ? 'transparent' 
         : '#1560a2', 
       paddingTop: '20px', 
       paddingBottom: '2px' 

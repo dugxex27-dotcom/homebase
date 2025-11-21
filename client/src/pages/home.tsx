@@ -176,11 +176,15 @@ export default function Home() {
   const selectedHouse = userHouses.find(h => h.id === selectedHouseId);
 
   return (
-    <div className="min-h-screen" style={{ background: typedUser?.role === 'homeowner' ? '#2c0f5b' : '#1560a2' }}>
+    <div className="min-h-screen" style={{ 
+      background: typedUser?.role === 'homeowner' 
+        ? 'linear-gradient(180deg, #8B70D4 0%, #9B82DC 50%, #8B70D4 100%)' 
+        : '#1560a2' 
+    }}>
       <HeroSection />
       {/* Progress to Free Subscription Section */}
       {typedUser?.role === 'homeowner' && (
-        <section className="py-8 sm:py-12" style={{ backgroundColor: '#2c0f5b' }}>
+        <section className="py-8 sm:py-12" style={{ background: 'transparent' }}>
           <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
             <div className="max-w-5xl mx-auto">
               <Card className="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950 dark:to-blue-950 border-purple-200 dark:border-purple-800">
