@@ -3488,6 +3488,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return dateB - dateA;
         });
       
+      console.log('[CONTRACTORS USED] House ID:', houseId);
+      console.log('[CONTRACTORS USED] Found contractor IDs:', contractorIds);
+      console.log('[CONTRACTORS USED] Returning contractors:', validContractors.length);
+      console.log('[CONTRACTORS USED] Contractors:', validContractors.map(c => ({ id: c.id, name: c.name, company: c.company })));
+      
       res.json(validContractors);
     } catch (error) {
       console.error("Error fetching contractors used at house:", error);
