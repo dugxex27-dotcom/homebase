@@ -34,8 +34,11 @@ import {
   CheckCircle,
   Plus,
   Download,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Check,
+  CreditCard
 } from "lucide-react";
+import { Link } from "wouter";
 import PushNotificationManager from "@/components/push-notification-manager";
 import { HomeownerConnectionCodes } from "@/components/ConnectionCodes";
 import instagramPostImg from '@assets/generated_images/Instagram_referral_post_square_843cce29.png';
@@ -1113,6 +1116,115 @@ export default function HomeownerAccount() {
                 <div className="text-sm">
                   <span className="text-gray-600">Properties:</span>
                   <span className="ml-2 font-medium">2 Active</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Pricing Plans */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-purple-600" />
+                  Pricing Plans
+                </CardTitle>
+                <CardDescription>
+                  Choose the plan that fits your needs based on the number of properties you manage
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  {/* Base Plan */}
+                  <div className={`border-2 rounded-lg p-4 transition-all ${maxHouses <= 2 ? 'border-purple-600 bg-purple-50/50' : 'border-gray-200'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-bold text-lg" style={{ color: '#2c0f5b' }}>Base Plan</h3>
+                      {maxHouses <= 2 && (
+                        <Badge variant="secondary" className="text-xs bg-purple-600 text-white">Current</Badge>
+                      )}
+                    </div>
+                    <div className="flex items-baseline gap-1 mb-3">
+                      <span className="text-3xl font-bold" style={{ color: '#2c0f5b' }}>$5</span>
+                      <span className="text-sm text-gray-600">/month</span>
+                    </div>
+                    <ul className="space-y-2 text-sm">
+                      <li className="flex items-start gap-2">
+                        <Check className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                        <span>Up to <strong>2 properties</strong></span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                        <span>Full maintenance scheduling</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                        <span>Contractor directory access</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  {/* Premium Plan */}
+                  <div className={`border-2 rounded-lg p-4 transition-all ${maxHouses >= 3 && maxHouses <= 6 ? 'border-purple-600 bg-purple-50/50' : 'border-gray-200'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-bold text-lg" style={{ color: '#2c0f5b' }}>Premium Plan</h3>
+                      {maxHouses >= 3 && maxHouses <= 6 && (
+                        <Badge variant="secondary" className="text-xs bg-purple-600 text-white">Current</Badge>
+                      )}
+                    </div>
+                    <div className="flex items-baseline gap-1 mb-3">
+                      <span className="text-3xl font-bold" style={{ color: '#2c0f5b' }}>$20</span>
+                      <span className="text-sm text-gray-600">/month</span>
+                    </div>
+                    <ul className="space-y-2 text-sm">
+                      <li className="flex items-start gap-2">
+                        <Check className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                        <span><strong>3-6 properties</strong></span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                        <span>Everything in Base</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                        <span>Priority support</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  {/* Premium Plus Plan */}
+                  <div className={`border-2 rounded-lg p-4 transition-all ${maxHouses >= 7 ? 'border-purple-600 bg-purple-50/50' : 'border-gray-200'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-bold text-lg" style={{ color: '#2c0f5b' }}>Premium Plus</h3>
+                      {maxHouses >= 7 && (
+                        <Badge variant="secondary" className="text-xs bg-purple-600 text-white">Current</Badge>
+                      )}
+                    </div>
+                    <div className="flex items-baseline gap-1 mb-3">
+                      <span className="text-3xl font-bold" style={{ color: '#2c0f5b' }}>$40</span>
+                      <span className="text-sm text-gray-600">/month</span>
+                    </div>
+                    <ul className="space-y-2 text-sm">
+                      <li className="flex items-start gap-2">
+                        <Check className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                        <span><strong>7+ properties</strong></span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                        <span>Everything in Premium</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                        <span>Dedicated account manager</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="flex justify-center">
+                  <Button asChild className="bg-purple-600 hover:bg-purple-700 text-white" data-testid="button-manage-subscription">
+                    <Link href="/billing">
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      Manage Subscription
+                    </Link>
+                  </Button>
                 </div>
               </CardContent>
             </Card>
