@@ -3148,7 +3148,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h2 className="text-2xl font-bold text-white mb-2">Home Appliances</h2>
-                <p className="text-lg" style={{ color: '#b6a6f4' }}>
+                <p className="text-lg" style={{ color: '#2c0f5b' }}>
                   Track appliances, manuals, and maintenance schedules
                 </p>
               </div>
