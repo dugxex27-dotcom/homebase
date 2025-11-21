@@ -58,57 +58,86 @@ export default function Home() {
       {typedUser?.role === 'homeowner' && (
         <section className="py-8 sm:py-12" style={{ background: 'transparent' }}>
           <div className="max-w-4xl mx-auto px-3 sm:px-4 lg:px-6">
-            <Card className="bg-white border-purple-200 shadow-xl">
+            <Card className="shadow-2xl border-0 overflow-hidden" style={{ background: 'linear-gradient(135deg, #2c0f5b 0%, #5a3a9e 100%)' }}>
               <CardHeader className="pb-4">
                 <CardTitle className="text-center">
-                  <div className="flex items-center justify-center gap-2 text-2xl sm:text-3xl font-bold" style={{ color: '#2c0f5b' }}>
-                    <Gift className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
+                  <div className="flex items-center justify-center gap-3 text-2xl sm:text-3xl font-bold text-white">
+                    <Gift className="h-8 w-8 sm:h-10 sm:w-10" style={{ color: '#b6a6f4' }} />
                     Earn a Free Subscription
                   </div>
                 </CardTitle>
-                <p className="text-center text-gray-600 mt-2">
+                <p className="text-center mt-3 text-base sm:text-lg" style={{ color: '#e0d4ff' }}>
                   Get {referralsNeeded} paid referrals. Free as long as they remain subscribers.
                 </p>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between mb-2 px-4">
+              <CardContent className="pb-8">
+                <div className="space-y-6">
+                  {/* Progress Circle Style Numbers */}
+                  <div className="flex items-center justify-center gap-6 sm:gap-8 mb-6">
                     <div className="text-center">
-                      <div className="text-3xl font-bold" style={{ color: '#2c0f5b' }}>
-                        {referralCount}
+                      <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full flex items-center justify-center mb-3 shadow-lg" style={{ background: 'linear-gradient(135deg, #b6a6f4 0%, #8B70D4 100%)' }}>
+                        <div className="text-4xl sm:text-5xl font-bold text-white">
+                          {referralCount}
+                        </div>
                       </div>
-                      <div className="text-sm text-gray-600">Paid Referrals</div>
+                      <div className="text-sm sm:text-base font-medium" style={{ color: '#b6a6f4' }}>Paid Referrals</div>
                     </div>
-                    <div className="text-2xl text-gray-400">/</div>
+                    <div className="text-3xl sm:text-4xl font-light" style={{ color: '#b6a6f4' }}>/</div>
                     <div className="text-center">
-                      <div className="text-3xl font-bold" style={{ color: '#2c0f5b' }}>
-                        {referralsNeeded}
+                      <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full flex items-center justify-center mb-3 shadow-lg border-4" style={{ borderColor: '#b6a6f4', background: 'rgba(182, 166, 244, 0.2)' }}>
+                        <div className="text-4xl sm:text-5xl font-bold" style={{ color: '#b6a6f4' }}>
+                          {referralsNeeded}
+                        </div>
                       </div>
-                      <div className="text-sm text-gray-600">Needed</div>
+                      <div className="text-sm sm:text-base font-medium" style={{ color: '#b6a6f4' }}>Goal</div>
                     </div>
                   </div>
                   
-                  <Progress 
-                    value={progressPercentage} 
-                    className="h-8 mb-4" 
-                    data-testid="progress-referral-subscription" 
-                  />
+                  {/* Enhanced Progress Bar */}
+                  <div className="px-4 sm:px-8">
+                    <Progress 
+                      value={progressPercentage} 
+                      className="h-6 sm:h-8 mb-4 bg-purple-900/30" 
+                      data-testid="progress-referral-subscription" 
+                    />
+                    <div className="text-center text-sm" style={{ color: '#e0d4ff' }}>
+                      {progressPercentage.toFixed(0)}% Complete
+                    </div>
+                  </div>
                   
-                  <p className="text-center text-xl sm:text-2xl font-semibold" style={{ color: referralsRemaining === 0 ? '#10b981' : '#dc2626' }}>
+                  {/* Status Message with Better Styling */}
+                  <div className="text-center px-4">
                     {referralsRemaining === 0 ? (
-                      "🎉 You've earned a free subscription!"
+                      <div className="py-4 px-6 rounded-xl" style={{ background: 'rgba(182, 166, 244, 0.3)' }}>
+                        <p className="text-xl sm:text-2xl font-bold" style={{ color: '#b6a6f4' }}>
+                          🎉 You've earned a free subscription!
+                        </p>
+                      </div>
                     ) : (
-                      `You're ${referralsRemaining} paid referral${referralsRemaining !== 1 ? 's' : ''} away from a free subscription.`
+                      <div className="py-4 px-6 rounded-xl" style={{ background: 'rgba(182, 166, 244, 0.15)' }}>
+                        <p className="text-lg sm:text-xl font-semibold mb-2 text-white">
+                          Almost There!
+                        </p>
+                        <p className="text-base sm:text-lg" style={{ color: '#e0d4ff' }}>
+                          Just {referralsRemaining} more paid referral{referralsRemaining !== 1 ? 's' : ''} to unlock your free subscription
+                        </p>
+                      </div>
                     )}
-                  </p>
+                  </div>
                   
-                  <div className="text-center mt-6">
+                  {/* CTA Button */}
+                  <div className="text-center mt-6 px-4">
                     <Link href="/homeowner-referral">
                       <Button 
                         size="lg"
-                        className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-6 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+                        className="w-full sm:w-auto text-white px-10 py-6 text-lg sm:text-xl rounded-xl shadow-2xl hover:shadow-3xl transition-all duration-200 border-2 font-semibold"
+                        style={{ 
+                          background: 'linear-gradient(135deg, #b6a6f4 0%, #8B70D4 100%)',
+                          borderColor: '#ffffff'
+                        }}
                         data-testid="button-share-invite-link"
                       >
+                        <Gift className="w-5 h-5 mr-2" />
                         Share Your Invite Link
                       </Button>
                     </Link>
