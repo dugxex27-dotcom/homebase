@@ -229,22 +229,6 @@ export default function HomeownerPricing() {
                   <Check className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
                   <span className="text-sm"><strong>Everything in Premium</strong></span>
                 </li>
-                <li className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">Dedicated account manager</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">24/7 priority phone support</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">API access</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">White-glove onboarding</span>
-                </li>
               </ul>
               {maxHouses >= 7 ? (
                 <Button className="w-full" variant="outline" disabled>
