@@ -7181,36 +7181,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Achievement endpoints
-  app.get('/api/achievements', async (req: any, res) => {
-    try {
-      const homeownerId = req.session?.user?.id;
-      if (!homeownerId) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-      
-      const achievements = await storage.getAchievements(homeownerId);
-      
-      // Also return progress toward locked achievements
-      const taskCount = (await storage.getTaskCompletions(homeownerId)).length;
-      const contractorCount = await storage.getContractorHireCount(homeownerId);
-      const { currentStreak, longestStreak } = await storage.getMonthlyStreak(homeownerId);
-      
-      res.json({
-        achievements,
-        progress: {
-          tasksCompleted: taskCount,
-          contractorsHired: contractorCount,
-          currentStreak,
-          longestStreak,
-        },
-      });
-    } catch (error) {
-      console.error("Error fetching achievements:", error);
-      res.status(500).json({ message: "Failed to fetch achievements" });
-    }
-  });
-
+  // Achievement endpoints (old - removed - using new system below)
+  
   app.post('/api/achievements/contractor-hired', async (req: any, res) => {
     try {
       const homeownerId = req.session?.user?.id;
