@@ -22,13 +22,19 @@ export default function HeroSection() {
             )}
           </h1>
           
-          <p className="text-xl mb-8 max-w-3xl mx-auto leading-relaxed" style={{ color: typedUser?.role === 'homeowner' ? '#b6a6f4' : '#9ed0ef' }}>
+          <p className="text-xl mb-4 max-w-3xl mx-auto leading-relaxed font-semibold" style={{ color: typedUser?.role === 'homeowner' ? '#b6a6f4' : '#9ed0ef' }}>
             {typedUser?.role === 'homeowner' ? (
               'The Carfax-style home history your house has always needed'
             ) : (
               'Grow your contracting business by connecting with quality clients, showcasing your expertise, and managing your professional reputation in one powerful platform.'
             )}
           </p>
+          
+          {typedUser?.role === 'homeowner' && (
+            <p className="text-lg mb-8 max-w-3xl mx-auto leading-relaxed" style={{ color: '#b6a6f4' }}>
+              Track every repair, upgrade, and maintenance task in one place—so you always know the real story of your home.
+            </p>
+          )}
         </div>
       </div>
     </section>
