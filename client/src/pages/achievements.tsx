@@ -194,6 +194,22 @@ export default function Achievements() {
       unlocked: achievements.filter(a => a.category === 'Organization' && a.isUnlocked).length,
       total: achievements.filter(a => a.category === 'Organization').length,
     },
+    referral: {
+      unlocked: achievements.filter(a => a.category === 'Referral & Community' && a.isUnlocked).length,
+      total: achievements.filter(a => a.category === 'Referral & Community').length,
+    },
+    milestones: {
+      unlocked: achievements.filter(a => a.category === 'Milestones' && a.isUnlocked).length,
+      total: achievements.filter(a => a.category === 'Milestones').length,
+    },
+    streaks: {
+      unlocked: achievements.filter(a => a.category === 'Streaks' && a.isUnlocked).length,
+      total: achievements.filter(a => a.category === 'Streaks').length,
+    },
+    special: {
+      unlocked: achievements.filter(a => a.category === 'Special' && a.isUnlocked).length,
+      total: achievements.filter(a => a.category === 'Special').length,
+    },
   };
 
   return (
@@ -246,7 +262,7 @@ export default function Achievements() {
                   <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#3b82f6' }}>
                     {categoryStats.seasonal.unlocked}/{categoryStats.seasonal.total}
                   </p>
-                  <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Seasonal Badges</p>
+                  <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Seasonal ({categoryStats.seasonal.total})</p>
                 </div>
               </CardContent>
             </Card>
@@ -265,7 +281,7 @@ export default function Achievements() {
                   <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#10b981' }}>
                     {categoryStats.financial.unlocked}/{categoryStats.financial.total}
                   </p>
-                  <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Financial Savvy</p>
+                  <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Financial ({categoryStats.financial.total})</p>
                 </div>
               </CardContent>
             </Card>
@@ -284,7 +300,83 @@ export default function Achievements() {
                   <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#f59e0b' }}>
                     {categoryStats.organization.unlocked}/{categoryStats.organization.total}
                   </p>
-                  <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Organization</p>
+                  <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Organization ({categoryStats.organization.total})</p>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card 
+              style={{ backgroundColor: '#f2f2f2' }}
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => {
+                setModalCategory('Referral & Community');
+                setCategoryModalOpen(true);
+              }}
+              data-testid="card-referral"
+            >
+              <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+                <div className="text-center">
+                  <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#ec4899' }}>
+                    {categoryStats.referral.unlocked}/{categoryStats.referral.total}
+                  </p>
+                  <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Referrals ({categoryStats.referral.total})</p>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card 
+              style={{ backgroundColor: '#f2f2f2' }}
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => {
+                setModalCategory('Milestones');
+                setCategoryModalOpen(true);
+              }}
+              data-testid="card-milestones"
+            >
+              <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+                <div className="text-center">
+                  <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#8b5cf6' }}>
+                    {categoryStats.milestones.unlocked}/{categoryStats.milestones.total}
+                  </p>
+                  <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Milestones ({categoryStats.milestones.total})</p>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card 
+              style={{ backgroundColor: '#f2f2f2' }}
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => {
+                setModalCategory('Streaks');
+                setCategoryModalOpen(true);
+              }}
+              data-testid="card-streaks"
+            >
+              <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+                <div className="text-center">
+                  <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#ef4444' }}>
+                    {categoryStats.streaks.unlocked}/{categoryStats.streaks.total}
+                  </p>
+                  <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Streaks ({categoryStats.streaks.total})</p>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card 
+              style={{ backgroundColor: '#f2f2f2' }}
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => {
+                setModalCategory('Special');
+                setCategoryModalOpen(true);
+              }}
+              data-testid="card-special"
+            >
+              <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+                <div className="text-center">
+                  <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#06b6d4' }}>
+                    {categoryStats.special.unlocked}/{categoryStats.special.total}
+                  </p>
+                  <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Special ({categoryStats.special.total})</p>
                 </div>
               </CardContent>
             </Card>
@@ -536,13 +628,21 @@ export default function Achievements() {
                   {modalCategory === 'all' ? 'All Achievements' :
                    modalCategory === 'Seasonal' ? 'Seasonal Badges' :
                    modalCategory === 'Financial Savvy' ? 'Financial Savvy Achievements' :
-                   modalCategory === 'Organization' ? 'Organization Badges' : 'Achievements'}
+                   modalCategory === 'Organization' ? 'Organization Badges' :
+                   modalCategory === 'Referral & Community' ? 'Referral & Community Badges' :
+                   modalCategory === 'Milestones' ? 'Milestone Achievements' :
+                   modalCategory === 'Streaks' ? 'Streak Achievements' :
+                   modalCategory === 'Special' ? 'Special Achievements' : 'Achievements'}
                 </DialogTitle>
                 <DialogDescription style={{ color: '#6b7280' }}>
                   {modalCategory === 'all' ? `${unlockedCount}/${totalCount} achievements unlocked` :
                    modalCategory === 'Seasonal' ? `${categoryStats.seasonal.unlocked}/${categoryStats.seasonal.total} seasonal badges earned` :
                    modalCategory === 'Financial Savvy' ? `${categoryStats.financial.unlocked}/${categoryStats.financial.total} financial achievements unlocked` :
-                   modalCategory === 'Organization' ? `${categoryStats.organization.unlocked}/${categoryStats.organization.total} organization badges earned` : ''}
+                   modalCategory === 'Organization' ? `${categoryStats.organization.unlocked}/${categoryStats.organization.total} organization badges earned` :
+                   modalCategory === 'Referral & Community' ? `${categoryStats.referral.unlocked}/${categoryStats.referral.total} referral badges earned` :
+                   modalCategory === 'Milestones' ? `${categoryStats.milestones.unlocked}/${categoryStats.milestones.total} milestones reached` :
+                   modalCategory === 'Streaks' ? `${categoryStats.streaks.unlocked}/${categoryStats.streaks.total} streaks achieved` :
+                   modalCategory === 'Special' ? `${categoryStats.special.unlocked}/${categoryStats.special.total} special badges earned` : ''}
                 </DialogDescription>
               </DialogHeader>
               
