@@ -7,7 +7,13 @@ export default function HeroSection() {
   const typedUser = user as User | undefined;
 
   return (
-    <section style={{ background: typedUser?.role === 'homeowner' ? '#2c0f5b' : '#1560a2', paddingTop: '20px', paddingBottom: '2px' }}>
+    <section style={{ 
+      background: typedUser?.role === 'homeowner' 
+        ? 'linear-gradient(135deg, #8B7BC8 0%, #9B8DD4 50%, #8B7BC8 100%)' 
+        : '#1560a2', 
+      paddingTop: '20px', 
+      paddingBottom: '2px' 
+    }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-2">
           <Logo className={`h-32 w-full mx-auto block mb-8`} />
