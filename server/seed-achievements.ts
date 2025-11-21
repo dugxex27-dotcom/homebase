@@ -116,6 +116,214 @@ const achievements: AchievementDefinition[] = [
     tier: "gold",
     sortOrder: 9
   },
+  
+  // EXPANDED FINANCIAL ACHIEVEMENTS - Higher Savings Tiers
+  {
+    achievementKey: "savings_titan",
+    category: "Financial Savvy",
+    name: "Savings Titan",
+    description: "Save $5,000 total through DIY maintenance",
+    icon: "piggy-bank",
+    criteria: JSON.stringify({ type: "total_savings", amount: 5000 }),
+    points: 75,
+    tier: "platinum",
+    sortOrder: 10
+  },
+  {
+    achievementKey: "savings_legend",
+    category: "Financial Savvy",
+    name: "Savings Legend",
+    description: "Save $10,000 total through DIY maintenance",
+    icon: "trophy",
+    criteria: JSON.stringify({ type: "total_savings", amount: 10000 }),
+    points: 100,
+    tier: "diamond",
+    sortOrder: 11
+  },
+  {
+    achievementKey: "savings_master",
+    category: "Financial Savvy",
+    name: "Savings Master",
+    description: "Save $25,000 total through DIY maintenance",
+    icon: "star",
+    criteria: JSON.stringify({ type: "total_savings", amount: 25000 }),
+    points: 150,
+    tier: "diamond",
+    sortOrder: 12
+  },
+  {
+    achievementKey: "savings_guru",
+    category: "Financial Savvy",
+    name: "Savings Guru",
+    description: "Save $50,000 total through DIY maintenance",
+    icon: "star",
+    criteria: JSON.stringify({ type: "total_savings", amount: 50000 }),
+    points: 200,
+    tier: "legendary",
+    sortOrder: 13
+  },
+  {
+    achievementKey: "ultimate_saver",
+    category: "Financial Savvy",
+    name: "Ultimate Saver",
+    description: "Save $100,000 total through DIY maintenance",
+    icon: "trophy",
+    criteria: JSON.stringify({ type: "total_savings", amount: 100000 }),
+    points: 300,
+    tier: "legendary",
+    sortOrder: 14
+  },
+  
+  // EXPANDED - More Under-Budget Tiers
+  {
+    achievementKey: "budget_expert",
+    category: "Financial Savvy",
+    name: "Budget Expert",
+    description: "Complete 50 tasks under professional estimates",
+    icon: "wrench",
+    criteria: JSON.stringify({ type: "under_budget", count: 50 }),
+    points: 60,
+    tier: "platinum",
+    sortOrder: 15
+  },
+  {
+    achievementKey: "budget_legend",
+    category: "Financial Savvy",
+    name: "Budget Legend",
+    description: "Complete 100 tasks under professional estimates",
+    icon: "wrench",
+    criteria: JSON.stringify({ type: "under_budget", count: 100 }),
+    points: 100,
+    tier: "diamond",
+    sortOrder: 16
+  },
+  {
+    achievementKey: "budget_master",
+    category: "Financial Savvy",
+    name: "Budget Master",
+    description: "Complete 250 tasks under professional estimates",
+    icon: "trophy",
+    criteria: JSON.stringify({ type: "under_budget", count: 250 }),
+    points: 150,
+    tier: "diamond",
+    sortOrder: 17
+  },
+  {
+    achievementKey: "budget_champion",
+    category: "Financial Savvy",
+    name: "Budget Champion",
+    description: "Complete 500 tasks under professional estimates",
+    icon: "star",
+    criteria: JSON.stringify({ type: "under_budget", count: 500 }),
+    points: 250,
+    tier: "legendary",
+    sortOrder: 18
+  },
+  
+  // NEW ACHIEVEMENT TYPE - Savings Streaks
+  {
+    achievementKey: "savings_streak_6",
+    category: "Financial Savvy",
+    name: "Consistent Saver",
+    description: "Save money through DIY for 6 consecutive months",
+    icon: "clock",
+    criteria: JSON.stringify({ type: "consecutive_savings_months", count: 6 }),
+    points: 50,
+    tier: "gold",
+    sortOrder: 19
+  },
+  {
+    achievementKey: "savings_streak_12",
+    category: "Financial Savvy",
+    name: "Year-Long Saver",
+    description: "Save money through DIY for 12 consecutive months",
+    icon: "clock",
+    criteria: JSON.stringify({ type: "consecutive_savings_months", count: 12 }),
+    points: 100,
+    tier: "platinum",
+    sortOrder: 20
+  },
+  {
+    achievementKey: "savings_streak_24",
+    category: "Financial Savvy",
+    name: "Savings Marathon",
+    description: "Save money through DIY for 24 consecutive months",
+    icon: "star",
+    criteria: JSON.stringify({ type: "consecutive_savings_months", count: 24 }),
+    points: 200,
+    tier: "legendary",
+    sortOrder: 21
+  },
+  
+  // NEW ACHIEVEMENT TYPE - High ROI per Task
+  {
+    achievementKey: "high_roi_bronze",
+    category: "Financial Savvy",
+    name: "Efficiency Expert",
+    description: "Average $200 saved per DIY task completed",
+    icon: "dollar-sign",
+    criteria: JSON.stringify({ type: "average_savings_per_task", amount: 200, min_tasks: 10 }),
+    points: 40,
+    tier: "gold",
+    sortOrder: 22
+  },
+  {
+    achievementKey: "high_roi_silver",
+    category: "Financial Savvy",
+    name: "ROI Master",
+    description: "Average $500 saved per DIY task completed",
+    icon: "piggy-bank",
+    criteria: JSON.stringify({ type: "average_savings_per_task", amount: 500, min_tasks: 10 }),
+    points: 75,
+    tier: "platinum",
+    sortOrder: 23
+  },
+  {
+    achievementKey: "high_roi_gold",
+    category: "Financial Savvy",
+    name: "Value Maximizer",
+    description: "Average $1,000 saved per DIY task completed",
+    icon: "star",
+    criteria: JSON.stringify({ type: "average_savings_per_task", amount: 1000, min_tasks: 10 }),
+    points: 125,
+    tier: "diamond",
+    sortOrder: 24
+  },
+  
+  // NEW ACHIEVEMENT TYPE - Quarterly Savings Goals
+  {
+    achievementKey: "quarterly_saver_bronze",
+    category: "Financial Savvy",
+    name: "Quarterly Winner",
+    description: "Save $1,000 in a single quarter through DIY",
+    icon: "dollar-sign",
+    criteria: JSON.stringify({ type: "quarterly_savings", amount: 1000 }),
+    points: 30,
+    tier: "silver",
+    sortOrder: 25
+  },
+  {
+    achievementKey: "quarterly_saver_silver",
+    category: "Financial Savvy",
+    name: "Quarterly Champion",
+    description: "Save $2,500 in a single quarter through DIY",
+    icon: "piggy-bank",
+    criteria: JSON.stringify({ type: "quarterly_savings", amount: 2500 }),
+    points: 60,
+    tier: "gold",
+    sortOrder: 26
+  },
+  {
+    achievementKey: "quarterly_saver_gold",
+    category: "Financial Savvy",
+    name: "Quarterly Legend",
+    description: "Save $5,000 in a single quarter through DIY",
+    icon: "trophy",
+    criteria: JSON.stringify({ type: "quarterly_savings", amount: 5000 }),
+    points: 100,
+    tier: "platinum",
+    sortOrder: 27
+  },
 
   // ORGANIZATION & DOCUMENTATION ACHIEVEMENTS (6)
   {
@@ -391,16 +599,21 @@ async function seedAchievements() {
       console.log(`✓ Seeded: ${achievement.name}`);
     }
     
-    console.log("\n✅ Successfully seeded all 32 achievements!");
+    console.log("\n✅ Successfully seeded all 46 achievements!");
     console.log("\nAchievements by category:");
     console.log("- Seasonal: 4");
-    console.log("- Financial Savvy: 5");
+    console.log("- Financial Savvy: 19 (EXPANDED!)");
+    console.log("  → Total Savings Tiers: 8 ($500 to $100K)");
+    console.log("  → Under Budget Tiers: 6 (10 to 500 tasks)");
+    console.log("  → Savings Streaks: 3 (6, 12, 24 months)");
+    console.log("  → High ROI/Task: 3 (avg $200, $500, $1K per task)");
+    console.log("  → Quarterly Goals: 3 ($1K, $2.5K, $5K per quarter)");
     console.log("- Organization: 6");
     console.log("- Referral & Community: 4");
     console.log("- Milestones: 6");
     console.log("- Streaks: 3");
     console.log("- Special: 4");
-    console.log("\nTotal: 32 achievements");
+    console.log("\nTotal: 46 achievements (14 new financial achievements added!)");
     
   } catch (error) {
     console.error("Error seeding achievements:", error);

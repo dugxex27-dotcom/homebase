@@ -3693,6 +3693,106 @@ export class MemStorage implements IStorage {
           break;
         }
         
+        case 'consecutive_savings_months': {
+          // Get all task completions with savings, ordered by completion date
+          const completions = await db.select().from(taskCompletions)
+            .where(eq(taskCompletions.homeownerId, homeownerId))
+            .where(isNotNull(taskCompletions.costSavings));
+          
+          // Group by month and check for consecutive months with savings
+          const monthsWithSavings = new Set<string>();
+          for (const completion of completions) {
+            if (completion.costSavings && parseFloat(completion.costSavings.toString()) > 0 && completion.completedAt) {
+              const monthKey = `${completion.completedAt.getFullYear()}-${String(completion.completedAt.getMonth() + 1).padStart(2, '0')}`;
+              monthsWithSavings.add(monthKey);
+            }
+          }
+          
+          // Find longest consecutive streak
+          const sortedMonths = Array.from(monthsWithSavings).sort();
+          let maxStreak = 0;
+          let currentStreak = 0;
+          
+          for (let i = 0; i < sortedMonths.length; i++) {
+            if (i === 0) {
+              currentStreak = 1;
+            } else {
+              const [prevYear, prevMonth] = sortedMonths[i - 1].split('-').map(Number);
+              const [currYear, currMonth] = sortedMonths[i].split('-').map(Number);
+              
+              const prevDate = new Date(prevYear, prevMonth - 1);
+              const currDate = new Date(currYear, currMonth - 1);
+              const monthDiff = (currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24 * 30);
+              
+              if (monthDiff <= 1.5) { // Allow for slight variations in month length
+                currentStreak++;
+              } else {
+                currentStreak = 1;
+              }
+            }
+            maxStreak = Math.max(maxStreak, currentStreak);
+          }
+          
+          progress = Math.min(100, (maxStreak / criteria.count) * 100);
+          isCompleted = maxStreak >= criteria.count;
+          break;
+        }
+        
+        case 'average_savings_per_task': {
+          // Calculate average savings per task
+          const completions = await db.select().from(taskCompletions)
+            .where(eq(taskCompletions.homeownerId, homeownerId))
+            .where(isNotNull(taskCompletions.costSavings));
+          
+          const tasksWithSavings = completions.filter(c => 
+            c.costSavings && parseFloat(c.costSavings.toString()) > 0
+          );
+          
+          // Need minimum number of tasks before we can calculate average
+          const minTasks = criteria.min_tasks || 10;
+          if (tasksWithSavings.length < minTasks) {
+            progress = 0;
+            isCompleted = false;
+            break;
+          }
+          
+          const totalSavings = tasksWithSavings.reduce((sum, c) => 
+            sum + parseFloat(c.costSavings!.toString()), 0
+          );
+          const avgSavings = totalSavings / tasksWithSavings.length;
+          
+          progress = Math.min(100, (avgSavings / criteria.amount) * 100);
+          isCompleted = avgSavings >= criteria.amount;
+          break;
+        }
+        
+        case 'quarterly_savings': {
+          // Check if user saved X amount in any single quarter
+          const completions = await db.select().from(taskCompletions)
+            .where(eq(taskCompletions.homeownerId, homeownerId))
+            .where(isNotNull(taskCompletions.costSavings));
+          
+          // Group savings by quarter
+          const quarterSavings = new Map<string, number>();
+          for (const completion of completions) {
+            if (completion.costSavings && completion.completedAt) {
+              const year = completion.completedAt.getFullYear();
+              const quarter = Math.floor(completion.completedAt.getMonth() / 3) + 1;
+              const quarterKey = `${year}-Q${quarter}`;
+              
+              const savings = parseFloat(completion.costSavings.toString());
+              quarterSavings.set(quarterKey, (quarterSavings.get(quarterKey) || 0) + savings);
+            }
+          }
+          
+          // Find the highest quarter
+          const maxQuarterlySavings = Math.max(0, ...Array.from(quarterSavings.values()));
+          
+          progress = Math.min(100, (maxQuarterlySavings / criteria.amount) * 100);
+          isCompleted = maxQuarterlySavings >= criteria.amount;
+          break;
+        }
+        
         case 'documents_uploaded': {
           const logs = await db.select().from(maintenanceLogs)
             .where(eq(maintenanceLogs.homeownerId, homeownerId));

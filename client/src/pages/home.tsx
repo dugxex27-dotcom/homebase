@@ -178,7 +178,6 @@ export default function Home() {
   return (
     <div className="min-h-screen" style={{ background: typedUser?.role === 'homeowner' ? '#2c0f5b' : '#1560a2' }}>
       <HeroSection />
-      
       {/* Progress to Free Subscription Section */}
       {typedUser?.role === 'homeowner' && (
         <section className="py-8 sm:py-12" style={{ backgroundColor: '#2c0f5b' }}>
@@ -204,7 +203,7 @@ export default function Home() {
                       </span>
                     </div>
                     <Progress value={progressPercentage} className="h-6 mb-2" data-testid="progress-referral-subscription" />
-                    <p className="text-center text-[18px] sm:text-[20px]" style={{ color: referralsRemaining === 0 ? '#10b981' : '#dc2626' }}>
+                    <p className="text-center sm:text-[20px] text-[30px]" style={{ color: referralsRemaining === 0 ? '#10b981' : '#dc2626' }}>
                       {referralsRemaining === 0 ? (
                         <span className="font-bold">🎉 You've earned a free subscription!</span>
                       ) : (
@@ -220,7 +219,6 @@ export default function Home() {
           </div>
         </section>
       )}
-
       {/* Home Health Score Section - All Homes */}
       {typedUser?.role === 'homeowner' && userHouses.length > 0 && (
         <section className="py-8 sm:py-12" style={{ backgroundColor: '#2c0f5b' }}>
@@ -237,7 +235,6 @@ export default function Home() {
           </div>
         </section>
       )}
-
       {/* Homeowner Achievements Section */}
       {typedUser?.role === 'homeowner' && achievementsData?.achievements && achievementsData.achievements.length > 0 && (
         <section className="py-8 sm:py-12" style={{ backgroundColor: '#2c0f5b' }}>
@@ -462,7 +459,6 @@ export default function Home() {
           </div>
         </section>
       )}
-
       {/* Footer */}
       <footer className="text-white py-8 sm:py-12 lg:py-16" style={{ backgroundColor: '#2c0f5b' }}>
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
