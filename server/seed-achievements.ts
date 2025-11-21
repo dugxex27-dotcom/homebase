@@ -501,6 +501,28 @@ const achievements: AchievementDefinition[] = [
     sortOrder: 12
   },
   {
+    achievementKey: "archive_master",
+    category: "Organization",
+    name: "Archive Master",
+    description: "Create 50 service records",
+    icon: "archive",
+    criteria: JSON.stringify({ type: "logs_created", count: 50 }),
+    points: 60,
+    tier: "platinum",
+    sortOrder: 125
+  },
+  {
+    achievementKey: "documentation_legend",
+    category: "Organization",
+    name: "Documentation Legend",
+    description: "Create 100 service records",
+    icon: "trophy",
+    criteria: JSON.stringify({ type: "logs_created", count: 100 }),
+    points: 100,
+    tier: "diamond",
+    sortOrder: 126
+  },
+  {
     achievementKey: "photo_journalist",
     category: "Organization",
     name: "Photo Journalist",
@@ -509,7 +531,18 @@ const achievements: AchievementDefinition[] = [
     criteria: JSON.stringify({ type: "photos_uploaded", count: 5 }),
     points: 15,
     tier: "bronze",
-    sortOrder: 13
+    sortOrder: 130
+  },
+  {
+    achievementKey: "photo_pro",
+    category: "Organization",
+    name: "Photo Pro",
+    description: "Upload 10 before/after photo pairs",
+    icon: "camera",
+    criteria: JSON.stringify({ type: "photos_uploaded", count: 10 }),
+    points: 25,
+    tier: "silver",
+    sortOrder: 135
   },
   {
     achievementKey: "visual_archivist",
@@ -520,7 +553,18 @@ const achievements: AchievementDefinition[] = [
     criteria: JSON.stringify({ type: "photos_uploaded", count: 15 }),
     points: 30,
     tier: "gold",
-    sortOrder: 14
+    sortOrder: 140
+  },
+  {
+    achievementKey: "visual_master",
+    category: "Organization",
+    name: "Visual Master",
+    description: "Upload 30 before/after photo pairs",
+    icon: "image",
+    criteria: JSON.stringify({ type: "photos_uploaded", count: 30 }),
+    points: 50,
+    tier: "platinum",
+    sortOrder: 145
   },
   {
     achievementKey: "receipt_ranger",
@@ -531,7 +575,51 @@ const achievements: AchievementDefinition[] = [
     criteria: JSON.stringify({ type: "documents_uploaded", count: 10 }),
     points: 20,
     tier: "silver",
-    sortOrder: 15
+    sortOrder: 150
+  },
+  {
+    achievementKey: "document_keeper",
+    category: "Organization",
+    name: "Document Keeper",
+    description: "Upload 25 receipts/warranty documents",
+    icon: "folder",
+    criteria: JSON.stringify({ type: "documents_uploaded", count: 25 }),
+    points: 35,
+    tier: "gold",
+    sortOrder: 155
+  },
+  {
+    achievementKey: "archive_expert",
+    category: "Organization",
+    name: "Archive Expert",
+    description: "Upload 50 receipts/warranty documents",
+    icon: "archive",
+    criteria: JSON.stringify({ type: "documents_uploaded", count: 50 }),
+    points: 60,
+    tier: "platinum",
+    sortOrder: 156
+  },
+  {
+    achievementKey: "detail_oriented",
+    category: "Organization",
+    name: "Detail Oriented",
+    description: "Create 10 service records with detailed descriptions (50+ characters)",
+    icon: "pen-tool",
+    criteria: JSON.stringify({ type: "detailed_logs", count: 10 }),
+    points: 25,
+    tier: "silver",
+    sortOrder: 157
+  },
+  {
+    achievementKey: "master_documenter",
+    category: "Organization",
+    name: "Master Documenter",
+    description: "Create 25 service records with detailed descriptions (50+ characters)",
+    icon: "file-check",
+    criteria: JSON.stringify({ type: "detailed_logs", count: 25 }),
+    points: 45,
+    tier: "gold",
+    sortOrder: 158
   },
 
   // REFERRAL & COMMUNITY ACHIEVEMENTS (4)
@@ -740,7 +828,7 @@ async function seedAchievements() {
       console.log(`✓ Seeded: ${achievement.name}`);
     }
     
-    console.log("\n✅ Successfully seeded all 62 achievements!");
+    console.log("\n✅ Successfully seeded all 66 achievements!");
     console.log("\nAchievements by category:");
     console.log("- Seasonal: 16 (EXPANDED!)");
     console.log("  → Tiered Seasonal: 12 (Bronze/Silver/Gold for Winter, Spring, Summer, Fall)");
@@ -751,12 +839,16 @@ async function seedAchievements() {
     console.log("  → Savings Streaks: 3 (6, 12, 24 months)");
     console.log("  → High ROI/Task: 3 (avg $200, $500, $1K per task)");
     console.log("  → Quarterly Goals: 3 ($1K, $2.5K, $5K per quarter)");
-    console.log("- Organization: 6");
+    console.log("- Organization: 14 (EXPANDED!)");
+    console.log("  → Service Records: 5 (3 to 100 records)");
+    console.log("  → Photo Pairs: 4 (5 to 30 pairs)");
+    console.log("  → Documents: 3 (10 to 50 documents)");
+    console.log("  → Detailed Logs: 2 (10 to 25 detailed descriptions)");
     console.log("- Referral & Community: 4");
     console.log("- Milestones: 6");
     console.log("- Streaks: 3");
     console.log("- Special: 4");
-    console.log("\nTotal: 62 achievements (30 new: 16 seasonal + 14 financial!)");
+    console.log("\nTotal: 66 achievements (38 new: 16 seasonal + 14 financial + 8 organization!)");
     
   } catch (error) {
     console.error("Error seeding achievements:", error);

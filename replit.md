@@ -83,7 +83,7 @@ Preferred communication style: Simple, everyday language.
     - **User Status Updates**: Automatic subscription status updates based on webhook events.
     - **Payment Transparency**: Users can view complete billing history on billing page.
 - **Gamified Achievement System** (Nov 2025):
-    - **62 Total Achievements** across 8 categories with progression tracking (expanded from 46 in Nov 2025)
+    - **66 Total Achievements** across 8 categories with progression tracking (expanded from 62 in Nov 2025)
     - **Seasonal Achievements** (16 - EXPANDED!): Tiered progression system for year-round engagement
         - **Tiered Seasonal** (12): Bronze (3 tasks), Silver (5 tasks), Gold (10 tasks) for Winter, Spring, Summer, Fall
         - **Special Seasonal** (4): All Seasons Master (tasks in all 4 seasons), Seasonal Perfectionist (15+ tasks in one season), Year-Round Caretaker (3+ per season), Seasonal Consistency (5+ per season)
@@ -93,7 +93,11 @@ Preferred communication style: Simple, everyday language.
         - **Savings Streaks** (3): Consistent Saver (6 consecutive months with savings), Year-Long Saver (12 months), Savings Marathon (24 months)
         - **High ROI per Task** (3): Efficiency Expert (avg $200/task), ROI Master (avg $500/task), Value Maximizer (avg $1K/task) - requires minimum 10 tasks with progressive pre-threshold progress
         - **Quarterly Savings Goals** (3): Quarterly Winner ($1K in a quarter), Quarterly Champion ($2.5K), Quarterly Legend ($5K)
-    - **Organization** (6): Getting Started (3 records), Record Keeper (10 records), Documentation Pro (25 records), Photo Journalist (5 photo pairs), Visual Archivist (15 photo pairs), Receipt Ranger (10 documents)
+    - **Organization** (14 - EXPANDED!): Tiered progression system for documentation excellence
+        - **Service Records** (5): Getting Started (3), Record Keeper (10), Documentation Pro (25), Archive Master (50), Documentation Legend (100)
+        - **Photo Pairs** (4): Photo Journalist (5), Photo Pro (10), Visual Archivist (15), Visual Master (30)
+        - **Documents** (3): Receipt Ranger (10), Document Keeper (25), Archive Expert (50)
+        - **Detailed Logs** (2): Detail Oriented (10 logs with 50+ char descriptions), Master Documenter (25 detailed logs)
     - **Referral & Community** (4): Helpful Neighbor (1 referral), Community Builder (3 referrals), Ambassador (5 referrals), Influencer (10 referrals)
     - **Milestones** (6): First Step (1 task), Getting Serious (10 tasks), Maintenance Master (25 tasks), Home Hero (50 tasks), Multi-Property Manager (2+ properties), Contractor Connection (first hire)
     - **Streaks** (3): Monthly Momentum (3 consecutive months), Quarterly Qualifier (6 months), Year-Round Warrior (12 months)

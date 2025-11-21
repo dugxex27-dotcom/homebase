@@ -3906,6 +3906,20 @@ export class MemStorage implements IStorage {
           break;
         }
         
+        case 'detailed_logs': {
+          const logs = await db.select().from(maintenanceLogs)
+            .where(eq(maintenanceLogs.homeownerId, homeownerId));
+          
+          // Count logs with detailed descriptions (50+ characters)
+          const detailedLogs = logs.filter(log => 
+            log.description && log.description.length >= 50
+          );
+          
+          progress = Math.min(100, (detailedLogs.length / criteria.count) * 100);
+          isCompleted = detailedLogs.length >= criteria.count;
+          break;
+        }
+        
         case 'photos_uploaded': {
           const logs = await db.select().from(maintenanceLogs)
             .where(eq(maintenanceLogs.homeownerId, homeownerId));
