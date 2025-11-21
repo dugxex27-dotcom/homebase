@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -957,6 +958,12 @@ export default function Maintenance() {
   const [isServiceRecordsExpanded, setIsServiceRecordsExpanded] = useState<boolean>(true);
   const [showAllRecords, setShowAllRecords] = useState<boolean>(false);
 
+  // Delete confirmation dialog states
+  const [deleteApplianceConfirmOpen, setDeleteApplianceConfirmOpen] = useState(false);
+  const [applianceToDelete, setApplianceToDelete] = useState<HomeAppliance | null>(null);
+  const [deleteSystemConfirmOpen, setDeleteSystemConfirmOpen] = useState(false);
+  const [systemToDelete, setSystemToDelete] = useState<HomeSystem | null>(null);
+
   // Use authenticated user's ID  
   const homeownerId = (user as any)?.id;
   const userRole = (user as any)?.role;
@@ -1651,6 +1658,25 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       toast({ title: "Error", description: "Failed to delete manual", variant: "destructive" });
     },
   });
+
+  // Delete confirmation handlers
+  const confirmDeleteAppliance = () => {
+    if (applianceToDelete) {
+      deleteApplianceMutation.mutate(applianceToDelete.id);
+      setDeleteApplianceConfirmOpen(false);
+      setApplianceToDelete(null);
+      setIsApplianceDialogOpen(false);
+    }
+  };
+
+  const confirmDeleteSystem = () => {
+    if (systemToDelete) {
+      deleteHomeSystemMutation.mutate(systemToDelete.id);
+      setDeleteSystemConfirmOpen(false);
+      setSystemToDelete(null);
+      setIsHomeSystemDialogOpen(false);
+    }
+  };
 
   // Load completed tasks for the selected house from localStorage
   useEffect(() => {
@@ -3251,9 +3277,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                               variant="ghost"
                               size="sm"
                               onClick={() => {
-                                if (confirm(`Are you sure you want to delete ${appliance.name}?`)) {
-                                  deleteApplianceMutation.mutate(appliance.id);
-                                }
+                                setApplianceToDelete(appliance);
+                                setDeleteApplianceConfirmOpen(true);
                               }}
                               className="p-1 h-7 w-7 text-red-600 hover:text-red-700"
                               data-testid={`button-delete-appliance-${appliance.id}`}
@@ -3923,10 +3948,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       type="button"
                       variant="destructive"
                       onClick={() => {
-                        if (window.confirm('Are you sure you want to delete this system?')) {
-                          deleteHomeSystemMutation.mutate(editingHomeSystem.id);
-                          setIsHomeSystemDialogOpen(false);
-                        }
+                        setSystemToDelete(editingHomeSystem);
+                        setDeleteSystemConfirmOpen(true);
                       }}
                       disabled={deleteHomeSystemMutation.isPending}
                       style={{ color: 'white' }}
@@ -4153,10 +4176,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       type="button"
                       variant="destructive"
                       onClick={() => {
-                        if (window.confirm('Are you sure you want to delete this appliance?')) {
-                          deleteApplianceMutation.mutate(editingAppliance.id);
-                          setIsApplianceDialogOpen(false);
-                        }
+                        setApplianceToDelete(editingAppliance);
+                        setDeleteApplianceConfirmOpen(true);
                       }}
                       disabled={deleteApplianceMutation.isPending}
                     >
@@ -4301,6 +4322,29 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             </Form>
           </DialogContent>
         </Dialog>
+
+        {/* Delete Confirmation Dialogs */}
+        <ConfirmDialog
+          open={deleteApplianceConfirmOpen}
+          onOpenChange={setDeleteApplianceConfirmOpen}
+          title="Delete Appliance?"
+          description={`Are you sure you want to delete ${applianceToDelete?.name}? This action cannot be undone.`}
+          confirmText="Delete"
+          cancelText="Cancel"
+          onConfirm={confirmDeleteAppliance}
+          variant="destructive"
+        />
+
+        <ConfirmDialog
+          open={deleteSystemConfirmOpen}
+          onOpenChange={setDeleteSystemConfirmOpen}
+          title="Delete System?"
+          description={`Are you sure you want to delete this system? This action cannot be undone.`}
+          confirmText="Delete"
+          cancelText="Cancel"
+          onConfirm={confirmDeleteSystem}
+          variant="destructive"
+        />
       </div>
     </div>
   );
