@@ -38,9 +38,7 @@ export default function Landing() {
                 <h2 className="text-2xl font-bold mb-3" style={{ color: '#2c0f5b' }}>
                   I'm a Homeowner
                 </h2>
-                <p className="text-gray-600 mb-6">
-                  Manage maintenance schedules, track service records, and connect with trusted contractors for your property
-                </p>
+                <p className="text-gray-600 mb-6">“The Carfax-style home history your house has always needed.”</p>
                 <ul className="text-left space-y-2 mb-6 text-sm text-gray-700">
                   <li>✓ Multi-property management</li>
                   <li>✓ Maintenance scheduling</li>
