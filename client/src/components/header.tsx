@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Users, User as UserIcon, LogOut, MessageCircle, Trophy, Shield, Calendar, Crown, HelpCircle, Menu, Wrench, Building2, Package, LayoutDashboard, FileText, Gift } from "lucide-react";
+import { Users, User as UserIcon, LogOut, MessageCircle, Trophy, Shield, Calendar, Crown, HelpCircle, Menu, Wrench, Building2, Package, LayoutDashboard, FileText, Gift, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Notifications } from "@/components/notifications";
@@ -163,6 +163,12 @@ export default function Header() {
                           <button className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm ${location === '/achievements' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted'}`}>
                             <Trophy className="w-4 h-4" />
                             Achievements
+                          </button>
+                        </Link>
+                        <Link href="/homeowner-pricing" onClick={() => setMobileMenuOpen(false)}>
+                          <button className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm ${location === '/homeowner-pricing' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted'}`} data-testid="nav-pricing">
+                            <CreditCard className="w-4 h-4" />
+                            Pricing
                           </button>
                         </Link>
                         <Link href="/homeowner-referral" onClick={() => setMobileMenuOpen(false)}>
