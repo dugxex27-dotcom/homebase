@@ -95,7 +95,12 @@ export function PWAInstallPrompt() {
 
   return (
     <div 
-      className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-2xl animate-in slide-in-from-bottom duration-300"
+      className="fixed left-0 right-0 z-50 p-3 sm:p-4 bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-2xl animate-in slide-in-from-bottom duration-300"
+      style={{ 
+        bottom: window.innerWidth < 768 
+          ? 'calc(env(safe-area-inset-bottom, 0px) + 5rem)' 
+          : '0'
+      }}
       data-testid="pwa-install-prompt"
     >
       <div className="max-w-2xl mx-auto flex items-center gap-4">
