@@ -3360,7 +3360,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                                 </div>
                                 <div className="flex items-center space-x-2">
                                   {systemData && (
-                                    <span className="text-xs bg-muted/50 px-2 py-1 rounded" style={{ color: '#b6a6f4' }}>
+                                    <span className="text-xs bg-muted/50 px-2 py-1 rounded" style={{ color: 'white' }}>
                                       {systemData.installationYear || 'Unknown'}
                                     </span>
                                   )}
