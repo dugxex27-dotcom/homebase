@@ -133,6 +133,11 @@ export const users = pgTable("users", {
   referredBy: varchar("referred_by"), // referral code of user who referred this user
   referralCount: integer("referral_count").notNull().default(0),
   connectionCode: varchar("connection_code", { length: 8 }).unique(), // Permanent code for homeowners to share with contractors
+  // Email verification fields
+  emailVerified: boolean("email_verified").notNull().default(false),
+  emailVerifiedAt: timestamp("email_verified_at"),
+  emailVerificationToken: varchar("email_verification_token"),
+  emailVerificationTokenExpiry: timestamp("email_verification_token_expiry"),
   // Company fields for contractors
   companyId: varchar("company_id").references(() => companies.id, { onDelete: 'set null' }),
   companyRole: text("company_role"), // 'owner' or 'employee' (nullable for homeowners)
@@ -158,6 +163,7 @@ export const users = pgTable("users", {
   index("IDX_users_subscription_plan_id").on(table.subscriptionPlanId),
   index("IDX_users_zip_code").on(table.zipCode),
   index("IDX_users_company_id").on(table.companyId),
+  index("IDX_users_email_verification_token").on(table.emailVerificationToken),
 ]);
 
 // Password reset tokens table
@@ -513,9 +519,39 @@ export const contractorReviews = pgTable("contractor_reviews", {
   serviceDate: timestamp("service_date"),
   serviceType: text("service_type"), // What service was provided
   wouldRecommend: boolean("would_recommend").notNull().default(true),
+  // Fraud prevention fields
+  deviceFingerprint: text("device_fingerprint"), // Browser fingerprint for duplicate detection
+  ipAddress: varchar("ip_address", { length: 45 }), // IPv4 or IPv6 address
+  isVerifiedService: boolean("is_verified_service").notNull().default(false), // True if service record exists
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  // Unique constraint: only 1 review per homeowner-contractor pair
+  uniqueIndex("UX_review_homeowner_contractor").on(table.homeownerId, table.contractorId),
+  // Indexes for fraud detection
+  index("IDX_review_ip_address").on(table.ipAddress),
+  index("IDX_review_device_fingerprint").on(table.deviceFingerprint),
+  index("IDX_review_homeowner").on(table.homeownerId),
+  index("IDX_review_contractor").on(table.contractorId),
+]);
+
+// Review flags table for reporting suspicious reviews
+export const reviewFlags = pgTable("review_flags", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  reviewId: varchar("review_id").notNull().references(() => contractorReviews.id, { onDelete: 'cascade' }),
+  reportedBy: varchar("reported_by").notNull(), // User ID of who reported it
+  reason: text("reason").notNull(), // "fake", "inappropriate", "spam", "other"
+  notes: text("notes"), // Additional details from reporter
+  status: text("status").notNull().default("pending"), // "pending", "investigating", "resolved_valid", "resolved_invalid"
+  reviewedBy: varchar("reviewed_by"), // Admin user ID who reviewed the flag
+  resolution: text("resolution"), // Admin's notes on resolution
+  createdAt: timestamp("created_at").defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+}, (table) => [
+  index("IDX_review_flags_review").on(table.reviewId),
+  index("IDX_review_flags_status").on(table.status),
+  index("IDX_review_flags_reported_by").on(table.reportedBy),
+]);
 
 // Contractor licenses table for multiple licenses per contractor
 export const contractorLicenses = pgTable("contractor_licenses", {
@@ -892,6 +928,12 @@ export const insertContractorReviewSchema = createInsertSchema(contractorReviews
   updatedAt: true,
 });
 
+export const insertReviewFlagSchema = createInsertSchema(reviewFlags).omit({
+  id: true,
+  createdAt: true,
+  resolvedAt: true,
+});
+
 export const insertProposalSchema = createInsertSchema(proposals).omit({
   id: true,
   createdAt: true,
@@ -1119,6 +1161,8 @@ export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
 export type InsertContractorReview = z.infer<typeof insertContractorReviewSchema>;
 export type ContractorReview = typeof contractorReviews.$inferSelect;
+export type InsertReviewFlag = z.infer<typeof insertReviewFlagSchema>;
+export type ReviewFlag = typeof reviewFlags.$inferSelect;
 export type InsertCustomMaintenanceTask = z.infer<typeof insertCustomMaintenanceTaskSchema>;
 export type CustomMaintenanceTask = typeof customMaintenanceTasks.$inferSelect;
 export type InsertProposal = z.infer<typeof insertProposalSchema>;
