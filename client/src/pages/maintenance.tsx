@@ -355,6 +355,437 @@ const HOME_SYSTEMS = {
   ]
 };
 
+// System lifespan and maintenance recommendations
+interface SystemRecommendation {
+  title: string;
+  description: string;
+  priority: 'high' | 'medium' | 'low';
+  urgency: 'critical' | 'important' | 'routine';
+  estimatedCost?: string;
+}
+
+function generateAgeBasedRecommendations(system: HomeSystem): SystemRecommendation[] {
+  if (!system.installationYear) return [];
+  
+  const currentYear = new Date().getFullYear();
+  const age = currentYear - system.installationYear;
+  const systemLabel = Object.values(HOME_SYSTEMS)
+    .flat()
+    .find(s => s.value === system.systemType)?.label || system.systemType;
+  
+  const recommendations: SystemRecommendation[] = [];
+  
+  // Heating Systems - Furnaces (gas, oil, electric)
+  if (system.systemType.includes('furnace')) {
+    if (age >= 15) {
+      recommendations.push({
+        title: `${systemLabel} Nearing End of Life`,
+        description: `Your ${systemLabel.toLowerCase()} is ${age} years old. Furnaces typically last 15-20 years. Consider budgeting for replacement and schedule annual professional maintenance to maximize remaining lifespan.`,
+        priority: 'high',
+        urgency: age >= 18 ? 'critical' : 'important',
+        estimatedCost: '$3,000 - $7,000'
+      });
+    } else if (age >= 10) {
+      recommendations.push({
+        title: `Annual ${systemLabel} Professional Service`,
+        description: `Your ${systemLabel.toLowerCase()} is ${age} years old. Schedule annual professional maintenance to ensure efficiency and catch potential issues early.`,
+        priority: 'medium',
+        urgency: 'routine',
+        estimatedCost: '$150 - $300'
+      });
+    } else if (age >= 3) {
+      recommendations.push({
+        title: `${systemLabel} Regular Maintenance`,
+        description: `Your ${systemLabel.toLowerCase()} is ${age} years old. Change filters monthly and schedule annual professional inspections.`,
+        priority: 'low',
+        urgency: 'routine',
+        estimatedCost: '$100 - $200'
+      });
+    }
+  }
+  
+  // Heat Pumps
+  else if (system.systemType === 'heat-pump') {
+    if (age >= 12) {
+      recommendations.push({
+        title: `${systemLabel} Approaching End of Life`,
+        description: `Your heat pump is ${age} years old. Heat pumps typically last 12-15 years. Plan for replacement and ensure bi-annual maintenance.`,
+        priority: 'high',
+        urgency: age >= 14 ? 'critical' : 'important',
+        estimatedCost: '$4,000 - $8,000'
+      });
+    } else if (age >= 5) {
+      recommendations.push({
+        title: `Bi-Annual ${systemLabel} Service`,
+        description: `Your heat pump is ${age} years old. Schedule professional service twice yearly (spring and fall) to maintain efficiency.`,
+        priority: 'medium',
+        urgency: 'routine',
+        estimatedCost: '$150 - $300 per service'
+      });
+    }
+  }
+  
+  // Boilers
+  else if (system.systemType === 'boiler') {
+    if (age >= 20) {
+      recommendations.push({
+        title: `${systemLabel} Nearing End of Life`,
+        description: `Your boiler is ${age} years old. Boilers typically last 20-30 years. Schedule professional inspection and budget for eventual replacement.`,
+        priority: 'high',
+        urgency: age >= 25 ? 'critical' : 'important',
+        estimatedCost: '$4,000 - $9,000'
+      });
+    } else if (age >= 10) {
+      recommendations.push({
+        title: `Annual ${systemLabel} Inspection`,
+        description: `Your boiler is ${age} years old. Annual professional inspection and cleaning ensures safe and efficient operation.`,
+        priority: 'medium',
+        urgency: 'routine',
+        estimatedCost: '$200 - $400'
+      });
+    }
+  }
+  
+  // Radiant Floor Heating
+  else if (system.systemType === 'radiant-floor') {
+    if (age >= 25) {
+      recommendations.push({
+        title: `${systemLabel} System Check`,
+        description: `Your radiant floor heating is ${age} years old. While these systems can last 35+ years, schedule a professional inspection to check for leaks or circulation issues.`,
+        priority: 'medium',
+        urgency: 'routine',
+        estimatedCost: '$200 - $500'
+      });
+    }
+  }
+  
+  // Wood Stove/Fireplace
+  else if (system.systemType === 'wood-stove') {
+    recommendations.push({
+      title: `Annual Chimney Inspection and Cleaning`,
+      description: `Wood stoves and fireplaces require annual chimney sweeping to prevent creosote buildup and fire hazards. Schedule before heating season.`,
+      priority: 'high',
+      urgency: 'important',
+      estimatedCost: '$150 - $350'
+    });
+  }
+  
+  // Cooling Systems - Central AC
+  else if (system.systemType === 'central-ac') {
+    if (age >= 12) {
+      recommendations.push({
+        title: `${systemLabel} Nearing Replacement`,
+        description: `Your central AC is ${age} years old. Most central AC units last 12-15 years. Consider replacement, especially if efficiency has decreased or repairs are becoming frequent.`,
+        priority: 'high',
+        urgency: age >= 14 ? 'critical' : 'important',
+        estimatedCost: '$3,500 - $7,500'
+      });
+    } else if (age >= 5) {
+      recommendations.push({
+        title: `Annual ${systemLabel} Service`,
+        description: `Your central AC is ${age} years old. Schedule annual professional maintenance before cooling season to ensure peak efficiency.`,
+        priority: 'medium',
+        urgency: 'routine',
+        estimatedCost: '$100 - $200'
+      });
+    }
+  }
+  
+  // Window AC Units
+  else if (system.systemType === 'window-ac') {
+    if (age >= 10) {
+      recommendations.push({
+        title: `${systemLabel} Replacement Consideration`,
+        description: `Your window AC units are ${age} years old. Most window units last 8-12 years. Consider upgrading to more efficient models.`,
+        priority: 'medium',
+        urgency: 'routine',
+        estimatedCost: '$300 - $800 per unit'
+      });
+    }
+  }
+  
+  // Mini-Split Systems
+  else if (system.systemType === 'mini-split') {
+    if (age >= 15) {
+      recommendations.push({
+        title: `${systemLabel} Approaching Replacement`,
+        description: `Your mini-split system is ${age} years old. These systems typically last 15-20 years. Schedule professional maintenance and plan for eventual replacement.`,
+        priority: 'high',
+        urgency: age >= 18 ? 'critical' : 'important',
+        estimatedCost: '$2,000 - $5,000'
+      });
+    } else if (age >= 5) {
+      recommendations.push({
+        title: `Annual ${systemLabel} Maintenance`,
+        description: `Your mini-split is ${age} years old. Clean filters monthly and schedule annual professional service.`,
+        priority: 'medium',
+        urgency: 'routine',
+        estimatedCost: '$100 - $250'
+      });
+    }
+  }
+  
+  // Evaporative Cooler
+  else if (system.systemType === 'evaporative') {
+    if (age >= 15) {
+      recommendations.push({
+        title: `${systemLabel} Replacement Consideration`,
+        description: `Your evaporative cooler is ${age} years old. These units typically last 15-20 years. Inspect for rust and water leaks.`,
+        priority: 'medium',
+        urgency: 'routine',
+        estimatedCost: '$1,500 - $3,500'
+      });
+    }
+    recommendations.push({
+      title: `Seasonal ${systemLabel} Maintenance`,
+      description: `Clean pads, check water distribution, and inspect for mineral buildup before cooling season.`,
+      priority: 'medium',
+      urgency: 'routine',
+      estimatedCost: '$100 - $200'
+    });
+  }
+  
+  // Water Systems - Water Heaters
+  else if (system.systemType.includes('water-heater') || system.systemType.includes('tankless')) {
+    const isTankless = system.systemType.includes('tankless');
+    const typicalLifespan = isTankless ? 20 : 10;
+    
+    if (age >= typicalLifespan) {
+      recommendations.push({
+        title: `${systemLabel} Replacement Needed`,
+        description: `Your water heater is ${age} years old. ${isTankless ? 'Tankless water heaters' : 'Tank water heaters'} typically last ${typicalLifespan}-${typicalLifespan + 5} years. Plan for replacement soon to avoid emergency failure.`,
+        priority: 'high',
+        urgency: age >= typicalLifespan + 2 ? 'critical' : 'important',
+        estimatedCost: isTankless ? '$1,500 - $3,500' : '$800 - $2,000'
+      });
+    } else if (age >= typicalLifespan - 3) {
+      recommendations.push({
+        title: `${systemLabel} Annual Maintenance`,
+        description: `Your water heater is ${age} years old. ${isTankless ? 'Flush system to remove mineral buildup' : 'Flush tank and check anode rod'} annually to extend lifespan.`,
+        priority: 'medium',
+        urgency: 'routine',
+        estimatedCost: '$100 - $200'
+      });
+    }
+  }
+  
+  // Solar Water Heating
+  else if (system.systemType === 'solar-water') {
+    if (age >= 15) {
+      recommendations.push({
+        title: `${systemLabel} System Inspection`,
+        description: `Your solar water heating system is ${age} years old. Check panels, pumps, and heat exchangers for efficiency. Systems typically last 15-25 years.`,
+        priority: 'medium',
+        urgency: 'routine',
+        estimatedCost: '$200 - $500'
+      });
+    }
+  }
+  
+  // Well Water System
+  else if (system.systemType === 'well-water') {
+    if (age >= 20) {
+      recommendations.push({
+        title: `Well Pump Approaching End of Life`,
+        description: `Your well pump is ${age} years old. Well pumps typically last 15-25 years. Consider replacement planning and annual water quality testing.`,
+        priority: 'high',
+        urgency: age >= 23 ? 'critical' : 'important',
+        estimatedCost: '$1,500 - $4,000'
+      });
+    } else {
+      recommendations.push({
+        title: `Annual Well Water Quality Test`,
+        description: `Test your well water annually for bacteria, nitrates, and other contaminants to ensure safe drinking water.`,
+        priority: 'medium',
+        urgency: 'routine',
+        estimatedCost: '$50 - $150'
+      });
+    }
+  }
+  
+  // Water Softener
+  else if (system.systemType === 'water-softener') {
+    if (age >= 15) {
+      recommendations.push({
+        title: `${systemLabel} Replacement Consideration`,
+        description: `Your water softener is ${age} years old. Most units last 10-20 years. Check for salt bridging and resin bed wear.`,
+        priority: 'medium',
+        urgency: 'routine',
+        estimatedCost: '$800 - $2,500'
+      });
+    }
+    recommendations.push({
+      title: `Water Softener Maintenance`,
+      description: `Check salt levels monthly, clean brine tank annually, and test water hardness regularly.`,
+      priority: 'low',
+      urgency: 'routine',
+      estimatedCost: '$50 - $100'
+    });
+  }
+  
+  // Special Features - Solar Panels
+  else if (system.systemType === 'solar-panels') {
+    if (age >= 20) {
+      recommendations.push({
+        title: `Solar Panel Efficiency Assessment`,
+        description: `Your solar panels are ${age} years old. Panels degrade 0.5-1% per year. Schedule professional inspection to assess current efficiency and plan for replacement around year 25-30.`,
+        priority: 'medium',
+        urgency: 'routine',
+        estimatedCost: '$200 - $500 for inspection'
+      });
+    }
+    recommendations.push({
+      title: `Bi-Annual Solar Panel Cleaning`,
+      description: `Clean panels twice yearly to maintain peak efficiency, more often in dusty or high-pollen areas.`,
+      priority: 'low',
+      urgency: 'routine',
+      estimatedCost: '$150 - $300'
+    });
+  }
+  
+  // Swimming Pool
+  else if (system.systemType === 'pool') {
+    if (age >= 8) {
+      recommendations.push({
+        title: `Pool Equipment Inspection`,
+        description: `Your pool equipment is ${age} years old. Pool pumps and filters typically last 8-12 years. Inspect for wear, unusual noises, and efficiency loss.`,
+        priority: 'medium',
+        urgency: 'routine',
+        estimatedCost: '$800 - $2,500 for equipment replacement'
+      });
+    }
+    recommendations.push({
+      title: `Weekly Pool Maintenance`,
+      description: `Test water chemistry weekly, clean filters monthly, and schedule professional seasonal maintenance.`,
+      priority: 'medium',
+      urgency: 'routine',
+      estimatedCost: '$100 - $200 monthly for service'
+    });
+  }
+  
+  // Hot Tub/Spa
+  else if (system.systemType === 'spa') {
+    if (age >= 10) {
+      recommendations.push({
+        title: `${systemLabel} Equipment Check`,
+        description: `Your spa is ${age} years old. Hot tub equipment typically lasts 5-15 years. Check pumps, heaters, and jets for wear.`,
+        priority: 'medium',
+        urgency: 'routine',
+        estimatedCost: '$500 - $2,000'
+      });
+    }
+    recommendations.push({
+      title: `Spa Water Maintenance`,
+      description: `Test and balance water chemistry 2-3 times per week. Replace filters every 1-2 years.`,
+      priority: 'medium',
+      urgency: 'routine',
+      estimatedCost: '$50 - $100 monthly'
+    });
+  }
+  
+  // Backup Generator
+  else if (system.systemType === 'generator') {
+    if (age >= 15) {
+      recommendations.push({
+        title: `${systemLabel} Replacement Planning`,
+        description: `Your backup generator is ${age} years old. Standby generators typically last 10-20 years with proper maintenance.`,
+        priority: 'medium',
+        urgency: 'routine',
+        estimatedCost: '$3,000 - $15,000'
+      });
+    }
+    recommendations.push({
+      title: `Annual Generator Service`,
+      description: `Schedule annual professional maintenance including oil changes, filter replacement, and load testing.`,
+      priority: 'high',
+      urgency: 'important',
+      estimatedCost: '$200 - $400'
+    });
+  }
+  
+  // Septic System
+  else if (system.systemType === 'septic') {
+    if (age >= 25) {
+      recommendations.push({
+        title: `${systemLabel} Professional Inspection`,
+        description: `Your septic system is ${age} years old. Septic systems last 20-40 years with proper care. Schedule professional inspection and consider replacement planning.`,
+        priority: 'high',
+        urgency: 'important',
+        estimatedCost: '$3,000 - $10,000 for replacement'
+      });
+    }
+    recommendations.push({
+      title: `Septic Tank Pumping (Every 3-5 Years)`,
+      description: `Regular pumping prevents system failure and extends lifespan. Schedule every 3-5 years based on household size.`,
+      priority: 'high',
+      urgency: 'important',
+      estimatedCost: '$300 - $600'
+    });
+  }
+  
+  // Sump Pump
+  else if (system.systemType === 'sump-pump') {
+    if (age >= 7) {
+      recommendations.push({
+        title: `${systemLabel} Replacement Needed`,
+        description: `Your sump pump is ${age} years old. Sump pumps typically last 7-10 years. Replace before failure to avoid basement flooding.`,
+        priority: 'high',
+        urgency: age >= 9 ? 'critical' : 'important',
+        estimatedCost: '$400 - $1,000'
+      });
+    }
+    recommendations.push({
+      title: `Seasonal Sump Pump Test`,
+      description: `Test pump quarterly by pouring water into pit. Clean intake screen and check discharge line before rainy season.`,
+      priority: 'high',
+      urgency: 'important',
+      estimatedCost: '$0'
+    });
+  }
+  
+  // Security System
+  else if (system.systemType === 'security-system') {
+    if (age >= 10) {
+      recommendations.push({
+        title: `${systemLabel} Upgrade Consideration`,
+        description: `Your security system is ${age} years old. Technology advances quickly. Consider upgrading to modern smart security systems.`,
+        priority: 'low',
+        urgency: 'routine',
+        estimatedCost: '$500 - $2,500'
+      });
+    }
+    recommendations.push({
+      title: `Security System Maintenance`,
+      description: `Test sensors monthly, replace batteries annually, and update software/firmware regularly.`,
+      priority: 'medium',
+      urgency: 'routine',
+      estimatedCost: '$50 - $150'
+    });
+  }
+  
+  // Irrigation/Sprinkler System
+  else if (system.systemType === 'sprinkler-system') {
+    if (age >= 15) {
+      recommendations.push({
+        title: `${systemLabel} Component Replacement`,
+        description: `Your irrigation system is ${age} years old. Valves, controllers, and heads may need replacement after 10-20 years.`,
+        priority: 'medium',
+        urgency: 'routine',
+        estimatedCost: '$500 - $2,000'
+      });
+    }
+    recommendations.push({
+      title: `Seasonal Sprinkler Maintenance`,
+      description: `Winterize before frost, inspect heads and valves in spring, adjust for proper coverage throughout growing season.`,
+      priority: 'medium',
+      urgency: 'routine',
+      estimatedCost: '$100 - $300'
+    });
+  }
+  
+  return recommendations;
+}
+
 // DIY Savings Tracker Component
 function DIYSavingsTracker({ houseId, houseName }: { houseId: string; houseName: string }) {
   if (!houseId) return null;
@@ -3083,6 +3514,98 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                 </Card>
               </div>
             )}
+
+            {/* System-Based Maintenance Recommendations */}
+            {selectedHouseId && homeSystemsData && homeSystemsData.length > 0 && (() => {
+              const allRecommendations = homeSystemsData
+                .filter(system => system.houseId === selectedHouseId)
+                .flatMap(system => 
+                  generateAgeBasedRecommendations(system).map(rec => ({
+                    ...rec,
+                    system: system,
+                    systemLabel: Object.values(HOME_SYSTEMS)
+                      .flat()
+                      .find(s => s.value === system.systemType)?.label || system.systemType
+                  }))
+                );
+              
+              if (allRecommendations.length === 0) return null;
+              
+              return (
+                <div className="mb-8">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 rounded-full bg-gradient-to-br from-orange-500 to-red-600">
+                      <Thermometer className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-white">System-Based Maintenance Recommendations</h2>
+                      <p className="text-sm" style={{ color: '#b6a6f4' }}>
+                        Personalized suggestions based on your equipment age
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {allRecommendations.map((rec, index) => (
+                      <Card 
+                        key={index}
+                        className={`border-2 ${
+                          rec.urgency === 'critical' ? 'border-red-500 bg-red-50 dark:bg-red-900/10' :
+                          rec.urgency === 'important' ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/10' :
+                          'border-gray-300 bg-gray-50 dark:bg-gray-800/50'
+                        }`}
+                        data-testid={`system-recommendation-${index}`}
+                      >
+                        <CardHeader className="pb-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Badge 
+                                  variant={rec.urgency === 'critical' ? 'destructive' : 'secondary'}
+                                  className="text-xs"
+                                >
+                                  {rec.urgency === 'critical' ? '🔴 Critical' :
+                                   rec.urgency === 'important' ? '🟠 Important' :
+                                   '🟢 Routine'}
+                                </Badge>
+                                {rec.system.installationYear && (
+                                  <span className="text-xs text-muted-foreground">
+                                    Installed {rec.system.installationYear}
+                                  </span>
+                                )}
+                              </div>
+                              <CardTitle className="text-base" style={{ color: '#2c0f5b' }}>
+                                {rec.title}
+                              </CardTitle>
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <p className="text-sm text-gray-700 dark:text-gray-300">
+                            {rec.description}
+                          </p>
+                          
+                          {rec.estimatedCost && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <DollarSign className="w-4 h-4 text-green-600 dark:text-green-400" />
+                              <span className="font-medium text-gray-900 dark:text-gray-100">
+                                Est. Cost: {rec.estimatedCost}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {rec.system.brand && (
+                            <div className="text-xs text-muted-foreground pt-2 border-t">
+                              {rec.system.brand} {rec.system.model && `- ${rec.system.model}`}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Tasks Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
