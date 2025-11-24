@@ -8,6 +8,7 @@ import { queryClient } from "./lib/queryClient";
 import LoadingFallback from "@/components/loading-fallback";
 import AuthenticatedLayout from "@/layouts/authenticated-layout";
 import UnauthenticatedLayout from "@/layouts/unauthenticated-layout";
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 
 // Lazy-loaded pages - Common
 const Home = lazy(() => import("./pages/home"));
@@ -199,6 +200,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
+        <PWAInstallPrompt />
         <Router />
       </TooltipProvider>
     </QueryClientProvider>
