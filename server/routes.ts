@@ -1231,6 +1231,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           let company = await storage.getCompany(companyId);
           if (!company) {
+            // Set company creation date to 3 years ago to show tenure
+            const threeYearsAgo = new Date();
+            threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
+            
             company = await storage.createCompany({
             id: companyId,
             name: 'Precision HVAC & Plumbing',
@@ -1254,6 +1258,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             licenseState: 'WA',
             licenseExpiration: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
             isInsured: true,
+            createdAt: threeYearsAgo,
             insuranceProvider: 'State Farm Commercial',
             insuranceExpiration: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
             insuranceCoverageAmount: '$2,000,000',
@@ -3316,7 +3321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Enrich contractors with company logos
+      // Enrich contractors with company logos and createdAt
       const enrichedContractors = await Promise.all(
         filteredContractors.map(async (contractor) => {
           if ((contractor as any).companyId) {
@@ -3325,7 +3330,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               return {
                 ...contractor,
                 businessLogo: company.businessLogo || '',
-                projectPhotos: company.projectPhotos || []
+                projectPhotos: company.projectPhotos || [],
+                createdAt: company.createdAt
               };
             }
           }
@@ -3362,7 +3368,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const contractors = await storage.searchContractors(query, location, services, maxDistance);
       
-      // Enrich contractors with company logos
+      // Enrich contractors with company logos and createdAt
       const enrichedContractors = await Promise.all(
         contractors.map(async (contractor) => {
           if ((contractor as any).companyId) {
@@ -3371,7 +3377,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               return {
                 ...contractor,
                 businessLogo: company.businessLogo || '',
-                projectPhotos: company.projectPhotos || []
+                projectPhotos: company.projectPhotos || [],
+                createdAt: company.createdAt
               };
             }
           }
