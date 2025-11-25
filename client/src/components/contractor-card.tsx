@@ -70,27 +70,24 @@ export default function ContractorCard({ contractor }: ContractorCardProps) {
               </span>
             </div>
           )}
-          {yearsOnPlatform !== null && yearsOnPlatform > 0 && (
-            <div 
-              className="absolute -bottom-3 -right-3 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg px-2.5 py-1.5 shadow-lg border-2 border-white"
-              title={`${yearsOnPlatform} year${yearsOnPlatform !== 1 ? 's' : ''} on platform`}
-              data-testid="badge-years-on-platform"
-            >
-              <div className="flex items-center gap-1.5">
-                <Medal className="w-4 h-4 text-white" />
-                <span className="text-sm font-bold text-white whitespace-nowrap" data-testid="text-years-count">
-                  {yearsOnPlatform} {yearsOnPlatform === 1 ? 'Year' : 'Years'}
-                </span>
-              </div>
-            </div>
-          )}
         </div>
         
         <div className="flex-1 min-w-0">
           <div className="flex justify-between items-start mb-3">
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <h3 className="font-semibold text-foreground text-lg truncate">{contractor.company}</h3>
+                {yearsOnPlatform !== null && yearsOnPlatform > 0 && (
+                  <Badge 
+                    className="text-xs px-2 py-1 text-white font-medium flex items-center gap-1"
+                    style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}
+                    title={`${yearsOnPlatform} year${yearsOnPlatform !== 1 ? 's' : ''} on platform`}
+                    data-testid="badge-years-on-platform"
+                  >
+                    <Medal className="w-3 h-3" />
+                    <span data-testid="text-years-count">{yearsOnPlatform} {yearsOnPlatform === 1 ? 'Year' : 'Years'}</span>
+                  </Badge>
+                )}
                 {contractor.isBoosted && (
                   <Badge className="text-xs px-2 py-1 text-white font-medium" style={{ background: 'linear-gradient(135deg, #ffd700, #ff8c00)' }}>
                     <TrendingUp className="w-3 h-3 mr-1" />
