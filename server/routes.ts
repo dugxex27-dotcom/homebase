@@ -3473,7 +3473,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               enrichedContractor = {
                 ...contractor,
                 businessLogo: company.businessLogo || '',
-                projectPhotos: company.projectPhotos || []
+                projectPhotos: company.projectPhotos || [],
+                createdAt: company.createdAt
               };
             }
           }
@@ -3567,7 +3568,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               enrichedContractor = {
                 ...contractor,
                 businessLogo: company.businessLogo || '',
-                projectPhotos: company.projectPhotos || []
+                projectPhotos: company.projectPhotos || [],
+                createdAt: company.createdAt
               };
             }
           }
