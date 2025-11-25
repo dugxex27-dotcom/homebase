@@ -3814,8 +3814,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only company owner can update company profile" });
       }
 
+      // PRE-FILTER: Remove null/undefined values from request body before Zod validation
+      // This prevents NOT NULL constraint violations on fields like licenseNumber
+      const filteredBody: Record<string, any> = {};
+      for (const [key, value] of Object.entries(req.body)) {
+        if (value !== null && value !== undefined) {
+          filteredBody[key] = value;
+        }
+      }
+      console.log('[Company Update] Filtered body (nulls removed):', JSON.stringify(filteredBody, null, 2));
+
       console.log('[Company Update] Validating data...');
-      const partialData = insertCompanySchema.partial().omit({ ownerId: true }).parse(req.body);
+      const partialData = insertCompanySchema.partial().omit({ ownerId: true }).parse(filteredBody);
       console.log('[Company Update] Validated data:', JSON.stringify(partialData, null, 2));
       
       // If address is being updated, re-geocode it
