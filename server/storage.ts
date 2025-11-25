@@ -6009,11 +6009,25 @@ class DbStorage implements IStorage {
     try {
       console.log('🟢 upsertUser called with:', { id: userData.id, email: userData.email, role: userData.role });
       
+      // DEMO DATA PROTECTION: Check if this is a demo data operation trying to overwrite a real user
+      const incomingIsDemoData = isDemoId(userData.id) || isDemoEmail(userData.email);
+      
       // Check if user exists
       const existingUser = userData.id ? await this.getUser(userData.id) : null;
       console.log('🟢 Existing user check:', existingUser ? 'FOUND' : 'NOT FOUND');
       
       if (existingUser) {
+        // DEMO DATA PROTECTION: Never allow demo data to overwrite a real user
+        const existingIsRealUser = !isDemoUser(existingUser);
+        
+        if (incomingIsDemoData && existingIsRealUser) {
+          console.log('🛡️ DEMO DATA PROTECTION: Blocked attempt to overwrite REAL user with demo data!');
+          console.log('🛡️ Existing real user:', { id: existingUser.id, email: existingUser.email });
+          console.log('🛡️ Demo data that was blocked:', { id: userData.id, email: userData.email });
+          // Return the existing user without modification
+          return existingUser;
+        }
+        
         // Update existing user, preserving fields not provided in userData
         const updatedData = {
           id: userData.id!,
@@ -6725,6 +6739,18 @@ class DbStorage implements IStorage {
     const existingCompany = await this.getCompany(id);
     if (!existingCompany) {
       return undefined;
+    }
+
+    // DEMO DATA PROTECTION: Check if this is a demo data operation trying to overwrite a real company
+    const incomingIsDemoData = isDemoId(id) || isDemoEmail(companyData.email);
+    const existingIsRealCompany = !isDemoId(existingCompany.id) && !isDemoEmail(existingCompany.email);
+    
+    if (incomingIsDemoData && existingIsRealCompany) {
+      console.log('🛡️ DEMO DATA PROTECTION: Blocked attempt to overwrite REAL company with demo data!');
+      console.log('🛡️ Existing real company:', { id: existingCompany.id, name: existingCompany.name, email: existingCompany.email });
+      console.log('🛡️ Demo data that was blocked:', { id, email: companyData.email, name: companyData.name });
+      // Return the existing company without modification
+      return existingCompany;
     }
 
     const updatedData = {
