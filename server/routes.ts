@@ -3499,7 +3499,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('[CONTRACTORS USED] House ID:', houseId);
       console.log('[CONTRACTORS USED] Found contractor IDs:', contractorIds);
       console.log('[CONTRACTORS USED] Returning contractors:', validContractors.length);
-      console.log('[CONTRACTORS USED] Contractors:', validContractors.map(c => ({ id: c.id, name: c.name, company: c.company })));
+      console.log('[CONTRACTORS USED] Contractors:', validContractors.map(c => ({ id: c.id, name: c.name, company: c.company, createdAt: c.createdAt })));
       
       res.json(validContractors);
     } catch (error) {
