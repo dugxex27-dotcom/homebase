@@ -127,7 +127,7 @@ export default function ContractorReferral() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="text-sm text-gray-600">
-                Share Home Base with other contractors and homeowners. I earn $1 off my subscription for each signup!
+                Share Home Base with other contractors and homeowners. Earn $1 off your subscription for each paid subscriber!
               </div>
               
               {/* Referral Code */}
