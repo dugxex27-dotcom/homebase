@@ -72,7 +72,7 @@ export default function ContractorCard({ contractor }: ContractorCardProps) {
           )}
           {yearsOnPlatform !== null && yearsOnPlatform > 0 && (
             <div 
-              className="absolute -top-3 -right-3 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg px-2.5 py-1.5 shadow-lg border-2 border-white"
+              className="absolute -bottom-3 -right-3 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg px-2.5 py-1.5 shadow-lg border-2 border-white"
               title={`${yearsOnPlatform} year${yearsOnPlatform !== 1 ? 's' : ''} on platform`}
               data-testid="badge-years-on-platform"
             >
