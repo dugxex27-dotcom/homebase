@@ -1,4 +1,4 @@
-import { Star, MapPin, Shield, Mail, TrendingUp, Calendar } from "lucide-react";
+import { Star, MapPin, Shield, Mail, TrendingUp, Calendar, Medal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
@@ -39,6 +39,19 @@ export default function ContractorCard({ contractor }: ContractorCardProps) {
     }
   };
 
+  const calculateYearsOnPlatform = (date: Date | string | null | undefined) => {
+    if (!date) return null;
+    try {
+      const dateObj = typeof date === 'string' ? new Date(date) : date;
+      const years = Math.floor((Date.now() - dateObj.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+      return years;
+    } catch {
+      return null;
+    }
+  };
+
+  const yearsOnPlatform = calculateYearsOnPlatform(contractor.createdAt);
+
   return (
     <div className="bg-card border rounded-xl p-6 hover:shadow-lg transition-all duration-300 hover:border-primary/20">
       <div className="flex items-start space-x-4">
@@ -57,7 +70,18 @@ export default function ContractorCard({ contractor }: ContractorCardProps) {
               </span>
             </div>
           )}
-
+          {yearsOnPlatform !== null && yearsOnPlatform > 0 && (
+            <div 
+              className="absolute -top-2 -right-2 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full p-1.5 shadow-md border-2 border-white"
+              title={`${yearsOnPlatform} year${yearsOnPlatform !== 1 ? 's' : ''} on platform`}
+              data-testid="badge-years-on-platform"
+            >
+              <div className="flex items-center gap-1">
+                <Medal className="w-3 h-3 text-white" />
+                <span className="text-xs font-bold text-white" data-testid="text-years-count">{yearsOnPlatform}</span>
+              </div>
+            </div>
+          )}
         </div>
         
         <div className="flex-1 min-w-0">

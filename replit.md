@@ -30,6 +30,8 @@ Preferred communication style: Simple, everyday language.
 - **Authentication**: Email/password with bcrypt, Google OAuth, two-step password reset, and optional invite codes. Includes demo logins for all user roles with realistic historical data.
 - **Admin Dashboard**: Provides user analytics, signup trends, search insights, and invite code management.
 - **Contractor Architecture**: Company-based structure supporting multi-user access and dedicated API endpoints.
+- **Contractor Display Features**:
+    - **Years on Platform Badge**: Visual medal badge showing contractor tenure (years since account creation), displayed on contractor cards to build trust and credibility with homeowners.
 - **Homeowner Features**:
     - Multi-property support with climate zone detection and centralized service records.
     - **Home Health Score**: Gamified maintenance tracking based on completed/missed tasks.
