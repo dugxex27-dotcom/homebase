@@ -233,16 +233,16 @@ export default function Header() {
                             Contractors
                           </button>
                         </Link>
-                        <Link href="/products" onClick={() => setMobileMenuOpen(false)}>
-                          <button className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm ${location === '/products' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted'}`}>
-                            <Package className="w-4 h-4" />
-                            Products
-                          </button>
-                        </Link>
                         <Link href="/service-records" onClick={() => setMobileMenuOpen(false)}>
                           <button className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm ${location === '/service-records' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted'}`}>
                             <FileText className="w-4 h-4" />
                             Service Records
+                          </button>
+                        </Link>
+                        <Link href="/products" onClick={() => setMobileMenuOpen(false)}>
+                          <button className={`w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm ${location === '/products' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted'}`}>
+                            <Package className="w-4 h-4" />
+                            Products
                           </button>
                         </Link>
                         <Link href="/messages" onClick={() => setMobileMenuOpen(false)}>
