@@ -1147,6 +1147,14 @@ export class MemStorage implements IStorage {
       id: randomUUID(),
       rating: "0",
       reviewCount: 0,
+      // Ensure required fields have default values to prevent NOT NULL constraint violations
+      licenseNumber: companyData.licenseNumber || '',
+      licenseMunicipality: companyData.licenseMunicipality || '',
+      bio: companyData.bio || '',
+      location: companyData.location || '',
+      phone: companyData.phone || '',
+      email: companyData.email || '',
+      services: companyData.services || [],
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -6740,6 +6748,14 @@ class DbStorage implements IStorage {
       id: randomUUID(),
       rating: "0",
       reviewCount: 0,
+      // Ensure required fields have default values to prevent NOT NULL constraint violations
+      licenseNumber: companyData.licenseNumber || '',
+      licenseMunicipality: companyData.licenseMunicipality || '',
+      bio: companyData.bio || '',
+      location: companyData.location || '',
+      phone: companyData.phone || '',
+      email: companyData.email || '',
+      services: companyData.services || [],
       createdAt: new Date(),
       updatedAt: new Date()
     };

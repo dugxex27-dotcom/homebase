@@ -6365,6 +6365,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           services: profileData.services || [],
           serviceRadius: profileData.serviceRadius || 25,
           hasEmergencyServices: profileData.hasEmergencyServices || false,
+          licenseNumber: profileData.licenseNumber || '',
+          licenseMunicipality: profileData.licenseMunicipality || '',
         });
         
         console.log('[DEBUG] Auto-created company:', newCompany.id, newCompany.name);
