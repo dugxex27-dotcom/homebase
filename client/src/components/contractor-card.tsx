@@ -72,13 +72,15 @@ export default function ContractorCard({ contractor }: ContractorCardProps) {
           )}
           {yearsOnPlatform !== null && yearsOnPlatform > 0 && (
             <div 
-              className="absolute -top-2 -right-2 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full p-1.5 shadow-md border-2 border-white"
+              className="absolute -top-3 -right-3 bg-gradient-to-br from-amber-400 to-amber-600 rounded-lg px-2.5 py-1.5 shadow-lg border-2 border-white"
               title={`${yearsOnPlatform} year${yearsOnPlatform !== 1 ? 's' : ''} on platform`}
               data-testid="badge-years-on-platform"
             >
-              <div className="flex items-center gap-1">
-                <Medal className="w-3 h-3 text-white" />
-                <span className="text-xs font-bold text-white" data-testid="text-years-count">{yearsOnPlatform}</span>
+              <div className="flex items-center gap-1.5">
+                <Medal className="w-4 h-4 text-white" />
+                <span className="text-sm font-bold text-white whitespace-nowrap" data-testid="text-years-count">
+                  {yearsOnPlatform} {yearsOnPlatform === 1 ? 'Year' : 'Years'}
+                </span>
               </div>
             </div>
           )}
