@@ -6321,7 +6321,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('[DEBUG] PUT /api/contractor/profile - Session:', {
         isAuthenticated: req.session?.isAuthenticated,
         role: req.session?.user?.role,
-        userId: req.session?.user?.id
+        userId: req.session?.user?.id,
+        companyId: req.session?.user?.companyId
       });
       
       if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
@@ -6334,9 +6335,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log('[DEBUG] Updating contractor profile:', contractorId, 'with data keys:', Object.keys(profileData));
 
+      // AUTO-CREATE COMPANY: If contractor has no company, create one automatically
+      let currentUser = await storage.getUser(contractorId);
+      if (currentUser && !currentUser.companyId) {
+        console.log('[DEBUG] Contractor has no company - auto-creating one...');
+        
+        // Create company with data from profile
+        const companyName = profileData.company || `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'My Company';
+        const newCompany = await storage.createCompany({
+          name: companyName,
+          ownerId: contractorId,
+          email: currentUser.email || '',
+          phone: profileData.phone || '',
+          location: profileData.location || '',
+          address: profileData.address || '',
+          postalCode: profileData.postalCode || '',
+          website: profileData.website || '',
+          bio: profileData.bio || '',
+          services: profileData.services || [],
+          serviceRadius: profileData.serviceRadius || 25,
+          hasEmergencyServices: profileData.hasEmergencyServices || false,
+        });
+        
+        console.log('[DEBUG] Auto-created company:', newCompany.id, newCompany.name);
+        
+        // Link company to user
+        currentUser = await storage.upsertUser({
+          ...currentUser,
+          companyId: newCompany.id,
+          companyRole: 'owner',
+        });
+        
+        // Update session with new companyId
+        req.session.user = currentUser;
+        req.session.save((err: any) => {
+          if (err) console.error('[DEBUG] Failed to save session after company creation:', err);
+        });
+        
+        console.log('[DEBUG] Linked company to user, companyId:', newCompany.id);
+      }
+
       const updatedProfile = await storage.updateContractorProfile(contractorId, profileData);
       console.log('[DEBUG] Profile updated successfully');
-      res.json(updatedProfile);
+      
+      // Return the profile with companyId so frontend can update
+      res.json({ ...updatedProfile, companyId: currentUser?.companyId });
     } catch (error) {
       console.error("[ERROR] Error updating contractor profile:", error);
       console.error("[ERROR] Error stack:", error instanceof Error ? error.stack : 'No stack trace');

@@ -446,80 +446,15 @@ export default function ContractorProfile() {
       console.log('[DEBUG] Project photos count:', data.projectPhotos?.length || 0);
       console.log('======================================');
       
-      // CRITICAL: Verify user has companyId before proceeding
-      if (!typedUser || !typedUser.companyId) {
-        throw new Error('You must be signed in as a contractor with a company to save profile. Please refresh your session.');
+      // Verify user is signed in (company will be auto-created if missing)
+      if (!typedUser) {
+        throw new Error('You must be signed in as a contractor to save your profile.');
       }
       
       // Separate contractor data from company data
       let { businessLogo, projectPhotos, ...contractorData} = data;
       
-      // Upload images to Object Storage if they're base64 (new uploads)
-      if (typedUser?.companyId) {
-        // Upload logo if it's base64 data
-        if (businessLogo && businessLogo.startsWith('data:image/')) {
-          console.log('[DEBUG] Uploading logo to Object Storage...');
-          toast({
-            title: "Uploading Logo...",
-            description: "Please wait while we save your business logo.",
-          });
-          const logoResponse = await fetch('/api/upload/image', {
-            method: 'POST',
-            body: JSON.stringify({ imageData: businessLogo, type: 'logo' }),
-            headers: { 'Content-Type': 'application/json' },
-          });
-          if (logoResponse.ok) {
-            const { url } = await logoResponse.json();
-            businessLogo = url;
-            console.log('[DEBUG] Logo uploaded successfully:', url);
-            toast({
-              title: "Logo Uploaded",
-              description: "Your business logo has been saved successfully.",
-            });
-          } else {
-            throw new Error('Failed to upload logo');
-          }
-        }
-
-        // Upload project photos if they're base64 data
-        const uploadedPhotos: string[] = [];
-        const photosToUpload = projectPhotos.filter(p => p.startsWith('data:image/')).length;
-        if (photosToUpload > 0) {
-          toast({
-            title: "Uploading Photos...",
-            description: `Uploading ${photosToUpload} project photo${photosToUpload > 1 ? 's' : ''}...`,
-          });
-        }
-        for (const photo of projectPhotos) {
-          if (photo.startsWith('data:image/')) {
-            console.log('[DEBUG] Uploading project photo to Object Storage...');
-            const photoResponse = await fetch('/api/upload/image', {
-              method: 'POST',
-              body: JSON.stringify({ imageData: photo, type: 'photo' }),
-              headers: { 'Content-Type': 'application/json' },
-            });
-            if (photoResponse.ok) {
-              const { url } = await photoResponse.json();
-              uploadedPhotos.push(url);
-              console.log('[DEBUG] Photo uploaded successfully:', url);
-            } else {
-              throw new Error('Failed to upload project photo');
-            }
-          } else {
-            // Already a URL, keep it
-            uploadedPhotos.push(photo);
-          }
-        }
-        if (photosToUpload > 0) {
-          toast({
-            title: "Photos Uploaded",
-            description: `Successfully uploaded ${photosToUpload} project photo${photosToUpload > 1 ? 's' : ''}.`,
-          });
-        }
-        projectPhotos = uploadedPhotos;
-      }
-      
-      // Update contractor profile (without businessLogo and projectPhotos)
+      // Update contractor profile first (this will auto-create company if needed)
       console.log('[DEBUG] Updating contractor profile...');
       const profileResponse = await fetch('/api/contractor/profile', {
         method: 'PUT',
@@ -534,50 +469,125 @@ export default function ContractorProfile() {
         console.error('[DEBUG] Profile update failed:', profileResponse.status, errorText);
         throw new Error(`Failed to update profile: ${errorText}`);
       }
-      console.log('[DEBUG] Profile updated successfully');
       
-      // Update company with businessLogo, projectPhotos, bio, and experience if user has a company
-      if (typedUser?.companyId) {
-        console.log('[DEBUG] Updating company data for companyId:', typedUser.companyId);
-        console.log('[DEBUG] Logo URL:', businessLogo);
-        console.log('[DEBUG] Photo URLs count:', projectPhotos.length);
-        console.log('[DEBUG] Bio:', data.bio ? 'yes' : 'no');
-        console.log('[DEBUG] Years Experience:', data.yearsExperience || 'not set');
-        
-        // Build company update payload with bio and experience
-        const companyUpdate: any = { 
-          businessLogo, 
-          projectPhotos,
-        };
-        
-        // Add bio if provided
-        if (data.bio) {
-          companyUpdate.bio = data.bio;
-        }
-        
-        // Add experience if provided (convert string to number)
-        if (data.yearsExperience) {
-          // Convert to number, or 25 for "20+"
-          const experienceNum = data.yearsExperience === '20+' ? 25 : parseInt(data.yearsExperience) || 0;
-          companyUpdate.experience = experienceNum;
-        }
-        
-        const companyResponse = await fetch(`/api/companies/${typedUser.companyId}`, {
-          method: 'PUT',
-          body: JSON.stringify(companyUpdate),
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
+      const profileResult = await profileResponse.json();
+      console.log('[DEBUG] Profile updated successfully, companyId:', profileResult.companyId);
+      
+      // Get the companyId (either existing or newly created)
+      const companyId = profileResult.companyId || typedUser?.companyId;
+      
+      if (!companyId) {
+        console.warn('[DEBUG] No companyId available after profile update');
+        return profileResult;
+      }
+      
+      // Now upload images if we have a company
+      // Upload logo if it's base64 data
+      if (businessLogo && businessLogo.startsWith('data:image/')) {
+        console.log('[DEBUG] Uploading logo to Object Storage...');
+        toast({
+          title: "Uploading Logo...",
+          description: "Please wait while we save your business logo.",
         });
-        if (!companyResponse.ok) {
-          const errorText = await companyResponse.text();
-          console.error('[DEBUG] Company update failed:', companyResponse.status, errorText);
-          throw new Error(`Failed to update company data: ${errorText}`);
+        const logoResponse = await fetch('/api/upload/image', {
+          method: 'POST',
+          body: JSON.stringify({ imageData: businessLogo, type: 'logo' }),
+          headers: { 'Content-Type': 'application/json' },
+        });
+        if (logoResponse.ok) {
+          const { url } = await logoResponse.json();
+          businessLogo = url;
+          console.log('[DEBUG] Logo uploaded successfully:', url);
+          toast({
+            title: "Logo Uploaded",
+            description: "Your business logo has been saved successfully.",
+          });
+        } else {
+          throw new Error('Failed to upload logo');
         }
-        console.log('[DEBUG] Company data updated successfully');
-      } else {
-        console.warn('[DEBUG] No companyId found - skipping company update');
+      }
+
+      // Upload project photos if they're base64 data
+      const uploadedPhotos: string[] = [];
+      const photosToUpload = projectPhotos.filter(p => p.startsWith('data:image/')).length;
+      if (photosToUpload > 0) {
+        toast({
+          title: "Uploading Photos...",
+          description: `Uploading ${photosToUpload} project photo${photosToUpload > 1 ? 's' : ''}...`,
+        });
+      }
+      for (const photo of projectPhotos) {
+        if (photo.startsWith('data:image/')) {
+          console.log('[DEBUG] Uploading project photo to Object Storage...');
+          const photoResponse = await fetch('/api/upload/image', {
+            method: 'POST',
+            body: JSON.stringify({ imageData: photo, type: 'photo' }),
+            headers: { 'Content-Type': 'application/json' },
+          });
+          if (photoResponse.ok) {
+            const { url } = await photoResponse.json();
+            uploadedPhotos.push(url);
+            console.log('[DEBUG] Photo uploaded successfully:', url);
+          } else {
+            throw new Error('Failed to upload project photo');
+          }
+        } else {
+          // Already a URL, keep it
+          uploadedPhotos.push(photo);
+        }
+      }
+      if (photosToUpload > 0) {
+        toast({
+          title: "Photos Uploaded",
+          description: `Successfully uploaded ${photosToUpload} project photo${photosToUpload > 1 ? 's' : ''}.`,
+        });
+      }
+      projectPhotos = uploadedPhotos;
+      
+      // Update company with businessLogo, projectPhotos, bio, and experience
+      console.log('[DEBUG] Updating company data for companyId:', companyId);
+      console.log('[DEBUG] Logo URL:', businessLogo);
+      console.log('[DEBUG] Photo URLs count:', projectPhotos.length);
+      console.log('[DEBUG] Bio:', data.bio ? 'yes' : 'no');
+      console.log('[DEBUG] Years Experience:', data.yearsExperience || 'not set');
+      
+      // Build company update payload with bio and experience
+      const companyUpdate: any = { 
+        businessLogo, 
+        projectPhotos,
+      };
+      
+      // Add bio if provided
+      if (data.bio) {
+        companyUpdate.bio = data.bio;
+      }
+      
+      // Add experience if provided (convert string to number)
+      if (data.yearsExperience) {
+        // Convert to number, or 25 for "20+"
+        const experienceNum = data.yearsExperience === '20+' ? 25 : parseInt(data.yearsExperience) || 0;
+        companyUpdate.experience = experienceNum;
+      }
+      
+      const companyResponse = await fetch(`/api/companies/${companyId}`, {
+        method: 'PUT',
+        body: JSON.stringify(companyUpdate),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+      if (!companyResponse.ok) {
+        const errorText = await companyResponse.text();
+        console.error('[DEBUG] Company update failed:', companyResponse.status, errorText);
+        throw new Error(`Failed to update company data: ${errorText}`);
+      }
+      console.log('[DEBUG] Company data updated successfully');
+      
+      // Refresh user data to get the updated companyId
+      if (profileResult.companyId && !typedUser?.companyId) {
+        console.log('[DEBUG] Refreshing user data after company creation...');
+        refetchUser();
       }
       
       // Save licenses - first get existing licenses to determine creates vs updates
