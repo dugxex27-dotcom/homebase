@@ -98,8 +98,36 @@ const AVAILABLE_SERVICES = [
 export default function ContractorProfile() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, refetch: refetchUser } = useAuth();
   const typedUser = user as UserType | undefined;
+  const [hasAttemptedRefresh, setHasAttemptedRefresh] = useState(false);
+  
+  // Auto-refresh session if companyId is missing (handles stale session data)
+  React.useEffect(() => {
+    if (typedUser && !typedUser.companyId && !hasAttemptedRefresh) {
+      console.log('[SESSION] CompanyId missing, refreshing session data...');
+      setHasAttemptedRefresh(true);
+      
+      // Try to refresh session from server
+      fetch('/api/auth/refresh-session', {
+        method: 'POST',
+        credentials: 'include',
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.user?.companyId) {
+            console.log('[SESSION] Session refreshed, companyId found:', data.user.companyId);
+            refetchUser();
+            queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+          } else {
+            console.log('[SESSION] No companyId found after refresh - company may need to be created');
+          }
+        })
+        .catch(err => {
+          console.error('[SESSION] Failed to refresh session:', err);
+        });
+    }
+  }, [typedUser, hasAttemptedRefresh, refetchUser, queryClient]);
   
   const [formData, setFormData] = useState({
     company: '',
@@ -801,8 +829,8 @@ export default function ContractorProfile() {
       
       if (!typedUser?.companyId) {
         toast({
-          title: "Session Expired",
-          description: "Please log out and log back in to upload photos.",
+          title: "Company Profile Not Found",
+          description: "Your company profile is being set up. Please save your profile first, then try uploading photos.",
           variant: "destructive",
         });
         return;
@@ -902,8 +930,8 @@ export default function ContractorProfile() {
   const removeProjectPhoto = async (index: number) => {
     if (!typedUser?.companyId) {
       toast({
-        title: "Session Expired",
-        description: "Please log out and log back in.",
+        title: "Company Profile Not Found",
+        description: "Your company profile is being set up. Please save your profile first.",
         variant: "destructive",
       });
       return;
@@ -951,8 +979,8 @@ export default function ContractorProfile() {
   const removeLogo = async () => {
     if (!typedUser?.companyId) {
       toast({
-        title: "Session Expired",
-        description: "Please log out and log back in.",
+        title: "Company Profile Not Found",
+        description: "Your company profile is being set up. Please save your profile first.",
         variant: "destructive",
       });
       return;
