@@ -246,10 +246,27 @@ export default function ContractorProfile() {
     }
   }, [companyData]);
 
-  // Update licenses when existing licenses load
+  // Update licenses when existing licenses load - always sync from server with deduplication
   React.useEffect(() => {
-    if (existingLicenses && Array.isArray(existingLicenses) && existingLicenses.length > 0) {
-      setLicenses(existingLicenses);
+    if (existingLicenses && Array.isArray(existingLicenses)) {
+      if (existingLicenses.length > 0) {
+        // Deduplicate licenses by ID to prevent any display issues
+        const uniqueLicenses = existingLicenses.filter((license: any, index: number, self: any[]) => 
+          index === self.findIndex((l: any) => l.id === license.id)
+        );
+        console.log('[DEBUG] Loading licenses:', uniqueLicenses.length, 'unique from', existingLicenses.length, 'total');
+        setLicenses(uniqueLicenses);
+      } else {
+        // No licenses in DB - reset to empty form
+        setLicenses([{
+          id: '',
+          licenseNumber: '',
+          municipality: '',
+          state: '',
+          expiryDate: '',
+          licenseType: 'General Contractor'
+        }]);
+      }
     }
   }, [existingLicenses]);
 
