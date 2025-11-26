@@ -198,10 +198,13 @@ export default function ContractorProfile() {
     queryKey: ['/api/contractor/licenses'],
   });
 
-  // Load company data for business logo and project photos
+  // Determine the effective companyId from either user session or profile response
+  const effectiveCompanyId = typedUser?.companyId || (profile as any)?.companyId;
+
+  // Load company data for business logo and project photos - use effectiveCompanyId
   const { data: companyData } = useQuery({
-    queryKey: ['/api/companies', typedUser?.companyId],
-    enabled: !!typedUser?.companyId,
+    queryKey: ['/api/companies', effectiveCompanyId],
+    enabled: !!effectiveCompanyId,
   });
 
   // Update form data when profile loads
@@ -870,7 +873,7 @@ export default function ContractorProfile() {
         return;
       }
       
-      if (!typedUser?.companyId) {
+      if (!effectiveCompanyId) {
         toast({
           title: "Company Profile Not Found",
           description: "Your company profile is being set up. Please save your profile first, then try uploading photos.",
@@ -933,7 +936,7 @@ export default function ContractorProfile() {
           const allPhotos = [...currentPhotos, ...newPhotoUrls];
           
           // Save all photos to database immediately
-          const saveResponse = await fetch(`/api/companies/${typedUser.companyId}`, {
+          const saveResponse = await fetch(`/api/companies/${effectiveCompanyId}`, {
             method: 'PUT',
             body: JSON.stringify({ projectPhotos: allPhotos }),
             headers: { 'Content-Type': 'application/json' },
@@ -957,7 +960,7 @@ export default function ContractorProfile() {
           });
           
           // Invalidate company cache to refetch with new photos
-          queryClient.invalidateQueries({ queryKey: ['/api/companies', typedUser.companyId] });
+          queryClient.invalidateQueries({ queryKey: ['/api/companies', effectiveCompanyId] });
         } catch (error) {
           console.error('Error saving photos:', error);
           toast({
@@ -971,7 +974,7 @@ export default function ContractorProfile() {
   };
 
   const removeProjectPhoto = async (index: number) => {
-    if (!typedUser?.companyId) {
+    if (!effectiveCompanyId) {
       toast({
         title: "Company Profile Not Found",
         description: "Your company profile is being set up. Please save your profile first.",
@@ -985,7 +988,7 @@ export default function ContractorProfile() {
       const updatedPhotos = formData.projectPhotos.filter((_, i) => i !== index);
       
       // Save to database immediately
-      const saveResponse = await fetch(`/api/companies/${typedUser.companyId}`, {
+      const saveResponse = await fetch(`/api/companies/${effectiveCompanyId}`, {
         method: 'PUT',
         body: JSON.stringify({ projectPhotos: updatedPhotos }),
         headers: { 'Content-Type': 'application/json' },
@@ -1008,7 +1011,7 @@ export default function ContractorProfile() {
         description: "Photo has been deleted from the database.",
       });
       
-      queryClient.invalidateQueries({ queryKey: ['/api/companies', typedUser.companyId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/companies', effectiveCompanyId] });
     } catch (error) {
       console.error('Error removing photo:', error);
       toast({
@@ -1020,7 +1023,7 @@ export default function ContractorProfile() {
   };
 
   const removeLogo = async () => {
-    if (!typedUser?.companyId) {
+    if (!effectiveCompanyId) {
       toast({
         title: "Company Profile Not Found",
         description: "Your company profile is being set up. Please save your profile first.",
@@ -1031,7 +1034,7 @@ export default function ContractorProfile() {
     
     try {
       // Save to database immediately
-      const saveResponse = await fetch(`/api/companies/${typedUser.companyId}`, {
+      const saveResponse = await fetch(`/api/companies/${effectiveCompanyId}`, {
         method: 'PUT',
         body: JSON.stringify({ businessLogo: '' }),
         headers: { 'Content-Type': 'application/json' },
@@ -1051,7 +1054,7 @@ export default function ContractorProfile() {
         description: "Logo has been deleted from the database.",
       });
       
-      queryClient.invalidateQueries({ queryKey: ['/api/companies', typedUser.companyId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/companies', effectiveCompanyId] });
     } catch (error) {
       console.error('Error removing logo:', error);
       toast({
