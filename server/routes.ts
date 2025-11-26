@@ -3676,15 +3676,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Contractor not found" });
       }
       
-      // Fetch company data to include businessLogo and projectPhotos
+      // Fetch company data - company data takes precedence over contractors table data
       let contractorWithCompanyData = { ...contractor };
-      if ((contractor as any).companyId) {
-        const company = await storage.getCompany((contractor as any).companyId);
+      
+      // First check if contractor has companyId
+      let companyId = (contractor as any).companyId;
+      
+      // If not, check if we can find user with this ID and get their companyId
+      if (!companyId) {
+        const user = await storage.getUserById(req.params.id);
+        if (user && user.companyId) {
+          companyId = user.companyId;
+        }
+      }
+      
+      if (companyId) {
+        const company = await storage.getCompany(companyId);
         if (company) {
+          console.log('[DEBUG] Merging company data - experience:', company.experience, 'licenseNumber:', company.licenseNumber);
+          // Company data takes precedence for profile fields
           contractorWithCompanyData = {
             ...contractor,
-            businessLogo: company.businessLogo || '',
-            projectPhotos: company.projectPhotos || []
+            experience: company.experience || (contractor as any).experience || 0,
+            businessLogo: company.businessLogo || (contractor as any).businessLogo || '',
+            projectPhotos: company.projectPhotos || (contractor as any).projectPhotos || [],
+            licenseNumber: company.licenseNumber || (contractor as any).licenseNumber || '',
+            licenseMunicipality: company.licenseMunicipality || (contractor as any).licenseMunicipality || '',
+            isLicensed: !!(company.licenseNumber || (contractor as any).licenseNumber),
+            bio: company.bio || (contractor as any).bio || '',
+            services: company.services || (contractor as any).services || [],
+            phone: company.phone || (contractor as any).phone || '',
+            address: company.address || (contractor as any).address || '',
+            city: company.city || (contractor as any).city || '',
+            state: company.state || (contractor as any).state || '',
+            postalCode: company.postalCode || (contractor as any).postalCode || '',
+            website: company.website || (contractor as any).website || '',
+            facebook: company.facebook || (contractor as any).facebook || '',
+            instagram: company.instagram || (contractor as any).instagram || '',
+            linkedin: company.linkedin || (contractor as any).linkedin || '',
+            googleBusinessUrl: company.googleBusinessUrl || (contractor as any).googleBusinessUrl || '',
+            hasEmergencyServices: company.hasEmergencyServices ?? (contractor as any).hasEmergencyServices ?? false,
+            serviceRadius: company.serviceRadius || (contractor as any).serviceRadius || 25,
+            companyId: companyId
           };
         }
       }
