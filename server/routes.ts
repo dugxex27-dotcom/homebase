@@ -3620,8 +3620,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/contractors/:id", async (req, res) => {
     try {
       console.log('[DEBUG] GET /api/contractors/:id - Looking for contractor ID:', req.params.id);
-      const contractor = await storage.getContractor(req.params.id);
-      console.log('[DEBUG] Contractor found:', !!contractor);
+      let contractor = await storage.getContractor(req.params.id);
+      console.log('[DEBUG] Contractor found in contractors table:', !!contractor);
+      
+      // If not found in contractors table, try to look up by user ID
+      if (!contractor) {
+        console.log('[DEBUG] Checking if this is a user ID for a contractor...');
+        const user = await storage.getUserById(req.params.id);
+        if (user && user.role === 'contractor' && user.companyId) {
+          console.log('[DEBUG] Found contractor user with companyId:', user.companyId);
+          const company = await storage.getCompany(user.companyId);
+          if (company) {
+            // Build a contractor-like object from user and company data
+            contractor = {
+              id: user.id,
+              name: user.name || '',
+              company: company.name || user.name || '',
+              email: user.email || '',
+              phone: company.phone || '',
+              address: company.address || '',
+              city: company.city || '',
+              state: company.state || '',
+              postalCode: company.postalCode || '',
+              location: company.location || `${company.city || ''}, ${company.state || ''}`.trim() || '',
+              services: company.services || [],
+              rating: company.rating || '5.0',
+              reviewCount: company.reviewCount || 0,
+              bio: company.bio || '',
+              experience: company.experience || 0,
+              profileImage: user.profileImageUrl || null,
+              businessLogo: company.businessLogo || null,
+              projectPhotos: company.projectPhotos || [],
+              website: company.website || null,
+              facebook: company.facebook || null,
+              instagram: company.instagram || null,
+              linkedin: company.linkedin || null,
+              googleBusinessUrl: company.googleBusinessUrl || null,
+              isLicensed: true,
+              hasEmergencyServices: company.hasEmergencyServices || false,
+              serviceRadius: company.serviceRadius || 25,
+              distance: null,
+              createdAt: user.createdAt || new Date(),
+              companyId: user.companyId
+            } as any;
+            console.log('[DEBUG] Built contractor object from user+company data');
+          }
+        }
+      }
+      
       if (!contractor) {
         return res.status(404).json({ message: "Contractor not found" });
       }
