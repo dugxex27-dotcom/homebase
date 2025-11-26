@@ -3630,7 +3630,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (user && user.role === 'contractor' && user.companyId) {
           console.log('[DEBUG] Found contractor user with companyId:', user.companyId);
           const company = await storage.getCompany(user.companyId);
+          console.log('[DEBUG] Company data:', JSON.stringify(company, null, 2));
           if (company) {
+            console.log('[DEBUG] Company experience value:', company.experience, 'type:', typeof company.experience);
             // Build a contractor-like object from user and company data
             contractor = {
               id: user.id,
