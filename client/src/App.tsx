@@ -177,6 +177,7 @@ function Router() {
             <Route path="/contractor-referral" component={ContractorReferral} />
             <Route path="/service-records" component={ServiceRecords} />
             <Route path="/manage-team" component={ManageTeam} />
+            <Route path="/contractor/:id" component={ContractorDetail} />
           </>
         )}
         
