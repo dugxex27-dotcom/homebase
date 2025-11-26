@@ -30,8 +30,10 @@ import {
   Camera,
   Save,
   Plus,
-  X
+  X,
+  Eye
 } from "lucide-react";
+import { Link } from "wouter";
 
 const AVAILABLE_SERVICES = [
   "Appliance Installation",
@@ -1810,6 +1812,31 @@ export default function ContractorProfile() {
           </Button>
         </div>
       </form>
+
+      {/* Preview Profile as Homeowner */}
+      <Card className="mt-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Eye className="w-5 h-5" />
+            Preview Your Profile
+          </CardTitle>
+          <CardDescription>
+            See how homeowners will view your contractor profile when browsing for services.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link href={`/contractor/${typedUser?.id}`}>
+            <Button 
+              variant="outline" 
+              className="flex items-center gap-2"
+              data-testid="button-preview-profile"
+            >
+              <Eye className="w-4 h-4" />
+              Preview as Homeowner
+            </Button>
+          </Link>
+        </CardContent>
+      </Card>
 
       {/* Cancel Account */}
       <Card className="border-red-200 mt-8">
