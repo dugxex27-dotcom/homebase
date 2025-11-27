@@ -50,8 +50,11 @@ Preferred communication style: Simple, everyday language.
 - **Proposal System**: Contractors can create detailed proposals, and homeowners can view and manage them within the app.
 - **Billing and Subscription**:
     - 14-day free trial.
-    - Tiered subscription plans for homeowners and a single plan for contractors.
-    - Referral rewards system for discounts and free subscriptions.
+    - Tiered subscription plans for homeowners.
+    - **Contractor Subscription Tiers**:
+        - **Basic ($20/month)**: Lead management, CRM integrations, $20/month referral credit cap
+        - **Pro ($40/month)**: Full CRM access including client management, job scheduling, quotes, invoices, dashboard analytics, $40/month referral credit cap
+    - Referral rewards system: $1 per active referral, capped by subscription tier.
 - **Real Estate Agent Affiliate System**: Agents earn referral commissions via unique codes and track earnings through a dedicated dashboard.
 - **CRM System for Contractors**: Includes manual lead management (CRUD) and a webhook integration system for automatic lead syncing from external CRMs, with company-scoped access control.
 - **Error Tracking and Monitoring**: Features a React ErrorBoundary, client-side error logger, and a database schema for tracking errors, accessible via an admin-only developer console.
