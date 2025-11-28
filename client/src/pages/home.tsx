@@ -1,12 +1,13 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Users, Calendar, Search, Star, CheckCircle, Bell, Sparkles } from "lucide-react";
+import { Users, Package, Calendar, Search, MapPin, Star, CheckCircle, TrendingUp, Shield, Home as HomeIcon, Wrench, Bell, BarChart3, Gift, Sparkles } from "lucide-react";
 import HeroSection from "@/components/hero-section";
 import Logo from "@/components/logo";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/useAuth";
 import type { User } from "@shared/schema";
 import { Link, useLocation } from "wouter";
@@ -48,71 +49,80 @@ export default function Home() {
   return (
     <div className="min-h-screen" style={{ 
       background: typedUser?.role === 'homeowner' 
-        ? '#f8f5ff' 
+        ? 'linear-gradient(180deg, #8B70D4 0%, #9B82DC 50%, #8B70D4 100%)' 
         : '#1560a2' 
     }}>
       <HeroSection />
       
       {/* Referral Card Section - Homeowners Only */}
       {typedUser?.role === 'homeowner' && (
-        <section className="py-6" style={{ background: '#f8f5ff' }}>
-          <div className="max-w-md mx-auto px-6">
-            <div 
-              className="bg-white rounded-3xl p-6 shadow-lg"
-              style={{ boxShadow: '0px 6px 18px rgba(0, 0, 0, 0.12)' }}
-            >
-              <h2 className="text-xl font-bold mb-2" style={{ color: '#5B2EFF' }}>
-                <span className="mr-2">🎁</span>
-                Earn a Free Subscription
-              </h2>
-              <p className="text-gray-500 mb-5">
-                Invite {referralsNeeded} friends. Unlock HomeBase for free — forever.
-              </p>
-
-              <div className="flex justify-between text-sm text-gray-500 mb-1.5">
-                <span>{referralCount} / {referralsNeeded}</span>
-                <span>{referralCount} / {referralsNeeded}</span>
-              </div>
-
-              <div 
-                className="h-2.5 rounded-xl mb-4"
-                style={{ backgroundColor: '#E9E0FF' }}
-              >
-                <div 
-                  className="h-full rounded-xl transition-all duration-400"
-                  style={{ 
-                    width: `${progressPercentage}%`,
-                    backgroundColor: '#5B2EFF'
-                  }}
-                  data-testid="progress-referral-subscription"
-                />
-              </div>
-
-              <p className="font-medium mb-3.5" style={{ color: referralsRemaining === 0 ? '#10b981' : '#5B2EFF' }}>
-                {referralsRemaining === 0 ? (
-                  "🎉 You've earned a free subscription!"
-                ) : (
-                  `You're ${referralsRemaining} referral${referralsRemaining !== 1 ? 's' : ''} away from a free subscription.`
-                )}
-              </p>
-
-              <Link href="/homeowner-referral">
-                <span 
-                  className="font-semibold text-base underline cursor-pointer hover:opacity-80"
-                  style={{ color: '#5B2EFF' }}
-                  data-testid="button-share-invite-link"
-                >
-                  Share Your Invite Link
-                </span>
-              </Link>
-            </div>
+        <section className="py-8 sm:py-12" style={{ background: 'transparent' }}>
+          <div className="max-w-4xl mx-auto px-3 sm:px-4 lg:px-6">
+            <Card className="bg-white border-purple-200 shadow-xl">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-center">
+                  <div className="flex items-center justify-center gap-2 text-2xl sm:text-3xl font-bold" style={{ color: '#2c0f5b' }}>
+                    <Gift className="h-6 w-6 sm:h-8 sm:w-8 text-purple-600" />
+                    Earn a Free Subscription
+                  </div>
+                </CardTitle>
+                <p className="text-center text-gray-600 mt-2">
+                  Get {referralsNeeded} paid referrals. Free as long as they remain subscribers.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between mb-2 px-4">
+                    <div className="text-center">
+                      <div className="text-3xl font-bold" style={{ color: '#2c0f5b' }}>
+                        {referralCount}
+                      </div>
+                      <div className="text-sm text-gray-600">Paid Referrals</div>
+                    </div>
+                    <div className="text-2xl text-gray-400">/</div>
+                    <div className="text-center">
+                      <div className="text-3xl font-bold" style={{ color: '#2c0f5b' }}>
+                        {referralsNeeded}
+                      </div>
+                      <div className="text-sm text-gray-600">Needed</div>
+                    </div>
+                  </div>
+                  
+                  <Progress 
+                    value={progressPercentage} 
+                    className="h-8 mb-4" 
+                    data-testid="progress-referral-subscription" 
+                  />
+                  
+                  <p className="text-center text-lg sm:text-xl font-medium" style={{ color: referralsRemaining === 0 ? '#10b981' : '#6b46c1' }}>
+                    {referralsRemaining === 0 ? (
+                      "🎉 You've earned a free subscription!"
+                    ) : (
+                      `You're ${referralsRemaining} paid referral${referralsRemaining !== 1 ? 's' : ''} away from a free subscription.`
+                    )}
+                  </p>
+                  
+                  <div className="text-center mt-6">
+                    <Link href="/homeowner-referral">
+                      <Button 
+                        size="lg"
+                        className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-6 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+                        data-testid="button-share-invite-link"
+                      >
+                        Share Your Invite Link
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </section>
       )}
       
       {/* AI Help Feature - Homeowners Only */}
       {typedUser?.role === 'homeowner' && (
-        <section className="py-8 sm:py-12" style={{ background: '#f8f5ff' }}>
+        <section className="py-8 sm:py-12" style={{ background: 'transparent' }}>
           <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
             <Card className="border-2 border-purple-300 bg-white shadow-xl">
               <CardContent className="p-4 sm:p-6 lg:p-8">
