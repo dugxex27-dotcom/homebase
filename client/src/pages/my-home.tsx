@@ -18,6 +18,7 @@ import type { House } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar, Clock, Wrench, Home, MapPin, Edit, Trash2, Plus, Building, Thermometer, AlertTriangle, ChevronRight, Crown, BarChart3, Copy, Settings } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { HomeownerFeatureGate, HomeownerTrialBanner } from "@/components/homeowner-feature-gate";
 
 // Form schema for house creation/editing
 const houseFormSchema = insertHouseSchema.extend({

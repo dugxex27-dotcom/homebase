@@ -11,11 +11,14 @@ import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/useAuth";
 import type { User } from "@shared/schema";
 import { Link, useLocation } from "wouter";
+import { PaidSubscriberGate } from "@/components/homeowner-feature-gate";
+import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
 
 export default function Home() {
   const { user } = useAuth();
   const typedUser = user as User | undefined;
   const [, setLocation] = useLocation();
+  const { isPaidSubscriber } = useHomeownerSubscription();
 
   // Redirect contractors and agents to their dashboards
   useEffect(() => {
@@ -26,10 +29,10 @@ export default function Home() {
     }
   }, [typedUser, setLocation]);
 
-  // Referral data query for homeowners
+  // Referral data query for homeowners - only fetch if paid subscriber
   const { data: referralData } = useQuery({
     queryKey: ['/api/user/referral-code'],
-    enabled: typedUser?.role === 'homeowner',
+    enabled: typedUser?.role === 'homeowner' && isPaidSubscriber,
   });
 
   // User data query for subscription details

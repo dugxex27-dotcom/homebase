@@ -20,6 +20,8 @@ import { insertMaintenanceLogSchema, insertCustomMaintenanceTaskSchema, insertHo
 import type { MaintenanceLog, House, CustomMaintenanceTask, HomeSystem, TaskOverride, HomeAppliance, HomeApplianceManual } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { HomeownerFeatureGate, HomeownerTrialBanner } from "@/components/homeowner-feature-gate";
+import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
 import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, ChevronUp, Settings, Plus, Edit, Trash2, Home, FileText, Building2, User, Building, Phone, MessageSquare, AlertTriangle, Thermometer, Cloud, Monitor, Book, ExternalLink, Upload, Trophy, Mail, Handshake, Globe, TrendingDown, PiggyBank, Truck, CheckCircle2, Circle, Download } from "lucide-react";
 import { AppointmentScheduler } from "@/components/appointment-scheduler";
 import { CustomMaintenanceTasks } from "@/components/custom-maintenance-tasks";
@@ -1372,6 +1374,7 @@ export default function Maintenance() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { needsUpgrade, isInTrial, trialDaysRemaining } = useHomeownerSubscription();
   
   // Task override states
   const [showCustomizeTask, setShowCustomizeTask] = useState<string | null>(null);
@@ -2990,21 +2993,30 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
         </div>
       </section>
 
-      {/* Home Health Score Section */}
+      {/* Trial Banner for Homeowners */}
+      {userRole === 'homeowner' && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <HomeownerTrialBanner />
+        </div>
+      )}
+
+      {/* Home Health Score Section - Wrapped in Feature Gate for Homeowners */}
       {userRole === 'homeowner' && houses.length > 0 && (
-        <section className="py-8" style={{ background: 'transparent' }}>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className={`grid gap-6 ${houses.length === 1 ? 'max-w-5xl mx-auto' : houses.length === 2 ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
-              {houses.map((house: House) => (
-                <HomeHealthScore 
-                  key={house.id} 
-                  houseId={house.id} 
-                  houseName={house.name}
-                />
-              ))}
+        <HomeownerFeatureGate featureName="Maintenance Scheduling">
+          <section className="py-8" style={{ background: 'transparent' }}>
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className={`grid gap-6 ${houses.length === 1 ? 'max-w-5xl mx-auto' : houses.length === 2 ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
+                {houses.map((house: House) => (
+                  <HomeHealthScore 
+                    key={house.id} 
+                    houseId={house.id} 
+                    houseName={house.name}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        </HomeownerFeatureGate>
       )}
 
       {/* DIY Savings Tracker Section - Show separate card for each house */}
