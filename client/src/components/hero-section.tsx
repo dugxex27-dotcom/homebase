@@ -19,7 +19,7 @@ export default function HeroSection() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-2">
           {typedUser?.role !== 'homeowner' && (
-            <Logo className={`h-32 w-full mx-auto block mb-8`} />
+            <Logo className={`h-12 sm:h-16 w-auto mx-auto block mb-8`} />
           )}
           
           <h1 className="text-5xl lg:text-6xl font-bold mb-6 leading-tight" style={{ color: typedUser?.role === 'homeowner' ? '#2c0f5b' : 'white' }}>
