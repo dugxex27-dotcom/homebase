@@ -165,9 +165,10 @@
   
   /* Headline Typography - Quicksand Bold (700) */
   h1, h2, h3, h4, h5, h6,
-  .font-heading {
+  .font-heading,
+  h1 *, h2 *, h3 *, h4 *, h5 *, h6 * {
     font-family: var(--font-heading);
-    font-weight: 700;
+    font-weight: 700 !important;
   }
   
   /* Subcopy Typography - Quicksand Medium (500) */
@@ -185,7 +186,7 @@
   }
   
   /* Body Copy - Quicksand Regular (400) */
-  p, span, div, li, td, th,
+  p, li, td, th,
   .font-body {
     font-weight: 400;
   }
