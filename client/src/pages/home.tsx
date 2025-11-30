@@ -57,8 +57,8 @@ export default function Home() {
     }}>
       <HeroSection />
       
-      {/* Referral Card Section - Homeowners Only */}
-      {typedUser?.role === 'homeowner' && (
+      {/* Referral Card Section - Paid Subscribers Only */}
+      {typedUser?.role === 'homeowner' && isPaidSubscriber && (
         <section className="py-8 sm:py-12" style={{ background: 'transparent' }}>
           <div className="max-w-4xl mx-auto px-3 sm:px-4 lg:px-6">
             <Card className="bg-white border-purple-200 shadow-xl">

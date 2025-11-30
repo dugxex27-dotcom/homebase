@@ -539,6 +539,9 @@ export default function MyHome() {
   return (
     <div className="min-h-screen" style={{ background: '#2c0f5b' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Trial Banner */}
+        <HomeownerTrialBanner />
+        
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-white mb-4" data-testid="text-page-title">
             My Home
@@ -548,6 +551,7 @@ export default function MyHome() {
           </p>
         </div>
 
+        <HomeownerFeatureGate featureName="My Home">
         {houses.length === 0 ? (
           // No houses - show create form
           <Card className="border-gray-300 shadow-lg" style={{ background: '#f2f2f2' }}>
@@ -1176,6 +1180,7 @@ export default function MyHome() {
           onConfirm={confirmDelete}
           variant="destructive"
         />
+        </HomeownerFeatureGate>
       </div>
     </div>
   );

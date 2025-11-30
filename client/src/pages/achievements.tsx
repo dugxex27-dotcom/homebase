@@ -243,6 +243,9 @@ export default function Achievements() {
     <>
       <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, #8B70D4 0%, #9B82DC 50%, #8B70D4 100%)' }}>
         <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
+          {/* Trial Banner */}
+          <HomeownerTrialBanner />
+          
           {/* Page Header */}
           <div className="mb-6 sm:mb-8">
             <h1 className="text-xl sm:text-2xl lg:text-4xl font-bold mb-2 text-white flex items-center gap-2 sm:gap-3">
@@ -254,53 +257,54 @@ export default function Achievements() {
             </p>
           </div>
 
-          {/* House Selector */}
-          {!housesLoading && houses.length > 1 && (
-            <div className="mb-6 sm:mb-8">
-              <Card style={{ backgroundColor: '#f2f2f2' }}>
-                <CardContent className="pt-4 pb-4 sm:pt-6 sm:pb-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      <Home className="w-5 h-5" style={{ color: '#2c0f5b' }} />
-                      <label className="text-sm font-semibold" style={{ color: '#2c0f5b' }}>
-                        Filter by Property:
-                      </label>
-                    </div>
-                    <Select value={selectedHouseId} onValueChange={setSelectedHouseId}>
-                      <SelectTrigger 
-                        className="w-full sm:w-64" 
-                        style={{ borderColor: '#2c0f5b' }}
-                        data-testid="house-selector"
-                      >
-                        <SelectValue placeholder="Select property" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all" data-testid="house-option-all">
-                          All Properties
-                        </SelectItem>
-                        {houses.map((house) => (
-                          <SelectItem 
-                            key={house.id} 
-                            value={house.id}
-                            data-testid={`house-option-${house.id}`}
-                          >
-                            {house.name}
+          <HomeownerFeatureGate featureName="Achievements">
+            {/* House Selector */}
+            {!housesLoading && houses.length > 1 && (
+              <div className="mb-6 sm:mb-8">
+                <Card style={{ backgroundColor: '#f2f2f2' }}>
+                  <CardContent className="pt-4 pb-4 sm:pt-6 sm:pb-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <Home className="w-5 h-5" style={{ color: '#2c0f5b' }} />
+                        <label className="text-sm font-semibold" style={{ color: '#2c0f5b' }}>
+                          Filter by Property:
+                        </label>
+                      </div>
+                      <Select value={selectedHouseId} onValueChange={setSelectedHouseId}>
+                        <SelectTrigger 
+                          className="w-full sm:w-64" 
+                          style={{ borderColor: '#2c0f5b' }}
+                          data-testid="house-selector"
+                        >
+                          <SelectValue placeholder="Select property" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all" data-testid="house-option-all">
+                            All Properties
                           </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {selectedHouseId !== "all" && (
-                      <p className="text-xs sm:text-sm text-white">
-                        Showing achievements for {houses.find(h => h.id === selectedHouseId)?.name}
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+                          {houses.map((house) => (
+                            <SelectItem 
+                              key={house.id} 
+                              value={house.id}
+                              data-testid={`house-option-${house.id}`}
+                            >
+                              {house.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {selectedHouseId !== "all" && (
+                        <p className="text-xs sm:text-sm text-white">
+                          Showing achievements for {houses.find(h => h.id === selectedHouseId)?.name}
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
-          {/* Stats Overview */}
+            {/* Stats Overview */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
             <Card 
               style={{ backgroundColor: '#f2f2f2' }}
@@ -815,6 +819,7 @@ export default function Achievements() {
               </div>
             </DialogContent>
           </Dialog>
+          </HomeownerFeatureGate>
         </div>
       </div>
     </>

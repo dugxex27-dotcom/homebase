@@ -7,6 +7,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import type { User as UserType } from "@shared/schema";
 import { Gift, Copy, Share2, MessageSquare, Download, ImageIcon } from "lucide-react";
+import { PaidSubscriberGate } from "@/components/homeowner-feature-gate";
+import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
 
 import instagramPostImg from '@assets/generated_images/Instagram_referral_post_square_843cce29.png';
 import instagramStoryImg from '@assets/generated_images/Instagram_story_referral_vertical_fd4053fc.png';
@@ -16,11 +18,12 @@ export default function HomeownerReferral() {
   const { toast } = useToast();
   const { user } = useAuth();
   const typedUser = user as UserType | undefined;
+  const { isPaidSubscriber } = useHomeownerSubscription();
 
-  // Referral data query
+  // Referral data query - only fetch if paid subscriber
   const { data: referralData, isLoading: isLoadingReferral } = useQuery({
     queryKey: ['/api/user/referral-code'],
-    enabled: !!typedUser,
+    enabled: !!typedUser && isPaidSubscriber,
   });
 
   const referralCode = (referralData as any)?.referralCode || '';
@@ -116,6 +119,7 @@ export default function HomeownerReferral() {
           <p className="text-lg text-gray-700">Share Home Base and earn rewards</p>
         </div>
 
+        <PaidSubscriberGate featureName="Referral Rewards">
         <div className="space-y-8">
           {/* Referral Rewards Card */}
           <Card className="shadow-lg">
@@ -328,6 +332,7 @@ export default function HomeownerReferral() {
             </CardContent>
           </Card>
         </div>
+        </PaidSubscriberGate>
       </main>
     </div>
   );

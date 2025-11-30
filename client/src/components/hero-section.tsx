@@ -11,7 +11,7 @@ export default function HeroSection() {
   return (
     <section style={{ 
       background: typedUser?.role === 'homeowner' 
-        ? 'transparent' 
+        ? '#ffffff' 
         : '#1560a2', 
       paddingTop: '20px', 
       paddingBottom: '40px' 
@@ -20,7 +20,7 @@ export default function HeroSection() {
         <div className="text-center mb-2">
           <Logo className={`h-32 w-full mx-auto block mb-8`} />
           
-          <h1 className="text-5xl lg:text-6xl font-bold mb-6 leading-tight text-white" style={typedUser?.role === 'homeowner' ? { color: '#ffffff !important' } : { color: 'white' }}>
+          <h1 className="text-5xl lg:text-6xl font-bold mb-6 leading-tight" style={{ color: typedUser?.role === 'homeowner' ? '#2c0f5b' : 'white' }}>
             {typedUser?.role === 'homeowner' ? (
               "Your Home's Smart Management Hub"
             ) : (
@@ -29,7 +29,7 @@ export default function HeroSection() {
             )}
           </h1>
           
-          <p className="text-xl mb-4 max-w-3xl mx-auto leading-relaxed font-semibold text-white" style={{ color: typedUser?.role === 'homeowner' ? '#ffffff !important' : '#9ed0ef' }}>
+          <p className="text-xl mb-4 max-w-3xl mx-auto leading-relaxed font-semibold" style={{ color: typedUser?.role === 'homeowner' ? '#2c0f5b' : '#9ed0ef' }}>
             {typedUser?.role === 'homeowner' ? (
               'The Carfax-style home history your house has always needed.'
             ) : (
@@ -39,13 +39,14 @@ export default function HeroSection() {
           
           {typedUser?.role === 'homeowner' && (
             <>
-              <p className="text-lg mb-8 max-w-3xl mx-auto leading-relaxed text-white" style={{ color: '#ffffff !important' }}>
+              <p className="text-lg mb-8 max-w-3xl mx-auto leading-relaxed" style={{ color: '#2c0f5b' }}>
                 Track repairs, upgrades, and maintenance in one simple, organized place — so you always know the true story of your home.
               </p>
               <Link href="/maintenance">
                 <Button 
                   size="lg"
-                  className="bg-white hover:bg-gray-100 text-purple-700 font-bold px-8 py-6 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+                  className="font-bold px-8 py-6 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+                  style={{ backgroundColor: '#2c0f5b', color: '#ffffff' }}
                   data-testid="button-start-home-report"
                 >
                   Start Your Home Report
