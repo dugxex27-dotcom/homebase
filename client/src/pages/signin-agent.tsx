@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Eye, EyeOff } from "lucide-react";
-import logoImage from '@assets/homebase-logo_1756861910640.png';
+import logoImage from '@assets/homebase-app-logo-realestate_1764512896069.png';
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -255,7 +255,7 @@ export default function SignInAgent() {
           <img 
             src={logoImage} 
             alt="Home Base" 
-            className="h-24 w-auto mx-auto mb-4"
+            className="h-12 w-auto mx-auto mb-4"
             data-testid="img-logo-agent"
           />
           <h1 className="text-2xl font-bold mb-2" style={{ color: '#1a1a1a' }}>Earn Commissions as an Affiliate</h1>
