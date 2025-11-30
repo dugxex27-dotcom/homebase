@@ -1234,17 +1234,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error("Error creating demo task completions:", taskError);
       }
 
-      // Create a simple session
-      req.session.user = user;
-      req.session.isAuthenticated = true;
-
-      // Save session explicitly
-      req.session.save((err: any) => {
+      // Regenerate session to prevent session fixation
+      req.session.regenerate((err: any) => {
         if (err) {
-          console.error("Session save error:", err);
-          return res.status(500).json({ message: "Failed to save session" });
+          console.error("Session regeneration error:", err);
+          return res.status(500).json({ message: "Session error" });
         }
-        res.json({ success: true, user });
+        
+        req.session.isAuthenticated = true;
+        req.session.user = user;
+        
+        req.session.save((saveErr: any) => {
+          if (saveErr) {
+            console.error("Session save error:", saveErr);
+            return res.status(500).json({ message: "Failed to save session" });
+          }
+          console.log('[DEMO LOGIN] Session saved successfully for user:', user.id);
+          res.json({ success: true, user });
+        });
       });
     } catch (error) {
       console.error("Error creating homeowner demo user:", error);
@@ -1544,17 +1551,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Create a simple session
-      req.session.user = user;
-      req.session.isAuthenticated = true;
-
-      // Save session explicitly
-      req.session.save((err: any) => {
+      // Regenerate session to prevent session fixation
+      req.session.regenerate((err: any) => {
         if (err) {
-          console.error("Session save error:", err);
-          return res.status(500).json({ message: "Failed to save session" });
+          console.error("Session regeneration error:", err);
+          return res.status(500).json({ message: "Session error" });
         }
-        res.json({ success: true, user });
+        
+        req.session.isAuthenticated = true;
+        req.session.user = user;
+        
+        req.session.save((saveErr: any) => {
+          if (saveErr) {
+            console.error("Session save error:", saveErr);
+            return res.status(500).json({ message: "Failed to save session" });
+          }
+          console.log('[DEMO LOGIN] Contractor session saved successfully for user:', user.id);
+          res.json({ success: true, user });
+        });
       });
     } catch (error) {
       console.error("Error creating contractor demo user:", error);
@@ -1767,17 +1781,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Create a simple session
-      req.session.user = user;
-      req.session.isAuthenticated = true;
-
-      // Save session explicitly
-      req.session.save((err: any) => {
+      // Regenerate session to prevent session fixation
+      req.session.regenerate((err: any) => {
         if (err) {
-          console.error("Session save error:", err);
-          return res.status(500).json({ message: "Failed to save session" });
+          console.error("Session regeneration error:", err);
+          return res.status(500).json({ message: "Session error" });
         }
-        res.json({ success: true, user });
+        
+        req.session.isAuthenticated = true;
+        req.session.user = user;
+        
+        req.session.save((saveErr: any) => {
+          if (saveErr) {
+            console.error("Session save error:", saveErr);
+            return res.status(500).json({ message: "Failed to save session" });
+          }
+          console.log('[DEMO LOGIN] Agent session saved successfully for user:', user.id);
+          res.json({ success: true, user });
+        });
       });
     } catch (error) {
       console.error("Error creating agent demo user:", error);
