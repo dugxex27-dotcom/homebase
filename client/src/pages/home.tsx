@@ -294,7 +294,7 @@ export default function Home() {
       <footer className="text-white py-8 sm:py-12 lg:py-16" style={{ backgroundColor: '#2c0f5b' }}>
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-6 sm:gap-8">
-            <div className="text-left">
+            <div className="text-left md:col-span-2">
               <div className="mb-4 sm:mb-6">
                 <div className="w-full sm:w-3/4 h-auto">
                   <Logo className="w-full h-auto" />
