@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { SiGoogle } from "react-icons/si";
 import { Eye, EyeOff } from "lucide-react";
-import logoImage from '@assets/homebase-logo_1756861910640.png';
+import Logo from '@/components/logo';
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -289,12 +289,7 @@ export default function SignIn() {
     <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/10 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <img 
-            src={logoImage} 
-            alt="Home Base" 
-            className="h-24 w-auto mx-auto mb-4"
-            data-testid="img-logo"
-          />
+          <Logo className="h-12 w-auto mx-auto mb-4" />
           <p className="text-lg text-muted-foreground">
             Your trusted home services marketplace
           </p>
