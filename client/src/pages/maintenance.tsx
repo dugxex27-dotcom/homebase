@@ -2940,10 +2940,10 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
   // Authentication guards
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(180deg, #8B70D4 0%, #9B82DC 50%, #8B70D4 100%)' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#eeedf9' }}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-white text-lg">Loading...</p>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 mx-auto mb-4" style={{ borderColor: '#2c0f5b' }}></div>
+          <p className="text-lg" style={{ color: '#2c0f5b' }}>Loading...</p>
         </div>
       </div>
     );
@@ -2951,11 +2951,11 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
   if (!isAuthenticated || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(180deg, #8B70D4 0%, #9B82DC 50%, #8B70D4 100%)' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#eeedf9' }}>
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-white mb-4">Authentication Required</h1>
-          <p className="text-white mb-6">Please sign in to access maintenance features.</p>
-          <Button onClick={() => window.location.href = '/signin'} className="bg-white text-purple-900 hover:bg-gray-100">
+          <h1 className="text-2xl font-bold mb-4" style={{ color: '#2c0f5b' }}>Authentication Required</h1>
+          <p className="mb-6" style={{ color: '#2c0f5b' }}>Please sign in to access maintenance features.</p>
+          <Button onClick={() => window.location.href = '/signin'} style={{ backgroundColor: '#2c0f5b', color: 'white' }} className="hover:opacity-90">
             Sign In
           </Button>
         </div>
@@ -2965,11 +2965,11 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
   if (!userRole || (userRole !== 'homeowner' && userRole !== 'contractor')) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(180deg, #8B70D4 0%, #9B82DC 50%, #8B70D4 100%)' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#eeedf9' }}>
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-white mb-4">Access Denied</h1>
-          <p className="text-white mb-6">This feature is only available to homeowners and contractors.</p>
-          <Button onClick={() => window.location.href = '/'} className="bg-white text-purple-900 hover:bg-gray-100">
+          <h1 className="text-2xl font-bold mb-4" style={{ color: '#2c0f5b' }}>Access Denied</h1>
+          <p className="mb-6" style={{ color: '#2c0f5b' }}>This feature is only available to homeowners and contractors.</p>
+          <Button onClick={() => window.location.href = '/'} style={{ backgroundColor: '#2c0f5b', color: 'white' }} className="hover:opacity-90">
             Go Home
           </Button>
         </div>
@@ -2978,12 +2978,12 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
   }
 
   return (
-    <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, #8B70D4 0%, #9B82DC 50%, #8B70D4 100%)' }}>
+    <div className="min-h-screen" style={{ backgroundColor: '#eeedf9' }}>
       {/* Hero Section */}
       <section className="py-6" style={{ background: 'transparent' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-6">
-            <h1 className="text-4xl lg:text-5xl font-bold mb-6" style={{ color: '#ffffff' }}>
+            <h1 className="text-4xl lg:text-5xl font-bold mb-6" style={{ color: '#2c0f5b' }}>
               Smart Maintenance Schedule
             </h1>
             <p className="text-xl max-w-3xl mx-auto mb-8" style={{ color: '#2c0f5b' }}>
@@ -3038,10 +3038,10 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
       <div className="container mx-auto px-4 py-4">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2 text-center text-[#ffffff]" style={{ color: '#ffffff' }}>
+          <h1 className="text-4xl font-bold mb-2 text-center" style={{ color: '#2c0f5b' }}>
             Home Maintenance
           </h1>
-          <p className="text-lg mb-4 text-center text-[#ffffff]" style={{ color: '#2c0f5b' }}>Keep your home in perfect condition with personalized maintenance recommendations</p>
+          <p className="text-lg mb-4 text-center" style={{ color: '#2c0f5b' }}>Keep your home in perfect condition with personalized maintenance recommendations</p>
           
           {/* Contractor No Properties Onboarding */}
           {userRole === 'contractor' && houses.length === 0 && (
