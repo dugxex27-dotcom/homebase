@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Eye, EyeOff } from "lucide-react";
-import logoImage from '@assets/homebase-logo_1756861910640.png';
+import logoImage from '@assets/homebase-app-logo-homeowner_1764512737329.png';
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -270,7 +270,7 @@ export default function SignInHomeowner() {
           <img 
             src={logoImage} 
             alt="Home Base" 
-            className="h-24 w-auto mx-auto mb-4"
+            className="h-12 w-auto mx-auto mb-4"
             data-testid="img-logo-homeowner"
           />
           <h1 className="text-2xl font-bold mb-2" style={{ color: '#2c0f5b' }}>Manage Your Home with Confidence</h1>
