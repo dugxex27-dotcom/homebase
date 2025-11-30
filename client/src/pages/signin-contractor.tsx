@@ -263,7 +263,7 @@ export default function SignInContractor() {
           <img 
             src={logoImage} 
             alt="Home Base" 
-            className="h-24 w-auto mx-auto mb-4"
+            className="h-12 w-auto mx-auto mb-4"
             data-testid="img-logo-contractor"
           />
           <h1 className="text-2xl font-bold mb-2" style={{ color: '#1a1a1a' }}>Grow Your Contracting Business</h1>
