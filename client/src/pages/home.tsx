@@ -296,7 +296,7 @@ export default function Home() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-6 sm:gap-8">
             <div className="text-center">
               <div className="mb-4 sm:mb-6 flex justify-center">
-                <div className="w-2/3 sm:w-1/2 h-auto">
+                <div className="w-full sm:w-3/4 h-auto">
                   <Logo className="w-full h-auto" />
                 </div>
               </div>
