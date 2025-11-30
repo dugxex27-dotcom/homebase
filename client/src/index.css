@@ -32,9 +32,9 @@
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   
-  /* Typography */
-  --font-sans: ui-sans-serif, system-ui, sans-serif;
-  --font-heading: 'Quicksand', var(--font-sans);
+  /* Typography - Quicksand Family */
+  --font-sans: 'Quicksand', ui-sans-serif, system-ui, sans-serif;
+  --font-heading: 'Quicksand', ui-sans-serif, system-ui, sans-serif;
   --text-xs: 0.75rem;       /* 12px */
   --text-sm: 0.875rem;      /* 14px */
   --text-base: 1rem;        /* 16px */
@@ -157,14 +157,35 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    font-weight: 400;
     transition: background-color 0.2s, color 0.2s;
   }
   
-  /* Headline Typography - Quicksand Bold */
+  /* Headline Typography - Quicksand Bold (700) */
   h1, h2, h3, h4, h5, h6,
   .font-heading {
     font-family: var(--font-heading);
     font-weight: 700;
+  }
+  
+  /* Subcopy Typography - Quicksand Medium (500) */
+  .text-muted-foreground,
+  .text-gray-600,
+  .text-gray-500,
+  label,
+  .font-medium,
+  p.text-sm,
+  p.text-xs,
+  .description,
+  [class*="CardDescription"],
+  .font-subcopy {
+    font-weight: 500;
+  }
+  
+  /* Body Copy - Quicksand Regular (400) */
+  p, span, div, li, td, th,
+  .font-body {
+    font-weight: 400;
   }
   
   /* Focus Styles */
