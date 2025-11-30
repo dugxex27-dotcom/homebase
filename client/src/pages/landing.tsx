@@ -13,9 +13,7 @@ export default function Landing() {
       <div className="max-w-6xl mx-auto px-4 py-16">
         <div className="text-center mb-12">
           <Logo className="h-[32px] sm:h-[40px] w-auto mx-auto mb-6" />
-          <h1 className="text-5xl font-bold mb-4" style={{ color: '#2c0f5b' }}>
-            Welcome to HOMEBASE
-          </h1>
+          <h1 className="text-5xl font-bold mb-4" style={{ color: '#2c0f5b' }}>Welcome to HomeBase</h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">Your home’s entire story — documented, organized, and supported by trusted pros for every next step.</p>
         </div>
 
