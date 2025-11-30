@@ -38,6 +38,8 @@ export default {
         "2xl": "var(--text-2xl)",
         "3xl": "var(--text-3xl)",
         "4xl": "var(--text-4xl)",
+        "5xl": "var(--text-5xl)",
+        "6xl": "var(--text-6xl)",
       },
       colors: {
         background: "var(--background)",
