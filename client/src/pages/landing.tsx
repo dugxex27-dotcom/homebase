@@ -26,10 +26,10 @@ export default function Landing() {
             onClick={() => handleRoleSelection('homeowner')}
             data-testid="card-role-homeowner"
           >
-            <CardContent className="p-8 text-center flex flex-col flex-grow">
+            <CardContent className="p-8 text-left flex flex-col flex-grow">
               <div className="flex-grow">
-                <div className="mb-6 flex justify-center">
-                  <div className="p-4 rounded-full bg-purple-100">
+                <div className="mb-6">
+                  <div className="p-4 rounded-full bg-purple-100 inline-flex">
                     <Home className="h-12 w-12 text-purple-600" />
                   </div>
                 </div>
@@ -37,7 +37,7 @@ export default function Landing() {
                   I'm a Homeowner
                 </h2>
                 <p className="text-gray-600 mb-6">“The Carfax-style home history your house has always needed.”</p>
-                <ul className="text-left space-y-2 mb-6 text-sm text-gray-700">
+                <ul className="space-y-2 mb-6 text-sm text-gray-700">
                   <li>✓ Multi-property management</li>
                   <li>✓ Maintenance scheduling</li>
                   <li>✓ Contractor directory</li>
@@ -60,10 +60,10 @@ export default function Landing() {
             onClick={() => handleRoleSelection('contractor')}
             data-testid="card-role-contractor"
           >
-            <CardContent className="p-8 text-center flex flex-col flex-grow">
+            <CardContent className="p-8 text-left flex flex-col flex-grow">
               <div className="flex-grow">
-                <div className="mb-6 flex justify-center">
-                  <div className="p-4 rounded-full bg-blue-100">
+                <div className="mb-6">
+                  <div className="p-4 rounded-full bg-blue-100 inline-flex">
                     <Wrench className="h-12 w-12 text-blue-600" />
                   </div>
                 </div>
@@ -73,7 +73,7 @@ export default function Landing() {
                 <p className="text-gray-600 mb-6">
                   Grow your business, manage client relationships, and showcase your services to homeowners
                 </p>
-                <ul className="text-left space-y-2 mb-6 text-sm text-gray-700">
+                <ul className="space-y-2 mb-6 text-sm text-gray-700">
                   <li>✓ Professional profile</li>
                   <li>✓ Client management</li>
                   <li>✓ Proposal tools</li>
@@ -96,10 +96,10 @@ export default function Landing() {
             onClick={() => handleRoleSelection('agent')}
             data-testid="card-role-agent"
           >
-            <CardContent className="p-8 text-center flex flex-col flex-grow">
+            <CardContent className="p-8 text-left flex flex-col flex-grow">
               <div className="flex-grow">
-                <div className="mb-6 flex justify-center">
-                  <div className="p-4 rounded-full bg-emerald-100">
+                <div className="mb-6">
+                  <div className="p-4 rounded-full bg-emerald-100 inline-flex">
                     <Building2 className="h-12 w-12 text-emerald-600" />
                   </div>
                 </div>
@@ -109,7 +109,7 @@ export default function Landing() {
                 <p className="text-gray-600 mb-6">
                   Earn commissions by referring homeowners and contractors to Home Base
                 </p>
-                <ul className="text-left space-y-2 mb-6 text-sm text-gray-700">
+                <ul className="space-y-2 mb-6 text-sm text-gray-700">
                   <li>✓ Earn referral bonuses</li>
                   <li>✓ Track your referrals</li>
                   <li>✓ Automated payouts</li>
