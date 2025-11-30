@@ -21,7 +21,7 @@ export default function HouseholdProfilePage() {
   const house = houses?.find((h) => h.id === houseId);
 
   useEffect(() => {
-    document.title = "Household Profile | Home Base";
+    document.title = "Household Profile | HomeBase";
   }, []);
 
   if (housesLoading) {

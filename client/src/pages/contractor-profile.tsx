@@ -1984,7 +1984,7 @@ export default function ContractorProfile() {
               <DialogHeader>
                 <DialogTitle>Are you absolutely sure?</DialogTitle>
                 <DialogDescription>
-                  This will permanently cancel your Home Base contractor account. Your subscription will be cancelled and you will lose access to:
+                  This will permanently cancel your HomeBase contractor account. Your subscription will be cancelled and you will lose access to:
                   <ul className="list-disc list-inside mt-2 space-y-1">
                     <li>Your contractor profile and company information</li>
                     <li>All customer conversations and proposals</li>

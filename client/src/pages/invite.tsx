@@ -113,7 +113,7 @@ export default function Invite() {
                   <Sparkles className="w-10 h-10 text-white" />
                 </div>
                 <h1 className="text-3xl sm:text-4xl font-bold mb-3" style={{ color: '#2c0f5b' }} data-testid="heading-invite">
-                  {firstName} invited you to Home Base!
+                  {firstName} invited you to HomeBase!
                 </h1>
                 <p className="text-lg text-gray-600 mb-6">
                   Join thousands of homeowners who are taking control of their home maintenance

@@ -405,7 +405,7 @@ export function OnboardingWizard({ onComplete, isLoading, initialData }: Onboard
             <form onSubmit={step3Form.handleSubmit(handleStep3Submit)} className="space-y-6">
               <div className="text-center mb-6">
                 <h2 className="text-2xl font-bold text-foreground mb-2">Choose Your Role</h2>
-                <p className="text-muted-foreground">How will you be using Home Base?</p>
+                <p className="text-muted-foreground">How will you be using HomeBase?</p>
               </div>
 
               <RadioGroup

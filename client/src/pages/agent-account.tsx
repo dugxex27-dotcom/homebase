@@ -730,7 +730,7 @@ export default function AgentAccount() {
                 <DialogHeader>
                   <DialogTitle>Are you absolutely sure?</DialogTitle>
                   <DialogDescription>
-                    This will permanently cancel your Home Base agent account. You will lose access to:
+                    This will permanently cancel your HomeBase agent account. You will lose access to:
                     <ul className="list-disc list-inside mt-2 space-y-1">
                       <li>Your referral code and earnings</li>
                       <li>All referral tracking and statistics</li>

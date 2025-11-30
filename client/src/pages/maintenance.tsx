@@ -3519,7 +3519,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                         </div>
                       )}
                       <p className="text-sm pt-2" style={{ color: '#666666' }}>
-                        Thank you for joining Home Base through {referringAgent.firstName}'s referral! Feel free to reach out if you have any questions.
+                        Thank you for joining HomeBase through {referringAgent.firstName}'s referral! Feel free to reach out if you have any questions.
                       </p>
                     </div>
                   </CardContent>
