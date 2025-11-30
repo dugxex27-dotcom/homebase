@@ -171,6 +171,11 @@
     font-weight: 700 !important;
   }
   
+  /* Tighter line-height for h1 headlines when text wraps */
+  h1 {
+    line-height: 1.1;
+  }
+  
   /* Subcopy Typography - Quicksand Medium (500) */
   .text-muted-foreground,
   .text-gray-600,
