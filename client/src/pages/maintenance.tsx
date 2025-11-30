@@ -3296,8 +3296,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             <div className="space-y-6 mb-8">
               <div className="flex flex-col md:flex-row gap-4">
                 <div className="flex-1">
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#ffffff' }}>
-                    <Calendar className="inline w-4 h-4 mr-1" style={{ color: '#b6a6f4' }} />
+                  <label className="block text-sm font-medium mb-2" style={{ color: '#2c0f5b' }}>
+                    <Calendar className="inline w-4 h-4 mr-1" style={{ color: '#2c0f5b' }} />
                     Month
                   </label>
                   <Select value={selectedMonth.toString()} onValueChange={(value) => setSelectedMonth(parseInt(value))}>
@@ -3314,8 +3314,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                   </Select>
                 </div>
                 <div className="flex-1">
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#ffffff' }}>
-                    <MapPin className="inline w-4 h-4 mr-1" style={{ color: '#b6a6f4' }} />
+                  <label className="block text-sm font-medium mb-2" style={{ color: '#2c0f5b' }}>
+                    <MapPin className="inline w-4 h-4 mr-1" style={{ color: '#2c0f5b' }} />
                     Climate Zone (auto-set by property)
                   </label>
                   <Select value={selectedZone} onValueChange={setSelectedZone} disabled>
@@ -3682,7 +3682,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
           <div className="mt-12">
             <div className="flex justify-between items-center mb-6">
               <div>
-                <h2 className="text-2xl font-bold text-white mb-2">Home Appliances</h2>
+                <h2 className="text-2xl font-bold mb-2" style={{ color: '#2c0f5b' }}>Home Appliances</h2>
                 <p className="text-lg" style={{ color: '#2c0f5b' }}>
                   Track appliances, manuals, and maintenance schedules
                 </p>
