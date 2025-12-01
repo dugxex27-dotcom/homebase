@@ -6876,6 +6876,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const houses = await storage.getHouses(homeownerId);
       console.log("[DEBUG /api/houses] Returning", houses.length, "houses for", homeownerId);
       houses.forEach((h: any, i: number) => console.log(`  [${i}] ${h.name} - ${h.address} (id: ${h.id})`));
+      
+      // Prevent browser/proxy caching to ensure fresh data
+      res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
       res.json(houses);
     } catch (error) {
       console.error("[ERROR] Failed to fetch houses:", error);
