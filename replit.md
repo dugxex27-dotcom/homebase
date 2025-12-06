@@ -135,3 +135,49 @@ The backup utility exports all important tables to JSON files:
 - **Create backups** before major updates or schema changes
 - **Never change ID column types** (serial ↔ varchar) as this breaks existing data
 - **Test migrations** in development before applying to production
+
+## SOC 2 Security Compliance (December 2025)
+
+### Security Infrastructure
+HomeBase implements comprehensive SOC 2 Type II technical controls:
+
+#### Audit Logging System (`server/security-audit.ts`)
+- **Security Audit Logs**: Database table tracking all security-relevant events with timestamps, user info, IP addresses, user agents, and request metadata
+- **Event Types**: Authentication events (login, logout, failed attempts, password changes), data access/modification events, admin actions, and security alerts
+- **Severity Levels**: Info, Warning, Error, Critical - with automatic categorization based on event type
+
+#### Session Security (`server/security-audit.ts`)
+- **Security Sessions Table**: Tracks all user sessions with device fingerprinting, browser/OS detection, and geo-location capability
+- **Session Management API**: Users can view active sessions (`GET /api/auth/sessions`), revoke specific sessions (`DELETE /api/auth/sessions/:id`), or revoke all other sessions (`POST /api/auth/sessions/revoke-all`)
+- **Admin Session Control**: Admins can view user sessions (`GET /api/admin/users/:userId/sessions`) and force logout users (`POST /api/admin/users/:userId/force-logout`)
+- **Concurrent Session Limits**: Configurable limits on simultaneous sessions per user
+
+#### Enhanced Security Headers (`server/index.ts`)
+- **Content Security Policy (CSP)**: Strict directives for script sources, style sources, connect sources, frame ancestors
+- **HSTS**: 1-year max-age with includeSubDomains and preload
+- **Additional Headers**: Permissions-Policy, Referrer-Policy, X-Content-Type-Options, X-Frame-Options, Cross-Origin-Opener-Policy, Cross-Origin-Resource-Policy
+- **API Cache Control**: No-store, no-cache headers for all API responses
+
+#### Rate Limiting (`server/security-audit.ts`)
+- **User-Level Rate Limiting**: Database-backed tracking by user ID or IP address
+- **Endpoint Categories**: Different limits for auth (5/15min), sensitive (20/min), write (50/min), read (200/min) operations
+- **Abuse Detection**: Automatic detection of users/IPs with multiple rate limit violations
+- **Rate Limit Headers**: X-RateLimit-Remaining and X-RateLimit-Reset headers on responses
+
+#### Encryption Helpers (`server/security-utils.ts`)
+- **AES-256-GCM Encryption**: `encryptData()` and `decryptData()` for sensitive field encryption
+- **Data Masking**: `maskEmail()`, `maskPhoneNumber()`, `maskSensitiveData()` for display purposes
+- **Secure Token Generation**: `generateSecureToken()` and `generateSecureOTP()` using crypto.randomBytes
+
+#### Security Dashboard API Endpoints
+- `GET /api/admin/security/audit-logs` - Query audit logs with filters
+- `GET /api/admin/security/stats` - Security statistics summary
+- `GET /api/admin/security/recent-alerts` - Recent security alerts
+- `GET /api/admin/security/failed-logins` - Failed login analysis by email/IP
+- `GET /api/admin/security/active-sessions` - All active sessions across users
+
+### Environment Variables for Production
+- `DATA_ENCRYPTION_KEY`: 64 hex character (32 byte) key for AES-256-GCM encryption
+- `HASH_SALT`: Salt for one-way hashing of sensitive data
+- `SESSION_SECRET`: Secret for session signing (already required)
+- `ADMIN_EMAILS`: Comma-separated list of admin email addresses

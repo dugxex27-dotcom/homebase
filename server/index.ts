@@ -12,7 +12,7 @@ const app = express();
 // Trust proxy - required for rate limiting to work correctly behind proxies
 app.set('trust proxy', 1);
 
-// Security Headers - Helmet configuration
+// Security Headers - Enhanced Helmet configuration for SOC 2 compliance
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -21,9 +21,18 @@ app.use(helmet({
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // unsafe-eval needed for Vite in dev
       imgSrc: ["'self'", "data:", "https:", "blob:"],
-      connectSrc: ["'self'", "https://nominatim.openstreetmap.org", "https://maps.googleapis.com"],
-      frameSrc: ["'self'"],
+      connectSrc: [
+        "'self'", 
+        "https://nominatim.openstreetmap.org", 
+        "https://maps.googleapis.com",
+        "https://api.stripe.com",
+        "wss:", // WebSocket connections for real-time features
+      ],
+      frameSrc: ["'self'", "https://js.stripe.com"], // Stripe payment forms
       objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+      frameAncestors: ["'none'"], // Prevent clickjacking
       upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null,
     },
   },
@@ -37,7 +46,37 @@ app.use(helmet({
   },
   noSniff: true,
   xssFilter: true,
+  referrerPolicy: {
+    policy: 'strict-origin-when-cross-origin'
+  },
+  dnsPrefetchControl: {
+    allow: false
+  },
+  permittedCrossDomainPolicies: {
+    permittedPolicies: 'none'
+  },
 }));
+
+// Additional security headers for SOC 2 compliance
+app.use((req, res, next) => {
+  // Permissions Policy (formerly Feature Policy)
+  res.setHeader('Permissions-Policy', 
+    'camera=(), microphone=(), geolocation=(self), payment=(self "https://js.stripe.com")'
+  );
+  
+  // Cache control for sensitive data
+  if (req.path.startsWith('/api/')) {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
+  
+  // Cross-Origin security headers
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  
+  next();
+});
 
 // CORS Configuration
 const allowedOrigins = process.env.NODE_ENV === 'production'

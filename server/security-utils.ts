@@ -1,4 +1,5 @@
 import { z } from "zod";
+import crypto from 'crypto';
 
 // Input validation limits to prevent abuse
 export const VALIDATION_LIMITS = {
@@ -183,3 +184,184 @@ export const SECURITY_HEADERS = {
   'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
 } as const;
+
+// ============================================
+// Encryption Helpers for Sensitive Data
+// ============================================
+
+const ALGORITHM = 'aes-256-gcm';
+const IV_LENGTH = 12; // GCM recommended IV length
+const AUTH_TAG_LENGTH = 16;
+const KEY_LENGTH = 32; // 256 bits
+
+// Development-only fallback key (NOT secure for production)
+const DEV_FALLBACK_KEY = crypto.scryptSync('homebase-dev-only', 'dev-salt-do-not-use', KEY_LENGTH);
+let keyWarningLogged = false;
+
+// Get encryption key from environment
+function getEncryptionKey(): Buffer {
+  const keyEnv = process.env.DATA_ENCRYPTION_KEY;
+  
+  if (keyEnv) {
+    // Validate key length (should be 64 hex characters = 32 bytes)
+    if (keyEnv.length !== 64 || !/^[0-9a-fA-F]+$/.test(keyEnv)) {
+      console.error('[Security] DATA_ENCRYPTION_KEY must be 64 hex characters (32 bytes)');
+      throw new Error('Invalid DATA_ENCRYPTION_KEY format');
+    }
+    return Buffer.from(keyEnv, 'hex');
+  }
+  
+  // In production, require the key
+  if (process.env.NODE_ENV === 'production') {
+    console.error('[Security] CRITICAL: DATA_ENCRYPTION_KEY must be set in production!');
+    throw new Error('DATA_ENCRYPTION_KEY is required in production');
+  }
+  
+  // Development fallback with warning
+  if (!keyWarningLogged) {
+    console.warn('[Security] WARNING: Using development fallback encryption key. Set DATA_ENCRYPTION_KEY for production.');
+    keyWarningLogged = true;
+  }
+  return DEV_FALLBACK_KEY;
+}
+
+/**
+ * Encrypt sensitive data using AES-256-GCM
+ * @param plaintext - The data to encrypt
+ * @returns Encrypted data as base64 string (IV:AuthTag:Ciphertext)
+ */
+export function encryptData(plaintext: string): string {
+  try {
+    const key = getEncryptionKey();
+    const iv = crypto.randomBytes(IV_LENGTH);
+    const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
+    
+    let encrypted = cipher.update(plaintext, 'utf8', 'base64');
+    encrypted += cipher.final('base64');
+    
+    const authTag = cipher.getAuthTag();
+    
+    // Format: IV:AuthTag:Ciphertext (all base64)
+    return `${iv.toString('base64')}:${authTag.toString('base64')}:${encrypted}`;
+  } catch (error) {
+    console.error('[Encryption] Error encrypting data:', error);
+    throw new Error('Failed to encrypt data');
+  }
+}
+
+/**
+ * Decrypt sensitive data using AES-256-GCM
+ * @param ciphertext - The encrypted data (IV:AuthTag:Ciphertext format)
+ * @returns Decrypted plaintext
+ */
+export function decryptData(ciphertext: string): string {
+  try {
+    const key = getEncryptionKey();
+    const parts = ciphertext.split(':');
+    
+    if (parts.length !== 3) {
+      throw new Error('Invalid ciphertext format');
+    }
+    
+    const iv = Buffer.from(parts[0], 'base64');
+    const authTag = Buffer.from(parts[1], 'base64');
+    const encrypted = parts[2];
+    
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+    decipher.setAuthTag(authTag);
+    
+    let decrypted = decipher.update(encrypted, 'base64', 'utf8');
+    decrypted += decipher.final('utf8');
+    
+    return decrypted;
+  } catch (error) {
+    console.error('[Encryption] Error decrypting data:', error);
+    throw new Error('Failed to decrypt data');
+  }
+}
+
+/**
+ * Hash sensitive data (one-way, for comparison)
+ * Uses SHA-256 with salt
+ */
+export function hashSensitiveData(data: string, salt?: string): string {
+  const useSalt = salt || process.env.HASH_SALT || 'homebase-hash-salt';
+  return crypto
+    .createHash('sha256')
+    .update(data + useSalt)
+    .digest('hex');
+}
+
+/**
+ * Mask sensitive data for display (e.g., SSN: ***-**-1234)
+ */
+export function maskSensitiveData(data: string, visibleChars: number = 4, maskChar: string = '*'): string {
+  if (data.length <= visibleChars) {
+    return maskChar.repeat(data.length);
+  }
+  
+  const masked = maskChar.repeat(data.length - visibleChars);
+  const visible = data.slice(-visibleChars);
+  return masked + visible;
+}
+
+/**
+ * Mask email address for display (e.g., j***@example.com)
+ */
+export function maskEmail(email: string): string {
+  const parts = email.split('@');
+  if (parts.length !== 2) return '***@***';
+  
+  const localPart = parts[0];
+  const domain = parts[1];
+  
+  if (localPart.length <= 2) {
+    return `${localPart[0] || '*'}***@${domain}`;
+  }
+  
+  return `${localPart[0]}${'*'.repeat(Math.min(localPart.length - 1, 5))}@${domain}`;
+}
+
+/**
+ * Mask phone number for display (e.g., ***-***-1234)
+ */
+export function maskPhoneNumber(phone: string): string {
+  // Remove non-digits
+  const digits = phone.replace(/\D/g, '');
+  
+  if (digits.length < 4) {
+    return '*'.repeat(digits.length);
+  }
+  
+  const lastFour = digits.slice(-4);
+  return `***-***-${lastFour}`;
+}
+
+/**
+ * Generate a secure random token
+ */
+export function generateSecureToken(length: number = 32): string {
+  return crypto.randomBytes(length).toString('hex');
+}
+
+/**
+ * Generate a secure OTP (numeric)
+ */
+export function generateSecureOTP(digits: number = 6): string {
+  const max = Math.pow(10, digits);
+  const min = Math.pow(10, digits - 1);
+  const num = crypto.randomInt(min, max);
+  return num.toString();
+}
+
+/**
+ * Validate that a value looks encrypted (basic format check)
+ */
+export function isEncrypted(value: string): boolean {
+  const parts = value.split(':');
+  if (parts.length !== 3) return false;
+  
+  // Check if parts look like base64
+  const base64Regex = /^[A-Za-z0-9+/]+=*$/;
+  return parts.every(part => base64Regex.test(part));
+}

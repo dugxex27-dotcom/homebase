@@ -1766,3 +1766,98 @@ export const crmInvoices = pgTable("crm_invoices", {
 export const insertCrmInvoiceSchema = createInsertSchema(crmInvoices).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertCrmInvoice = z.infer<typeof insertCrmInvoiceSchema>;
 export type CrmInvoice = typeof crmInvoices.$inferSelect;
+
+// Security Audit Logs table for SOC 2 compliance
+export const securityAuditLogs = pgTable("security_audit_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  eventType: text("event_type").notNull(), // 'auth.login', 'auth.logout', 'auth.failed_login', 'auth.password_change', 'data.access', 'data.modify', 'data.delete', 'admin.action', 'security.rate_limit', 'security.suspicious_activity'
+  eventCategory: text("event_category").notNull(), // 'authentication', 'authorization', 'data_access', 'data_modification', 'admin', 'security'
+  severity: text("severity").notNull().default("info"), // 'info', 'warning', 'error', 'critical'
+  userId: varchar("user_id"), // User who performed the action (null for unauthenticated events)
+  userEmail: varchar("user_email"), // Email at time of event (for audit trail even if user deleted)
+  userRole: text("user_role"), // Role at time of event
+  targetUserId: varchar("target_user_id"), // If action affects another user
+  targetResourceType: text("target_resource_type"), // 'user', 'house', 'proposal', 'subscription', etc.
+  targetResourceId: varchar("target_resource_id"), // ID of affected resource
+  action: text("action").notNull(), // Human-readable action description
+  actionDetails: jsonb("action_details"), // Additional structured data about the action
+  ipAddress: varchar("ip_address"), // Client IP address
+  userAgent: text("user_agent"), // Browser/client user agent
+  sessionId: varchar("session_id"), // Session ID if available
+  requestMethod: varchar("request_method", { length: 10 }), // HTTP method
+  requestPath: text("request_path"), // API endpoint path
+  requestId: varchar("request_id"), // Unique request identifier for correlation
+  responseStatus: integer("response_status"), // HTTP response status code
+  errorMessage: text("error_message"), // Error details if applicable
+  geoLocation: jsonb("geo_location"), // {country, region, city} if available
+  deviceFingerprint: varchar("device_fingerprint"), // Browser fingerprint for fraud detection
+  riskScore: integer("risk_score"), // 0-100 risk score for suspicious activity
+  isAnomaly: boolean("is_anomaly").default(false), // Flagged as anomalous behavior
+  metadata: jsonb("metadata"), // Additional context data
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("IDX_audit_logs_event_type").on(table.eventType),
+  index("IDX_audit_logs_event_category").on(table.eventCategory),
+  index("IDX_audit_logs_user_id").on(table.userId),
+  index("IDX_audit_logs_target_resource").on(table.targetResourceType, table.targetResourceId),
+  index("IDX_audit_logs_created_at").on(table.createdAt),
+  index("IDX_audit_logs_severity").on(table.severity),
+  index("IDX_audit_logs_ip_address").on(table.ipAddress),
+  index("IDX_audit_logs_session_id").on(table.sessionId),
+  index("IDX_audit_logs_is_anomaly").on(table.isAnomaly),
+]);
+
+export const insertSecurityAuditLogSchema = createInsertSchema(securityAuditLogs).omit({ id: true, createdAt: true });
+export type InsertSecurityAuditLog = z.infer<typeof insertSecurityAuditLogSchema>;
+export type SecurityAuditLog = typeof securityAuditLogs.$inferSelect;
+
+// Security Sessions table for enhanced session management
+export const securitySessions = pgTable("security_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  sessionSid: varchar("session_sid").notNull(), // Links to sessions.sid
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  deviceFingerprint: varchar("device_fingerprint"),
+  deviceType: text("device_type"), // 'desktop', 'mobile', 'tablet'
+  browser: text("browser"),
+  os: text("os"),
+  geoLocation: jsonb("geo_location"),
+  isActive: boolean("is_active").notNull().default(true),
+  lastActivityAt: timestamp("last_activity_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  terminatedAt: timestamp("terminated_at"),
+  terminationReason: text("termination_reason"), // 'logout', 'timeout', 'forced', 'password_change', 'security'
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("IDX_security_sessions_user_id").on(table.userId),
+  index("IDX_security_sessions_session_sid").on(table.sessionSid),
+  index("IDX_security_sessions_is_active").on(table.isActive),
+  index("IDX_security_sessions_expires_at").on(table.expiresAt),
+]);
+
+export const insertSecuritySessionSchema = createInsertSchema(securitySessions).omit({ id: true, createdAt: true });
+export type InsertSecuritySession = z.infer<typeof insertSecuritySessionSchema>;
+export type SecuritySession = typeof securitySessions.$inferSelect;
+
+// Rate Limit Tracking table for user-level rate limiting
+export const rateLimitTracking = pgTable("rate_limit_tracking", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  identifier: varchar("identifier").notNull(), // User ID, IP address, or combined
+  identifierType: text("identifier_type").notNull(), // 'user', 'ip', 'user_ip'
+  endpoint: text("endpoint").notNull(), // API endpoint pattern
+  windowStart: timestamp("window_start").notNull(),
+  windowEnd: timestamp("window_end").notNull(),
+  requestCount: integer("request_count").notNull().default(1),
+  limitExceeded: boolean("limit_exceeded").notNull().default(false),
+  lastRequestAt: timestamp("last_request_at").defaultNow().notNull(),
+}, (table) => [
+  index("IDX_rate_limit_identifier").on(table.identifier, table.identifierType),
+  index("IDX_rate_limit_endpoint").on(table.endpoint),
+  index("IDX_rate_limit_window").on(table.windowStart, table.windowEnd),
+  uniqueIndex("UX_rate_limit_unique").on(table.identifier, table.endpoint, table.windowStart),
+]);
+
+export const insertRateLimitTrackingSchema = createInsertSchema(rateLimitTracking).omit({ id: true });
+export type InsertRateLimitTracking = z.infer<typeof insertRateLimitTrackingSchema>;
+export type RateLimitTracking = typeof rateLimitTracking.$inferSelect;

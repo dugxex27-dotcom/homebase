@@ -8,8 +8,8 @@ import { setupGoogleAuth } from "./googleAuth";
 import { z } from "zod";
 import { randomUUID } from "crypto";
 import rateLimit from "express-rate-limit";
-import { eq, and, or, lte, isNull } from "drizzle-orm";
-import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, maintenanceTasks, customMaintenanceTasks, insertSupportTicketSchema, insertSubscriptionCycleEventSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, crmClients, crmJobs, crmQuotes, crmInvoices } from "@shared/schema";
+import { eq, and, or, lte, isNull, desc } from "drizzle-orm";
+import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, maintenanceTasks, customMaintenanceTasks, insertSupportTicketSchema, insertSubscriptionCycleEventSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, crmClients, crmJobs, crmQuotes, crmInvoices, securitySessions } from "@shared/schema";
 import { calculateDIYSavingsAmount } from "@shared/cost-helpers";
 import pushRoutes from "./push-routes";
 import { pushService } from "./push-service";
@@ -19,6 +19,7 @@ import OpenAI from "openai";
 import multer from "multer";
 import Stripe from "stripe";
 import { geocodeAddress, calculateDistance } from "./geocoding-service";
+import { auditLogger, sessionManager, AuditEventTypes } from "./security-audit";
 
 const stripe = process.env.STRIPE_SECRET_KEY 
   ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2025-08-27.basil" })
@@ -369,7 +370,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Demo logout
-  app.post('/api/auth/logout', (req: any, res) => {
+  app.post('/api/auth/logout', async (req: any, res) => {
+    const userId = req.session?.user?.id;
+    const userEmail = req.session?.user?.email;
+    const userRole = req.session?.user?.role;
+    const sessionSid = req.sessionID;
+    
+    // Log logout event before destroying session
+    if (userId) {
+      await auditLogger.logLogout(userId, userEmail || '', userRole || '', req);
+      await sessionManager.terminateSession(sessionSid, 'logout');
+    }
+    
     req.logout((err: any) => {
       if (err) {
         console.error('Passport logout error:', err);
@@ -381,6 +393,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json({ success: true });
       });
     });
+  });
+
+  // Session management - Get user's active sessions
+  app.get('/api/auth/sessions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const sessions = await sessionManager.getActiveSessions(userId);
+      
+      // Mark current session
+      const currentSessionSid = req.sessionID;
+      const sessionsWithCurrent = sessions.map(session => ({
+        id: session.id,
+        deviceType: session.deviceType,
+        browser: session.browser,
+        os: session.os,
+        ipAddress: session.ipAddress?.replace(/\d+\.\d+$/, 'x.x'), // Partial IP for privacy
+        lastActivityAt: session.lastActivityAt,
+        createdAt: session.createdAt,
+        isCurrent: session.sessionSid === currentSessionSid,
+      }));
+
+      res.json(sessionsWithCurrent);
+    } catch (error) {
+      console.error("Error fetching sessions:", error);
+      res.status(500).json({ message: "Failed to fetch sessions" });
+    }
+  });
+
+  // Session management - Revoke a specific session
+  app.delete('/api/auth/sessions/:sessionId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.user?.id;
+      const { sessionId } = req.params;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      // Verify the session belongs to this user
+      const sessions = await sessionManager.getActiveSessions(userId);
+      const session = sessions.find(s => s.id.toString() === sessionId);
+      
+      if (!session) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+
+      // Don't allow revoking current session via this endpoint
+      if (session.sessionSid === req.sessionID) {
+        return res.status(400).json({ message: "Cannot revoke current session. Use logout instead." });
+      }
+
+      await sessionManager.terminateSession(session.sessionSid, 'user_revoked');
+      
+      // Log session revocation
+      await auditLogger.log({
+        eventType: AuditEventTypes.AUTH_LOGOUT,
+        action: 'Session revoked by user',
+        userId,
+        userEmail: req.session.user.email || '',
+        userRole: req.session.user.role || '',
+        req,
+        responseStatus: 200,
+        metadata: { revokedSessionId: sessionId },
+      });
+
+      res.json({ success: true, message: "Session revoked" });
+    } catch (error) {
+      console.error("Error revoking session:", error);
+      res.status(500).json({ message: "Failed to revoke session" });
+    }
+  });
+
+  // Session management - Revoke all other sessions
+  app.post('/api/auth/sessions/revoke-all', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.user?.id;
+      const currentSessionSid = req.sessionID;
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      await sessionManager.terminateAllUserSessions(userId, currentSessionSid, 'user_revoked_all');
+      
+      // Log bulk session revocation
+      await auditLogger.log({
+        eventType: AuditEventTypes.AUTH_LOGOUT,
+        action: 'All other sessions revoked by user',
+        userId,
+        userEmail: req.session.user.email || '',
+        userRole: req.session.user.role || '',
+        req,
+        responseStatus: 200,
+        severity: 'warning',
+      });
+
+      res.json({ success: true, message: "All other sessions revoked" });
+    } catch (error) {
+      console.error("Error revoking sessions:", error);
+      res.status(500).json({ message: "Failed to revoke sessions" });
+    }
   });
 
   // TEMPORARY: Test login endpoint for debugging OAuth issues
@@ -1949,6 +2066,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       req.session.user = user;
       req.session.isAuthenticated = true;
 
+      // Log successful registration
+      await auditLogger.log({
+        eventType: 'auth.registration',
+        action: `New ${role} account created`,
+        userId: user.id,
+        userEmail: email,
+        userRole: role,
+        req,
+        responseStatus: 200,
+        metadata: { 
+          registrationMethod: 'email',
+          referredBy: referralCode || null,
+          referringAgent: referringAgent?.id || null,
+        },
+      });
+
       res.json({ success: true, user });
     } catch (error) {
       console.error("Error registering user:", error);
@@ -1957,7 +2090,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Email/password login
-  app.post('/api/auth/login', authLimiter, async (req, res) => {
+  app.post('/api/auth/login', authLimiter, async (req: any, res) => {
     try {
       const { email, password } = req.body;
       
@@ -1968,6 +2101,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUserByEmail(email);
       
       if (!user || !user.passwordHash) {
+        // Log failed login attempt (user not found)
+        await auditLogger.log({
+          eventType: AuditEventTypes.AUTH_FAILED_LOGIN,
+          action: 'Login attempt failed - user not found',
+          userEmail: email,
+          req,
+          responseStatus: 401,
+          errorMessage: 'Invalid credentials - user not found',
+        });
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
@@ -1976,12 +2118,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isValid = await bcrypt.compare(password, user.passwordHash);
       
       if (!isValid) {
+        // Log failed login attempt (wrong password)
+        await auditLogger.log({
+          eventType: AuditEventTypes.AUTH_FAILED_LOGIN,
+          action: 'Login attempt failed - invalid password',
+          userId: user.id,
+          userEmail: email,
+          userRole: user.role,
+          req,
+          responseStatus: 401,
+          errorMessage: 'Invalid credentials - wrong password',
+        });
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
       // Create session
       req.session.user = user;
       req.session.isAuthenticated = true;
+
+      // Log successful login
+      await auditLogger.logLogin(user.id, user.email || email, user.role, req, true);
+      
+      // Create security session record
+      const sessionExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+      await sessionManager.createSession({
+        userId: user.id,
+        sessionSid: req.sessionID,
+        req,
+        expiresAt: sessionExpiry,
+      });
 
       res.json({ success: true, user });
     } catch (error) {
@@ -1991,7 +2156,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Forgot password - Request reset code
-  app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
+  app.post('/api/auth/forgot-password', authLimiter, async (req: any, res) => {
     try {
       const { email } = req.body;
       
@@ -2003,6 +2168,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUserByEmail(email);
       
       if (!user) {
+        // Log the password reset request even for non-existent users (security monitoring)
+        await auditLogger.log({
+          eventType: AuditEventTypes.AUTH_PASSWORD_RESET_REQUEST,
+          action: 'Password reset requested for unknown email',
+          userEmail: email,
+          req,
+          responseStatus: 200,
+          metadata: { userExists: false },
+        });
         // Return success even if user doesn't exist (security best practice)
         return res.json({ success: true, message: "If an account exists with this email, a reset code has been sent." });
       }
@@ -2017,6 +2191,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         token: resetCode,
         expiresAt,
         used: false,
+      });
+
+      // Log password reset request
+      await auditLogger.log({
+        eventType: AuditEventTypes.AUTH_PASSWORD_RESET_REQUEST,
+        action: 'Password reset code requested',
+        userId: user.id,
+        userEmail: email,
+        userRole: user.role,
+        req,
+        responseStatus: 200,
+        metadata: { userExists: true },
       });
 
       // TODO: Send email with reset code
@@ -2036,7 +2222,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Reset password with code
-  app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
+  app.post('/api/auth/reset-password', authLimiter, async (req: any, res) => {
     try {
       const { email, resetCode, newPassword } = req.body;
       
@@ -2063,6 +2249,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       if (!validToken) {
+        // Log invalid reset attempt
+        await auditLogger.log({
+          eventType: AuditEventTypes.AUTH_PASSWORD_RESET_COMPLETE,
+          action: 'Password reset failed - invalid or expired code',
+          userEmail: email,
+          req,
+          responseStatus: 400,
+          errorMessage: 'Invalid or expired reset code',
+          severity: 'warning',
+        });
         return res.status(400).json({ message: "Invalid or expired reset code" });
       }
 
@@ -2087,6 +2283,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .update(passwordResetTokens)
         .set({ used: true })
         .where(eq(passwordResetTokens.id, validToken.id));
+
+      // Log successful password reset - CRITICAL security event
+      await auditLogger.logPasswordChange(user.id, user.email || email, req);
+      
+      // Terminate all other sessions for this user (security best practice)
+      await sessionManager.terminateAllUserSessions(user.id, undefined, 'password_change');
 
       console.log(`[PASSWORD RESET] Password successfully reset for ${email}`);
       
@@ -2381,7 +2583,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/admin/invite-codes', requireAdmin, async (req, res) => {
+  app.post('/api/admin/invite-codes', requireAdmin, async (req: any, res) => {
     try {
       const { code, maxUses } = req.body;
       
@@ -2395,6 +2597,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         usedBy: []
       });
 
+      // Log admin action
+      await auditLogger.logAdminAction({
+        userId: req.session.user.id,
+        userEmail: req.session.user.email || '',
+        eventType: AuditEventTypes.ADMIN_SETTINGS_CHANGE,
+        action: 'Created invite code',
+        details: { code, maxUses: maxUses || 1 },
+        req,
+      });
+
       res.json(inviteCode);
     } catch (error) {
       console.error("Error creating invite code:", error);
@@ -2402,7 +2614,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/admin/invite-codes/:code/deactivate', requireAdmin, async (req, res) => {
+  app.patch('/api/admin/invite-codes/:code/deactivate', requireAdmin, async (req: any, res) => {
     try {
       const { code } = req.params;
       const success = await storage.deactivateInviteCode(code);
@@ -2411,10 +2623,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Invite code not found" });
       }
 
+      // Log admin action
+      await auditLogger.logAdminAction({
+        userId: req.session.user.id,
+        userEmail: req.session.user.email || '',
+        eventType: AuditEventTypes.ADMIN_SETTINGS_CHANGE,
+        action: 'Deactivated invite code',
+        details: { code },
+        req,
+      });
+
       res.json({ success: true });
     } catch (error) {
       console.error("Error deactivating invite code:", error);
       res.status(500).json({ message: "Failed to deactivate invite code" });
+    }
+  });
+
+  // Admin - Force logout a user (security action)
+  app.post('/api/admin/users/:userId/force-logout', requireAdmin, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      const { reason } = req.body;
+
+      // Get user info for logging
+      const targetUser = await storage.getUserById(userId);
+      if (!targetUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Terminate all sessions for the user
+      await sessionManager.terminateAllUserSessions(userId, undefined, reason || 'admin_forced');
+
+      // Log admin action
+      await auditLogger.logAdminAction({
+        userId: req.session.user.id,
+        userEmail: req.session.user.email || '',
+        eventType: AuditEventTypes.ADMIN_FORCE_LOGOUT,
+        action: 'Force logged out user',
+        targetUserId: userId,
+        details: { 
+          targetEmail: targetUser.email,
+          reason: reason || 'admin_action',
+        },
+        req,
+      });
+
+      res.json({ success: true, message: `All sessions terminated for user ${targetUser.email}` });
+    } catch (error) {
+      console.error("Error forcing logout:", error);
+      res.status(500).json({ message: "Failed to force logout user" });
+    }
+  });
+
+  // Admin - Get active sessions for a user
+  app.get('/api/admin/users/:userId/sessions', requireAdmin, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+
+      const sessions = await sessionManager.getActiveSessions(userId);
+      
+      const sessionData = sessions.map(session => ({
+        id: session.id,
+        deviceType: session.deviceType,
+        browser: session.browser,
+        os: session.os,
+        ipAddress: session.ipAddress,
+        lastActivityAt: session.lastActivityAt,
+        createdAt: session.createdAt,
+      }));
+
+      res.json(sessionData);
+    } catch (error) {
+      console.error("Error fetching user sessions:", error);
+      res.status(500).json({ message: "Failed to fetch user sessions" });
     }
   });
 
@@ -2443,6 +2725,131 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching advanced analytics:", error);
       res.status(500).json({ message: "Failed to fetch analytics" });
+    }
+  });
+
+  // Security Dashboard - Admin endpoints for SOC 2 compliance
+  app.get('/api/admin/security/audit-logs', requireAdmin, async (req: any, res) => {
+    try {
+      const { 
+        eventType, 
+        userId, 
+        severity, 
+        startDate, 
+        endDate, 
+        limit, 
+        offset 
+      } = req.query;
+
+      const result = await auditLogger.getAuditLogs({
+        eventType: eventType as string,
+        userId: userId as string,
+        severity: severity as string,
+        startDate: startDate ? new Date(startDate as string) : undefined,
+        endDate: endDate ? new Date(endDate as string) : undefined,
+        limit: limit ? parseInt(limit as string) : 50,
+        offset: offset ? parseInt(offset as string) : 0,
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching audit logs:", error);
+      res.status(500).json({ message: "Failed to fetch audit logs" });
+    }
+  });
+
+  app.get('/api/admin/security/stats', requireAdmin, async (req: any, res) => {
+    try {
+      const days = parseInt(req.query.days as string) || 7;
+      const stats = await auditLogger.getSecurityStats(days);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching security stats:", error);
+      res.status(500).json({ message: "Failed to fetch security stats" });
+    }
+  });
+
+  app.get('/api/admin/security/recent-alerts', requireAdmin, async (req: any, res) => {
+    try {
+      // Get recent security-related events
+      const result = await auditLogger.getAuditLogs({
+        limit: 20,
+      });
+      
+      // Filter to security and warning/critical events
+      const alerts = result.logs.filter(log => 
+        log.eventType?.startsWith('security.') || 
+        log.severity === 'warning' || 
+        log.severity === 'critical'
+      );
+
+      res.json(alerts);
+    } catch (error) {
+      console.error("Error fetching security alerts:", error);
+      res.status(500).json({ message: "Failed to fetch security alerts" });
+    }
+  });
+
+  app.get('/api/admin/security/failed-logins', requireAdmin, async (req: any, res) => {
+    try {
+      const hours = parseInt(req.query.hours as string) || 24;
+      const startDate = new Date(Date.now() - hours * 60 * 60 * 1000);
+      
+      const result = await auditLogger.getAuditLogs({
+        eventType: AuditEventTypes.AUTH_FAILED_LOGIN,
+        startDate,
+        limit: 100,
+      });
+
+      // Group by email or IP for analysis
+      const byEmail: Record<string, number> = {};
+      const byIp: Record<string, number> = {};
+      
+      for (const log of result.logs) {
+        if (log.userEmail) {
+          byEmail[log.userEmail] = (byEmail[log.userEmail] || 0) + 1;
+        }
+        if (log.ipAddress) {
+          byIp[log.ipAddress] = (byIp[log.ipAddress] || 0) + 1;
+        }
+      }
+
+      res.json({
+        total: result.total,
+        logs: result.logs,
+        byEmail: Object.entries(byEmail).sort((a, b) => b[1] - a[1]).slice(0, 10),
+        byIp: Object.entries(byIp).sort((a, b) => b[1] - a[1]).slice(0, 10),
+      });
+    } catch (error) {
+      console.error("Error fetching failed logins:", error);
+      res.status(500).json({ message: "Failed to fetch failed login data" });
+    }
+  });
+
+  app.get('/api/admin/security/active-sessions', requireAdmin, async (req: any, res) => {
+    try {
+      // Get all active sessions across all users
+      const activeSessions = await db.select()
+        .from(securitySessions)
+        .where(eq(securitySessions.isActive, true))
+        .orderBy(desc(securitySessions.lastActivityAt))
+        .limit(100);
+
+      // Enhance with user info
+      const enhancedSessions = await Promise.all(activeSessions.map(async (session) => {
+        const user = await storage.getUserById(session.userId);
+        return {
+          ...session,
+          userName: user ? `${user.firstName} ${user.lastName}` : 'Unknown',
+          userEmail: user?.email || 'Unknown',
+          ipAddress: session.ipAddress?.replace(/\d+\.\d+$/, 'x.x'), // Partial IP for privacy
+        };
+      }));
+
+      res.json(enhancedSessions);
+    } catch (error) {
+      console.error("Error fetching active sessions:", error);
+      res.status(500).json({ message: "Failed to fetch active sessions" });
     }
   });
 
@@ -2597,6 +3004,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!updatedTicket) {
         return res.status(404).json({ message: "Ticket not found" });
       }
+
+      // Log admin action
+      await auditLogger.logAdminAction({
+        userId: req.session.user.id,
+        userEmail: req.session.user.email || '',
+        eventType: AuditEventTypes.ADMIN_DATA_EXPORT,
+        action: 'Updated support ticket',
+        details: { ticketId: id, updates: validatedData },
+        req,
+      });
       
       res.json(updatedTicket);
     } catch (error) {
@@ -8821,6 +9238,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!flag) {
         return res.status(404).json({ message: "Flag not found" });
       }
+
+      // Log admin action for review flag resolution
+      await auditLogger.logAdminAction({
+        userId: req.session.user.id,
+        userEmail: req.session.user.email || '',
+        eventType: AuditEventTypes.ADMIN_SETTINGS_CHANGE,
+        action: 'Updated review flag',
+        details: { flagId: req.params.id, newStatus: req.body.status, reviewId: flag.reviewId },
+        req,
+      });
       
       res.json(flag);
     } catch (error) {
