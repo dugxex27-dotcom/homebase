@@ -4,7 +4,6 @@ import { useLocation } from 'wouter';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
 import Sidebar from '@/components/sidebar';
-import BottomNav from '@/components/bottom-nav';
 import LoadingFallback from '@/components/loading-fallback';
 import ErrorBoundary from '@/components/error-boundary';
 
@@ -26,7 +25,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.2, ease: 'easeInOut' }}
-          className="flex-1 pb-20 md:pb-0 md:ml-44"
+          className="flex-1 md:ml-44"
         >
           <ErrorBoundary>
             <Suspense fallback={<LoadingFallback variant="inline" />}>
@@ -36,7 +35,6 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
         </motion.main>
       </AnimatePresence>
       <Footer />
-      <BottomNav />
     </div>
   );
 }
