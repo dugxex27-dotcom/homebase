@@ -156,19 +156,8 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="hidden md:flex md:flex-col w-56 bg-white border-r border-gray-200 min-h-screen sticky top-0">
-      <div className="p-4 border-b border-gray-100">
-        <button 
-          onClick={() => window.history.back()} 
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm font-medium"
-          data-testid="button-back"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          <span>Back</span>
-        </button>
-      </div>
-      
-      <nav className="flex-1 p-3 space-y-1" aria-label="Main navigation">
+    <aside className="hidden md:flex md:flex-col w-64 bg-white border-r border-gray-200 fixed left-0 top-14 sm:top-16 bottom-0 z-40 overflow-y-auto shadow-sm">
+      <nav className="flex-1 p-4 space-y-1" aria-label="Main navigation">
         {isAdmin && (
           <Link href="/admin">
             <button className={navItemClass('/admin')} data-testid="nav-admin">

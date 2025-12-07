@@ -20,14 +20,12 @@ export default function Layout({ children, showFooter = true }: LayoutProps) {
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#f5f5f5' }}>
       <Header />
-      <div className="flex flex-1">
-        {showSidebar && <Sidebar />}
-        <main className={`flex-1 pb-20 md:pb-0 ${showSidebar ? 'md:ml-0' : ''}`}>
-          <div className="min-h-full">
-            {children}
-          </div>
-        </main>
-      </div>
+      {showSidebar && <Sidebar />}
+      <main className={`flex-1 pb-20 md:pb-0 ${showSidebar ? 'md:ml-64' : ''}`}>
+        <div className="min-h-full">
+          {children}
+        </div>
+      </main>
       {showFooter && <Footer />}
       <BottomNav />
     </div>
