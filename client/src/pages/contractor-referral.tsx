@@ -173,25 +173,6 @@ export default function ContractorReferral() {
                     {earnedCredits > referralCreditCap && ` (${earnedCredits - referralCreditCap} credits above cap)`}
                   </p>
                 )}
-                {!isPro && (
-                  <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Crown className="w-4 h-4 text-red-600" />
-                      <span className="text-sm font-medium text-red-900">Upgrade to Pro for a $40/month cap</span>
-                    </div>
-                    <p className="text-xs text-red-700 mt-1">Pro subscribers can save up to $40/month with referrals instead of $20.</p>
-                    <Button
-                      onClick={() => window.location.href = '/billing'}
-                      size="sm"
-                      className="mt-2"
-                      style={{ backgroundColor: '#b91c1c', color: 'white' }}
-                      data-testid="button-upgrade-pro-referral"
-                    >
-                      <Crown className="w-3 h-3 mr-2" />
-                      Upgrade to Pro
-                    </Button>
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
