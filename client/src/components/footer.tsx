@@ -4,12 +4,13 @@ import { useAuth } from '@/hooks/useAuth';
 import type { User } from '@shared/schema';
 
 export default function Footer() {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const typedUser = user as User | undefined;
+  const showSidebarOffset = isAuthenticated && typedUser;
 
   return (
-    <footer className="text-white py-8 sm:py-12 lg:py-16" style={{ backgroundColor: '#1a0a3e' }}>
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
+    <footer className={`text-white py-6 sm:py-8 ${showSidebarOffset ? 'md:ml-44' : ''}`} style={{ backgroundColor: '#1a0a3e' }}>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-6 sm:gap-8">
           <div className="text-center sm:text-left md:col-span-2">
             <div className="mb-4 sm:mb-6">
