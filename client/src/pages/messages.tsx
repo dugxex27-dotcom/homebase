@@ -472,44 +472,42 @@ export default function Messages() {
     );
   }
 
-  const bgColor = typedUser.role === 'contractor' ? '#1560a2' : 'linear-gradient(180deg, #8B70D4 0%, #9B82DC 50%, #8B70D4 100%)';
-
   return (
-    <div className="min-h-screen" style={{ background: bgColor }}>
-      {/* Hero Section */}
-      <section className="pt-8 sm:pt-12 pb-3 sm:pb-4" style={{ background: 'transparent' }}>
-        <div className="container mx-auto px-3 sm:px-4 lg:px-6">
-          <div className="flex items-center justify-between mb-2">
-            <h1 className="text-xl sm:text-2xl lg:text-4xl font-bold" style={{ color: 'white' }}>Messages</h1>
-            <div className="flex items-center gap-1 sm:gap-2" data-testid="websocket-status">
+    <div className="min-h-screen bg-[#F5F5F5]">
+      {/* Header Section */}
+      <section className="py-6 sm:py-8 px-4 sm:px-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-center justify-between mb-1">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Messages</h1>
+            <div className="flex items-center gap-1.5" data-testid="websocket-status">
               {wsConnected ? (
                 <>
-                  <Wifi className="h-4 w-4 sm:h-5 sm:w-5 text-green-400" />
-                  <span className="text-xs sm:text-sm text-green-400">Connected</span>
+                  <Wifi className="h-4 w-4 text-green-600" />
+                  <span className="text-xs text-green-600 font-medium">Connected</span>
                 </>
               ) : (
                 <>
-                  <WifiOff className="h-4 w-4 sm:h-5 sm:w-5 text-red-400" />
-                  <span className="text-xs sm:text-sm text-red-400">Disconnected</span>
+                  <WifiOff className="h-4 w-4 text-red-500" />
+                  <span className="text-xs text-red-500 font-medium">Disconnected</span>
                 </>
               )}
             </div>
           </div>
-          <p className="text-sm sm:text-base lg:text-lg" style={{ color: 'white', opacity: 0.9 }}>
+          <p className="text-gray-600">
             Chat in real-time with {typedUser.role === 'homeowner' ? 'contractors' : 'homeowners'}
           </p>
         </div>
       </section>
 
       {/* Main Content - Two-Panel Messenger Layout */}
-      <div className="container mx-auto px-3 sm:px-4 lg:px-6 pb-8 sm:pb-12">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 h-[600px] sm:h-[700px]">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-[600px] sm:h-[700px]">
           
           {/* Left Panel - Conversation List */}
-          <div className="lg:col-span-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <MessageCircle className="h-5 w-5" />
+          <div className="lg:col-span-4 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <MessageCircle className="h-5 w-5 text-purple-600" />
                 Conversations
               </h2>
               
@@ -656,17 +654,17 @@ export default function Messages() {
           </div>
 
           {/* Right Panel - Chat Window */}
-          <div className="lg:col-span-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg flex flex-col overflow-hidden">
+          <div className="lg:col-span-8 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col overflow-hidden">
             {selectedConversationId ? (
               <>
                 {/* Chat Header */}
-                <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                <div className="p-4 border-b border-gray-100 bg-gray-50">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                      <h2 className="text-lg font-semibold text-gray-900">
                         {conversations.find(c => c.id === selectedConversationId)?.otherPartyName}
                       </h2>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                      <p className="text-sm text-gray-500">
                         {conversations.find(c => c.id === selectedConversationId)?.subject}
                       </p>
                     </div>
@@ -994,7 +992,7 @@ export default function Messages() {
                 )}
 
                 {/* Message Composer */}
-                <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                <div className="p-4 border-t border-gray-100 bg-white">
                   {/* File Previews */}
                   {(imagePreview || selectedFiles.length > 0) && (
                     <div className="mb-3 flex flex-wrap gap-2">
@@ -1017,7 +1015,7 @@ export default function Messages() {
                           {file.type === 'image' ? (
                             <img src={file.preview} alt={file.file.name} className="h-20 w-20 object-cover rounded" />
                           ) : (
-                            <div className="h-20 w-20 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center">
+                            <div className="h-20 w-20 bg-gray-100 rounded flex items-center justify-center">
                               <File className="h-8 w-8 text-gray-500" />
                             </div>
                           )}
