@@ -2971,19 +2971,16 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
           <h1 className="text-xl sm:text-2xl font-bold mb-2" style={{ color: '#2c0f5b' }} data-testid="text-welcome-title">
             Welcome to your HomeBase Dashboard
           </h1>
-          <p className="text-gray-600 max-w-xl">
-            Keep your home in perfect condition with personalized schedules based on your location and home systems.
-          </p>
+          <p className="text-gray-600 max-w-xl">Keep your home in perfect condition with personalized schedules 
+          based on your location and home systems.</p>
         </div>
       </section>
-
       {/* Trial Banner for Homeowners */}
       {userRole === 'homeowner' && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <HomeownerTrialBanner />
         </div>
       )}
-
       {/* Home Health Score Cards - Wrapped in Feature Gate for Homeowners */}
       {userRole === 'homeowner' && houses.length > 0 && (
         <HomeownerFeatureGate featureName="Maintenance Scheduling">
@@ -3003,7 +3000,6 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
           </section>
         </HomeownerFeatureGate>
       )}
-
       {/* DIY Savings Tracker Section - Show separate card for each house */}
       {userRole === 'homeowner' && houses.length > 0 && (
         <section className="py-4 px-4 sm:px-6 lg:px-8">
@@ -3020,7 +3016,6 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
           </div>
         </section>
       )}
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="mb-6">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
