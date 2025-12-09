@@ -2968,7 +2968,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       {/* Welcome Header */}
       <section className="py-6 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2" data-testid="text-welcome-title">
+          <h1 className="text-xl sm:text-2xl font-bold mb-2" style={{ color: '#2c0f5b' }} data-testid="text-welcome-title">
             Welcome to your HomeBase Dashboard
           </h1>
           <p className="text-gray-600 max-w-xl">
