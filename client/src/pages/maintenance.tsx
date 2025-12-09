@@ -2971,7 +2971,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2" data-testid="text-welcome-title">
             Welcome to your HomeBase Dashboard
           </h1>
-          <p className="text-gray-600">
+          <p className="text-gray-600 max-w-xl">
             Keep your home in perfect condition with personalized schedules based on your location and home systems.
           </p>
         </div>
