@@ -11,7 +11,7 @@ export default function HeroSection() {
   return (
     <section style={{ 
       background: typedUser?.role === 'homeowner' 
-        ? '#eeedf9' 
+        ? '#ffffff' 
         : '#1560a2', 
       paddingTop: '40px', 
       paddingBottom: '40px' 
