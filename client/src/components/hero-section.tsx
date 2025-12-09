@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import type { User } from "@shared/schema";
 import heroImage from "@assets/homebase-homeowner-hero-desktop_1765322671886.png";
-import heroImageMobile from "@assets/homebase-homeowner-hero-mobile_1765322671886.png";
+import heroImageMobile from "@assets/homebase-homeowner-hero-mobile_1765322798550.png";
 
 export default function HeroSection() {
   const { user } = useAuth();
