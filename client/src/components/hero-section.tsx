@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import type { User } from "@shared/schema";
-import heroImage from "@assets/homebase-hero-desktop_1765255023288.png";
+import heroImage from "@assets/homebase-hero-desktop-2_1765289768091.png";
 import heroImageMobile from "@assets/homebase-hero-mobile_1765255048764.png";
 
 export default function HeroSection() {
