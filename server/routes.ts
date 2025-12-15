@@ -7402,6 +7402,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const appointmentData = insertContractorAppointmentSchema.parse(req.body);
+      
+      // Verify the user is creating an appointment for themselves
+      if (userRole === 'contractor' && appointmentData.contractorId !== userId) {
+        return res.status(403).json({ message: "Contractors can only create appointments for themselves" });
+      }
+      if (userRole === 'homeowner' && appointmentData.homeownerId !== userId) {
+        return res.status(403).json({ message: "Homeowners can only create appointments for themselves" });
+      }
+      
       const appointment = await storage.createContractorAppointment(appointmentData);
       res.status(201).json(appointment);
     } catch (error) {
@@ -7514,8 +7523,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/notifications/:id/read", isAuthenticated, async (req: any, res) => {
     try {
-      // Note: Ideally we'd verify the notification belongs to the user,
-      // but marking as read is a low-risk operation
+      const userId = req.session.user.id;
+      
+      // Verify ownership before marking as read
+      const notification = await storage.getNotification(req.params.id);
+      if (!notification) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+      
+      if (notification.homeownerId !== userId) {
+        return res.status(403).json({ message: "Not authorized to modify this notification" });
+      }
+      
       const success = await storage.markNotificationAsRead(req.params.id);
       if (!success) {
         return res.status(404).json({ message: "Notification not found" });
@@ -7528,7 +7547,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/notifications/:id", isAuthenticated, async (req: any, res) => {
     try {
-      // Note: Ideally we'd verify the notification belongs to the user
+      const userId = req.session.user.id;
+      
+      // Verify ownership before deleting
+      const notification = await storage.getNotification(req.params.id);
+      if (!notification) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+      
+      if (notification.homeownerId !== userId) {
+        return res.status(403).json({ message: "Not authorized to delete this notification" });
+      }
+      
       const deleted = await storage.deleteNotification(req.params.id);
       if (!deleted) {
         return res.status(404).json({ message: "Notification not found" });
