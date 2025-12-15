@@ -3529,13 +3529,12 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       <Thermometer className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold" style={{ color: '#2c0f5b' }}>System-Based Maintenance Recommendations</h2>
+                      <h2 className="text-xl font-bold text-center" style={{ color: '#2c0f5b' }}>System-Based Maintenance Recommendations</h2>
                       <p className="text-sm" style={{ color: '#b6a6f4' }}>
                         Personalized suggestions based on your equipment age
                       </p>
                     </div>
                   </div>
-                  
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {allRecommendations.map((rec, index) => (
                       <Card 
