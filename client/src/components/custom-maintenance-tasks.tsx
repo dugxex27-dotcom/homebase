@@ -233,7 +233,7 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
   return (
     <div className="space-y-6">
       <div className="space-y-3">
-        <h2 className="text-2xl font-semibold" style={{ color: '#2c0f5b' }}>Your Custom Tasks</h2>
+        <h2 className="text-2xl font-semibold text-center" style={{ color: '#2c0f5b' }}>Your Custom Tasks</h2>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => {
@@ -502,7 +502,6 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
           </DialogContent>
         </Dialog>
       </div>
-
       {isLoading ? (
         <div className="text-center py-8">Loading your custom tasks...</div>
       ) : customTasks.length === 0 ? (
@@ -586,7 +585,6 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
           })}
         </div>
       )}
-
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         open={deleteTaskConfirmOpen}
