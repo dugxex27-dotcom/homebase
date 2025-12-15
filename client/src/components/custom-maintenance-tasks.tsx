@@ -232,7 +232,7 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="space-y-3">
         <h2 className="text-2xl font-semibold" style={{ color: '#2c0f5b' }}>Your Custom Tasks</h2>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
