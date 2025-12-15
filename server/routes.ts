@@ -65,37 +65,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
   console.error('REGISTER ROUTES CALLED - NEW CODE VERSION 2025-11-02-21:28');
   console.error('========================================');
   
-  // RAW SQL LOGO UPLOAD - Bypasses ALL ORM issues
+  // Secure logo upload endpoint with authentication
   console.error('[STARTUP] Registering /api/upload-logo-raw endpoint');
-  app.post('/api/upload-logo-raw', async (req, res) => {
+  app.post('/api/upload-logo-raw', uploadLimiter, isAuthenticated, requireRole(['contractor']), async (req: any, res) => {
     try {
-      console.error('[RAW-UPLOAD] Request received');
-      const { email, imageData } = req.body;
+      console.error('[SECURE-UPLOAD] Request received from authenticated user:', req.session?.user?.id);
+      const { imageData } = req.body;
       
-      if (!email || !imageData) {
-        return res.status(400).json({ error: 'Missing email or imageData' });
+      if (!imageData) {
+        return res.status(400).json({ error: 'Missing imageData' });
       }
       
-      // Query database with RAW SQL
-      console.error('[RAW-UPLOAD] Querying database for email:', email);
-      const result = await pool.query('SELECT id, email, company_id FROM users WHERE email = $1 LIMIT 1', [email]);
-      console.error('[RAW-UPLOAD] Query result rows:', result.rows.length);
-      console.error('[RAW-UPLOAD] Query result:', JSON.stringify(result.rows, null, 2));
-      
-      if (result.rows.length === 0) {
-        console.error('[RAW-UPLOAD] No rows found!');
-        return res.status(404).json({ error: 'User not found' });
+      // Validate image data format
+      if (!imageData.startsWith('data:image/')) {
+        return res.status(400).json({ error: 'Invalid image format' });
       }
       
-      const user = result.rows[0];
+      // Use authenticated user from session
+      const sessionUser = req.session?.user;
+      if (!sessionUser?.id) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
       
-      // Get company_id - use whichever field is populated
-      const companyId = user.company_id || user.companyId || '33cbeb58-158b-47d6-982e-2901f730fa14'; // Hardcode as last resort
+      // Get user's company from storage layer
+      const user = await storage.getUser(sessionUser.id);
+      if (!user || !user.companyId) {
+        return res.status(404).json({ error: 'User or company not found' });
+      }
       
-      // Upload image
+      const companyId = user.companyId;
+      
+      // Validate image size (max 5MB for logos)
       const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
       const buffer = Buffer.from(base64Data, 'base64');
-      const fileExtension = imageData.match(/^data:image\/(\w+);/)?.[1] || 'jpg';
+      if (buffer.length > 5 * 1024 * 1024) {
+        return res.status(400).json({ error: 'Image too large (max 5MB)' });
+      }
+      
+      // Validate file extension
+      const extensionMatch = imageData.match(/^data:image\/(jpeg|jpg|png|webp|gif);/);
+      if (!extensionMatch) {
+        return res.status(400).json({ error: 'Invalid image type. Allowed: jpeg, png, webp, gif' });
+      }
+      const fileExtension = extensionMatch[1] === 'jpeg' ? 'jpg' : extensionMatch[1];
+      
       const filename = `${randomUUID()}.${fileExtension}`;
       const path = `public/contractor-images/logos/${filename}`;
       
@@ -103,13 +116,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await objectStorage.uploadFile(path, buffer, `image/${fileExtension}`);
       const url = `/public/contractor-images/logos/${filename}`;
       
-      // Update company in database with RAW SQL (hardcoded company ID for now)
-      await pool.query('UPDATE companies SET business_logo = $1 WHERE id = $2', [url, companyId]);
+      // Update company using storage layer
+      await storage.updateCompany(companyId, { businessLogo: url });
       
-      res.json({ success: true, url, companyId, userObject: user });
+      console.error('[SECURE-UPLOAD] Logo uploaded successfully for company:', companyId);
+      res.json({ success: true, url, companyId });
     } catch (error: any) {
-      console.error('[RAW-UPLOAD ERROR]', error);
-      res.status(500).json({ error: error.message });
+      console.error('[SECURE-UPLOAD ERROR]', error);
+      res.status(500).json({ error: 'Failed to upload logo' });
     }
   });
   
