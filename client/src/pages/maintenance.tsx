@@ -2971,7 +2971,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
           <h1 className="text-xl sm:text-2xl font-bold mb-2" style={{ color: '#2c0f5b' }} data-testid="text-welcome-title">
             Welcome to your HomeBase Dashboard
           </h1>
-          <p className="text-gray-600 max-w-lg">Keep your home in perfect condition with personalized schedules based on your location and home systems.</p>
+          <p className="text-gray-600 max-w-lg text-center">Keep your home in perfect condition with personalized schedules based on your location and home systems.</p>
         </div>
       </section>
       {/* Trial Banner for Homeowners */}
