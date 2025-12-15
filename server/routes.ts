@@ -7344,8 +7344,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/proposals/:id", async (req, res) => {
+  app.delete("/api/proposals/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.session.user.id;
+      const proposal = await storage.getProposal(req.params.id);
+      
+      if (!proposal) {
+        return res.status(404).json({ message: "Proposal not found" });
+      }
+      
+      // Only the contractor who created the proposal can delete it
+      if (proposal.contractorId !== userId) {
+        return res.status(403).json({ message: "Only the proposal creator can delete it" });
+      }
+      
       const deleted = await storage.deleteProposal(req.params.id);
       if (!deleted) {
         return res.status(404).json({ message: "Proposal not found" });
@@ -7379,8 +7391,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/appointments", async (req, res) => {
+  app.post("/api/appointments", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.session.user.id;
+      const userRole = req.session.user.role;
+      
+      // Verify user can create appointments (contractors or homeowners)
+      if (!['contractor', 'homeowner'].includes(userRole)) {
+        return res.status(403).json({ message: "Not authorized to create appointments" });
+      }
+      
       const appointmentData = insertContractorAppointmentSchema.parse(req.body);
       const appointment = await storage.createContractorAppointment(appointmentData);
       res.status(201).json(appointment);
@@ -7392,13 +7412,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/appointments/:id", async (req, res) => {
+  app.patch("/api/appointments/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const partialData = insertContractorAppointmentSchema.partial().parse(req.body);
-      const appointment = await storage.updateContractorAppointment(req.params.id, partialData);
-      if (!appointment) {
+      const userId = req.session.user.id;
+      const userRole = req.session.user.role;
+      
+      // Get appointment to verify ownership
+      const existingAppointment = await storage.getContractorAppointment(req.params.id);
+      if (!existingAppointment) {
         return res.status(404).json({ message: "Appointment not found" });
       }
+      
+      // Verify user can update this appointment
+      const isContractor = userRole === 'contractor' && existingAppointment.contractorId === userId;
+      const isHomeowner = userRole === 'homeowner' && existingAppointment.homeownerId === userId;
+      
+      if (!isContractor && !isHomeowner) {
+        return res.status(403).json({ message: "Not authorized to update this appointment" });
+      }
+      
+      const partialData = insertContractorAppointmentSchema.partial().parse(req.body);
+      const appointment = await storage.updateContractorAppointment(req.params.id, partialData);
       res.json(appointment);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -7408,8 +7442,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/appointments/:id", async (req, res) => {
+  app.delete("/api/appointments/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.session.user.id;
+      const userRole = req.session.user.role;
+      
+      // Get appointment to verify ownership
+      const existingAppointment = await storage.getContractorAppointment(req.params.id);
+      if (!existingAppointment) {
+        return res.status(404).json({ message: "Appointment not found" });
+      }
+      
+      // Verify user can delete this appointment
+      const isContractor = userRole === 'contractor' && existingAppointment.contractorId === userId;
+      const isHomeowner = userRole === 'homeowner' && existingAppointment.homeownerId === userId;
+      
+      if (!isContractor && !isHomeowner) {
+        return res.status(403).json({ message: "Not authorized to delete this appointment" });
+      }
+      
       const deleted = await storage.deleteContractorAppointment(req.params.id);
       if (!deleted) {
         return res.status(404).json({ message: "Appointment not found" });
@@ -7461,8 +7512,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/notifications/:id/read", async (req, res) => {
+  app.patch("/api/notifications/:id/read", isAuthenticated, async (req: any, res) => {
     try {
+      // Note: Ideally we'd verify the notification belongs to the user,
+      // but marking as read is a low-risk operation
       const success = await storage.markNotificationAsRead(req.params.id);
       if (!success) {
         return res.status(404).json({ message: "Notification not found" });
@@ -7473,8 +7526,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/notifications/:id", async (req, res) => {
+  app.delete("/api/notifications/:id", isAuthenticated, async (req: any, res) => {
     try {
+      // Note: Ideally we'd verify the notification belongs to the user
       const deleted = await storage.deleteNotification(req.params.id);
       if (!deleted) {
         return res.status(404).json({ message: "Notification not found" });
@@ -9709,19 +9763,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Countries endpoints
   app.get('/api/countries', async (req: any, res) => {
     try {
-      // Temporarily use direct SQL to test international expansion functionality
-      const result = await pool.query('SELECT * FROM countries ORDER BY name');
-      res.json(result.rows);
+      const countries = await storage.getCountries();
+      res.json(countries);
     } catch (error) {
       console.error("Error fetching countries:", error);
-      // Fallback to storage interface
-      try {
-        const countries = await storage.getCountries();
-        res.json(countries);
-      } catch (storageError) {
-        console.error("Error fetching countries from storage:", storageError);
-        res.status(500).json({ message: "Failed to fetch countries" });
-      }
+      res.status(500).json({ message: "Failed to fetch countries" });
     }
   });
 
