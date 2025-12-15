@@ -3017,7 +3017,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       )}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="mb-6">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2 text-center">
             Home Maintenance
           </h2>
           <p className="text-gray-600 max-w-xl mb-4">Keep your home in perfect condition with personalized maintenance recommendations.</p>
