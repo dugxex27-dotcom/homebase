@@ -232,14 +232,14 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
 
   return (
     <div className="space-y-6">
-      <div className="space-y-3">
-        <h2 className="text-2xl font-semibold text-center" style={{ color: '#2c0f5b' }}>Your Custom Tasks</h2>
+      <div className="space-y-3 text-center">
+        <h2 className="text-2xl font-semibold" style={{ color: '#2c0f5b' }}>Your Custom Tasks</h2>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => {
               setEditingTask(null);
               form.reset();
-            }} className="text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 hover:opacity-90" style={{ backgroundColor: '#2c0f5b' }} data-testid="button-add-custom-task">
+            }} className="text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 hover:opacity-90 mx-auto" style={{ backgroundColor: '#2c0f5b' }} data-testid="button-add-custom-task">
               <Plus className="h-4 w-4 mr-2" />
               Add Custom Task
             </Button>
