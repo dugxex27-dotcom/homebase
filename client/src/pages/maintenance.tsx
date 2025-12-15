@@ -3709,32 +3709,6 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                   <p className="text-gray-600 mb-4">
                     Start tracking your home appliances, their manuals, and maintenance schedules.
                   </p>
-                  <Button
-                    onClick={() => {
-                      setEditingAppliance(null);
-                      applianceForm.reset({
-                        homeownerId,
-                        houseId: selectedHouseId,
-                        name: "",
-                        make: "",
-                        model: "",
-                        serialNumber: "",
-                        purchaseDate: "",
-                        installDate: "",
-                        yearInstalled: undefined,
-                        notes: "",
-                        location: "",
-                        warrantyExpiration: "",
-                        lastServiceDate: "",
-                      });
-                      setIsApplianceDialogOpen(true);
-                    }}
-                    style={{ backgroundColor: '#2c0f5b', color: 'white' }}
-                    data-testid="button-add-first-appliance"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Your First Appliance
-                  </Button>
                 </CardContent>
               </Card>
             ) : (
