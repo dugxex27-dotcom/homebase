@@ -2967,11 +2967,11 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     <div className="min-h-screen" style={{ backgroundColor: '#f5f5f5' }}>
       {/* Welcome Header */}
       <section className="py-6 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-xl sm:text-2xl font-bold mb-2 text-center" style={{ color: '#2c0f5b' }} data-testid="text-welcome-title">
+        <div className="max-w-7xl mx-auto text-center">
+          <h1 className="text-xl sm:text-2xl font-bold mb-2" style={{ color: '#2c0f5b' }} data-testid="text-welcome-title">
             Welcome to your HomeBase Dashboard
           </h1>
-          <p className="text-gray-600 max-w-lg text-center">Keep your home in perfect condition with personalized schedules based on your location and home systems.</p>
+          <p className="text-gray-600 max-w-lg mx-auto">Keep your home in perfect condition with personalized schedules based on your location and home systems.</p>
         </div>
       </section>
       {/* Trial Banner for Homeowners */}
