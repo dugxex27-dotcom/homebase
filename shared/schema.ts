@@ -100,6 +100,12 @@ export const companies = pgTable("companies", {
   licenses: text("licenses"), // JSON string of licensing info per regulatory body
   insuranceInfo: text("insurance_info"), // JSON string of insurance details by region
   referralCode: varchar("referral_code").unique(), // Company-wide referral code (shared by all employees)
+  // Stripe Connect fields for accepting payments
+  stripeConnectAccountId: varchar("stripe_connect_account_id"),
+  stripeOnboardingComplete: boolean("stripe_onboarding_complete").default(false),
+  stripeChargesEnabled: boolean("stripe_charges_enabled").default(false),
+  stripePayoutsEnabled: boolean("stripe_payouts_enabled").default(false),
+  stripeDefaultCurrency: varchar("stripe_default_currency", { length: 3 }).default("usd"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -1766,6 +1772,128 @@ export const crmInvoices = pgTable("crm_invoices", {
 export const insertCrmInvoiceSchema = createInsertSchema(crmInvoices).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertCrmInvoice = z.infer<typeof insertCrmInvoiceSchema>;
 export type CrmInvoice = typeof crmInvoices.$inferSelect;
+
+// CRM Payments table - tracks payments made via Stripe Connect
+export const crmPayments = pgTable("crm_payments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contractorUserId: varchar("contractor_user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
+  invoiceId: varchar("invoice_id").notNull().references(() => crmInvoices.id, { onDelete: 'cascade' }),
+  clientId: varchar("client_id").notNull().references(() => crmClients.id, { onDelete: 'cascade' }),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id"),
+  stripeChargeId: varchar("stripe_charge_id"),
+  stripeTransferId: varchar("stripe_transfer_id"), // Transfer to contractor's Connect account
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  platformFee: decimal("platform_fee", { precision: 10, scale: 2 }).default("0.00"), // Fee retained by platform
+  stripeFee: decimal("stripe_fee", { precision: 10, scale: 2 }).default("0.00"), // Stripe processing fee
+  netAmount: decimal("net_amount", { precision: 10, scale: 2 }).notNull(), // Amount to contractor
+  currency: varchar("currency", { length: 3 }).default("usd"),
+  status: text("status").notNull().default("pending"), // 'pending', 'processing', 'succeeded', 'failed', 'refunded', 'partially_refunded'
+  paymentMethod: text("payment_method"), // 'card', 'bank_transfer', 'cash', 'check', 'other'
+  cardBrand: varchar("card_brand"), // 'visa', 'mastercard', etc.
+  cardLast4: varchar("card_last4", { length: 4 }),
+  receiptUrl: text("receipt_url"),
+  refundedAmount: decimal("refunded_amount", { precision: 10, scale: 2 }).default("0.00"),
+  refundReason: text("refund_reason"),
+  failureReason: text("failure_reason"),
+  metadata: jsonb("metadata"),
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_crm_payments_contractor").on(table.contractorUserId),
+  index("IDX_crm_payments_company").on(table.companyId),
+  index("IDX_crm_payments_invoice").on(table.invoiceId),
+  index("IDX_crm_payments_client").on(table.clientId),
+  index("IDX_crm_payments_status").on(table.status),
+  index("IDX_crm_payments_stripe_pi").on(table.stripePaymentIntentId),
+]);
+
+export const insertCrmPaymentSchema = createInsertSchema(crmPayments).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertCrmPayment = z.infer<typeof insertCrmPaymentSchema>;
+export type CrmPayment = typeof crmPayments.$inferSelect;
+
+// CRM Team Members table - manage contractor company team members with roles
+export const crmTeamMembers = pgTable("crm_team_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").references(() => users.id, { onDelete: 'set null' }), // Null if invited but not registered
+  email: text("email").notNull(),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  phone: text("phone"),
+  role: text("role").notNull().default("technician"), // 'owner', 'manager', 'admin', 'estimator', 'technician'
+  permissions: jsonb("permissions").default(sql`'{}'::jsonb`), // Granular permissions override
+  hourlyRate: decimal("hourly_rate", { precision: 8, scale: 2 }),
+  color: varchar("color", { length: 7 }), // Hex color for calendar display
+  isActive: boolean("is_active").notNull().default(true),
+  invitedAt: timestamp("invited_at"),
+  joinedAt: timestamp("joined_at"),
+  lastActiveAt: timestamp("last_active_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_crm_team_company").on(table.companyId),
+  index("IDX_crm_team_user").on(table.userId),
+  index("IDX_crm_team_email").on(table.email),
+  index("IDX_crm_team_role").on(table.role),
+  index("IDX_crm_team_is_active").on(table.isActive),
+]);
+
+export const insertCrmTeamMemberSchema = createInsertSchema(crmTeamMembers).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertCrmTeamMember = z.infer<typeof insertCrmTeamMemberSchema>;
+export type CrmTeamMember = typeof crmTeamMembers.$inferSelect;
+
+// CRM Job Assignments table - assign team members to jobs
+export const crmJobAssignments = pgTable("crm_job_assignments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  jobId: varchar("job_id").notNull().references(() => crmJobs.id, { onDelete: 'cascade' }),
+  teamMemberId: varchar("team_member_id").notNull().references(() => crmTeamMembers.id, { onDelete: 'cascade' }),
+  role: text("role").default("assigned"), // 'lead', 'assigned', 'helper'
+  hoursWorked: decimal("hours_worked", { precision: 6, scale: 2 }),
+  notes: text("notes"),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_crm_job_assignments_job").on(table.jobId),
+  index("IDX_crm_job_assignments_team_member").on(table.teamMemberId),
+]);
+
+export const insertCrmJobAssignmentSchema = createInsertSchema(crmJobAssignments).omit({ id: true, createdAt: true });
+export type InsertCrmJobAssignment = z.infer<typeof insertCrmJobAssignmentSchema>;
+export type CrmJobAssignment = typeof crmJobAssignments.$inferSelect;
+
+// CRM Import Logs table - track data imports from external CRMs
+export const crmImportLogs = pgTable("crm_import_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contractorUserId: varchar("contractor_user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  companyId: varchar("company_id").references(() => companies.id, { onDelete: 'cascade' }),
+  integrationId: varchar("integration_id").references(() => crmIntegrations.id, { onDelete: 'set null' }),
+  importType: text("import_type").notNull(), // 'csv', 'api_sync', 'manual'
+  sourceSystem: text("source_system"), // 'jobber', 'servicetitan', 'housecall_pro', 'csv_file'
+  entityType: text("entity_type").notNull(), // 'clients', 'jobs', 'quotes', 'invoices'
+  fileName: text("file_name"),
+  totalRecords: integer("total_records").notNull().default(0),
+  successfulRecords: integer("successful_records").notNull().default(0),
+  failedRecords: integer("failed_records").notNull().default(0),
+  skippedRecords: integer("skipped_records").notNull().default(0),
+  status: text("status").notNull().default("pending"), // 'pending', 'processing', 'completed', 'failed', 'cancelled'
+  fieldMapping: jsonb("field_mapping"), // How fields were mapped
+  errors: jsonb("errors"), // Array of error messages
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_crm_import_logs_contractor").on(table.contractorUserId),
+  index("IDX_crm_import_logs_company").on(table.companyId),
+  index("IDX_crm_import_logs_status").on(table.status),
+  index("IDX_crm_import_logs_created_at").on(table.createdAt),
+]);
+
+export const insertCrmImportLogSchema = createInsertSchema(crmImportLogs).omit({ id: true, createdAt: true });
+export type InsertCrmImportLog = z.infer<typeof insertCrmImportLogSchema>;
+export type CrmImportLog = typeof crmImportLogs.$inferSelect;
 
 // Security Audit Logs table for SOC 2 compliance
 export const securityAuditLogs = pgTable("security_audit_logs", {

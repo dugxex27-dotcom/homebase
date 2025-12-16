@@ -15,6 +15,13 @@
       "when": 1764194798105,
       "tag": "0001_square_saracen",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1765848806037,
+      "tag": "0002_aberrant_valeria_richards",
+      "breakpoints": true
     }
   ]
 }
