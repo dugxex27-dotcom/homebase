@@ -1523,14 +1523,16 @@ export default function ContractorProfile() {
                 className="hidden"
                 id="logo-upload"
               />
-              <label htmlFor="logo-upload">
-                <Button type="button" variant="outline" className="cursor-pointer hover:opacity-90" style={{ backgroundColor: '#1560a2', color: 'white' }} asChild>
-                  <span className="flex items-center gap-2">
-                    <Plus className="w-4 h-4" />
-                    {logoPreview || formData.businessLogo ? 'Change Logo' : 'Upload Logo'}
-                  </span>
-                </Button>
-              </label>
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="cursor-pointer hover:opacity-90" 
+                style={{ backgroundColor: '#1560a2', color: 'white' }}
+                onClick={() => document.getElementById('logo-upload')?.click()}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                {logoPreview || formData.businessLogo ? 'Change Logo' : 'Upload Logo'}
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -1584,17 +1586,19 @@ export default function ContractorProfile() {
                   className="hidden"
                   id="photos-upload"
                 />
-                <label htmlFor="photos-upload">
-                  <Button type="button" variant="outline" className="cursor-pointer hover:opacity-90" style={{ backgroundColor: '#1560a2', color: 'white' }} asChild>
-                    <span className="flex items-center gap-2">
-                      <Plus className="w-4 h-4" />
-                      Add Project Photos
-                      <span className="text-xs text-white">
-                        ({Math.max(photosPreviews.length, formData.projectPhotos.length)}/20)
-                      </span>
-                    </span>
-                  </Button>
-                </label>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="cursor-pointer hover:opacity-90" 
+                  style={{ backgroundColor: '#1560a2', color: 'white' }}
+                  onClick={() => document.getElementById('photos-upload')?.click()}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Project Photos
+                  <span className="text-xs text-white ml-2">
+                    ({Math.max(photosPreviews.length, formData.projectPhotos.length)}/20)
+                  </span>
+                </Button>
               </div>
             )}
             
