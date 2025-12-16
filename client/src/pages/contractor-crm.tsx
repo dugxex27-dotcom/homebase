@@ -2257,17 +2257,13 @@ export default function ContractorCRMPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                        <span className="text-muted-foreground">Platform Fee</span>
-                        <span className="font-medium">2.5%</span>
-                      </div>
-                      <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                        <span className="text-muted-foreground">Stripe Processing</span>
-                        <span className="font-medium">2.9% + $0.30</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-4">
-                        When customers pay invoices through HomeBase, payments go directly to your connected Stripe account after fees.
+                      <p className="text-sm text-muted-foreground">
+                        When customers pay invoices through HomeBase, payments go directly to your connected Stripe account.
                       </p>
+                      <div className="p-4 rounded-lg bg-green-50 border border-green-100">
+                        <p className="text-sm text-green-700 font-medium">No HomeBase fees on payments!</p>
+                        <p className="text-xs text-green-600 mt-1">You keep 100% of what you charge (standard Stripe processing applies)</p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

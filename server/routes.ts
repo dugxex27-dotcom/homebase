@@ -972,10 +972,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const baseUrl = req.headers.origin || `https://${req.headers.host}`;
       const amountInCents = Math.round(parseFloat(invoice.totalAmount as string) * 100);
 
-      // Calculate platform fee (e.g., 2.5%)
-      const platformFeePercent = 2.5;
-      const applicationFeeAmount = Math.round(amountInCents * (platformFeePercent / 100));
-
       // Create Checkout Session with connected account
       const session = await stripe.checkout.sessions.create({
         mode: 'payment',
@@ -993,7 +989,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
         ],
         payment_intent_data: {
-          application_fee_amount: applicationFeeAmount,
           transfer_data: {
             destination: company.stripeConnectAccountId,
           },
@@ -1097,10 +1092,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const baseUrl = req.headers.origin || `https://${req.headers.host}`;
       const amountInCents = Math.round(parseFloat(invoice.totalAmount as string) * 100);
 
-      // Calculate platform fee (2.5%)
-      const platformFeePercent = 2.5;
-      const applicationFeeAmount = Math.round(amountInCents * (platformFeePercent / 100));
-
       const session = await stripe.checkout.sessions.create({
         mode: 'payment',
         line_items: [
@@ -1117,7 +1108,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
         ],
         payment_intent_data: {
-          application_fee_amount: applicationFeeAmount,
           transfer_data: {
             destination: company.stripeConnectAccountId,
           },

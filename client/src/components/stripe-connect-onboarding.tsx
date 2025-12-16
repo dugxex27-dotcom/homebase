@@ -172,7 +172,7 @@ export function StripeConnectOnboarding() {
           </Button>
 
           <p className="text-xs text-center text-muted-foreground">
-            HomeBase collects a 2.5% platform fee on payments. Standard Stripe processing fees apply.
+            Secure payment processing powered by Stripe.
           </p>
         </CardContent>
       </Card>
