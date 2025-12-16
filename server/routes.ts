@@ -104,6 +104,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       maxHouses: 0,
       planType: 'homeowner',
       features: ['Contractor search', 'View past contractors', 'Make payments through app'],
+      referralCreditCap: '0.00',
       sortOrder: 0
     },
     {
@@ -114,7 +115,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       minHouses: 1,
       maxHouses: 2,
       planType: 'homeowner',
-      features: ['Up to 2 homes', 'Maintenance tracking', 'Home health score', 'DIY savings tracker', 'Service records'],
+      features: ['Up to 2 homes', 'Maintenance tracking', 'Home health score', 'DIY savings tracker', 'Service records', 'Earn up to $5/month in referral credits'],
+      referralCreditCap: '5.00',
       sortOrder: 1
     },
     {
@@ -125,7 +127,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       minHouses: 3,
       maxHouses: 6,
       planType: 'homeowner',
-      features: ['3-6 homes', 'All Base features', 'Priority contractor matching', 'Advanced maintenance insights'],
+      features: ['3-6 homes', 'All Base features', 'Priority contractor matching', 'Advanced maintenance insights', 'Earn up to $20/month in referral credits'],
+      referralCreditCap: '20.00',
       sortOrder: 2
     },
     {
@@ -136,7 +139,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       minHouses: 7,
       maxHouses: null, // unlimited
       planType: 'homeowner',
-      features: ['Unlimited homes', 'All Premium features', 'Dedicated support', 'Bulk maintenance scheduling'],
+      features: ['Unlimited homes', 'All Premium features', 'Dedicated support', 'Bulk maintenance scheduling', 'Earn up to $40/month in referral credits'],
+      referralCreditCap: '40.00',
       sortOrder: 3
     }
   ];
@@ -150,7 +154,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       minHouses: 0,
       maxHouses: 1, // 1 personal home for maintenance tracking
       planType: 'contractor',
-      features: ['Get found by homeowners', 'Messaging with homeowners', 'Send proposals', 'Reviews and ratings profile', '$20/month referral credit cap'],
+      features: ['Get found by homeowners', 'Messaging with homeowners', 'Send proposals', 'Reviews and ratings profile', 'Earn up to $20/month in referral credits'],
       referralCreditCap: '20.00',
       hasCrmAccess: false,
       sortOrder: 0
@@ -163,7 +167,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       minHouses: 0,
       maxHouses: 1,
       planType: 'contractor',
-      features: ['Everything in Basic', 'Full CRM with client management', 'Job scheduling & tracking', 'Quotes & invoices', 'Accept payments via Stripe Connect', 'Team management', 'Import from Jobber, ServiceTitan & more', 'Business analytics dashboard', '$40/month referral credit cap'],
+      features: ['Everything in Basic', 'Full CRM with client management', 'Job scheduling & tracking', 'Quotes & invoices', 'Accept payments via Stripe Connect', 'Team management', 'Import from Jobber, ServiceTitan & more', 'Business analytics dashboard', 'Earn up to $40/month in referral credits'],
       referralCreditCap: '40.00',
       hasCrmAccess: true,
       sortOrder: 1
