@@ -1847,7 +1847,7 @@ export default function ContractorProfile() {
         <h2 className="text-xl font-semibold mb-4 flex items-center gap-2" style={{ color: '#1560a2' }}>
           Payment Settings
         </h2>
-        <p className="text-muted-foreground mb-4">
+        <p className="mb-4" style={{ color: 'white' }}>
           Connect your bank account to receive payments directly from customers through HomeBase invoices.
         </p>
         <StripeConnectOnboarding />
