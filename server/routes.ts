@@ -290,87 +290,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   })();
 
-  // Secure logo upload endpoint with authentication
-  console.error('[STARTUP] Registering /api/upload-logo-raw endpoint');
-  app.post('/api/upload-logo-raw', uploadLimiter, async (req: any, res, next) => {
-    console.error('[LOGO-DEBUG] Session check:', {
-      hasSession: !!req.session,
-      isAuthenticated: req.session?.isAuthenticated,
-      hasUser: !!req.session?.user,
-      userRole: req.session?.user?.role,
-      userId: req.session?.user?.id
-    });
-    
-    // Check session-based authentication
-    if (!req.session?.isAuthenticated || !req.session?.user) {
-      console.error('[LOGO-DEBUG] Auth failed - no session');
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-    
-    if (req.session.user.role !== 'contractor') {
-      console.error('[LOGO-DEBUG] Auth failed - not contractor, role:', req.session.user.role);
-      return res.status(403).json({ message: "Forbidden - contractors only" });
-    }
-    
-    try {
-      console.error('[SECURE-UPLOAD] Request received from authenticated user:', req.session?.user?.id);
-      const { imageData } = req.body;
-      
-      if (!imageData) {
-        return res.status(400).json({ error: 'Missing imageData' });
-      }
-      
-      // Validate image data format
-      if (!imageData.startsWith('data:image/')) {
-        return res.status(400).json({ error: 'Invalid image format' });
-      }
-      
-      // Use authenticated user from session
-      const sessionUser = req.session?.user;
-      if (!sessionUser?.id) {
-        return res.status(401).json({ error: 'Not authenticated' });
-      }
-      
-      // Get user's company from storage layer
-      const user = await storage.getUser(sessionUser.id);
-      if (!user || !user.companyId) {
-        return res.status(404).json({ error: 'User or company not found' });
-      }
-      
-      const companyId = user.companyId;
-      
-      // Validate image size (max 5MB for logos)
-      const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
-      const buffer = Buffer.from(base64Data, 'base64');
-      if (buffer.length > 5 * 1024 * 1024) {
-        return res.status(400).json({ error: 'Image too large (max 5MB)' });
-      }
-      
-      // Validate file extension
-      const extensionMatch = imageData.match(/^data:image\/(jpeg|jpg|png|webp|gif);/);
-      if (!extensionMatch) {
-        return res.status(400).json({ error: 'Invalid image type. Allowed: jpeg, png, webp, gif' });
-      }
-      const fileExtension = extensionMatch[1] === 'jpeg' ? 'jpg' : extensionMatch[1];
-      
-      const filename = `${randomUUID()}.${fileExtension}`;
-      const path = `public/contractor-images/logos/${filename}`;
-      
-      const objectStorage = new ObjectStorageService();
-      await objectStorage.uploadFile(path, buffer, `image/${fileExtension}`);
-      const url = `/public/contractor-images/logos/${filename}`;
-      
-      // Update company using storage layer
-      await storage.updateCompany(companyId, { businessLogo: url });
-      
-      console.error('[SECURE-UPLOAD] Logo uploaded successfully for company:', companyId);
-      res.json({ success: true, url, companyId });
-    } catch (error: any) {
-      console.error('[SECURE-UPLOAD ERROR]', error);
-      res.status(500).json({ error: 'Failed to upload logo' });
-    }
-  });
-  
   // IMMEDIATE TEST: Simple test endpoint to verify routing works
   app.post('/api/test-simple', (req, res) => {
     console.error("===== SIMPLE TEST ENDPOINT CALLED =====");
@@ -434,6 +353,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Set up Replit Auth (handles Google OAuth via Replit)
   await setupAuth(app);
+
+  // Secure logo upload endpoint with authentication (MUST be after setupAuth for session access)
+  console.error('[STARTUP] Registering /api/upload-logo-raw endpoint');
+  app.post('/api/upload-logo-raw', uploadLimiter, async (req: any, res) => {
+    console.error('[LOGO-DEBUG] Session check:', {
+      hasSession: !!req.session,
+      isAuthenticated: req.session?.isAuthenticated,
+      hasUser: !!req.session?.user,
+      userRole: req.session?.user?.role,
+      userId: req.session?.user?.id
+    });
+    
+    // Check session-based authentication
+    if (!req.session?.isAuthenticated || !req.session?.user) {
+      console.error('[LOGO-DEBUG] Auth failed - no session');
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    if (req.session.user.role !== 'contractor') {
+      console.error('[LOGO-DEBUG] Auth failed - not contractor, role:', req.session.user.role);
+      return res.status(403).json({ message: "Forbidden - contractors only" });
+    }
+    
+    try {
+      console.error('[SECURE-UPLOAD] Request received from authenticated user:', req.session?.user?.id);
+      const { imageData } = req.body;
+      
+      if (!imageData) {
+        return res.status(400).json({ error: 'Missing imageData' });
+      }
+      
+      // Validate image data format
+      if (!imageData.startsWith('data:image/')) {
+        return res.status(400).json({ error: 'Invalid image format' });
+      }
+      
+      // Get user's company from storage layer
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || !user.companyId) {
+        return res.status(404).json({ error: 'User or company not found' });
+      }
+      
+      const companyId = user.companyId;
+      
+      // Validate image size (max 5MB for logos)
+      const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+      if (buffer.length > 5 * 1024 * 1024) {
+        return res.status(400).json({ error: 'Image too large (max 5MB)' });
+      }
+      
+      // Validate file extension
+      const extensionMatch = imageData.match(/^data:image\/(jpeg|jpg|png|webp|gif);/);
+      if (!extensionMatch) {
+        return res.status(400).json({ error: 'Invalid image type. Allowed: jpeg, png, webp, gif' });
+      }
+      const fileExtension = extensionMatch[1] === 'jpeg' ? 'jpg' : extensionMatch[1];
+      
+      const filename = `${randomUUID()}.${fileExtension}`;
+      const path = `public/contractor-images/logos/${filename}`;
+      
+      const objectStorage = new ObjectStorageService();
+      await objectStorage.uploadFile(path, buffer, `image/${fileExtension}`);
+      const url = `/public/contractor-images/logos/${filename}`;
+      
+      // Update company using storage layer
+      await storage.updateCompany(companyId, { businessLogo: url });
+      
+      console.error('[SECURE-UPLOAD] Logo uploaded successfully for company:', companyId);
+      res.json({ success: true, url, companyId });
+    } catch (error: any) {
+      console.error('[SECURE-UPLOAD ERROR]', error);
+      res.status(500).json({ error: 'Failed to upload logo' });
+    }
+  });
 
   // Get current user's subscription info (must be after setupAuth for session access)
   app.get('/api/my-subscription', async (req: any, res) => {
