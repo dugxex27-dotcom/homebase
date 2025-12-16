@@ -553,9 +553,7 @@ export default function SignInHomeowner() {
                 onClick={handleDemoLogin}
                 data-testid="button-demo-homeowner-signin"
                 style={{ backgroundColor: '#2c0f5b' }}
-              >
-                Try Homeowner Demo
-              </Button>
+              >Try Homeowner Demo (Base Plan)</Button>
             </div>
           </CardContent>
         </Card>
