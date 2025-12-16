@@ -232,7 +232,8 @@ export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
 
   // Check OAuth authentication
   const user = req.user as any;
-  if (!req.isAuthenticated() || !user?.expires_at) {
+  const isOAuthAuthenticated = typeof req.isAuthenticated === 'function' && req.isAuthenticated();
+  if (!isOAuthAuthenticated || !user?.expires_at) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
