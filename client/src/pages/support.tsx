@@ -28,29 +28,90 @@ const ticketFormSchema = insertSupportTicketSchema.extend({
 type TicketFormData = z.infer<typeof ticketFormSchema>;
 
 const faqs = [
+  // Payment & Billing
   {
-    question: "How do I add a new house to my account?",
-    answer: "Go to the Houses page and click 'Add House'. Fill in your address, climate zone, and home details. Your house will be added to your dashboard where you can track maintenance tasks and service records."
+    question: "How do I pay a contractor's invoice?",
+    answer: "When a contractor sends you an invoice, you'll receive a payment link via email or can access it directly from your messages. Click the link to view the invoice details and pay securely with your credit card through Stripe. You'll receive a confirmation once payment is complete."
   },
+  {
+    question: "How do contractors receive payments?",
+    answer: "Contractors connect their bank account through Stripe Connect in their profile settings. When you pay an invoice, the payment goes directly to their connected bank account. Contractors can track all payments in their CRM dashboard."
+  },
+  {
+    question: "Are there any fees for using HomeBase payments?",
+    answer: "HomeBase does not charge any platform fees on payments! Contractors keep 100% of what they charge. Only standard Stripe credit card processing fees apply, which are handled by Stripe directly."
+  },
+  {
+    question: "What payment methods are accepted?",
+    answer: "We accept all major credit and debit cards including Visa, Mastercard, American Express, and Discover. Payments are processed securely through Stripe, so your card information is never stored on our servers."
+  },
+  // Subscriptions
   {
     question: "How does the 14-day free trial work?",
     answer: "All new users get 14 days of free access to all features. After 14 days, you'll need to choose a subscription plan based on the number of properties you manage. You can cancel anytime during the trial with no charge."
   },
   {
     question: "What are the subscription plans?",
-    answer: "We offer three homeowner plans: Base ($5/month for up to 2 homes), Premium ($20/month for 3-6 homes), and Premium Plus ($40/month for 7+ homes). All plans include our referral rewards program."
+    answer: "We offer three homeowner plans: Base ($5/month for up to 2 homes), Premium ($20/month for 3-6 homes), and Premium Plus ($40/month for 7+ homes). Contractors have Basic ($20/month) and Pro ($40/month) plans. All plans include our referral rewards program."
   },
   {
     question: "How do referral rewards work?",
-    answer: "Share your unique referral code with friends. For each person who signs up and maintains an active subscription, you get $1/month off your bill. When your referrals equal your monthly cost, your subscription becomes free! (Base: 5 referrals, Premium: 20, Premium Plus: 40, Contractor: 20)"
+    answer: "Share your unique referral code with friends. For each person who signs up and maintains an active subscription, you earn $1/month credit toward your subscription. Earn enough referrals and your subscription becomes completely free! Your referral credit cap matches your plan price."
   },
   {
-    question: "How do I connect with a contractor?",
-    answer: "Use your unique Connection Code to share with contractors. They can enter your code to access your service history and submit proposals. Find contractors within 20 miles of your property using the 'Find Contractor' links on maintenance tasks."
+    question: "How do I cancel my subscription?",
+    answer: "Go to Settings > Billing and click 'Cancel Subscription'. Your access will continue until the end of your current billing period. You can reactivate anytime to restore your data."
+  },
+  // Homeowner Features
+  {
+    question: "How do I add a new house to my account?",
+    answer: "Go to the Houses page and click 'Add House'. Fill in your address, climate zone, and home details. Your house will be added to your dashboard where you can track maintenance tasks and service records."
+  },
+  {
+    question: "How do I add multiple properties?",
+    answer: "HomeBase supports multiple properties! Simply go to the Houses page and click 'Add House' for each property. You can switch between properties from your dashboard. Higher subscription tiers are recommended for managing more properties and unlock additional features."
   },
   {
     question: "What is the Home Health Score?",
     answer: "Your Home Health Score is a gamified metric (0-100) based on completed vs. missed maintenance tasks. Complete seasonal tasks to improve your score and unlock achievements. It helps you track how well you're maintaining your property."
+  },
+  {
+    question: "How do I find contractors in my area?",
+    answer: "Click 'Find Contractors' from your dashboard or any maintenance task. We'll show you verified contractors within 20 miles of your property who specialize in the service you need. You can view their profiles, ratings, and request quotes directly."
+  },
+  {
+    question: "How does the connection code work?",
+    answer: "Your unique 8-character Connection Code lets you securely share your home's service history with contractors. Give your code to a contractor, and they can access your records to provide more accurate quotes. You control who has access and can revoke it anytime."
+  },
+  // Contractor Features
+  {
+    question: "How do I set up payments to receive money?",
+    answer: "Go to your Profile page and scroll down to 'Payment Settings', or access it through the CRM Billing & Payments tab. Click 'Connect with Stripe' to link your bank account. Once verified, you can accept credit card payments directly through your invoices."
+  },
+  {
+    question: "What's included in the Contractor Pro plan?",
+    answer: "The Pro plan ($40/month) includes full CRM access: client management, job scheduling, quotes and invoices, Stripe payment processing, team management, dashboard analytics, and external CRM imports. You also get double the referral credit cap compared to Basic."
+  },
+  {
+    question: "How do I import leads from other CRMs?",
+    answer: "In the CRM tab, go to Integrations and set up a webhook connection. We support imports from popular CRMs like Jobber, ServiceTitan, and Housecall Pro. Leads sync automatically once connected, so you never miss a potential customer."
+  },
+  {
+    question: "How do I create and send invoices?",
+    answer: "From the CRM Invoices tab, click 'Create Invoice'. Add line items, set the due date, and save. Then click 'Send' to email a payment link to your client. They can pay online with a credit card, and you'll be notified when payment is received."
+  },
+  // General
+  {
+    question: "Is my data secure?",
+    answer: "Absolutely! We use enterprise-grade security including encrypted connections (HTTPS), secure session management, SQL injection and XSS prevention, and rate limiting. Your payment information is processed through Stripe's PCI-compliant system and never stored on our servers."
+  },
+  {
+    question: "How do I contact support?",
+    answer: "You can submit a support ticket right here on this page! Select your issue category, describe your problem, and we'll respond within 24-48 hours. For urgent issues, mark your ticket as high priority and we'll prioritize your request."
+  },
+  {
+    question: "Can I transfer my house to a new owner?",
+    answer: "Yes! If you're selling your home, you can transfer all service records and maintenance history to the new owner. Go to your house settings and select 'Transfer Ownership'. The new owner will receive a secure link to accept the transfer and claim the property history."
   },
   {
     question: "How does the DIY Savings Tracker work?",
@@ -58,15 +119,7 @@ const faqs = [
   },
   {
     question: "Can I become a Real Estate Agent affiliate?",
-    answer: "Yes! Sign up as a Real Estate Agent to get a unique referral code and shareable QR code. Earn $10 for each referral after they maintain 4 consecutive months of active subscription. Track your earnings in the Agent Dashboard."
-  },
-  {
-    question: "How do I cancel my subscription?",
-    answer: "Go to Settings > Billing and click 'Cancel Subscription'. Your access will continue until the end of your current billing period. You can reactivate anytime to restore your data."
-  },
-  {
-    question: "Is my data secure?",
-    answer: "Yes! We use enterprise-grade security including encrypted connections, secure session cookies, SQL injection protection, and XSS prevention. Your payment information is processed securely through Stripe and never stored on our servers."
+    answer: "Yes! Sign up as a Real Estate Agent to get a unique referral code and shareable QR code. Earn $15 for each referral after they complete 4 consecutive months of paid subscription. Track your referrals and payouts in the Agent Dashboard."
   }
 ];
 
