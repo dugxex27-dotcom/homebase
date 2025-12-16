@@ -9368,20 +9368,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // CRITICAL FIX: Merge company photos into profile response
-      let profileWithPhotos = { ...profile };
+      // CRITICAL FIX: Merge ALL company data into profile response for persistence
+      let profileWithCompanyData = { ...profile };
       if ((profile as any).companyId) {
         const company = await storage.getCompany((profile as any).companyId);
         if (company) {
-          profileWithPhotos = {
+          // Merge company data - company fields take precedence as they are the source of truth
+          profileWithCompanyData = {
             ...profile,
+            // Business Information fields from company table
+            company: company.name || (profile as any).company || '',
+            address: company.address || (profile as any).address || '',
+            city: company.city || (profile as any).city || '',
+            state: company.state || (profile as any).state || '',
+            postalCode: company.postalCode || (profile as any).postalCode || '',
+            phone: company.phone || (profile as any).phone || '',
+            email: company.email || (profile as any).email || '',
+            serviceRadius: company.serviceRadius || (profile as any).serviceRadius || 25,
+            services: (company.services && company.services.length > 0) ? company.services : ((profile as any).services || []),
+            hasEmergencyServices: company.hasEmergencyServices || (profile as any).hasEmergencyServices || false,
+            // Bio and experience from company
+            bio: company.bio || (profile as any).bio || '',
+            experience: company.experience || (profile as any).experience || 0,
+            // Social links from company
+            website: company.website || (profile as any).website || '',
+            facebook: company.facebook || (profile as any).facebook || '',
+            instagram: company.instagram || (profile as any).instagram || '',
+            linkedin: company.linkedin || (profile as any).linkedin || '',
+            googleBusinessUrl: company.googleBusinessUrl || (profile as any).googleBusinessUrl || '',
+            // Photos
             businessLogo: company.businessLogo || '',
             projectPhotos: company.projectPhotos || []
           };
         }
       }
 
-      res.json(profileWithPhotos);
+      res.json(profileWithCompanyData);
     } catch (error) {
       console.error("Error fetching contractor profile:", error);
       res.status(500).json({ message: "Failed to fetch profile" });
