@@ -9368,26 +9368,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // CRITICAL FIX: Merge ALL company data into profile response for persistence
+      // CRITICAL FIX: Merge company data into profile response for persistence
+      // Profile (contractors table) is source of truth for business info (name, phone, email, address)
+      // Company table is source of truth for company-specific fields (bio, experience, photos, services)
       let profileWithCompanyData = { ...profile };
       if ((profile as any).companyId) {
         const company = await storage.getCompany((profile as any).companyId);
         if (company) {
-          // Merge company data - company fields take precedence as they are the source of truth
           profileWithCompanyData = {
             ...profile,
-            // Business Information fields from company table
-            company: company.name || (profile as any).company || '',
-            address: company.address || (profile as any).address || '',
-            city: company.city || (profile as any).city || '',
-            state: company.state || (profile as any).state || '',
-            postalCode: company.postalCode || (profile as any).postalCode || '',
-            phone: company.phone || (profile as any).phone || '',
-            email: company.email || (profile as any).email || '',
+            // Business Information: PROFILE takes precedence (contractors table is source of truth)
+            company: (profile as any).company || company.name || '',
+            name: (profile as any).name || '',
+            address: (profile as any).address || company.address || '',
+            city: (profile as any).city || company.city || '',
+            state: (profile as any).state || company.state || '',
+            postalCode: (profile as any).postalCode || company.postalCode || '',
+            phone: (profile as any).phone || company.phone || '',
+            email: (profile as any).email || company.email || '',
+            // Company-specific fields: COMPANY takes precedence
             serviceRadius: company.serviceRadius || (profile as any).serviceRadius || 25,
             services: (company.services && company.services.length > 0) ? company.services : ((profile as any).services || []),
             hasEmergencyServices: company.hasEmergencyServices || (profile as any).hasEmergencyServices || false,
-            // Bio and experience from company
             bio: company.bio || (profile as any).bio || '',
             experience: company.experience || (profile as any).experience || 0,
             // Social links from company
@@ -9396,7 +9398,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             instagram: company.instagram || (profile as any).instagram || '',
             linkedin: company.linkedin || (profile as any).linkedin || '',
             googleBusinessUrl: company.googleBusinessUrl || (profile as any).googleBusinessUrl || '',
-            // Photos
+            // Photos from company
             businessLogo: company.businessLogo || '',
             projectPhotos: company.projectPhotos || []
           };
