@@ -70,6 +70,11 @@ const SignInAgent = lazy(() => import("./pages/signin-agent"));
 const Onboarding = lazy(() => import("./pages/onboarding"));
 const Invite = lazy(() => import("./pages/invite"));
 
+// Lazy-loaded pages - Payment (public)
+const PayInvoice = lazy(() => import("./pages/pay-invoice").then(m => ({ default: m.default })));
+const PaymentSuccess = lazy(() => import("./pages/pay-invoice").then(m => ({ default: m.PaymentSuccessPage })));
+const PaymentCancelled = lazy(() => import("./pages/pay-invoice").then(m => ({ default: m.PaymentCancelledPage })));
+
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
   
@@ -105,6 +110,9 @@ function Router() {
           <Route path="/terms-of-service" component={TermsOfService} />
           <Route path="/privacy-policy" component={PrivacyPolicy} />
           <Route path="/legal-disclaimer" component={LegalDisclaimer} />
+          <Route path="/pay/invoice/:invoiceId" component={PayInvoice} />
+          <Route path="/pay/success" component={PaymentSuccess} />
+          <Route path="/pay/cancelled" component={PaymentCancelled} />
           <Route path="/" component={Landing} />
           <Route component={Landing} />
         </Switch>
@@ -139,6 +147,9 @@ function Router() {
         <Route path="/privacy-policy" component={PrivacyPolicy} />
         <Route path="/legal-disclaimer" component={LegalDisclaimer} />
         <Route path="/signin" component={SignIn} />
+        <Route path="/pay/invoice/:invoiceId" component={PayInvoice} />
+        <Route path="/pay/success" component={PaymentSuccess} />
+        <Route path="/pay/cancelled" component={PaymentCancelled} />
         
         {/* Admin routes */}
         {isAdmin && (

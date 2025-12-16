@@ -23,6 +23,8 @@ import { z } from "zod";
 import { format } from "date-fns";
 import { Link } from "wouter";
 import { ProFeatureGate, ProUpgradeBanner, ProBenefitsDialog } from "@/components/pro-feature-gate";
+import { StripeConnectOnboarding } from "@/components/stripe-connect-onboarding";
+import { CreditCard } from "lucide-react";
 
 // Types
 interface CrmLead {
@@ -837,6 +839,11 @@ export default function ContractorCRMPage() {
           <TabsTrigger value="dashboard" data-testid="tab-dashboard" className="relative">
             <LayoutDashboard className="h-4 w-4 mr-2" />
             Dashboard
+            {!hasProAccess && <Crown className="h-3 w-3 ml-1 text-yellow-500" />}
+          </TabsTrigger>
+          <TabsTrigger value="billing" data-testid="tab-billing" className="relative">
+            <CreditCard className="h-4 w-4 mr-2" />
+            Billing & Payments
             {!hasProAccess && <Crown className="h-3 w-3 ml-1 text-yellow-500" />}
           </TabsTrigger>
         </TabsList>
@@ -2222,6 +2229,87 @@ export default function ContractorCRMPage() {
                   </CardContent>
                 </Card>
               </div>
+            </div>
+          </ProFeatureGate>
+        </TabsContent>
+
+        {/* Billing & Payments Tab */}
+        <TabsContent value="billing">
+          <ProFeatureGate featureName="Billing & Payments" featureIcon={CreditCard}>
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-2xl font-bold">Billing & Payments</h2>
+                  <p className="text-muted-foreground">Accept payments and manage your Stripe account</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <StripeConnectOnboarding />
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <DollarSign className="h-5 w-5" />
+                      Payment Overview
+                    </CardTitle>
+                    <CardDescription>Your payment collection summary</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <span className="text-muted-foreground">Platform Fee</span>
+                        <span className="font-medium">2.5%</span>
+                      </div>
+                      <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <span className="text-muted-foreground">Stripe Processing</span>
+                        <span className="font-medium">2.9% + $0.30</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-4">
+                        When customers pay invoices through HomeBase, payments go directly to your connected Stripe account after fees.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>How it Works</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="text-center p-4">
+                      <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-3">
+                        <span className="font-bold text-purple-600">1</span>
+                      </div>
+                      <h4 className="font-medium mb-1">Create Invoice</h4>
+                      <p className="text-sm text-muted-foreground">Create an invoice in the Invoices tab</p>
+                    </div>
+                    <div className="text-center p-4">
+                      <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-3">
+                        <span className="font-bold text-purple-600">2</span>
+                      </div>
+                      <h4 className="font-medium mb-1">Send Payment Link</h4>
+                      <p className="text-sm text-muted-foreground">Share the payment link with your customer</p>
+                    </div>
+                    <div className="text-center p-4">
+                      <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-3">
+                        <span className="font-bold text-purple-600">3</span>
+                      </div>
+                      <h4 className="font-medium mb-1">Customer Pays</h4>
+                      <p className="text-sm text-muted-foreground">Customer pays securely via Stripe</p>
+                    </div>
+                    <div className="text-center p-4">
+                      <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-3">
+                        <span className="font-bold text-purple-600">4</span>
+                      </div>
+                      <h4 className="font-medium mb-1">Get Paid</h4>
+                      <p className="text-sm text-muted-foreground">Funds deposited to your bank</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </ProFeatureGate>
         </TabsContent>

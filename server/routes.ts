@@ -710,6 +710,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
           break;
         }
 
+        // Handle Connect payment events (invoice payments from homeowners to contractors)
+        case 'checkout.session.completed': {
+          const session = event.data.object as Stripe.Checkout.Session;
+          
+          // Check if this is a CRM invoice payment
+          if (session.metadata?.type === 'crm_invoice_payment') {
+            const invoiceId = session.metadata.invoiceId;
+            const companyId = session.metadata.companyId;
+            const clientId = session.metadata.clientId;
+            
+            if (invoiceId) {
+              const invoice = await storage.getCrmInvoice(invoiceId);
+              if (invoice) {
+                // Update invoice status to paid
+                await storage.updateCrmInvoice(invoiceId, {
+                  status: 'paid',
+                  paidAt: new Date(),
+                  paymentMethod: 'credit_card',
+                  paymentNotes: `Paid via Stripe checkout session: ${session.id}`,
+                });
+                
+                console.log('[STRIPE WEBHOOK] Invoice paid:', invoiceId, 'Amount:', session.amount_total);
+              }
+            }
+          }
+          break;
+        }
+
+        case 'payment_intent.succeeded': {
+          const paymentIntent = event.data.object as Stripe.PaymentIntent;
+          
+          // Check if this is a CRM invoice payment
+          if (paymentIntent.metadata?.invoiceId) {
+            const invoiceId = paymentIntent.metadata.invoiceId;
+            const invoice = await storage.getCrmInvoice(invoiceId);
+            
+            if (invoice && invoice.status !== 'paid') {
+              await storage.updateCrmInvoice(invoiceId, {
+                status: 'paid',
+                paidAt: new Date(),
+                paymentMethod: 'credit_card',
+                paymentNotes: `Payment intent: ${paymentIntent.id}`,
+              });
+              
+              console.log('[STRIPE WEBHOOK] Payment intent succeeded for invoice:', invoiceId);
+            }
+          }
+          break;
+        }
+
         default:
           console.log('[STRIPE WEBHOOK] Unhandled event type:', event.type);
       }
@@ -717,6 +767,380 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ received: true });
     } catch (error: any) {
       console.error('[STRIPE WEBHOOK] Error processing event:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ========================================
+  // STRIPE CONNECT - Contractor Payment Processing
+  // ========================================
+
+  // Create Stripe Connect account for contractor
+  app.post('/api/contractor/stripe-connect/create', isAuthenticated, requireRole(['contractor']), async (req: any, res) => {
+    if (!stripe) {
+      return res.status(500).json({ error: 'Stripe not configured' });
+    }
+
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || !user.companyId) {
+        return res.status(404).json({ error: 'Company not found' });
+      }
+
+      const company = await storage.getCompany(user.companyId);
+      if (!company) {
+        return res.status(404).json({ error: 'Company not found' });
+      }
+
+      // Check if account already exists
+      if (company.stripeConnectAccountId) {
+        return res.json({ accountId: company.stripeConnectAccountId, exists: true });
+      }
+
+      // Create Express account for contractor
+      const account = await stripe.accounts.create({
+        type: 'express',
+        country: 'US',
+        email: user.email,
+        capabilities: {
+          card_payments: { requested: true },
+          transfers: { requested: true },
+        },
+        business_type: 'individual',
+        metadata: {
+          companyId: company.id,
+          userId: user.id,
+        },
+      });
+
+      // Save account ID to company
+      await storage.updateCompany(company.id, {
+        stripeConnectAccountId: account.id,
+      });
+
+      console.log('[STRIPE CONNECT] Created account for company:', company.id, account.id);
+      res.json({ accountId: account.id, exists: false });
+    } catch (error: any) {
+      console.error('[STRIPE CONNECT] Error creating account:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create Stripe Connect onboarding link
+  app.post('/api/contractor/stripe-connect/onboarding-link', isAuthenticated, requireRole(['contractor']), async (req: any, res) => {
+    if (!stripe) {
+      return res.status(500).json({ error: 'Stripe not configured' });
+    }
+
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || !user.companyId) {
+        return res.status(404).json({ error: 'Company not found' });
+      }
+
+      const company = await storage.getCompany(user.companyId);
+      if (!company || !company.stripeConnectAccountId) {
+        return res.status(400).json({ error: 'No Stripe Connect account. Create one first.' });
+      }
+
+      const baseUrl = req.headers.origin || `https://${req.headers.host}`;
+
+      const accountLink = await stripe.accountLinks.create({
+        account: company.stripeConnectAccountId,
+        refresh_url: `${baseUrl}/crm?tab=billing&stripe_refresh=true`,
+        return_url: `${baseUrl}/crm?tab=billing&stripe_success=true`,
+        type: 'account_onboarding',
+      });
+
+      res.json({ url: accountLink.url });
+    } catch (error: any) {
+      console.error('[STRIPE CONNECT] Error creating onboarding link:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get Stripe Connect account status
+  app.get('/api/contractor/stripe-connect/status', isAuthenticated, requireRole(['contractor']), async (req: any, res) => {
+    if (!stripe) {
+      return res.status(500).json({ error: 'Stripe not configured' });
+    }
+
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || !user.companyId) {
+        return res.status(404).json({ error: 'Company not found' });
+      }
+
+      const company = await storage.getCompany(user.companyId);
+      if (!company) {
+        return res.status(404).json({ error: 'Company not found' });
+      }
+
+      if (!company.stripeConnectAccountId) {
+        return res.json({
+          hasAccount: false,
+          onboardingComplete: false,
+          chargesEnabled: false,
+          payoutsEnabled: false,
+        });
+      }
+
+      // Fetch account from Stripe to get current status
+      const account = await stripe.accounts.retrieve(company.stripeConnectAccountId);
+
+      // Update company with latest status
+      await storage.updateCompany(company.id, {
+        stripeOnboardingComplete: account.details_submitted,
+        stripeChargesEnabled: account.charges_enabled,
+        stripePayoutsEnabled: account.payouts_enabled,
+      });
+
+      res.json({
+        hasAccount: true,
+        accountId: company.stripeConnectAccountId,
+        onboardingComplete: account.details_submitted,
+        chargesEnabled: account.charges_enabled,
+        payoutsEnabled: account.payouts_enabled,
+      });
+    } catch (error: any) {
+      console.error('[STRIPE CONNECT] Error fetching status:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create Stripe Connect dashboard link for contractor
+  app.post('/api/contractor/stripe-connect/dashboard-link', isAuthenticated, requireRole(['contractor']), async (req: any, res) => {
+    if (!stripe) {
+      return res.status(500).json({ error: 'Stripe not configured' });
+    }
+
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || !user.companyId) {
+        return res.status(404).json({ error: 'Company not found' });
+      }
+
+      const company = await storage.getCompany(user.companyId);
+      if (!company || !company.stripeConnectAccountId) {
+        return res.status(400).json({ error: 'No Stripe Connect account' });
+      }
+
+      const loginLink = await stripe.accounts.createLoginLink(company.stripeConnectAccountId);
+
+      res.json({ url: loginLink.url });
+    } catch (error: any) {
+      console.error('[STRIPE CONNECT] Error creating dashboard link:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create payment link for invoice (contractor sends to homeowner)
+  app.post('/api/crm/invoices/:invoiceId/payment-link', isAuthenticated, requireRole(['contractor']), async (req: any, res) => {
+    if (!stripe) {
+      return res.status(500).json({ error: 'Stripe not configured' });
+    }
+
+    try {
+      const { invoiceId } = req.params;
+      const user = await storage.getUser(req.session.user.id);
+      
+      if (!user || !user.companyId) {
+        return res.status(404).json({ error: 'Company not found' });
+      }
+
+      const company = await storage.getCompany(user.companyId);
+      if (!company || !company.stripeConnectAccountId || !company.stripeChargesEnabled) {
+        return res.status(400).json({ error: 'Stripe Connect not set up or charges not enabled' });
+      }
+
+      // Get invoice
+      const invoice = await storage.getCrmInvoice(invoiceId);
+      if (!invoice || (invoice.contractorUserId !== user.id && invoice.companyId !== user.companyId)) {
+        return res.status(404).json({ error: 'Invoice not found' });
+      }
+
+      if (invoice.status === 'paid') {
+        return res.status(400).json({ error: 'Invoice is already paid' });
+      }
+
+      // Get client for email
+      const client = await storage.getCrmClient(invoice.clientId);
+      if (!client) {
+        return res.status(404).json({ error: 'Client not found' });
+      }
+
+      const baseUrl = req.headers.origin || `https://${req.headers.host}`;
+      const amountInCents = Math.round(parseFloat(invoice.totalAmount as string) * 100);
+
+      // Calculate platform fee (e.g., 2.5%)
+      const platformFeePercent = 2.5;
+      const applicationFeeAmount = Math.round(amountInCents * (platformFeePercent / 100));
+
+      // Create Checkout Session with connected account
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        line_items: [
+          {
+            price_data: {
+              currency: 'usd',
+              product_data: {
+                name: invoice.title,
+                description: `Invoice ${invoice.invoiceNumber}`,
+              },
+              unit_amount: amountInCents,
+            },
+            quantity: 1,
+          },
+        ],
+        payment_intent_data: {
+          application_fee_amount: applicationFeeAmount,
+          transfer_data: {
+            destination: company.stripeConnectAccountId,
+          },
+          metadata: {
+            invoiceId: invoice.id,
+            companyId: company.id,
+            clientId: client.id,
+          },
+        },
+        customer_email: client.email || undefined,
+        success_url: `${baseUrl}/pay/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${baseUrl}/pay/cancelled?invoice=${invoiceId}`,
+        metadata: {
+          invoiceId: invoice.id,
+          companyId: company.id,
+          clientId: client.id,
+          type: 'crm_invoice_payment',
+        },
+      });
+
+      // Update invoice with payment link
+      await storage.updateCrmInvoice(invoiceId, {
+        status: 'sent',
+        sentAt: new Date(),
+      });
+
+      res.json({ 
+        paymentUrl: session.url,
+        sessionId: session.id,
+      });
+    } catch (error: any) {
+      console.error('[STRIPE CONNECT] Error creating payment link:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Public payment page - get invoice details for payment
+  app.get('/api/pay/invoice/:invoiceId', async (req: any, res) => {
+    try {
+      const { invoiceId } = req.params;
+      const { token } = req.query;
+
+      // For now, allow access to invoice details for payment
+      // In production, you'd want a signed token or session
+      const invoice = await storage.getCrmInvoice(invoiceId);
+      if (!invoice) {
+        return res.status(404).json({ error: 'Invoice not found' });
+      }
+
+      const client = await storage.getCrmClient(invoice.clientId);
+      const contractor = await storage.getUser(invoice.contractorUserId);
+      const company = invoice.companyId ? await storage.getCompany(invoice.companyId) : null;
+
+      res.json({
+        id: invoice.id,
+        invoiceNumber: invoice.invoiceNumber,
+        title: invoice.title,
+        description: invoice.description,
+        status: invoice.status,
+        totalAmount: invoice.totalAmount,
+        dueDate: invoice.dueDate,
+        lineItems: invoice.lineItems,
+        clientName: client?.name || 'Customer',
+        contractorName: contractor?.firstName && contractor?.lastName 
+          ? `${contractor.firstName} ${contractor.lastName}` 
+          : contractor?.email,
+        companyName: company?.businessName,
+        companyLogo: company?.businessLogo,
+      });
+    } catch (error: any) {
+      console.error('[PAYMENT] Error fetching invoice:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Process payment for invoice (creates checkout session)
+  app.post('/api/pay/invoice/:invoiceId/checkout', async (req: any, res) => {
+    if (!stripe) {
+      return res.status(500).json({ error: 'Stripe not configured' });
+    }
+
+    try {
+      const { invoiceId } = req.params;
+      const { customerEmail } = req.body;
+
+      const invoice = await storage.getCrmInvoice(invoiceId);
+      if (!invoice) {
+        return res.status(404).json({ error: 'Invoice not found' });
+      }
+
+      if (invoice.status === 'paid') {
+        return res.status(400).json({ error: 'Invoice is already paid' });
+      }
+
+      const company = invoice.companyId ? await storage.getCompany(invoice.companyId) : null;
+      if (!company || !company.stripeConnectAccountId || !company.stripeChargesEnabled) {
+        return res.status(400).json({ error: 'Payment not available for this invoice' });
+      }
+
+      const client = await storage.getCrmClient(invoice.clientId);
+      const baseUrl = req.headers.origin || `https://${req.headers.host}`;
+      const amountInCents = Math.round(parseFloat(invoice.totalAmount as string) * 100);
+
+      // Calculate platform fee (2.5%)
+      const platformFeePercent = 2.5;
+      const applicationFeeAmount = Math.round(amountInCents * (platformFeePercent / 100));
+
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        line_items: [
+          {
+            price_data: {
+              currency: 'usd',
+              product_data: {
+                name: invoice.title,
+                description: `Invoice ${invoice.invoiceNumber}`,
+              },
+              unit_amount: amountInCents,
+            },
+            quantity: 1,
+          },
+        ],
+        payment_intent_data: {
+          application_fee_amount: applicationFeeAmount,
+          transfer_data: {
+            destination: company.stripeConnectAccountId,
+          },
+          metadata: {
+            invoiceId: invoice.id,
+            companyId: company.id,
+            clientId: client?.id || '',
+          },
+        },
+        customer_email: customerEmail || client?.email || undefined,
+        success_url: `${baseUrl}/pay/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${baseUrl}/pay/invoice/${invoiceId}`,
+        metadata: {
+          invoiceId: invoice.id,
+          companyId: company.id,
+          clientId: client?.id || '',
+          type: 'crm_invoice_payment',
+        },
+      });
+
+      res.json({ url: session.url, sessionId: session.id });
+    } catch (error: any) {
+      console.error('[PAYMENT] Error creating checkout session:', error);
       res.status(500).json({ error: error.message });
     }
   });
