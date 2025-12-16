@@ -150,10 +150,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       minHouses: 0,
       maxHouses: 1, // 1 personal home for maintenance tracking
       planType: 'contractor',
-      features: ['Lead management', 'Basic CRM', 'Proposal system', '$20/month referral credit cap'],
+      features: ['Get found by homeowners', 'Messaging with homeowners', 'Send proposals', 'Reviews and ratings profile', '$20/month referral credit cap'],
       referralCreditCap: '20.00',
       hasCrmAccess: false,
       sortOrder: 0
+    },
+    {
+      tierName: 'contractor_pro',
+      displayName: 'Contractor Pro',
+      description: 'Full CRM for growing contracting businesses',
+      monthlyPrice: '40.00',
+      minHouses: 0,
+      maxHouses: 1,
+      planType: 'contractor',
+      features: ['Everything in Basic', 'Full CRM with client management', 'Job scheduling & tracking', 'Quotes & invoices', 'Accept payments via Stripe Connect', 'Team management', 'Import from Jobber, ServiceTitan & more', 'Business analytics dashboard', '$40/month referral credit cap'],
+      referralCreditCap: '40.00',
+      hasCrmAccess: true,
+      sortOrder: 1
     }
   ];
 
@@ -176,6 +189,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: 'Failed to fetch homeowner plans' });
     }
   });
+
+  // Get contractor plans only
+  app.get('/api/plans/contractor', async (_req, res) => {
+    try {
+      const plans = await storage.getSubscriptionPlansByType('contractor');
+      res.json(plans);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch contractor plans' });
+    }
+  });
+
+  // Seed/sync subscription plans to database (admin only)
+  app.post('/api/admin/seed-plans', isAuthenticated, async (req: any, res) => {
+    try {
+      const user = req.session.user;
+      if (!user?.email || !['sarah@example.com', 'admin@homebase.com'].includes(user.email)) {
+        return res.status(403).json({ message: 'Admin access required' });
+      }
+
+      const allPlans = [...HOMEOWNER_PLANS, ...CONTRACTOR_PLANS];
+      let created = 0;
+      let updated = 0;
+
+      for (const plan of allPlans) {
+        const existing = await storage.getSubscriptionPlanByTier(plan.tierName);
+        if (existing) {
+          // Update existing plan
+          await db.update(subscriptionPlans)
+            .set({
+              displayName: plan.displayName,
+              description: plan.description,
+              monthlyPrice: plan.monthlyPrice,
+              minHouses: plan.minHouses,
+              maxHouses: plan.maxHouses,
+              planType: plan.planType,
+              features: plan.features,
+              referralCreditCap: (plan as any).referralCreditCap || null,
+              hasCrmAccess: (plan as any).hasCrmAccess || false,
+              sortOrder: plan.sortOrder,
+              updatedAt: new Date(),
+            })
+            .where(eq(subscriptionPlans.tierName, plan.tierName));
+          updated++;
+        } else {
+          // Create new plan
+          await db.insert(subscriptionPlans).values({
+            tierName: plan.tierName,
+            displayName: plan.displayName,
+            description: plan.description,
+            monthlyPrice: plan.monthlyPrice,
+            minHouses: plan.minHouses,
+            maxHouses: plan.maxHouses,
+            planType: plan.planType,
+            features: plan.features,
+            referralCreditCap: (plan as any).referralCreditCap || null,
+            hasCrmAccess: (plan as any).hasCrmAccess || false,
+            sortOrder: plan.sortOrder,
+          });
+          created++;
+        }
+      }
+
+      res.json({ message: `Plans synced: ${created} created, ${updated} updated` });
+    } catch (error) {
+      console.error('Error seeding plans:', error);
+      res.status(500).json({ message: 'Failed to seed plans' });
+    }
+  });
+
+  // Auto-seed subscription plans on startup
+  (async () => {
+    try {
+      const allPlans = [...HOMEOWNER_PLANS, ...CONTRACTOR_PLANS];
+      for (const plan of allPlans) {
+        const existing = await storage.getSubscriptionPlanByTier(plan.tierName);
+        if (!existing) {
+          await db.insert(subscriptionPlans).values({
+            tierName: plan.tierName,
+            displayName: plan.displayName,
+            description: plan.description,
+            monthlyPrice: plan.monthlyPrice,
+            minHouses: plan.minHouses,
+            maxHouses: plan.maxHouses,
+            planType: plan.planType,
+            features: plan.features,
+            referralCreditCap: (plan as any).referralCreditCap || null,
+            hasCrmAccess: (plan as any).hasCrmAccess || false,
+            sortOrder: plan.sortOrder,
+          });
+          console.log(`[PLANS] Seeded subscription plan: ${plan.tierName}`);
+        }
+      }
+    } catch (error) {
+      console.error('[PLANS] Error auto-seeding plans:', error);
+    }
+  })();
 
   // Secure logo upload endpoint with authentication
   console.error('[STARTUP] Registering /api/upload-logo-raw endpoint');
@@ -8634,7 +8743,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (plan) {
         if (plan.tierName === 'contractor_pro') {
           currentPlan = 'pro';
-        } else if (plan.tierName === 'contractor') {
+        } else if (plan.tierName === 'contractor_basic' || plan.tierName === 'contractor') {
           currentPlan = 'basic';
         }
       }
