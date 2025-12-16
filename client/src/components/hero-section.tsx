@@ -44,7 +44,7 @@ export default function HeroSection() {
             <Logo className={`h-[40px] sm:h-[48px] w-auto mx-auto block mb-8`} />
           )}
           
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-6 leading-tight" style={{ color: typedUser?.role === 'homeowner' ? '#2c0f5b' : 'white' }}>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-6 leading-tight" style={{ color: typedUser?.role === 'homeowner' ? '#2c0f5b' : 'white' }}>
             {typedUser?.role === 'homeowner' ? (
               <>
                 <span className="hidden md:inline">Welcome! Your Home's<br />Digital Record Starts Here</span>
