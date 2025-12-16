@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
+import { StripeConnectOnboarding } from "@/components/stripe-connect-onboarding";
 
 const AVAILABLE_SERVICES = [
   "Appliance Installation",
@@ -1836,6 +1837,17 @@ export default function ContractorProfile() {
           </Button>
         </div>
       </form>
+
+      {/* Payment Settings - Stripe Connect */}
+      <div className="mt-8">
+        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2" style={{ color: '#1560a2' }}>
+          Payment Settings
+        </h2>
+        <p className="text-muted-foreground mb-4">
+          Connect your bank account to receive payments directly from customers through HomeBase invoices.
+        </p>
+        <StripeConnectOnboarding />
+      </div>
 
       {/* Preview Profile as Homeowner */}
       <Card className="mt-8">
