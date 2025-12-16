@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Home, Wrench, Building2 } from "lucide-react";
-import Logo from "@/components/logo";
+import heroImage from "@assets/homebase-hp-hero-desktop-nocopy_1765926450284.png";
 
 export default function Landing() {
   const handleRoleSelection = (role: 'homeowner' | 'contractor' | 'agent') => {
@@ -10,11 +10,87 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(to bottom, #f8f4fc, #faf9fb)' }}>
-      <div className="max-w-6xl mx-auto px-4 py-16">
-        <div className="text-center mb-12">
-          <Logo className="h-[32px] sm:h-[40px] w-auto mx-auto mb-6" />
-          <h1 className="text-5xl font-bold mb-4" style={{ color: '#2c0f5b' }}>Welcome to HomeBase</h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">Your home’s entire story — documented, organized, and supported by trusted pros for every next step.</p>
+      {/* Hero Section with Background Image */}
+      <div className="w-full relative" style={{ aspectRatio: '2.5 / 1', minHeight: '300px' }}>
+        <img 
+          src={heroImage} 
+          alt="HomeBase - Your digital home fingerprint" 
+          className="w-full h-full object-cover"
+          data-testid="img-landing-hero"
+        />
+        {/* Text Overlay */}
+        <div 
+          className="absolute inset-0 flex flex-col justify-center"
+          style={{ paddingLeft: '5%', paddingRight: '50%' }}
+        >
+          {/* Eyebrow */}
+          <p 
+            className="mb-2"
+            style={{ 
+              fontFamily: "'Quicksand', sans-serif",
+              fontWeight: 700,
+              fontSize: '14px',
+              color: '#ffffff',
+              letterSpacing: '0.5px'
+            }}
+            data-testid="text-hero-eyebrow"
+          >
+            Welcome to HomeBase
+          </p>
+          
+          {/* Headline */}
+          <h1 
+            className="mb-4"
+            style={{ 
+              fontFamily: "'Quicksand', sans-serif",
+              fontWeight: 700,
+              fontSize: '32px',
+              lineHeight: 1.2,
+              color: '#ffffff'
+            }}
+            data-testid="text-hero-headline"
+          >
+            Your Home's <span style={{ color: '#00D4FF' }}>Digital</span><br />
+            Fingerprint Starts Here
+          </h1>
+          
+          {/* Subcopy */}
+          <p 
+            className="mb-3"
+            style={{ 
+              fontFamily: "'Quicksand', sans-serif",
+              fontWeight: 500,
+              fontSize: '14px',
+              lineHeight: 1.6,
+              color: '#ffffff',
+              maxWidth: '420px'
+            }}
+            data-testid="text-hero-subcopy-1"
+          >
+            A single, living record that keeps a home's systems, maintenance, upgrades, and history organized in one place.
+          </p>
+          
+          <p 
+            style={{ 
+              fontFamily: "'Quicksand', sans-serif",
+              fontWeight: 500,
+              fontSize: '14px',
+              lineHeight: 1.6,
+              color: '#ffffff',
+              maxWidth: '420px'
+            }}
+            data-testid="text-hero-subcopy-2"
+          >
+            Built for homeowners first — and shared seamlessly with contractors and real estate agents when it matters.
+          </p>
+        </div>
+      </div>
+
+      {/* Role Selection Cards */}
+      <div className="max-w-6xl mx-auto px-4 py-12">
+        <div className="text-center mb-10">
+          <h2 className="text-3xl font-bold mb-3" style={{ color: '#2c0f5b' }}>Get Started Today</h2>
+          <p className="text-lg text-gray-600">Choose how you'd like to use HomeBase</p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
@@ -34,7 +110,7 @@ export default function Landing() {
                 <h2 className="text-2xl font-bold mb-3" style={{ color: '#2c0f5b' }}>
                   I'm a Homeowner
                 </h2>
-                <p className="text-gray-600 mb-6">“The Carfax-style home history your house has always needed.”</p>
+                <p className="text-gray-600 mb-6">"The Carfax-style home history your house has always needed."</p>
                 <ul className="space-y-2 mb-6 text-sm text-gray-700">
                   <li>✓ Multi-property management</li>
                   <li>✓ Maintenance scheduling</li>
