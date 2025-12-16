@@ -3021,7 +3021,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="mb-6">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2 text-center">Setup & Maintain Your Home</h2>
-          <p className="text-gray-600 max-w-xl mb-4 text-center">Add your property, document systems and features, log appliances, and record maintenance — everything that keeps your home healthy and up to date.</p>
+          <p className="text-gray-600 max-w-xl mb-4 text-center mx-auto">Add your property, document systems and features, log appliances, and record maintenance — everything that keeps your home healthy and up to date.</p>
           
           {/* Contractor No Properties Onboarding */}
           {userRole === 'contractor' && houses.length === 0 && (
