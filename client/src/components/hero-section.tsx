@@ -74,7 +74,7 @@ export default function HeroSection() {
                   style={{ backgroundColor: '#2c0f5b', color: '#ffffff' }}
                   data-testid="button-start-home-report"
                 >
-                  Start Your Home Report
+                  Launch Your Home Report
                 </Button>
               </Link>
             </>
