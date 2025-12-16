@@ -8606,6 +8606,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Contractor subscription endpoint
+  app.get('/api/contractor/subscription', async (req: any, res) => {
+    try {
+      if (!req.session?.isAuthenticated || !req.session?.user) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+      
+      const userId = req.session.user.id;
+      const user = await storage.getUser(userId);
+      
+      if (!user || user.role !== 'contractor') {
+        return res.status(403).json({ message: 'Not a contractor account' });
+      }
+      
+      // Get subscription plan details if subscribed
+      let planDetails = null;
+      if (user.subscriptionPlanId) {
+        planDetails = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, user.subscriptionPlanId)).limit(1);
+      }
+      
+      const plan = planDetails?.[0];
+      const hasActiveSubscription = user.subscriptionStatus === 'active' || user.subscriptionStatus === 'trialing';
+      
+      // Determine current plan tier
+      let currentPlan: 'none' | 'basic' | 'pro' = 'none';
+      if (plan) {
+        if (plan.tierName === 'contractor_pro') {
+          currentPlan = 'pro';
+        } else if (plan.tierName === 'contractor') {
+          currentPlan = 'basic';
+        }
+      }
+      
+      res.json({
+        hasActiveSubscription,
+        currentPlan,
+        hasCrmAccess: plan?.hasCrmAccess ?? false,
+        subscriptionStatus: user.subscriptionStatus || 'inactive',
+        monthlyPrice: plan ? parseFloat(plan.monthlyPrice as string) : 0,
+        features: plan?.features ?? [],
+        planName: plan?.displayName ?? 'No Plan',
+        tierName: plan?.tierName ?? null,
+      });
+    } catch (error) {
+      console.error('Error fetching contractor subscription:', error);
+      res.status(500).json({ message: 'Failed to fetch subscription' });
+    }
+  });
+
   // Contractor home management routes 
   app.get('/api/contractor/my-home', async (req: any, res) => {
     try {
