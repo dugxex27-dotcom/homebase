@@ -292,7 +292,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Secure logo upload endpoint with authentication
   console.error('[STARTUP] Registering /api/upload-logo-raw endpoint');
-  app.post('/api/upload-logo-raw', uploadLimiter, isAuthenticated, requireRole('contractor'), async (req: any, res) => {
+  app.post('/api/upload-logo-raw', uploadLimiter, async (req: any, res, next) => {
+    console.error('[LOGO-DEBUG] Session check:', {
+      hasSession: !!req.session,
+      isAuthenticated: req.session?.isAuthenticated,
+      hasUser: !!req.session?.user,
+      userRole: req.session?.user?.role,
+      userId: req.session?.user?.id
+    });
+    
+    // Check session-based authentication
+    if (!req.session?.isAuthenticated || !req.session?.user) {
+      console.error('[LOGO-DEBUG] Auth failed - no session');
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    if (req.session.user.role !== 'contractor') {
+      console.error('[LOGO-DEBUG] Auth failed - not contractor, role:', req.session.user.role);
+      return res.status(403).json({ message: "Forbidden - contractors only" });
+    }
+    
     try {
       console.error('[SECURE-UPLOAD] Request received from authenticated user:', req.session?.user?.id);
       const { imageData } = req.body;
