@@ -231,7 +231,7 @@ export function ContractorCodeEntry() {
       <CardContent className="space-y-4">
         <div className="space-y-2">
           <Label style={{ color: '#1560a2' }}>Connection Code</Label>
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2">
             <Input
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
@@ -245,6 +245,7 @@ export function ContractorCodeEntry() {
               onClick={handleValidate}
               disabled={validateMutation.isPending || !code.trim()}
               data-testid="button-validate-code"
+              className="w-full"
               style={{ backgroundColor: '#1560a2', color: 'white' }}
             >
               {validateMutation.isPending ? "Validating..." : "Validate"}
