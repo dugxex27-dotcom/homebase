@@ -3199,9 +3199,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                           const selectedHouse = houses.find((h: House) => h.id === selectedHouseId);
                           if (selectedHouse) handleEditHouse(selectedHouse);
                         }}
-                        className="whitespace-nowrap text-base w-full" style={{ backgroundColor: '#2c0f5b', color: 'white', borderColor: '#2c0f5b' }}
+                        className="whitespace-nowrap text-base w-full" style={{ backgroundColor: 'white', color: '#2c0f5b', borderColor: '#2c0f5b', borderWidth: '3px' }}
                       >
-                        <Edit className="w-5 h-5 mr-2" />
+                        <Edit className="w-5 h-5 mr-2" style={{ color: '#2c0f5b' }} />
                         Edit
                       </Button>
                     )}
