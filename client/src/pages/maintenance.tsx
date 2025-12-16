@@ -20,7 +20,7 @@ import { insertMaintenanceLogSchema, insertCustomMaintenanceTaskSchema, insertHo
 import type { MaintenanceLog, House, CustomMaintenanceTask, HomeSystem, TaskOverride, HomeAppliance, HomeApplianceManual } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { HomeownerFeatureGate, HomeownerTrialBanner } from "@/components/homeowner-feature-gate";
+import { HomeownerFeatureGate, HomeownerTrialBanner, FreeUserUpgradePrompt } from "@/components/homeowner-feature-gate";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
 import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, ChevronUp, Settings, Plus, Edit, Trash2, Home, FileText, Building2, User, Building, Phone, MessageSquare, AlertTriangle, Thermometer, Cloud, Monitor, Book, ExternalLink, Upload, Trophy, Mail, Handshake, Globe, TrendingDown, PiggyBank, Truck, CheckCircle2, Circle, Download } from "lucide-react";
 import { AppointmentScheduler } from "@/components/appointment-scheduler";
@@ -1360,7 +1360,7 @@ export default function Maintenance() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
-  const { needsUpgrade, isInTrial, trialDaysRemaining } = useHomeownerSubscription();
+  const { needsUpgrade, isInTrial, trialDaysRemaining, isFreeUser, isLoading: subscriptionLoading } = useHomeownerSubscription();
   
   // Task override states
   const [showCustomizeTask, setShowCustomizeTask] = useState<string | null>(null);
@@ -2961,6 +2961,11 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
         </div>
       </div>
     );
+  }
+
+  // Block free tier homeowners from accessing maintenance features
+  if (userRole === 'homeowner' && isFreeUser && !subscriptionLoading) {
+    return <FreeUserUpgradePrompt />;
   }
 
   return (

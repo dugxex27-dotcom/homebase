@@ -83,7 +83,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+
+  // ========================================
+  // SUBSCRIPTION PLANS
+  // ========================================
   
+  // Homeowner subscription tiers:
+  // - Free: Contractor search, view past contractors, payments only (0 homes)
+  // - Base ($5/month): 1-2 homes
+  // - Premium ($20/month): 3-6 homes
+  // - Premium Plus ($40/month): 7+ homes (unlimited)
+  
+  const HOMEOWNER_PLANS = [
+    {
+      tierName: 'free',
+      displayName: 'Free',
+      description: 'Search for contractors, view your past contractors, and make payments',
+      monthlyPrice: '0.00',
+      minHouses: 0,
+      maxHouses: 0,
+      planType: 'homeowner',
+      features: ['Contractor search', 'View past contractors', 'Make payments through app'],
+      sortOrder: 0
+    },
+    {
+      tierName: 'base',
+      displayName: 'Base',
+      description: 'Perfect for single homeowners with 1-2 properties',
+      monthlyPrice: '5.00',
+      minHouses: 1,
+      maxHouses: 2,
+      planType: 'homeowner',
+      features: ['Up to 2 homes', 'Maintenance tracking', 'Home health score', 'DIY savings tracker', 'Service records'],
+      sortOrder: 1
+    },
+    {
+      tierName: 'premium',
+      displayName: 'Premium',
+      description: 'Ideal for homeowners with multiple properties',
+      monthlyPrice: '20.00',
+      minHouses: 3,
+      maxHouses: 6,
+      planType: 'homeowner',
+      features: ['3-6 homes', 'All Base features', 'Priority contractor matching', 'Advanced maintenance insights'],
+      sortOrder: 2
+    },
+    {
+      tierName: 'premium_plus',
+      displayName: 'Premium Plus',
+      description: 'For property investors and managers with 7+ homes',
+      monthlyPrice: '40.00',
+      minHouses: 7,
+      maxHouses: null, // unlimited
+      planType: 'homeowner',
+      features: ['Unlimited homes', 'All Premium features', 'Dedicated support', 'Bulk maintenance scheduling'],
+      sortOrder: 3
+    }
+  ];
+
+  const CONTRACTOR_PLANS = [
+    {
+      tierName: 'contractor_basic',
+      displayName: 'Contractor Basic',
+      description: 'Essential tools for independent contractors',
+      monthlyPrice: '20.00',
+      minHouses: 0,
+      maxHouses: 1, // 1 personal home for maintenance tracking
+      planType: 'contractor',
+      features: ['Lead management', 'Basic CRM', 'Proposal system', '$20/month referral credit cap'],
+      referralCreditCap: '20.00',
+      hasCrmAccess: false,
+      sortOrder: 0
+    }
+  ];
+
+  // Get all subscription plans
+  app.get('/api/plans', async (_req, res) => {
+    try {
+      const plans = await storage.getSubscriptionPlans();
+      res.json(plans);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch subscription plans' });
+    }
+  });
+
+  // Get homeowner plans only
+  app.get('/api/plans/homeowner', async (_req, res) => {
+    try {
+      const plans = await storage.getSubscriptionPlansByType('homeowner');
+      res.json(plans);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch homeowner plans' });
+    }
+  });
+
   // Secure logo upload endpoint with authentication
   console.error('[STARTUP] Registering /api/upload-logo-raw endpoint');
   app.post('/api/upload-logo-raw', uploadLimiter, isAuthenticated, requireRole(['contractor']), async (req: any, res) => {
@@ -209,6 +302,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Set up Replit Auth (handles Google OAuth via Replit)
   await setupAuth(app);
+
+  // Get current user's subscription info (must be after setupAuth for session access)
+  app.get('/api/my-subscription', async (req: any, res) => {
+    try {
+      // Session auth check - matches /api/user pattern
+      if (!req.session?.isAuthenticated || !req.session?.user) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+      const userId = req.session.user.id;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      const housesCount = await storage.getHousesCount(userId);
+      
+      // Determine current plan based on maxHousesAllowed
+      let currentPlan = 'free';
+      let maxHouses = user.maxHousesAllowed ?? 0;
+      
+      if (user.subscriptionStatus === 'grandfathered' || user.maxHousesAllowed === null) {
+        currentPlan = 'premium_plus';
+        maxHouses = -1; // unlimited
+      } else if (maxHouses === 0) {
+        currentPlan = 'free';
+      } else if (maxHouses <= 2) {
+        currentPlan = 'base';
+      } else if (maxHouses <= 6) {
+        currentPlan = 'premium';
+      } else {
+        currentPlan = 'premium_plus';
+      }
+      
+      // Check if trial is active
+      const isTrialing = user.subscriptionStatus === 'trialing' && 
+                         user.trialEndsAt && 
+                         new Date(user.trialEndsAt) > new Date();
+      
+      const trialDaysRemaining = isTrialing && user.trialEndsAt
+        ? Math.ceil((new Date(user.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+        : 0;
+      
+      res.json({
+        currentPlan,
+        maxHouses: maxHouses === -1 ? 'unlimited' : maxHouses,
+        currentHouses: housesCount,
+        canAddHomes: maxHouses === -1 || housesCount < maxHouses,
+        subscriptionStatus: user.subscriptionStatus,
+        isTrialing,
+        trialDaysRemaining,
+        trialEndsAt: user.trialEndsAt,
+        isPremium: user.isPremium
+      });
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch subscription info' });
+    }
+  });
 
   // Stripe webhook handler - Uses raw body parser for signature verification
   app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), async (req: any, res) => {
@@ -7744,23 +7895,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (subscriptionStatus === 'grandfathered' || user?.maxHousesAllowed === null) {
           // No limit - allow house creation
         } else {
-          // Default to Base plan (2 houses) if maxHousesAllowed is undefined
-          const maxHouses = user?.maxHousesAllowed ?? 2;
+          // Subscription tier limits:
+          // Free: 0 homes (contractor search only)
+          // Base ($5): 1-2 homes
+          // Premium ($20): 3-6 homes
+          // Premium Plus ($40): 7+ (unlimited)
+          const maxHouses = user?.maxHousesAllowed ?? 0; // Default to free plan (0 houses)
+          
+          // Free tier users cannot add any homes
+          if (maxHouses === 0) {
+            return res.status(403).json({ 
+              message: "Free accounts can search for contractors but cannot add properties. Upgrade to Base ($5/month) to add up to 2 homes.",
+              code: "FREE_TIER_LIMIT",
+              currentPlan: 'free',
+              maxHouses: 0,
+              currentHouses: existingHouses.length,
+              upgradeTo: 'base'
+            });
+          }
           
           if (existingHouses.length >= maxHouses) {
-            // User has reached their plan limit
+            // User has reached their plan limit - determine current plan and upgrade path
             const isTrialing = subscriptionStatus === 'trialing' && trialEndsAt && new Date(trialEndsAt) > new Date();
-            const currentPlan = maxHouses === 2 ? 'base' : maxHouses === 10 ? 'premium' : 'unknown';
+            let currentPlan = 'free';
+            let upgradeTo = 'base';
+            let upgradeMessage = '';
+            
+            if (maxHouses <= 2) {
+              currentPlan = 'base';
+              upgradeTo = 'premium';
+              upgradeMessage = `You've reached the ${maxHouses} home limit on the Base plan ($5/month). Upgrade to Premium ($20/month) for up to 6 homes.`;
+            } else if (maxHouses <= 6) {
+              currentPlan = 'premium';
+              upgradeTo = 'premium_plus';
+              upgradeMessage = `You've reached the ${maxHouses} home limit on the Premium plan ($20/month). Upgrade to Premium Plus ($40/month) for unlimited homes.`;
+            }
             
             return res.status(403).json({ 
-              message: isTrialing 
-                ? `Property limit reached. You can add up to ${maxHouses} properties on the Base plan. Upgrade to Premium for up to 10 properties.`
-                : `Property limit reached. Upgrade to add more properties.`,
+              message: upgradeMessage || `Property limit reached. Upgrade to add more properties.`,
               code: "PLAN_LIMIT_EXCEEDED",
               currentPlan,
               maxHouses,
               currentHouses: existingHouses.length,
-              isTrialing
+              isTrialing,
+              upgradeTo
             });
           }
         }
@@ -8181,22 +8359,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Only grandfathered users or explicitly null maxHousesAllowed get unlimited houses
       if (subscriptionStatus !== 'grandfathered' && user.maxHousesAllowed !== null) {
-        // Default to Base plan (2 houses) if maxHousesAllowed is undefined
-        const maxHouses = user.maxHousesAllowed ?? 2;
+        // Subscription tier limits:
+        // Free: 0 homes (contractor search only)
+        // Base ($5): 1-2 homes
+        // Premium ($20): 3-6 homes
+        // Premium Plus ($40): 7+ (unlimited)
+        const maxHouses = user.maxHousesAllowed ?? 0; // Default to free plan (0 houses)
+        
+        // Free tier users cannot accept transfers
+        if (maxHouses === 0) {
+          return res.status(403).json({ 
+            message: "Free accounts cannot own properties. Upgrade to Base ($5/month) to accept this transfer.",
+            code: "FREE_TIER_LIMIT",
+            currentPlan: 'free',
+            maxHouses: 0,
+            currentHouses: housesCount,
+            upgradeTo: 'base'
+          });
+        }
         
         if (housesCount >= maxHouses) {
           const isTrialing = subscriptionStatus === 'trialing' && user.trialEndsAt && new Date(user.trialEndsAt) > new Date();
-          const currentPlan = maxHouses === 2 ? 'base' : maxHouses === 10 ? 'premium' : 'unknown';
+          let currentPlan = 'free';
+          let upgradeTo = 'base';
+          let upgradeMessage = '';
+          
+          if (maxHouses <= 2) {
+            currentPlan = 'base';
+            upgradeTo = 'premium';
+            upgradeMessage = `Cannot accept transfer. You have ${housesCount} homes on the Base plan (max ${maxHouses}). Upgrade to Premium ($20/month) for up to 6 homes.`;
+          } else if (maxHouses <= 6) {
+            currentPlan = 'premium';
+            upgradeTo = 'premium_plus';
+            upgradeMessage = `Cannot accept transfer. You have ${housesCount} homes on the Premium plan (max ${maxHouses}). Upgrade to Premium Plus ($40/month) for unlimited homes.`;
+          }
           
           return res.status(403).json({ 
-            message: isTrialing 
-              ? `Cannot accept transfer. You can have up to ${maxHouses} properties on the Base plan. Upgrade to Premium for up to 10 properties.`
-              : `Cannot accept transfer. Upgrade to add more properties.`,
+            message: upgradeMessage || `Cannot accept transfer. Upgrade to add more properties.`,
             code: "PLAN_LIMIT_EXCEEDED",
             currentPlan,
             maxHouses,
             currentHouses: housesCount,
-            isTrialing
+            isTrialing,
+            upgradeTo
           });
         }
       }

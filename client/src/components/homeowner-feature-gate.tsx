@@ -378,3 +378,119 @@ export function PaidSubscriberGate({ children, featureName }: { children: React.
     </>
   );
 }
+
+// Component for free users to upgrade to access maintenance features
+export function FreeUserUpgradePrompt() {
+  const [showBenefitsDialog, setShowBenefitsDialog] = useState(false);
+
+  const plans = [
+    {
+      name: 'Base',
+      price: '$5',
+      homes: '1-2 homes',
+      features: ['Maintenance tracking', 'Home health score', 'DIY savings tracker', 'Service records'],
+      recommended: false
+    },
+    {
+      name: 'Premium',
+      price: '$20',
+      homes: '3-6 homes',
+      features: ['All Base features', 'Priority contractor matching', 'Advanced maintenance insights'],
+      recommended: true
+    },
+    {
+      name: 'Premium Plus',
+      price: '$40',
+      homes: 'Unlimited homes',
+      features: ['All Premium features', 'Dedicated support', 'Bulk maintenance scheduling'],
+      recommended: false
+    }
+  ];
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: '#eeedf9' }}>
+      <Card className="border-2 border-purple-200 shadow-lg max-w-4xl w-full">
+        <CardContent className="py-8 text-center">
+          <div className="mb-4 flex justify-center">
+            <div className="p-4 rounded-full bg-gradient-to-br from-purple-500 to-purple-700">
+              <Home className="h-10 w-10 text-white" />
+            </div>
+          </div>
+          <h3 className="text-2xl font-bold mb-2" style={{ color: '#2c0f5b' }}>Upgrade to Access Maintenance Features</h3>
+          <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
+            Free accounts can search for contractors and make payments. Upgrade to track your home maintenance, earn achievements, and more!
+          </p>
+
+          {/* Free Features Reminder */}
+          <div className="bg-green-50 rounded-lg p-4 mb-6 max-w-md mx-auto">
+            <h4 className="font-semibold text-green-800 mb-2 flex items-center justify-center gap-2">
+              <Check className="h-5 w-5" />
+              Always Free
+            </h4>
+            <div className="flex justify-center gap-6 text-sm text-green-700">
+              <span className="flex items-center gap-1"><Search className="h-4 w-4" /> Contractor Search</span>
+              <span className="flex items-center gap-1"><MessageSquare className="h-4 w-4" /> Messaging</span>
+            </div>
+          </div>
+
+          {/* Pricing Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {plans.map((plan) => (
+              <Card 
+                key={plan.name} 
+                className={`relative ${plan.recommended ? 'border-2 border-purple-500 shadow-lg' : 'border'}`}
+              >
+                {plan.recommended && (
+                  <Badge className="absolute -top-2 left-1/2 -translate-x-1/2 bg-purple-600">
+                    Most Popular
+                  </Badge>
+                )}
+                <CardContent className="pt-6 pb-4">
+                  <h4 className="font-bold text-lg" style={{ color: '#2c0f5b' }}>{plan.name}</h4>
+                  <div className="text-3xl font-bold my-2" style={{ color: '#2c0f5b' }}>
+                    {plan.price}<span className="text-sm font-normal text-muted-foreground">/mo</span>
+                  </div>
+                  <p className="text-sm text-purple-600 font-medium mb-3">{plan.homes}</p>
+                  <ul className="text-sm text-left space-y-1">
+                    {plan.features.map((feature, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <Check className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button asChild size="lg" className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800" data-testid="button-upgrade-free-user">
+              <Link href="/homeowner-pricing">
+                <Crown className="h-4 w-4 mr-2" />
+                Start 14-Day Free Trial
+              </Link>
+            </Button>
+            <Button 
+              variant="outline" 
+              size="lg"
+              onClick={() => setShowBenefitsDialog(true)}
+              data-testid="button-see-all-features"
+            >
+              See All Features
+            </Button>
+          </div>
+
+          <p className="text-xs text-muted-foreground mt-4">
+            All paid plans include a 14-day free trial. Cancel anytime.
+          </p>
+        </CardContent>
+      </Card>
+
+      <HomeownerBenefitsDialog 
+        open={showBenefitsDialog} 
+        onOpenChange={setShowBenefitsDialog}
+      />
+    </div>
+  );
+}

@@ -11,22 +11,34 @@ export interface SubscriptionStatus {
   trialExpired: boolean;
   subscriptionStatus: string;
   needsUpgrade: boolean;
+  currentPlan: 'free' | 'base' | 'premium' | 'premium_plus';
+  maxHouses: number | 'unlimited';
+  currentHouses: number;
+  canAddHomes: boolean;
+  isFreeUser: boolean;
 }
 
 export function useHomeownerSubscription(): SubscriptionStatus {
   const { user, isLoading: isAuthLoading } = useAuth();
   const typedUser = user as User | undefined;
 
-  const { data: userData, isLoading: isUserLoading } = useQuery({
+  const { data: userData, isLoading: isUserLoading, isError: isUserError } = useQuery({
     queryKey: ['/api/user'],
     enabled: !!typedUser && typedUser.role === 'homeowner',
   });
 
-  const isLoading = isAuthLoading || isUserLoading;
+  const { data: subscriptionData, isLoading: isSubLoading, isError: isSubError } = useQuery({
+    queryKey: ['/api/my-subscription'],
+    enabled: !!typedUser && typedUser.role === 'homeowner',
+  });
 
-  if (isLoading || !userData) {
+  const isLoading = isAuthLoading || isUserLoading || isSubLoading;
+  const hasError = isUserError || isSubError;
+
+  // During loading or error states, DON'T treat user as free (could block paying users)
+  if (isLoading || !userData || hasError) {
     return {
-      isLoading: true,
+      isLoading: isLoading || hasError,
       isInTrial: false,
       trialDaysRemaining: 0,
       hasActiveSubscription: false,
@@ -34,10 +46,16 @@ export function useHomeownerSubscription(): SubscriptionStatus {
       trialExpired: false,
       subscriptionStatus: 'unknown',
       needsUpgrade: false,
+      currentPlan: 'free',
+      maxHouses: 0,
+      currentHouses: 0,
+      canAddHomes: false,
+      isFreeUser: false, // Never block users during loading/error - could wrongly block subscribers
     };
   }
 
   const data = userData as any;
+  const subData = subscriptionData as any;
   const subscriptionStatus = data.subscriptionStatus || 'inactive';
   const trialEndsAt = data.trialEndsAt ? new Date(data.trialEndsAt) : null;
   const now = new Date();
@@ -59,6 +77,13 @@ export function useHomeownerSubscription(): SubscriptionStatus {
   const needsUpgrade = (trialExpired || subscriptionStatus === 'inactive' || subscriptionStatus === 'cancelled') 
     && !hasActiveSubscription && !isInTrial;
 
+  // Plan info from subscription endpoint
+  const currentPlan = subData?.currentPlan || 'free';
+  const maxHouses = subData?.maxHouses ?? 0;
+  const currentHouses = subData?.currentHouses ?? 0;
+  const canAddHomes = subData?.canAddHomes ?? false;
+  const isFreeUser = currentPlan === 'free' && !isInTrial && !hasActiveSubscription;
+
   return {
     isLoading: false,
     isInTrial,
@@ -68,5 +93,10 @@ export function useHomeownerSubscription(): SubscriptionStatus {
     trialExpired,
     subscriptionStatus,
     needsUpgrade,
+    currentPlan,
+    maxHouses,
+    currentHouses,
+    canAddHomes,
+    isFreeUser,
   };
 }
