@@ -1,17 +1,86 @@
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Users, Package, Calendar, Search, MapPin, Star, CheckCircle, TrendingUp, Shield, Home as HomeIcon, Wrench, Bell, BarChart3, Gift, Sparkles } from "lucide-react";
+import { Users, Package, Calendar, Search, MapPin, Star, CheckCircle, TrendingUp, Shield, Home as HomeIcon, Wrench, Bell, BarChart3, Gift, Sparkles, PiggyBank, AlertTriangle } from "lucide-react";
 import HeroSection from "@/components/hero-section";
+import HomeHealthScore from "@/components/home-health-score";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/useAuth";
-import type { User } from "@shared/schema";
+import type { User, House } from "@shared/schema";
 import { Link, useLocation } from "wouter";
-import { PaidSubscriberGate } from "@/components/homeowner-feature-gate";
+import { PaidSubscriberGate, HomeownerFeatureGate } from "@/components/homeowner-feature-gate";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
+
+// DIY Savings Tracker Component for homepage
+function DIYSavingsCard({ houseId, houseName }: { houseId: string; houseName: string }) {
+  const { data, isLoading, isError } = useQuery<{ totalSavings: number; taskCount: number }>({
+    queryKey: ['/api/houses', houseId, 'diy-savings'],
+    enabled: !!houseId,
+  });
+
+  const formattedSavings = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(data?.totalSavings || 0);
+
+  return (
+    <Card className="bg-white border border-gray-200 shadow-sm" data-testid={`diy-savings-home-${houseId}`}>
+      <CardContent className="p-4">
+        <div className="text-center mb-3">
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <PiggyBank className="w-4 h-4 text-green-500" />
+            <h3 className="font-semibold text-gray-900 text-sm">DIY Savings</h3>
+          </div>
+          <p className="text-xs text-gray-500">{houseName}</p>
+        </div>
+        
+        {isLoading ? (
+          <div className="flex items-center justify-center py-4">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+          </div>
+        ) : isError ? (
+          <div className="flex items-center justify-center py-4">
+            <div className="text-center">
+              <AlertTriangle className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
+              <p className="text-xs text-gray-500">Unable to load</p>
+            </div>
+          </div>
+        ) : (data?.totalSavings === 0 && data?.taskCount === 0) ? (
+          <div className="flex items-center justify-center py-4">
+            <div className="text-center">
+              <PiggyBank className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+              <p className="text-xs text-gray-500">No savings yet</p>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4">
+            <div className="text-center">
+              <p className="text-xs text-gray-500 mb-1">Total Saved</p>
+              <span className="text-xl font-bold text-green-600">
+                {formattedSavings}
+              </span>
+              <p className="text-[10px] text-gray-400 mt-1">Doing it Yourself</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-gray-500 mb-1">Tasks Completed</p>
+              <div className="flex items-baseline justify-center gap-1">
+                <span className="text-xl font-bold text-purple-700">
+                  {data?.taskCount || 0}
+                </span>
+                <span className="text-xs text-gray-500">tasks</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function Home() {
   const { user } = useAuth();
@@ -37,6 +106,12 @@ export default function Home() {
   // User data query for subscription details
   const { data: userData } = useQuery({
     queryKey: ['/api/user'],
+    enabled: typedUser?.role === 'homeowner',
+  });
+
+  // Houses query for Home Health Score and DIY Savings
+  const { data: houses = [] } = useQuery<House[]>({
+    queryKey: ['/api/houses'],
     enabled: typedUser?.role === 'homeowner',
   });
 
@@ -98,6 +173,43 @@ export default function Home() {
                 </div>
               </CardContent>
             </Card>
+          </div>
+        </section>
+      )}
+      {/* Home Health Score Cards - Homeowners with Houses */}
+      {typedUser?.role === 'homeowner' && houses.length > 0 && (
+        <HomeownerFeatureGate featureName="Home Dashboard">
+          <section className="py-4 px-4 sm:px-6 lg:px-8" style={{ background: 'transparent' }}>
+            <div className="max-w-7xl mx-auto">
+              <h2 className="text-xl font-bold text-white text-center mb-4">Your Home Health</h2>
+              <div className={`grid gap-4 ${houses.length === 1 ? 'grid-cols-1 max-w-md mx-auto' : houses.length === 2 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 max-w-2xl mx-auto' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
+                {houses.map((house: House) => (
+                  <HomeHealthScore 
+                    key={house.id} 
+                    houseId={house.id} 
+                    houseName={house.name}
+                    compact={true}
+                  />
+                ))}
+              </div>
+            </div>
+          </section>
+        </HomeownerFeatureGate>
+      )}
+      {/* DIY Savings Tracker Section - Homeowners with Houses */}
+      {typedUser?.role === 'homeowner' && houses.length > 0 && (
+        <section className="py-4 px-4 sm:px-6 lg:px-8" style={{ background: 'transparent' }}>
+          <div className="max-w-7xl mx-auto">
+            <h2 className="text-xl font-bold text-white text-center mb-4">Your DIY Savings</h2>
+            <div className={`grid gap-4 ${houses.length === 1 ? 'grid-cols-1 max-w-md mx-auto' : houses.length === 2 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 max-w-2xl mx-auto' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
+              {houses.map((house: House) => (
+                <DIYSavingsCard 
+                  key={house.id} 
+                  houseId={house.id}
+                  houseName={house.name}
+                />
+              ))}
+            </div>
           </div>
         </section>
       )}
