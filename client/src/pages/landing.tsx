@@ -116,7 +116,7 @@ export default function Landing() {
               color: '#ffffff'
             }}
           >
-            Your Home's <span style={{ color: '#00D4FF' }}>Digital</span><br className="text-[#ffffff]" />
+            Your Home's <span className="text-[#ffffff]" style={{ color: '#00D4FF' }}>Digital</span><br />
             Fingerprint Starts Here
           </h1>
           <p 
