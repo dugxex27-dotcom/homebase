@@ -176,13 +176,18 @@ export default function Home() {
           </div>
         </section>
       )}
-      {/* Home Health Score Cards - Homeowners with Houses */}
+      {/* Home Dashboard Section - Homeowners with Houses */}
       {typedUser?.role === 'homeowner' && houses.length > 0 && (
         <HomeownerFeatureGate featureName="Home Dashboard">
-          <section className="py-4 px-4 sm:px-6 lg:px-8" style={{ background: 'transparent' }}>
+          <section className="py-8 px-4 sm:px-6 lg:px-8" style={{ backgroundColor: '#f3e9ff' }}>
             <div className="max-w-7xl mx-auto">
-              <h2 className="text-xl font-bold text-white text-center mb-4">Your Home Health</h2>
-              <div className={`grid gap-4 ${houses.length === 1 ? 'grid-cols-1 max-w-md mx-auto' : houses.length === 2 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 max-w-2xl mx-auto' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
+              <div className="text-center mb-6">
+                <h2 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: '#2c0f5b' }}>Your Home at a Glance</h2>
+                <p className="text-gray-600 max-w-xl mx-auto">Track your home's health, savings, and maintenance all in one place.</p>
+              </div>
+              
+              <h3 className="text-xl font-bold text-center mb-4" style={{ color: '#2c0f5b' }}>Home Health Score</h3>
+              <div className={`grid gap-4 mb-8 ${houses.length === 1 ? 'grid-cols-1 max-w-md mx-auto' : houses.length === 2 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 max-w-2xl mx-auto' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
                 {houses.map((house: House) => (
                   <HomeHealthScore 
                     key={house.id} 
@@ -192,26 +197,33 @@ export default function Home() {
                   />
                 ))}
               </div>
+              
+              <h3 className="text-xl font-bold text-center mb-4" style={{ color: '#2c0f5b' }}>DIY Savings</h3>
+              <div className={`grid gap-4 mb-8 ${houses.length === 1 ? 'grid-cols-1 max-w-md mx-auto' : houses.length === 2 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 max-w-2xl mx-auto' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
+                {houses.map((house: House) => (
+                  <DIYSavingsCard 
+                    key={house.id} 
+                    houseId={house.id}
+                    houseName={house.name}
+                  />
+                ))}
+              </div>
+              
+              <div className="text-center">
+                <Link href="/maintenance">
+                  <Button 
+                    size="lg"
+                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-6 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+                    data-testid="button-launch-home-record"
+                  >
+                    <HomeIcon className="w-5 h-5 mr-2" />
+                    Launch Your Home Record
+                  </Button>
+                </Link>
+              </div>
             </div>
           </section>
         </HomeownerFeatureGate>
-      )}
-      {/* DIY Savings Tracker Section - Homeowners with Houses */}
-      {typedUser?.role === 'homeowner' && houses.length > 0 && (
-        <section className="py-4 px-4 sm:px-6 lg:px-8" style={{ background: 'transparent' }}>
-          <div className="max-w-7xl mx-auto">
-            <h2 className="text-xl font-bold text-white text-center mb-4">Your DIY Savings</h2>
-            <div className={`grid gap-4 ${houses.length === 1 ? 'grid-cols-1 max-w-md mx-auto' : houses.length === 2 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 max-w-2xl mx-auto' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
-              {houses.map((house: House) => (
-                <DIYSavingsCard 
-                  key={house.id} 
-                  houseId={house.id}
-                  houseName={house.name}
-                />
-              ))}
-            </div>
-          </div>
-        </section>
       )}
       {/* Referral Card Section - Paid Subscribers Only */}
       {typedUser?.role === 'homeowner' && isPaidSubscriber && (
