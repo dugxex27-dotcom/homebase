@@ -153,10 +153,34 @@ export async function sendAppointmentReminder(
   });
 }
 
+export async function sendWelcomeSMS(userId: string, userName: string): Promise<boolean> {
+  const user = await storage.getUser(userId);
+  if (!user?.phone) return false;
+
+  return sendSMS({
+    to: user.phone,
+    body: `Welcome to HomeBase, ${userName || 'friend'}! 🏠 Your 14-day free trial starts now. Track maintenance, find contractors, and keep your home healthy. Visit gotohomebase.com to get started!`,
+  });
+}
+
+export async function sendTrialExpiringSMS(userId: string, daysRemaining: number): Promise<boolean> {
+  const user = await storage.getUser(userId);
+  if (!user?.phone) return false;
+
+  const urgency = daysRemaining <= 1 ? 'expires tomorrow' : `expires in ${daysRemaining} days`;
+
+  return sendSMS({
+    to: user.phone,
+    body: `HomeBase: Your free trial ${urgency}! Don't lose your home history. Upgrade now at gotohomebase.com/billing - plans from $5/mo.`,
+  });
+}
+
 export const smsService = {
   sendSMS,
   sendMaintenanceReminder,
   sendAppointmentConfirmation,
   sendNewMessageNotification,
   sendAppointmentReminder,
+  sendWelcomeSMS,
+  sendTrialExpiringSMS,
 };
