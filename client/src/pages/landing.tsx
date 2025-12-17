@@ -116,7 +116,7 @@ export default function Landing() {
               color: '#ffffff'
             }}
           >
-            Your Home's <span style={{ color: '#00D4FF' }}>Digital</span> Record Starts Here
+            Your Home's <span style={{ color: '#0072ce' }}>Digital</span> Record Starts Here
           </h1>
           <p 
             className="mb-2"
