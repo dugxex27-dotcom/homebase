@@ -12,7 +12,7 @@ import { Gift, Copy, Share2, MessageSquare, Download, ImageIcon, Crown, Trending
 
 import instagramPostImg from '@assets/generated_images/Contractor_Instagram_referral_post_7b9f6d5d.png';
 import instagramStoryImg from '@assets/generated_images/Contractor_Instagram_story_graphic_4d65a731.png';
-import facebookTwitterImg from '@assets/generated_images/Contractor_Facebook_Twitter_share_7e5cc06a.png';
+import facebookTwitterImg from '@assets/Contractor_Facebook_Twitter_share_7e5cc06a_1766014303007.png';
 
 export default function ContractorReferral() {
   const { toast } = useToast();
