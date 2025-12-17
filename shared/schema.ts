@@ -187,6 +187,21 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   index("IDX_password_reset_tokens_token").on(table.token),
 ]);
 
+// Push notification tokens table for mobile apps
+export const pushTokens = pgTable("push_tokens", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  token: text("token").notNull(),
+  platform: text("platform").notNull(), // "ios" or "android"
+  deviceId: text("device_id"),
+  isActive: boolean("is_active").notNull().default(true),
+  lastUsedAt: timestamp("last_used_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_push_tokens_user_id").on(table.userId),
+  index("IDX_push_tokens_token").on(table.token),
+]);
+
 export const contractors = pgTable("contractors", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(), // References users.id
@@ -781,6 +796,16 @@ export const insertNotificationPreferenceSchema = createInsertSchema(notificatio
 
 export type NotificationPreference = typeof notificationPreferences.$inferSelect;
 export type InsertNotificationPreference = z.infer<typeof insertNotificationPreferenceSchema>;
+
+// Push token types for mobile push notifications
+export const insertPushTokenSchema = createInsertSchema(pushTokens).omit({
+  id: true,
+  createdAt: true,
+  lastUsedAt: true,
+});
+
+export type PushToken = typeof pushTokens.$inferSelect;
+export type InsertPushToken = z.infer<typeof insertPushTokenSchema>;
 
 export const insertContractorSchema = createInsertSchema(contractors).omit({
   id: true,

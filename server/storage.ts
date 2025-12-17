@@ -1,4 +1,4 @@
-import { type Contractor, type InsertContractor, type Company, type InsertCompany, type CompanyInviteCode, type InsertCompanyInviteCode, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type HomeApplianceManual, type InsertHomeApplianceManual, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type HomeownerConnectionCode, type InsertHomeownerConnectionCode, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics, type TaskOverride, type InsertTaskOverride, type Country, type InsertCountry, type Region, type InsertRegion, type ClimateZone, type InsertClimateZone, type RegulatoryBody, type InsertRegulatoryBody, type RegionalMaintenanceTask, type InsertRegionalMaintenanceTask, type TaskCompletion, type InsertTaskCompletion, type Achievement, type InsertAchievement, type AchievementDefinition, type InsertAchievementDefinition, type UserAchievement, type InsertUserAchievement, type SearchAnalytics, type InsertSearchAnalytics, type InviteCode, type InsertInviteCode, type AgentProfile, type InsertAgentProfile, type AffiliateReferral, type InsertAffiliateReferral, type SubscriptionCycleEvent, type InsertSubscriptionCycleEvent, type AffiliatePayout, type InsertAffiliatePayout, type AgentVerificationAudit, type InsertAgentVerificationAudit, type SupportTicket, type InsertSupportTicket, type TicketReply, type InsertTicketReply, type SubscriptionPlan, users, contractors, companies, contractorLicenses, countries, regions, climateZones, regulatoryBodies, regionalMaintenanceTasks, taskCompletions, achievements, achievementDefinitions, userAchievements, maintenanceLogs, searchAnalytics, inviteCodes, agentProfiles, affiliateReferrals, subscriptionCycleEvents, affiliatePayouts, agentVerificationAudits, supportTickets, ticketReplies, houses, homeSystems, customMaintenanceTasks, taskOverrides, serviceRecords, homeownerConnectionCodes, conversations, messages, proposals, houseTransfers, subscriptionPlans, type CrmLead, type InsertCrmLead, type CrmNote, type InsertCrmNote, type ErrorLog, type InsertErrorLog, type ErrorBreadcrumb, type InsertErrorBreadcrumb, type CrmIntegration, type InsertCrmIntegration, type WebhookLog, type InsertWebhookLog, crmLeads, crmNotes, errorLogs, errorBreadcrumbs, crmIntegrations, webhookLogs, type CrmClient, type InsertCrmClient, type CrmJob, type InsertCrmJob, type CrmQuote, type InsertCrmQuote, type CrmInvoice, type InsertCrmInvoice, crmClients, crmJobs, crmQuotes, crmInvoices } from "@shared/schema";
+import { type Contractor, type InsertContractor, type Company, type InsertCompany, type CompanyInviteCode, type InsertCompanyInviteCode, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type HomeApplianceManual, type InsertHomeApplianceManual, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type HomeownerConnectionCode, type InsertHomeownerConnectionCode, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type PushToken, type InsertPushToken, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics, type TaskOverride, type InsertTaskOverride, type Country, type InsertCountry, type Region, type InsertRegion, type ClimateZone, type InsertClimateZone, type RegulatoryBody, type InsertRegulatoryBody, type RegionalMaintenanceTask, type InsertRegionalMaintenanceTask, type TaskCompletion, type InsertTaskCompletion, type Achievement, type InsertAchievement, type AchievementDefinition, type InsertAchievementDefinition, type UserAchievement, type InsertUserAchievement, type SearchAnalytics, type InsertSearchAnalytics, type InviteCode, type InsertInviteCode, type AgentProfile, type InsertAgentProfile, type AffiliateReferral, type InsertAffiliateReferral, type SubscriptionCycleEvent, type InsertSubscriptionCycleEvent, type AffiliatePayout, type InsertAffiliatePayout, type AgentVerificationAudit, type InsertAgentVerificationAudit, type SupportTicket, type InsertSupportTicket, type TicketReply, type InsertTicketReply, type SubscriptionPlan, users, contractors, companies, contractorLicenses, countries, regions, climateZones, regulatoryBodies, regionalMaintenanceTasks, taskCompletions, achievements, achievementDefinitions, userAchievements, maintenanceLogs, searchAnalytics, inviteCodes, agentProfiles, affiliateReferrals, subscriptionCycleEvents, affiliatePayouts, agentVerificationAudits, supportTickets, ticketReplies, houses, homeSystems, customMaintenanceTasks, taskOverrides, serviceRecords, homeownerConnectionCodes, conversations, messages, proposals, houseTransfers, subscriptionPlans, pushTokens, type CrmLead, type InsertCrmLead, type CrmNote, type InsertCrmNote, type ErrorLog, type InsertErrorLog, type ErrorBreadcrumb, type InsertErrorBreadcrumb, type CrmIntegration, type InsertCrmIntegration, type WebhookLog, type InsertWebhookLog, crmLeads, crmNotes, errorLogs, errorBreadcrumbs, crmIntegrations, webhookLogs, type CrmClient, type InsertCrmClient, type CrmJob, type InsertCrmJob, type CrmQuote, type InsertCrmQuote, type CrmInvoice, type InsertCrmInvoice, crmClients, crmJobs, crmQuotes, crmInvoices } from "@shared/schema";
 import { randomUUID, randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
@@ -237,6 +237,13 @@ export interface IStorage {
   updatePushSubscription(id: string, subscription: Partial<InsertPushSubscription>): Promise<PushSubscription | undefined>;
   deletePushSubscription(id: string): Promise<boolean>;
   deletePushSubscriptionByEndpoint(endpoint: string): Promise<boolean>;
+
+  // Mobile push token operations (Firebase)
+  getPushTokensForUser(userId: string): Promise<PushToken[]>;
+  createPushToken(token: InsertPushToken): Promise<PushToken>;
+  updatePushToken(id: string, token: Partial<InsertPushToken>): Promise<PushToken | undefined>;
+  deactivatePushToken(id: string): Promise<boolean>;
+  deletePushToken(id: string): Promise<boolean>;
 
   // AI Maintenance helper methods
   getHousesByHomeowner(homeownerId: string): Promise<House[]>;
@@ -3296,6 +3303,54 @@ export class MemStorage implements IStorage {
       return this.pushSubscriptions.delete(subscription[0]);
     }
     return false;
+  }
+
+  // Mobile push token operations (Firebase)
+  private pushTokensMap = new Map<string, PushToken>();
+
+  async getPushTokensForUser(userId: string): Promise<PushToken[]> {
+    return Array.from(this.pushTokensMap.values()).filter(t => t.userId === userId && t.isActive);
+  }
+
+  async createPushToken(tokenData: InsertPushToken): Promise<PushToken> {
+    const id = randomUUID();
+    const now = new Date();
+    const token: PushToken = {
+      id,
+      ...tokenData,
+      isActive: tokenData.isActive ?? true,
+      deviceId: tokenData.deviceId || null,
+      lastUsedAt: now,
+      createdAt: now,
+    };
+    this.pushTokensMap.set(id, token);
+    return token;
+  }
+
+  async updatePushToken(id: string, tokenData: Partial<InsertPushToken>): Promise<PushToken | undefined> {
+    const existing = this.pushTokensMap.get(id);
+    if (!existing) return undefined;
+    
+    const updated: PushToken = {
+      ...existing,
+      ...tokenData,
+      lastUsedAt: new Date(),
+    };
+    this.pushTokensMap.set(id, updated);
+    return updated;
+  }
+
+  async deactivatePushToken(id: string): Promise<boolean> {
+    const existing = this.pushTokensMap.get(id);
+    if (!existing) return false;
+    
+    existing.isActive = false;
+    this.pushTokensMap.set(id, existing);
+    return true;
+  }
+
+  async deletePushToken(id: string): Promise<boolean> {
+    return this.pushTokensMap.delete(id);
   }
 
   // AI Maintenance helper methods
@@ -6432,6 +6487,12 @@ class DbStorage implements IStorage {
     this.updatePushSubscription = this.memStorage.updatePushSubscription.bind(this.memStorage);
     this.deletePushSubscription = this.memStorage.deletePushSubscription.bind(this.memStorage);
     this.deletePushSubscriptionByEndpoint = this.memStorage.deletePushSubscriptionByEndpoint.bind(this.memStorage);
+    // Mobile push token operations (Firebase)
+    this.getPushTokensForUser = this.memStorage.getPushTokensForUser.bind(this.memStorage);
+    this.createPushToken = this.memStorage.createPushToken.bind(this.memStorage);
+    this.updatePushToken = this.memStorage.updatePushToken.bind(this.memStorage);
+    this.deactivatePushToken = this.memStorage.deactivatePushToken.bind(this.memStorage);
+    this.deletePushToken = this.memStorage.deletePushToken.bind(this.memStorage);
     // getHousesByHomeowner now database-backed - implemented below (delegates to getHouses)
     this.getHomeSystemsByHomeowner = this.memStorage.getHomeSystemsByHomeowner.bind(this.memStorage);
     this.getMaintenanceLogsByHomeowner = this.memStorage.getMaintenanceLogsByHomeowner.bind(this.memStorage);
