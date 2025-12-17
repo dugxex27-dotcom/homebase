@@ -186,37 +186,43 @@ export default function Home() {
                 <p className="text-gray-600 max-w-xl mx-auto">Track your home's health, savings, and maintenance all in one place.</p>
               </div>
               
-              <h3 className="text-xl font-bold text-center mb-4" style={{ color: '#2c0f5b' }}>Home Health Score</h3>
-              <div className={`grid gap-4 mb-8 ${houses.length === 1 ? 'grid-cols-1 max-w-md mx-auto' : houses.length === 2 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 max-w-2xl mx-auto' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
-                {houses.map((house: House) => (
-                  <HomeHealthScore 
-                    key={house.id} 
-                    houseId={house.id} 
-                    houseName={house.name}
-                    compact={true}
-                  />
-                ))}
+              <div className="rounded-xl p-6 mb-6" style={{ backgroundColor: '#ffffff' }}>
+                <h3 className="text-xl font-bold text-center mb-4" style={{ color: '#2c0f5b' }}>Home Health Score</h3>
+                <div className={`grid gap-4 ${houses.length === 1 ? 'grid-cols-1 max-w-md mx-auto' : houses.length === 2 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 max-w-2xl mx-auto' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
+                  {houses.map((house: House) => (
+                    <HomeHealthScore 
+                      key={house.id} 
+                      houseId={house.id} 
+                      houseName={house.name}
+                      compact={true}
+                    />
+                  ))}
+                </div>
               </div>
               
-              <h3 className="text-xl font-bold text-center mb-4" style={{ color: '#2c0f5b' }}>DIY Savings</h3>
-              <div className={`grid gap-4 mb-8 ${houses.length === 1 ? 'grid-cols-1 max-w-md mx-auto' : houses.length === 2 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 max-w-2xl mx-auto' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
-                {houses.map((house: House) => (
-                  <DIYSavingsCard 
-                    key={house.id} 
-                    houseId={house.id}
-                    houseName={house.name}
-                  />
-                ))}
+              <div className="rounded-xl p-6 mb-6" style={{ backgroundColor: '#ffffff' }}>
+                <h3 className="text-xl font-bold text-center mb-4" style={{ color: '#2c0f5b' }}>DIY Savings</h3>
+                <div className={`grid gap-4 ${houses.length === 1 ? 'grid-cols-1 max-w-md mx-auto' : houses.length === 2 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 max-w-2xl mx-auto' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
+                  {houses.map((house: House) => (
+                    <DIYSavingsCard 
+                      key={house.id} 
+                      houseId={house.id}
+                      houseName={house.name}
+                    />
+                  ))}
+                </div>
               </div>
+              
+              <p className="text-lg mb-8 max-w-3xl mx-auto leading-relaxed text-center" style={{ color: '#2c0f5b' }}>Create a clear, living record of your home — from systems and appliances to maintenance, upgrades, and health.</p>
               
               <div className="text-center">
                 <Link href="/maintenance">
                   <Button 
                     size="lg"
-                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-6 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+                    className="font-bold px-8 py-6 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+                    style={{ backgroundColor: '#2c0f5b', color: '#ffffff' }}
                     data-testid="button-launch-home-record"
                   >
-                    <HomeIcon className="w-5 h-5 mr-2" />
                     Launch Your Home Record
                   </Button>
                 </Link>

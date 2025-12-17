@@ -35,21 +35,6 @@ export default function HeroSection() {
             </p>
           )}
           
-          {typedUser?.role === 'homeowner' && (
-            <>
-              <p className="text-lg mb-8 max-w-3xl mx-auto leading-relaxed" style={{ color: '#2c0f5b' }}>Create a clear, living record of your home — from systems and appliances to maintenance, upgrades, and health.</p>
-              <Link href="/maintenance">
-                <Button 
-                  size="lg"
-                  className="font-bold px-8 py-6 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
-                  style={{ backgroundColor: '#2c0f5b', color: '#ffffff' }}
-                  data-testid="button-start-home-report"
-                >
-                  Launch Your Home Record
-                </Button>
-              </Link>
-            </>
-          )}
         </div>
       </div>
     </section>
