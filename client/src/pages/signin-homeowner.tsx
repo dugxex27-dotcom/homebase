@@ -124,7 +124,7 @@ export default function SignInHomeowner() {
         title: "Welcome back!",
         description: "You have successfully logged in.",
       });
-      setLocation('/maintenance');
+      setLocation('/');
     },
     onError: (error: Error) => {
       toast({
@@ -149,7 +149,7 @@ export default function SignInHomeowner() {
         title: "Account created!",
         description: "Welcome to HomeBase. Your account has been created successfully.",
       });
-      setLocation('/maintenance');
+      setLocation('/');
     },
     onError: (error: Error) => {
       toast({
@@ -249,7 +249,7 @@ export default function SignInHomeowner() {
           description: "Logged in as demo homeowner.",
         });
         // Use window.location for a full page refresh to ensure session is picked up
-        window.location.href = '/maintenance';
+        window.location.href = '/';
       }
     } catch (error: any) {
       console.error('[Demo Login] Error:', error?.message || error);
