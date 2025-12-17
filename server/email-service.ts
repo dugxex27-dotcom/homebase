@@ -101,7 +101,7 @@ export async function sendWelcomeEmail(userId: string, userName: string, userRol
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <div style="background: linear-gradient(135deg, #6B46C1 0%, #805AD5 100%); padding: 30px; text-align: center;">
-        <h1 style="color: white; margin: 0;">Welcome to HomeBase!</h1>
+        <h1 style="color: #ffffff !important; margin: 0;">Welcome to HomeBase!</h1>
       </div>
       <div style="padding: 30px; background: #f9f9f9;">
         <p>Hi ${userName || 'there'},</p>
