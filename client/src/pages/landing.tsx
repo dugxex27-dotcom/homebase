@@ -113,7 +113,7 @@ export default function Landing() {
               fontWeight: 700,
               fontSize: '24px',
               lineHeight: 1.2,
-              color: '#ffffff'
+              color: '#c3d7ee'
             }}
           >
             Your Home's <span style={{ color: '#0072ce' }}>Digital</span> Record Starts Here
