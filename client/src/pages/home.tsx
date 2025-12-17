@@ -55,7 +55,6 @@ export default function Home() {
         : '#1560a2' 
     }}>
       <HeroSection />
-      
       {/* Referral Card Section - Paid Subscribers Only */}
       {typedUser?.role === 'homeowner' && isPaidSubscriber && (
         <section className="py-8 sm:py-12" style={{ background: 'transparent' }}>
@@ -121,7 +120,6 @@ export default function Home() {
           </div>
         </section>
       )}
-      
       {/* AI Help Feature - Homeowners Only */}
       {typedUser?.role === 'homeowner' && (
         <section className="py-8 sm:py-12" style={{ backgroundColor: '#6351a5' }}>
@@ -134,10 +132,7 @@ export default function Home() {
                       <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600 flex-shrink-0" />
                       <h3 className="text-base sm:text-lg lg:text-xl font-bold text-purple-700">Not Sure Who to Contact?</h3>
                     </div>
-                    <p className="text-gray-700 mb-3 sm:mb-4 text-sm sm:text-base">
-                      Let our AI assistant analyze your home problem and recommend the right type of contractor. 
-                      Get instant, expert guidance tailored to your specific situation!
-                    </p>
+                    <p className="text-gray-700 mb-3 sm:mb-4 text-sm sm:text-base">Our AI Assistant connects the dots and gives you clear, confident guidance—without the stress.</p>
                     <div className="flex flex-wrap gap-2 text-xs sm:text-sm text-gray-600 justify-center md:justify-start">
                       <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200">
                         <CheckCircle className="w-3 h-3 mr-1" />
@@ -171,7 +166,6 @@ export default function Home() {
           </div>
         </section>
       )}
-      
       {/* Contractor Dashboard - shown directly after hero for contractors */}
       {typedUser?.role === 'contractor' && (
         <section className="py-8 sm:py-12 lg:py-16" style={{ backgroundColor: '#1560a2' }}>
