@@ -62,6 +62,9 @@ export async function sendEmail(data: EmailData): Promise<boolean> {
       subject: data.subject,
       text: data.text,
       html: data.html,
+      trackingSettings: {
+        clickTracking: { enable: false, enableText: false },
+      },
     });
     console.log('[EMAIL] Email sent to:', data.to);
     return true;
