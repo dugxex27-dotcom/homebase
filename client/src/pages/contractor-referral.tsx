@@ -12,7 +12,7 @@ import { Gift, Copy, Share2, MessageSquare, Download, ImageIcon, Crown, Trending
 
 import instagramPostImg from '@assets/generated_images/Contractor_Instagram_referral_post_7b9f6d5d.png';
 import instagramStoryImg from '@assets/ChatGPT_Image_Dec_17,_2025,_06_40_44_PM_1766014864129.png';
-import facebookTwitterImg from '@assets/Contractor_Facebook_Twitter_share_7e5cc06a_1766014303007.png';
+import facebookTwitterImg from '@assets/Contractor_Facebook_Twitter_share_7e5cc06a_(1)_1766015774677.png';
 
 export default function ContractorReferral() {
   const { toast } = useToast();
@@ -360,7 +360,7 @@ export default function ContractorReferral() {
                     <h4 className="font-semibold text-sm text-gray-900">Facebook/Twitter</h4>
                     <p className="text-xs text-gray-500">Horizontal - 1200x630px</p>
                     <Button
-                      onClick={() => downloadImageWithCode(facebookTwitterImg, `homebase-contractor-facebook-${referralCode}.png`, { x: 862, y: 548 }, '#ffffff', 22, 'left')}
+                      onClick={() => downloadImageWithCode(facebookTwitterImg, `homebase-contractor-facebook-${referralCode}.png`, { x: 520, y: 355 }, '#ffffff', 28, 'left')}
                       size="sm"
                       className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                       data-testid="button-download-contractor-facebook-twitter"
