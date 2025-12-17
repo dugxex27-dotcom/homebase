@@ -55,6 +55,52 @@ export default function Home() {
         : '#1560a2' 
     }}>
       <HeroSection />
+      {/* AI Help Feature - Homeowners Only - At Top */}
+      {typedUser?.role === 'homeowner' && (
+        <section className="py-8 sm:py-12" style={{ backgroundColor: '#6351a5' }}>
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
+            <Card className="border-2 border-purple-300 bg-white shadow-xl">
+              <CardContent className="p-4 sm:p-6 lg:p-8">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6">
+                  <div className="flex-1 text-center md:text-left">
+                    <div className="flex items-center justify-center md:justify-start gap-2 mb-3">
+                      <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600 flex-shrink-0" />
+                      <h3 className="text-base sm:text-lg lg:text-xl font-bold text-purple-700">Not sure what's going on with your home, or who to call about it?</h3>
+                    </div>
+                    <p className="text-gray-700 mb-3 sm:mb-4 text-sm sm:text-base">Our AI Assistant connects the dots and gives you clear, confident guidance—without the stress.</p>
+                    <div className="flex flex-wrap gap-2 text-xs sm:text-sm text-gray-600 justify-center md:justify-start">
+                      <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Instant Analysis
+                      </Badge>
+                      <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Expert Recommendations
+                      </Badge>
+                      <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Direct Contractor Search
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="flex-shrink-0 w-full md:w-auto">
+                    <Link href="/ai-help" className="w-full md:w-auto">
+                      <Button 
+                        size="lg" 
+                        className="w-full md:w-auto bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 sm:px-8 py-4 sm:py-6 text-sm sm:text-base lg:text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+                        data-testid="button-ai-help"
+                      >
+                        <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                        Try AI Help Now
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+      )}
       {/* Referral Card Section - Paid Subscribers Only */}
       {typedUser?.role === 'homeowner' && isPaidSubscriber && (
         <section className="py-8 sm:py-12" style={{ background: 'transparent' }}>
@@ -111,52 +157,6 @@ export default function Home() {
                         data-testid="button-share-invite-link"
                       >
                         Share Your Invite Link
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
-      )}
-      {/* AI Help Feature - Homeowners Only */}
-      {typedUser?.role === 'homeowner' && (
-        <section className="py-8 sm:py-12" style={{ backgroundColor: '#6351a5' }}>
-          <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
-            <Card className="border-2 border-purple-300 bg-white shadow-xl">
-              <CardContent className="p-4 sm:p-6 lg:p-8">
-                <div className="flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6">
-                  <div className="flex-1 text-center md:text-left">
-                    <div className="flex items-center justify-center md:justify-start gap-2 mb-3">
-                      <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600 flex-shrink-0" />
-                      <h3 className="text-base sm:text-lg lg:text-xl font-bold text-purple-700">Not sure what’s going on with your home, or who to call about it?</h3>
-                    </div>
-                    <p className="text-gray-700 mb-3 sm:mb-4 text-sm sm:text-base">Our AI Assistant connects the dots and gives you clear, confident guidance—without the stress.</p>
-                    <div className="flex flex-wrap gap-2 text-xs sm:text-sm text-gray-600 justify-center md:justify-start">
-                      <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Instant Analysis
-                      </Badge>
-                      <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Expert Recommendations
-                      </Badge>
-                      <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Direct Contractor Search
-                      </Badge>
-                    </div>
-                  </div>
-                  <div className="flex-shrink-0 w-full md:w-auto">
-                    <Link href="/ai-help" className="w-full md:w-auto">
-                      <Button 
-                        size="lg" 
-                        className="w-full md:w-auto bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 sm:px-8 py-4 sm:py-6 text-sm sm:text-base lg:text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
-                        data-testid="button-ai-help"
-                      >
-                        <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                        Try AI Help Now
                       </Button>
                     </Link>
                   </div>
