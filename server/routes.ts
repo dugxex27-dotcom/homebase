@@ -11742,6 +11742,79 @@ Important: Only recommend service types from the available list. Match problems 
     }
   });
 
+  // Push token registration endpoint for mobile apps (Firebase)
+  app.post('/api/push-token', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const { token, platform, deviceId } = req.body;
+
+      if (!token || !platform) {
+        return res.status(400).json({ message: "Token and platform are required" });
+      }
+
+      if (!['ios', 'android'].includes(platform)) {
+        return res.status(400).json({ message: "Platform must be 'ios' or 'android'" });
+      }
+
+      // Check if token already exists for this user
+      const existingTokens = await storage.getPushTokensForUser(userId);
+      const existingToken = existingTokens.find(t => t.token === token);
+
+      if (existingToken) {
+        // Update last used time
+        await storage.updatePushToken(existingToken.id, { isActive: true });
+        console.log(`[PUSH] Updated existing token for user ${userId}`);
+        return res.json({ message: "Token updated", id: existingToken.id });
+      }
+
+      // Create new token
+      const newToken = await storage.createPushToken({
+        userId,
+        token,
+        platform,
+        deviceId: deviceId || null,
+        isActive: true,
+      });
+
+      console.log(`[PUSH] Registered new token for user ${userId}, platform: ${platform}`);
+      res.status(201).json({ message: "Token registered", id: newToken.id });
+    } catch (error) {
+      console.error('[PUSH] Error registering push token:', error);
+      res.status(500).json({ message: "Failed to register push token" });
+    }
+  });
+
+  app.delete('/api/push-token', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const { token } = req.body;
+      if (!token) {
+        return res.status(400).json({ message: "Token is required" });
+      }
+
+      const existingTokens = await storage.getPushTokensForUser(userId);
+      const tokenToDelete = existingTokens.find(t => t.token === token);
+
+      if (tokenToDelete) {
+        await storage.deletePushToken(tokenToDelete.id);
+        console.log(`[PUSH] Deleted token for user ${userId}`);
+      }
+
+      res.json({ message: "Token removed" });
+    } catch (error) {
+      console.error('[PUSH] Error deleting push token:', error);
+      res.status(500).json({ message: "Failed to delete push token" });
+    }
+  });
+
   const httpServer = createServer(app);
   
   // WebSocket server for real-time messaging with session validation
