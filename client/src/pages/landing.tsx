@@ -11,11 +11,11 @@ export default function Landing() {
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(to bottom, #f8f4fc, #faf9fb)' }}>
       {/* Hero Section with Background Image */}
-      <div className="w-full relative" style={{ aspectRatio: '2.5 / 1', minHeight: '300px' }}>
+      <div className="w-full relative">
         <img 
           src={heroImage} 
           alt="HomeBase - Your digital home fingerprint" 
-          className="w-full h-full object-cover"
+          className="w-full h-auto"
           data-testid="img-landing-hero"
         />
         {/* Text Overlay */}
