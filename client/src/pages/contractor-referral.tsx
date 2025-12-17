@@ -61,7 +61,7 @@ export default function ContractorReferral() {
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareMessage)}`);
   };
 
-  const downloadImageWithCode = async (imageSrc: string, filename: string, codePosition: { x: number, y: number }) => {
+  const downloadImageWithCode = async (imageSrc: string, filename: string, codePosition: { x: number, y: number }, textColor: string = '#1560a2') => {
     try {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
@@ -75,7 +75,7 @@ export default function ContractorReferral() {
         
         if (ctx) {
           ctx.font = 'bold 48px Arial';
-          ctx.fillStyle = '#1560a2';
+          ctx.fillStyle = textColor;
           ctx.textAlign = 'center';
           ctx.fillText(referralCode, codePosition.x, codePosition.y);
         }
@@ -360,7 +360,7 @@ export default function ContractorReferral() {
                     <h4 className="font-semibold text-sm text-gray-900">Facebook/Twitter</h4>
                     <p className="text-xs text-gray-500">Horizontal - 1200x630px</p>
                     <Button
-                      onClick={() => downloadImageWithCode(facebookTwitterImg, `homebase-contractor-facebook-${referralCode}.png`, { x: 600, y: 580 })}
+                      onClick={() => downloadImageWithCode(facebookTwitterImg, `homebase-contractor-facebook-${referralCode}.png`, { x: 870, y: 545 }, '#ffffff')}
                       size="sm"
                       className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                       data-testid="button-download-contractor-facebook-twitter"
