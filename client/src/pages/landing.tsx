@@ -79,6 +79,18 @@ export default function Landing() {
           >
             Built for homeowners first — and shared seamlessly with contractors and real estate agents when it matters.
           </p>
+          <a 
+            href="#role-cards"
+            className="inline-block mt-6 px-8 py-3 rounded-lg font-bold text-base transition-all hover:shadow-lg"
+            style={{ 
+              backgroundColor: '#ffffff',
+              color: '#2c0f5b',
+              fontFamily: "'Quicksand', sans-serif"
+            }}
+            data-testid="button-choose-role-desktop"
+          >
+            Choose Your Role
+          </a>
         </div>
       </div>
       {/* Hero Section - Tablet (640px - 1023px) */}
@@ -141,6 +153,18 @@ export default function Landing() {
           >
             Built for homeowners first — and shared seamlessly with contractors and real estate agents when it matters.
           </p>
+          <a 
+            href="#role-cards"
+            className="inline-block mt-4 px-6 py-2 rounded-lg font-bold text-sm transition-all hover:shadow-lg"
+            style={{ 
+              backgroundColor: '#ffffff',
+              color: '#2c0f5b',
+              fontFamily: "'Quicksand', sans-serif"
+            }}
+            data-testid="button-choose-role-tablet"
+          >
+            Choose Your Role
+          </a>
         </div>
       </div>
       {/* Hero Section - Mobile (<640px) - Image on top, purple text section below */}
@@ -203,10 +227,22 @@ export default function Landing() {
           >
             Built for homeowners first — and shared seamlessly with contractors and real estate agents when it matters.
           </p>
+          <a 
+            href="#role-cards"
+            className="inline-block mt-6 px-6 py-3 rounded-lg font-bold text-sm transition-all hover:shadow-lg"
+            style={{ 
+              backgroundColor: '#ffffff',
+              color: '#2c0f5b',
+              fontFamily: "'Quicksand', sans-serif"
+            }}
+            data-testid="button-choose-role-mobile"
+          >
+            Choose Your Role
+          </a>
         </div>
       </div>
       {/* Role Selection Cards */}
-      <div className="max-w-6xl mx-auto px-4 py-12">
+      <div id="role-cards" className="max-w-6xl mx-auto px-4 py-12">
         <div className="text-center mb-10">
           <h2 className="text-3xl font-bold mb-3" style={{ color: '#2c0f5b' }}>Get Started Today</h2>
           <p className="text-lg text-gray-600">Choose how you'd like to use HomeBase</p>
