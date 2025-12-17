@@ -20,6 +20,7 @@ import multer from "multer";
 import Stripe from "stripe";
 import { geocodeAddress, calculateDistance } from "./geocoding-service";
 import { auditLogger, sessionManager, AuditEventTypes } from "./security-audit";
+import { smsService } from "./sms-service";
 
 const stripe = process.env.STRIPE_SECRET_KEY 
   ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2025-08-27.basil" })
@@ -10382,6 +10383,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           link: '/messages',
           priority: 'medium'
         });
+        
+        // Send SMS to contractor
+        smsService.sendNewMessageNotification(
+          conversation.contractorId,
+          homeownerName,
+          req.body.content || ''
+        ).catch(err => console.error('[SMS] Error sending to contractor:', err));
       }
       
       // Create notification for homeowner when contractor sends a message
@@ -10400,6 +10408,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           link: '/messages',
           priority: 'medium'
         });
+        
+        // Send SMS to homeowner
+        smsService.sendNewMessageNotification(
+          conversation.homeownerId,
+          contractorName,
+          req.body.content || ''
+        ).catch(err => console.error('[SMS] Error sending to homeowner:', err));
       }
       
       res.status(201).json(message);
