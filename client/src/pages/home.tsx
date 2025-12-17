@@ -130,7 +130,9 @@ export default function Home() {
                   <div className="flex-1 text-center md:text-left">
                     <div className="flex items-center justify-center md:justify-start gap-2 mb-3">
                       <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600 flex-shrink-0" />
-                      <h3 className="text-base sm:text-lg lg:text-xl font-bold text-purple-700">Not Sure Who to Contact?</h3>
+                      <h3 className="text-base sm:text-lg lg:text-xl font-bold text-purple-700">Not sure what’s wrong with your home?
+                      Unsure which contractor you actually need?
+                      Wondering what the smartest next step is?</h3>
                     </div>
                     <p className="text-gray-700 mb-3 sm:mb-4 text-sm sm:text-base">Our AI Assistant connects the dots and gives you clear, confident guidance—without the stress.</p>
                     <div className="flex flex-wrap gap-2 text-xs sm:text-sm text-gray-600 justify-center md:justify-start">
