@@ -154,6 +154,8 @@ export async function sendAppointmentReminder(
 }
 
 export async function sendWelcomeSMS(userId: string, userName: string): Promise<boolean> {
+  if (!await canSendSMS(userId, 'marketing')) return false;
+  
   const user = await storage.getUser(userId);
   if (!user?.phone) return false;
 
@@ -164,6 +166,8 @@ export async function sendWelcomeSMS(userId: string, userName: string): Promise<
 }
 
 export async function sendTrialExpiringSMS(userId: string, daysRemaining: number): Promise<boolean> {
+  if (!await canSendSMS(userId, 'marketing')) return false;
+  
   const user = await storage.getUser(userId);
   if (!user?.phone) return false;
 

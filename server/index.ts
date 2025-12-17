@@ -6,6 +6,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { db } from "./db";
 import { storage } from "./storage";
+import { trialReminderScheduler } from "./trial-reminder-scheduler";
 
 const app = express();
 
@@ -194,5 +195,8 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Start scheduled tasks
+    trialReminderScheduler.start();
   });
 })();
