@@ -8464,6 +8464,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const appointment = await storage.createContractorAppointment(appointmentData);
+      
+      // Send SMS confirmation to homeowner
+      if (appointmentData.homeownerId) {
+        const contractor = appointmentData.contractorId 
+          ? await storage.getContractor(appointmentData.contractorId)
+          : null;
+        const company = contractor?.companyId 
+          ? await storage.getCompany(contractor.companyId)
+          : null;
+        const contractorName = company?.name || 'Your contractor';
+        const appointmentDate = appointmentData.scheduledDate 
+          ? new Date(appointmentData.scheduledDate).toLocaleDateString()
+          : 'TBD';
+        const appointmentTime = appointmentData.scheduledTime || 'TBD';
+        
+        smsService.sendAppointmentConfirmation(
+          appointmentData.homeownerId,
+          contractorName,
+          appointmentDate,
+          appointmentTime
+        ).catch(err => console.error('[SMS] Error sending appointment confirmation:', err));
+      }
+      
       res.status(201).json(appointment);
     } catch (error) {
       if (error instanceof z.ZodError) {

@@ -47,6 +47,7 @@ Preferred communication style: Simple, everyday language.
 - **Maintenance Guidance**: Seasonal home maintenance schedules with location-based and prioritized tasks.
 - **Service Categories**: Supports 76 distinct service categories.
 - **Notifications**: Bi-directional real-time notifications for homeowners and contractors.
+    - **SMS Notifications (Twilio)**: Text message notifications for maintenance reminders, appointment confirmations, and new messages. Users can enable/disable SMS in their notification preferences. Contractors also receive SMS when homeowners message them.
 - **Proposal System**: Contractors can create detailed proposals, and homeowners can view and manage them within the app.
 - **Billing and Subscription**:
     - 14-day free trial.

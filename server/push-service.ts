@@ -1,6 +1,7 @@
 import webpush from 'web-push';
 import { storage } from './storage';
 import type { PushSubscription } from '@shared/schema';
+import { smsService } from './sms-service';
 
 // Generate VAPID keys for push notifications
 import crypto from 'crypto';
@@ -158,6 +159,11 @@ export class PushNotificationService {
         }
       ]
     });
+    
+    // Also send SMS if user has SMS enabled
+    const dueDate = task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'soon';
+    smsService.sendMaintenanceReminder(userId, task.title, dueDate)
+      .catch(err => console.error('[SMS] Error sending maintenance reminder:', err));
   }
 
   // Send notification for new messages
