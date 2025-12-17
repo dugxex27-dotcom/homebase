@@ -2988,7 +2988,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
         <HomeownerFeatureGate featureName="Maintenance Scheduling">
           <section className="py-4 px-4 sm:px-6 lg:px-8">
             <div className="max-w-7xl mx-auto">
-              <div className={`grid gap-4 ${houses.length === 1 ? 'grid-cols-1 max-w-md' : houses.length === 2 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
+              <div className={`grid gap-4 ${houses.length === 1 ? 'grid-cols-1 max-w-md mx-auto' : houses.length === 2 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
                 {houses.map((house: House) => (
                   <HomeHealthScore 
                     key={house.id} 
@@ -3006,7 +3006,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       {userRole === 'homeowner' && houses.length > 0 && (
         <section className="py-4 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto">
-            <div className={`grid gap-4 ${houses.length === 1 ? 'grid-cols-1 max-w-md' : houses.length === 2 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
+            <div className={`grid gap-4 ${houses.length === 1 ? 'grid-cols-1 max-w-md mx-auto' : houses.length === 2 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
               {houses.map((house: House) => (
                 <DIYSavingsTracker 
                   key={house.id} 
