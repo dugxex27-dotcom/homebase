@@ -179,7 +179,7 @@ export default function Home() {
       {/* Home Dashboard Section - Homeowners with Houses */}
       {typedUser?.role === 'homeowner' && houses.length > 0 && (
         <HomeownerFeatureGate featureName="Home Dashboard">
-          <section className="py-8 px-4 sm:px-6 lg:px-8" style={{ backgroundColor: '#f3e9ff' }}>
+          <section className="py-8 px-4 sm:px-6 lg:px-8" style={{ backgroundColor: '#ffffff' }}>
             <div className="max-w-7xl mx-auto">
               <div className="text-center mb-6">
                 <h2 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: '#2c0f5b' }}>Your Home at a Glance</h2>
