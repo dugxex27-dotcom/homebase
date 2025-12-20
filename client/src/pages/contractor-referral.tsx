@@ -339,7 +339,7 @@ export default function ContractorReferral() {
                     <h4 className="font-semibold text-sm text-gray-900">Instagram Story</h4>
                     <p className="text-xs text-gray-500">Vertical format - 1080x1920px</p>
                     <Button
-                      onClick={() => downloadImageWithCode(instagramStoryImg, `homebase-contractor-story-${referralCode}.png`, { x: 540, y: 1750 }, '#ffffff')}
+                      onClick={() => downloadImageWithCode(instagramStoryImg, `homebase-contractor-story-${referralCode}.png`, { x: 470, y: 975 }, '#ffffff', 28, 'left')}
                       size="sm"
                       className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                       data-testid="button-download-contractor-instagram-story"
