@@ -318,7 +318,7 @@ export default function ContractorReferral() {
                     <h4 className="font-semibold text-sm text-gray-900">Instagram Post</h4>
                     <p className="text-xs text-gray-500">Square format - 1080x1080px</p>
                     <Button
-                      onClick={() => downloadImageWithCode(instagramPostImg, `homebase-contractor-instagram-${referralCode}.png`, { x: 540, y: 950 })}
+                      onClick={() => downloadImageWithCode(instagramPostImg, `homebase-contractor-instagram-${referralCode}.png`, { x: 684, y: 902 })}
                       size="sm"
                       className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                       data-testid="button-download-contractor-instagram-post"
@@ -339,7 +339,7 @@ export default function ContractorReferral() {
                     <h4 className="font-semibold text-sm text-gray-900">Instagram Story</h4>
                     <p className="text-xs text-gray-500">Vertical format - 1080x1920px</p>
                     <Button
-                      onClick={() => downloadImageWithCode(instagramStoryImg, `homebase-contractor-story-${referralCode}.png`, { x: 512, y: 1000 }, '#ffffff', 48, 'center')}
+                      onClick={() => downloadImageWithCode(instagramStoryImg, `homebase-contractor-story-${referralCode}.png`, { x: 656, y: 952 }, '#ffffff', 48, 'center')}
                       size="sm"
                       className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                       data-testid="button-download-contractor-instagram-story"
@@ -360,7 +360,7 @@ export default function ContractorReferral() {
                     <h4 className="font-semibold text-sm text-gray-900">Facebook/Twitter</h4>
                     <p className="text-xs text-gray-500">Horizontal - 1200x630px</p>
                     <Button
-                      onClick={() => downloadImageWithCode(facebookTwitterImg, `homebase-contractor-facebook-${referralCode}.png`, { x: 712, y: 510 }, '#ffffff', 32, 'left')}
+                      onClick={() => downloadImageWithCode(facebookTwitterImg, `homebase-contractor-facebook-${referralCode}.png`, { x: 856, y: 462 }, '#ffffff', 32, 'left')}
                       size="sm"
                       className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                       data-testid="button-download-contractor-facebook-twitter"
