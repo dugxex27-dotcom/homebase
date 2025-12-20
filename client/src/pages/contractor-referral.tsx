@@ -360,7 +360,7 @@ export default function ContractorReferral() {
                     <h4 className="font-semibold text-sm text-gray-900">Facebook/Twitter</h4>
                     <p className="text-xs text-gray-500">Horizontal - 1200x630px</p>
                     <Button
-                      onClick={() => downloadImageWithCode(facebookTwitterImg, `homebase-contractor-facebook-${referralCode}.png`, { x: 512, y: 415 }, '#ffffff', 36, 'center')}
+                      onClick={() => downloadImageWithCode(facebookTwitterImg, `homebase-contractor-facebook-${referralCode}.png`, { x: 700, y: 490 }, '#ffffff', 36, 'center')}
                       size="sm"
                       className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                       data-testid="button-download-contractor-facebook-twitter"
