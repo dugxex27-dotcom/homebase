@@ -11,7 +11,7 @@ import { PaidSubscriberGate } from "@/components/homeowner-feature-gate";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
 
 import instagramPostImg from '@assets/generated_images/Instagram_referral_post_square_843cce29.png';
-import instagramStoryImg from '@assets/generated_images/Instagram_story_referral_vertical_fd4053fc.png';
+import instagramStoryImg from '@assets/ChatGPT_Image_Dec_20,_2025,_06_39_10_PM_1766273960807.png';
 import facebookTwitterImg from '@assets/generated_images/Facebook_Twitter_share_image_8823d9cc.png';
 
 export default function HomeownerReferral() {
