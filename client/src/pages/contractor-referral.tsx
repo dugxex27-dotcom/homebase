@@ -11,7 +11,7 @@ import type { User as UserType } from "@shared/schema";
 import { Gift, Copy, Share2, MessageSquare, Download, ImageIcon, Crown, TrendingUp } from "lucide-react";
 
 import instagramPostImg from '@assets/generated_images/Contractor_Instagram_referral_post_7b9f6d5d.png';
-import instagramStoryImg from '@assets/ChatGPT_Image_Dec_17,_2025,_06_40_44_PM_1766014864129.png';
+import instagramStoryImg from '@assets/ChatGPT_Image_Dec_20,_2025,_03_56_29_PM_1766264207920.png';
 import facebookTwitterImg from '@assets/Contractor_Facebook_Twitter_share_7e5cc06a_(2)_1766263330884.png';
 
 export default function ContractorReferral() {
@@ -339,7 +339,7 @@ export default function ContractorReferral() {
                     <h4 className="font-semibold text-sm text-gray-900">Instagram Story</h4>
                     <p className="text-xs text-gray-500">Vertical format - 1080x1920px</p>
                     <Button
-                      onClick={() => downloadImageWithCode(instagramStoryImg, `homebase-contractor-story-${referralCode}.png`, { x: 470, y: 1359 }, '#ffffff', 28, 'left')}
+                      onClick={() => downloadImageWithCode(instagramStoryImg, `homebase-contractor-story-${referralCode}.png`, { x: 512, y: 980 }, '#ffffff', 48, 'center')}
                       size="sm"
                       className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                       data-testid="button-download-contractor-instagram-story"
