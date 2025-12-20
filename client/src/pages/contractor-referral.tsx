@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import type { User as UserType } from "@shared/schema";
 import { Gift, Copy, Share2, MessageSquare, Download, ImageIcon, Crown, TrendingUp } from "lucide-react";
 
-import instagramPostImg from '@assets/generated_images/Contractor_Instagram_referral_post_7b9f6d5d.png';
+import instagramPostImg from '@assets/ChatGPT_Image_Dec_20,_2025,_05_30_43_PM_1766269867835.png';
 import instagramStoryImg from '@assets/ChatGPT_Image_Dec_20,_2025,_05_10_14_PM_1766268630686.png';
 import facebookTwitterImg from '@assets/Contractor_Facebook_Twitter_share_7e5cc06a_(2)_1766263330884.png';
 
