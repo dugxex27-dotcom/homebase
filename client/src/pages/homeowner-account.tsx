@@ -42,7 +42,7 @@ import { Link } from "wouter";
 import PushNotificationManager from "@/components/push-notification-manager";
 import { HomeownerConnectionCodes } from "@/components/ConnectionCodes";
 import instagramPostImg from '@assets/generated_images/Instagram_referral_post_square_843cce29.png';
-import instagramStoryImg from '@assets/generated_images/Instagram_story_referral_vertical_fd4053fc.png';
+import instagramStoryImg from '@assets/ChatGPT_Image_Dec_20,_2025,_06_39_10_PM_1766274706070.png';
 import facebookTwitterImg from '@assets/generated_images/Facebook_Twitter_share_image_8823d9cc.png';
 
 export default function HomeownerAccount() {
