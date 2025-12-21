@@ -859,7 +859,7 @@ export default function HomeownerAccount() {
                       <h4 className="font-semibold text-sm" style={{ color: '#2c0f5b' }}>Facebook/Twitter</h4>
                       <p className="text-xs text-gray-600">Horizontal - 1200x630px</p>
                       <Button
-                        onClick={() => downloadImageWithCode(facebookTwitterImg, `homebase-referral-facebook-${referralCode}.png`, { x: 888, y: 964 })}
+                        onClick={() => downloadImageWithCode(facebookTwitterImg, `homebase-referral-facebook-${referralCode}.png`, { x: 1176, y: 964 })}
                         size="sm"
                         className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
                         data-testid="button-download-facebook-twitter"
