@@ -838,7 +838,7 @@ export default function HomeownerAccount() {
                       <h4 className="font-semibold text-sm" style={{ color: '#2c0f5b' }}>Instagram Story</h4>
                       <p className="text-xs text-gray-600">Vertical format - 1080x1920px</p>
                       <Button
-                        onClick={() => downloadImageWithCode(instagramStoryImg, `homebase-referral-story-${referralCode}.png`, { x: 636, y: 1358 })}
+                        onClick={() => downloadImageWithCode(instagramStoryImg, `homebase-referral-story-${referralCode}.png`, { x: 660, y: 1358 })}
                         size="sm"
                         className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
                         data-testid="button-download-instagram-story"
