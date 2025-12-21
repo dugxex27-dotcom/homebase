@@ -264,27 +264,116 @@ export default function AgentReferral() {
             </CardContent>
           </Card>
 
-          {/* Shareable Graphics */}
+          {/* Shareable Graphics for Homeowners */}
           <Card className="shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-green-600">
                 <ImageIcon className="w-5 h-5" />
-                Shareable Graphics
+                Share with Homeowners
               </CardTitle>
               <CardDescription>
-                Download personalized graphics with your referral code to share on social media
+                Graphics designed to share with your homeowner clients
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-gray-600 mb-4">
-                Click download on any graphic below to get a personalized version with your referral code <span className="font-mono font-bold text-green-600">{referralCode}</span> already included!
+                Download personalized graphics with your referral code <span className="font-mono font-bold text-green-600">{referralCode}</span> to share with your homeowner clients!
               </p>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Instagram Post */}
                 <div className="bg-white rounded-lg p-3 space-y-2 border border-gray-200">
                   <div className="aspect-square rounded overflow-hidden border-2 border-gray-200">
-                    <img src={instagramPostImg} alt="Instagram Post Template" className="w-full h-full object-cover" />
+                    <img src={instagramPostImg} alt="Instagram Post Template for Homeowners" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="font-semibold text-sm text-green-600">Instagram Post</h4>
+                    <p className="text-xs text-gray-600">Square format - 1080x1080px</p>
+                    <Button
+                      onClick={() => downloadImageWithCode(instagramPostImg, `homebase-homeowner-instagram-${referralCode}.png`, { x: 540, y: 950 })}
+                      size="sm"
+                      className="w-full bg-green-600 hover:bg-green-700"
+                      data-testid="button-download-homeowner-instagram-post"
+                      type="button"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Download
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Instagram Story */}
+                <div className="bg-white rounded-lg p-3 space-y-2 border border-gray-200">
+                  <div className="aspect-[9/16] rounded overflow-hidden border-2 border-gray-200 max-h-64">
+                    <img src={instagramStoryImg} alt="Instagram Story Template for Homeowners" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="font-semibold text-sm text-green-600">Instagram Story</h4>
+                    <p className="text-xs text-gray-600">Vertical format - 1080x1920px</p>
+                    <Button
+                      onClick={() => downloadImageWithCode(instagramStoryImg, `homebase-homeowner-story-${referralCode}.png`, { x: 540, y: 1750 })}
+                      size="sm"
+                      className="w-full bg-green-600 hover:bg-green-700"
+                      data-testid="button-download-homeowner-instagram-story"
+                      type="button"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Download
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Facebook/Twitter */}
+                <div className="bg-white rounded-lg p-3 space-y-2 border border-gray-200">
+                  <div className="aspect-[16/9] rounded overflow-hidden border-2 border-gray-200">
+                    <img src={facebookTwitterImg} alt="Facebook/Twitter Template for Homeowners" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="font-semibold text-sm text-green-600">Facebook/Twitter</h4>
+                    <p className="text-xs text-gray-600">Horizontal - 1200x630px</p>
+                    <Button
+                      onClick={() => downloadImageWithCode(facebookTwitterImg, `homebase-homeowner-facebook-${referralCode}.png`, { x: 600, y: 580 })}
+                      size="sm"
+                      className="w-full bg-green-600 hover:bg-green-700"
+                      data-testid="button-download-homeowner-facebook-twitter"
+                      type="button"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Download
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-4">
+                <p className="text-sm text-green-800">
+                  <strong>Tip:</strong> Share these graphics with your homeowner clients. When they sign up using your code, you'll earn $15 commission after 4 months!
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Shareable Graphics for Real Estate Agents */}
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-green-600">
+                <ImageIcon className="w-5 h-5" />
+                Share with Real Estate Agents
+              </CardTitle>
+              <CardDescription>
+                Graphics designed to share with other real estate agents
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-gray-600 mb-4">
+                Download personalized graphics with your referral code <span className="font-mono font-bold text-green-600">{referralCode}</span> to share with other agents!
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Instagram Post */}
+                <div className="bg-white rounded-lg p-3 space-y-2 border border-gray-200">
+                  <div className="aspect-square rounded overflow-hidden border-2 border-gray-200">
+                    <img src={instagramPostImg} alt="Instagram Post Template for Agents" className="w-full h-full object-cover" />
                   </div>
                   <div className="space-y-1">
                     <h4 className="font-semibold text-sm text-green-600">Instagram Post</h4>
@@ -305,7 +394,7 @@ export default function AgentReferral() {
                 {/* Instagram Story */}
                 <div className="bg-white rounded-lg p-3 space-y-2 border border-gray-200">
                   <div className="aspect-[9/16] rounded overflow-hidden border-2 border-gray-200 max-h-64">
-                    <img src={instagramStoryImg} alt="Instagram Story Template" className="w-full h-full object-cover" />
+                    <img src={instagramStoryImg} alt="Instagram Story Template for Agents" className="w-full h-full object-cover" />
                   </div>
                   <div className="space-y-1">
                     <h4 className="font-semibold text-sm text-green-600">Instagram Story</h4>
@@ -326,7 +415,7 @@ export default function AgentReferral() {
                 {/* Facebook/Twitter */}
                 <div className="bg-white rounded-lg p-3 space-y-2 border border-gray-200">
                   <div className="aspect-[16/9] rounded overflow-hidden border-2 border-gray-200">
-                    <img src={facebookTwitterImg} alt="Facebook/Twitter Template" className="w-full h-full object-cover" />
+                    <img src={facebookTwitterImg} alt="Facebook/Twitter Template for Agents" className="w-full h-full object-cover" />
                   </div>
                   <div className="space-y-1">
                     <h4 className="font-semibold text-sm text-green-600">Facebook/Twitter</h4>
@@ -347,7 +436,7 @@ export default function AgentReferral() {
 
               <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-4">
                 <p className="text-sm text-green-800">
-                  <strong>Tip:</strong> Download these graphics and share them with your clients. When they sign up using your code, you'll earn commissions on their subscriptions!
+                  <strong>Tip:</strong> Share these graphics with fellow real estate agents. When they sign up using your code, you'll earn $15 commission after 4 months!
                 </p>
               </div>
             </CardContent>
