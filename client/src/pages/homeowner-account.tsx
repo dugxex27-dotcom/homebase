@@ -227,7 +227,7 @@ export default function HomeownerAccount() {
     window.open(whatsappUrl, '_blank');
   };
 
-  const downloadImageWithCode = async (imageUrl: string, fileName: string, codePosition: { x: number, y: number }, fontSize: number = 48) => {
+  const downloadImageWithCode = async (imageUrl: string, fileName: string, codePosition: { x: number, y: number }) => {
     // Guard against missing referral code
     if (!referralCode) {
       toast({
@@ -270,7 +270,7 @@ export default function HomeownerAccount() {
       ctx.drawImage(img, 0, 0);
 
       // Add referral code text
-      ctx.font = `700 ${fontSize}px Quicksand, sans-serif`;
+      ctx.font = '700 48px Quicksand, sans-serif';
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center';
       ctx.fillText(referralCode, codePosition.x, codePosition.y);
@@ -818,7 +818,7 @@ export default function HomeownerAccount() {
                       <h4 className="font-semibold text-sm" style={{ color: '#2c0f5b' }}>Instagram Post</h4>
                       <p className="text-xs text-gray-600">Square format - 1080x1080px</p>
                       <Button
-                        onClick={() => downloadImageWithCode(instagramPostImg, `homebase-referral-instagram-${referralCode}.png`, { x: 540, y: 950 }, 43)}
+                        onClick={() => downloadImageWithCode(instagramPostImg, `homebase-referral-instagram-${referralCode}.png`, { x: 540, y: 950 })}
                         size="sm"
                         className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
                         data-testid="button-download-instagram-post"
