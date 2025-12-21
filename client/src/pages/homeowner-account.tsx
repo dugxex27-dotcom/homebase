@@ -41,7 +41,7 @@ import {
 import { Link } from "wouter";
 import PushNotificationManager from "@/components/push-notification-manager";
 import { HomeownerConnectionCodes } from "@/components/ConnectionCodes";
-import instagramPostImg from '@assets/generated_images/Instagram_referral_post_square_843cce29.png';
+import instagramPostImg from '@assets/Smart_Maintenance_1766279678897.png';
 import instagramStoryImg from '@assets/ChatGPT_Image_Dec_20,_2025,_06_39_10_PM_1766274706070.png';
 import facebookTwitterImg from '@assets/generated_images/Facebook_Twitter_share_image_8823d9cc.png';
 
