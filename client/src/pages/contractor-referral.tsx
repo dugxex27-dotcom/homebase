@@ -14,6 +14,7 @@ import instagramPostImg from '@assets/ChatGPT_Image_Dec_26,_2025,_12_59_16_PM_17
 import instagramStoryImg from '@assets/ChatGPT_Image_Dec_26,_2025,_12_46_20_PM_1766771194979.png';
 import facebookTwitterImg from '@assets/homebase-contractor-referral-1_(2)_1766770569590.png';
 import homeownerFacebookTwitterImg from '@assets/homebase-contractor-referral-2_(2)_1766772524078.png';
+import homeownerInstagramStoryImg from '@assets/ChatGPT_Image_Dec_26,_2025,_01_14_12_PM_1766772865490.png';
 
 export default function ContractorReferral() {
   const { toast } = useToast();
@@ -415,23 +416,21 @@ export default function ContractorReferral() {
 
                   {/* Instagram Story - Homeowners */}
                   <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-                    <div className="aspect-[9/16] rounded overflow-hidden border border-gray-200 max-h-64 bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center">
-                      <div className="text-center p-4">
-                        <ImageIcon className="w-12 h-12 text-purple-400 mx-auto mb-2" />
-                        <p className="text-sm text-gray-500">Homeowner graphic coming soon</p>
-                      </div>
+                    <div className="aspect-[9/16] rounded overflow-hidden border border-gray-200 max-h-64">
+                      <img src={homeownerInstagramStoryImg} alt="Instagram Story Template for Homeowners" className="w-full h-full object-cover" />
                     </div>
                     <div className="space-y-1">
                       <h4 className="font-semibold text-sm text-gray-900">Instagram Story</h4>
                       <p className="text-xs text-gray-500">Vertical format - 1080x1920px</p>
                       <Button
+                        onClick={() => downloadImageWithCode(homeownerInstagramStoryImg, `homebase-homeowner-story-${referralCode}.png`, { x: 396, y: 874 }, '#1e3a5f', 48, 'center')}
                         size="sm"
-                        className="w-full bg-gray-300 text-gray-500 cursor-not-allowed"
-                        disabled
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                        data-testid="button-download-homeowner-instagram-story"
                         type="button"
                       >
                         <Download className="w-4 h-4 mr-2" />
-                        Coming Soon
+                        Download
                       </Button>
                     </div>
                   </div>
