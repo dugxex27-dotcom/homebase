@@ -314,7 +314,7 @@ export default function AgentReferral() {
                     <h4 className="font-semibold text-sm text-green-600">Instagram Story</h4>
                     <p className="text-xs text-gray-600">Vertical format - 1080x1920px</p>
                     <Button
-                      onClick={() => downloadImageWithCode(homeownerInstagramStoryImg, `homebase-homeowner-story-${referralCode}.png`, { x: 252, y: 892 })}
+                      onClick={() => downloadImageWithCode(homeownerInstagramStoryImg, `homebase-homeowner-story-${referralCode}.png`, { x: 300, y: 940 })}
                       size="sm"
                       className="w-full bg-green-600 hover:bg-green-700"
                       data-testid="button-download-homeowner-instagram-story"
