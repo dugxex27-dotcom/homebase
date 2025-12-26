@@ -12,6 +12,7 @@ import instagramPostImg from '@assets/generated_images/Agent_Instagram_referral_
 import instagramStoryImg from '@assets/generated_images/Agent_Instagram_story_graphic_6ea21cfb.png';
 import facebookTwitterImg from '@assets/generated_images/Agent_Facebook_Twitter_share_07c75040.png';
 import homeownerFacebookTwitterImg from '@assets/homebase-rea-referrals-2_(1)_1766761107420.png';
+import homeownerInstagramStoryImg from '@assets/ChatGPT_Image_Dec_26,_2025,_10_05_24_AM_1766761550802.png';
 
 export default function AgentReferral() {
   const { toast } = useToast();
@@ -306,13 +307,13 @@ export default function AgentReferral() {
                 {/* Instagram Story */}
                 <div className="bg-white rounded-lg p-3 space-y-2 border border-gray-200">
                   <div className="aspect-[9/16] rounded overflow-hidden border-2 border-gray-200 max-h-64">
-                    <img src={instagramStoryImg} alt="Instagram Story Template for Homeowners" className="w-full h-full object-cover" />
+                    <img src={homeownerInstagramStoryImg} alt="Instagram Story Template for Homeowners" className="w-full h-full object-cover" />
                   </div>
                   <div className="space-y-1">
                     <h4 className="font-semibold text-sm text-green-600">Instagram Story</h4>
                     <p className="text-xs text-gray-600">Vertical format - 1080x1920px</p>
                     <Button
-                      onClick={() => downloadImageWithCode(instagramStoryImg, `homebase-homeowner-story-${referralCode}.png`, { x: 540, y: 1750 })}
+                      onClick={() => downloadImageWithCode(homeownerInstagramStoryImg, `homebase-homeowner-story-${referralCode}.png`, { x: 540, y: 1750 })}
                       size="sm"
                       className="w-full bg-green-600 hover:bg-green-700"
                       data-testid="button-download-homeowner-instagram-story"
