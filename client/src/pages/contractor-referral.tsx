@@ -303,72 +303,159 @@ export default function ContractorReferral() {
                 Download personalized graphics with your referral code to share on social media
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-gray-600 mb-4">
+            <CardContent className="space-y-6">
+              <p className="text-sm text-gray-600">
                 Click download on any graphic below to get a personalized version with your referral code <span className="font-mono font-bold text-blue-600">{referralCode}</span> already included!
               </p>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Instagram Post */}
-                <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-                  <div className="aspect-square rounded overflow-hidden border border-gray-200">
-                    <img src={instagramPostImg} alt="Instagram Post Template" className="w-full h-full object-cover" />
+
+              {/* Share with Contractors Section */}
+              <div className="space-y-4">
+                <div className="border-b border-gray-200 pb-2">
+                  <h3 className="text-lg font-semibold text-gray-900">Share with Contractors</h3>
+                  <p className="text-sm text-gray-500">Graphics designed for fellow contractors</p>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Instagram Post */}
+                  <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                    <div className="aspect-square rounded overflow-hidden border border-gray-200">
+                      <img src={instagramPostImg} alt="Instagram Post Template" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="font-semibold text-sm text-gray-900">Instagram Post</h4>
+                      <p className="text-xs text-gray-500">Square format - 1080x1080px</p>
+                      <Button
+                        onClick={() => downloadImageWithCode(instagramPostImg, `homebase-contractor-instagram-${referralCode}.png`, { x: 348, y: 902 }, '#1e3a5f', 48, 'center')}
+                        size="sm"
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                        data-testid="button-download-contractor-instagram-post"
+                        type="button"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download
+                      </Button>
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <h4 className="font-semibold text-sm text-gray-900">Instagram Post</h4>
-                    <p className="text-xs text-gray-500">Square format - 1080x1080px</p>
-                    <Button
-                      onClick={() => downloadImageWithCode(instagramPostImg, `homebase-contractor-instagram-${referralCode}.png`, { x: 348, y: 902 }, '#1e3a5f', 48, 'center')}
-                      size="sm"
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                      data-testid="button-download-contractor-instagram-post"
-                      type="button"
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      Download
-                    </Button>
+
+                  {/* Instagram Story */}
+                  <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                    <div className="aspect-[9/16] rounded overflow-hidden border border-gray-200 max-h-64">
+                      <img src={instagramStoryImg} alt="Instagram Story Template" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="font-semibold text-sm text-gray-900">Instagram Story</h4>
+                      <p className="text-xs text-gray-500">Vertical format - 1080x1920px</p>
+                      <Button
+                        onClick={() => downloadImageWithCode(instagramStoryImg, `homebase-contractor-story-${referralCode}.png`, { x: 396, y: 874 }, '#1e3a5f', 48, 'center')}
+                        size="sm"
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                        data-testid="button-download-contractor-instagram-story"
+                        type="button"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Facebook/Twitter */}
+                  <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                    <div className="aspect-[16/9] rounded overflow-hidden border border-gray-200">
+                      <img src={facebookTwitterImg} alt="Facebook/Twitter Template" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="font-semibold text-sm text-gray-900">Facebook/Twitter</h4>
+                      <p className="text-xs text-gray-500">Horizontal - 1200x630px</p>
+                      <Button
+                        onClick={() => downloadImageWithCode(facebookTwitterImg, `homebase-contractor-facebook-${referralCode}.png`, { x: 712, y: 738 }, '#ffffff', 32, 'left')}
+                        size="sm"
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                        data-testid="button-download-contractor-facebook-twitter"
+                        type="button"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download
+                      </Button>
+                    </div>
                   </div>
                 </div>
+              </div>
 
-                {/* Instagram Story */}
-                <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-                  <div className="aspect-[9/16] rounded overflow-hidden border border-gray-200 max-h-64">
-                    <img src={instagramStoryImg} alt="Instagram Story Template" className="w-full h-full object-cover" />
-                  </div>
-                  <div className="space-y-1">
-                    <h4 className="font-semibold text-sm text-gray-900">Instagram Story</h4>
-                    <p className="text-xs text-gray-500">Vertical format - 1080x1920px</p>
-                    <Button
-                      onClick={() => downloadImageWithCode(instagramStoryImg, `homebase-contractor-story-${referralCode}.png`, { x: 396, y: 874 }, '#1e3a5f', 48, 'center')}
-                      size="sm"
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                      data-testid="button-download-contractor-instagram-story"
-                      type="button"
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      Download
-                    </Button>
-                  </div>
+              {/* Share with Homeowners Section */}
+              <div className="space-y-4">
+                <div className="border-b border-gray-200 pb-2">
+                  <h3 className="text-lg font-semibold text-gray-900">Share with Homeowners</h3>
+                  <p className="text-sm text-gray-500">Graphics designed to attract homeowner clients</p>
                 </div>
-
-                {/* Facebook/Twitter */}
-                <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-                  <div className="aspect-[16/9] rounded overflow-hidden border border-gray-200">
-                    <img src={facebookTwitterImg} alt="Facebook/Twitter Template" className="w-full h-full object-cover" />
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Instagram Post - Homeowners */}
+                  <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                    <div className="aspect-square rounded overflow-hidden border border-gray-200 bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center">
+                      <div className="text-center p-4">
+                        <ImageIcon className="w-12 h-12 text-purple-400 mx-auto mb-2" />
+                        <p className="text-sm text-gray-500">Homeowner graphic coming soon</p>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="font-semibold text-sm text-gray-900">Instagram Post</h4>
+                      <p className="text-xs text-gray-500">Square format - 1080x1080px</p>
+                      <Button
+                        size="sm"
+                        className="w-full bg-gray-300 text-gray-500 cursor-not-allowed"
+                        disabled
+                        type="button"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Coming Soon
+                      </Button>
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <h4 className="font-semibold text-sm text-gray-900">Facebook/Twitter</h4>
-                    <p className="text-xs text-gray-500">Horizontal - 1200x630px</p>
-                    <Button
-                      onClick={() => downloadImageWithCode(facebookTwitterImg, `homebase-contractor-facebook-${referralCode}.png`, { x: 712, y: 738 }, '#ffffff', 32, 'left')}
-                      size="sm"
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                      data-testid="button-download-contractor-facebook-twitter"
-                      type="button"
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      Download
-                    </Button>
+
+                  {/* Instagram Story - Homeowners */}
+                  <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                    <div className="aspect-[9/16] rounded overflow-hidden border border-gray-200 max-h-64 bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center">
+                      <div className="text-center p-4">
+                        <ImageIcon className="w-12 h-12 text-purple-400 mx-auto mb-2" />
+                        <p className="text-sm text-gray-500">Homeowner graphic coming soon</p>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="font-semibold text-sm text-gray-900">Instagram Story</h4>
+                      <p className="text-xs text-gray-500">Vertical format - 1080x1920px</p>
+                      <Button
+                        size="sm"
+                        className="w-full bg-gray-300 text-gray-500 cursor-not-allowed"
+                        disabled
+                        type="button"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Coming Soon
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Facebook/Twitter - Homeowners */}
+                  <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                    <div className="aspect-[16/9] rounded overflow-hidden border border-gray-200 bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center">
+                      <div className="text-center p-4">
+                        <ImageIcon className="w-12 h-12 text-purple-400 mx-auto mb-2" />
+                        <p className="text-sm text-gray-500">Homeowner graphic coming soon</p>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="font-semibold text-sm text-gray-900">Facebook/Twitter</h4>
+                      <p className="text-xs text-gray-500">Horizontal - 1200x630px</p>
+                      <Button
+                        size="sm"
+                        className="w-full bg-gray-300 text-gray-500 cursor-not-allowed"
+                        disabled
+                        type="button"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Coming Soon
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
