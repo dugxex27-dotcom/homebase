@@ -633,7 +633,7 @@ export default function Contractors() {
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div>
-              <h2 className="text-3xl font-bold mb-2 text-gray-900">
+              <h2 className="text-lg sm:text-xl lg:text-2xl font-bold mb-2 text-gray-900">
                 Available Contractors
               </h2>
               <p className="text-lg text-gray-600">
