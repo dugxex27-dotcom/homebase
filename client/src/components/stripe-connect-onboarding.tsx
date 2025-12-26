@@ -158,7 +158,7 @@ export function StripeConnectOnboarding() {
 
           <Button 
             size="lg" 
-            className="w-full bg-purple-600 hover:bg-purple-700"
+            className="w-full bg-blue-600 hover:bg-blue-700"
             onClick={() => createAccountMutation.mutate()}
             disabled={createAccountMutation.isPending}
             data-testid="button-connect-stripe"
