@@ -73,7 +73,7 @@ export default function AgentReferral() {
         
         if (ctx) {
           ctx.font = 'bold 48px Arial';
-          ctx.fillStyle = '#059669';
+          ctx.fillStyle = '#166534';
           ctx.textAlign = 'center';
           ctx.fillText(referralCode, codePosition.x, codePosition.y);
         }
