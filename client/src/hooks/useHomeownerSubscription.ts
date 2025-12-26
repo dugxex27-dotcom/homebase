@@ -71,7 +71,8 @@ export function useHomeownerSubscription(): SubscriptionStatus {
   const hasActiveSubscription = subscriptionStatus === 'active' || subscriptionStatus === 'grandfathered';
   
   // A user is a paid subscriber if they have an active subscription (not just trialing)
-  const isPaidSubscriber = hasActiveSubscription && !!data.stripeSubscriptionId;
+  // Grandfathered users don't need a Stripe subscription ID - they get free access
+  const isPaidSubscriber = (hasActiveSubscription && !!data.stripeSubscriptionId) || subscriptionStatus === 'grandfathered';
 
   // User needs upgrade if trial expired and no active subscription
   const needsUpgrade = (trialExpired || subscriptionStatus === 'inactive' || subscriptionStatus === 'cancelled') 
