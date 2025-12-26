@@ -11,7 +11,7 @@ import type { User as UserType } from "@shared/schema";
 import { Gift, Copy, Share2, MessageSquare, Download, ImageIcon, Crown, TrendingUp } from "lucide-react";
 
 import instagramPostImg from '@assets/ChatGPT_Image_Dec_20,_2025,_05_30_43_PM_1766269867835.png';
-import instagramStoryImg from '@assets/ChatGPT_Image_Dec_20,_2025,_05_10_14_PM_1766268630686.png';
+import instagramStoryImg from '@assets/ChatGPT_Image_Dec_26,_2025,_12_46_20_PM_1766771194979.png';
 import facebookTwitterImg from '@assets/homebase-contractor-referral-1_(2)_1766770569590.png';
 
 export default function ContractorReferral() {
