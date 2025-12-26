@@ -59,7 +59,7 @@ export default function AgentReferral() {
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareMessage)}`);
   };
 
-  const downloadImageWithCode = async (imageSrc: string, filename: string, codePosition: { x: number, y: number }) => {
+  const downloadImageWithCode = async (imageSrc: string, filename: string, codePosition: { x: number, y: number, fontSize?: number }) => {
     try {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
@@ -72,7 +72,8 @@ export default function AgentReferral() {
         ctx?.drawImage(img, 0, 0);
         
         if (ctx) {
-          ctx.font = 'bold 48px Arial';
+          const size = codePosition.fontSize || 48;
+          ctx.font = `bold ${size}px Arial`;
           ctx.fillStyle = '#166534';
           ctx.textAlign = 'center';
           ctx.fillText(referralCode, codePosition.x, codePosition.y);
@@ -424,7 +425,7 @@ export default function AgentReferral() {
                     <h4 className="font-semibold text-sm text-green-600">Facebook/Twitter</h4>
                     <p className="text-xs text-gray-600">Horizontal - 1200x630px</p>
                     <Button
-                      onClick={() => downloadImageWithCode(facebookTwitterImg, `homebase-agent-facebook-${referralCode}.png`, { x: 792, y: 724 })}
+                      onClick={() => downloadImageWithCode(facebookTwitterImg, `homebase-agent-facebook-${referralCode}.png`, { x: 792, y: 724, fontSize: 43 })}
                       size="sm"
                       className="w-full bg-green-600 hover:bg-green-700"
                       data-testid="button-download-agent-facebook-twitter"
