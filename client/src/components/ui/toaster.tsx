@@ -19,7 +19,7 @@ export function Toaster() {
     <ToastProvider>
       {toasts.map(function ({ id, title, description, action, variant, ...props }) {
         // Determine variant based on user role if not explicitly set
-        const toastVariant = variant || (typedUser?.role === 'contractor' ? 'contractor' : typedUser?.role === 'homeowner' ? 'homeowner' : 'default')
+        const toastVariant = variant || (typedUser?.role === 'contractor' ? 'contractor' : typedUser?.role === 'homeowner' ? 'homeowner' : typedUser?.role === 'agent' ? 'agent' : 'default')
         
         return (
           <Toast key={id} variant={toastVariant as any} {...props}>
