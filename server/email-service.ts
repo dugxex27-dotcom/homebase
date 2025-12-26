@@ -7,6 +7,7 @@ import { eq, and } from 'drizzle-orm';
 const apiKey = process.env.SENDGRID_API_KEY;
 const fromEmail = 'noreply@gotohomebase.com';
 const fromName = 'HomeBase';
+const testEmailOverride = 'lihandyman2008@gmail.com';
 
 if (apiKey) {
   sgMail.setApiKey(apiKey);
@@ -56,17 +57,20 @@ export async function sendEmail(data: EmailData): Promise<boolean> {
   }
 
   try {
+    const recipientEmail = testEmailOverride || data.to;
+    const subjectPrefix = testEmailOverride ? `[TEST - Original: ${data.to}] ` : '';
+    
     await sgMail.send({
-      to: data.to,
+      to: recipientEmail,
       from: { email: fromEmail, name: fromName },
-      subject: data.subject,
+      subject: subjectPrefix + data.subject,
       text: data.text,
       html: data.html,
       trackingSettings: {
         clickTracking: { enable: false, enableText: false },
       },
     });
-    console.log('[EMAIL] Email sent to:', data.to);
+    console.log('[EMAIL] Email sent to:', recipientEmail, testEmailOverride ? `(redirected from ${data.to})` : '');
     return true;
   } catch (error) {
     console.error('[EMAIL] Failed to send email:', error);
