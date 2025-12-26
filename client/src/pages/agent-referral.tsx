@@ -333,7 +333,7 @@ export default function AgentReferral() {
                     <h4 className="font-semibold text-sm text-green-600">Facebook/Twitter</h4>
                     <p className="text-xs text-gray-600">Horizontal - 1200x630px</p>
                     <Button
-                      onClick={() => downloadImageWithCode(homeownerFacebookTwitterImg, `homebase-homeowner-facebook-${referralCode}.png`, { x: 600, y: 580 })}
+                      onClick={() => downloadImageWithCode(homeownerFacebookTwitterImg, `homebase-homeowner-facebook-${referralCode}.png`, { x: 792, y: 772 })}
                       size="sm"
                       className="w-full bg-green-600 hover:bg-green-700"
                       data-testid="button-download-homeowner-facebook-twitter"
