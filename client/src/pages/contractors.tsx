@@ -431,8 +431,8 @@ export default function Contractors() {
                 <label className="text-sm font-medium text-foreground mb-3 block whitespace-nowrap">Distance ({getDistanceUnit(userCountry)})</label>
                 <div>
                   <select 
-                    className="w-full h-[42px] px-3 py-2 border border-muted rounded-md"
-                    style={{ color: '#ffffff', backgroundColor: '#1e1e20' }}
+                    className="w-full h-[42px] px-3 py-2 border rounded-md"
+                    style={{ color: '#2c0f5b', backgroundColor: '#ffffff', borderColor: '#b6a6f4' }}
                     value={selectedDistance}
                     onChange={(e) => {
                       setSelectedDistance(e.target.value);
@@ -457,8 +457,8 @@ export default function Contractors() {
                 <label className="text-sm font-medium text-foreground mb-3 block">Minimum Rating</label>
                 <div>
                   <select 
-                    className="w-full h-[42px] px-3 py-2 border border-muted rounded-md"
-                    style={{ color: '#ffffff', backgroundColor: '#1e1e20' }}
+                    className="w-full h-[42px] px-3 py-2 border rounded-md"
+                    style={{ color: '#2c0f5b', backgroundColor: '#ffffff', borderColor: '#b6a6f4' }}
                     value={selectedRating}
                     onChange={(e) => {
                       setSelectedRating(e.target.value);
@@ -479,8 +479,8 @@ export default function Contractors() {
                 <div>
                   <button
                   type="button"
-                  className="w-full h-[42px] px-3 py-2 border border-muted rounded-md text-left flex items-center justify-between"
-                  style={{ color: '#ffffff', backgroundColor: '#1e1e20' }}
+                  className="w-full h-[42px] px-3 py-2 border rounded-md text-left flex items-center justify-between"
+                  style={{ color: '#2c0f5b', backgroundColor: '#ffffff', borderColor: '#b6a6f4' }}
                   onClick={() => setServicesDropdownOpen(!servicesDropdownOpen)}
                   data-testid="filter-services"
                 >
@@ -645,7 +645,7 @@ export default function Contractors() {
                 Sort by:
               </div>
               <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-48 bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                <SelectTrigger className="w-48" style={{ backgroundColor: '#ffffff', color: '#2c0f5b', borderColor: '#b6a6f4' }}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
