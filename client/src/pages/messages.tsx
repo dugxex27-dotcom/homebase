@@ -509,7 +509,7 @@ export default function Messages() {
           <div className="lg:col-span-4 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-4 border-b border-gray-100 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <MessageCircle className="h-5 w-5 text-purple-600" />
+                <MessageCircle className="h-5 w-5 text-blue-600" />
                 Conversations
               </h2>
               
