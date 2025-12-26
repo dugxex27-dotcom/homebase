@@ -606,7 +606,7 @@ export default function Contractors() {
         {isAuthenticated && userRole === 'homeowner' && selectedHouseId && contractorsUsedAtHouse.length > 0 && (
           <div className="mb-8">
             <div className="mb-6">
-              <h2 className="text-2xl sm:text-3xl font-bold mb-2 text-gray-900">
+              <h2 className="text-lg sm:text-xl lg:text-2xl font-bold mb-2 text-gray-900">
                 Your Contractors at {houses.find(h => h.id === selectedHouseId)?.name}
               </h2>
               <p className="text-sm sm:text-base lg:text-lg" style={{ color: '#2c0f5b' }}>
