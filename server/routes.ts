@@ -22,6 +22,7 @@ import { geocodeAddress, calculateDistance } from "./geocoding-service";
 import { auditLogger, sessionManager, AuditEventTypes } from "./security-audit";
 import { smsService } from "./sms-service";
 import { notificationOrchestrator } from "./notification-orchestrator";
+import { sendEmail } from "./email-service";
 
 const stripe = process.env.STRIPE_SECRET_KEY 
   ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2025-08-27.basil" })
@@ -83,6 +84,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timestamp: new Date().toISOString(),
         database: 'disconnected'
       });
+    }
+  });
+
+  // Test email endpoint (for development testing)
+  app.post('/api/test-email', async (_req, res) => {
+    try {
+      const success = await sendEmail({
+        to: 'lihandyman2008@gmail.com',
+        subject: 'HomeBase Test Email',
+        text: 'This is a test email from HomeBase to verify the email service is working correctly.',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #6B46C1 0%, #805AD5 100%); padding: 30px; text-align: center;">
+              <h1 style="color: #ffffff !important; margin: 0;">HomeBase Test Email</h1>
+            </div>
+            <div style="padding: 30px; background: #f9f9f9;">
+              <p>This is a test email from HomeBase to verify the email service is working correctly.</p>
+              <p>If you received this email, the SendGrid integration is functioning properly!</p>
+              <p>Timestamp: ${new Date().toISOString()}</p>
+            </div>
+          </div>
+        `,
+      });
+      
+      if (success) {
+        res.json({ success: true, message: 'Test email sent to lihandyman2008@gmail.com' });
+      } else {
+        res.status(500).json({ success: false, message: 'Failed to send test email - SendGrid may not be configured' });
+      }
+    } catch (error) {
+      console.error('[TEST EMAIL] Error:', error);
+      res.status(500).json({ success: false, message: 'Error sending test email' });
     }
   });
 
