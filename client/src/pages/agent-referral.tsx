@@ -10,7 +10,7 @@ import { Gift, Copy, Share2, MessageSquare, Download, ImageIcon } from "lucide-r
 
 import instagramPostImg from '@assets/generated_images/Agent_Instagram_referral_post_867b9fb1.png';
 import instagramStoryImg from '@assets/ChatGPT_Image_Dec_26,_2025,_11_44_44_AM_1766767496083.png';
-import facebookTwitterImg from '@assets/homebase-rea-referral-1_(3)_1766763702169.png';
+import facebookTwitterImg from '@assets/ChatGPT_Image_Dec_26,_2025,_11_48_57_AM_1766767747499.png';
 import homeownerFacebookTwitterImg from '@assets/homebase-rea-referrals-2_(1)_1766761107420.png';
 import homeownerInstagramStoryImg from '@assets/ChatGPT_Image_Dec_26,_2025,_10_36_13_AM_1766763390739.png';
 import homeownerInstagramPostImg from '@assets/ChatGPT_Image_Dec_26,_2025,_10_28_22_AM_1766762917982.png';
