@@ -55,7 +55,7 @@ export default function HomeownerReferral() {
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareMessage)}`);
   };
 
-  const downloadImageWithCode = async (imageSrc: string, filename: string, codePosition: { x: number, y: number }) => {
+  const downloadImageWithCode = async (imageSrc: string, filename: string, codePosition: { x: number, y: number, fontSize?: number }) => {
     try {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
@@ -68,7 +68,8 @@ export default function HomeownerReferral() {
         ctx?.drawImage(img, 0, 0);
         
         if (ctx) {
-          ctx.font = 'bold 48px Arial';
+          const fontSize = codePosition.fontSize || 48;
+          ctx.font = `bold ${fontSize}px Arial`;
           ctx.fillStyle = '#7c3aed';
           ctx.textAlign = 'center';
           ctx.fillText(referralCode, codePosition.x, codePosition.y);
@@ -311,7 +312,7 @@ export default function HomeownerReferral() {
                     <h4 className="font-semibold text-sm text-purple-600">Facebook/Twitter</h4>
                     <p className="text-xs text-gray-600">Horizontal - 1200x630px</p>
                     <Button
-                      onClick={() => downloadImageWithCode(facebookTwitterImg, `homebase-homeowner-facebook-${referralCode}.png`, { x: 792, y: 772 })}
+                      onClick={() => downloadImageWithCode(facebookTwitterImg, `homebase-homeowner-facebook-${referralCode}.png`, { x: 792, y: 772, fontSize: 43 })}
                       size="sm"
                       className="w-full bg-purple-600 hover:bg-purple-700"
                       data-testid="button-download-homeowner-facebook-twitter"
