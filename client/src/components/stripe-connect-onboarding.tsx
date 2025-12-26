@@ -127,10 +127,10 @@ export function StripeConnectOnboarding() {
   // Not connected - show setup prompt
   if (!status?.hasAccount) {
     return (
-      <Card className="border-2 border-dashed border-purple-200">
+      <Card className="border-2 border-dashed border-blue-200">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 p-4 rounded-full bg-purple-100">
-            <CreditCard className="h-8 w-8 text-purple-600" />
+          <div className="mx-auto mb-4 p-4 rounded-full bg-blue-100">
+            <CreditCard className="h-8 w-8 text-blue-700" />
           </div>
           <CardTitle>Accept Payments from Customers</CardTitle>
           <CardDescription>
