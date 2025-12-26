@@ -377,16 +377,16 @@ export default function Contractors() {
             
             {/* House Selection Banner - Only show for authenticated homeowners with houses */}
             {isAuthenticated && userRole === 'homeowner' && houses.length > 0 && selectedHouseId && (
-              <div className="col-span-full mb-4 p-3 sm:p-4 rounded-lg" style={{ backgroundColor: '#3d1f6b', border: '2px solid #b6a6f4' }}>
+              <div className="col-span-full mb-4 p-3 sm:p-4 rounded-lg" style={{ backgroundColor: '#f0ebfa', border: '2px solid #b6a6f4' }}>
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                   <div className="flex items-center gap-2 sm:gap-3">
-                    <Home className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" style={{ color: '#b6a6f4' }} />
+                    <Home className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" style={{ color: '#6B46C1' }} />
                     <div>
-                      <p className="text-xs sm:text-sm font-medium" style={{ color: '#b6a6f4' }}>Searching near:</p>
-                      <p className="text-sm sm:text-base lg:text-lg font-bold text-white">
+                      <p className="text-xs sm:text-sm font-medium" style={{ color: '#6B46C1' }}>Searching near:</p>
+                      <p className="text-sm sm:text-base lg:text-lg font-bold" style={{ color: '#2c0f5b' }}>
                         {houses.find((h: House) => h.id === selectedHouseId)?.name}
                       </p>
-                      <p className="text-xs sm:text-sm" style={{ color: '#d1c9f0' }}>
+                      <p className="text-xs sm:text-sm" style={{ color: '#4a3670' }}>
                         {houses.find((h: House) => h.id === selectedHouseId)?.address}
                       </p>
                     </div>
@@ -406,7 +406,7 @@ export default function Contractors() {
                     }}
                     data-testid="filter-home"
                   >
-                    <SelectTrigger className="w-full sm:w-64 h-auto min-h-[52px] sm:min-h-[60px] py-2 sm:py-3 text-sm sm:text-base" style={{ backgroundColor: '#1e1e20', color: '#ffffff' }}>
+                    <SelectTrigger className="w-full sm:w-64 h-auto min-h-[52px] sm:min-h-[60px] py-2 sm:py-3 text-sm sm:text-base" style={{ backgroundColor: '#ffffff', color: '#2c0f5b', border: '1px solid #b6a6f4' }}>
                       <SelectValue placeholder="Change property..." />
                     </SelectTrigger>
                     <SelectContent>
