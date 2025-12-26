@@ -12,7 +12,7 @@ import { Gift, Copy, Share2, MessageSquare, Download, ImageIcon, Crown, Trending
 
 import instagramPostImg from '@assets/ChatGPT_Image_Dec_20,_2025,_05_30_43_PM_1766269867835.png';
 import instagramStoryImg from '@assets/ChatGPT_Image_Dec_20,_2025,_05_10_14_PM_1766268630686.png';
-import facebookTwitterImg from '@assets/Contractor_Facebook_Twitter_share_7e5cc06a_(2)_1766263330884.png';
+import facebookTwitterImg from '@assets/homebase-contractor-referral-1_(2)_1766770569590.png';
 
 export default function ContractorReferral() {
   const { toast } = useToast();
