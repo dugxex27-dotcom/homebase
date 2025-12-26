@@ -227,7 +227,7 @@ export default function HomeownerAccount() {
     window.open(whatsappUrl, '_blank');
   };
 
-  const downloadImageWithCode = async (imageUrl: string, fileName: string, codePosition: { x: number, y: number, fontSize?: number }) => {
+  const downloadImageWithCode = async (imageUrl: string, fileName: string, codePosition: { x: number, y: number, fontSize?: number, color?: string }) => {
     // Guard against missing referral code
     if (!referralCode) {
       toast({
@@ -272,7 +272,7 @@ export default function HomeownerAccount() {
       // Add referral code text
       const fontSize = codePosition.fontSize || 48;
       ctx.font = `700 ${fontSize}px Quicksand, sans-serif`;
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = codePosition.color || '#ffffff';
       ctx.textAlign = 'center';
       ctx.fillText(referralCode, codePosition.x, codePosition.y);
 
@@ -839,7 +839,7 @@ export default function HomeownerAccount() {
                       <h4 className="font-semibold text-sm" style={{ color: '#2c0f5b' }}>Instagram Story</h4>
                       <p className="text-xs text-gray-600">Vertical format - 1080x1920px</p>
                       <Button
-                        onClick={() => downloadImageWithCode(instagramStoryImg, `homebase-referral-story-${referralCode}.png`, { x: 372, y: 878 })}
+                        onClick={() => downloadImageWithCode(instagramStoryImg, `homebase-referral-story-${referralCode}.png`, { x: 372, y: 878, color: '#2c0f5b' })}
                         size="sm"
                         className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
                         data-testid="button-download-instagram-story"
