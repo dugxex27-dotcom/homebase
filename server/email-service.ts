@@ -171,6 +171,41 @@ export async function sendTrialExpiringEmail(userId: string, userName: string, d
   });
 }
 
+export async function sendPasswordResetEmail(
+  email: string,
+  resetCode: string,
+  userName?: string
+): Promise<boolean> {
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #6B46C1 0%, #805AD5 100%); padding: 30px; text-align: center;">
+        <h1 style="color: #ffffff !important; margin: 0;">Password Reset Code</h1>
+      </div>
+      <div style="padding: 30px; background: #f9f9f9;">
+        <p>Hi ${userName || 'there'},</p>
+        <p>We received a request to reset your HomeBase password. Use the code below to reset it:</p>
+        <div style="background: #6B46C1; color: white; font-size: 32px; font-weight: bold; text-align: center; padding: 20px; border-radius: 8px; margin: 30px 0; letter-spacing: 8px;">
+          ${resetCode}
+        </div>
+        <p style="color: #666; font-size: 14px;">This code expires in <strong>15 minutes</strong>.</p>
+        <p style="color: #666; font-size: 14px;">If you didn't request this password reset, you can safely ignore this email. Your password won't be changed.</p>
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+        <p style="color: #999; font-size: 12px;">For security, this code can only be used once. If you need a new code, please request another reset.</p>
+        <p>- The HomeBase Team</p>
+      </div>
+    </div>
+  `;
+
+  const text = `Hi ${userName || 'there'}, we received a request to reset your HomeBase password. Your reset code is: ${resetCode}. This code expires in 15 minutes. If you didn't request this, you can ignore this email.`;
+
+  return sendEmail({
+    to: email,
+    subject: '🔐 Your HomeBase Password Reset Code',
+    text,
+    html,
+  });
+}
+
 export async function sendAgentSignupNotification(
   agentEmail: string, 
   agentName: string,
@@ -221,4 +256,5 @@ export const emailService = {
   sendWelcomeEmail,
   sendTrialExpiringEmail,
   sendAgentSignupNotification,
+  sendPasswordResetEmail,
 };

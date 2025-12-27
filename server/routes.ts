@@ -3436,9 +3436,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         metadata: { userExists: true },
       });
 
-      // TODO: Send email with reset code
-      // For now, we'll log it to console for development
-      console.log(`[PASSWORD RESET] Reset code for ${email}: ${resetCode}`);
+      // Send email with reset code
+      const userName = user.firstName || user.lastName 
+        ? `${user.firstName || ''} ${user.lastName || ''}`.trim() 
+        : undefined;
+      const emailSent = await emailService.sendPasswordResetEmail(email, resetCode, userName);
+      
+      if (!emailSent) {
+        console.log(`[PASSWORD RESET] Email failed for ${email}, code: ${resetCode}`);
+      } else {
+        console.log(`[PASSWORD RESET] Reset code sent to ${email}`);
+      }
       
       res.json({ 
         success: true, 
