@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Users, Home, Briefcase, Plus, Ban, TrendingUp, DollarSign, UserMinus, MessageSquare, ArrowRight, Flag } from "lucide-react";
+import { Users, Home, Briefcase, Plus, Ban, TrendingUp, DollarSign, UserMinus, MessageSquare, ArrowRight, Flag, UserCheck, CheckCircle, XCircle, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -65,6 +65,21 @@ interface AnalyticsData {
   features: Array<{ feature: string; count: number }>;
 }
 
+interface AgentWithUser {
+  id: string;
+  agentId: string;
+  verificationStatus: string;
+  createdAt: string | null;
+  verifiedAt: string | null;
+  user: {
+    id: string;
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+    createdAt: string | null;
+  } | null;
+}
+
 const CHART_COLORS = ['#9333ea', '#a855f7', '#c084fc', '#d8b4fe', '#e9d5ff', '#f3e8ff'];
 
 export default function AdminDashboard() {
@@ -106,6 +121,32 @@ export default function AdminDashboard() {
       });
       if (!res.ok) throw new Error("Failed to fetch analytics");
       return res.json();
+    },
+  });
+
+  // Fetch agents for verification
+  const { data: agents, isLoading: agentsLoading } = useQuery<AgentWithUser[]>({
+    queryKey: ["/api/admin/agents"],
+  });
+
+  // Verify agent mutation
+  const verifyAgentMutation = useMutation({
+    mutationFn: async ({ agentId, action, notes }: { agentId: string; action: 'approve' | 'reject' | 'request_resubmit'; notes?: string }) => {
+      return apiRequest(`/api/admin/agents/${agentId}/verify`, "PATCH", { action, notes });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/agents"] });
+      toast({
+        title: "Success",
+        description: "Agent verification status updated",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update agent verification",
+        variant: "destructive",
+      });
     },
   });
 
@@ -285,6 +326,106 @@ export default function AdminDashboard() {
             <p className="text-sm text-muted-foreground">
               Review reported suspicious reviews, investigate IP/device duplicates, and take action on fraudulent content.
             </p>
+          </CardContent>
+        </Card>
+
+        {/* Agent Verification Management */}
+        <Card className="mb-8" data-testid="card-agent-verification">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <UserCheck className="h-5 w-5 text-green-600" />
+              Real Estate Agent Verification
+            </CardTitle>
+            <CardDescription>
+              Verify real estate agents to enable their affiliate commissions
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {agentsLoading ? (
+              <div className="space-y-2">
+                {[...Array(3)].map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            ) : agents && agents.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Agent</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Signed Up</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {agents.map((agent) => (
+                    <TableRow key={agent.id} data-testid={`row-agent-${agent.id}`}>
+                      <TableCell className="font-medium">
+                        {agent.user ? `${agent.user.firstName || ''} ${agent.user.lastName || ''}`.trim() || 'Unknown' : 'Unknown'}
+                      </TableCell>
+                      <TableCell>{agent.user?.email || 'N/A'}</TableCell>
+                      <TableCell>
+                        {agent.user?.createdAt ? format(new Date(agent.user.createdAt), 'MMM d, yyyy') : 'N/A'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={
+                            agent.verificationStatus === 'approved' ? 'default' : 
+                            agent.verificationStatus === 'pending_review' ? 'secondary' :
+                            agent.verificationStatus === 'rejected' ? 'destructive' : 'outline'
+                          }
+                          className={agent.verificationStatus === 'approved' ? 'bg-green-600' : ''}
+                        >
+                          {agent.verificationStatus === 'not_submitted' ? (
+                            <><Clock className="h-3 w-3 mr-1" />Not Submitted</>
+                          ) : agent.verificationStatus === 'pending_review' ? (
+                            <><Clock className="h-3 w-3 mr-1" />Pending</>
+                          ) : agent.verificationStatus === 'approved' ? (
+                            <><CheckCircle className="h-3 w-3 mr-1" />Verified</>
+                          ) : agent.verificationStatus === 'rejected' ? (
+                            <><XCircle className="h-3 w-3 mr-1" />Rejected</>
+                          ) : (
+                            agent.verificationStatus
+                          )}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right space-x-2">
+                        {agent.verificationStatus !== 'approved' && (
+                          <Button
+                            size="sm"
+                            variant="default"
+                            className="bg-green-600 hover:bg-green-700"
+                            onClick={() => verifyAgentMutation.mutate({ agentId: agent.agentId, action: 'approve' })}
+                            disabled={verifyAgentMutation.isPending}
+                            data-testid={`button-approve-agent-${agent.id}`}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Approve
+                          </Button>
+                        )}
+                        {agent.verificationStatus === 'approved' && (
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => verifyAgentMutation.mutate({ agentId: agent.agentId, action: 'reject', notes: 'Verification revoked by admin' })}
+                            disabled={verifyAgentMutation.isPending}
+                            data-testid={`button-revoke-agent-${agent.id}`}
+                          >
+                            <XCircle className="h-4 w-4 mr-1" />
+                            Revoke
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No real estate agents have signed up yet.
+              </p>
+            )}
           </CardContent>
         </Card>
 

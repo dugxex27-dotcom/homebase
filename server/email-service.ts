@@ -171,8 +171,54 @@ export async function sendTrialExpiringEmail(userId: string, userName: string, d
   });
 }
 
+export async function sendAgentSignupNotification(
+  agentEmail: string, 
+  agentName: string,
+  agentId: string
+): Promise<boolean> {
+  const adminEmail = 'gotohomebase2025@gmail.com';
+  const signupDate = new Date().toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #22C55E 0%, #16A34A 100%); padding: 30px; text-align: center;">
+        <h1 style="color: #ffffff !important; margin: 0;">New Agent Signup!</h1>
+      </div>
+      <div style="padding: 30px; background: #f9f9f9;">
+        <p>A new real estate agent has signed up and needs verification:</p>
+        <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <p><strong>Name:</strong> ${agentName}</p>
+          <p><strong>Email:</strong> ${agentEmail}</p>
+          <p><strong>User ID:</strong> ${agentId}</p>
+          <p><strong>Signup Date:</strong> ${signupDate}</p>
+        </div>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="https://gotohomebase.com/admin" style="background: #6B46C1; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Go to Admin Dashboard</a>
+        </div>
+        <p style="color: #666; font-size: 14px;">Please verify this agent before they can earn affiliate commissions.</p>
+      </div>
+    </div>
+  `;
+
+  const text = `New Agent Signup! Name: ${agentName}, Email: ${agentEmail}, User ID: ${agentId}, Signup Date: ${signupDate}. Please verify at https://gotohomebase.com/admin`;
+
+  return sendEmail({
+    to: adminEmail,
+    subject: '🏠 New Real Estate Agent Signup - Verification Needed',
+    text,
+    html,
+  });
+}
+
 export const emailService = {
   sendEmail,
   sendWelcomeEmail,
   sendTrialExpiringEmail,
+  sendAgentSignupNotification,
 };

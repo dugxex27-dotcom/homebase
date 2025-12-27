@@ -9,7 +9,7 @@ import { z } from "zod";
 import { randomUUID } from "crypto";
 import rateLimit from "express-rate-limit";
 import { eq, and, or, lte, isNull, desc } from "drizzle-orm";
-import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, maintenanceTasks, customMaintenanceTasks, insertSupportTicketSchema, insertSubscriptionCycleEventSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, crmClients, crmJobs, crmQuotes, crmInvoices, securitySessions, referralCredits } from "@shared/schema";
+import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, maintenanceTasks, customMaintenanceTasks, insertSupportTicketSchema, insertSubscriptionCycleEventSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, crmClients, crmJobs, crmQuotes, crmInvoices, securitySessions, referralCredits, agentProfiles } from "@shared/schema";
 import { calculateDIYSavingsAmount } from "@shared/cost-helpers";
 import pushRoutes from "./push-routes";
 import { pushService } from "./push-service";
@@ -22,7 +22,7 @@ import { geocodeAddress, calculateDistance } from "./geocoding-service";
 import { auditLogger, sessionManager, AuditEventTypes } from "./security-audit";
 import { smsService } from "./sms-service";
 import { notificationOrchestrator } from "./notification-orchestrator";
-import { sendEmail } from "./email-service";
+import { sendEmail, emailService } from "./email-service";
 
 const stripe = process.env.STRIPE_SECRET_KEY 
   ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2025-08-27.basil" })
@@ -3220,6 +3220,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           commissionRate: '10.00', // Default 10% commission
           status: 'active'
         });
+        
+        // Send admin notification about new agent signup (non-blocking)
+        emailService.sendAgentSignupNotification(
+          email,
+          `${firstName} ${lastName}`,
+          user.id
+        ).catch(err => console.error('[EMAIL] Failed to send agent signup notification:', err));
       } else {
         // Homeowners and contractors get 14-day trial
         const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
@@ -4069,6 +4076,126 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching active sessions:", error);
       res.status(500).json({ message: "Failed to fetch active sessions" });
+    }
+  });
+
+  // Admin Agent Verification routes
+  app.get('/api/admin/agents', requireAdmin, async (req: any, res) => {
+    try {
+      // Get all agent profiles with user info - only real estate agents (role='agent')
+      const profiles = await db.select()
+        .from(agentProfiles)
+        .orderBy(desc(agentProfiles.createdAt));
+      
+      const agentsWithInfo = await Promise.all(profiles.map(async (profile) => {
+        const user = await storage.getUserById(profile.agentId);
+        // Only include if user exists and is a real estate agent
+        if (!user || user.role !== 'agent') {
+          return null;
+        }
+        return {
+          ...profile,
+          user: {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            createdAt: user.createdAt,
+            role: user.role,
+          },
+        };
+      }));
+      
+      // Filter out null entries
+      res.json(agentsWithInfo.filter(a => a !== null));
+    } catch (error) {
+      console.error("Error fetching agents:", error);
+      res.status(500).json({ message: "Failed to fetch agents" });
+    }
+  });
+
+  // Zod schema for agent verification
+  const agentVerifySchema = z.object({
+    action: z.enum(['approve', 'reject', 'request_resubmit']),
+    notes: z.string().max(1000).optional(),
+  });
+
+  app.patch('/api/admin/agents/:agentId/verify', requireAdmin, async (req: any, res) => {
+    try {
+      const { agentId } = req.params;
+      const adminId = req.session.user.id;
+
+      // Validate request body
+      const validationResult = agentVerifySchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ message: "Invalid request", errors: validationResult.error.errors });
+      }
+      const { action, notes } = validationResult.data;
+
+      // Verify the user is actually a real estate agent
+      const user = await storage.getUserById(agentId);
+      if (!user || user.role !== 'agent') {
+        return res.status(404).json({ message: "Agent not found" });
+      }
+
+      const verificationStatus = action === 'approve' ? 'approved' 
+        : action === 'reject' ? 'rejected' 
+        : 'resubmit_required';
+
+      const updateData: any = {
+        verificationStatus,
+        reviewedByAdminId: adminId,
+        reviewNotes: notes || null,
+      };
+
+      if (action === 'approve') {
+        updateData.verifiedAt = new Date();
+      } else if (action === 'reject') {
+        updateData.lastRejectedAt = new Date();
+      }
+
+      const updated = await storage.updateAgentProfile(agentId, updateData);
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Agent profile not found" });
+      }
+
+      // Send notification email (user was already fetched above)
+      if (user.email) {
+        // Send notification email about verification status
+        const statusMessage = action === 'approve' 
+          ? 'Your account has been verified! You can now earn affiliate commissions.'
+          : action === 'reject'
+          ? 'Your verification was not approved. Please contact support for more information.'
+          : 'Please update your verification documents and resubmit.';
+
+        await emailService.sendEmail({
+          to: user.email,
+          subject: `HomeBase Agent Verification ${action === 'approve' ? 'Approved' : action === 'reject' ? 'Update' : 'Action Required'}`,
+          text: statusMessage,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="background: linear-gradient(135deg, #22C55E 0%, #16A34A 100%); padding: 30px; text-align: center;">
+                <h1 style="color: #ffffff !important; margin: 0;">Agent Verification Update</h1>
+              </div>
+              <div style="padding: 30px; background: #f9f9f9;">
+                <p>Hi ${user.firstName || 'there'},</p>
+                <p>${statusMessage}</p>
+                ${notes ? `<p><strong>Notes:</strong> ${notes}</p>` : ''}
+                <div style="text-align: center; margin: 30px 0;">
+                  <a href="https://gotohomebase.com/agent-dashboard" style="background: #6B46C1; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Go to Dashboard</a>
+                </div>
+                <p>- The HomeBase Team</p>
+              </div>
+            </div>
+          `,
+        });
+      }
+
+      res.json({ success: true, agent: updated });
+    } catch (error) {
+      console.error("Error verifying agent:", error);
+      res.status(500).json({ message: "Failed to verify agent" });
     }
   });
 
