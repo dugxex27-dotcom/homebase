@@ -2163,11 +2163,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           maxHousesAllowed: 2,
           connectionCode: 'DEMO4567'
         });
-
+      }
+      
+      // Check if demo houses already exist (seeded from database)
+      const existingHouses = await storage.getHouses(demoId);
+      
+      // Only create houses if demo user has none
+      if (existingHouses.length === 0) {
         // Create sample houses for the demo homeowner - showing 6 months of active usage
         try {
-          // Main Residence
+          // Main Residence - use fixed ID to prevent duplicates
+          const mainHouseId = '8d44c1d0-af55-4f1c-bada-b70e54c823bc';
+          const lakeHouseId = 'f5c8a9d2-3e1b-4f7c-a6b3-8d9e5f2c1a4b';
+          
           const house1 = await storage.createHouse({
+            id: mainHouseId,
             homeownerId: demoId,
             name: 'Main Residence',
             address: '2847 Maple Drive, Seattle, WA 98101',
@@ -2196,17 +2206,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           // Vacation Rental Property - second home
           const house2 = await storage.createHouse({
+            id: lakeHouseId,
             homeownerId: demoId,
-            name: 'Lake House (Rental)',
-            address: '4521 Lakeside Drive, Bellingham, WA 98225',
+            name: 'Lake House',
+            address: '1523 Lakefront Road, Bellevue, WA 98004',
             climateZone: 'pacific-northwest',
             homeSystems: ['central-ac', 'gas-furnace', 'gas-water-heater', 'washer-dryer'],
             isDefault: false,
             countryId: 'USA',
             regionId: 'WA',
-            postalCode: '98225',
-            latitude: 48.7519,
-            longitude: -122.4787,
+            postalCode: '98004',
+            latitude: 47.6101,
+            longitude: -122.2015,
             yearBuilt: 1995,
             squareFootage: 1800,
             bedrooms: 3,
