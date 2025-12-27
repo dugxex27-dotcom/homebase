@@ -6572,7 +6572,7 @@ class DbStorage implements IStorage {
     this.deactivateInviteCode = this.memStorage.deactivateInviteCode.bind(this.memStorage);
     this.trackSearch = this.memStorage.trackSearch.bind(this.memStorage);
     this.getSearchAnalytics = this.memStorage.getSearchAnalytics.bind(this.memStorage);
-    this.getAdminStats = this.memStorage.getAdminStats.bind(this.memStorage);
+    // getAdminStats is now database-backed - implemented below
     this.getActiveUsersSeries = this.memStorage.getActiveUsersSeries.bind(this.memStorage);
     this.getReferralGrowthSeries = this.memStorage.getReferralGrowthSeries.bind(this.memStorage);
     this.getContractorSignupsSeries = this.memStorage.getContractorSignupsSeries.bind(this.memStorage);
@@ -8342,6 +8342,70 @@ class DbStorage implements IStorage {
     return {
       error,
       breadcrumbs,
+    };
+  }
+
+  // Admin analytics - DATABASE BACKED
+  async getAdminStats(): Promise<{
+    totalUsers: number;
+    homeownerCount: number;
+    contractorCount: number;
+    agentCount: number;
+    topSearches: Array<{ searchTerm: string; count: number }>;
+    signupsByZip: Array<{ zipCode: string; count: number }>;
+  }> {
+    // Query actual database for user counts
+    const allDbUsers = await db.select().from(users);
+    
+    // Filter out cancelled accounts
+    const activeUsers = allDbUsers.filter(u => u.accountStatus !== 'cancelled');
+    
+    const totalUsers = activeUsers.length;
+    const homeownerCount = activeUsers.filter(u => u.role === 'homeowner').length;
+    const contractorCount = activeUsers.filter(u => u.role === 'contractor').length;
+    const agentCount = activeUsers.filter(u => u.role === 'agent').length;
+    
+    // Get search analytics from database (handle if table doesn't exist)
+    let topSearches: Array<{ searchTerm: string; count: number }> = [];
+    try {
+      const searchData = await db.select().from(searchAnalytics);
+      
+      // Count search terms
+      const searchTermCounts = new Map<string, number>();
+      searchData.forEach(search => {
+        const term = search.searchTerm;
+        searchTermCounts.set(term, (searchTermCounts.get(term) || 0) + 1);
+      });
+      
+      topSearches = Array.from(searchTermCounts.entries())
+        .map(([searchTerm, count]) => ({ searchTerm, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
+    } catch (e) {
+      // Table may not exist yet - return empty array
+      console.log("[getAdminStats] search_analytics table not available:", e);
+    }
+    
+    // Count signups by zip
+    const zipCounts = new Map<string, number>();
+    activeUsers.forEach(user => {
+      if (user.zipCode) {
+        zipCounts.set(user.zipCode, (zipCounts.get(user.zipCode) || 0) + 1);
+      }
+    });
+    
+    const signupsByZip = Array.from(zipCounts.entries())
+      .map(([zipCode, count]) => ({ zipCode, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+    
+    return {
+      totalUsers,
+      homeownerCount,
+      contractorCount,
+      agentCount,
+      topSearches,
+      signupsByZip,
     };
   }
 
