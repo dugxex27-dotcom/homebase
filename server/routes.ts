@@ -4321,7 +4321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/support/tickets', isAuthenticated, async (req: any, res) => {
     try {
-      const createTicketSchema = insertSupportTicketSchema.extend({
+      const createTicketSchema = insertSupportTicketSchema.omit({ userId: true }).extend({
         category: z.enum(['billing', 'technical', 'feature_request', 'account', 'contractor', 'general']),
         priority: z.enum(['low', 'medium', 'high', 'urgent']),
         subject: z.string().min(5).max(200),
