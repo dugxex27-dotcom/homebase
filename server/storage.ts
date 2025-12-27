@@ -8354,59 +8354,74 @@ class DbStorage implements IStorage {
     topSearches: Array<{ searchTerm: string; count: number }>;
     signupsByZip: Array<{ zipCode: string; count: number }>;
   }> {
-    // Query actual database for user counts
-    const allDbUsers = await db.select().from(users);
-    
-    // Filter out cancelled accounts
-    const activeUsers = allDbUsers.filter(u => u.accountStatus !== 'cancelled');
-    
-    const totalUsers = activeUsers.length;
-    const homeownerCount = activeUsers.filter(u => u.role === 'homeowner').length;
-    const contractorCount = activeUsers.filter(u => u.role === 'contractor').length;
-    const agentCount = activeUsers.filter(u => u.role === 'agent').length;
-    
-    // Get search analytics from database (handle if table doesn't exist)
-    let topSearches: Array<{ searchTerm: string; count: number }> = [];
     try {
-      const searchData = await db.select().from(searchAnalytics);
+      // Query actual database for user counts
+      const allDbUsers = await db.select().from(users);
       
-      // Count search terms
-      const searchTermCounts = new Map<string, number>();
-      searchData.forEach(search => {
-        const term = search.searchTerm;
-        searchTermCounts.set(term, (searchTermCounts.get(term) || 0) + 1);
+      // Filter out cancelled accounts
+      const activeUsers = allDbUsers.filter(u => u.accountStatus !== 'cancelled');
+      
+      const totalUsers = activeUsers.length;
+      const homeownerCount = activeUsers.filter(u => u.role === 'homeowner').length;
+      const contractorCount = activeUsers.filter(u => u.role === 'contractor').length;
+      const agentCount = activeUsers.filter(u => u.role === 'agent').length;
+      
+      console.log("[getAdminStats] Database user counts:", { totalUsers, homeownerCount, contractorCount, agentCount });
+      
+      // Count signups by zip from user data
+      const zipCounts = new Map<string, number>();
+      activeUsers.forEach(user => {
+        if (user.zipCode) {
+          zipCounts.set(user.zipCode, (zipCounts.get(user.zipCode) || 0) + 1);
+        }
       });
       
-      topSearches = Array.from(searchTermCounts.entries())
-        .map(([searchTerm, count]) => ({ searchTerm, count }))
+      const signupsByZip = Array.from(zipCounts.entries())
+        .map(([zipCode, count]) => ({ zipCode, count }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 10);
-    } catch (e) {
-      // Table may not exist yet - return empty array
-      console.log("[getAdminStats] search_analytics table not available:", e);
-    }
-    
-    // Count signups by zip
-    const zipCounts = new Map<string, number>();
-    activeUsers.forEach(user => {
-      if (user.zipCode) {
-        zipCounts.set(user.zipCode, (zipCounts.get(user.zipCode) || 0) + 1);
+      
+      // Get search analytics from database (handle if table doesn't exist)
+      let topSearches: Array<{ searchTerm: string; count: number }> = [];
+      try {
+        const searchData = await db.select().from(searchAnalytics);
+        
+        // Count search terms
+        const searchTermCounts = new Map<string, number>();
+        searchData.forEach(search => {
+          const term = search.searchTerm;
+          searchTermCounts.set(term, (searchTermCounts.get(term) || 0) + 1);
+        });
+        
+        topSearches = Array.from(searchTermCounts.entries())
+          .map(([searchTerm, count]) => ({ searchTerm, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 10);
+      } catch (e) {
+        // Table may not exist yet - return empty array
+        console.log("[getAdminStats] search_analytics table not available, continuing with empty searches");
       }
-    });
-    
-    const signupsByZip = Array.from(zipCounts.entries())
-      .map(([zipCode, count]) => ({ zipCode, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
-    
-    return {
-      totalUsers,
-      homeownerCount,
-      contractorCount,
-      agentCount,
-      topSearches,
-      signupsByZip,
-    };
+      
+      return {
+        totalUsers,
+        homeownerCount,
+        contractorCount,
+        agentCount,
+        topSearches,
+        signupsByZip,
+      };
+    } catch (e) {
+      console.error("[getAdminStats] Error fetching user stats:", e);
+      // Return zeros if database query fails entirely
+      return {
+        totalUsers: 0,
+        homeownerCount: 0,
+        contractorCount: 0,
+        agentCount: 0,
+        topSearches: [],
+        signupsByZip: [],
+      };
+    }
   }
 
   // Methods delegated to MemStorage (bound in constructor)
