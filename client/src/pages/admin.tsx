@@ -20,6 +20,7 @@ interface AdminStats {
   totalUsers: number;
   homeownerCount: number;
   contractorCount: number;
+  agentCount: number;
   topSearches: Array<{ searchTerm: string; count: number }>;
   signupsByZip: Array<{ zipCode: string; count: number }>;
 }
@@ -227,7 +228,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card data-testid="card-total-users">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <CardTitle className="text-sm font-medium">Total Users</CardTitle>
@@ -266,6 +267,20 @@ export default function AdminDashboard() {
                 <Skeleton className="h-8 w-20" />
               ) : (
                 <div className="text-2xl font-bold" data-testid="text-contractor-count">{stats?.contractorCount || 0}</div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card data-testid="card-agent-count">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium">Real Estate Agents</CardTitle>
+              <UserCheck className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              {statsLoading ? (
+                <Skeleton className="h-8 w-20" />
+              ) : (
+                <div className="text-2xl font-bold" data-testid="text-agent-count">{stats?.agentCount || 0}</div>
               )}
             </CardContent>
           </Card>

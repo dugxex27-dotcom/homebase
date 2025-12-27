@@ -387,6 +387,7 @@ export interface IStorage {
     totalUsers: number;
     homeownerCount: number;
     contractorCount: number;
+    agentCount: number;
     topSearches: Array<{ searchTerm: string; count: number }>;
     signupsByZip: Array<{ zipCode: string; count: number }>;
   }>;
@@ -5096,6 +5097,7 @@ export class MemStorage implements IStorage {
     totalUsers: number;
     homeownerCount: number;
     contractorCount: number;
+    agentCount: number;
     topSearches: Array<{ searchTerm: string; count: number }>;
     signupsByZip: Array<{ zipCode: string; count: number }>;
   }> {
@@ -5104,6 +5106,7 @@ export class MemStorage implements IStorage {
     const totalUsers = allUsers.length;
     const homeownerCount = allUsers.filter(u => u.role === 'homeowner').length;
     const contractorCount = allUsers.filter(u => u.role === 'contractor').length;
+    const agentCount = allUsers.filter(u => u.role === 'agent').length;
     
     // Count search terms
     const searchTermCounts = new Map<string, number>();
@@ -5134,6 +5137,7 @@ export class MemStorage implements IStorage {
       totalUsers,
       homeownerCount,
       contractorCount,
+      agentCount,
       topSearches,
       signupsByZip,
     };
