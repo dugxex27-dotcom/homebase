@@ -312,7 +312,7 @@ export default function HomeownerReferral() {
                     <h4 className="font-semibold text-sm text-purple-600">Facebook/Twitter</h4>
                     <p className="text-xs text-gray-600">Horizontal - 1200x630px</p>
                     <Button
-                      onClick={() => downloadImageWithCode(facebookTwitterImg, `homebase-homeowner-facebook-${referralCode}.png`, { x: 792, y: 724, fontSize: 43 })}
+                      onClick={() => downloadImageWithCode(facebookTwitterImg, `homebase-homeowner-facebook-${referralCode}.png`, { x: 792, y: 748, fontSize: 43 })}
                       size="sm"
                       className="w-full bg-purple-600 hover:bg-purple-700"
                       data-testid="button-download-homeowner-facebook-twitter"
