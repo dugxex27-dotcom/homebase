@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,15 @@ export default function HomeownerAccount() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { 
+    isPaidSubscriber, 
+    isInTrial, 
+    isFreeUser, 
+    trialDaysRemaining,
+    needsUpgrade,
+    currentPlan,
+    maxHouses: subscriptionMaxHouses
+  } = useHomeownerSubscription();
 
   // Form state for basic profile information
   const [profileData, setProfileData] = useState({
@@ -543,6 +553,120 @@ export default function HomeownerAccount() {
                 </div>
               </CardContent>
             </Card>
+
+          {/* Subscription & Billing */}
+          <Card style={{ backgroundColor: '#f2f2f2' }}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="w-5 h-5" />
+                Subscription & Billing
+              </CardTitle>
+              <CardDescription>
+                Manage your subscription plan and payment details
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Current Plan Status */}
+              <div className="p-4 rounded-lg border" style={{ backgroundColor: 'white' }}>
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <h4 className="font-medium" style={{ color: '#2c0f5b' }}>Current Plan</h4>
+                    <div className="flex items-center gap-2 mt-1">
+                      {isPaidSubscriber ? (
+                        <Badge className="bg-green-100 text-green-700">
+                          <Check className="w-3 h-3 mr-1" />
+                          Active - {currentPlan === 'premium_plus' ? 'Premium Plus' : currentPlan === 'premium' ? 'Premium' : 'Basic'}
+                        </Badge>
+                      ) : isInTrial ? (
+                        <Badge className="bg-blue-100 text-blue-700">
+                          <Clock className="w-3 h-3 mr-1" />
+                          Trial - {trialDaysRemaining} days left
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-gray-100 text-gray-700">Free Plan</Badge>
+                      )}
+                    </div>
+                  </div>
+                  {isPaidSubscriber && (
+                    <div className="text-right">
+                      <p className="text-2xl font-bold" style={{ color: '#2c0f5b' }}>
+                        ${currentPlan === 'premium_plus' ? '19.99' : currentPlan === 'premium' ? '9.99' : '4.99'}
+                      </p>
+                      <p className="text-sm text-gray-500">/month</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* What you have access to */}
+                {isPaidSubscriber && (
+                  <div className="text-sm text-gray-600">
+                    <p className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-green-500" />
+                      Up to {subscriptionMaxHouses === 'unlimited' ? 'unlimited' : subscriptionMaxHouses} homes
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-green-500" />
+                      Full maintenance tracking & scheduling
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-green-500" />
+                      Home health score & achievements
+                    </p>
+                  </div>
+                )}
+
+                {/* Free user message */}
+                {isFreeUser && (
+                  <div className="mt-3 p-3 rounded-lg bg-purple-50 border border-purple-200">
+                    <p className="text-sm text-purple-800">
+                      Upgrade to unlock maintenance tracking, home health scores, DIY savings tracker, and more!
+                    </p>
+                  </div>
+                )}
+
+                {/* Trial user message */}
+                {isInTrial && (
+                  <div className="mt-3 p-3 rounded-lg bg-blue-50 border border-blue-200">
+                    <p className="text-sm text-blue-800">
+                      Your trial includes full access to all HomeBase features. Subscribe before it ends to keep your data.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Subscribe/Upgrade Button */}
+              {(isFreeUser || isInTrial) && (
+                <Link href="/homeowner-pricing">
+                  <Button 
+                    className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800"
+                    size="lg"
+                    data-testid="button-subscribe-account"
+                  >
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    {isInTrial ? 'Subscribe Now' : 'Upgrade to Premium'}
+                  </Button>
+                </Link>
+              )}
+
+              {/* Manage Subscription for paid users */}
+              {isPaidSubscriber && (
+                <div className="space-y-3">
+                  <Separator />
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium" style={{ color: '#2c0f5b' }}>Manage Subscription</h4>
+                      <p className="text-sm text-gray-600">Update payment method or change plan</p>
+                    </div>
+                    <Link href="/homeowner-pricing">
+                      <Button variant="outline" size="sm" data-testid="button-manage-subscription">
+                        Manage
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Notification Preferences */}
           <Card style={{ backgroundColor: '#f2f2f2' }}>

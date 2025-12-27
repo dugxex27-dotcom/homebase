@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
 import { useAuth } from "@/hooks/useAuth";
+import { useContractorSubscription } from "@/hooks/useContractorSubscription";
 import type { User as UserType } from "@shared/schema";
 import { getServiceRadiusOptions, getDistanceUnit, extractCountryFromAddress, convertDistanceForDisplay, convertDistanceForStorage } from '@shared/distance-utils';
 import { 
@@ -34,7 +35,10 @@ import {
   Eye,
   Star,
   Medal,
-  MessageSquare
+  MessageSquare,
+  CreditCard,
+  Clock,
+  Check
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
@@ -108,6 +112,16 @@ export default function ContractorProfile() {
   const { user, refetch: refetchUser } = useAuth();
   const typedUser = user as UserType | undefined;
   const [hasAttemptedRefresh, setHasAttemptedRefresh] = useState(false);
+  const { 
+    hasActiveSubscription, 
+    isInTrial, 
+    trialDaysRemaining,
+    needsSubscription,
+    currentPlan,
+    monthlyPrice,
+    planName,
+    hasCrmAccess
+  } = useContractorSubscription();
   
   // Auto-refresh session if companyId is missing (handles stale session data)
   React.useEffect(() => {
@@ -1097,6 +1111,129 @@ export default function ContractorProfile() {
           Manage your business information and professional credentials
         </p>
       </div>
+
+      {/* Subscription & Billing Card */}
+      <Card style={{ backgroundColor: '#f2f2f2' }} className="mb-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2" style={{ color: '#1560a2' }}>
+            <CreditCard className="w-5 h-5" style={{ color: '#1560a2' }} />
+            Subscription & Billing
+          </CardTitle>
+          <CardDescription>
+            Manage your subscription plan and payment details
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Current Plan Status */}
+          <div className="p-4 rounded-lg border" style={{ backgroundColor: 'white' }}>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h4 className="font-medium" style={{ color: '#1560a2' }}>Current Plan</h4>
+                <div className="flex items-center gap-2 mt-1">
+                  {hasActiveSubscription && !isInTrial ? (
+                    <Badge className="bg-green-100 text-green-700">
+                      <Check className="w-3 h-3 mr-1" />
+                      Active - {planName}
+                    </Badge>
+                  ) : isInTrial ? (
+                    <Badge className="bg-blue-100 text-blue-700">
+                      <Clock className="w-3 h-3 mr-1" />
+                      Trial - {trialDaysRemaining} days left
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-red-100 text-red-700">Inactive</Badge>
+                  )}
+                </div>
+              </div>
+              {hasActiveSubscription && !isInTrial && (
+                <div className="text-right">
+                  <p className="text-2xl font-bold" style={{ color: '#1560a2' }}>
+                    ${monthlyPrice}
+                  </p>
+                  <p className="text-sm text-gray-500">/month</p>
+                </div>
+              )}
+            </div>
+
+            {/* What you have access to - for active subscribers */}
+            {hasActiveSubscription && !isInTrial && (
+              <div className="text-sm text-gray-600">
+                <p className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-green-500" />
+                  Lead management & CRM integrations
+                </p>
+                {hasCrmAccess && (
+                  <>
+                    <p className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-green-500" />
+                      Full CRM access with client management
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-green-500" />
+                      Job scheduling, quotes & invoices
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-green-500" />
+                      Dashboard analytics
+                    </p>
+                  </>
+                )}
+                <p className="flex items-center gap-2">
+                  <Check className="w-4 h-4 text-green-500" />
+                  ${monthlyPrice}/month referral credit cap
+                </p>
+              </div>
+            )}
+
+            {/* Trial user message */}
+            {isInTrial && (
+              <div className="mt-3 p-3 rounded-lg bg-blue-50 border border-blue-200">
+                <p className="text-sm text-blue-800">
+                  Your 14-day trial includes full access to all HomeBase Pro features. Subscribe before it ends to continue accessing leads and growing your business.
+                </p>
+              </div>
+            )}
+
+            {/* Expired trial message */}
+            {needsSubscription && !isInTrial && (
+              <div className="mt-3 p-3 rounded-lg bg-red-50 border border-red-200">
+                <p className="text-sm text-red-800">
+                  Your trial has ended. Subscribe now to regain access to leads and all platform features. Your profile and data have been saved.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Subscribe/Upgrade Button */}
+          {(isInTrial || needsSubscription) && (
+            <Link href="/contractor-pricing">
+              <Button 
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+                size="lg"
+                data-testid="button-subscribe-contractor"
+              >
+                <CreditCard className="w-4 h-4 mr-2" />
+                {needsSubscription && !isInTrial ? 'Subscribe to Regain Access' : 'Subscribe Now'}
+              </Button>
+            </Link>
+          )}
+
+          {/* Manage Subscription for paid users */}
+          {hasActiveSubscription && !isInTrial && (
+            <div className="flex items-center justify-between pt-2">
+              <div>
+                <h4 className="font-medium" style={{ color: '#1560a2' }}>Manage Subscription</h4>
+                <p className="text-sm text-gray-600">Update payment method or change plan</p>
+              </div>
+              <Link href="/contractor-pricing">
+                <Button variant="outline" size="sm" data-testid="button-manage-subscription">
+                  Manage
+                </Button>
+              </Link>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Business Information */}
