@@ -1,5 +1,5 @@
 import { lazy, useEffect } from "react";
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,6 +9,17 @@ import LoadingFallback from "@/components/loading-fallback";
 import AuthenticatedLayout from "@/layouts/authenticated-layout";
 import UnauthenticatedLayout from "@/layouts/unauthenticated-layout";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
+
+// Scroll to top on route changes
+function ScrollToTop() {
+  const [location] = useLocation();
+  
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [location]);
+  
+  return null;
+}
 
 // Lazy-loaded pages - Common
 const Home = lazy(() => import("./pages/home"));
@@ -98,6 +109,7 @@ function Router() {
   if (!isAuthenticated) {
     return (
       <UnauthenticatedLayout>
+        <ScrollToTop />
         <Switch>
           <Route path="/invite/:code" component={Invite} />
           <Route path="/onboarding" component={Onboarding} />
@@ -129,6 +141,7 @@ function Router() {
   
   return (
     <AuthenticatedLayout>
+      <ScrollToTop />
       <Switch>
         {/* Home route */}
         <Route path="/" component={Home} />
