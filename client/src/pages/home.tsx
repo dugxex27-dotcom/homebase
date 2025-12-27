@@ -176,6 +176,27 @@ export default function Home() {
           </div>
         </section>
       )}
+      {/* First-Time Homeowner CTA - No Houses Yet */}
+      {typedUser?.role === 'homeowner' && houses.length === 0 && (
+        <section className="py-8 sm:py-12" style={{ backgroundColor: '#ffffff' }}>
+          <div className="max-w-4xl mx-auto px-3 sm:px-4 lg:px-6 text-center">
+            <h2 className="text-2xl sm:text-3xl font-bold mb-4" style={{ color: '#2c0f5b' }}>Welcome to HomeBase!</h2>
+            <p className="text-lg mb-8 max-w-3xl mx-auto leading-relaxed" style={{ color: '#2c0f5b' }}>
+              Create a clear, living record of your home — from systems and appliances to maintenance, upgrades, and health.
+            </p>
+            <Link href="/maintenance">
+              <Button 
+                size="lg"
+                className="font-bold px-8 py-6 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+                style={{ backgroundColor: '#2c0f5b', color: '#ffffff' }}
+                data-testid="button-launch-home-record-first-time"
+              >
+                Launch Your Home Record
+              </Button>
+            </Link>
+          </div>
+        </section>
+      )}
       {/* Home Dashboard Section - Homeowners with Houses */}
       {typedUser?.role === 'homeowner' && houses.length > 0 && (
         <HomeownerFeatureGate featureName="Home Dashboard">
