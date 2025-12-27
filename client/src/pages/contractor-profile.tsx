@@ -117,6 +117,7 @@ export default function ContractorProfile() {
     isInTrial, 
     trialDaysRemaining,
     needsSubscription,
+    needsUpgrade,
     currentPlan,
     monthlyPrice,
     planName,
@@ -1205,7 +1206,7 @@ export default function ContractorProfile() {
           </div>
 
           {/* Subscribe/Upgrade Button */}
-          {(isInTrial || needsSubscription) && (
+          {(isInTrial || needsUpgrade || !hasActiveSubscription) && (
             <Link href="/contractor-pricing">
               <Button 
                 className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
@@ -1213,7 +1214,7 @@ export default function ContractorProfile() {
                 data-testid="button-subscribe-contractor"
               >
                 <CreditCard className="w-4 h-4 mr-2" />
-                {needsSubscription && !isInTrial ? 'Subscribe to Regain Access' : 'Subscribe Now'}
+                {needsUpgrade && !isInTrial ? 'Subscribe to Regain Access' : 'Subscribe Now'}
               </Button>
             </Link>
           )}
