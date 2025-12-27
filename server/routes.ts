@@ -4348,6 +4348,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Notify all admin users about the new support ticket
+      const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+      const submittingUser = await storage.getUser(userId);
+      const submitterName = submittingUser ? `${submittingUser.firstName || ''} ${submittingUser.lastName || ''}`.trim() || submittingUser.email : 'A user';
+      
+      for (const adminEmail of adminEmails) {
+        const adminUser = await storage.getUserByEmail(adminEmail);
+        if (adminUser && adminUser.id !== userId) {
+          await storage.createNotification({
+            userId: adminUser.id,
+            type: 'support_ticket',
+            title: 'New Support Ticket',
+            message: `${submitterName} submitted a ${validatedData.priority} priority ticket: "${validatedData.subject}"`,
+            link: `/admin/support`,
+          });
+        }
+      }
+      
       res.json(ticket);
     } catch (error) {
       console.error("Error creating support ticket:", error);
