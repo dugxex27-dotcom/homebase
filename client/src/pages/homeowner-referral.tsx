@@ -55,7 +55,7 @@ export default function HomeownerReferral() {
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareMessage)}`);
   };
 
-  const downloadImageWithCode = async (imageSrc: string, filename: string, codePosition: { x: number, y: number, fontSize?: number }) => {
+  const downloadImageWithCode = async (imageSrc: string, filename: string, codePosition: { x: number, y: number, fontSize?: number, color?: string }) => {
     try {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
@@ -70,7 +70,7 @@ export default function HomeownerReferral() {
         if (ctx) {
           const fontSize = codePosition.fontSize || 48;
           ctx.font = `bold ${fontSize}px Arial`;
-          ctx.fillStyle = '#7c3aed';
+          ctx.fillStyle = codePosition.color || '#2c0f5b';
           ctx.textAlign = 'center';
           ctx.fillText(referralCode, codePosition.x, codePosition.y);
         }
@@ -270,7 +270,7 @@ export default function HomeownerReferral() {
                     <h4 className="font-semibold text-sm text-purple-600">Instagram Post</h4>
                     <p className="text-xs text-gray-600">Square format - 1080x1080px</p>
                     <Button
-                      onClick={() => downloadImageWithCode(instagramPostImg, `homebase-homeowner-instagram-${referralCode}.png`, { x: 540, y: 950 })}
+                      onClick={() => downloadImageWithCode(instagramPostImg, `homebase-homeowner-instagram-${referralCode}.png`, { x: 312, y: 734, fontSize: 39, color: '#2c0f5b' })}
                       size="sm"
                       className="w-full bg-purple-600 hover:bg-purple-700"
                       data-testid="button-download-homeowner-instagram-post"
@@ -291,7 +291,7 @@ export default function HomeownerReferral() {
                     <h4 className="font-semibold text-sm text-purple-600">Instagram Story</h4>
                     <p className="text-xs text-gray-600">Vertical format - 1080x1920px</p>
                     <Button
-                      onClick={() => downloadImageWithCode(instagramStoryImg, `homebase-homeowner-story-${referralCode}.png`, { x: 540, y: 1750 })}
+                      onClick={() => downloadImageWithCode(instagramStoryImg, `homebase-homeowner-story-${referralCode}.png`, { x: 372, y: 878, color: '#2c0f5b' })}
                       size="sm"
                       className="w-full bg-purple-600 hover:bg-purple-700"
                       data-testid="button-download-homeowner-instagram-story"
