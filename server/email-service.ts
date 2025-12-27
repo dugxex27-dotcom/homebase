@@ -251,10 +251,208 @@ export async function sendAgentSignupNotification(
   });
 }
 
+export interface CrmDocumentEmailData {
+  clientName: string;
+  clientEmail: string;
+  contractorName: string;
+  contractorCompany?: string;
+  contractorPhone?: string;
+  contractorEmail?: string;
+  documentNumber: string;
+  documentTitle: string;
+  total: string;
+  validUntil?: string;
+  dueDate?: string;
+  viewUrl: string;
+  lineItems?: Array<{ description: string; quantity: number; unitPrice: string; total: string }>;
+}
+
+export async function sendQuoteEmail(data: CrmDocumentEmailData): Promise<boolean> {
+  const lineItemsHtml = data.lineItems?.map(item => `
+    <tr>
+      <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">${item.description}</td>
+      <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: center;">${item.quantity}</td>
+      <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right;">${item.unitPrice}</td>
+      <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right;">${item.total}</td>
+    </tr>
+  `).join('') || '';
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%); padding: 30px; text-align: center;">
+        <h1 style="color: #ffffff !important; margin: 0;">Quote from ${data.contractorCompany || data.contractorName}</h1>
+      </div>
+      <div style="padding: 30px; background: #f9f9f9;">
+        <p>Hi ${data.clientName},</p>
+        <p>You've received a quote for services. Here are the details:</p>
+        
+        <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <p><strong>Quote #:</strong> ${data.documentNumber}</p>
+          <p><strong>Service:</strong> ${data.documentTitle}</p>
+          ${data.validUntil ? `<p><strong>Valid Until:</strong> ${data.validUntil}</p>` : ''}
+          
+          ${data.lineItems && data.lineItems.length > 0 ? `
+          <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+            <thead>
+              <tr style="background: #f3f4f6;">
+                <th style="padding: 10px; text-align: left;">Description</th>
+                <th style="padding: 10px; text-align: center;">Qty</th>
+                <th style="padding: 10px; text-align: right;">Unit Price</th>
+                <th style="padding: 10px; text-align: right;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${lineItemsHtml}
+            </tbody>
+          </table>
+          ` : ''}
+          
+          <div style="text-align: right; margin-top: 15px; padding-top: 15px; border-top: 2px solid #1e3a5f;">
+            <p style="font-size: 20px; font-weight: bold; color: #1e3a5f;">Total: ${data.total}</p>
+          </div>
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${data.viewUrl}" style="background: #1e3a5f; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">View Quote</a>
+        </div>
+        
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+        <p style="color: #666; font-size: 14px;">
+          <strong>${data.contractorCompany || data.contractorName}</strong><br>
+          ${data.contractorEmail ? `Email: ${data.contractorEmail}<br>` : ''}
+          ${data.contractorPhone ? `Phone: ${data.contractorPhone}` : ''}
+        </p>
+      </div>
+    </div>
+  `;
+
+  const text = `Hi ${data.clientName}, you've received a quote (#${data.documentNumber}) from ${data.contractorCompany || data.contractorName} for ${data.documentTitle}. Total: ${data.total}. View it at: ${data.viewUrl}`;
+
+  return sendEmail({
+    to: data.clientEmail,
+    subject: `Quote #${data.documentNumber} from ${data.contractorCompany || data.contractorName}`,
+    text,
+    html,
+  });
+}
+
+export async function sendJobNotificationEmail(data: CrmDocumentEmailData & { scheduledDate?: string; status?: string }): Promise<boolean> {
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%); padding: 30px; text-align: center;">
+        <h1 style="color: #ffffff !important; margin: 0;">Job Update from ${data.contractorCompany || data.contractorName}</h1>
+      </div>
+      <div style="padding: 30px; background: #f9f9f9;">
+        <p>Hi ${data.clientName},</p>
+        <p>Here's an update on your scheduled service:</p>
+        
+        <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <p><strong>Job:</strong> ${data.documentTitle}</p>
+          ${data.scheduledDate ? `<p><strong>Scheduled:</strong> ${data.scheduledDate}</p>` : ''}
+          ${data.status ? `<p><strong>Status:</strong> ${data.status}</p>` : ''}
+          ${data.total !== '$0.00' ? `<p><strong>Estimated Cost:</strong> ${data.total}</p>` : ''}
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${data.viewUrl}" style="background: #1e3a5f; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">View Details</a>
+        </div>
+        
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+        <p style="color: #666; font-size: 14px;">
+          <strong>${data.contractorCompany || data.contractorName}</strong><br>
+          ${data.contractorEmail ? `Email: ${data.contractorEmail}<br>` : ''}
+          ${data.contractorPhone ? `Phone: ${data.contractorPhone}` : ''}
+        </p>
+      </div>
+    </div>
+  `;
+
+  const text = `Hi ${data.clientName}, job update from ${data.contractorCompany || data.contractorName}: ${data.documentTitle}. ${data.scheduledDate ? `Scheduled: ${data.scheduledDate}. ` : ''}${data.status ? `Status: ${data.status}. ` : ''}View details at: ${data.viewUrl}`;
+
+  return sendEmail({
+    to: data.clientEmail,
+    subject: `Job Update: ${data.documentTitle} - ${data.contractorCompany || data.contractorName}`,
+    text,
+    html,
+  });
+}
+
+export async function sendInvoiceEmail(data: CrmDocumentEmailData): Promise<boolean> {
+  const lineItemsHtml = data.lineItems?.map(item => `
+    <tr>
+      <td style="padding: 10px; border-bottom: 1px solid #e5e7eb;">${item.description}</td>
+      <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: center;">${item.quantity}</td>
+      <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right;">${item.unitPrice}</td>
+      <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: right;">${item.total}</td>
+    </tr>
+  `).join('') || '';
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%); padding: 30px; text-align: center;">
+        <h1 style="color: #ffffff !important; margin: 0;">Invoice from ${data.contractorCompany || data.contractorName}</h1>
+      </div>
+      <div style="padding: 30px; background: #f9f9f9;">
+        <p>Hi ${data.clientName},</p>
+        <p>Please find your invoice below:</p>
+        
+        <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <p><strong>Invoice #:</strong> ${data.documentNumber}</p>
+          <p><strong>Service:</strong> ${data.documentTitle}</p>
+          ${data.dueDate ? `<p><strong>Due Date:</strong> <span style="color: #dc2626; font-weight: bold;">${data.dueDate}</span></p>` : ''}
+          
+          ${data.lineItems && data.lineItems.length > 0 ? `
+          <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+            <thead>
+              <tr style="background: #f3f4f6;">
+                <th style="padding: 10px; text-align: left;">Description</th>
+                <th style="padding: 10px; text-align: center;">Qty</th>
+                <th style="padding: 10px; text-align: right;">Unit Price</th>
+                <th style="padding: 10px; text-align: right;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${lineItemsHtml}
+            </tbody>
+          </table>
+          ` : ''}
+          
+          <div style="text-align: right; margin-top: 15px; padding-top: 15px; border-top: 2px solid #1e3a5f;">
+            <p style="font-size: 20px; font-weight: bold; color: #1e3a5f;">Amount Due: ${data.total}</p>
+          </div>
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${data.viewUrl}" style="background: #22c55e; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Pay Now</a>
+        </div>
+        
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+        <p style="color: #666; font-size: 14px;">
+          <strong>${data.contractorCompany || data.contractorName}</strong><br>
+          ${data.contractorEmail ? `Email: ${data.contractorEmail}<br>` : ''}
+          ${data.contractorPhone ? `Phone: ${data.contractorPhone}` : ''}
+        </p>
+      </div>
+    </div>
+  `;
+
+  const text = `Hi ${data.clientName}, you've received invoice #${data.documentNumber} from ${data.contractorCompany || data.contractorName}. Amount Due: ${data.total}. ${data.dueDate ? `Due: ${data.dueDate}. ` : ''}Pay now at: ${data.viewUrl}`;
+
+  return sendEmail({
+    to: data.clientEmail,
+    subject: `Invoice #${data.documentNumber} from ${data.contractorCompany || data.contractorName} - ${data.total} Due`,
+    text,
+    html,
+  });
+}
+
 export const emailService = {
   sendEmail,
   sendWelcomeEmail,
   sendTrialExpiringEmail,
   sendAgentSignupNotification,
   sendPasswordResetEmail,
+  sendQuoteEmail,
+  sendJobNotificationEmail,
+  sendInvoiceEmail,
 };

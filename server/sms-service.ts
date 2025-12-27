@@ -179,6 +179,45 @@ export async function sendTrialExpiringSMS(userId: string, daysRemaining: number
   });
 }
 
+export interface CrmDocumentSMSData {
+  clientPhone: string;
+  clientName: string;
+  contractorName: string;
+  contractorCompany?: string;
+  documentNumber: string;
+  documentTitle: string;
+  total: string;
+  viewUrl: string;
+  scheduledDate?: string;
+  dueDate?: string;
+}
+
+export async function sendQuoteSMS(data: CrmDocumentSMSData): Promise<boolean> {
+  const sender = data.contractorCompany || data.contractorName;
+  return sendSMS({
+    to: data.clientPhone,
+    body: `${sender}: Hi ${data.clientName}, you've received Quote #${data.documentNumber} for ${data.documentTitle}. Total: ${data.total}. View & accept: ${data.viewUrl}`,
+  });
+}
+
+export async function sendJobNotificationSMS(data: CrmDocumentSMSData): Promise<boolean> {
+  const sender = data.contractorCompany || data.contractorName;
+  const scheduleInfo = data.scheduledDate ? ` Scheduled: ${data.scheduledDate}.` : '';
+  return sendSMS({
+    to: data.clientPhone,
+    body: `${sender}: Hi ${data.clientName}, job update for "${data.documentTitle}".${scheduleInfo} View details: ${data.viewUrl}`,
+  });
+}
+
+export async function sendInvoiceSMS(data: CrmDocumentSMSData): Promise<boolean> {
+  const sender = data.contractorCompany || data.contractorName;
+  const dueInfo = data.dueDate ? ` Due: ${data.dueDate}.` : '';
+  return sendSMS({
+    to: data.clientPhone,
+    body: `${sender}: Hi ${data.clientName}, Invoice #${data.documentNumber} for ${data.total}.${dueInfo} Pay now: ${data.viewUrl}`,
+  });
+}
+
 export const smsService = {
   sendSMS,
   sendMaintenanceReminder,
@@ -187,4 +226,7 @@ export const smsService = {
   sendAppointmentReminder,
   sendWelcomeSMS,
   sendTrialExpiringSMS,
+  sendQuoteSMS,
+  sendJobNotificationSMS,
+  sendInvoiceSMS,
 };
