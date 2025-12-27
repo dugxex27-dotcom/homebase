@@ -478,13 +478,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'User not found' });
       }
       
+      // Check if user is grandfathered (free unlimited access forever)
+      const grandfatheredEmails = (process.env.GRANDFATHERED_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+      const isGrandfathered = user.email && grandfatheredEmails.includes(user.email.toLowerCase());
+      
       const housesCount = await storage.getHousesCount(userId);
       
       // Determine current plan based on maxHousesAllowed
       let currentPlan = 'free';
       let maxHouses = user.maxHousesAllowed ?? 0;
       
-      if (user.subscriptionStatus === 'grandfathered' || user.maxHousesAllowed === null) {
+      if (isGrandfathered || user.subscriptionStatus === 'grandfathered' || user.maxHousesAllowed === null) {
         currentPlan = 'premium_plus';
         maxHouses = -1; // unlimited
       } else if (maxHouses === 0) {
@@ -511,11 +515,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         maxHouses: maxHouses === -1 ? 'unlimited' : maxHouses,
         currentHouses: housesCount,
         canAddHomes: maxHouses === -1 || housesCount < maxHouses,
-        subscriptionStatus: user.subscriptionStatus,
-        isTrialing,
-        trialDaysRemaining,
-        trialEndsAt: user.trialEndsAt,
-        isPremium: user.isPremium
+        subscriptionStatus: isGrandfathered ? 'grandfathered' : user.subscriptionStatus,
+        isTrialing: isGrandfathered ? false : isTrialing,
+        trialDaysRemaining: isGrandfathered ? 0 : trialDaysRemaining,
+        trialEndsAt: isGrandfathered ? null : user.trialEndsAt,
+        isPremium: isGrandfathered ? true : user.isPremium,
+        isGrandfathered
       });
     } catch (error) {
       res.status(500).json({ message: 'Failed to fetch subscription info' });
@@ -4196,6 +4201,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error verifying agent:", error);
       res.status(500).json({ message: "Failed to verify agent" });
+    }
+  });
+
+  // Admin endpoint to send welcome emails to all users
+  app.post('/api/admin/send-welcome-emails', requireAdmin, async (req: any, res) => {
+    try {
+      const { dryRun = true, roleFilter } = req.body;
+      
+      // Get all users with emails
+      const allUsers = await db.select({
+        id: users.id,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        role: users.role,
+      }).from(users).where(sql`${users.email} IS NOT NULL`);
+      
+      // Filter by role if specified
+      let targetUsers = allUsers;
+      if (roleFilter && ['homeowner', 'contractor', 'agent'].includes(roleFilter)) {
+        targetUsers = allUsers.filter(u => u.role === roleFilter);
+      }
+      
+      // Exclude demo users
+      targetUsers = targetUsers.filter(u => !u.email?.includes('demo') && !u.email?.includes('@homebase.com'));
+      
+      if (dryRun) {
+        // Dry run - just show what would be sent
+        return res.json({
+          success: true,
+          dryRun: true,
+          message: `Would send welcome emails to ${targetUsers.length} users`,
+          users: targetUsers.map(u => ({ email: u.email, name: `${u.firstName || ''} ${u.lastName || ''}`.trim(), role: u.role })),
+        });
+      }
+      
+      // Actually send emails with rate limiting (1 second between each)
+      let successCount = 0;
+      let failedCount = 0;
+      const results: { email: string; success: boolean }[] = [];
+      
+      for (const user of targetUsers) {
+        try {
+          const name = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'there';
+          const success = await emailService.sendWelcomeEmail(user.id, name, user.role || 'homeowner');
+          results.push({ email: user.email!, success });
+          if (success) successCount++;
+          else failedCount++;
+          
+          // Rate limit: wait 1 second between emails to avoid hitting SendGrid limits
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } catch (emailError) {
+          console.error(`[WELCOME EMAIL] Failed to send to ${user.email}:`, emailError);
+          results.push({ email: user.email!, success: false });
+          failedCount++;
+        }
+      }
+      
+      console.log(`[WELCOME EMAIL] Sent ${successCount}/${targetUsers.length} welcome emails successfully`);
+      
+      res.json({
+        success: true,
+        dryRun: false,
+        totalUsers: targetUsers.length,
+        successCount,
+        failedCount,
+        results,
+      });
+    } catch (error) {
+      console.error("Error sending welcome emails:", error);
+      res.status(500).json({ message: "Failed to send welcome emails" });
     }
   });
 
@@ -9691,6 +9767,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Not a contractor account' });
       }
       
+      // Check if user is grandfathered (free Pro access forever)
+      const grandfatheredEmails = (process.env.GRANDFATHERED_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+      const isGrandfathered = user.email && grandfatheredEmails.includes(user.email.toLowerCase());
+      
       // Get subscription plan details if subscribed
       let planDetails = null;
       if (user.subscriptionPlanId) {
@@ -9698,6 +9778,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const plan = planDetails?.[0];
+      
+      // Grandfathered users get full Pro access without subscription
+      if (isGrandfathered) {
+        return res.json({
+          hasActiveSubscription: true,
+          needsSubscription: false,
+          isInTrial: false,
+          trialExpired: false,
+          trialDaysRemaining: 0,
+          trialEndsAt: null,
+          currentPlan: 'pro',
+          hasCrmAccess: true,
+          subscriptionStatus: 'grandfathered',
+          monthlyPrice: 0,
+          features: ['Lead management', 'Client management', 'Job scheduling', 'Quotes and invoices', 'Dashboard analytics', 'Referral program'],
+          planName: 'Pro (Grandfathered)',
+          tierName: 'contractor_pro',
+          isGrandfathered: true,
+        });
+      }
       
       // Calculate trial status
       const now = new Date();
