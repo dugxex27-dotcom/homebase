@@ -221,20 +221,31 @@ export function ContractorTrialBanner() {
   const isLowDays = trialDaysRemaining <= 3;
 
   return (
-    <div className={`w-full py-2 px-4 text-center text-sm ${isLowDays ? 'bg-amber-500 text-white' : 'bg-blue-600 text-white'}`}>
-      <Clock className="inline h-4 w-4 mr-2" />
-      {trialDaysRemaining === 1 
-        ? 'Your free trial ends tomorrow!' 
-        : `${trialDaysRemaining} days left in your free trial`}
-      {' · '}
-      <button
-        onClick={() => setLocation('/contractor/pricing')}
-        className="underline font-medium hover:no-underline"
-        data-testid="button-upgrade-trial-banner"
-      >
-        Subscribe now
-      </button>
-      {' to keep access after ' + formattedEndDate}
+    <div className={`w-full py-3 px-4 ${isLowDays ? 'bg-amber-500' : 'bg-blue-600'}`}>
+      <div className="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3 text-white">
+          <Clock className="h-5 w-5" />
+          <div>
+            <span className="font-semibold">
+              {trialDaysRemaining === 1 
+                ? 'Your free trial ends tomorrow!' 
+                : `${trialDaysRemaining} days left in your free trial`}
+            </span>
+            <span className="hidden sm:inline ml-2 opacity-90">
+              · Access ends {formattedEndDate}
+            </span>
+          </div>
+        </div>
+        <Button
+          onClick={() => setLocation('/contractor/pricing')}
+          variant="secondary"
+          size="sm"
+          className="bg-white text-blue-700 hover:bg-gray-100 font-semibold"
+          data-testid="button-subscribe-trial-banner"
+        >
+          Subscribe Now
+        </Button>
+      </div>
     </div>
   );
 }

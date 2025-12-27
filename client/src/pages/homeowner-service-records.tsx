@@ -14,7 +14,7 @@ import { insertMaintenanceLogSchema } from "@shared/schema";
 import type { MaintenanceLog, House } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { FreeUserUpgradePrompt } from "@/components/homeowner-feature-gate";
+import { FreeUserUpgradePrompt, HomeownerTrialBanner } from "@/components/homeowner-feature-gate";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
 import { 
   FileText, 
@@ -366,6 +366,7 @@ export default function HomeownerServiceRecords() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#f5f5f5' }}>
       <div className="container mx-auto px-4 py-8">
+        <HomeownerTrialBanner />
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
