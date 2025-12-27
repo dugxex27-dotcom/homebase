@@ -7,7 +7,7 @@ import { eq, and } from 'drizzle-orm';
 const apiKey = process.env.SENDGRID_API_KEY;
 const fromEmail = 'noreply@gotohomebase.com';
 const fromName = 'HomeBase';
-const testEmailOverride = 'lihandyman2008@gmail.com';
+const testEmailOverride = '';
 
 if (apiKey) {
   sgMail.setApiKey(apiKey);
