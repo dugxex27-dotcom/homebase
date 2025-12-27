@@ -23,8 +23,8 @@ export default function Header() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstallable, setIsInstallable] = useState(false);
 
-  const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || '').split(',').map((e: string) => e.trim()).filter(Boolean);
-  const isAdmin = typedUser?.email && adminEmails.includes(typedUser.email);
+  const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || '').split(',').map((e: string) => e.trim().toLowerCase()).filter(Boolean);
+  const isAdmin = typedUser?.email && adminEmails.includes(typedUser.email.toLowerCase());
 
   const { data: userData } = useQuery<User>({
     queryKey: ['/api/user'],

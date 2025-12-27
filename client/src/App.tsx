@@ -124,8 +124,8 @@ function Router() {
   const typedUser = user as { role?: string; email?: string } | undefined;
   
   // Check if user is admin (based on ADMIN_EMAILS environment variable)
-  const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || '').split(',').map((e: string) => e.trim()).filter(Boolean);
-  const isAdmin = typedUser?.email && adminEmails.includes(typedUser.email);
+  const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || '').split(',').map((e: string) => e.trim().toLowerCase()).filter(Boolean);
+  const isAdmin = typedUser?.email && adminEmails.includes(typedUser.email.toLowerCase());
   
   return (
     <AuthenticatedLayout>
