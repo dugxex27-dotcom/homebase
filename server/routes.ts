@@ -5431,7 +5431,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const { method = 'email' } = req.body; // 'email', 'sms', or 'both'
+      const sendMethodSchema = z.object({
+        method: z.enum(['email', 'sms', 'both']).default('email'),
+      });
+      const methodResult = sendMethodSchema.safeParse(req.body);
+      if (!methodResult.success) {
+        return res.status(400).json({ message: "Invalid method. Must be 'email', 'sms', or 'both'" });
+      }
+      const { method } = methodResult.data;
 
       const existingJob = await storage.getCrmJob(req.params.id);
       
@@ -5489,6 +5496,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let emailSent = false;
       let smsSent = false;
+
+      // Validate client has required contact info
+      if ((method === 'email' || method === 'both') && !client.email) {
+        return res.status(400).json({ message: "Client has no email address. Please update client info or use SMS." });
+      }
+      if ((method === 'sms' || method === 'both') && !client.phone) {
+        return res.status(400).json({ message: "Client has no phone number. Please update client info or use email." });
+      }
 
       if ((method === 'email' || method === 'both') && client.email) {
         emailSent = await emailService.sendJobNotificationEmail(emailData);
@@ -5676,7 +5691,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const { method = 'email' } = req.body; // 'email', 'sms', or 'both'
+      const sendMethodSchema = z.object({
+        method: z.enum(['email', 'sms', 'both']).default('email'),
+      });
+      const methodResult = sendMethodSchema.safeParse(req.body);
+      if (!methodResult.success) {
+        return res.status(400).json({ message: "Invalid method. Must be 'email', 'sms', or 'both'" });
+      }
+      const { method } = methodResult.data;
 
       const existingQuote = await storage.getCrmQuote(req.params.id);
       
@@ -5740,6 +5762,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let emailSent = false;
       let smsSent = false;
+
+      // Validate client has required contact info
+      if ((method === 'email' || method === 'both') && !client.email) {
+        return res.status(400).json({ message: "Client has no email address. Please update client info or use SMS." });
+      }
+      if ((method === 'sms' || method === 'both') && !client.phone) {
+        return res.status(400).json({ message: "Client has no phone number. Please update client info or use email." });
+      }
 
       if ((method === 'email' || method === 'both') && client.email) {
         emailSent = await emailService.sendQuoteEmail(emailData);
@@ -5968,7 +5998,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const { method = 'email' } = req.body; // 'email', 'sms', or 'both'
+      const sendMethodSchema = z.object({
+        method: z.enum(['email', 'sms', 'both']).default('email'),
+      });
+      const methodResult = sendMethodSchema.safeParse(req.body);
+      if (!methodResult.success) {
+        return res.status(400).json({ message: "Invalid method. Must be 'email', 'sms', or 'both'" });
+      }
+      const { method } = methodResult.data;
 
       const existingInvoice = await storage.getCrmInvoice(req.params.id);
       
@@ -6033,6 +6070,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let emailSent = false;
       let smsSent = false;
+
+      // Validate client has required contact info
+      if ((method === 'email' || method === 'both') && !client.email) {
+        return res.status(400).json({ message: "Client has no email address. Please update client info or use SMS." });
+      }
+      if ((method === 'sms' || method === 'both') && !client.phone) {
+        return res.status(400).json({ message: "Client has no phone number. Please update client info or use email." });
+      }
 
       if ((method === 'email' || method === 'both') && client.email) {
         emailSent = await emailService.sendInvoiceEmail(emailData);

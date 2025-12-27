@@ -388,6 +388,12 @@ export default function ContractorCRMPage() {
   // Pro benefits dialog state
   const [showProBenefitsDialog, setShowProBenefitsDialog] = useState(false);
 
+  // Send dialog state for quotes/invoices/jobs
+  const [sendDialogOpen, setSendDialogOpen] = useState(false);
+  const [sendDialogType, setSendDialogType] = useState<'quote' | 'invoice' | 'job'>('quote');
+  const [sendDialogItemId, setSendDialogItemId] = useState<string>('');
+  const [sendMethod, setSendMethod] = useState<'email' | 'sms' | 'both'>('email');
+
   // Check Pro tier access
   const { data: proAccessData, error: proAccessError, isLoading: isCheckingProAccess } = useQuery<CrmClient[]>({
     queryKey: ['/api/crm/clients'],
@@ -586,12 +592,15 @@ export default function ContractorCRMPage() {
   });
 
   const sendQuoteMutation = useMutation({
-    mutationFn: async (quoteId: string) => {
-      return await apiRequest(`/api/crm/quotes/${quoteId}/send`, 'POST');
+    mutationFn: async ({ quoteId, method }: { quoteId: string; method: string }) => {
+      return await apiRequest(`/api/crm/quotes/${quoteId}/send`, 'POST', { method });
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/crm/quotes'] });
-      toast({ title: "Quote sent", description: "Quote has been marked as sent." });
+      const sentVia = [];
+      if (data.emailSent) sentVia.push('email');
+      if (data.smsSent) sentVia.push('SMS');
+      toast({ title: "Quote sent", description: sentVia.length > 0 ? `Quote sent via ${sentVia.join(' and ')}.` : "Quote has been marked as sent." });
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message || "Failed to send quote", variant: "destructive" });
@@ -616,15 +625,34 @@ export default function ContractorCRMPage() {
   });
 
   const sendInvoiceMutation = useMutation({
-    mutationFn: async (invoiceId: string) => {
-      return await apiRequest(`/api/crm/invoices/${invoiceId}/send`, 'POST');
+    mutationFn: async ({ invoiceId, method }: { invoiceId: string; method: string }) => {
+      return await apiRequest(`/api/crm/invoices/${invoiceId}/send`, 'POST', { method });
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/crm/invoices'] });
-      toast({ title: "Invoice sent", description: "Invoice has been marked as sent." });
+      const sentVia = [];
+      if (data.emailSent) sentVia.push('email');
+      if (data.smsSent) sentVia.push('SMS');
+      toast({ title: "Invoice sent", description: sentVia.length > 0 ? `Invoice sent via ${sentVia.join(' and ')}.` : "Invoice has been marked as sent." });
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message || "Failed to send invoice", variant: "destructive" });
+    },
+  });
+
+  const sendJobNotificationMutation = useMutation({
+    mutationFn: async ({ jobId, method }: { jobId: string; method: string }) => {
+      return await apiRequest(`/api/crm/jobs/${jobId}/notify`, 'POST', { method });
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/jobs'] });
+      const sentVia = [];
+      if (data.emailSent) sentVia.push('email');
+      if (data.smsSent) sentVia.push('SMS');
+      toast({ title: "Notification sent", description: sentVia.length > 0 ? `Job notification sent via ${sentVia.join(' and ')}.` : "Job notification has been sent." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to send notification", variant: "destructive" });
     },
   });
 
@@ -792,6 +820,24 @@ export default function ContractorCRMPage() {
         paymentMethod,
       });
     }
+  };
+
+  const openSendDialog = (type: 'quote' | 'invoice' | 'job', itemId: string) => {
+    setSendDialogType(type);
+    setSendDialogItemId(itemId);
+    setSendMethod('email');
+    setSendDialogOpen(true);
+  };
+
+  const handleSendItem = () => {
+    if (sendDialogType === 'quote') {
+      sendQuoteMutation.mutate({ quoteId: sendDialogItemId, method: sendMethod });
+    } else if (sendDialogType === 'invoice') {
+      sendInvoiceMutation.mutate({ invoiceId: sendDialogItemId, method: sendMethod });
+    } else if (sendDialogType === 'job') {
+      sendJobNotificationMutation.mutate({ jobId: sendDialogItemId, method: sendMethod });
+    }
+    setSendDialogOpen(false);
   };
 
   return (
@@ -1688,6 +1734,9 @@ export default function ContractorCRMPage() {
                                 ))}
                               </SelectContent>
                             </Select>
+                            <Button variant="outline" size="sm" onClick={() => openSendDialog('job', job.id)} disabled={sendJobNotificationMutation.isPending} data-testid={`button-notify-job-${job.id}`}>
+                              <Send className="h-4 w-4 mr-2" />Notify
+                            </Button>
                             <Button variant="outline" size="sm" onClick={() => { setJobToDelete(job); setDeleteJobConfirmOpen(true); }} data-testid={`button-delete-job-${job.id}`}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -1872,7 +1921,7 @@ export default function ContractorCRMPage() {
                           </div>
                           <div className="flex gap-2">
                             {quote.status === 'draft' && (
-                              <Button variant="outline" size="sm" onClick={() => sendQuoteMutation.mutate(quote.id)} disabled={sendQuoteMutation.isPending} data-testid={`button-send-quote-${quote.id}`}>
+                              <Button variant="outline" size="sm" onClick={() => openSendDialog('quote', quote.id)} disabled={sendQuoteMutation.isPending} data-testid={`button-send-quote-${quote.id}`}>
                                 <Send className="h-4 w-4 mr-2" />Send Quote
                               </Button>
                             )}
@@ -2066,7 +2115,7 @@ export default function ContractorCRMPage() {
                           </div>
                           <div className="flex gap-2">
                             {invoice.status === 'draft' && (
-                              <Button variant="outline" size="sm" onClick={() => sendInvoiceMutation.mutate(invoice.id)} disabled={sendInvoiceMutation.isPending} data-testid={`button-send-invoice-${invoice.id}`}>
+                              <Button variant="outline" size="sm" onClick={() => openSendDialog('invoice', invoice.id)} disabled={sendInvoiceMutation.isPending} data-testid={`button-send-invoice-${invoice.id}`}>
                                 <Send className="h-4 w-4 mr-2" />Send Invoice
                               </Button>
                             )}
@@ -2344,6 +2393,77 @@ export default function ContractorCRMPage() {
         onConfirm={() => { if (jobToDelete) deleteJobMutation.mutate(jobToDelete.id); setDeleteJobConfirmOpen(false); setJobToDelete(null); }}
         variant="destructive"
       />
+
+      {/* Send Dialog for Quotes/Invoices/Jobs */}
+      <Dialog open={sendDialogOpen} onOpenChange={setSendDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {sendDialogType === 'quote' && 'Send Quote'}
+              {sendDialogType === 'invoice' && 'Send Invoice'}
+              {sendDialogType === 'job' && 'Send Job Notification'}
+            </DialogTitle>
+            <DialogDescription>
+              Choose how you'd like to send this {sendDialogType} to your client.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-3 block">Delivery Method</label>
+              <div className="grid grid-cols-3 gap-3">
+                <Button
+                  type="button"
+                  variant={sendMethod === 'email' ? 'default' : 'outline'}
+                  onClick={() => setSendMethod('email')}
+                  className="flex flex-col items-center gap-2 h-auto py-4"
+                  data-testid="button-send-method-email"
+                >
+                  <MessageCircle className="h-5 w-5" />
+                  <span>Email</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant={sendMethod === 'sms' ? 'default' : 'outline'}
+                  onClick={() => setSendMethod('sms')}
+                  className="flex flex-col items-center gap-2 h-auto py-4"
+                  data-testid="button-send-method-sms"
+                >
+                  <Phone className="h-5 w-5" />
+                  <span>SMS</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant={sendMethod === 'both' ? 'default' : 'outline'}
+                  onClick={() => setSendMethod('both')}
+                  className="flex flex-col items-center gap-2 h-auto py-4"
+                  data-testid="button-send-method-both"
+                >
+                  <Send className="h-5 w-5" />
+                  <span>Both</span>
+                </Button>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setSendDialogOpen(false)} data-testid="button-cancel-send">
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSendItem} 
+              disabled={
+                (sendDialogType === 'quote' && sendQuoteMutation.isPending) ||
+                (sendDialogType === 'invoice' && sendInvoiceMutation.isPending) ||
+                (sendDialogType === 'job' && sendJobNotificationMutation.isPending)
+              }
+              data-testid="button-confirm-send"
+            >
+              {(sendDialogType === 'quote' && sendQuoteMutation.isPending) ||
+               (sendDialogType === 'invoice' && sendInvoiceMutation.isPending) ||
+               (sendDialogType === 'job' && sendJobNotificationMutation.isPending) ? "Sending..." : "Send"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
