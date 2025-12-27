@@ -51,5 +51,5 @@ defaultBucketID = "replit-objstore-6b6c0a35-de9a-48e9-9110-28f95a385aae"
 [userenv]
 
 [userenv.shared]
-ADMIN_EMAILS = "admin@gotohomebase.com,lihandyman2008@gmail.com"
+ADMIN_EMAILS = "admin@gotohomebase.com,lihandyman2008@gmail.com,bryanmendezdesign@gmail.com"
 ENABLE_DEMO_DATA = "true"
