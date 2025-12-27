@@ -5416,6 +5416,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/crm/jobs/:id/notify - Send job notification via email and/or SMS
+  app.post('/api/crm/jobs/:id/notify', isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.session.user.role !== 'contractor') {
+        return res.status(403).json({ message: "Only contractors can access CRM features" });
+      }
+
+      const hasAccess = await hasCrmProAccess(req.session.user);
+      if (!hasAccess) {
+        return res.status(403).json({ 
+          message: "CRM features require Contractor Pro subscription",
+          upgradeRequired: true 
+        });
+      }
+
+      const { method = 'email' } = req.body; // 'email', 'sms', or 'both'
+
+      const existingJob = await storage.getCrmJob(req.params.id);
+      
+      if (!existingJob) {
+        return res.status(404).json({ message: "Job not found" });
+      }
+
+      if (!canAccessCrmResource(req.session.user, existingJob)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Get client info
+      const client = await storage.getCrmClient(existingJob.clientId);
+      if (!client) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+
+      // Get contractor info
+      const contractor = await storage.getContractorByUserId(req.session.user.id);
+      const user = await storage.getUser(req.session.user.id);
+      const company = contractor?.companyId ? await storage.getCompany(contractor.companyId) : null;
+
+      const baseUrl = process.env.NODE_ENV === 'production' ? 'https://gotohomebase.com' : `https://${req.headers.host}`;
+      const viewUrl = `${baseUrl}/crm/jobs/${existingJob.id}`;
+
+      const formatCurrency = (amount: string | number | null) => amount ? `$${parseFloat(String(amount)).toFixed(2)}` : '$0.00';
+      const formatDate = (date: Date | null) => date ? new Date(date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : undefined;
+
+      const emailData = {
+        clientName: `${client.firstName} ${client.lastName}`,
+        clientEmail: client.email || '',
+        contractorName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'Your Contractor',
+        contractorCompany: company?.name,
+        contractorPhone: user?.phone || contractor?.phone,
+        contractorEmail: user?.email,
+        documentNumber: existingJob.id,
+        documentTitle: existingJob.title,
+        total: formatCurrency(existingJob.totalCost),
+        scheduledDate: formatDate(existingJob.scheduledDate),
+        status: existingJob.status,
+        viewUrl,
+      };
+
+      const smsData = {
+        clientPhone: client.phone || '',
+        clientName: client.firstName,
+        contractorName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'Your Contractor',
+        contractorCompany: company?.name,
+        documentNumber: existingJob.id,
+        documentTitle: existingJob.title,
+        total: formatCurrency(existingJob.totalCost),
+        scheduledDate: formatDate(existingJob.scheduledDate),
+        viewUrl,
+      };
+
+      let emailSent = false;
+      let smsSent = false;
+
+      if ((method === 'email' || method === 'both') && client.email) {
+        emailSent = await emailService.sendJobNotificationEmail(emailData);
+      }
+
+      if ((method === 'sms' || method === 'both') && client.phone) {
+        smsSent = await smsService.sendJobNotificationSMS(smsData);
+      }
+
+      res.json({ 
+        success: true,
+        emailSent, 
+        smsSent,
+        message: `Notification sent${emailSent ? ' via email' : ''}${smsSent ? (emailSent ? ' and SMS' : ' via SMS') : ''}` 
+      });
+    } catch (error) {
+      console.error("Error sending CRM job notification:", error);
+      res.status(500).json({ message: "Failed to send notification" });
+    }
+  });
+
   // -------------------- CRM Quotes Routes --------------------
 
   // GET /api/crm/quotes - List all quotes
@@ -5567,7 +5661,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST /api/crm/quotes/:id/send - Mark quote as sent
+  // POST /api/crm/quotes/:id/send - Send quote via email and/or SMS
   app.post('/api/crm/quotes/:id/send', isAuthenticated, async (req: any, res) => {
     try {
       if (req.session.user.role !== 'contractor') {
@@ -5582,6 +5676,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      const { method = 'email' } = req.body; // 'email', 'sms', or 'both'
+
       const existingQuote = await storage.getCrmQuote(req.params.id);
       
       if (!existingQuote) {
@@ -5592,11 +5688,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
 
+      // Get client info
+      const client = await storage.getCrmClient(existingQuote.clientId);
+      if (!client) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+
+      // Get contractor info
+      const contractor = await storage.getContractorByUserId(req.session.user.id);
+      const user = await storage.getUser(req.session.user.id);
+      const company = contractor?.companyId ? await storage.getCompany(contractor.companyId) : null;
+
+      const baseUrl = process.env.NODE_ENV === 'production' ? 'https://gotohomebase.com' : `https://${req.headers.host}`;
+      const viewUrl = `${baseUrl}/pay/invoice/${existingQuote.id}`;
+
+      const formatCurrency = (amount: string | number) => `$${parseFloat(String(amount)).toFixed(2)}`;
+      const formatDate = (date: Date | null) => date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined;
+
+      const lineItems = Array.isArray(existingQuote.lineItems) ? (existingQuote.lineItems as any[]).map(item => ({
+        description: item.description || '',
+        quantity: item.quantity || 1,
+        unitPrice: formatCurrency(item.unitPrice || 0),
+        total: formatCurrency(item.total || 0),
+      })) : [];
+
+      const emailData = {
+        clientName: `${client.firstName} ${client.lastName}`,
+        clientEmail: client.email || '',
+        contractorName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'Your Contractor',
+        contractorCompany: company?.name,
+        contractorPhone: user?.phone || contractor?.phone,
+        contractorEmail: user?.email,
+        documentNumber: existingQuote.quoteNumber,
+        documentTitle: existingQuote.title,
+        total: formatCurrency(existingQuote.total),
+        validUntil: formatDate(existingQuote.validUntil),
+        viewUrl,
+        lineItems,
+      };
+
+      const smsData = {
+        clientPhone: client.phone || '',
+        clientName: client.firstName,
+        contractorName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'Your Contractor',
+        contractorCompany: company?.name,
+        documentNumber: existingQuote.quoteNumber,
+        documentTitle: existingQuote.title,
+        total: formatCurrency(existingQuote.total),
+        viewUrl,
+      };
+
+      let emailSent = false;
+      let smsSent = false;
+
+      if ((method === 'email' || method === 'both') && client.email) {
+        emailSent = await emailService.sendQuoteEmail(emailData);
+      }
+
+      if ((method === 'sms' || method === 'both') && client.phone) {
+        smsSent = await smsService.sendQuoteSMS(smsData);
+      }
+
       const updatedQuote = await storage.updateCrmQuote(req.params.id, {
         status: 'sent',
         sentAt: new Date(),
       });
-      res.json(updatedQuote);
+
+      res.json({ 
+        ...updatedQuote, 
+        emailSent, 
+        smsSent,
+        message: `Quote sent${emailSent ? ' via email' : ''}${smsSent ? (emailSent ? ' and SMS' : ' via SMS') : ''}` 
+      });
     } catch (error) {
       console.error("Error sending CRM quote:", error);
       res.status(500).json({ message: "Failed to send quote" });
@@ -5790,7 +5953,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // POST /api/crm/invoices/:id/send - Mark invoice as sent
+  // POST /api/crm/invoices/:id/send - Send invoice via email and/or SMS
   app.post('/api/crm/invoices/:id/send', isAuthenticated, async (req: any, res) => {
     try {
       if (req.session.user.role !== 'contractor') {
@@ -5805,6 +5968,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      const { method = 'email' } = req.body; // 'email', 'sms', or 'both'
+
       const existingInvoice = await storage.getCrmInvoice(req.params.id);
       
       if (!existingInvoice) {
@@ -5815,11 +5980,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
 
+      // Get client info
+      const client = await storage.getCrmClient(existingInvoice.clientId);
+      if (!client) {
+        return res.status(404).json({ message: "Client not found" });
+      }
+
+      // Get contractor info
+      const contractor = await storage.getContractorByUserId(req.session.user.id);
+      const user = await storage.getUser(req.session.user.id);
+      const company = contractor?.companyId ? await storage.getCompany(contractor.companyId) : null;
+
+      const baseUrl = process.env.NODE_ENV === 'production' ? 'https://gotohomebase.com' : `https://${req.headers.host}`;
+      const viewUrl = `${baseUrl}/pay/invoice/${existingInvoice.id}`;
+
+      const formatCurrency = (amount: string | number) => `$${parseFloat(String(amount)).toFixed(2)}`;
+      const formatDate = (date: Date | null) => date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined;
+
+      const lineItems = Array.isArray(existingInvoice.lineItems) ? (existingInvoice.lineItems as any[]).map(item => ({
+        description: item.description || '',
+        quantity: item.quantity || 1,
+        unitPrice: formatCurrency(item.unitPrice || 0),
+        total: formatCurrency(item.total || 0),
+      })) : [];
+
+      const emailData = {
+        clientName: `${client.firstName} ${client.lastName}`,
+        clientEmail: client.email || '',
+        contractorName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'Your Contractor',
+        contractorCompany: company?.name,
+        contractorPhone: user?.phone || contractor?.phone,
+        contractorEmail: user?.email,
+        documentNumber: existingInvoice.invoiceNumber,
+        documentTitle: existingInvoice.title,
+        total: formatCurrency(existingInvoice.amountDue),
+        dueDate: formatDate(existingInvoice.dueDate),
+        viewUrl,
+        lineItems,
+      };
+
+      const smsData = {
+        clientPhone: client.phone || '',
+        clientName: client.firstName,
+        contractorName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'Your Contractor',
+        contractorCompany: company?.name,
+        documentNumber: existingInvoice.invoiceNumber,
+        documentTitle: existingInvoice.title,
+        total: formatCurrency(existingInvoice.amountDue),
+        dueDate: formatDate(existingInvoice.dueDate),
+        viewUrl,
+      };
+
+      let emailSent = false;
+      let smsSent = false;
+
+      if ((method === 'email' || method === 'both') && client.email) {
+        emailSent = await emailService.sendInvoiceEmail(emailData);
+      }
+
+      if ((method === 'sms' || method === 'both') && client.phone) {
+        smsSent = await smsService.sendInvoiceSMS(smsData);
+      }
+
       const updatedInvoice = await storage.updateCrmInvoice(req.params.id, {
         status: 'sent',
         sentAt: new Date(),
       });
-      res.json(updatedInvoice);
+
+      res.json({ 
+        ...updatedInvoice, 
+        emailSent, 
+        smsSent,
+        message: `Invoice sent${emailSent ? ' via email' : ''}${smsSent ? (emailSent ? ' and SMS' : ' via SMS') : ''}` 
+      });
     } catch (error) {
       console.error("Error sending CRM invoice:", error);
       res.status(500).json({ message: "Failed to send invoice" });
