@@ -9698,7 +9698,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const plan = planDetails?.[0];
-      const hasActiveSubscription = user.subscriptionStatus === 'active' || user.subscriptionStatus === 'trialing';
+      
+      // Calculate trial status
+      const now = new Date();
+      const trialEndsAt = user.trialEndsAt ? new Date(user.trialEndsAt) : null;
+      const isInTrial = user.subscriptionStatus === 'trialing' && trialEndsAt && trialEndsAt > now;
+      const trialExpired = trialEndsAt && trialEndsAt <= now && user.subscriptionStatus === 'trialing';
+      const trialDaysRemaining = trialEndsAt && trialEndsAt > now 
+        ? Math.ceil((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+        : 0;
+      
+      // Has active access if: paid subscription active, OR still in trial period
+      const hasActiveSubscription = user.subscriptionStatus === 'active' || isInTrial;
+      
+      // If trial expired and no paid subscription, they need to pay
+      const needsSubscription = trialExpired || (user.subscriptionStatus === 'inactive' && !isInTrial);
       
       // Determine current plan tier
       let currentPlan: 'none' | 'basic' | 'pro' = 'none';
@@ -9712,6 +9726,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json({
         hasActiveSubscription,
+        needsSubscription,
+        isInTrial,
+        trialExpired,
+        trialDaysRemaining,
+        trialEndsAt: trialEndsAt?.toISOString() || null,
         currentPlan,
         hasCrmAccess: plan?.hasCrmAccess ?? false,
         subscriptionStatus: user.subscriptionStatus || 'inactive',

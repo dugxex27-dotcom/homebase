@@ -16,6 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
 import { useAuth } from "@/hooks/useAuth";
+import { useContractorSubscription } from "@/hooks/useContractorSubscription";
+import { ContractorTrialExpiredPaywall, ContractorTrialBanner } from "@/components/contractor-feature-gate";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   Gift, 
@@ -65,6 +67,12 @@ export default function ContractorDashboard() {
   const { toast } = useToast();
   const queryClientInstance = useQueryClient();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  
+  const { needsSubscription, isInTrial, isLoading: subscriptionLoading } = useContractorSubscription();
+
+  if (needsSubscription && !subscriptionLoading) {
+    return <ContractorTrialExpiredPaywall />;
+  }
   
   const form = useForm<ProposalFormData>({
     resolver: zodResolver(proposalFormSchema),
@@ -227,6 +235,7 @@ export default function ContractorDashboard() {
   
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
+      {isInTrial && <ContractorTrialBanner />}
       <main className="max-w-7xl mx-auto px-6 py-8">
         <div className="grid grid-cols-12 gap-6">
           {/* Left column / sidebar */}

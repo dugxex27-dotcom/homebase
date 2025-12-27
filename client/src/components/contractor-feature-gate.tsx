@@ -2,8 +2,9 @@ import { useContractorSubscription } from "@/hooks/useContractorSubscription";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Lock, Sparkles, Check, Users, Calendar, FileText, CreditCard, Download, BarChart3 } from "lucide-react";
+import { Lock, Sparkles, Check, Users, Calendar, FileText, CreditCard, Download, BarChart3, Clock, AlertTriangle } from "lucide-react";
 import { useLocation } from "wouter";
+import { format } from "date-fns";
 
 interface ContractorFeatureGateProps {
   children: React.ReactNode;
@@ -206,6 +207,119 @@ export function ContractorCRMUpgradePage() {
           </Card>
         ))}
       </div>
+    </div>
+  );
+}
+
+export function ContractorTrialBanner() {
+  const { isInTrial, trialDaysRemaining, trialEndsAt } = useContractorSubscription();
+  const [, setLocation] = useLocation();
+
+  if (!isInTrial) return null;
+
+  const formattedEndDate = trialEndsAt ? format(new Date(trialEndsAt), 'MMMM d, yyyy') : '';
+  const isLowDays = trialDaysRemaining <= 3;
+
+  return (
+    <div className={`w-full py-2 px-4 text-center text-sm ${isLowDays ? 'bg-amber-500 text-white' : 'bg-blue-600 text-white'}`}>
+      <Clock className="inline h-4 w-4 mr-2" />
+      {trialDaysRemaining === 1 
+        ? 'Your free trial ends tomorrow!' 
+        : `${trialDaysRemaining} days left in your free trial`}
+      {' · '}
+      <button
+        onClick={() => setLocation('/contractor/pricing')}
+        className="underline font-medium hover:no-underline"
+        data-testid="button-upgrade-trial-banner"
+      >
+        Subscribe now
+      </button>
+      {' to keep access after ' + formattedEndDate}
+    </div>
+  );
+}
+
+export function ContractorTrialExpiredPaywall() {
+  const [, setLocation] = useLocation();
+
+  const plans = [
+    {
+      name: 'Basic',
+      price: '$20',
+      period: '/month',
+      features: ['Get found by homeowners', 'Receive and respond to messages', 'Send proposals', 'Reviews profile', '$20/month referral credit cap'],
+      recommended: false
+    },
+    {
+      name: 'Pro',
+      price: '$40',
+      period: '/month',
+      features: ['Everything in Basic', 'Full CRM with client management', 'Job scheduling', 'Quotes & invoices', 'Accept payments', 'Team management', '$40/month referral credit cap'],
+      recommended: true
+    }
+  ];
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: '#1e3a5f' }}>
+      <Card className="border-2 border-blue-300 shadow-lg max-w-4xl w-full bg-white">
+        <CardContent className="py-8">
+          <div className="text-center mb-8">
+            <div className="mx-auto mb-4 p-4 rounded-full bg-amber-100 w-fit">
+              <AlertTriangle className="h-8 w-8 text-amber-600" />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Your Free Trial Has Ended</h1>
+            <p className="text-gray-600 max-w-lg mx-auto">
+              Your 14-day free trial has expired. Subscribe to continue accessing HomeBase and connecting with homeowners. 
+              Your profile and data are saved and ready when you return.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6 mb-8">
+            {plans.map((plan) => (
+              <Card 
+                key={plan.name} 
+                className={`relative ${plan.recommended ? 'border-2 border-blue-500' : 'border border-gray-200'}`}
+              >
+                {plan.recommended && (
+                  <div className="absolute top-0 right-0 bg-blue-500 text-white text-xs px-3 py-1 rounded-bl-lg">
+                    RECOMMENDED
+                  </div>
+                )}
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xl">{plan.name}</CardTitle>
+                  <div className="text-3xl font-bold text-blue-700">
+                    {plan.price}
+                    <span className="text-base font-normal text-gray-500">{plan.period}</span>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2 mb-4">
+                    {plan.features.map((feature, idx) => (
+                      <li key={idx} className="flex items-center gap-2 text-sm">
+                        <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Button 
+                    className={`w-full ${plan.recommended 
+                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800' 
+                      : 'bg-gray-600 hover:bg-gray-700'}`}
+                    onClick={() => setLocation(`/contractor/pricing`)}
+                    data-testid={`button-subscribe-${plan.name.toLowerCase()}`}
+                  >
+                    Subscribe to {plan.name}
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <p className="text-center text-sm text-gray-500">
+            Questions? Contact us at support@gotohomebase.com
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 }
