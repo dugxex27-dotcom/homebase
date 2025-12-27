@@ -433,7 +433,7 @@ export default function SupportPage() {
                             <div className={`h-2 w-2 rounded-full ${statusColor}`} />
                             <StatusIcon className="h-4 w-4" />
                             <Badge variant="outline" data-testid={`ticket-status-${ticket.id}`}>
-                              {ticket.status.replace(/_/g, ' ')}
+                              {(ticket.status || 'open').replace(/_/g, ' ')}
                             </Badge>
                           </div>
                         </div>
