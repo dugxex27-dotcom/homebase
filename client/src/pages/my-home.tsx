@@ -18,7 +18,8 @@ import type { House } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar, Clock, Wrench, Home, MapPin, Edit, Trash2, Plus, Building, Thermometer, AlertTriangle, ChevronRight, Crown, BarChart3, Copy, Settings } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-import { HomeownerFeatureGate, HomeownerTrialBanner } from "@/components/homeowner-feature-gate";
+import { HomeownerFeatureGate, HomeownerTrialBanner, FreeUserUpgradePrompt } from "@/components/homeowner-feature-gate";
+import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
 
 // Form schema for house creation/editing
 const houseFormSchema = insertHouseSchema.extend({
@@ -107,6 +108,14 @@ interface MaintenanceTasksResponse {
 export default function MyHome() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  
+  const { isFreeUser, isLoading: subscriptionLoading } = useHomeownerSubscription();
+
+  if (isFreeUser && !subscriptionLoading) {
+    return <FreeUserUpgradePrompt />;
+  }
+  
   const [selectedHouse, setSelectedHouse] = useState<House | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingHouse, setEditingHouse] = useState<House | null>(null);
@@ -119,7 +128,6 @@ export default function MyHome() {
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [houseToDelete, setHouseToDelete] = useState<House | null>(null);
-  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // Check authentication and role - allow both homeowners and contractors

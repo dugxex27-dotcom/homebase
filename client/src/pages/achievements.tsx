@@ -24,7 +24,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { HomeownerFeatureGate, HomeownerTrialBanner } from "@/components/homeowner-feature-gate";
+import { HomeownerFeatureGate, HomeownerTrialBanner, FreeUserUpgradePrompt } from "@/components/homeowner-feature-gate";
+import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
 
 // Backend achievement definition with user progress
 interface AchievementWithProgress {
@@ -139,6 +140,12 @@ export default function Achievements() {
   const [selectedHouseId, setSelectedHouseId] = useState<string>("all");
   const queryClient = useQueryClient();
   const hasCheckedAchievements = useRef(false);
+  
+  const { isFreeUser, isLoading: subscriptionLoading } = useHomeownerSubscription();
+
+  if (isFreeUser && !subscriptionLoading) {
+    return <FreeUserUpgradePrompt />;
+  }
 
   // Fetch user's houses
   const { data: houses = [], isLoading: housesLoading } = useQuery<House[]>({

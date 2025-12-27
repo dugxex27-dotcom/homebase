@@ -14,6 +14,8 @@ import { insertMaintenanceLogSchema } from "@shared/schema";
 import type { MaintenanceLog, House } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { FreeUserUpgradePrompt } from "@/components/homeowner-feature-gate";
+import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
 import { 
   FileText, 
   Calendar, 
@@ -79,6 +81,12 @@ export default function HomeownerServiceRecords() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const homeownerId = user?.id || "";
+  
+  const { isFreeUser, isLoading: subscriptionLoading } = useHomeownerSubscription();
+
+  if (isFreeUser && !subscriptionLoading) {
+    return <FreeUserUpgradePrompt />;
+  }
 
   const [isMaintenanceLogDialogOpen, setIsMaintenanceLogDialogOpen] = useState(false);
   const [editingMaintenanceLog, setEditingMaintenanceLog] = useState<MaintenanceLog | null>(null);
