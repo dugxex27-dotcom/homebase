@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Calendar, MessageCircle, ShoppingCart, User, LayoutDashboard, FileText, Users } from "lucide-react";
+import { Home, Calendar, MessageCircle, ShoppingCart, User, LayoutDashboard, FileText, Users, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import type { User as UserType } from "@shared/schema";
@@ -10,6 +10,9 @@ export default function BottomNav() {
   const [location] = useLocation();
   const { user } = useAuth();
   const typedUser = user as UserType | undefined;
+  
+  const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || '').split(',').map((e: string) => e.trim()).filter(Boolean);
+  const isAdmin = typedUser?.email && adminEmails.includes(typedUser.email);
 
   // Get unread message count for badge
   const { data: conversations } = useQuery({
@@ -21,8 +24,17 @@ export default function BottomNav() {
     ? conversations.filter((c: any) => c.unreadCount > 0).length
     : 0;
 
+  const adminItem = isAdmin ? [{ 
+    href: '/admin', 
+    icon: Shield, 
+    label: 'Admin',
+    isActive: location === '/admin' || location.startsWith('/admin/'),
+    badge: undefined as number | undefined
+  }] : [];
+
   const navItems = typedUser?.role === 'homeowner'
     ? [
+        ...adminItem,
         { 
           href: '/', 
           icon: Home, 
@@ -43,12 +55,6 @@ export default function BottomNav() {
           isActive: location === '/messages'
         },
         { 
-          href: '/products', 
-          icon: ShoppingCart, 
-          label: 'Marketplace',
-          isActive: location === '/products'
-        },
-        { 
           href: '/account', 
           icon: User, 
           label: 'Profile',
@@ -57,6 +63,7 @@ export default function BottomNav() {
       ]
     : typedUser?.role === 'contractor'
     ? [
+        ...adminItem,
         { 
           href: '/contractor-dashboard', 
           icon: LayoutDashboard, 
@@ -64,23 +71,11 @@ export default function BottomNav() {
           isActive: location === '/contractor-dashboard' || location === '/'
         },
         { 
-          href: '/service-records', 
-          icon: FileText, 
-          label: 'Records',
-          isActive: location === '/service-records'
-        },
-        { 
           href: '/messages', 
           icon: MessageCircle, 
           label: 'Messages',
           badge: unreadCount,
           isActive: location === '/messages'
-        },
-        { 
-          href: '/manage-team', 
-          icon: Users, 
-          label: 'Team',
-          isActive: location === '/manage-team'
         },
         { 
           href: '/contractor-profile', 
@@ -91,18 +86,12 @@ export default function BottomNav() {
       ]
     : typedUser?.role === 'agent'
     ? [
+        ...adminItem,
         { 
           href: '/agent-dashboard', 
           icon: LayoutDashboard, 
           label: 'Home',
           isActive: location === '/agent-dashboard' || location === '/'
-        },
-        { 
-          href: '/messages', 
-          icon: MessageCircle, 
-          label: 'Messages',
-          badge: unreadCount,
-          isActive: location === '/messages'
         },
         { 
           href: '/agent-account', 
