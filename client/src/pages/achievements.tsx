@@ -24,8 +24,21 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { HomeownerFeatureGate, HomeownerTrialBanner, FreeUserUpgradePrompt } from "@/components/homeowner-feature-gate";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
+
+// Category descriptions for tooltips
+const categoryDescriptions: Record<string, string> = {
+  'Total Achievements': 'Your overall achievement progress across all categories.',
+  'Seasonal': 'Complete seasonal maintenance tasks like winterizing pipes, spring cleaning gutters, and preparing your home for each season.',
+  'Financial Savvy': 'Save money by completing DIY tasks under budget and tracking your total savings over time.',
+  'Organization': 'Upload documents, create maintenance logs, and take before/after photos to keep your home records organized.',
+  'Referral & Community': 'Earn badges by referring friends and family to HomeBase and building your community.',
+  'Milestones': 'Reach important milestones like completing your first task, logging your first service record, or reaching savings goals.',
+  'Streaks': 'Maintain consistency by completing tasks regularly and building up maintenance streaks.',
+  'Special': 'Unlock unique achievements through special actions like early adoption, holiday tasks, or rare accomplishments.',
+};
 
 // Backend achievement definition with user progress
 interface AchievementWithProgress {
@@ -313,157 +326,213 @@ export default function Achievements() {
 
             {/* Stats Overview */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
-            <Card 
-              style={{ backgroundColor: '#f2f2f2' }}
-              className="cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => {
-                setModalCategory('all');
-                setCategoryModalOpen(true);
-              }}
-              data-testid="card-total-achievements"
-            >
-              <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
-                <div className="text-center">
-                  <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#6d28d9' }}>
-                    {unlockedCount}/{totalCount}
-                  </p>
-                  <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Total Achievements</p>
-                </div>
-              </CardContent>
-            </Card>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Card 
+                  style={{ backgroundColor: '#f2f2f2' }}
+                  className="cursor-pointer hover:shadow-lg transition-shadow"
+                  onClick={() => {
+                    setModalCategory('all');
+                    setCategoryModalOpen(true);
+                  }}
+                  data-testid="card-total-achievements"
+                >
+                  <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+                    <div className="text-center">
+                      <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#6d28d9' }}>
+                        {unlockedCount}/{totalCount}
+                      </p>
+                      <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Total Achievements</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-[250px] text-center">
+                <p>{categoryDescriptions['Total Achievements']}</p>
+              </TooltipContent>
+            </Tooltip>
             
-            <Card 
-              style={{ backgroundColor: '#f2f2f2' }}
-              className="cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => {
-                setModalCategory('Seasonal');
-                setCategoryModalOpen(true);
-              }}
-              data-testid="card-seasonal"
-            >
-              <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
-                <div className="text-center">
-                  <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#3b82f6' }}>
-                    {categoryStats.seasonal.unlocked}/{categoryStats.seasonal.total}
-                  </p>
-                  <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Seasonal ({categoryStats.seasonal.total})</p>
-                </div>
-              </CardContent>
-            </Card>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Card 
+                  style={{ backgroundColor: '#f2f2f2' }}
+                  className="cursor-pointer hover:shadow-lg transition-shadow"
+                  onClick={() => {
+                    setModalCategory('Seasonal');
+                    setCategoryModalOpen(true);
+                  }}
+                  data-testid="card-seasonal"
+                >
+                  <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+                    <div className="text-center">
+                      <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#3b82f6' }}>
+                        {categoryStats.seasonal.unlocked}/{categoryStats.seasonal.total}
+                      </p>
+                      <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Seasonal ({categoryStats.seasonal.total})</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-[250px] text-center">
+                <p>{categoryDescriptions['Seasonal']}</p>
+              </TooltipContent>
+            </Tooltip>
             
-            <Card 
-              style={{ backgroundColor: '#f2f2f2' }}
-              className="cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => {
-                setModalCategory('Financial Savvy');
-                setCategoryModalOpen(true);
-              }}
-              data-testid="card-financial"
-            >
-              <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
-                <div className="text-center">
-                  <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#10b981' }}>
-                    {categoryStats.financial.unlocked}/{categoryStats.financial.total}
-                  </p>
-                  <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Financial ({categoryStats.financial.total})</p>
-                </div>
-              </CardContent>
-            </Card>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Card 
+                  style={{ backgroundColor: '#f2f2f2' }}
+                  className="cursor-pointer hover:shadow-lg transition-shadow"
+                  onClick={() => {
+                    setModalCategory('Financial Savvy');
+                    setCategoryModalOpen(true);
+                  }}
+                  data-testid="card-financial"
+                >
+                  <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+                    <div className="text-center">
+                      <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#10b981' }}>
+                        {categoryStats.financial.unlocked}/{categoryStats.financial.total}
+                      </p>
+                      <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Financial ({categoryStats.financial.total})</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-[250px] text-center">
+                <p>{categoryDescriptions['Financial Savvy']}</p>
+              </TooltipContent>
+            </Tooltip>
             
-            <Card 
-              style={{ backgroundColor: '#f2f2f2' }}
-              className="cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => {
-                setModalCategory('Organization');
-                setCategoryModalOpen(true);
-              }}
-              data-testid="card-organization"
-            >
-              <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
-                <div className="text-center">
-                  <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#f59e0b' }}>
-                    {categoryStats.organization.unlocked}/{categoryStats.organization.total}
-                  </p>
-                  <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Organization ({categoryStats.organization.total})</p>
-                </div>
-              </CardContent>
-            </Card>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Card 
+                  style={{ backgroundColor: '#f2f2f2' }}
+                  className="cursor-pointer hover:shadow-lg transition-shadow"
+                  onClick={() => {
+                    setModalCategory('Organization');
+                    setCategoryModalOpen(true);
+                  }}
+                  data-testid="card-organization"
+                >
+                  <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+                    <div className="text-center">
+                      <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#f59e0b' }}>
+                        {categoryStats.organization.unlocked}/{categoryStats.organization.total}
+                      </p>
+                      <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Organization ({categoryStats.organization.total})</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-[250px] text-center">
+                <p>{categoryDescriptions['Organization']}</p>
+              </TooltipContent>
+            </Tooltip>
             
-            <Card 
-              style={{ backgroundColor: '#f2f2f2' }}
-              className="cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => {
-                setModalCategory('Referral & Community');
-                setCategoryModalOpen(true);
-              }}
-              data-testid="card-referral"
-            >
-              <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
-                <div className="text-center">
-                  <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#ec4899' }}>
-                    {categoryStats.referral.unlocked}/{categoryStats.referral.total}
-                  </p>
-                  <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Referrals ({categoryStats.referral.total})</p>
-                </div>
-              </CardContent>
-            </Card>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Card 
+                  style={{ backgroundColor: '#f2f2f2' }}
+                  className="cursor-pointer hover:shadow-lg transition-shadow"
+                  onClick={() => {
+                    setModalCategory('Referral & Community');
+                    setCategoryModalOpen(true);
+                  }}
+                  data-testid="card-referral"
+                >
+                  <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+                    <div className="text-center">
+                      <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#ec4899' }}>
+                        {categoryStats.referral.unlocked}/{categoryStats.referral.total}
+                      </p>
+                      <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Referrals ({categoryStats.referral.total})</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-[250px] text-center">
+                <p>{categoryDescriptions['Referral & Community']}</p>
+              </TooltipContent>
+            </Tooltip>
             
-            <Card 
-              style={{ backgroundColor: '#f2f2f2' }}
-              className="cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => {
-                setModalCategory('Milestones');
-                setCategoryModalOpen(true);
-              }}
-              data-testid="card-milestones"
-            >
-              <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
-                <div className="text-center">
-                  <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#8b5cf6' }}>
-                    {categoryStats.milestones.unlocked}/{categoryStats.milestones.total}
-                  </p>
-                  <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Milestones ({categoryStats.milestones.total})</p>
-                </div>
-              </CardContent>
-            </Card>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Card 
+                  style={{ backgroundColor: '#f2f2f2' }}
+                  className="cursor-pointer hover:shadow-lg transition-shadow"
+                  onClick={() => {
+                    setModalCategory('Milestones');
+                    setCategoryModalOpen(true);
+                  }}
+                  data-testid="card-milestones"
+                >
+                  <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+                    <div className="text-center">
+                      <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#8b5cf6' }}>
+                        {categoryStats.milestones.unlocked}/{categoryStats.milestones.total}
+                      </p>
+                      <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Milestones ({categoryStats.milestones.total})</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-[250px] text-center">
+                <p>{categoryDescriptions['Milestones']}</p>
+              </TooltipContent>
+            </Tooltip>
             
-            <Card 
-              style={{ backgroundColor: '#f2f2f2' }}
-              className="cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => {
-                setModalCategory('Streaks');
-                setCategoryModalOpen(true);
-              }}
-              data-testid="card-streaks"
-            >
-              <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
-                <div className="text-center">
-                  <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#ef4444' }}>
-                    {categoryStats.streaks.unlocked}/{categoryStats.streaks.total}
-                  </p>
-                  <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Streaks ({categoryStats.streaks.total})</p>
-                </div>
-              </CardContent>
-            </Card>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Card 
+                  style={{ backgroundColor: '#f2f2f2' }}
+                  className="cursor-pointer hover:shadow-lg transition-shadow"
+                  onClick={() => {
+                    setModalCategory('Streaks');
+                    setCategoryModalOpen(true);
+                  }}
+                  data-testid="card-streaks"
+                >
+                  <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+                    <div className="text-center">
+                      <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#ef4444' }}>
+                        {categoryStats.streaks.unlocked}/{categoryStats.streaks.total}
+                      </p>
+                      <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Streaks ({categoryStats.streaks.total})</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-[250px] text-center">
+                <p>{categoryDescriptions['Streaks']}</p>
+              </TooltipContent>
+            </Tooltip>
             
-            <Card 
-              style={{ backgroundColor: '#f2f2f2' }}
-              className="cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => {
-                setModalCategory('Special');
-                setCategoryModalOpen(true);
-              }}
-              data-testid="card-special"
-            >
-              <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
-                <div className="text-center">
-                  <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#06b6d4' }}>
-                    {categoryStats.special.unlocked}/{categoryStats.special.total}
-                  </p>
-                  <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Special ({categoryStats.special.total})</p>
-                </div>
-              </CardContent>
-            </Card>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Card 
+                  style={{ backgroundColor: '#f2f2f2' }}
+                  className="cursor-pointer hover:shadow-lg transition-shadow"
+                  onClick={() => {
+                    setModalCategory('Special');
+                    setCategoryModalOpen(true);
+                  }}
+                  data-testid="card-special"
+                >
+                  <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
+                    <div className="text-center">
+                      <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#06b6d4' }}>
+                        {categoryStats.special.unlocked}/{categoryStats.special.total}
+                      </p>
+                      <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Special ({categoryStats.special.total})</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-[250px] text-center">
+                <p>{categoryDescriptions['Special']}</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
 
           {/* Category Tabs */}
