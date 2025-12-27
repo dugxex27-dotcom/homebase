@@ -3886,7 +3886,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { reason } = req.body;
 
       // Get user info for logging
-      const targetUser = await storage.getUserById(userId);
+      const targetUser = await storage.getUser(userId);
       if (!targetUser) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -4076,7 +4076,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Enhance with user info
       const enhancedSessions = await Promise.all(activeSessions.map(async (session) => {
-        const user = await storage.getUserById(session.userId);
+        const user = await storage.getUser(session.userId);
         return {
           ...session,
           userName: user ? `${user.firstName} ${user.lastName}` : 'Unknown',
@@ -4101,7 +4101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .orderBy(desc(agentProfiles.createdAt));
       
       const agentsWithInfo = await Promise.all(profiles.map(async (profile) => {
-        const user = await storage.getUserById(profile.agentId);
+        const user = await storage.getUser(profile.agentId);
         // Only include if user exists and is a real estate agent
         if (!user || user.role !== 'agent') {
           return null;
@@ -4146,7 +4146,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { action, notes } = validationResult.data;
 
       // Verify the user is actually a real estate agent
-      const user = await storage.getUserById(agentId);
+      const user = await storage.getUser(agentId);
       if (!user || user.role !== 'agent') {
         return res.status(404).json({ message: "Agent not found" });
       }
@@ -7148,7 +7148,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If not found in contractors table, try to look up by user ID
       if (!contractor) {
         console.log('[DEBUG] Checking if this is a user ID for a contractor...');
-        const user = await storage.getUserById(req.params.id);
+        const user = await storage.getUser(req.params.id);
         if (user && user.role === 'contractor' && user.companyId) {
           console.log('[DEBUG] Found contractor user with companyId:', user.companyId);
           const company = await storage.getCompany(user.companyId);
@@ -7209,7 +7209,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If not, check if we can find user with this ID and get their companyId
       if (!companyId) {
-        const user = await storage.getUserById(req.params.id);
+        const user = await storage.getUser(req.params.id);
         if (user && user.companyId) {
           companyId = user.companyId;
         }
@@ -11060,7 +11060,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Enhance reviews with reviewer email verification status
       const enhancedReviews = await Promise.all(reviews.map(async (review) => {
-        const reviewer = await storage.getUserById(review.homeownerId);
+        const reviewer = await storage.getUser(review.homeownerId);
         return {
           ...review,
           reviewerEmailVerified: reviewer?.emailVerified || false
@@ -11126,7 +11126,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get user info for fraud prevention checks
-      const user = await storage.getUserById(userId);
+      const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -11361,7 +11361,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const allReviews = await storage.getAllReviews();
         const review = allReviews.find(r => r.id === flag.reviewId);
         
-        const reporter = await storage.getUserById(flag.reportedBy);
+        const reporter = await storage.getUser(flag.reportedBy);
         
         // Get contractor and homeowner names
         let contractorName = 'Unknown Contractor';
@@ -11372,7 +11372,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const contractor = await storage.getContractorById(review.contractorId);
           contractorName = contractor?.companyName || 'Unknown Contractor';
           
-          const homeowner = await storage.getUserById(review.homeownerId);
+          const homeowner = await storage.getUser(review.homeownerId);
           reviewerName = homeowner ? `${homeowner.firstName} ${homeowner.lastName}` : 'Unknown Reviewer';
           
           reviewData = {
@@ -11450,7 +11450,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/send-verification-email', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.session.user.id;
-      const user = await storage.getUserById(userId);
+      const user = await storage.getUser(userId);
       
       if (!user || !user.email) {
         return res.status(404).json({ message: "User not found or no email on file" });
