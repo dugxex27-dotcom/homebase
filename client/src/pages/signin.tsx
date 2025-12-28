@@ -109,8 +109,21 @@ export default function SignIn() {
 
   const loginMutation = useMutation({
     mutationFn: async (data: LoginFormData) => {
-      const response = await apiRequest("/api/auth/login", "POST", data);
-      return response.json();
+      // Use fetch directly instead of apiRequest to handle 401 without auto-redirect
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.message || "Invalid credentials");
+      }
+      
+      return result;
     },
     onSuccess: (data) => {
       // Invalidate auth query to refresh user state
@@ -143,8 +156,17 @@ export default function SignIn() {
 
   const forgotPasswordMutation = useMutation({
     mutationFn: async (data: ForgotPasswordFormData) => {
-      const response = await apiRequest("/api/auth/forgot-password", "POST", data);
-      return response.json();
+      const response = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.message || "Request failed");
+      }
+      return result;
     },
     onSuccess: (data) => {
       toast({
@@ -166,8 +188,17 @@ export default function SignIn() {
 
   const resetPasswordMutation = useMutation({
     mutationFn: async (data: ResetPasswordFormData) => {
-      const response = await apiRequest("/api/auth/reset-password", "POST", data);
-      return response.json();
+      const response = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.message || "Reset failed");
+      }
+      return result;
     },
     onSuccess: () => {
       toast({
