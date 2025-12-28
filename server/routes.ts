@@ -4318,7 +4318,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Ensure user can only access their own tickets (unless admin)
-      const isAdmin = req.session.user.email && process.env.ADMIN_EMAILS?.split(',').includes(req.session.user.email);
+      const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+      const isAdmin = req.session.user.email && adminEmails.includes(req.session.user.email.toLowerCase());
       if (ticketWithReplies.ticket.userId !== userId && !isAdmin) {
         return res.status(403).json({ message: "Access denied" });
       }
@@ -4406,7 +4407,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Ticket not found" });
       }
       
-      const isAdmin = req.session.user.email && process.env.ADMIN_EMAILS?.split(',').includes(req.session.user.email);
+      const adminEmailsList = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+      const isAdmin = req.session.user.email && adminEmailsList.includes(req.session.user.email.toLowerCase());
       if (ticket.userId !== userId && !isAdmin) {
         return res.status(403).json({ message: "Access denied" });
       }
