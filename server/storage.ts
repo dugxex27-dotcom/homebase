@@ -8357,10 +8357,12 @@ class DbStorage implements IStorage {
     signupsByZip: Array<{ zipCode: string; count: number }>;
   }> {
     try {
-      // Query actual database for user counts
+      // Query actual database for user counts - include ALL users, not just non-cancelled
       const allDbUsers = await db.select().from(users);
       
-      // Filter out cancelled accounts
+      console.log("[getAdminStats] Raw database query returned:", allDbUsers.length, "total rows");
+      
+      // Count all users (including demo users) - only exclude cancelled
       const activeUsers = allDbUsers.filter(u => u.accountStatus !== 'cancelled');
       
       const totalUsers = activeUsers.length;
@@ -8368,7 +8370,8 @@ class DbStorage implements IStorage {
       const contractorCount = activeUsers.filter(u => u.role === 'contractor').length;
       const agentCount = activeUsers.filter(u => u.role === 'agent').length;
       
-      console.log("[getAdminStats] Database user counts:", { totalUsers, homeownerCount, contractorCount, agentCount });
+      console.log("[getAdminStats] After filtering cancelled, active users:", totalUsers);
+      console.log("[getAdminStats] Breakdown - homeowners:", homeownerCount, "contractors:", contractorCount, "agents:", agentCount);
       
       // Count signups by zip from user data
       const zipCounts = new Map<string, number>();
