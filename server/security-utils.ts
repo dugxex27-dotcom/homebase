@@ -267,7 +267,12 @@ export function decryptData(ciphertext: string): string {
     const authTag = Buffer.from(parts[1], 'base64');
     const encrypted = parts[2];
     
-    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+    // Validate auth tag length to prevent tag truncation attacks
+    if (authTag.length !== AUTH_TAG_LENGTH) {
+      throw new Error('Invalid authentication tag length');
+    }
+    
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv, { authTagLength: AUTH_TAG_LENGTH });
     decipher.setAuthTag(authTag);
     
     let decrypted = decipher.update(encrypted, 'base64', 'utf8');
