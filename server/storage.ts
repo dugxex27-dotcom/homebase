@@ -2,7 +2,7 @@ import { type Contractor, type InsertContractor, type Company, type InsertCompan
 import { randomUUID, randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
-import { eq, ne, isNotNull, and, or, isNull, not, desc } from "drizzle-orm";
+import { eq, ne, isNotNull, and, or, isNull, not, desc, sql } from "drizzle-orm";
 
 // DEMO DATA PROTECTION SYSTEM
 // Helper functions to identify demo accounts and prevent overwrites of real user data
@@ -6667,7 +6667,9 @@ class DbStorage implements IStorage {
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
+    // Case-insensitive email lookup
+    const normalizedEmail = email.toLowerCase().trim();
+    const result = await db.select().from(users).where(sql`LOWER(${users.email}) = ${normalizedEmail}`).limit(1);
     const rawUser = result[0];
     
     if (!rawUser) {
