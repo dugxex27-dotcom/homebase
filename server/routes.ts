@@ -3378,17 +3378,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       req.session.user = user;
       req.session.isAuthenticated = true;
 
-      // Log successful login
-      await auditLogger.logLogin(user.id, user.email || email, user.role, req, true);
-      
-      // Create security session record
-      const sessionExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-      await sessionManager.createSession({
-        userId: user.id,
-        sessionSid: req.sessionID,
-        req,
-        expiresAt: sessionExpiry,
-      });
+      // Log successful login (non-blocking - don't fail login if audit fails)
+      try {
+        await auditLogger.logLogin(user.id, user.email || email, user.role, req, true);
+        
+        // Create security session record
+        const sessionExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+        await sessionManager.createSession({
+          userId: user.id,
+          sessionSid: req.sessionID,
+          req,
+          expiresAt: sessionExpiry,
+        });
+      } catch (auditError) {
+        console.error('[LOGIN] Security audit/session logging failed (login still succeeded):', auditError);
+      }
 
       res.json({ success: true, user });
     } catch (error) {
