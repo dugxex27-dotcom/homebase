@@ -1,5 +1,5 @@
 import { Link } from 'wouter';
-import whiteLogoIcon from '@assets/homebase-app-logo-white_1764516680500.png';
+import whiteLogoIcon from '@assets/homebase-app-logo-color-inverted_1766960548384.png';
 import { useAuth } from '@/hooks/useAuth';
 import type { User } from '@shared/schema';
 
