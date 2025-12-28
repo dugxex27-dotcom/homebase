@@ -9,7 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Users, Home, Briefcase, Plus, Ban, TrendingUp, DollarSign, UserMinus, MessageSquare, ArrowRight, Flag, UserCheck, CheckCircle, XCircle, Clock } from "lucide-react";
+import { Users, Home, Briefcase, Plus, Ban, TrendingUp, DollarSign, UserMinus, MessageSquare, ArrowRight, Flag, UserCheck, CheckCircle, XCircle, Clock, Eye, ChevronDown, ChevronUp, FileText, ExternalLink } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -72,6 +74,18 @@ interface AgentWithUser {
   verificationStatus: string;
   createdAt: string | null;
   verifiedAt: string | null;
+  // Verification details
+  licenseNumber: string | null;
+  licenseState: string | null;
+  licenseExpiration: string | null;
+  stateIdStorageKey: string | null;
+  stateIdOriginalFilename: string | null;
+  verificationRequestedAt: string | null;
+  reviewNotes: string | null;
+  // Contact info
+  phone: string | null;
+  website: string | null;
+  officeAddress: string | null;
   user: {
     id: string;
     email: string;
@@ -90,6 +104,10 @@ export default function AdminDashboard() {
   const [newCode, setNewCode] = useState("");
   const [maxUses, setMaxUses] = useState("1");
   const [timeRange, setTimeRange] = useState<7 | 30 | 90 | 365>(30);
+  const [expandedAgentId, setExpandedAgentId] = useState<string | null>(null);
+  const [denyDialogOpen, setDenyDialogOpen] = useState(false);
+  const [denyingAgent, setDenyingAgent] = useState<AgentWithUser | null>(null);
+  const [denyNotes, setDenyNotes] = useState("");
 
   // Fetch admin stats
   const { data: stats, isLoading: statsLoading } = useQuery<AdminStats>({
@@ -352,7 +370,7 @@ export default function AdminDashboard() {
               Real Estate Agent Verification
             </CardTitle>
             <CardDescription>
-              Verify real estate agents to enable their affiliate commissions
+              Verify real estate agents to enable their affiliate commissions. Click on an agent to see full application details.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -363,79 +381,229 @@ export default function AdminDashboard() {
                 ))}
               </div>
             ) : agents && agents.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Agent</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Signed Up</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {agents.map((agent) => (
-                    <TableRow key={agent.id} data-testid={`row-agent-${agent.id}`}>
-                      <TableCell className="font-medium">
-                        {agent.user ? `${agent.user.firstName || ''} ${agent.user.lastName || ''}`.trim() || 'Unknown' : 'Unknown'}
-                      </TableCell>
-                      <TableCell>{agent.user?.email || 'N/A'}</TableCell>
-                      <TableCell>
-                        {agent.user?.createdAt ? format(new Date(agent.user.createdAt), 'MMM d, yyyy') : 'N/A'}
-                      </TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={
-                            agent.verificationStatus === 'approved' ? 'default' : 
-                            agent.verificationStatus === 'pending_review' ? 'secondary' :
-                            agent.verificationStatus === 'rejected' ? 'destructive' : 'outline'
-                          }
-                          className={agent.verificationStatus === 'approved' ? 'bg-green-600' : ''}
-                        >
-                          {agent.verificationStatus === 'not_submitted' ? (
-                            <><Clock className="h-3 w-3 mr-1" />Not Submitted</>
-                          ) : agent.verificationStatus === 'pending_review' ? (
-                            <><Clock className="h-3 w-3 mr-1" />Pending</>
-                          ) : agent.verificationStatus === 'approved' ? (
-                            <><CheckCircle className="h-3 w-3 mr-1" />Verified</>
-                          ) : agent.verificationStatus === 'rejected' ? (
-                            <><XCircle className="h-3 w-3 mr-1" />Rejected</>
-                          ) : (
-                            agent.verificationStatus
+              <div className="space-y-4">
+                {agents.map((agent) => (
+                  <Collapsible
+                    key={agent.id}
+                    open={expandedAgentId === agent.id}
+                    onOpenChange={(open) => setExpandedAgentId(open ? agent.id : null)}
+                  >
+                    <div className="border rounded-lg p-4" data-testid={`row-agent-${agent.id}`}>
+                      {/* Agent Summary Row */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <CollapsibleTrigger asChild>
+                            <Button variant="ghost" size="sm" data-testid={`button-expand-agent-${agent.id}`}>
+                              {expandedAgentId === agent.id ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </CollapsibleTrigger>
+                          <div>
+                            <p className="font-medium">
+                              {agent.user ? `${agent.user.firstName || ''} ${agent.user.lastName || ''}`.trim() || 'Unknown' : 'Unknown'}
+                            </p>
+                            <p className="text-sm text-muted-foreground">{agent.user?.email || 'N/A'}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <Badge 
+                            variant={
+                              agent.verificationStatus === 'approved' ? 'default' : 
+                              agent.verificationStatus === 'pending_review' ? 'secondary' :
+                              agent.verificationStatus === 'rejected' ? 'destructive' : 'outline'
+                            }
+                            className={agent.verificationStatus === 'approved' ? 'bg-green-600' : ''}
+                          >
+                            {agent.verificationStatus === 'not_submitted' ? (
+                              <><Clock className="h-3 w-3 mr-1" />Not Submitted</>
+                            ) : agent.verificationStatus === 'pending_review' ? (
+                              <><Clock className="h-3 w-3 mr-1" />Pending Review</>
+                            ) : agent.verificationStatus === 'approved' ? (
+                              <><CheckCircle className="h-3 w-3 mr-1" />Verified</>
+                            ) : agent.verificationStatus === 'rejected' ? (
+                              <><XCircle className="h-3 w-3 mr-1" />Denied</>
+                            ) : agent.verificationStatus === 'resubmit_required' ? (
+                              <><Clock className="h-3 w-3 mr-1" />Resubmit Required</>
+                            ) : (
+                              agent.verificationStatus
+                            )}
+                          </Badge>
+                          <div className="flex gap-2">
+                            {agent.verificationStatus === 'pending_review' && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  className="bg-green-600 hover:bg-green-700"
+                                  onClick={() => verifyAgentMutation.mutate({ agentId: agent.agentId, action: 'approve' })}
+                                  disabled={verifyAgentMutation.isPending}
+                                  data-testid={`button-approve-agent-${agent.id}`}
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-1" />
+                                  Approve
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => {
+                                    setDenyingAgent(agent);
+                                    setDenyNotes("");
+                                    setDenyDialogOpen(true);
+                                  }}
+                                  disabled={verifyAgentMutation.isPending}
+                                  data-testid={`button-deny-agent-${agent.id}`}
+                                >
+                                  <XCircle className="h-4 w-4 mr-1" />
+                                  Deny
+                                </Button>
+                              </>
+                            )}
+                            {agent.verificationStatus === 'approved' && (
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => {
+                                  setDenyingAgent(agent);
+                                  setDenyNotes("");
+                                  setDenyDialogOpen(true);
+                                }}
+                                disabled={verifyAgentMutation.isPending}
+                                data-testid={`button-revoke-agent-${agent.id}`}
+                              >
+                                <XCircle className="h-4 w-4 mr-1" />
+                                Revoke
+                              </Button>
+                            )}
+                            {agent.verificationStatus === 'not_submitted' && (
+                              <span className="text-sm text-muted-foreground">Awaiting submission</span>
+                            )}
+                            {agent.verificationStatus === 'rejected' && (
+                              <Button
+                                size="sm"
+                                variant="default"
+                                className="bg-green-600 hover:bg-green-700"
+                                onClick={() => verifyAgentMutation.mutate({ agentId: agent.agentId, action: 'approve' })}
+                                disabled={verifyAgentMutation.isPending}
+                                data-testid={`button-approve-agent-${agent.id}`}
+                              >
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                Approve
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Expanded Details */}
+                      <CollapsibleContent className="mt-4">
+                        <div className="border-t pt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {/* Account Info */}
+                          <div className="space-y-3">
+                            <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Account Info</h4>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Signed Up:</span>
+                                <span>{agent.user?.createdAt ? format(new Date(agent.user.createdAt), 'MMM d, yyyy') : 'N/A'}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Application Submitted:</span>
+                                <span>{agent.verificationRequestedAt ? format(new Date(agent.verificationRequestedAt), 'MMM d, yyyy') : 'Not submitted'}</span>
+                              </div>
+                              {agent.verifiedAt && (
+                                <div className="flex justify-between">
+                                  <span className="text-muted-foreground">Verified On:</span>
+                                  <span className="text-green-600">{format(new Date(agent.verifiedAt), 'MMM d, yyyy')}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Contact Info */}
+                          <div className="space-y-3">
+                            <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Contact Info</h4>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Phone:</span>
+                                <span>{agent.phone || 'Not provided'}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Website:</span>
+                                {agent.website ? (
+                                  <a href={agent.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1">
+                                    View <ExternalLink className="h-3 w-3" />
+                                  </a>
+                                ) : (
+                                  <span>Not provided</span>
+                                )}
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Office:</span>
+                                <span className="text-right max-w-[200px] truncate">{agent.officeAddress || 'Not provided'}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* License Info */}
+                          <div className="space-y-3">
+                            <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">License Details</h4>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">License Number:</span>
+                                <span className="font-mono">{agent.licenseNumber || 'Not provided'}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">State:</span>
+                                <span>{agent.licenseState || 'N/A'}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Expiration:</span>
+                                <span className={agent.licenseExpiration && new Date(agent.licenseExpiration) < new Date() ? 'text-red-600' : ''}>
+                                  {agent.licenseExpiration ? format(new Date(agent.licenseExpiration), 'MMM d, yyyy') : 'N/A'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Documents */}
+                          <div className="space-y-3">
+                            <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Submitted Documents</h4>
+                            <div className="space-y-2 text-sm">
+                              {agent.stateIdStorageKey ? (
+                                <div className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                                  <FileText className="h-4 w-4 text-blue-600" />
+                                  <span className="truncate flex-1">{agent.stateIdOriginalFilename || 'State ID Document'}</span>
+                                  <a 
+                                    href={`/api/agent/verification-document/${agent.agentId}`} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:underline flex items-center gap-1"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                    View
+                                  </a>
+                                </div>
+                              ) : (
+                                <p className="text-muted-foreground">No documents uploaded</p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Review Notes */}
+                          {agent.reviewNotes && (
+                            <div className="col-span-full space-y-3">
+                              <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Admin Notes</h4>
+                              <p className="text-sm bg-yellow-50 p-3 rounded border border-yellow-200">{agent.reviewNotes}</p>
+                            </div>
                           )}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right space-x-2">
-                        {agent.verificationStatus !== 'approved' && (
-                          <Button
-                            size="sm"
-                            variant="default"
-                            className="bg-green-600 hover:bg-green-700"
-                            onClick={() => verifyAgentMutation.mutate({ agentId: agent.agentId, action: 'approve' })}
-                            disabled={verifyAgentMutation.isPending}
-                            data-testid={`button-approve-agent-${agent.id}`}
-                          >
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                            Approve
-                          </Button>
-                        )}
-                        {agent.verificationStatus === 'approved' && (
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => verifyAgentMutation.mutate({ agentId: agent.agentId, action: 'reject', notes: 'Verification revoked by admin' })}
-                            disabled={verifyAgentMutation.isPending}
-                            data-testid={`button-revoke-agent-${agent.id}`}
-                          >
-                            <XCircle className="h-4 w-4 mr-1" />
-                            Revoke
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                        </div>
+                      </CollapsibleContent>
+                    </div>
+                  </Collapsible>
+                ))}
+              </div>
             ) : (
               <p className="text-sm text-muted-foreground text-center py-4">
                 No real estate agents have signed up yet.
@@ -443,6 +611,61 @@ export default function AdminDashboard() {
             )}
           </CardContent>
         </Card>
+
+        {/* Deny Agent Dialog */}
+        <Dialog open={denyDialogOpen} onOpenChange={setDenyDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Deny Agent Application</DialogTitle>
+              <DialogDescription>
+                {denyingAgent?.verificationStatus === 'approved' 
+                  ? `Revoke verification for ${denyingAgent?.user?.firstName || ''} ${denyingAgent?.user?.lastName || ''}?`
+                  : `Deny application from ${denyingAgent?.user?.firstName || ''} ${denyingAgent?.user?.lastName || ''}?`
+                }
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="deny-notes">Reason for denial (optional)</Label>
+                <Textarea
+                  id="deny-notes"
+                  data-testid="input-deny-notes"
+                  value={denyNotes}
+                  onChange={(e) => setDenyNotes(e.target.value)}
+                  placeholder="Enter reason for denying this application..."
+                  rows={3}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDenyDialogOpen(false)} data-testid="button-cancel-deny">
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  if (denyingAgent) {
+                    verifyAgentMutation.mutate(
+                      { agentId: denyingAgent.agentId, action: 'reject', notes: denyNotes || undefined },
+                      {
+                        onSuccess: () => {
+                          setDenyDialogOpen(false);
+                          setDenyingAgent(null);
+                          setDenyNotes("");
+                        }
+                      }
+                    );
+                  }
+                }}
+                disabled={verifyAgentMutation.isPending}
+                data-testid="button-confirm-deny"
+              >
+                <XCircle className="h-4 w-4 mr-1" />
+                {denyingAgent?.verificationStatus === 'approved' ? 'Revoke Verification' : 'Deny Application'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Top Searches */}
