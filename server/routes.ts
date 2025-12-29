@@ -4004,15 +4004,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Bulk email endpoint for admins
   app.post('/api/admin/send-bulk-email', requireAdmin, async (req: any, res) => {
     try {
-      const { replyToEmail, audience } = req.body;
+      const { replyToEmail, audience, subject, body } = req.body;
+      
+      // Validate subject and body
+      if (!subject || typeof subject !== 'string' || subject.trim().length === 0) {
+        return res.status(400).json({ message: "Email subject is required" });
+      }
+      if (!body || typeof body !== 'string' || body.trim().length === 0) {
+        return res.status(400).json({ message: "Email body is required" });
+      }
+      if (subject.length > 120) {
+        return res.status(400).json({ message: "Subject must be 120 characters or less" });
+      }
+      if (body.length > 5000) {
+        return res.status(400).json({ message: "Body must be 5000 characters or less" });
+      }
       
       // Build query based on audience selection
-      let query = db.select({
-        email: users.email,
-        firstName: users.firstName,
-        role: users.role
-      }).from(users).where(isNotNull(users.email));
-      
       let allUsers;
       if (audience === 'homeowners') {
         allUsers = await db.select({
@@ -4039,8 +4047,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No users with email addresses found for the selected audience" });
       }
 
-      const result = await emailService.sendBulkWelcomeFeedbackEmail(
+      const result = await emailService.sendBulkCustomEmail(
         allUsers.filter(u => u.email) as Array<{ email: string; firstName: string | null }>,
+        subject.trim(),
+        body.trim(),
         replyToEmail || 'gotohomebase2025@gmail.com'
       );
 

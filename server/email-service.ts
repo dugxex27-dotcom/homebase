@@ -527,6 +527,94 @@ export async function sendBulkWelcomeFeedbackEmail(
   return { sent, failed, skipped };
 }
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+export async function sendBulkCustomEmail(
+  users: Array<{ email: string; firstName?: string | null; id?: string }>,
+  subject: string,
+  body: string,
+  replyToEmail: string = 'gotohomebase2025@gmail.com'
+): Promise<{ sent: number; failed: number; skipped: number }> {
+  if (!apiKey) {
+    console.log('[EMAIL] SendGrid not configured, skipping bulk email');
+    return { sent: 0, failed: 0, skipped: 0 };
+  }
+
+  let sent = 0;
+  let failed = 0;
+  let skipped = 0;
+
+  // Escape and format body for HTML (convert newlines to <br>)
+  const escapedBody = escapeHtml(body).replace(/\n/g, '<br>');
+
+  for (let i = 0; i < users.length; i++) {
+    const user = users[i];
+    if (!user.email) {
+      skipped++;
+      continue;
+    }
+
+    const userName = user.firstName || 'there';
+    
+    // Replace {{name}} placeholder if present
+    const personalizedBody = escapedBody.replace(/\{\{name\}\}/gi, escapeHtml(userName));
+    const personalizedTextBody = body.replace(/\{\{name\}\}/gi, userName);
+    
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #6B46C1 0%, #805AD5 100%); padding: 30px; text-align: center;">
+          <h1 style="color: #ffffff !important; margin: 0;">HomeBase</h1>
+        </div>
+        <div style="padding: 30px; background: #f9f9f9;">
+          <p>${personalizedBody}</p>
+        </div>
+        <div style="padding: 20px; text-align: center; font-size: 12px; color: #666;">
+          <p>This email was sent from HomeBase. Reply to <a href="mailto:${escapeHtml(replyToEmail)}">${escapeHtml(replyToEmail)}</a></p>
+        </div>
+      </div>
+    `;
+
+    const text = personalizedTextBody;
+
+    try {
+      const recipientEmail = testEmailOverride || user.email;
+      const subjectPrefix = testEmailOverride ? `[TEST - Original: ${user.email}] ` : '';
+      
+      await sgMail.send({
+        to: recipientEmail,
+        from: { email: fromEmail, name: fromName },
+        replyTo: replyToEmail,
+        subject: subjectPrefix + subject,
+        text,
+        html,
+        trackingSettings: {
+          clickTracking: { enable: false, enableText: false },
+        },
+      });
+      console.log('[EMAIL] Custom bulk email sent to:', recipientEmail);
+      sent++;
+      
+      // Rate limiting: add 100ms delay between emails to avoid hitting SendGrid limits
+      if (i < users.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    } catch (error) {
+      console.error('[EMAIL] Failed to send custom bulk email to:', user.email, error);
+      failed++;
+    }
+  }
+
+  console.log(`[EMAIL] Custom bulk send complete: ${sent} sent, ${failed} failed, ${skipped} skipped`);
+  return { sent, failed, skipped };
+}
+
 export const emailService = {
   sendEmail,
   sendWelcomeEmail,
@@ -537,4 +625,5 @@ export const emailService = {
   sendJobNotificationEmail,
   sendInvoiceEmail,
   sendBulkWelcomeFeedbackEmail,
+  sendBulkCustomEmail,
 };

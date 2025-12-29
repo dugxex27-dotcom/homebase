@@ -111,6 +111,15 @@ export default function AdminDashboard() {
   const [denyNotes, setDenyNotes] = useState("");
   const [bulkEmailReplyTo, setBulkEmailReplyTo] = useState("gotohomebase2025@gmail.com");
   const [bulkEmailAudience, setBulkEmailAudience] = useState<"all" | "homeowners" | "contractors">("all");
+  const [bulkEmailSubject, setBulkEmailSubject] = useState("How are you enjoying HomeBase?");
+  const [bulkEmailBody, setBulkEmailBody] = useState(`Hi there!
+
+We hope you're enjoying HomeBase so far. We'd love to hear about your experience - whether you have questions, feedback, or just want to share how things are going.
+
+Feel free to reply to this email with any thoughts. We read every response!
+
+Best regards,
+The HomeBase Team`);
 
   // Fetch admin stats
   const { data: stats, isLoading: statsLoading } = useQuery<AdminStats>({
@@ -219,8 +228,8 @@ export default function AdminDashboard() {
 
   // Bulk email mutation
   const bulkEmailMutation = useMutation({
-    mutationFn: async ({ replyToEmail, audience }: { replyToEmail: string; audience: string }) => {
-      return apiRequest("/api/admin/send-bulk-email", "POST", { replyToEmail, audience });
+    mutationFn: async ({ replyToEmail, audience, subject, body }: { replyToEmail: string; audience: string; subject: string; body: string }) => {
+      return apiRequest("/api/admin/send-bulk-email", "POST", { replyToEmail, audience, subject, body });
     },
     onSuccess: (data: any) => {
       toast({
@@ -366,19 +375,53 @@ export default function AdminDashboard() {
               </div>
             </div>
             
+            <div className="space-y-2">
+              <Label htmlFor="email-subject">Subject Line</Label>
+              <Input
+                id="email-subject"
+                value={bulkEmailSubject}
+                onChange={(e) => setBulkEmailSubject(e.target.value)}
+                placeholder="Enter email subject..."
+                maxLength={120}
+                data-testid="input-bulk-email-subject"
+              />
+              <p className="text-xs text-muted-foreground">{bulkEmailSubject.length}/120 characters</p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="email-body">Email Body</Label>
+              <Textarea
+                id="email-body"
+                value={bulkEmailBody}
+                onChange={(e) => setBulkEmailBody(e.target.value)}
+                placeholder="Enter your email message..."
+                rows={8}
+                maxLength={5000}
+                data-testid="input-bulk-email-body"
+              />
+              <p className="text-xs text-muted-foreground">{bulkEmailBody.length}/5000 characters</p>
+            </div>
+            
             <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border">
-              <p className="text-sm font-medium mb-2">Email Preview:</p>
-              <p className="text-sm text-muted-foreground">Subject: How are you enjoying HomeBase?</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                The email asks users about their experience, if they have any questions, concerns, or feedback, 
-                and directs them to email <strong>{bulkEmailReplyTo}</strong>.
+              <p className="text-sm font-medium mb-2">Preview:</p>
+              <p className="text-sm font-semibold">Subject: {bulkEmailSubject || "(No subject)"}</p>
+              <div className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap border-t pt-2">
+                {bulkEmailBody || "(No content)"}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2 italic">
+                Replies will go to: {bulkEmailReplyTo}
               </p>
             </div>
             
             <div className="flex justify-end">
               <Button
-                onClick={() => bulkEmailMutation.mutate({ replyToEmail: bulkEmailReplyTo, audience: bulkEmailAudience })}
-                disabled={bulkEmailMutation.isPending || !bulkEmailReplyTo}
+                onClick={() => bulkEmailMutation.mutate({ 
+                  replyToEmail: bulkEmailReplyTo, 
+                  audience: bulkEmailAudience,
+                  subject: bulkEmailSubject,
+                  body: bulkEmailBody
+                })}
+                disabled={bulkEmailMutation.isPending || !bulkEmailReplyTo || !bulkEmailSubject.trim() || !bulkEmailBody.trim()}
                 data-testid="button-send-bulk-email"
               >
                 {bulkEmailMutation.isPending ? "Sending..." : `Send to ${bulkEmailAudience === 'all' ? 'All Users' : bulkEmailAudience === 'homeowners' ? 'Homeowners' : 'Contractors'}`}
