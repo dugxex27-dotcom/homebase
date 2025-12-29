@@ -670,6 +670,102 @@ export async function sendNewMessageEmail(
   });
 }
 
+export interface ContractorViewReportData {
+  contractorName: string;
+  contractorEmail: string;
+  monthName: string;
+  year: number;
+  totalViews: number;
+  uniqueVisitors: number;
+  websiteClicks: number;
+  phoneClicks: number;
+  emailClicks: number;
+  socialMediaClicks: number;
+  previousMonthViews?: number;
+}
+
+export async function sendContractorMonthlyViewReportEmail(data: ContractorViewReportData): Promise<boolean> {
+  if (!apiKey) {
+    console.log('[EMAIL] SendGrid not configured, skipping monthly view report email');
+    return false;
+  }
+
+  const viewChange = data.previousMonthViews !== undefined 
+    ? data.totalViews - data.previousMonthViews 
+    : null;
+  
+  const viewChangeText = viewChange !== null
+    ? viewChange > 0 
+      ? `<span style="color: #22c55e;">+${viewChange} from last month</span>`
+      : viewChange < 0
+        ? `<span style="color: #ef4444;">${viewChange} from last month</span>`
+        : `<span style="color: #666;">Same as last month</span>`
+    : '';
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #6B46C1 0%, #805AD5 100%); padding: 30px; text-align: center;">
+        <h1 style="color: #ffffff !important; margin: 0;">Your Monthly Profile Report</h1>
+        <p style="color: #e9d8fd; margin: 10px 0 0 0;">${data.monthName} ${data.year}</p>
+      </div>
+      <div style="padding: 30px; background: #f9f9f9;">
+        <p>Hi ${data.contractorName},</p>
+        <p>Here's how your HomeBase profile performed last month:</p>
+        
+        <div style="background: white; border-radius: 12px; padding: 25px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <h2 style="margin: 0; color: #6B46C1; font-size: 48px;">${data.totalViews}</h2>
+            <p style="margin: 5px 0; color: #666;">Profile Views ${viewChangeText}</p>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+            <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; text-align: center;">
+              <p style="margin: 0; font-size: 24px; font-weight: bold; color: #333;">${data.uniqueVisitors}</p>
+              <p style="margin: 5px 0 0 0; font-size: 12px; color: #666;">Unique Visitors</p>
+            </div>
+            <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; text-align: center;">
+              <p style="margin: 0; font-size: 24px; font-weight: bold; color: #333;">${data.websiteClicks}</p>
+              <p style="margin: 5px 0 0 0; font-size: 12px; color: #666;">Website Clicks</p>
+            </div>
+            <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; text-align: center;">
+              <p style="margin: 0; font-size: 24px; font-weight: bold; color: #333;">${data.phoneClicks}</p>
+              <p style="margin: 5px 0 0 0; font-size: 12px; color: #666;">Phone Clicks</p>
+            </div>
+            <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; text-align: center;">
+              <p style="margin: 0; font-size: 24px; font-weight: bold; color: #333;">${data.socialMediaClicks}</p>
+              <p style="margin: 5px 0 0 0; font-size: 12px; color: #666;">Social Media Clicks</p>
+            </div>
+          </div>
+        </div>
+        
+        <div style="background: #e9d8fd; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <p style="margin: 0; font-weight: bold; color: #6B46C1;">Tips to boost your profile:</p>
+          <ul style="margin: 10px 0 0 0; padding-left: 20px; color: #553c9a;">
+            <li>Add photos of your recent work</li>
+            <li>Respond quickly to homeowner messages</li>
+            <li>Ask satisfied customers for reviews</li>
+          </ul>
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="https://gotohomebase.com/contractor/dashboard" style="background: #6B46C1; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">View Your Dashboard</a>
+        </div>
+        
+        <p style="font-size: 12px; color: #666;">You're receiving this because you have a contractor profile on HomeBase. Manage your email preferences in your account settings.</p>
+      </div>
+    </div>
+  `;
+
+  const text = `Hi ${data.contractorName}, here's your HomeBase profile report for ${data.monthName} ${data.year}: ${data.totalViews} profile views, ${data.uniqueVisitors} unique visitors, ${data.websiteClicks} website clicks. Visit gotohomebase.com/contractor/dashboard to see more details.`;
+
+  return sendEmail({
+    to: data.contractorEmail,
+    subject: `Your HomeBase Profile Report - ${data.monthName} ${data.year}`,
+    html,
+    text,
+  });
+}
+
 export const emailService = {
   sendEmail,
   sendWelcomeEmail,
@@ -682,4 +778,5 @@ export const emailService = {
   sendBulkWelcomeFeedbackEmail,
   sendBulkCustomEmail,
   sendNewMessageEmail,
+  sendContractorMonthlyViewReportEmail,
 };
