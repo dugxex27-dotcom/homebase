@@ -3823,7 +3823,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin analytics routes
   app.get('/api/admin/stats', requireAdmin, async (req, res) => {
     try {
+      console.log("[ADMIN STATS] Fetching admin stats...");
       const stats = await storage.getAdminStats();
+      console.log("[ADMIN STATS] Returning stats:", JSON.stringify(stats));
       res.json(stats);
     } catch (error) {
       console.error("Error fetching admin stats:", error);

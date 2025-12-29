@@ -122,9 +122,16 @@ Best regards,
 The HomeBase Team`);
 
   // Fetch admin stats
-  const { data: stats, isLoading: statsLoading } = useQuery<AdminStats>({
+  const { data: stats, isLoading: statsLoading, error: statsError } = useQuery<AdminStats>({
     queryKey: ["/api/admin/stats"],
+    staleTime: 0, // Always refetch on mount
+    refetchOnMount: true,
   });
+  
+  // Log any stats errors
+  if (statsError) {
+    console.error("[Admin] Stats error:", statsError);
+  }
 
   // Fetch search analytics (last 50)
   const { data: recentSearches, isLoading: searchesLoading } = useQuery<SearchAnalytic[]>({
