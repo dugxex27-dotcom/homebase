@@ -928,23 +928,28 @@ export default function AdminDashboard() {
               {analyticsLoading ? (
                 <Skeleton className="h-64 w-full" />
               ) : (
-                <ResponsiveContainer width="100%" height={250}>
+                <ResponsiveContainer width="100%" height={300}>
                   <PieChart data-testid="chart-feature-usage">
                     <Pie
                       data={analytics?.features || []}
                       cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ feature, percent }: any) => `${feature}: ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
+                      cy="45%"
+                      outerRadius={70}
                       fill="#8884d8"
                       dataKey="count"
+                      nameKey="feature"
                     >
                       {(analytics?.features || []).map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip formatter={(value: any, name: any) => [`${value} uses`, name]} />
+                    <Legend 
+                      layout="horizontal" 
+                      verticalAlign="bottom" 
+                      align="center"
+                      wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               )}
