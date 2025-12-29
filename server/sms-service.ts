@@ -38,7 +38,10 @@ async function formatPhoneNumber(phone: string): Promise<string | null> {
 async function canSendSMS(userId: string, notificationType: 'maintenance' | 'appointment' | 'messages'): Promise<boolean> {
   try {
     const user = await storage.getUser(userId);
-    if (!user || !user.phone) return false;
+    if (!user || !user.phone) {
+      console.log('[SMS] User has no phone number:', userId);
+      return false;
+    }
     
     const prefs = await db.select()
       .from(notificationPreferences)
@@ -49,14 +52,19 @@ async function canSendSMS(userId: string, notificationType: 'maintenance' | 'app
       .limit(1);
     
     if (prefs.length === 0) {
-      return false;
+      console.log('[SMS] No preferences set for user, allowing SMS by default:', userId);
+      return true;
     }
     
     const pref = prefs[0];
-    return pref.isEnabled && pref.channels.includes('sms');
+    const canSend = pref.isEnabled && pref.channels.includes('sms');
+    if (!canSend) {
+      console.log('[SMS] User has disabled SMS for', notificationType);
+    }
+    return canSend;
   } catch (error) {
     console.error('[SMS] Error checking preferences:', error);
-    return false;
+    return true;
   }
 }
 
