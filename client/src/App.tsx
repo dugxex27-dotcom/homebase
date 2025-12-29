@@ -133,11 +133,10 @@ function Router() {
   }
 
   // Authenticated user routes
-  const typedUser = user as { role?: string; email?: string } | undefined;
+  const typedUser = user as { role?: string; email?: string; isAdmin?: boolean } | undefined;
   
-  // Check if user is admin (based on ADMIN_EMAILS environment variable)
-  const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || '').split(',').map((e: string) => e.trim().toLowerCase()).filter(Boolean);
-  const isAdmin = typedUser?.email && adminEmails.includes(typedUser.email.toLowerCase());
+  // Use server-provided isAdmin flag (more reliable than build-time env vars)
+  const isAdmin = typedUser?.isAdmin === true;
   
   return (
     <AuthenticatedLayout>
