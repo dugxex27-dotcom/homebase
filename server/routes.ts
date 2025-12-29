@@ -12729,9 +12729,9 @@ Important: Only recommend service types from the available list. Match problems 
           const { conversationId, messageData } = message;
           console.log(`[WebSocket] Broadcasting new message in conversation ${conversationId}`);
           
-          // Broadcast to all clients in this conversation
+          // Broadcast to all OTHER clients in this conversation (exclude the sender)
           clients.forEach((client) => {
-            if (client.conversations.has(conversationId) && client.ws.readyState === WebSocket.OPEN) {
+            if (client.userId !== userId && client.conversations.has(conversationId) && client.ws.readyState === WebSocket.OPEN) {
               client.ws.send(JSON.stringify({
                 type: 'message_received',
                 conversationId,
