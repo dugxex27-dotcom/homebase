@@ -9,10 +9,10 @@ import { useQuery } from "@tanstack/react-query";
 export default function BottomNav() {
   const [location] = useLocation();
   const { user } = useAuth();
-  const typedUser = user as UserType | undefined;
+  const typedUser = user as (UserType & { isAdmin?: boolean }) | undefined;
   
-  const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || '').split(',').map((e: string) => e.trim().toLowerCase()).filter(Boolean);
-  const isAdmin = typedUser?.email && adminEmails.includes(typedUser.email.toLowerCase());
+  // Use server-provided isAdmin flag (more reliable than build-time env vars)
+  const isAdmin = typedUser?.isAdmin === true;
 
   // Get unread message count for badge
   const { data: conversations } = useQuery({

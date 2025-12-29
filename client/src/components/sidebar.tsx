@@ -35,8 +35,8 @@ export default function Sidebar() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstallable, setIsInstallable] = useState(false);
 
-  const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || '').split(',').map((e: string) => e.trim().toLowerCase()).filter(Boolean);
-  const isAdmin = typedUser?.email && adminEmails.includes(typedUser.email.toLowerCase());
+  // Use server-provided isAdmin flag (more reliable than build-time env vars)
+  const isAdmin = (typedUser as any)?.isAdmin === true;
 
   const { data: unreadNotifications = [] } = useQuery<Notification[]>({
     queryKey: ['/api/notifications/unread'],

@@ -1423,6 +1423,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin email list (server-side, not dependent on build-time env vars)
+  const getAdminEmails = () => {
+    const adminEmailsEnv = process.env.ADMIN_EMAILS || process.env.VITE_ADMIN_EMAILS || '';
+    return adminEmailsEnv.split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+  };
+
+  const isUserAdmin = (email: string | null | undefined): boolean => {
+    if (!email) return false;
+    const adminEmails = getAdminEmails();
+    return adminEmails.includes(email.toLowerCase());
+  };
+
   // Auth routes
   app.get('/api/auth/user', async (req: any, res) => {
     try {
@@ -1451,8 +1463,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           (freshUser as any).isPremium = false; // Default for demo users
         }
         
-        console.log('[AUTH-DEBUG] Returning session user with companyId:', freshUser.companyId);
-        return res.json(freshUser);
+        // Add isAdmin flag based on server-side admin email list
+        const userWithAdmin = { ...freshUser, isAdmin: isUserAdmin(freshUser.email) };
+        
+        console.log('[AUTH-DEBUG] Returning session user with companyId:', freshUser.companyId, 'isAdmin:', userWithAdmin.isAdmin);
+        return res.json(userWithAdmin);
       }
 
       // Check for passport authentication (Google OAuth login)
@@ -1472,8 +1487,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (!fullUser.hasOwnProperty('isPremium')) {
               fullUser.isPremium = false;
             }
-            console.log('[AUTH-DEBUG] Returning passport user with companyId:', fullUser.companyId);
-            return res.json(fullUser);
+            
+            // Add isAdmin flag based on server-side admin email list
+            const userWithAdmin = { ...fullUser, isAdmin: isUserAdmin(fullUser.email) };
+            
+            console.log('[AUTH-DEBUG] Returning passport user with companyId:', fullUser.companyId, 'isAdmin:', userWithAdmin.isAdmin);
+            return res.json(userWithAdmin);
           }
         }
       }
