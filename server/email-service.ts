@@ -615,6 +615,61 @@ export async function sendBulkCustomEmail(
   return { sent, failed, skipped };
 }
 
+export async function sendNewMessageEmail(
+  userId: string,
+  senderName: string,
+  messagePreview: string
+): Promise<boolean> {
+  if (!apiKey) {
+    console.log('[EMAIL] SendGrid not configured, skipping new message email');
+    return false;
+  }
+
+  const canSend = await canSendEmail(userId, 'messages');
+  if (!canSend) {
+    console.log('[EMAIL] User has disabled email notifications for messages');
+    return false;
+  }
+
+  const user = await storage.getUser(userId);
+  if (!user?.email) {
+    console.log('[EMAIL] No email found for user:', userId);
+    return false;
+  }
+
+  const truncatedPreview = messagePreview.length > 100 
+    ? messagePreview.substring(0, 100) + '...' 
+    : messagePreview;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #6B46C1 0%, #805AD5 100%); padding: 30px; text-align: center;">
+        <h1 style="color: #ffffff !important; margin: 0;">New Message</h1>
+      </div>
+      <div style="padding: 30px; background: #f9f9f9;">
+        <p>Hi ${user.name || 'there'},</p>
+        <p><strong>${senderName}</strong> sent you a message on HomeBase:</p>
+        <div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #6B46C1; margin: 20px 0;">
+          <p style="margin: 0; color: #333;">${truncatedPreview}</p>
+        </div>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="https://gotohomebase.com/messages" style="background: #6B46C1; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">View Message</a>
+        </div>
+        <p style="font-size: 12px; color: #666;">You can manage your notification preferences in your account settings.</p>
+      </div>
+    </div>
+  `;
+
+  const text = `Hi ${user.name || 'there'}, ${senderName} sent you a message on HomeBase: "${truncatedPreview}" - View it at https://gotohomebase.com/messages`;
+
+  return sendEmail({
+    to: user.email,
+    subject: `New message from ${senderName}`,
+    html,
+    text,
+  });
+}
+
 export const emailService = {
   sendEmail,
   sendWelcomeEmail,
@@ -626,4 +681,5 @@ export const emailService = {
   sendInvoiceEmail,
   sendBulkWelcomeFeedbackEmail,
   sendBulkCustomEmail,
+  sendNewMessageEmail,
 };

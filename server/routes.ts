@@ -11120,6 +11120,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           homeownerName,
           req.body.content || ''
         ).catch(err => console.error('[SMS] Error sending to contractor:', err));
+        
+        // Send email to contractor
+        emailService.sendNewMessageEmail(
+          conversation.contractorId,
+          homeownerName,
+          req.body.content || ''
+        ).catch(err => console.error('[EMAIL] Error sending to contractor:', err));
       }
       
       // Create notification for homeowner when contractor sends a message
@@ -11145,6 +11152,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           contractorName,
           req.body.content || ''
         ).catch(err => console.error('[SMS] Error sending to homeowner:', err));
+        
+        // Send email to homeowner
+        emailService.sendNewMessageEmail(
+          conversation.homeownerId,
+          contractorName,
+          req.body.content || ''
+        ).catch(err => console.error('[EMAIL] Error sending to homeowner:', err));
       }
       
       res.status(201).json(message);
