@@ -446,7 +446,10 @@ export async function sendInvoiceEmail(data: CrmDocumentEmailData): Promise<bool
   });
 }
 
-export async function sendBulkWelcomeFeedbackEmail(users: Array<{ email: string; firstName?: string | null; id?: string }>): Promise<{ sent: number; failed: number; skipped: number }> {
+export async function sendBulkWelcomeFeedbackEmail(
+  users: Array<{ email: string; firstName?: string | null; id?: string }>,
+  replyToEmail: string = 'gotohomebase2025@gmail.com'
+): Promise<{ sent: number; failed: number; skipped: number }> {
   if (!apiKey) {
     console.log('[EMAIL] SendGrid not configured, skipping bulk email');
     return { sent: 0, failed: 0, skipped: 0 };
@@ -481,16 +484,16 @@ export async function sendBulkWelcomeFeedbackEmail(users: Array<{ email: string;
           </ul>
           <p>Your feedback helps us build a better HomeBase for everyone. Please don't hesitate to reach out!</p>
           <div style="text-align: center; margin: 30px 0;">
-            <a href="mailto:gotohomebase2025@gmail.com" style="background: #6B46C1; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Send Us Feedback</a>
+            <a href="mailto:${replyToEmail}" style="background: #6B46C1; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Send Us Feedback</a>
           </div>
-          <p>You can also email us directly at <a href="mailto:gotohomebase2025@gmail.com">gotohomebase2025@gmail.com</a></p>
+          <p>You can also email us directly at <a href="mailto:${replyToEmail}">${replyToEmail}</a></p>
           <p>Thank you for being part of the HomeBase community!</p>
           <p>- The HomeBase Team</p>
         </div>
       </div>
     `;
 
-    const text = `Hi ${userName}, we hope you're enjoying HomeBase! We'd love to hear your feedback. How has your experience been? Any features you'd like to see? Questions or concerns? Email us at gotohomebase2025@gmail.com - The HomeBase Team`;
+    const text = `Hi ${userName}, we hope you're enjoying HomeBase! We'd love to hear your feedback. How has your experience been? Any features you'd like to see? Questions or concerns? Email us at ${replyToEmail} - The HomeBase Team`;
 
     try {
       const recipientEmail = testEmailOverride || user.email;
@@ -499,6 +502,7 @@ export async function sendBulkWelcomeFeedbackEmail(users: Array<{ email: string;
       await sgMail.send({
         to: recipientEmail,
         from: { email: fromEmail, name: fromName },
+        replyTo: replyToEmail,
         subject: subjectPrefix + 'How are you enjoying HomeBase?',
         text,
         html,

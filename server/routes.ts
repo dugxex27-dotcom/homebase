@@ -4004,18 +4004,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Bulk email endpoint for admins
   app.post('/api/admin/send-bulk-email', requireAdmin, async (req: any, res) => {
     try {
-      // Get all users with email addresses
-      const allUsers = await db.select({
+      const { replyToEmail, audience } = req.body;
+      
+      // Build query based on audience selection
+      let query = db.select({
         email: users.email,
-        firstName: users.firstName
+        firstName: users.firstName,
+        role: users.role
       }).from(users).where(isNotNull(users.email));
+      
+      let allUsers;
+      if (audience === 'homeowners') {
+        allUsers = await db.select({
+          email: users.email,
+          firstName: users.firstName,
+          role: users.role
+        }).from(users).where(and(isNotNull(users.email), eq(users.role, 'homeowner')));
+      } else if (audience === 'contractors') {
+        allUsers = await db.select({
+          email: users.email,
+          firstName: users.firstName,
+          role: users.role
+        }).from(users).where(and(isNotNull(users.email), eq(users.role, 'contractor')));
+      } else {
+        // 'all' - get everyone
+        allUsers = await db.select({
+          email: users.email,
+          firstName: users.firstName,
+          role: users.role
+        }).from(users).where(isNotNull(users.email));
+      }
 
       if (allUsers.length === 0) {
-        return res.status(400).json({ message: "No users with email addresses found" });
+        return res.status(400).json({ message: "No users with email addresses found for the selected audience" });
       }
 
       const result = await emailService.sendBulkWelcomeFeedbackEmail(
-        allUsers.filter(u => u.email) as Array<{ email: string; firstName: string | null }>
+        allUsers.filter(u => u.email) as Array<{ email: string; firstName: string | null }>,
+        replyToEmail || 'gotohomebase2025@gmail.com'
       );
 
       // Log the action

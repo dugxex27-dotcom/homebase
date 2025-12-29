@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Users, Home, Briefcase, Plus, Ban, TrendingUp, DollarSign, UserMinus, MessageSquare, ArrowRight, Flag, UserCheck, CheckCircle, XCircle, Clock, Eye, ChevronDown, ChevronUp, FileText, ExternalLink, Mail } from "lucide-react";
@@ -108,6 +109,8 @@ export default function AdminDashboard() {
   const [denyDialogOpen, setDenyDialogOpen] = useState(false);
   const [denyingAgent, setDenyingAgent] = useState<AgentWithUser | null>(null);
   const [denyNotes, setDenyNotes] = useState("");
+  const [bulkEmailReplyTo, setBulkEmailReplyTo] = useState("gotohomebase2025@gmail.com");
+  const [bulkEmailAudience, setBulkEmailAudience] = useState<"all" | "homeowners" | "contractors">("all");
 
   // Fetch admin stats
   const { data: stats, isLoading: statsLoading } = useQuery<AdminStats>({
@@ -216,8 +219,8 @@ export default function AdminDashboard() {
 
   // Bulk email mutation
   const bulkEmailMutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest("/api/admin/send-bulk-email", "POST");
+    mutationFn: async ({ replyToEmail, audience }: { replyToEmail: string; audience: string }) => {
+      return apiRequest("/api/admin/send-bulk-email", "POST", { replyToEmail, audience });
     },
     onSuccess: (data: any) => {
       toast({
@@ -327,34 +330,60 @@ export default function AdminDashboard() {
         {/* Bulk Email Section */}
         <Card className="mb-8" data-testid="card-bulk-email">
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Mail className="h-5 w-5 text-blue-600" />
-                  Send Bulk Email
-                </CardTitle>
-                <CardDescription className="mt-2">
-                  Send a welcome/feedback email to all users asking about their experience
-                </CardDescription>
-              </div>
-              <Button
-                onClick={() => bulkEmailMutation.mutate()}
-                disabled={bulkEmailMutation.isPending}
-                data-testid="button-send-bulk-email"
-              >
-                {bulkEmailMutation.isPending ? "Sending..." : "Send to All Users"}
-                <Mail className="h-4 w-4 ml-2" />
-              </Button>
-            </div>
+            <CardTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5 text-blue-600" />
+              Send Bulk Email
+            </CardTitle>
+            <CardDescription>
+              Send a welcome/feedback email to users asking about their experience
+            </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="reply-email">Reply-to Email</Label>
+                <Input
+                  id="reply-email"
+                  type="email"
+                  value={bulkEmailReplyTo}
+                  onChange={(e) => setBulkEmailReplyTo(e.target.value)}
+                  placeholder="gotohomebase2025@gmail.com"
+                  data-testid="input-bulk-email-reply"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Send To</Label>
+                <Select value={bulkEmailAudience} onValueChange={(v) => setBulkEmailAudience(v as "all" | "homeowners" | "contractors")}>
+                  <SelectTrigger data-testid="select-bulk-email-audience">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Users</SelectItem>
+                    <SelectItem value="homeowners">Homeowners Only</SelectItem>
+                    <SelectItem value="contractors">Contractors Only</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
             <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border">
               <p className="text-sm font-medium mb-2">Email Preview:</p>
               <p className="text-sm text-muted-foreground">Subject: How are you enjoying HomeBase?</p>
               <p className="text-sm text-muted-foreground mt-2">
                 The email asks users about their experience, if they have any questions, concerns, or feedback, 
-                and directs them to email gotohomebase2025@gmail.com.
+                and directs them to email <strong>{bulkEmailReplyTo}</strong>.
               </p>
+            </div>
+            
+            <div className="flex justify-end">
+              <Button
+                onClick={() => bulkEmailMutation.mutate({ replyToEmail: bulkEmailReplyTo, audience: bulkEmailAudience })}
+                disabled={bulkEmailMutation.isPending || !bulkEmailReplyTo}
+                data-testid="button-send-bulk-email"
+              >
+                {bulkEmailMutation.isPending ? "Sending..." : `Send to ${bulkEmailAudience === 'all' ? 'All Users' : bulkEmailAudience === 'homeowners' ? 'Homeowners' : 'Contractors'}`}
+                <Mail className="h-4 w-4 ml-2" />
+              </Button>
             </div>
           </CardContent>
         </Card>
