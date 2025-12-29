@@ -1,5 +1,5 @@
 import { sql, eq } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, boolean, timestamp, index, uniqueIndex, check, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, decimal, boolean, timestamp, index, uniqueIndex, unique, check, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -1251,6 +1251,25 @@ export const searchAnalytics = pgTable("search_analytics", {
 export const insertSearchAnalyticsSchema = createInsertSchema(searchAnalytics).omit({ id: true, createdAt: true });
 export type InsertSearchAnalytics = z.infer<typeof insertSearchAnalyticsSchema>;
 export type SearchAnalytics = typeof searchAnalytics.$inferSelect;
+
+// Monthly report tracking table - tracks which reports have been sent to contractors
+export const monthlyReportsSent = pgTable("monthly_reports_sent", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contractorId: varchar("contractor_id").notNull().references(() => contractors.id, { onDelete: 'cascade' }),
+  reportMonth: varchar("report_month", { length: 7 }).notNull(), // Format: YYYY-MM
+  status: varchar("status", { length: 20 }).default('claimed').notNull(), // 'claimed' or 'sent'
+  claimedAt: timestamp("claimed_at").defaultNow(), // When the claim was made
+  sentAt: timestamp("sent_at"), // When email was actually sent (null until sent)
+  totalViews: integer("total_views").default(0),
+  uniqueVisitors: integer("unique_visitors").default(0),
+}, (table) => [
+  index("IDX_monthly_reports_contractor_month").on(table.contractorId, table.reportMonth),
+  unique("monthly_reports_contractor_month_unique").on(table.contractorId, table.reportMonth),
+]);
+
+export const insertMonthlyReportsSentSchema = createInsertSchema(monthlyReportsSent).omit({ id: true, sentAt: true });
+export type InsertMonthlyReportsSent = z.infer<typeof insertMonthlyReportsSentSchema>;
+export type MonthlyReportsSent = typeof monthlyReportsSent.$inferSelect;
 
 // Invite codes table
 export const inviteCodes = pgTable("invite_codes", {

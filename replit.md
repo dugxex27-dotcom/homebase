@@ -1,13 +1,9 @@
 # Home Base - Compressed replit.md
 
 ## Overview
-
-Home Base is a full-stack web application designed to connect homeowners with contractors, facilitate a DIY product marketplace, and offer seasonal home maintenance guidance. It aims to streamline property management for homeowners and enhance operational efficiency for contractors, featuring a modern purple gradient aesthetic and robust tools like multi-property management, detailed proposal handling, and a gamified home health score. The project seeks to create a comprehensive ecosystem for home maintenance and improvement.
-
-**Landing Page**: Simplified homeowner home page (November 2025) with focused messaging on "Carfax-style home history" value proposition, featuring hero section with CTA button and referral rewards card. Home Health Score and Achievements accessible through maintenance and achievements pages respectively.
+Home Base is a full-stack web application designed to connect homeowners with contractors, facilitate a DIY product marketplace, and offer seasonal home maintenance guidance. It aims to streamline property management for homeowners and enhance operational efficiency for contractors. The project offers multi-property management, detailed proposal handling, and a gamified home health score, establishing a comprehensive ecosystem for home maintenance and improvement. Its landing page emphasizes a "Carfax-style home history" value proposition.
 
 ## User Preferences
-
 Preferred communication style: Simple, everyday language.
 
 ## System Architecture
@@ -24,56 +20,38 @@ Preferred communication style: Simple, everyday language.
 - **Database**: PostgreSQL with Drizzle ORM for type-safe operations and Drizzle Kit for schema management.
 - **Data Flow**: End-to-end type safety achieved through shared TypeScript types between frontend and backend.
 - **Security**: Enterprise-grade security measures including Helmet.js, rate limiting, CORS validation, secure sessions, SQL/XSS prevention, and Zod input validation.
+- **SOC 2 Type II Compliance**: Implements comprehensive technical controls including an audit logging system, advanced session security, enhanced security headers (CSP, HSTS), user-level rate limiting, and encryption helpers (AES-256-GCM).
 
 ### Feature Specifications
-- **User Management**: Supports Homeowner, Contractor, and Real Estate Agent roles.
-- **Authentication**: Email/password with bcrypt, Google OAuth, two-step password reset, and optional invite codes. Includes demo logins for all user roles with realistic historical data.
-- **Admin Dashboard**: Provides user analytics, signup trends, search insights, and invite code management.
-- **Contractor Architecture**: Company-based structure supporting multi-user access and dedicated API endpoints.
-- **Contractor Display Features**:
-    - **Years on Platform Badge**: Visual medal badge showing contractor tenure (years since account creation), displayed on contractor cards to build trust and credibility with homeowners.
+- **User Management**: Supports Homeowner, Contractor, and Real Estate Agent roles with email/password authentication, Google OAuth, and demo logins.
+- **Admin Dashboard**: Provides user analytics, signup trends, and invite code management.
+- **Contractor Features**:
+    - Company-based architecture with multi-user access.
+    - Years on Platform Badge for credibility.
+    - Profile view tracking and monthly email reports for contractors.
+    - CRM System for lead management (manual and webhook integration).
 - **Homeowner Features**:
     - Multi-property support with climate zone detection and centralized service records.
-    - **Home Health Score**: Gamified maintenance tracking based on completed/missed tasks.
-    - **DIY Savings Tracker**: Tracks financial savings from DIY tasks, including professional cost estimates and regional multipliers, with per-property displays.
-    - **Service Records Display**: Efficiently displays recent service records with options to view older ones.
-    - **AI Contractor Recommendation**: AI-powered (GPT-5) recommendations for contractors based on homeowner needs.
-    - **Permanent Connection Code System**: Unique 8-character codes for sharing service records with contractors.
-    - **20-Mile Contractor Filtering**: Geocoded addresses enable distance-based contractor search for specific service categories.
-    - **House Transfer System**: Comprehensive property ownership transfer with all associated data, secured by a token-based system.
-    - **Previously Used Contractors**: When a house is selected, displays a dedicated "Your Contractors at [House Name]" section showing contractors previously used at that property, sorted by most recent work, making it easy to find and re-hire trusted contractors.
-    - **Age-Based System Maintenance Recommendations**: Intelligent maintenance guidance based on installation year for all 24 home system types (heating, cooling, water, and special features). Provides age-appropriate recommendations with three urgency levels (critical/important/routine), cost estimates, and actionable maintenance tasks. Color-coded cards display system age, replacement timelines, and professional service schedules tailored to each system's typical lifespan.
+    - Home Health Score and DIY Savings Tracker.
+    - AI-powered contractor recommendations (GPT-5).
+    - Permanent connection code system for sharing service records.
+    - Geocoded 20-mile contractor filtering.
+    - Comprehensive house transfer system.
+    - Displays previously used contractors per property.
+    - Age-based system maintenance recommendations for 24 home system types.
 - **Marketplace**: Functionality for listing and browsing DIY products.
-- **Maintenance Guidance**: Seasonal home maintenance schedules with location-based and prioritized tasks.
-- **Service Categories**: Supports 76 distinct service categories.
-- **Notifications**: Bi-directional real-time notifications for homeowners and contractors.
-    - **SMS Notifications (Twilio)**: Text message notifications for maintenance reminders, appointment confirmations, and new messages. Users can enable/disable SMS in their notification preferences. Contractors also receive SMS when homeowners message them.
-- **Proposal System**: Contractors can create detailed proposals, and homeowners can view and manage them within the app.
+- **Maintenance Guidance**: Seasonal, location-based, and prioritized home maintenance schedules.
+- **Notifications**: Bi-directional real-time notifications, including Twilio SMS for reminders and messages.
+- **Proposal System**: Contractors can create and homeowners can manage detailed proposals.
 - **Billing and Subscription**:
-    - 14-day free trial.
-    - Tiered subscription plans for homeowners.
-    - **Contractor Subscription Tiers**:
-        - **Basic ($20/month)**: Lead management, CRM integrations, $20/month referral credit cap
-        - **Pro ($40/month)**: Full CRM access including client management, job scheduling, quotes, invoices, dashboard analytics, $40/month referral credit cap
-    - Referral rewards system: $1 per active referral, capped by subscription tier.
-- **Real Estate Agent Affiliate System**: Agents earn referral commissions via unique codes and track earnings through a dedicated dashboard.
-    - **Automatic $15 Payouts**: When a referred user completes 4 consecutive months of paid subscription (after the 14-day trial), the system automatically triggers a $15 payout to the agent's connected bank account via Stripe Connect.
-    - **Stripe Connect Integration**: Agents can onboard their bank account through Stripe Connect Express. The system tracks onboarding completion and only processes payouts when the agent's account is fully set up.
-    - **Payout Tracking**: Database tracks each payout with status (pending, processing, paid, failed), Stripe transfer ID, and error messages. Agent dashboard displays complete payout history.
-- **CRM System for Contractors**: Includes manual lead management (CRUD) and a webhook integration system for automatic lead syncing from external CRMs, with company-scoped access control.
-- **Error Tracking and Monitoring**: Features a React ErrorBoundary, client-side error logger, and a database schema for tracking errors, accessible via an admin-only developer console.
-- **Stripe Billing Reconciliation**: Processes Stripe webhook events for subscription management, tracks subscription cycles, and provides users with a complete billing history UI.
-- **Gamified Achievement System**: Features 66 achievements across 8 categories (Seasonal, Financial Savvy, Organization, Referral & Community, Milestones, Streaks, Special), with real-time progress tracking, house-based filtering (achievements show as unlocked only if the selected house meets the criteria independently), and retroactive checking. Performance optimized with pre-aggregated savings metrics.
-- **Review Fraud Prevention System**: Comprehensive anti-fraud measures for contractor reviews including:
-    - **Email Verification**: Required for all review submissions with 6-digit token verification system (24-hour expiry)
-    - **Account Age Requirement**: Minimum 7-day account age before users can leave reviews
-    - **One Review Per Customer-Contractor**: Database-level unique constraint prevents multiple reviews for same contractor
-    - **90-Day Service Window**: Reviews must be based on service records within past 90 days (verified service badge)
-    - **Device Fingerprinting**: Captures browser fingerprint to detect duplicate/fake reviews
-    - **IP Address Tracking**: Logs IP addresses with automatic fraud alerts when >3 reviews from same IP/device
-    - **Review Flagging System**: Users can report suspicious reviews; admins investigate via dedicated dashboard
-    - **Admin Investigation Tools**: Flag management interface with status tracking (pending/investigating/resolved_valid/resolved_invalid)
-- **API Endpoints**: Comprehensive set of APIs for managing all core functionalities.
+    - 14-day free trial, tiered subscription plans for homeowners.
+    - Tiered contractor subscription plans (Basic, Pro) with referral credit caps.
+    - Referral rewards system.
+    - Stripe Billing Reconciliation for subscription management and billing history.
+- **Real Estate Agent Affiliate System**: Agents earn referral commissions via unique codes, with automated $15 payouts after 4 months of paid subscription, managed through Stripe Connect.
+- **Gamified Achievement System**: 66 achievements across 8 categories with real-time progress tracking and house-based filtering.
+- **Review Fraud Prevention System**: Comprehensive measures including email verification, account age requirement, one review per customer-contractor, 90-day service window, device fingerprinting, IP address tracking, and an admin flagging system.
+- **Error Tracking**: React ErrorBoundary, client-side error logger, and database schema for error tracking accessible via an admin console.
 
 ## External Dependencies
 
@@ -96,92 +74,5 @@ Preferred communication style: Simple, everyday language.
 - **Geocoding**: OpenStreetMap Nominatim
 - **Address Autocomplete**: Google Places API, OpenStreetMap
 - **AI**: Replit AI Integrations (for GPT-5)
-
-## Database Protection & Migrations
-
-### Safe Schema Changes (Migrations)
-The project uses Drizzle ORM with a migration system to protect user data during schema updates:
-
-1. **Generate migrations** (after changing `shared/schema.ts`):
-   ```bash
-   npx drizzle-kit generate
-   ```
-   This creates incremental SQL files in `./migrations/` without touching the database.
-
-2. **Apply migrations** (production-safe):
-   ```bash
-   npx tsx server/migrate.ts
-   ```
-   This applies pending migrations incrementally, preserving all existing data.
-
-3. **Development sync** (use with caution):
-   ```bash
-   npm run db:push
-   ```
-   This is faster but less safe - only use in development when you're sure no data will be lost.
-
-### Database Backups
-The backup utility exports all important tables to JSON files:
-
-1. **Create a backup**:
-   ```bash
-   npx tsx server/backup.ts
-   ```
-   Creates `backups/backup-{timestamp}.json` with all user data.
-
-2. **List available backups**:
-   ```bash
-   npx tsx server/backup.ts list
-   ```
-
-### Best Practices
-- **Always generate migrations** before making schema changes in production
-- **Create backups** before major updates or schema changes
-- **Never change ID column types** (serial ↔ varchar) as this breaks existing data
-- **Test migrations** in development before applying to production
-
-## SOC 2 Security Compliance (December 2025)
-
-### Security Infrastructure
-HomeBase implements comprehensive SOC 2 Type II technical controls:
-
-#### Audit Logging System (`server/security-audit.ts`)
-- **Security Audit Logs**: Database table tracking all security-relevant events with timestamps, user info, IP addresses, user agents, and request metadata
-- **Event Types**: Authentication events (login, logout, failed attempts, password changes), data access/modification events, admin actions, and security alerts
-- **Severity Levels**: Info, Warning, Error, Critical - with automatic categorization based on event type
-
-#### Session Security (`server/security-audit.ts`)
-- **Security Sessions Table**: Tracks all user sessions with device fingerprinting, browser/OS detection, and geo-location capability
-- **Session Management API**: Users can view active sessions (`GET /api/auth/sessions`), revoke specific sessions (`DELETE /api/auth/sessions/:id`), or revoke all other sessions (`POST /api/auth/sessions/revoke-all`)
-- **Admin Session Control**: Admins can view user sessions (`GET /api/admin/users/:userId/sessions`) and force logout users (`POST /api/admin/users/:userId/force-logout`)
-- **Concurrent Session Limits**: Configurable limits on simultaneous sessions per user
-
-#### Enhanced Security Headers (`server/index.ts`)
-- **Content Security Policy (CSP)**: Strict directives for script sources, style sources, connect sources, frame ancestors
-- **HSTS**: 1-year max-age with includeSubDomains and preload
-- **Additional Headers**: Permissions-Policy, Referrer-Policy, X-Content-Type-Options, X-Frame-Options, Cross-Origin-Opener-Policy, Cross-Origin-Resource-Policy
-- **API Cache Control**: No-store, no-cache headers for all API responses
-
-#### Rate Limiting (`server/security-audit.ts`)
-- **User-Level Rate Limiting**: Database-backed tracking by user ID or IP address
-- **Endpoint Categories**: Different limits for auth (5/15min), sensitive (20/min), write (50/min), read (200/min) operations
-- **Abuse Detection**: Automatic detection of users/IPs with multiple rate limit violations
-- **Rate Limit Headers**: X-RateLimit-Remaining and X-RateLimit-Reset headers on responses
-
-#### Encryption Helpers (`server/security-utils.ts`)
-- **AES-256-GCM Encryption**: `encryptData()` and `decryptData()` for sensitive field encryption
-- **Data Masking**: `maskEmail()`, `maskPhoneNumber()`, `maskSensitiveData()` for display purposes
-- **Secure Token Generation**: `generateSecureToken()` and `generateSecureOTP()` using crypto.randomBytes
-
-#### Security Dashboard API Endpoints
-- `GET /api/admin/security/audit-logs` - Query audit logs with filters
-- `GET /api/admin/security/stats` - Security statistics summary
-- `GET /api/admin/security/recent-alerts` - Recent security alerts
-- `GET /api/admin/security/failed-logins` - Failed login analysis by email/IP
-- `GET /api/admin/security/active-sessions` - All active sessions across users
-
-### Environment Variables for Production
-- `DATA_ENCRYPTION_KEY`: 64 hex character (32 byte) key for AES-256-GCM encryption
-- `HASH_SALT`: Salt for one-way hashing of sensitive data
-- `SESSION_SECRET`: Secret for session signing (already required)
-- `ADMIN_EMAILS`: Comma-separated list of admin email addresses
+- **SMS**: Twilio
+- **Payments**: Stripe Connect
