@@ -6910,6 +6910,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Contractor notification preferences
+  app.patch('/api/contractor/notifications/preferences', async (req: any, res) => {
+    try {
+      if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const preferences = req.body;
+      
+      console.log(`Contractor notification preferences updated for user ${req.session.user.id}:`, preferences);
+
+      res.json({ success: true, preferences });
+    } catch (error) {
+      console.error("Error updating contractor notification preferences:", error);
+      res.status(500).json({ message: "Failed to update notification preferences" });
+    }
+  });
+
   // Contractor routes
   app.get("/api/contractors", async (req, res) => {
     try {

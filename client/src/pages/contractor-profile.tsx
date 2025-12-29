@@ -38,8 +38,11 @@ import {
   MessageSquare,
   CreditCard,
   Clock,
-  Check
+  Check,
+  Bell
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
 import { StripeConnectOnboarding } from "@/components/stripe-connect-onboarding";
@@ -112,6 +115,16 @@ export default function ContractorProfile() {
   const { user, refetch: refetchUser } = useAuth();
   const typedUser = user as UserType | undefined;
   const [hasAttemptedRefresh, setHasAttemptedRefresh] = useState(false);
+  
+  // Notification preferences state
+  const [notificationPrefs, setNotificationPrefs] = useState({
+    emailNotifications: true,
+    smsNotifications: true,
+    homeownerMessages: true,
+    leadAlerts: true,
+    appointmentReminders: true
+  });
+  
   const { 
     hasActiveSubscription, 
     isInTrial, 
@@ -698,6 +711,32 @@ export default function ContractorProfile() {
       });
     },
   });
+
+  // Update notification preferences mutation
+  const updateNotificationsMutation = useMutation({
+    mutationFn: async (prefs: typeof notificationPrefs) => {
+      return await apiRequest('/api/contractor/notifications/preferences', 'PATCH', prefs);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Preferences Updated",
+        description: "Your notification preferences have been saved.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update notification preferences.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  const handleNotificationChange = (key: keyof typeof notificationPrefs, value: boolean) => {
+    const newPrefs = { ...notificationPrefs, [key]: value };
+    setNotificationPrefs(newPrefs);
+    updateNotificationsMutation.mutate(newPrefs);
+  };
 
   const handleInputChange = (field: string, value: string | string[]) => {
     setFormData(prev => ({
@@ -2116,6 +2155,84 @@ export default function ContractorProfile() {
                 Open Full Profile Page
               </Button>
             </Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Notification Preferences */}
+      <Card style={{ backgroundColor: '#f2f2f2' }} className="mt-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bell className="w-5 h-5" />
+            Notifications
+          </CardTitle>
+          <CardDescription>
+            Choose how you want to receive notifications
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium" style={{ color: '#2c0f5b' }}>Email Notifications</p>
+                <p className="text-sm text-gray-600">Receive updates via email</p>
+              </div>
+              <Switch
+                data-testid="switch-email-notifications"
+                checked={notificationPrefs.emailNotifications}
+                onCheckedChange={(value) => handleNotificationChange('emailNotifications', value)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium" style={{ color: '#2c0f5b' }}>SMS Notifications</p>
+                <p className="text-sm text-gray-600">Receive urgent alerts via text</p>
+              </div>
+              <Switch
+                data-testid="switch-sms-notifications"
+                checked={notificationPrefs.smsNotifications}
+                onCheckedChange={(value) => handleNotificationChange('smsNotifications', value)}
+              />
+            </div>
+
+            <Separator />
+
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium" style={{ color: '#2c0f5b' }}>Homeowner Messages</p>
+                <p className="text-sm text-gray-600">Get notified when homeowners message you</p>
+              </div>
+              <Switch
+                data-testid="switch-homeowner-messages"
+                checked={notificationPrefs.homeownerMessages}
+                onCheckedChange={(value) => handleNotificationChange('homeownerMessages', value)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium" style={{ color: '#2c0f5b' }}>Lead Alerts</p>
+                <p className="text-sm text-gray-600">New lead notifications</p>
+              </div>
+              <Switch
+                data-testid="switch-lead-alerts"
+                checked={notificationPrefs.leadAlerts}
+                onCheckedChange={(value) => handleNotificationChange('leadAlerts', value)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium" style={{ color: '#2c0f5b' }}>Appointment Reminders</p>
+                <p className="text-sm text-gray-600">Upcoming appointment alerts</p>
+              </div>
+              <Switch
+                data-testid="switch-appointment-reminders"
+                checked={notificationPrefs.appointmentReminders}
+                onCheckedChange={(value) => handleNotificationChange('appointmentReminders', value)}
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
