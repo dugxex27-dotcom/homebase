@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Users, Home, Briefcase, Plus, Ban, TrendingUp, DollarSign, UserMinus, MessageSquare, ArrowRight, Flag, UserCheck, CheckCircle, XCircle, Clock, Eye, ChevronDown, ChevronUp, FileText, ExternalLink } from "lucide-react";
+import { Users, Home, Briefcase, Plus, Ban, TrendingUp, DollarSign, UserMinus, MessageSquare, ArrowRight, Flag, UserCheck, CheckCircle, XCircle, Clock, Eye, ChevronDown, ChevronUp, FileText, ExternalLink, Mail } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { format } from "date-fns";
@@ -214,6 +214,26 @@ export default function AdminDashboard() {
     },
   });
 
+  // Bulk email mutation
+  const bulkEmailMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("/api/admin/send-bulk-email", "POST");
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Emails Sent",
+        description: `Sent ${data.sent} emails successfully${data.failed > 0 ? `, ${data.failed} failed` : ''}${data.skipped > 0 ? `, ${data.skipped} skipped` : ''}`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send bulk emails",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCreateCode = () => {
     if (!newCode.trim()) {
       toast({
@@ -303,6 +323,41 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Bulk Email Section */}
+        <Card className="mb-8" data-testid="card-bulk-email">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Mail className="h-5 w-5 text-blue-600" />
+                  Send Bulk Email
+                </CardTitle>
+                <CardDescription className="mt-2">
+                  Send a welcome/feedback email to all users asking about their experience
+                </CardDescription>
+              </div>
+              <Button
+                onClick={() => bulkEmailMutation.mutate()}
+                disabled={bulkEmailMutation.isPending}
+                data-testid="button-send-bulk-email"
+              >
+                {bulkEmailMutation.isPending ? "Sending..." : "Send to All Users"}
+                <Mail className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border">
+              <p className="text-sm font-medium mb-2">Email Preview:</p>
+              <p className="text-sm text-muted-foreground">Subject: How are you enjoying HomeBase?</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                The email asks users about their experience, if they have any questions, concerns, or feedback, 
+                and directs them to email gotohomebase2025@gmail.com.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Support Tickets Management */}
         <Card className="mb-8" data-testid="card-support-tickets">

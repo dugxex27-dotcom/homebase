@@ -446,6 +446,83 @@ export async function sendInvoiceEmail(data: CrmDocumentEmailData): Promise<bool
   });
 }
 
+export async function sendBulkWelcomeFeedbackEmail(users: Array<{ email: string; firstName?: string | null; id?: string }>): Promise<{ sent: number; failed: number; skipped: number }> {
+  if (!apiKey) {
+    console.log('[EMAIL] SendGrid not configured, skipping bulk email');
+    return { sent: 0, failed: 0, skipped: 0 };
+  }
+
+  let sent = 0;
+  let failed = 0;
+  let skipped = 0;
+
+  for (let i = 0; i < users.length; i++) {
+    const user = users[i];
+    if (!user.email) {
+      skipped++;
+      continue;
+    }
+
+    const userName = user.firstName || 'there';
+    
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #6B46C1 0%, #805AD5 100%); padding: 30px; text-align: center;">
+          <h1 style="color: #ffffff !important; margin: 0;">Hello from HomeBase!</h1>
+        </div>
+        <div style="padding: 30px; background: #f9f9f9;">
+          <p>Hi ${userName},</p>
+          <p>We hope you're enjoying your HomeBase experience so far! We're constantly working to make the platform better for you.</p>
+          <p>We'd love to hear from you:</p>
+          <ul>
+            <li>How has your experience been so far?</li>
+            <li>Are there any features you'd like to see?</li>
+            <li>Do you have any questions or concerns?</li>
+          </ul>
+          <p>Your feedback helps us build a better HomeBase for everyone. Please don't hesitate to reach out!</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="mailto:gotohomebase2025@gmail.com" style="background: #6B46C1; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Send Us Feedback</a>
+          </div>
+          <p>You can also email us directly at <a href="mailto:gotohomebase2025@gmail.com">gotohomebase2025@gmail.com</a></p>
+          <p>Thank you for being part of the HomeBase community!</p>
+          <p>- The HomeBase Team</p>
+        </div>
+      </div>
+    `;
+
+    const text = `Hi ${userName}, we hope you're enjoying HomeBase! We'd love to hear your feedback. How has your experience been? Any features you'd like to see? Questions or concerns? Email us at gotohomebase2025@gmail.com - The HomeBase Team`;
+
+    try {
+      const recipientEmail = testEmailOverride || user.email;
+      const subjectPrefix = testEmailOverride ? `[TEST - Original: ${user.email}] ` : '';
+      
+      await sgMail.send({
+        to: recipientEmail,
+        from: { email: fromEmail, name: fromName },
+        subject: subjectPrefix + 'How are you enjoying HomeBase?',
+        text,
+        html,
+        trackingSettings: {
+          clickTracking: { enable: false, enableText: false },
+        },
+      });
+      console.log('[EMAIL] Bulk email sent to:', recipientEmail);
+      sent++;
+      
+      // Rate limiting: add 100ms delay between emails to avoid hitting SendGrid limits
+      if (i < users.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    } catch (error) {
+      console.error('[EMAIL] Failed to send bulk email to:', user.email, error);
+      failed++;
+    }
+  }
+
+  console.log(`[EMAIL] Bulk send complete: ${sent} sent, ${failed} failed, ${skipped} skipped`);
+  return { sent, failed, skipped };
+}
+
 export const emailService = {
   sendEmail,
   sendWelcomeEmail,
@@ -455,4 +532,5 @@ export const emailService = {
   sendQuoteEmail,
   sendJobNotificationEmail,
   sendInvoiceEmail,
+  sendBulkWelcomeFeedbackEmail,
 };

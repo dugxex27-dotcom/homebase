@@ -8,7 +8,7 @@ import { setupGoogleAuth } from "./googleAuth";
 import { z } from "zod";
 import { randomUUID } from "crypto";
 import rateLimit from "express-rate-limit";
-import { eq, and, or, lte, isNull, desc } from "drizzle-orm";
+import { eq, and, or, lte, isNull, isNotNull, desc } from "drizzle-orm";
 import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, maintenanceTasks, customMaintenanceTasks, insertSupportTicketSchema, insertSubscriptionCycleEventSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, crmClients, crmJobs, crmQuotes, crmInvoices, securitySessions, referralCredits, agentProfiles } from "@shared/schema";
 import { calculateDIYSavingsAmount } from "@shared/cost-helpers";
 import pushRoutes from "./push-routes";
@@ -3998,6 +3998,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching advanced analytics:", error);
       res.status(500).json({ message: "Failed to fetch analytics" });
+    }
+  });
+
+  // Bulk email endpoint for admins
+  app.post('/api/admin/send-bulk-email', requireAdmin, async (req: any, res) => {
+    try {
+      // Get all users with email addresses
+      const allUsers = await db.select({
+        email: users.email,
+        firstName: users.firstName
+      }).from(users).where(isNotNull(users.email));
+
+      if (allUsers.length === 0) {
+        return res.status(400).json({ message: "No users with email addresses found" });
+      }
+
+      const result = await emailService.sendBulkWelcomeFeedbackEmail(
+        allUsers.filter(u => u.email) as Array<{ email: string; firstName: string | null }>
+      );
+
+      // Log the action
+      await auditLogger.log({
+        eventType: 'admin.bulk_email_sent',
+        userId: req.user?.id || 'unknown',
+        userEmail: req.user?.email || 'unknown',
+        severity: 'info',
+        details: {
+          totalUsers: allUsers.length,
+          sent: result.sent,
+          failed: result.failed
+        }
+      });
+
+      res.json({
+        message: `Bulk email sent`,
+        totalUsers: allUsers.length,
+        sent: result.sent,
+        failed: result.failed,
+        skipped: result.skipped
+      });
+    } catch (error) {
+      console.error("Error sending bulk email:", error);
+      res.status(500).json({ message: "Failed to send bulk email" });
     }
   });
 
