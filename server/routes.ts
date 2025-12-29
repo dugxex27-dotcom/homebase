@@ -6910,18 +6910,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Contractor notification preferences
+  // Contractor notification preferences - GET
+  app.get('/api/contractor/notifications/preferences', async (req: any, res) => {
+    try {
+      if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const userId = req.session.user.id;
+      
+      // Get message preferences
+      const messagePrefs = await db.select()
+        .from(notificationPreferences)
+        .where(and(
+          eq(notificationPreferences.userId, userId),
+          eq(notificationPreferences.notificationType, 'messages')
+        ))
+        .limit(1);
+      
+      // Get appointment preferences
+      const appointmentPrefs = await db.select()
+        .from(notificationPreferences)
+        .where(and(
+          eq(notificationPreferences.userId, userId),
+          eq(notificationPreferences.notificationType, 'appointment')
+        ))
+        .limit(1);
+      
+      // Build response with defaults (all enabled by default for new users)
+      const msgPref = messagePrefs[0];
+      const aptPref = appointmentPrefs[0];
+      
+      const preferences = {
+        emailNotifications: msgPref ? msgPref.channels.includes('email') : true,
+        smsNotifications: msgPref ? msgPref.channels.includes('sms') : true,
+        homeownerMessages: msgPref ? msgPref.isEnabled : true,
+        leadAlerts: true, // Default to true
+        appointmentReminders: aptPref ? aptPref.isEnabled : true,
+      };
+      
+      res.json(preferences);
+    } catch (error) {
+      console.error("Error fetching contractor notification preferences:", error);
+      res.status(500).json({ message: "Failed to fetch notification preferences" });
+    }
+  });
+
+  // Contractor notification preferences - PATCH
   app.patch('/api/contractor/notifications/preferences', async (req: any, res) => {
     try {
       if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const preferences = req.body;
+      const userId = req.session.user.id;
+      const { emailNotifications, smsNotifications, homeownerMessages, leadAlerts, appointmentReminders } = req.body;
       
-      console.log(`Contractor notification preferences updated for user ${req.session.user.id}:`, preferences);
+      console.log(`[NOTIF] Contractor notification preferences updated for user ${userId}:`, req.body);
 
-      res.json({ success: true, preferences });
+      // Store message preferences
+      if (homeownerMessages !== undefined || smsNotifications !== undefined || emailNotifications !== undefined) {
+        const channels: string[] = [];
+        if (smsNotifications && homeownerMessages) channels.push('sms');
+        if (emailNotifications && homeownerMessages) channels.push('email');
+        channels.push('push'); // Always include push notifications
+        
+        await db.insert(notificationPreferences)
+          .values({
+            userId,
+            notificationType: 'messages',
+            isEnabled: homeownerMessages !== false,
+            channels,
+          })
+          .onConflictDoUpdate({
+            target: [notificationPreferences.userId, notificationPreferences.notificationType],
+            set: {
+              isEnabled: homeownerMessages !== false,
+              channels,
+              updatedAt: new Date(),
+            }
+          });
+        console.log(`[NOTIF] Saved 'messages' preference: enabled=${homeownerMessages}, channels=${channels}`);
+      }
+
+      // Store appointment preferences
+      if (appointmentReminders !== undefined) {
+        const channels: string[] = [];
+        if (smsNotifications) channels.push('sms');
+        if (emailNotifications) channels.push('email');
+        channels.push('push');
+        
+        await db.insert(notificationPreferences)
+          .values({
+            userId,
+            notificationType: 'appointment',
+            isEnabled: appointmentReminders !== false,
+            channels,
+          })
+          .onConflictDoUpdate({
+            target: [notificationPreferences.userId, notificationPreferences.notificationType],
+            set: {
+              isEnabled: appointmentReminders !== false,
+              channels,
+              updatedAt: new Date(),
+            }
+          });
+        console.log(`[NOTIF] Saved 'appointment' preference: enabled=${appointmentReminders}`);
+      }
+
+      res.json({ success: true, preferences: req.body });
     } catch (error) {
       console.error("Error updating contractor notification preferences:", error);
       res.status(500).json({ message: "Failed to update notification preferences" });

@@ -124,6 +124,19 @@ export default function ContractorProfile() {
     leadAlerts: true,
     appointmentReminders: true
   });
+
+  // Fetch notification preferences from server
+  const { data: serverNotificationPrefs } = useQuery<typeof notificationPrefs>({
+    queryKey: ['/api/contractor/notifications/preferences'],
+    enabled: !!typedUser && typedUser.role === 'contractor',
+  });
+
+  // Update state when server prefs are loaded
+  useEffect(() => {
+    if (serverNotificationPrefs) {
+      setNotificationPrefs(serverNotificationPrefs);
+    }
+  }, [serverNotificationPrefs]);
   
   const { 
     hasActiveSubscription, 
