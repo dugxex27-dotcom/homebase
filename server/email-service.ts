@@ -766,6 +766,115 @@ export async function sendContractorMonthlyViewReportEmail(data: ContractorViewR
   });
 }
 
+interface WeeklyTaskReminderData {
+  homeownerName: string;
+  homeownerEmail: string;
+  monthName: string;
+  year: number;
+  houseTasks: { houseName: string; tasks: { title: string; description: string; priority: 'high' | 'medium' | 'low'; category: string }[] }[];
+  totalRemainingTasks: number;
+}
+
+export async function sendWeeklyTaskReminderEmail(data: WeeklyTaskReminderData): Promise<boolean> {
+  const priorityColors: Record<string, string> = {
+    high: '#dc2626',
+    medium: '#f59e0b',
+    low: '#16a34a'
+  };
+
+  const priorityLabels: Record<string, string> = {
+    high: 'High Priority',
+    medium: 'Medium Priority',
+    low: 'Low Priority'
+  };
+
+  let houseTasksHtml = '';
+  for (const house of data.houseTasks) {
+    const highPriorityTasks = house.tasks.filter(t => t.priority === 'high');
+    const otherTasks = house.tasks.filter(t => t.priority !== 'high');
+    
+    houseTasksHtml += `
+      <div style="margin-bottom: 20px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+        <div style="background: #f3f4f6; padding: 12px 16px; border-bottom: 1px solid #e5e7eb;">
+          <h3 style="margin: 0; color: #333; font-size: 16px;">${house.houseName}</h3>
+          <p style="margin: 4px 0 0 0; color: #666; font-size: 13px;">${house.tasks.length} task${house.tasks.length === 1 ? '' : 's'} remaining</p>
+        </div>
+        <div style="padding: 16px;">
+    `;
+    
+    if (highPriorityTasks.length > 0) {
+      houseTasksHtml += `<p style="margin: 0 0 10px 0; color: #dc2626; font-weight: bold; font-size: 13px;">High Priority Tasks:</p>`;
+      for (const task of highPriorityTasks.slice(0, 3)) {
+        houseTasksHtml += `
+          <div style="margin-bottom: 10px; padding-left: 10px; border-left: 3px solid ${priorityColors[task.priority]};">
+            <p style="margin: 0; font-weight: 500; color: #333;">${task.title}</p>
+          </div>
+        `;
+      }
+      if (highPriorityTasks.length > 3) {
+        houseTasksHtml += `<p style="margin: 0 0 10px 10px; color: #666; font-size: 12px;">...and ${highPriorityTasks.length - 3} more high priority tasks</p>`;
+      }
+    }
+    
+    if (otherTasks.length > 0 && highPriorityTasks.length > 0) {
+      houseTasksHtml += `<p style="margin: 15px 0 10px 0; color: #666; font-size: 13px;">Other Tasks: ${otherTasks.length}</p>`;
+    } else if (otherTasks.length > 0) {
+      for (const task of otherTasks.slice(0, 3)) {
+        houseTasksHtml += `
+          <div style="margin-bottom: 10px; padding-left: 10px; border-left: 3px solid ${priorityColors[task.priority]};">
+            <p style="margin: 0; font-weight: 500; color: #333;">${task.title}</p>
+          </div>
+        `;
+      }
+      if (otherTasks.length > 3) {
+        houseTasksHtml += `<p style="margin: 0 0 10px 10px; color: #666; font-size: 12px;">...and ${otherTasks.length - 3} more tasks</p>`;
+      }
+    }
+    
+    houseTasksHtml += '</div></div>';
+  }
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #6B46C1 0%, #805AD5 100%); padding: 30px; text-align: center;">
+        <h1 style="color: white; margin: 0;">Your Weekly Home Maintenance Reminder</h1>
+        <p style="color: #e9d8fd; margin: 10px 0 0 0;">${data.monthName} ${data.year}</p>
+      </div>
+      <div style="padding: 30px; background: #f9f9f9;">
+        <p>Hi ${data.homeownerName},</p>
+        <p>Here's a friendly reminder about your remaining home maintenance tasks for this month. You have <strong>${data.totalRemainingTasks} task${data.totalRemainingTasks === 1 ? '' : 's'}</strong> left to complete!</p>
+        
+        ${houseTasksHtml}
+        
+        <div style="background: #e9d8fd; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <p style="margin: 0; font-weight: bold; color: #6B46C1;">Why staying on top of maintenance matters:</p>
+          <ul style="margin: 10px 0 0 0; padding-left: 20px; color: #553c9a;">
+            <li>Prevent costly emergency repairs</li>
+            <li>Extend the life of your home systems</li>
+            <li>Maintain your home's value</li>
+            <li>Boost your Home Health Score!</li>
+          </ul>
+        </div>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="https://gotohomebase.com/maintenance" style="background: #6B46C1; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">View My Maintenance Tasks</a>
+        </div>
+        
+        <p style="font-size: 12px; color: #666;">You're receiving this because you have maintenance reminders enabled on HomeBase. Manage your email preferences in your account settings.</p>
+      </div>
+    </div>
+  `;
+
+  const text = `Hi ${data.homeownerName}, this is your weekly HomeBase maintenance reminder. You have ${data.totalRemainingTasks} tasks remaining for ${data.monthName} ${data.year}. Visit gotohomebase.com/maintenance to view and complete your tasks.`;
+
+  return sendEmail({
+    to: data.homeownerEmail,
+    subject: `Weekly Reminder: ${data.totalRemainingTasks} Home Tasks for ${data.monthName}`,
+    html,
+    text,
+  });
+}
+
 export const emailService = {
   sendEmail,
   sendWelcomeEmail,
@@ -779,4 +888,5 @@ export const emailService = {
   sendBulkCustomEmail,
   sendNewMessageEmail,
   sendContractorMonthlyViewReportEmail,
+  sendWeeklyTaskReminderEmail,
 };

@@ -8,6 +8,7 @@ import { db } from "./db";
 import { storage } from "./storage";
 import { trialReminderScheduler } from "./trial-reminder-scheduler";
 import { profileViewReportScheduler } from "./profile-view-report-scheduler";
+import { weeklyTaskReminderScheduler } from "./weekly-task-reminder-scheduler";
 
 const app = express();
 
@@ -200,5 +201,6 @@ app.use((req, res, next) => {
     // Start scheduled tasks
     trialReminderScheduler.start();
     profileViewReportScheduler.start();
+    weeklyTaskReminderScheduler.start();
   });
 })();

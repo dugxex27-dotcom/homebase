@@ -33,6 +33,7 @@ Preferred communication style: Simple, everyday language.
 - **Homeowner Features**:
     - Multi-property support with climate zone detection and centralized service records.
     - Home Health Score and DIY Savings Tracker.
+    - **Weekly Task Reminders**: Automated email reminders sent every Friday morning with remaining maintenance tasks for the current month. Shows high-priority tasks prominently, grouped by house. Respects homeowner `maintenance` notification preferences.
     - AI-powered contractor recommendations (GPT-5).
     - Permanent connection code system for sharing service records.
     - Geocoded 20-mile contractor filtering.
