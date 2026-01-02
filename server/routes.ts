@@ -527,6 +527,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Stripe health check endpoint - Tests API connectivity
+  app.get('/api/stripe/health', async (req: any, res) => {
+    try {
+      if (!stripe) {
+        return res.status(500).json({ 
+          status: 'error', 
+          message: 'Stripe not configured - missing STRIPE_SECRET_KEY' 
+        });
+      }
+
+      // Test API connectivity by retrieving account info
+      const account = await stripe.accounts.retrieve();
+      
+      return res.json({
+        status: 'ok',
+        message: 'Stripe API connection successful',
+        accountId: account.id,
+        chargesEnabled: account.charges_enabled,
+        payoutsEnabled: account.payouts_enabled,
+        country: account.country,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      console.error('[STRIPE HEALTH] Error:', error.message);
+      return res.status(500).json({
+        status: 'error',
+        message: error.message || 'Failed to connect to Stripe API',
+        code: error.code || 'unknown'
+      });
+    }
+  });
+
   // Stripe webhook handler - Uses raw body parser for signature verification
   app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), async (req: any, res) => {
     if (!stripe) {
