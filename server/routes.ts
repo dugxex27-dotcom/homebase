@@ -10374,7 +10374,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const now = new Date();
       const trialEndsAt = user.trialEndsAt ? new Date(user.trialEndsAt) : null;
       const isInTrial = user.subscriptionStatus === 'trialing' && trialEndsAt && trialEndsAt > now;
-      const trialExpired = trialEndsAt && trialEndsAt <= now && user.subscriptionStatus === 'trialing';
+      // Trial is expired if: has end date that's passed, OR is trialing without an end date (treat as expired)
+      const trialExpired = user.subscriptionStatus === 'trialing' && (!trialEndsAt || trialEndsAt <= now);
       const trialDaysRemaining = trialEndsAt && trialEndsAt > now 
         ? Math.ceil((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
         : 0;
@@ -10382,7 +10383,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Has active access if: paid subscription active, OR still in trial period
       const hasActiveSubscription = user.subscriptionStatus === 'active' || isInTrial;
       
-      // If trial expired and no paid subscription, they need to pay
+      // If trial expired and no paid subscription, they need to pay - contractors have NO free features after trial
       const needsSubscription = trialExpired || (user.subscriptionStatus === 'inactive' && !isInTrial);
       
       // Determine current plan tier
