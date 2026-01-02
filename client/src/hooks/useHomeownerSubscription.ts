@@ -61,11 +61,21 @@ export function useHomeownerSubscription(): SubscriptionStatus {
   const now = new Date();
 
   // Calculate trial status
+  // User is only in trial if they have status 'trialing' AND a valid future trial end date
   const isInTrial = subscriptionStatus === 'trialing' && !!trialEndsAt && trialEndsAt > now;
   const trialDaysRemaining = trialEndsAt 
     ? Math.max(0, Math.ceil((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
     : 0;
-  const trialExpired = trialEndsAt ? trialEndsAt <= now && subscriptionStatus !== 'active' : false;
+  
+  // Trial is expired if:
+  // 1. Status is 'trialing' but trialEndsAt is missing (data issue - treat as expired)
+  // 2. Status is 'trialing' and trialEndsAt is in the past
+  // 3. TrialEndsAt exists and is in the past (regardless of status, unless active/grandfathered)
+  const trialExpired = Boolean(
+    (subscriptionStatus === 'trialing' && !trialEndsAt) || // Missing trial end date
+    (subscriptionStatus === 'trialing' && trialEndsAt && trialEndsAt <= now) || // Trial date passed
+    (trialEndsAt && trialEndsAt <= now && subscriptionStatus !== 'active' && subscriptionStatus !== 'grandfathered')
+  );
 
   // Check if user has an active paid subscription
   const hasActiveSubscription = subscriptionStatus === 'active' || subscriptionStatus === 'grandfathered';
@@ -74,9 +84,12 @@ export function useHomeownerSubscription(): SubscriptionStatus {
   // Grandfathered users don't need a Stripe subscription ID - they get free access
   const isPaidSubscriber = (hasActiveSubscription && !!data.stripeSubscriptionId) || subscriptionStatus === 'grandfathered';
 
-  // User needs upgrade if trial expired and no active subscription
-  const needsUpgrade = (trialExpired || subscriptionStatus === 'inactive' || subscriptionStatus === 'cancelled') 
-    && !hasActiveSubscription && !isInTrial;
+  // User needs upgrade if:
+  // 1. Trial expired and no active subscription
+  // 2. Status is inactive or cancelled
+  // 3. Status is trialing but no valid trial (missing trial end date)
+  const needsUpgrade = !hasActiveSubscription && !isInTrial && 
+    (trialExpired || subscriptionStatus === 'inactive' || subscriptionStatus === 'cancelled' || subscriptionStatus === null);
 
   // Plan info from subscription endpoint
   const currentPlan = subData?.currentPlan || 'free';
