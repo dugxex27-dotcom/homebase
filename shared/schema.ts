@@ -157,6 +157,7 @@ export const users = pgTable("users", {
   maxHousesAllowed: integer("max_houses_allowed"), // Cached from subscription plan (null = unlimited for grandfathered users)
   isPremium: boolean("is_premium").notNull().default(false),
   trialEndsAt: timestamp("trial_ends_at"), // When the free trial ends (14 days from signup for new users)
+  trialRemindersSent: text("trial_reminders_sent").array().default([]), // Track which trial reminder emails have been sent (e.g., ["7-day", "4-day", "2-day", "1-day"])
   stripeCustomerId: varchar("stripe_customer_id"),
   stripeSubscriptionId: varchar("stripe_subscription_id"),
   stripePriceId: varchar("stripe_price_id"), // Current Stripe price ID for the subscription
