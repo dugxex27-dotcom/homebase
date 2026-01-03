@@ -1,78 +1,87 @@
 import { db } from './db';
 import { users } from '@shared/schema';
-import { eq, and, between, isNotNull } from 'drizzle-orm';
+import { eq, and, isNotNull } from 'drizzle-orm';
 import { notificationOrchestrator } from './notification-orchestrator';
 import { isDemoId } from './storage';
 
-const REMINDER_DAYS = [3, 1]; // Days before trial ends to send reminders
+const REMINDER_DAYS = [7, 4, 2, 1]; // Days before trial ends to send reminders
 const CHECK_INTERVAL_MS = 60 * 60 * 1000; // Check every hour
 
-// Track sent reminders to prevent duplicates (in-memory, resets on restart)
-const sentReminders = new Map<string, Set<number>>(); // userId -> Set of daysRemaining values
-
 async function checkAndSendTrialReminders() {
+  const now = new Date();
+  const hour = now.getHours();
+  
+  // Only run at 9 AM to avoid spamming
+  if (hour !== 9) {
+    return;
+  }
+  
   console.log('[TRIAL-SCHEDULER] Checking for expiring trials...');
   
   try {
-    const now = new Date();
+    // Get all users who are trialing and have a trial end date
+    const trialingUsers = await db.select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      email: users.email,
+      subscriptionStatus: users.subscriptionStatus,
+      trialEndsAt: users.trialEndsAt,
+      trialRemindersSent: users.trialRemindersSent,
+    })
+      .from(users)
+      .where(and(
+        eq(users.subscriptionStatus, 'trialing'),
+        isNotNull(users.trialEndsAt),
+        isNotNull(users.email)
+      ));
     
-    for (const daysRemaining of REMINDER_DAYS) {
-      const targetDate = new Date(now);
-      targetDate.setDate(targetDate.getDate() + daysRemaining);
+    // Filter out demo users
+    const realUsers = trialingUsers.filter(u => !isDemoId(u.id));
+    
+    console.log(`[TRIAL-SCHEDULER] Found ${realUsers.length} trialing users to check`);
+    
+    let emailsSent = 0;
+    
+    for (const user of realUsers) {
+      if (!user.trialEndsAt || !user.email) continue;
       
-      // Set time boundaries for the target day
-      const dayStart = new Date(targetDate);
-      dayStart.setHours(0, 0, 0, 0);
+      // Calculate days remaining
+      const trialEndsAt = new Date(user.trialEndsAt);
+      const timeDiff = trialEndsAt.getTime() - now.getTime();
+      const daysRemaining = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
       
-      const dayEnd = new Date(targetDate);
-      dayEnd.setHours(23, 59, 59, 999);
-      
-      // Find users with trials ending on the target day
-      const expiringUsers = await db.select({
-        id: users.id,
-        firstName: users.firstName,
-        lastName: users.lastName,
-        email: users.email,
-        subscriptionStatus: users.subscriptionStatus,
-      })
-        .from(users)
-        .where(and(
-          eq(users.subscriptionStatus, 'trialing'),
-          isNotNull(users.trialEndsAt),
-          between(users.trialEndsAt, dayStart, dayEnd)
-        ));
-      
-      // Filter out demo users
-      const realUsers = expiringUsers.filter(u => !isDemoId(u.id));
-      
-      if (realUsers.length > 0) {
-        console.log(`[TRIAL-SCHEDULER] Found ${realUsers.length} users with trials expiring in ${daysRemaining} day(s)`);
+      // Check if this is a reminder day and if we haven't sent this reminder yet
+      if (REMINDER_DAYS.includes(daysRemaining)) {
+        const reminderKey = `${daysRemaining}-day`;
+        const sentReminders = user.trialRemindersSent || [];
         
-        for (const user of realUsers) {
-          // Check if we already sent this reminder
-          const userReminders = sentReminders.get(user.id) || new Set();
-          if (userReminders.has(daysRemaining)) {
-            console.log(`[TRIAL-SCHEDULER] Skipping duplicate reminder for user ${user.id} (${daysRemaining}d)`);
-            continue;
-          }
-          
+        if (!sentReminders.includes(reminderKey)) {
           const userName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'there';
           
+          // Send via notification orchestrator (handles email + in-app)
           await notificationOrchestrator.sendTrialExpiringNotifications(
             user.id,
             userName,
             daysRemaining
           );
           
-          // Mark as sent
-          userReminders.add(daysRemaining);
-          sentReminders.set(user.id, userReminders);
+          // Update the user's sent reminders (persist to database)
+          const updatedReminders = [...sentReminders, reminderKey];
+          await db.update(users)
+            .set({ trialRemindersSent: updatedReminders })
+            .where(eq(users.id, user.id));
+          
+          emailsSent++;
+          console.log(`[TRIAL-SCHEDULER] Sent ${reminderKey} reminder to ${user.email}`);
           
           // Small delay between notifications to avoid rate limits
           await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
     }
+    
+    console.log(`[TRIAL-SCHEDULER] Completed. Sent ${emailsSent} reminder emails.`);
   } catch (error) {
     console.error('[TRIAL-SCHEDULER] Error checking expiring trials:', error);
   }
