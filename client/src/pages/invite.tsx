@@ -236,7 +236,7 @@ export default function Invite() {
         {/* Footer */}
         <footer className="py-8 px-4 border-t border-white/20">
           <div className="max-w-4xl mx-auto text-center text-white/80 text-sm">
-            <p>&copy; 2025 HomeBase. All rights reserved.</p>
+            <p>&copy; 2026 HomeBase. All rights reserved.</p>
           </div>
         </footer>
       </div>
