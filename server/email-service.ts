@@ -875,6 +875,132 @@ export async function sendWeeklyTaskReminderEmail(data: WeeklyTaskReminderData):
   });
 }
 
+export async function sendExpiredTrialReengagementEmail(
+  userId: string, 
+  userName: string, 
+  userRole: 'homeowner' | 'contractor'
+): Promise<boolean> {
+  const user = await storage.getUser(userId);
+  if (!user?.email) return false;
+
+  const roleSpecificBenefits = userRole === 'homeowner' 
+    ? `
+      <ul>
+        <li>Track all your home maintenance history in one place</li>
+        <li>Get personalized seasonal maintenance reminders</li>
+        <li>Monitor your Home Health Score</li>
+        <li>Connect with vetted local contractors</li>
+        <li>Build a complete "CARFAX for your home"</li>
+      </ul>
+    `
+    : `
+      <ul>
+        <li>Get matched with homeowners in your area</li>
+        <li>Manage leads and clients with our CRM</li>
+        <li>Build your online reputation with reviews</li>
+        <li>Send quotes and invoices directly</li>
+        <li>Track your business analytics</li>
+      </ul>
+    `;
+
+  const pricing = userRole === 'homeowner' 
+    ? 'Plans start at just $5/month'
+    : 'Plans start at just $20/month';
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #6B46C1 0%, #805AD5 100%); padding: 30px; text-align: center;">
+        <h1 style="color: white; margin: 0;">We Miss You at HomeBase!</h1>
+      </div>
+      <div style="padding: 30px; background: #f9f9f9;">
+        <p>Hi ${userName || 'there'},</p>
+        <p>It's been a while since your free trial ended, and we wanted to reach out!</p>
+        <p>Here's what you're missing out on:</p>
+        ${roleSpecificBenefits}
+        <div style="background: #e9d8fd; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <p style="margin: 0; font-weight: bold; color: #6B46C1;">Ready to regain full access?</p>
+          <p style="margin: 10px 0 0 0; color: #553c9a;">${pricing} - cancel anytime!</p>
+        </div>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="https://gotohomebase.com/billing" style="background: #6B46C1; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Subscribe Now</a>
+        </div>
+        <p style="color: #666; font-size: 14px;">Questions? Reply to this email or reach us at <a href="mailto:gotohomebase@gmail.com">gotohomebase@gmail.com</a>.</p>
+        <p>- The HomeBase Team</p>
+      </div>
+    </div>
+  `;
+
+  const text = `Hi ${userName || 'there'}, we miss you at HomeBase! Your free trial has ended, but you can regain full access by subscribing. ${pricing}. Visit gotohomebase.com/billing to get started.`;
+
+  return sendEmail({
+    to: user.email,
+    subject: '🏠 We Miss You! Regain Full Access to HomeBase',
+    text,
+    html,
+  });
+}
+
+export async function sendReferralReminderEmail(
+  userId: string, 
+  userName: string,
+  currentReferrals: number,
+  referralCap: number,
+  referralCode: string
+): Promise<boolean> {
+  const user = await storage.getUser(userId);
+  if (!user?.email) return false;
+
+  const remainingReferrals = referralCap - currentReferrals;
+  const progressPercent = Math.round((currentReferrals / referralCap) * 100);
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #22C55E 0%, #16A34A 100%); padding: 30px; text-align: center;">
+        <h1 style="color: white; margin: 0;">Earn Free Subscription Credits!</h1>
+      </div>
+      <div style="padding: 30px; background: #f9f9f9;">
+        <p>Hi ${userName || 'there'},</p>
+        <p>Did you know you can earn <strong>free subscription credits</strong> by referring friends to HomeBase?</p>
+        
+        <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 20px 0;">
+          <p style="margin: 0 0 10px 0; font-weight: bold;">Your Referral Progress:</p>
+          <div style="background: #e5e7eb; border-radius: 4px; height: 20px; overflow: hidden;">
+            <div style="background: linear-gradient(90deg, #22C55E, #16A34A); height: 100%; width: ${progressPercent}%;"></div>
+          </div>
+          <p style="margin: 10px 0 0 0; color: #666;">${currentReferrals} of ${referralCap} referrals used (${remainingReferrals} remaining)</p>
+        </div>
+
+        <div style="background: #d1fae5; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center;">
+          <p style="margin: 0 0 10px 0; font-weight: bold; color: #166534;">Your Referral Code:</p>
+          <p style="font-size: 24px; font-weight: bold; color: #22C55E; margin: 0; letter-spacing: 2px;">${referralCode}</p>
+        </div>
+
+        <p><strong>How it works:</strong></p>
+        <ol>
+          <li>Share your referral code with friends</li>
+          <li>When they sign up and subscribe, you earn $1 credit</li>
+          <li>Credits are applied to your next bill automatically!</li>
+        </ol>
+
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="https://gotohomebase.com/settings" style="background: #22C55E; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Share Your Code</a>
+        </div>
+
+        <p style="color: #666; font-size: 14px;">You're receiving this because you have referral capacity remaining. Unsubscribe from these reminders in your notification settings.</p>
+      </div>
+    </div>
+  `;
+
+  const text = `Hi ${userName || 'there'}, you can earn free subscription credits by referring friends to HomeBase! You've used ${currentReferrals} of ${referralCap} referrals. Your code: ${referralCode}. Share it with friends and earn $1 credit for each referral!`;
+
+  return sendEmail({
+    to: user.email,
+    subject: `💰 You Have ${remainingReferrals} Referral Credits Left!`,
+    text,
+    html,
+  });
+}
+
 export const emailService = {
   sendEmail,
   sendWelcomeEmail,
@@ -889,4 +1015,6 @@ export const emailService = {
   sendNewMessageEmail,
   sendContractorMonthlyViewReportEmail,
   sendWeeklyTaskReminderEmail,
+  sendExpiredTrialReengagementEmail,
+  sendReferralReminderEmail,
 };
