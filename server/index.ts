@@ -9,6 +9,8 @@ import { storage } from "./storage";
 import { trialReminderScheduler } from "./trial-reminder-scheduler";
 import { profileViewReportScheduler } from "./profile-view-report-scheduler";
 import { weeklyTaskReminderScheduler } from "./weekly-task-reminder-scheduler";
+import { expiredTrialReengagementScheduler } from "./expired-trial-reengagement-scheduler";
+import { referralReminderScheduler } from "./referral-reminder-scheduler";
 
 const app = express();
 
@@ -202,5 +204,7 @@ app.use((req, res, next) => {
     trialReminderScheduler.start();
     profileViewReportScheduler.start();
     weeklyTaskReminderScheduler.start();
+    expiredTrialReengagementScheduler.start();
+    referralReminderScheduler.start();
   });
 })();
