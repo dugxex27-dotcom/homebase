@@ -158,6 +158,8 @@ export const users = pgTable("users", {
   isPremium: boolean("is_premium").notNull().default(false),
   trialEndsAt: timestamp("trial_ends_at"), // When the free trial ends (14 days from signup for new users)
   trialRemindersSent: text("trial_reminders_sent").array().default([]), // Track which trial reminder emails have been sent (e.g., ["7-day", "4-day", "2-day", "1-day"])
+  lastReengagementEmailSent: timestamp("last_reengagement_email_sent"), // When the last expired trial re-engagement email was sent
+  lastReferralReminderSent: timestamp("last_referral_reminder_sent"), // When the last referral reminder email was sent
   stripeCustomerId: varchar("stripe_customer_id"),
   stripeSubscriptionId: varchar("stripe_subscription_id"),
   stripePriceId: varchar("stripe_price_id"), // Current Stripe price ID for the subscription
