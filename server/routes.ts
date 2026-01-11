@@ -54,6 +54,109 @@ const authLimiter = rateLimit({
   skipSuccessfulRequests: true, // Don't count successful logins
 });
 
+// Grandfathered emails that get free unlimited access forever
+const GRANDFATHERED_EMAILS = (process.env.GRANDFATHERED_EMAILS || 'lihandyman2008@gmail.com,bryanmendezdesign@gmail.com,freshandcleangutters@gmail.com').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+
+// Middleware to check homeowner subscription for paid features
+const requireHomeownerSubscription = async (req: any, res: any, next: any) => {
+  try {
+    if (!req.session?.isAuthenticated || !req.session?.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    
+    const userId = req.session.user.id;
+    const user = await storage.getUser(userId);
+    
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' });
+    }
+    
+    // Skip check for non-homeowners (they have different restrictions)
+    if (user.role !== 'homeowner') {
+      return next();
+    }
+    
+    // Check if grandfathered - free unlimited access
+    const isGrandfathered = user.email && GRANDFATHERED_EMAILS.includes(user.email.toLowerCase());
+    if (isGrandfathered || user.subscriptionStatus === 'grandfathered') {
+      return next();
+    }
+    
+    // Check if active subscription
+    if (user.subscriptionStatus === 'active') {
+      return next();
+    }
+    
+    // Check if still in trial
+    if (user.subscriptionStatus === 'trialing' && user.trialEndsAt) {
+      const trialEnd = new Date(user.trialEndsAt);
+      if (trialEnd > new Date()) {
+        return next(); // Still in trial
+      }
+    }
+    
+    // Trial expired or no subscription - block access to paid features
+    return res.status(403).json({ 
+      message: 'Subscription required', 
+      code: 'SUBSCRIPTION_REQUIRED',
+      detail: 'Your free trial has ended. Please subscribe to access this feature.'
+    });
+  } catch (error) {
+    console.error('[SUBSCRIPTION CHECK] Error:', error);
+    return res.status(500).json({ message: 'Failed to verify subscription' });
+  }
+};
+
+// Middleware to check contractor subscription for paid features
+const requireContractorSubscription = async (req: any, res: any, next: any) => {
+  try {
+    if (!req.session?.isAuthenticated || !req.session?.user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    
+    const userId = req.session.user.id;
+    const user = await storage.getUser(userId);
+    
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' });
+    }
+    
+    // Skip check for non-contractors
+    if (user.role !== 'contractor') {
+      return next();
+    }
+    
+    // Check if grandfathered - free unlimited access
+    const isGrandfathered = user.email && GRANDFATHERED_EMAILS.includes(user.email.toLowerCase());
+    if (isGrandfathered || user.subscriptionStatus === 'grandfathered') {
+      return next();
+    }
+    
+    // Check if active subscription
+    if (user.subscriptionStatus === 'active') {
+      return next();
+    }
+    
+    // Check if still in trial
+    if (user.subscriptionStatus === 'trialing' && user.trialEndsAt) {
+      const trialEnd = new Date(user.trialEndsAt);
+      if (trialEnd > new Date()) {
+        return next(); // Still in trial
+      }
+    }
+    
+    // Trial expired or no subscription - contractors have NO free features
+    return res.status(403).json({ 
+      message: 'Subscription required', 
+      code: 'SUBSCRIPTION_REQUIRED',
+      detail: 'Your free trial has ended. Contractors must subscribe to access HomeBase features.'
+    });
+  } catch (error) {
+    console.error('[CONTRACTOR SUBSCRIPTION CHECK] Error:', error);
+    return res.status(500).json({ message: 'Failed to verify subscription' });
+  }
+};
+
 // Rate limiting for file uploads to prevent disk exhaustion
 const uploadLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
@@ -4674,10 +4777,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return replies[category] || null;
   }
 
-  // CRM Lead Management routes - For contractors to manage their leads/prospects
+  // CRM Lead Management routes - PAID FEATURE for contractors
   
   // GET /api/crm/leads - List all leads for contractor with filters
-  app.get('/api/crm/leads', isAuthenticated, async (req: any, res) => {
+  app.get('/api/crm/leads', isAuthenticated, requireContractorSubscription, async (req: any, res) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -4700,7 +4803,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/crm/leads - Create new lead
-  app.post('/api/crm/leads', isAuthenticated, async (req: any, res) => {
+  app.post('/api/crm/leads', isAuthenticated, requireContractorSubscription, async (req: any, res) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -4725,7 +4828,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/crm/leads/:id - Get lead with notes
-  app.get('/api/crm/leads/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/crm/leads/:id', isAuthenticated, requireContractorSubscription, async (req: any, res) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -5227,8 +5330,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // -------------------- CRM Clients Routes --------------------
 
-  // GET /api/crm/clients - List all clients
-  app.get('/api/crm/clients', isAuthenticated, async (req: any, res) => {
+  // GET /api/crm/clients - List all clients - PAID FEATURE
+  app.get('/api/crm/clients', isAuthenticated, requireContractorSubscription, async (req: any, res) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -5259,7 +5362,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/crm/clients - Create new client
-  app.post('/api/crm/clients', isAuthenticated, async (req: any, res) => {
+  app.post('/api/crm/clients', isAuthenticated, requireContractorSubscription, async (req: any, res) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -6378,7 +6481,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // -------------------- CRM Dashboard Route --------------------
 
   // GET /api/crm/dashboard - Get dashboard stats
-  app.get('/api/crm/dashboard', isAuthenticated, async (req: any, res) => {
+  app.get('/api/crm/dashboard', isAuthenticated, requireContractorSubscription, async (req: any, res) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -8622,8 +8725,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Maintenance Log routes
-  app.get("/api/maintenance-logs", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  // Maintenance Log routes - PAID FEATURE
+  app.get("/api/maintenance-logs", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res) => {
     try {
       // Always use authenticated user's ID, ignore query params to prevent IDOR
       const homeownerId = req.session.user.id;
@@ -8645,7 +8748,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/maintenance-logs/:id", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.get("/api/maintenance-logs/:id", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res) => {
     try {
       const log = await storage.getMaintenanceLog(req.params.id);
       if (!log || log.homeownerId !== req.session.user.id) {
@@ -8657,7 +8760,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/maintenance-logs", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.post("/api/maintenance-logs", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res) => {
     try {
       // Validate request body (excluding homeownerId which we set from session)
       const validatedData = insertMaintenanceLogSchema.omit({ homeownerId: true }).parse(req.body);
@@ -8788,7 +8891,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/maintenance-logs/:id", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.patch("/api/maintenance-logs/:id", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res) => {
     try {
       // Verify the maintenance log belongs to the authenticated user
       const existingLog = await storage.getMaintenanceLog(req.params.id);
@@ -8812,7 +8915,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/maintenance-logs/:id", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.delete("/api/maintenance-logs/:id", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res) => {
     try {
       // Verify the maintenance log belongs to the authenticated user
       const existingLog = await storage.getMaintenanceLog(req.params.id);
@@ -9805,8 +9908,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get generated maintenance schedule for a house
-  app.get("/api/houses/:id/schedule", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  // Get generated maintenance schedule for a house - PAID FEATURE
+  app.get("/api/houses/:id/schedule", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res) => {
     try {
       const house = await storage.getHouse(req.params.id);
       if (!house || house.homeownerId !== req.session.user.id) {
@@ -9831,8 +9934,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get home health score for a house
-  app.get("/api/houses/:id/health-score", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  // Get home health score for a house - PAID FEATURE
+  app.get("/api/houses/:id/health-score", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res) => {
     try {
       const houseId = req.params.id;
       const homeownerId = req.session.user.id;
@@ -9906,8 +10009,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get total DIY savings for a house
-  app.get("/api/houses/:id/diy-savings", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  // Get total DIY savings for a house - PAID FEATURE
+  app.get("/api/houses/:id/diy-savings", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res) => {
     try {
       const houseId = req.params.id;
       const homeownerId = req.session.user.id;
@@ -10564,7 +10667,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Contractor profile routes
-  app.get('/api/contractor/profile', async (req: any, res) => {
+  app.get('/api/contractor/profile', requireContractorSubscription, async (req: any, res) => {
     try {
       if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
         return res.status(401).json({ message: "Unauthorized" });
@@ -10647,7 +10750,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/contractor/profile', async (req: any, res) => {
+  app.put('/api/contractor/profile', requireContractorSubscription, async (req: any, res) => {
     try {
       console.log('[DEBUG] PUT /api/contractor/profile - Session:', {
         isAuthenticated: req.session?.isAuthenticated,
@@ -10795,8 +10898,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Service records routes
-  app.get('/api/service-records', isAuthenticated, async (req: any, res) => {
+  // Service records routes - PAID FEATURE
+  app.get('/api/service-records', isAuthenticated, requireHomeownerSubscription, async (req: any, res) => {
     try {
       const userId = req.session.user.id;
       const userRole = req.session.user.role;
@@ -10826,7 +10929,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/service-records/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/service-records/:id', isAuthenticated, requireHomeownerSubscription, async (req: any, res) => {
     try {
       const { id } = req.params;
       const serviceRecord = await storage.getServiceRecord(id);
@@ -10840,7 +10943,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/service-records', isAuthenticated, async (req: any, res) => {
+  app.post('/api/service-records', isAuthenticated, requireHomeownerSubscription, async (req: any, res) => {
     try {
       const contractorId = req.session.user.id;
       const serviceRecordData = {
