@@ -273,7 +273,7 @@ export default function SignInHomeowner() {
             className="h-10 w-auto mx-auto mb-4"
             data-testid="img-logo-homeowner"
           />
-          <h1 className="text-2xl font-bold mb-2" style={{ color: '#2c0f5b' }}>Manage Your Home with Confidence</h1>
+          <h1 className="text-2xl font-bold mb-2" style={{ color: '#2c0f5b' }}>Everything your home needs—organized in one place.</h1>
         </div>
 
         <Card className="border-0 shadow-xl">
