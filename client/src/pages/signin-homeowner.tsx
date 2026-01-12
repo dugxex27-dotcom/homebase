@@ -274,9 +274,6 @@ export default function SignInHomeowner() {
             data-testid="img-logo-homeowner"
           />
           <h1 className="text-2xl font-bold mb-2" style={{ color: '#2c0f5b' }}>Manage Your Home with Confidence</h1>
-          <p className="text-lg text-muted-foreground">
-            Your trusted home services marketplace
-          </p>
         </div>
 
         <Card className="border-0 shadow-xl">
