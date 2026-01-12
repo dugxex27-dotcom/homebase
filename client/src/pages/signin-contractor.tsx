@@ -266,7 +266,7 @@ export default function SignInContractor() {
             className="h-10 w-auto mx-auto mb-4"
             data-testid="img-logo-contractor"
           />
-          <h1 className="text-2xl font-bold mb-2" style={{ color: '#1a1a1a' }}>Grow Your Contracting Business</h1>
+          <h1 className="text-2xl font-bold mb-2" style={{ color: '#1a1a1a' }}>Where organized homeowners become better clients.</h1>
           <p className="text-lg" style={{ color: '#4a4a4a' }}>
             Your trusted home services marketplace
           </p>
