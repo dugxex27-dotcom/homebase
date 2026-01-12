@@ -259,9 +259,6 @@ export default function SignInAgent() {
             data-testid="img-logo-agent"
           />
           <h1 className="text-2xl font-bold mb-2" style={{ color: '#1a1a1a' }}>Earn Commissions as an Affiliate</h1>
-          <p className="text-lg" style={{ color: '#4a4a4a' }}>
-            Your trusted home services marketplace
-          </p>
         </div>
 
         <Card className="border-0 shadow-xl bg-white">
