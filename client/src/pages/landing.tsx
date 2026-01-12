@@ -245,7 +245,7 @@ export default function Landing() {
       <div id="role-cards" className="max-w-6xl mx-auto px-4 py-12">
         <div className="text-center mb-10">
           <h2 className="font-bold mb-3 text-[24px]" style={{ color: '#2c0f5b' }}>Homes don’t just belong to one person — they move through many hands.</h2>
-          <p className="text-lg text-gray-600">Choose how you’ll use HomeBase</p>
+          <p className="text-lg text-gray-600">Choose how you’ll use My HomeBase</p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">

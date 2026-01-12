@@ -1,5 +1,5 @@
 import { Link } from 'wouter';
-import whiteLogoIcon from '@assets/homebase-app-logo-color-inverted_1766960548384.png';
+import whiteLogoIcon from '@assets/my-homebase-logo-white_1768260534745.png';
 import { useAuth } from '@/hooks/useAuth';
 import type { User } from '@shared/schema';
 
@@ -18,7 +18,7 @@ export default function Footer() {
                 <Link href="/" data-testid="footer-logo-home-link">
                   <img 
                     src={whiteLogoIcon} 
-                    alt="HomeBase" 
+                    alt="My HomeBase" 
                     className="w-full h-auto object-contain cursor-pointer"
                   />
                 </Link>
