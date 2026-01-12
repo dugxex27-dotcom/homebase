@@ -14,7 +14,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-6 sm:gap-8">
           <div className="text-center sm:text-left md:col-span-2">
             <div className="mb-4 sm:mb-6">
-              <div className="w-1/2 sm:w-1/3 h-auto mx-auto sm:mx-0">
+              <div className="w-2/3 sm:w-1/2 h-auto mx-auto sm:mx-0">
                 <Link href="/" data-testid="footer-logo-home-link">
                   <img 
                     src={whiteLogoIcon} 
