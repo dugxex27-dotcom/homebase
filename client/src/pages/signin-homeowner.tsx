@@ -270,7 +270,7 @@ export default function SignInHomeowner() {
           <img 
             src={logoImage} 
             alt="My HomeBase" 
-            className="h-16 w-auto mx-auto mb-4"
+            className="h-14 w-auto mx-auto mb-4"
             data-testid="img-logo-homeowner"
           />
           <h1 className="text-2xl font-bold mb-2" style={{ color: '#2c0f5b' }}>Manage Your Home with Confidence</h1>
