@@ -116,9 +116,7 @@ export default function Landing() {
               color: '#BAACEB',
               letterSpacing: '0.5px'
             }}
-          >
-            Welcome to HomeBase
-          </p>
+          >Welcome to My HomeBase</p>
           <h1 
             className="mb-3"
             style={{ 
