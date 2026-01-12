@@ -267,9 +267,6 @@ export default function SignInContractor() {
             data-testid="img-logo-contractor"
           />
           <h1 className="text-2xl font-bold mb-2" style={{ color: '#1a1a1a' }}>Where organized homeowners become better clients.</h1>
-          <p className="text-lg" style={{ color: '#4a4a4a' }}>
-            Your trusted home services marketplace
-          </p>
         </div>
 
         <Card className="border-0 shadow-xl bg-white">
