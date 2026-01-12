@@ -180,7 +180,7 @@ export default function Home() {
       {typedUser?.role === 'homeowner' && houses.length === 0 && (
         <section className="py-8 sm:py-12" style={{ backgroundColor: '#ffffff' }}>
           <div className="max-w-4xl mx-auto px-3 sm:px-4 lg:px-6 text-center">
-            <h2 className="text-2xl sm:text-3xl font-bold mb-4" style={{ color: '#2c0f5b' }}>Welcome to HomeBase!</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-4" style={{ color: '#2c0f5b' }}>Welcome to My HomeBase!</h2>
             <p className="text-lg mb-8 max-w-3xl mx-auto leading-relaxed" style={{ color: '#2c0f5b' }}>
               Create a clear, living record of your home — from systems and appliances to maintenance, upgrades, and health.
             </p>

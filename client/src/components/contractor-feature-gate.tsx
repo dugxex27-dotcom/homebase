@@ -280,7 +280,7 @@ export function ContractorTrialExpiredPaywall() {
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Your Free Trial Has Ended</h1>
             <p className="text-gray-600 max-w-lg mx-auto">
-              Your 14-day free trial has expired. Subscribe to continue accessing HomeBase and connecting with homeowners. 
+              Your 14-day free trial has expired. Subscribe to continue accessing My HomeBase and connecting with homeowners. 
               Your profile and data are saved and ready when you return.
             </p>
           </div>

@@ -147,7 +147,7 @@ export default function SignInHomeowner() {
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
       toast({
         title: "Account created!",
-        description: "Welcome to HomeBase. Your account has been created successfully.",
+        description: "Welcome to My HomeBase. Your account has been created successfully.",
       });
       setLocation('/');
     },
@@ -269,7 +269,7 @@ export default function SignInHomeowner() {
         <div className="text-center mb-8">
           <img 
             src={logoImage} 
-            alt="HomeBase" 
+            alt="My HomeBase" 
             className="h-12 w-auto mx-auto mb-4"
             data-testid="img-logo-homeowner"
           />

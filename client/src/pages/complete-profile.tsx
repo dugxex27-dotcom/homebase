@@ -88,7 +88,7 @@ export default function CompleteProfile() {
         <div className="text-center mb-8">
           <img 
             src={logoImage} 
-            alt="HomeBase" 
+            alt="My HomeBase" 
             className="h-24 w-auto mx-auto mb-4"
             data-testid="img-logo"
           />

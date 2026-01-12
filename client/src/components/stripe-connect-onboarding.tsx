@@ -134,7 +134,7 @@ export function StripeConnectOnboarding() {
           </div>
           <CardTitle>Accept Payments from Customers</CardTitle>
           <CardDescription>
-            Connect your Stripe account to accept credit card payments directly through HomeBase invoices.
+            Connect your Stripe account to accept credit card payments directly through My HomeBase invoices.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

@@ -103,7 +103,7 @@ export function PWAInstallPrompt() {
         <div className="flex-shrink-0 w-12 h-12 bg-white rounded-lg p-1 shadow-md">
           <img 
             src="/icon-192x192.png" 
-            alt="HomeBase" 
+            alt="My HomeBase" 
             className="w-full h-full rounded-md"
           />
         </div>
@@ -111,7 +111,7 @@ export function PWAInstallPrompt() {
         {/* Text Content */}
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-base mb-0.5">
-            Install HomeBase
+            Install My HomeBase
           </h3>
           <p className="text-sm text-purple-100 line-clamp-1">
             Get quick access to your home maintenance from your home screen

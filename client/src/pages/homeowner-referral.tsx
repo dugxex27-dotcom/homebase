@@ -29,7 +29,7 @@ export default function HomeownerReferral() {
   const referralCode = (referralData as any)?.referralCode || '';
   const referralLink = (referralData as any)?.referralLink || '';
   
-  const shareMessage = `Join me on HomeBase! Use my referral code ${referralCode} when you sign up. I get rewards when you subscribe, and you'll get the full HomeBase experience! Perfect for homeowners! Sign up here: ${referralLink}`;
+  const shareMessage = `Join me on My HomeBase! Use my referral code ${referralCode} when you sign up. I get rewards when you subscribe, and you'll get the full My HomeBase experience! Perfect for homeowners! Sign up here: ${referralLink}`;
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -117,7 +117,7 @@ export default function HomeownerReferral() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Referral Program</h1>
-          <p className="text-gray-600">Share HomeBase and earn rewards</p>
+          <p className="text-gray-600">Share My HomeBase and earn rewards</p>
         </div>
 
         <PaidSubscriberGate featureName="Referral Rewards">
@@ -132,7 +132,7 @@ export default function HomeownerReferral() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="text-sm text-gray-600">
-                Share HomeBase with friends and family. Earn rewards when they subscribe!
+                Share My HomeBase with friends and family. Earn rewards when they subscribe!
               </div>
               
               {/* Referral Code */}
@@ -238,7 +238,7 @@ export default function HomeownerReferral() {
                   </Button>
                 </div>
                 <p className="text-sm text-gray-600 mt-1">
-                  Share with friends, family, and neighbors. They get the full HomeBase experience while helping you earn rewards!
+                  Share with friends, family, and neighbors. They get the full My HomeBase experience while helping you earn rewards!
                 </p>
               </div>
             </CardContent>

@@ -16,7 +16,7 @@ export default function Landing() {
       <div className="w-full relative hidden lg:block">
         <img 
           src={heroImageDesktop} 
-          alt="HomeBase - Your digital home fingerprint" 
+          alt="My HomeBase - Your digital home fingerprint" 
           className="w-full h-auto"
           data-testid="img-landing-hero-desktop"
         />
@@ -36,7 +36,7 @@ export default function Landing() {
             }}
             data-testid="text-hero-eyebrow"
           >
-            Welcome to HomeBase
+            Welcome to My HomeBase
           </p>
           <h1 
             className="mb-4"
@@ -98,7 +98,7 @@ export default function Landing() {
       <div className="w-full relative hidden sm:block lg:hidden">
         <img 
           src={heroImageTablet} 
-          alt="HomeBase - Your digital home fingerprint" 
+          alt="My HomeBase - Your digital home fingerprint" 
           className="w-full h-auto"
           data-testid="img-landing-hero-tablet"
         />
@@ -171,7 +171,7 @@ export default function Landing() {
       <div className="w-full sm:hidden">
         <img 
           src={heroImageMobile} 
-          alt="HomeBase - Your digital home fingerprint" 
+          alt="My HomeBase - Your digital home fingerprint" 
           className="w-full h-auto"
           data-testid="img-landing-hero-mobile"
         />
@@ -190,7 +190,7 @@ export default function Landing() {
               letterSpacing: '0.5px'
             }}
           >
-            Welcome to HomeBase
+            Welcome to My HomeBase
           </p>
           <h1 
             className="mb-4"
@@ -336,7 +336,7 @@ export default function Landing() {
                   I'm a Real Estate Agent
                 </h2>
                 <p className="text-gray-600 mb-6">
-                  Earn commissions by referring homeowners and contractors to HomeBase
+                  Earn commissions by referring homeowners and contractors to My HomeBase
                 </p>
                 <ul className="space-y-2 mb-6 text-sm text-gray-700">
                   <li>✓ Earn referral bonuses</li>

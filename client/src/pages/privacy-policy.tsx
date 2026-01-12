@@ -17,18 +17,18 @@ export default function PrivacyPolicy() {
           <CardContent className="prose prose-sm max-w-none mt-6 space-y-6">
             <div>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                HomeBase ("HomeBase," "we," "our," or "us") is committed to protecting your privacy.
-                This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use the HomeBase mobile application, website, or related services (the "Service").
+                My HomeBase ("HomeBase," "we," "our," or "us") is committed to protecting your privacy.
+                This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use the My HomeBase mobile application, website, or related services (the "Service").
               </p>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed mt-2">
-                By using HomeBase, you agree to the practices described in this Privacy Policy.
+                By using My HomeBase, you agree to the practices described in this Privacy Policy.
               </p>
             </div>
 
             <div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">1. Information We Collect</h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-3">
-                We may collect the following types of information when you use HomeBase:
+                We may collect the following types of information when you use My HomeBase:
               </p>
 
               <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">1.1 Account Information</h3>
@@ -100,7 +100,7 @@ export default function PrivacyPolicy() {
               </p>
 
               <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">3.1 With Contractors</h3>
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-2">If you contact a contractor through HomeBase, we may share:</p>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-2">If you contact a contractor through My HomeBase, we may share:</p>
               <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300 ml-4 mb-3">
                 <li>Your name</li>
                 <li>Your home location (general area, not full address unless you provide it)</li>
@@ -124,7 +124,7 @@ export default function PrivacyPolicy() {
               <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300 ml-4 mb-2">
                 <li>Comply with a lawful request</li>
                 <li>Respond to a subpoena</li>
-                <li>Protect the rights, property, or safety of HomeBase or users</li>
+                <li>Protect the rights, property, or safety of My HomeBase or users</li>
               </ul>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
                 We never voluntarily share data with law enforcement without proper legal process.
@@ -165,7 +165,7 @@ export default function PrivacyPolicy() {
             <div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">6. Children's Privacy</h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                HomeBase is not intended for children under 13.
+                My HomeBase is not intended for children under 13.
                 We do not knowingly collect information from children under 13.
               </p>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed mt-2">
@@ -175,7 +175,7 @@ export default function PrivacyPolicy() {
 
             <div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">7. Third-Party Links</h2>
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-2">HomeBase may contain links to:</p>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-2">My HomeBase may contain links to:</p>
               <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300 ml-4">
                 <li>Contractor websites</li>
                 <li>External resources</li>
@@ -189,7 +189,7 @@ export default function PrivacyPolicy() {
 
             <div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">8. Cookies & Tracking</h2>
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-2">HomeBase may use:</p>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-2">My HomeBase may use:</p>
               <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300 ml-4">
                 <li>Cookies</li>
                 <li>Local storage</li>
@@ -223,11 +223,11 @@ export default function PrivacyPolicy() {
 
             <div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">10. Data Not Sold or Shared for Marketing</h2>
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-2">HomeBase does not:</p>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-2">My HomeBase does not:</p>
               <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300 ml-4">
                 <li>Sell personal data</li>
                 <li>Share personal data with advertising networks</li>
-                <li>Track users outside the HomeBase platform</li>
+                <li>Track users outside the My HomeBase platform</li>
                 <li>Share homeowner or contractor data for commercial purposes</li>
               </ul>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed mt-2">

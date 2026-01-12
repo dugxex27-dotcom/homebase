@@ -111,15 +111,15 @@ export default function AdminDashboard() {
   const [denyNotes, setDenyNotes] = useState("");
   const [bulkEmailReplyTo, setBulkEmailReplyTo] = useState("gotohomebase2025@gmail.com");
   const [bulkEmailAudience, setBulkEmailAudience] = useState<"all" | "homeowners" | "contractors">("all");
-  const [bulkEmailSubject, setBulkEmailSubject] = useState("How are you enjoying HomeBase?");
+  const [bulkEmailSubject, setBulkEmailSubject] = useState("How are you enjoying My HomeBase?");
   const [bulkEmailBody, setBulkEmailBody] = useState(`Hi there!
 
-We hope you're enjoying HomeBase so far. We'd love to hear about your experience - whether you have questions, feedback, or just want to share how things are going.
+We hope you're enjoying My HomeBase so far. We'd love to hear about your experience - whether you have questions, feedback, or just want to share how things are going.
 
 Feel free to reply to this email with any thoughts. We read every response!
 
 Best regards,
-The HomeBase Team`);
+The My HomeBase Team`);
 
   // Fetch admin stats
   const { data: stats, isLoading: statsLoading, error: statsError } = useQuery<AdminStats>({

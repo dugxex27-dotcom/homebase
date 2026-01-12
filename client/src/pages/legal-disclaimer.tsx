@@ -18,14 +18,14 @@ export default function LegalDisclaimer() {
           <CardContent className="prose prose-sm max-w-none mt-6 space-y-6">
             <div>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                The following legal notices apply to all users of the HomeBase App ("the App," "we," "us," or "our"). By using HomeBase, you agree to the terms outlined below.
+                The following legal notices apply to all users of the My HomeBase App ("the App," "we," "us," or "our"). By using My HomeBase, you agree to the terms outlined below.
               </p>
             </div>
 
             <div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">1. Marketplace Disclaimer</h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-3">
-                HomeBase is a software platform and marketplace that connects homeowners with independent contractors.
+                My HomeBase is a software platform and marketplace that connects homeowners with independent contractors.
               </p>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-2 font-medium">
                 We do not:
@@ -40,14 +40,14 @@ export default function LegalDisclaimer() {
                 Homeowners are solely responsible for performing due diligence before hiring a contractor, including checking references, licenses, insurance, and performing any necessary verification.
               </p>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed font-semibold">
-                HomeBase is not a contractor, broker, or home services provider.
+                My HomeBase is not a contractor, broker, or home services provider.
               </p>
             </div>
 
             <div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">2. No Warranty or Guarantee</h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-2">
-                HomeBase provides its platform "as is" and makes no warranties, express or implied, regarding:
+                My HomeBase provides its platform "as is" and makes no warranties, express or implied, regarding:
               </p>
               <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 ml-4 mb-3">
                 <li>The accuracy of suggestions or information provided</li>
@@ -62,7 +62,7 @@ export default function LegalDisclaimer() {
             <div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">3. Home Maintenance Guidance Disclaimer</h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-3">
-                The HomeBase home maintenance schedule, reminders, and AI-generated suggestions are guidelines only.
+                The My HomeBase home maintenance schedule, reminders, and AI-generated suggestions are guidelines only.
               </p>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-2 font-medium">
                 They are:
@@ -76,7 +76,7 @@ export default function LegalDisclaimer() {
                 If you have any concerns, uncertainties, or questions, you should consult with a licensed professional.
               </p>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed font-semibold">
-                HomeBase is not liable for damages resulting from reliance on maintenance suggestions or AI-generated advice.
+                My HomeBase is not liable for damages resulting from reliance on maintenance suggestions or AI-generated advice.
               </p>
             </div>
 
@@ -88,7 +88,7 @@ export default function LegalDisclaimer() {
               <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 ml-4">
                 <li>You are responsible for your decisions when selecting and hiring contractors</li>
                 <li>You will use the platform in compliance with all local laws and regulations</li>
-                <li>You will not misuse or rely on HomeBase as a replacement for professional advice</li>
+                <li>You will not misuse or rely on My HomeBase as a replacement for professional advice</li>
                 <li>You assume all risks associated with home improvement, maintenance, and contractor engagement</li>
               </ul>
             </div>
@@ -96,7 +96,7 @@ export default function LegalDisclaimer() {
             <div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">5. Limitation of Liability</h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-2">
-                To the fullest extent permitted by law, HomeBase is not responsible for:
+                To the fullest extent permitted by law, My HomeBase is not responsible for:
               </p>
               <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300 ml-4 mb-3">
                 <li>Injuries, damages, or losses arising from contractor services</li>

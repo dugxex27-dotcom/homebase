@@ -1242,7 +1242,7 @@ export default function ContractorProfile() {
             {isInTrial && (
               <div className="mt-3 p-3 rounded-lg bg-blue-50 border border-blue-200">
                 <p className="text-sm text-blue-800">
-                  Your 14-day trial includes full access to all HomeBase Pro features. Subscribe before it ends to continue accessing leads and growing your business.
+                  Your 14-day trial includes full access to all My HomeBase Pro features. Subscribe before it ends to continue accessing leads and growing your business.
                 </p>
               </div>
             )}
@@ -2039,7 +2039,7 @@ export default function ContractorProfile() {
           Payment Settings
         </h2>
         <p className="mb-4" style={{ color: 'white' }}>
-          Connect your bank account to receive payments directly from customers through HomeBase invoices.
+          Connect your bank account to receive payments directly from customers through My HomeBase invoices.
         </p>
         <StripeConnectOnboarding />
       </div>
@@ -2269,7 +2269,7 @@ export default function ContractorProfile() {
               <DialogHeader>
                 <DialogTitle>Are you absolutely sure?</DialogTitle>
                 <DialogDescription>
-                  This will permanently cancel your HomeBase contractor account. Your subscription will be cancelled and you will lose access to:
+                  This will permanently cancel your My HomeBase contractor account. Your subscription will be cancelled and you will lose access to:
                   <ul className="list-disc list-inside mt-2 space-y-1">
                     <li>Your contractor profile and company information</li>
                     <li>All customer conversations and proposals</li>

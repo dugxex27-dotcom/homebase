@@ -17,9 +17,9 @@ export default function TermsOfService() {
           <CardContent className="prose prose-sm max-w-none mt-6 space-y-6">
             <div>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                Welcome to HomeBase ("HomeBase," "we," "our," or "us").
-                These Terms of Service ("Terms") govern your use of the HomeBase mobile application, website, and related services (collectively, the "Service").
-                By accessing or using HomeBase, you agree to be bound by these Terms.
+                Welcome to My My HomeBase ("HomeBase," "we," "our," or "us").
+                These Terms of Service ("Terms") govern your use of the My HomeBase mobile application, website, and related services (collectively, the "Service").
+                By accessing or using My HomeBase, you agree to be bound by these Terms.
               </p>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed mt-2">
                 If you do not agree with these Terms, do not use the Service.
@@ -29,7 +29,7 @@ export default function TermsOfService() {
             <div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">1. Eligibility</h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                You must be at least 18 years old to use HomeBase.
+                You must be at least 18 years old to use My HomeBase.
                 By using the Service, you represent that you meet this requirement.
               </p>
             </div>
@@ -37,10 +37,10 @@ export default function TermsOfService() {
             <div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">2. Description of Service</h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                HomeBase provides tools for homeowners to track home maintenance tasks, receive reminders, store records, connect with contractors, and access contractor listings. Contractors may create profiles, receive inquiries, and manage customer interactions.
+                My HomeBase provides tools for homeowners to track home maintenance tasks, receive reminders, store records, connect with contractors, and access contractor listings. Contractors may create profiles, receive inquiries, and manage customer interactions.
               </p>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed mt-2">
-                HomeBase is not a contractor, service provider, or real estate professional.
+                My HomeBase is not a contractor, service provider, or real estate professional.
               </p>
             </div>
 
@@ -60,7 +60,7 @@ export default function TermsOfService() {
             <div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">4. Acceptable Use Policy</h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-3">
-                You agree NOT to engage in any of the following activities while using HomeBase:
+                You agree NOT to engage in any of the following activities while using My HomeBase:
               </p>
 
               <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">4.1 Abusive or Harmful Behavior</h3>
@@ -93,7 +93,7 @@ export default function TermsOfService() {
               <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300 ml-4 mb-3">
                 <li>Send spam or repetitive unwanted messages</li>
                 <li>Post advertisements without permission</li>
-                <li>Use HomeBase to solicit illegal or unrelated services</li>
+                <li>Use My HomeBase to solicit illegal or unrelated services</li>
               </ul>
 
               <h3 className="text-lg font-medium text-gray-800 dark:text-gray-200 mb-2">4.5 Security Violations</h3>
@@ -114,7 +114,7 @@ export default function TermsOfService() {
 
             <div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">5. Contractor Responsibilities</h2>
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-2">Contractors using HomeBase agree to:</p>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-2">Contractors using My HomeBase agree to:</p>
               <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300 ml-4">
                 <li>Provide accurate business information</li>
                 <li>Maintain valid licenses, insurance, or certifications as required by local law</li>
@@ -123,7 +123,7 @@ export default function TermsOfService() {
                 <li>Not harass or pressure homeowners</li>
               </ul>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed mt-2">
-                HomeBase does not verify contractor credentials and is not responsible for contractor performance.
+                My HomeBase does not verify contractor credentials and is not responsible for contractor performance.
               </p>
             </div>
 
@@ -146,14 +146,14 @@ export default function TermsOfService() {
                 <li>They are not posted in exchange for compensation or incentives (unless disclosed)</li>
               </ul>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed mt-2">
-                HomeBase may remove reviews that violate this section.
+                My HomeBase may remove reviews that violate this section.
               </p>
             </div>
 
             <div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">8. AI Features</h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-2">
-                HomeBase may provide AI-powered suggestions regarding home maintenance or contractor categories.
+                My HomeBase may provide AI-powered suggestions regarding home maintenance or contractor categories.
                 These suggestions:
               </p>
               <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300 ml-4">
@@ -171,7 +171,7 @@ export default function TermsOfService() {
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-2">
                 Subscription plans, pricing, and payment terms will be displayed within the app. By subscribing, you agree to pay all applicable fees.
               </p>
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-2">HomeBase may:</p>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-2">My HomeBase may:</p>
               <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300 ml-4">
                 <li>Change pricing with notice</li>
                 <li>Suspend accounts for failed payments</li>
@@ -184,7 +184,7 @@ export default function TermsOfService() {
 
             <div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">10. Third-Party Contractors</h2>
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-2">HomeBase is not responsible for:</p>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-2">My HomeBase is not responsible for:</p>
               <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300 ml-4">
                 <li>The quality of contractor work</li>
                 <li>Missed appointments</li>
@@ -200,7 +200,7 @@ export default function TermsOfService() {
             <div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">11. Data & Privacy</h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                Use of HomeBase is also governed by our Privacy Policy.
+                Use of My HomeBase is also governed by our Privacy Policy.
                 You agree that we may collect and use data as described there.
               </p>
             </div>
@@ -222,7 +222,7 @@ export default function TermsOfService() {
             <div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">13. Disclaimer of Warranties</h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-2">
-                HomeBase is provided "as is" and "as available."
+                My HomeBase is provided "as is" and "as available."
               </p>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-2">We do not guarantee:</p>
               <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300 ml-4">
@@ -239,7 +239,7 @@ export default function TermsOfService() {
             <div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">14. Limitation of Liability</h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-2">
-                To the fullest extent permitted by law, HomeBase is not liable for:
+                To the fullest extent permitted by law, My HomeBase is not liable for:
               </p>
               <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300 ml-4">
                 <li>Damages related to contractor performance</li>
@@ -266,7 +266,7 @@ export default function TermsOfService() {
             <div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">16. Changes to Terms</h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                HomeBase may update these Terms at any time. Continued use of the Service constitutes acceptance of the revised Terms.
+                My HomeBase may update these Terms at any time. Continued use of the Service constitutes acceptance of the revised Terms.
               </p>
             </div>
 

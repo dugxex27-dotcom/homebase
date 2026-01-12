@@ -31,7 +31,7 @@ export default function Onboarding() {
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
       
       toast({
-        title: "Welcome to HomeBase!",
+        title: "Welcome to My HomeBase!",
         description: "Your account has been created successfully. Let's get started!",
       });
       
@@ -64,11 +64,11 @@ export default function Onboarding() {
         <div className="text-center mb-8">
           <img 
             src={logoImage} 
-            alt="HomeBase" 
+            alt="My HomeBase" 
             className="h-20 w-auto mx-auto mb-4"
             data-testid="img-logo"
           />
-          <h1 className="text-3xl font-bold text-foreground mb-2">Join HomeBase</h1>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Join My HomeBase</h1>
           <p className="text-lg text-muted-foreground">
             Your trusted home services marketplace
           </p>
