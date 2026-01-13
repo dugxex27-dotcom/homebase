@@ -36,7 +36,7 @@ export default function FAQ() {
         </div>
 
         <Tabs defaultValue="pricing" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 mb-8">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 mb-8 bg-purple-100">
             <TabsTrigger value="pricing" className="flex items-center gap-2">
               <DollarSign className="h-4 w-4" />
               <span className="hidden sm:inline">Pricing</span>
