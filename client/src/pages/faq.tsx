@@ -306,7 +306,7 @@ export default function FAQ() {
                     <AccordionContent className="text-gray-600 space-y-3">
                       <p>When you search for contractors, we use your property's location to find qualified professionals nearby:</p>
                       <ul className="list-disc pl-6 space-y-2">
-                        <li>Contractors are filtered to show those within 20 miles of your property</li>
+                        <li>Contractors are filtered based on your search criteria and whether your property falls within their service radius</li>
                         <li>Results are sorted by distance and ratings</li>
                         <li>You can see each contractor's service area and specialties</li>
                         <li>AI-powered recommendations suggest contractors based on your specific maintenance needs</li>
