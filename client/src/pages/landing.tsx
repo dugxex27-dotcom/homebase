@@ -6,7 +6,7 @@ import { Home, Wrench, Building2, Menu, HelpCircle } from "lucide-react";
 import heroImageDesktop from "@assets/homebase-hp-hero-desktop-nocopy_1765926450284.png";
 import heroImageTablet from "@assets/homebase-hp-hero-tablet_1765940455985.png";
 import heroImageMobile from "@assets/homebase-hp-hero-mobile_1765940883354.png";
-import logoWhite from "@assets/my-homebase-logo-white_1768260534745.png";
+import logoColor from "@assets/my-homebase-logo-color_1768271270022.png";
 
 export default function Landing() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -18,16 +18,16 @@ export default function Landing() {
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(to bottom, #f8f4fc, #faf9fb)' }}>
       {/* Header */}
-      <header className="px-4 sm:px-6 py-4" style={{ backgroundColor: '#2c0f5b' }}>
+      <header className="px-4 sm:px-6 py-4 bg-white">
         <div className="flex items-center max-w-7xl mx-auto">
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild>
               <button
-                className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
                 aria-label="Open menu"
                 data-testid="button-landing-menu"
               >
-                <Menu className="h-6 w-6 text-white" />
+                <Menu className="h-6 w-6 text-gray-700" />
               </button>
             </SheetTrigger>
             <SheetContent side="right" className="w-[280px] sm:w-[320px]">
@@ -88,7 +88,7 @@ export default function Landing() {
           
           <a href="/" className="flex items-center ml-6 sm:ml-12">
             <img 
-              src={logoWhite} 
+              src={logoColor} 
               alt="My HomeBase" 
               className="h-8 sm:h-10 w-auto"
               data-testid="img-landing-logo"
