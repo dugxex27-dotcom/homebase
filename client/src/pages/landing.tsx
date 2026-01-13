@@ -86,7 +86,7 @@ export default function Landing() {
             </SheetContent>
           </Sheet>
           
-          <a href="/" className="flex items-center ml-6 sm:ml-12">
+          <a href="/" className="flex items-center ml-3 sm:ml-6">
             <img 
               src={logoColor} 
               alt="My HomeBase" 
