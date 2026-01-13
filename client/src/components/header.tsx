@@ -8,7 +8,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { User, Notification } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
-import logoImage from '@assets/my-homebase-logo-blue_1768271379678.png';
+import logoHomeowner from '@assets/my-homebase-logo-purple_1768271476726.png';
+import logoContractor from '@assets/my-homebase-logo-blue_1768271379678.png';
+import logoAgent from '@assets/my-homebase-logo-green_1768261579045.png';
+import logoDefault from '@assets/my-homebase-logo-color_1768271270022.png';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -383,7 +386,7 @@ export default function Header() {
                 aria-label="Return to homepage"
               >
                 <img 
-                  src={logoImage} 
+                  src={typedUser?.role === 'homeowner' ? logoHomeowner : typedUser?.role === 'contractor' ? logoContractor : typedUser?.role === 'agent' ? logoAgent : logoDefault} 
                   alt="My HomeBase" 
                   className="h-6 sm:h-7 w-auto"
                 />
