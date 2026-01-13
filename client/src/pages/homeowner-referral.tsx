@@ -12,7 +12,7 @@ import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
 
 import instagramPostImg from '@assets/ChatGPT_Image_Dec_26,_2025,_12_25_05_PM_1766769919337.png';
 import instagramStoryImg from '@assets/ChatGPT_Image_Dec_26,_2025,_12_15_06_PM_1766769329697.png';
-import facebookTwitterImg from '@assets/homebase-homeowner-referral_(2)_1766768136456.png';
+import facebookTwitterImg from '@assets/homebase-homeowner-referral_(3)_1768267382477.png';
 
 export default function HomeownerReferral() {
   const { toast } = useToast();
