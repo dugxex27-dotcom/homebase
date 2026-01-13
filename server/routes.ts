@@ -4533,6 +4533,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public contact form endpoint (no authentication required)
+  app.post('/api/contact', async (req, res) => {
+    try {
+      const contactSchema = z.object({
+        name: z.string().min(2).max(100),
+        email: z.string().email(),
+        category: z.enum(['billing', 'technical', 'feature_request', 'account', 'contractor', 'general']),
+        subject: z.string().min(5).max(200),
+        message: z.string().min(10).max(5000),
+      });
+      
+      const validatedData = contactSchema.parse(req.body);
+      
+      // Create a support ticket without a user ID (guest ticket)
+      const ticket = await storage.createSupportTicket({
+        userId: 'guest',
+        category: validatedData.category,
+        priority: 'medium',
+        subject: validatedData.subject,
+        description: `From: ${validatedData.name} (${validatedData.email})\n\n${validatedData.message}`,
+      });
+      
+      // Notify admins about the new contact form submission
+      const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+      const supportNotificationEmail = 'gotohomebase2025@gmail.com';
+      const allNotificationEmails = [...new Set([...adminEmails, supportNotificationEmail])];
+      
+      // Find admin users and create notifications
+      for (const email of allNotificationEmails) {
+        const adminUser = await storage.getUserByEmail(email);
+        if (adminUser) {
+          await storage.createNotification({
+            userId: adminUser.id,
+            type: 'support_ticket',
+            title: 'New Contact Form Submission',
+            message: `${validatedData.name} (${validatedData.email}) submitted a contact form: "${validatedData.subject}"`,
+            link: `/admin/support`,
+          });
+        }
+      }
+      
+      res.json({ success: true, ticketId: ticket.id });
+    } catch (error) {
+      console.error("Error processing contact form:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid form data", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to submit contact form" });
+    }
+  });
+
   // Support ticket routes - User endpoints
   app.get('/api/support/tickets', isAuthenticated, async (req: any, res) => {
     try {
