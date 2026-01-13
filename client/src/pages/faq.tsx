@@ -160,7 +160,7 @@ export default function FAQ() {
                       <ol className="list-decimal pl-6 space-y-2">
                         <li>Share your unique referral code or link with friends and colleagues</li>
                         <li>When someone signs up using your code and subscribes to a paid plan</li>
-                        <li>After they've been a paying subscriber for 4 months, you earn $15 credit</li>
+                        <li>After they've been a paying subscriber for 4 months, you earn a credit (amount matches your subscription tier)</li>
                         <li>Credits are applied to your next billing cycle</li>
                       </ol>
                     </AccordionContent>
