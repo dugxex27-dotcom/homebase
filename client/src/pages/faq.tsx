@@ -160,8 +160,8 @@ export default function FAQ() {
                       <ol className="list-decimal pl-6 space-y-2">
                         <li>Share your unique referral code or link with friends and colleagues</li>
                         <li>When someone signs up using your code and subscribes to a paid plan</li>
-                        <li>After they've been a paying subscriber for 4 months, you earn a credit (amount matches your subscription tier)</li>
-                        <li>Credits are applied to your next billing cycle</li>
+                        <li>You earn $1 off per month for each paid subscriber who used your code</li>
+                        <li>Credits are applied to your next billing cycle (capped at your subscription tier amount)</li>
                       </ol>
                     </AccordionContent>
                   </AccordionItem>
@@ -190,18 +190,18 @@ export default function FAQ() {
                       Are there limits on referral credits?
                     </AccordionTrigger>
                     <AccordionContent className="text-gray-600 space-y-3">
-                      <p>Yes, referral credit caps match your subscription tier (you can earn up to your monthly subscription cost):</p>
+                      <p>You earn $1 off per month for each paid subscriber who used your code, but credits are capped at your subscription tier amount:</p>
                       <p className="font-medium mt-2">Homeowners:</p>
                       <ul className="list-disc pl-6 space-y-1">
                         <li><strong>Free:</strong> No referral credits (upgrade to earn)</li>
-                        <li><strong>Base ($5/month):</strong> Up to $5/month in referral credits</li>
-                        <li><strong>Premium ($20/month):</strong> Up to $20/month in referral credits</li>
-                        <li><strong>Premium Plus ($40/month):</strong> Up to $40/month in referral credits</li>
+                        <li><strong>Base ($5/month):</strong> Up to $5/month (5 referrals = free subscription)</li>
+                        <li><strong>Premium ($20/month):</strong> Up to $20/month (20 referrals = free subscription)</li>
+                        <li><strong>Premium Plus ($40/month):</strong> Up to $40/month (40 referrals = free subscription)</li>
                       </ul>
                       <p className="font-medium mt-3">Contractors:</p>
                       <ul className="list-disc pl-6 space-y-1">
-                        <li><strong>Basic ($20/month):</strong> Up to $20/month in referral credits</li>
-                        <li><strong>Pro ($40/month):</strong> Up to $40/month in referral credits</li>
+                        <li><strong>Basic ($20/month):</strong> Up to $20/month (20 referrals = free subscription)</li>
+                        <li><strong>Pro ($40/month):</strong> Up to $40/month (40 referrals = free subscription)</li>
                       </ul>
                       <p className="font-medium mt-3">Real Estate Agents:</p>
                       <ul className="list-disc pl-6 space-y-1">
@@ -224,7 +224,7 @@ export default function FAQ() {
                       When do I receive my referral rewards?
                     </AccordionTrigger>
                     <AccordionContent className="text-gray-600">
-                      Referral rewards are credited after your referral has maintained a paid subscription for 4 consecutive months. This ensures genuine, long-term users. For homeowners and contractors, credits are applied to your account. For real estate agents, payouts are processed through Stripe Connect to your connected bank account.
+                      For homeowners and contractors, you receive $1 off per month for each active paid subscriber who used your referral code. Credits are applied automatically to your billing cycle. For real estate agents, you earn a $15 payout after your referral has maintained a paid subscription for 4 consecutive months, processed through Stripe Connect to your connected bank account.
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
