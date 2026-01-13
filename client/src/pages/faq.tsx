@@ -73,13 +73,14 @@ export default function FAQ() {
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="text-gray-600 space-y-3">
-                      <p>My HomeBase offers flexible subscription plans for homeowners:</p>
+                      <p>My HomeBase offers tiered subscription plans based on the number of homes you manage:</p>
                       <ul className="list-disc pl-6 space-y-2">
-                        <li><strong>Free Trial:</strong> 14-day free trial with full access to all features</li>
-                        <li><strong>Monthly Plan:</strong> $9.99/month - Full access to all home management features</li>
-                        <li><strong>Annual Plan:</strong> $99.99/year - Save over 15% compared to monthly billing</li>
+                        <li><strong>Free:</strong> $0/month - Search for contractors, view your past contractors, and make payments through the app. No home management features.</li>
+                        <li><strong>Base:</strong> $5/month - Manage 1-2 homes with maintenance tracking, home health score, DIY savings tracker, and service records. Earn up to $5/month in referral credits.</li>
+                        <li><strong>Premium:</strong> $20/month - Manage 3-6 homes with all Base features plus priority contractor matching and advanced maintenance insights. Earn up to $20/month in referral credits.</li>
+                        <li><strong>Premium Plus:</strong> $40/month - Unlimited homes with all Premium features plus dedicated support and bulk maintenance scheduling. Earn up to $40/month in referral credits.</li>
                       </ul>
-                      <p>Free users can still search for contractors and send messages, but home management features require a paid subscription.</p>
+                      <p>New users start with a 14-day free trial with full access to all features.</p>
                     </AccordionContent>
                   </AccordionItem>
 
@@ -93,11 +94,10 @@ export default function FAQ() {
                     <AccordionContent className="text-gray-600 space-y-3">
                       <p>Contractors can choose from two professional plans:</p>
                       <ul className="list-disc pl-6 space-y-2">
-                        <li><strong>Free Trial:</strong> 14-day free trial to explore all features</li>
-                        <li><strong>Basic Plan:</strong> $19.99/month - Professional profile, client messaging, and basic CRM tools</li>
-                        <li><strong>Pro Plan:</strong> $39.99/month - Everything in Basic plus advanced CRM, proposal tools, priority listing, and detailed analytics</li>
+                        <li><strong>Basic:</strong> $20/month - Get found by homeowners, messaging, send proposals, reviews and ratings profile. Earn up to $20/month in referral credits.</li>
+                        <li><strong>Pro:</strong> $40/month - Everything in Basic plus full CRM with client management, job scheduling & tracking, quotes & invoices, accept payments via Stripe Connect, team management, import from Jobber/ServiceTitan, and business analytics dashboard. Earn up to $40/month in referral credits.</li>
                       </ul>
-                      <p>After the trial expires, contractors need an active subscription to access all platform features.</p>
+                      <p>New contractors start with a 14-day free trial. After the trial expires, an active subscription is required to continue using the platform.</p>
                     </AccordionContent>
                   </AccordionItem>
 
@@ -110,10 +110,12 @@ export default function FAQ() {
                       <ul className="list-disc pl-6 space-y-1">
                         <li>Search for contractors in your area</li>
                         <li>View contractor profiles and reviews</li>
-                        <li>Send messages to contractors</li>
+                        <li>View your past contractors</li>
+                        <li>Make payments through the app</li>
                       </ul>
+                      <p className="mt-2 text-sm">Note: Home management features (maintenance tracking, home health score, service records) require a paid subscription starting at $5/month.</p>
                       <p className="mt-3"><strong>Contractors:</strong></p>
-                      <p>Contractors receive a 14-day free trial. After the trial expires, an active subscription is required to continue using the platform.</p>
+                      <p>Contractors receive a 14-day free trial with full access. After the trial expires, an active subscription ($20/month Basic or $40/month Pro) is required to continue using the platform.</p>
                     </AccordionContent>
                   </AccordionItem>
 
@@ -188,12 +190,22 @@ export default function FAQ() {
                       Are there limits on referral credits?
                     </AccordionTrigger>
                     <AccordionContent className="text-gray-600 space-y-3">
-                      <p>Yes, there are monthly caps on referral credits based on your role:</p>
-                      <ul className="list-disc pl-6 space-y-2">
-                        <li><strong>Homeowners:</strong> Up to $30/month in referral credits</li>
-                        <li><strong>Contractors (Basic):</strong> Up to $40/month in referral credits</li>
-                        <li><strong>Contractors (Pro):</strong> Up to $80/month in referral credits</li>
-                        <li><strong>Real Estate Agents:</strong> No cap - earn unlimited through Stripe Connect payouts</li>
+                      <p>Yes, referral credit caps match your subscription tier (you can earn up to your monthly subscription cost):</p>
+                      <p className="font-medium mt-2">Homeowners:</p>
+                      <ul className="list-disc pl-6 space-y-1">
+                        <li><strong>Free:</strong> No referral credits (upgrade to earn)</li>
+                        <li><strong>Base ($5/month):</strong> Up to $5/month in referral credits</li>
+                        <li><strong>Premium ($20/month):</strong> Up to $20/month in referral credits</li>
+                        <li><strong>Premium Plus ($40/month):</strong> Up to $40/month in referral credits</li>
+                      </ul>
+                      <p className="font-medium mt-3">Contractors:</p>
+                      <ul className="list-disc pl-6 space-y-1">
+                        <li><strong>Basic ($20/month):</strong> Up to $20/month in referral credits</li>
+                        <li><strong>Pro ($40/month):</strong> Up to $40/month in referral credits</li>
+                      </ul>
+                      <p className="font-medium mt-3">Real Estate Agents:</p>
+                      <ul className="list-disc pl-6 space-y-1">
+                        <li>No cap - earn unlimited $15 payouts through Stripe Connect</li>
                       </ul>
                     </AccordionContent>
                   </AccordionItem>
