@@ -2,7 +2,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { DollarSign, Users, MapPin, HelpCircle, Home, Wrench, Building2 } from "lucide-react";
-import logoColor from "@assets/MyHomeBase_Logo_Color.png";
+import logoColor from "@assets/my-homebase-logo-color_1768271270022.png";
 
 export default function FAQ() {
   return (
