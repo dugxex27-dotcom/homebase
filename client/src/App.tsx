@@ -69,6 +69,7 @@ const DeveloperConsole = lazy(() => import("./pages/developer-console"));
 const Support = lazy(() => import("./pages/support"));
 const SupportTicketDetail = lazy(() => import("./pages/support-ticket-detail"));
 const Contact = lazy(() => import("./pages/contact"));
+const FAQ = lazy(() => import("./pages/faq"));
 const TermsOfService = lazy(() => import("./pages/terms-of-service"));
 const PrivacyPolicy = lazy(() => import("./pages/privacy-policy"));
 const LegalDisclaimer = lazy(() => import("./pages/legal-disclaimer"));
@@ -124,6 +125,7 @@ function Router() {
           <Route path="/privacy-policy" component={PrivacyPolicy} />
           <Route path="/legal-disclaimer" component={LegalDisclaimer} />
           <Route path="/contact" component={Contact} />
+          <Route path="/faq" component={FAQ} />
           <Route path="/pay/invoice/:invoiceId" component={PayInvoice} />
           <Route path="/pay/success" component={PaymentSuccess} />
           <Route path="/pay/cancelled" component={PaymentCancelled} />
@@ -158,6 +160,7 @@ function Router() {
         <Route path="/support/:id" component={SupportTicketDetail} />
         <Route path="/support" component={Support} />
         <Route path="/contact" component={Contact} />
+        <Route path="/faq" component={FAQ} />
         <Route path="/terms-of-service" component={TermsOfService} />
         <Route path="/privacy-policy" component={PrivacyPolicy} />
         <Route path="/legal-disclaimer" component={LegalDisclaimer} />
