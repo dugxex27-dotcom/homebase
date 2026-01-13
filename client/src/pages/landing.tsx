@@ -1,17 +1,102 @@
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Home, Wrench, Building2 } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Home, Wrench, Building2, Menu, HelpCircle } from "lucide-react";
 import heroImageDesktop from "@assets/homebase-hp-hero-desktop-nocopy_1765926450284.png";
 import heroImageTablet from "@assets/homebase-hp-hero-tablet_1765940455985.png";
 import heroImageMobile from "@assets/homebase-hp-hero-mobile_1765940883354.png";
+import logoWhite from "@assets/my-homebase-logo-white_1768260534745.png";
 
 export default function Landing() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
   const handleRoleSelection = (role: 'homeowner' | 'contractor' | 'agent') => {
     window.location.href = `/signin/${role}`;
   };
 
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(to bottom, #f8f4fc, #faf9fb)' }}>
+      {/* Header */}
+      <header className="absolute top-0 left-0 right-0 z-50 px-4 sm:px-6 py-4">
+        <div className="flex items-center justify-between max-w-7xl mx-auto">
+          <a href="/" className="flex items-center">
+            <img 
+              src={logoWhite} 
+              alt="My HomeBase" 
+              className="h-8 sm:h-10 w-auto"
+              data-testid="img-landing-logo"
+            />
+          </a>
+          
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <button
+                className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+                aria-label="Open menu"
+                data-testid="button-landing-menu"
+              >
+                <Menu className="h-6 w-6 text-white" />
+              </button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[280px] sm:w-[320px]">
+              <SheetHeader>
+                <SheetTitle className="text-left">Sign In</SheetTitle>
+              </SheetHeader>
+              <nav className="mt-6 space-y-2">
+                <a
+                  href="/signin/homeowner"
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-purple-50 transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                  data-testid="link-menu-homeowner"
+                >
+                  <div className="p-2 rounded-full bg-purple-100">
+                    <Home className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <span className="font-medium" style={{ color: '#2c0f5b' }}>Homeowner</span>
+                </a>
+                <a
+                  href="/signin/contractor"
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-blue-50 transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                  data-testid="link-menu-contractor"
+                >
+                  <div className="p-2 rounded-full bg-blue-100">
+                    <Wrench className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <span className="font-medium" style={{ color: '#1560a2' }}>Contractor</span>
+                </a>
+                <a
+                  href="/signin/agent"
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-emerald-50 transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                  data-testid="link-menu-agent"
+                >
+                  <div className="p-2 rounded-full bg-emerald-100">
+                    <Building2 className="h-5 w-5 text-emerald-600" />
+                  </div>
+                  <span className="font-medium" style={{ color: '#059669' }}>Real Estate Agent</span>
+                </a>
+                
+                <div className="my-4 border-t border-gray-200" />
+                
+                <a
+                  href="/faq"
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-50 transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                  data-testid="link-menu-faq"
+                >
+                  <div className="p-2 rounded-full bg-gray-100">
+                    <HelpCircle className="h-5 w-5 text-gray-600" />
+                  </div>
+                  <span className="font-medium text-gray-700">FAQ</span>
+                </a>
+              </nav>
+            </SheetContent>
+          </Sheet>
+        </div>
+      </header>
+
       {/* Hero Section - Desktop (1024px+) */}
       <div className="w-full relative hidden lg:block">
         <img 
