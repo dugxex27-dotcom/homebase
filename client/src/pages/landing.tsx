@@ -18,17 +18,8 @@ export default function Landing() {
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(to bottom, #f8f4fc, #faf9fb)' }}>
       {/* Header */}
-      <header className="absolute top-0 left-0 right-0 z-50 px-4 sm:px-6 py-4">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <a href="/" className="flex items-center">
-            <img 
-              src={logoWhite} 
-              alt="My HomeBase" 
-              className="h-8 sm:h-10 w-auto"
-              data-testid="img-landing-logo"
-            />
-          </a>
-          
+      <header className="px-4 sm:px-6 py-4" style={{ backgroundColor: '#2c0f5b' }}>
+        <div className="flex items-center max-w-7xl mx-auto">
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild>
               <button
@@ -94,6 +85,15 @@ export default function Landing() {
               </nav>
             </SheetContent>
           </Sheet>
+          
+          <a href="/" className="flex items-center ml-6 sm:ml-12">
+            <img 
+              src={logoWhite} 
+              alt="My HomeBase" 
+              className="h-8 sm:h-10 w-auto"
+              data-testid="img-landing-logo"
+            />
+          </a>
         </div>
       </header>
 
