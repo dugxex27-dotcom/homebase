@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Home, Wrench, Building2, Menu, HelpCircle } from "lucide-react";
+import { Home, Wrench, Building2, Menu, HelpCircle, Mail } from "lucide-react";
 import heroImageDesktop from "@assets/homebase-hp-hero-desktop-nocopy_1765926450284.png";
 import heroImageTablet from "@assets/homebase-hp-hero-tablet_1765940455985.png";
 import heroImageMobile from "@assets/homebase-hp-hero-mobile_1765940883354.png";
@@ -81,6 +81,17 @@ export default function Landing() {
                     <HelpCircle className="h-5 w-5 text-gray-600" />
                   </div>
                   <span className="font-medium text-gray-700">FAQ</span>
+                </a>
+                <a
+                  href="/contact"
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-50 transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                  data-testid="link-menu-contact"
+                >
+                  <div className="p-2 rounded-full bg-gray-100">
+                    <Mail className="h-5 w-5 text-gray-600" />
+                  </div>
+                  <span className="font-medium text-gray-700">Contact Us</span>
                 </a>
               </nav>
             </SheetContent>
