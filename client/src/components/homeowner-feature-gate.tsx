@@ -389,21 +389,21 @@ export function FreeUserUpgradePrompt() {
       price: '$5',
       homes: '1-2 homes',
       features: ['Maintenance tracking', 'Home health score', 'DIY savings tracker', 'Service records'],
-      recommended: false
+      planId: 'base'
     },
     {
       name: 'Premium',
       price: '$20',
       homes: '3-6 homes',
       features: ['All Base features', 'Priority contractor matching', 'Advanced maintenance insights'],
-      recommended: true
+      planId: 'premium'
     },
     {
       name: 'Premium Plus',
       price: '$40',
       homes: 'Unlimited homes',
       features: ['All Premium features', 'Dedicated support', 'Bulk maintenance scheduling'],
-      recommended: false
+      planId: 'premium_plus'
     }
   ];
 
@@ -436,31 +436,27 @@ export function FreeUserUpgradePrompt() {
           {/* Pricing Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             {plans.map((plan) => (
-              <Card 
-                key={plan.name} 
-                className={`relative ${plan.recommended ? 'border-2 border-purple-500 shadow-lg' : 'border'}`}
-              >
-                {plan.recommended && (
-                  <Badge className="absolute -top-2 left-1/2 -translate-x-1/2 bg-purple-600">
-                    Most Popular
-                  </Badge>
-                )}
-                <CardContent className="pt-6 pb-4">
-                  <h4 className="font-bold text-lg" style={{ color: '#2c0f5b' }}>{plan.name}</h4>
-                  <div className="text-3xl font-bold my-2" style={{ color: '#2c0f5b' }}>
-                    {plan.price}<span className="text-sm font-normal text-muted-foreground">/mo</span>
-                  </div>
-                  <p className="text-sm text-purple-600 font-medium mb-3">{plan.homes}</p>
-                  <ul className="text-sm text-left space-y-1">
-                    {plan.features.map((feature, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <Check className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
+              <Link key={plan.name} href={`/homeowner-pricing?plan=${plan.planId}`}>
+                <Card 
+                  className="relative border cursor-pointer transition-all hover:border-purple-500 hover:shadow-lg h-full"
+                >
+                  <CardContent className="pt-6 pb-4">
+                    <h4 className="font-bold text-lg" style={{ color: '#2c0f5b' }}>{plan.name}</h4>
+                    <div className="text-3xl font-bold my-2" style={{ color: '#2c0f5b' }}>
+                      {plan.price}<span className="text-sm font-normal text-muted-foreground">/mo</span>
+                    </div>
+                    <p className="text-sm text-purple-600 font-medium mb-3">{plan.homes}</p>
+                    <ul className="text-sm text-left space-y-1">
+                      {plan.features.map((feature, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <Check className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
 
@@ -468,7 +464,7 @@ export function FreeUserUpgradePrompt() {
             <Button asChild size="lg" className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800" data-testid="button-upgrade-free-user">
               <Link href="/homeowner-pricing">
                 <Crown className="h-4 w-4 mr-2" />
-                Start 14-Day Free Trial
+                View Plans & Sign Up
               </Link>
             </Button>
             <Button 
