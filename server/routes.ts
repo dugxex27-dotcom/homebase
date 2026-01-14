@@ -2003,13 +2003,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get or create Stripe customer
       let stripeCustomerId = user.stripeCustomerId;
       if (!stripeCustomerId) {
+        console.log(`[SUBSCRIPTION] Creating Stripe customer for user ${user.email}`);
         const customer = await stripe.customers.create({
           email: user.email,
           name: `${user.firstName} ${user.lastName}`,
           metadata: { userId: user.id },
         });
         stripeCustomerId = customer.id;
+        console.log(`[SUBSCRIPTION] Created Stripe customer ${stripeCustomerId} for user ${user.email}`);
         await storage.upsertUser({ ...user, stripeCustomerId });
+        console.log(`[SUBSCRIPTION] Saved Stripe customer ID to database for user ${user.email}`);
+      } else {
+        console.log(`[SUBSCRIPTION] Using existing Stripe customer ${stripeCustomerId} for user ${user.email}`);
       }
 
       // Determine base URL for redirect
@@ -2052,6 +2057,192 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('[SUBSCRIPTION] Error creating checkout session:', error);
       return res.status(500).json({ message: "Failed to create checkout session" });
+    }
+  });
+
+  // Sync subscription status from Stripe - called after successful checkout to ensure DB is updated
+  app.post('/api/sync-subscription', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.user.id;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // If no Stripe customer ID, nothing to sync
+      if (!user.stripeCustomerId) {
+        console.log(`[SYNC] No Stripe customer ID for user ${user.email}`);
+        return res.json({ synced: false, message: "No Stripe customer found" });
+      }
+      
+      // Get customer's subscriptions from Stripe
+      const subscriptions = await stripe.subscriptions.list({
+        customer: user.stripeCustomerId,
+        status: 'active',
+        limit: 1,
+      });
+      
+      if (subscriptions.data.length > 0) {
+        const subscription = subscriptions.data[0];
+        
+        // Update user's subscription status
+        await storage.updateUserStripeSubscription(userId, subscription.id, subscription.items.data[0]?.price.id || '');
+        await storage.updateUserSubscriptionStatus(userId, 'active');
+        
+        // Update max houses based on subscription metadata or price
+        const priceAmount = subscription.items.data[0]?.price.unit_amount || 0;
+        let maxHouses = 2; // Base plan default
+        
+        if (priceAmount >= 4000) {
+          maxHouses = 999; // Premium Plus - unlimited
+        } else if (priceAmount >= 2000) {
+          maxHouses = 6; // Premium
+        }
+        
+        if (user.role === 'homeowner') {
+          await storage.upsertUser({
+            ...user,
+            subscriptionStatus: 'active',
+            maxHousesAllowed: maxHouses === 999 ? null : maxHouses,
+          });
+        } else if (user.role === 'contractor') {
+          await storage.upsertUser({
+            ...user,
+            subscriptionStatus: 'active',
+            subscriptionTierName: priceAmount >= 4000 ? 'contractor_pro' : 'contractor_basic',
+          });
+        }
+        
+        console.log(`[SYNC] Subscription synced for user ${user.email}, status: active`);
+        return res.json({ synced: true, status: 'active' });
+      }
+      
+      // Check for trialing subscriptions
+      const trialingSubscriptions = await stripe.subscriptions.list({
+        customer: user.stripeCustomerId,
+        status: 'trialing',
+        limit: 1,
+      });
+      
+      if (trialingSubscriptions.data.length > 0) {
+        const subscription = trialingSubscriptions.data[0];
+        await storage.updateUserStripeSubscription(userId, subscription.id, subscription.items.data[0]?.price.id || '');
+        await storage.updateUserSubscriptionStatus(userId, 'trialing');
+        
+        console.log(`[SYNC] Subscription synced for user ${user.email}, status: trialing`);
+        return res.json({ synced: true, status: 'trialing' });
+      }
+      
+      console.log(`[SYNC] No active subscription found for user ${user.email}`);
+      return res.json({ synced: false, message: "No active subscription" });
+    } catch (error: any) {
+      console.error('[SYNC] Error syncing subscription:', error);
+      return res.status(500).json({ message: "Failed to sync subscription" });
+    }
+  });
+
+  // Admin: Manually sync a user's subscription by looking up their Stripe customer by email
+  app.post('/api/admin/sync-user-subscription', async (req: any, res) => {
+    try {
+      // Check admin access
+      if (!req.session?.isAuthenticated || !req.session?.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase());
+      const sessionUser = await storage.getUser(req.session.user.id);
+      if (!sessionUser || !adminEmails.includes(sessionUser.email?.toLowerCase() || '')) {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { userEmail } = req.body;
+      if (!userEmail) {
+        return res.status(400).json({ message: "User email is required" });
+      }
+
+      // Find user in our database
+      const user = await storage.getUserByEmail(userEmail);
+      if (!user) {
+        return res.status(404).json({ message: "User not found in database" });
+      }
+
+      // Search for Stripe customer by email
+      const customers = await stripe.customers.list({
+        email: userEmail,
+        limit: 1,
+      });
+
+      if (customers.data.length === 0) {
+        return res.json({ synced: false, message: "No Stripe customer found for this email" });
+      }
+
+      const stripeCustomer = customers.data[0];
+      
+      // Save Stripe customer ID if not already saved
+      if (!user.stripeCustomerId || user.stripeCustomerId !== stripeCustomer.id) {
+        await storage.upsertUser({ ...user, stripeCustomerId: stripeCustomer.id });
+        console.log(`[ADMIN-SYNC] Updated Stripe customer ID for ${userEmail}: ${stripeCustomer.id}`);
+      }
+
+      // Get customer's active subscriptions
+      const subscriptions = await stripe.subscriptions.list({
+        customer: stripeCustomer.id,
+        status: 'active',
+        limit: 1,
+      });
+
+      if (subscriptions.data.length > 0) {
+        const subscription = subscriptions.data[0];
+        
+        await storage.updateUserStripeSubscription(user.id, subscription.id, subscription.items.data[0]?.price.id || '');
+        await storage.updateUserSubscriptionStatus(user.id, 'active');
+        
+        // Update max houses based on price
+        const priceAmount = subscription.items.data[0]?.price.unit_amount || 0;
+        let maxHouses = 2;
+        
+        if (priceAmount >= 4000) {
+          maxHouses = 999;
+        } else if (priceAmount >= 2000) {
+          maxHouses = 6;
+        }
+        
+        if (user.role === 'homeowner') {
+          await storage.upsertUser({
+            ...user,
+            stripeCustomerId: stripeCustomer.id,
+            subscriptionStatus: 'active',
+            maxHousesAllowed: maxHouses === 999 ? null : maxHouses,
+          });
+        } else if (user.role === 'contractor') {
+          await storage.upsertUser({
+            ...user,
+            stripeCustomerId: stripeCustomer.id,
+            subscriptionStatus: 'active',
+            subscriptionTierName: priceAmount >= 4000 ? 'contractor_pro' : 'contractor_basic',
+          });
+        }
+        
+        console.log(`[ADMIN-SYNC] Subscription synced for ${userEmail}, status: active, price: ${priceAmount}`);
+        return res.json({ 
+          synced: true, 
+          status: 'active',
+          stripeCustomerId: stripeCustomer.id,
+          subscriptionId: subscription.id,
+          priceAmount: priceAmount / 100
+        });
+      }
+
+      console.log(`[ADMIN-SYNC] No active subscription found for ${userEmail}`);
+      return res.json({ 
+        synced: false, 
+        message: "No active subscription found",
+        stripeCustomerId: stripeCustomer.id
+      });
+    } catch (error: any) {
+      console.error('[ADMIN-SYNC] Error:', error);
+      return res.status(500).json({ message: "Failed to sync subscription" });
     }
   });
 

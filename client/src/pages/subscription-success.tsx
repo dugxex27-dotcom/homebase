@@ -1,18 +1,38 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Home, Wrench, PartyPopper } from "lucide-react";
+import { CheckCircle2, Home, Wrench, PartyPopper, Loader2 } from "lucide-react";
 import { Helmet } from "react-helmet";
 
 export default function SubscriptionSuccess() {
   const [, setLocation] = useLocation();
   const [countdown, setCountdown] = useState(5);
+  const [syncing, setSyncing] = useState(true);
+  const queryClient = useQueryClient();
   
   const urlParams = new URLSearchParams(window.location.search);
   const role = urlParams.get('role') || 'homeowner';
   
   const dashboardPath = role === 'contractor' ? '/contractor-dashboard' : '/maintenance';
+
+  useEffect(() => {
+    const syncSubscription = async () => {
+      try {
+        await apiRequest('/api/sync-subscription', 'POST');
+      } catch (error) {
+        console.error('Failed to sync subscription:', error);
+      } finally {
+        setSyncing(false);
+        queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/my-subscription'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/contractor/subscription'] });
+      }
+    };
+    syncSubscription();
+  }, [queryClient]);
 
   useEffect(() => {
     const timer = setInterval(() => {
