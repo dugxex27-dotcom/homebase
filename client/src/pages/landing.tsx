@@ -6,7 +6,7 @@ import { Home, Wrench, Building2, Menu, HelpCircle, Mail } from "lucide-react";
 import heroImageDesktop from "@assets/homebase-hp-hero-desktop-nocopy_1765926450284.png";
 import heroImageTablet from "@assets/homebase-hp-hero-tablet_1765940455985.png";
 import heroImageMobile from "@assets/homebase-hp-hero-mobile_1765940883354.png";
-import logoColor from "@assets/my-homebase-logo-color_1768271270022.png";
+import logoColor from "@assets/my-homebase-logo-color_1768358457518.png";
 
 export default function Landing() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

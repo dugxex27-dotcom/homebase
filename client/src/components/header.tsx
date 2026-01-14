@@ -11,7 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import logoHomeowner from '@assets/my-homebase-logo-purple_1768271476726.png';
 import logoContractor from '@assets/my-homebase-logo-blue_1768271379678.png';
 import logoAgent from '@assets/my-homebase-logo-green_1768261579045.png';
-import logoDefault from '@assets/my-homebase-logo-color_1768271270022.png';
+import logoDefault from '@assets/my-homebase-logo-color_1768358457518.png';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
