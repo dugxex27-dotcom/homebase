@@ -14,7 +14,7 @@ import instagramPostImg from '@assets/homebase-contractor-contractor-ig-post_176
 import instagramStoryImg from '@assets/homebase-contractor-contractor-ig-story_1768430820224.png';
 import facebookTwitterImg from '@assets/homebase-contractor-contractor-facebook-twitter_1768431146991.png';
 import homeownerFacebookTwitterImg from '@assets/homebase-contractor-referral-2_(2)_1766772524078.png';
-import homeownerInstagramStoryImg from '@assets/ChatGPT_Image_Dec_26,_2025,_01_14_12_PM_1766772865490.png';
+import homeownerInstagramStoryImg from '@assets/homebase-contractor-homeowner-ig-story_1768431505778.png';
 import homeownerInstagramPostImg from '@assets/homebase-contractor-homeowner-ig-post_1768431233148.png';
 
 export default function ContractorReferral() {
