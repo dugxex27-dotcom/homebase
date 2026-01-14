@@ -1,15 +1,19 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, CreditCard, Home, Zap, Crown } from "lucide-react";
+import { Check, CreditCard, Home, Zap, Crown, Loader2 } from "lucide-react";
 import { Link } from "wouter";
+import { useToast } from "@/hooks/use-toast";
 
 export default function HomeownerPricing() {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const [checkoutPlan, setCheckoutPlan] = useState<string | null>(null);
   const { 
     hasActiveSubscription, 
     isInTrial, 
@@ -17,6 +21,28 @@ export default function HomeownerPricing() {
     maxHouses: subscriptionMaxHouses,
     isLoading: subscriptionLoading 
   } = useHomeownerSubscription();
+
+  // Direct Stripe checkout mutation
+  const checkoutMutation = useMutation({
+    mutationFn: async (plan: string) => {
+      setCheckoutPlan(plan);
+      const res = await apiRequest('/api/create-subscription-checkout', 'POST', { plan });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    },
+    onError: (error: Error) => {
+      setCheckoutPlan(null);
+      toast({
+        title: "Subscription Error",
+        description: error.message || "Failed to start checkout. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Fetch full user data for subscription details
   const { data: userData, isLoading, isError } = useQuery({
@@ -159,13 +185,19 @@ export default function HomeownerPricing() {
                 </Button>
               ) : (
                 <Button 
-                  asChild 
                   className="w-full bg-purple-600 hover:bg-purple-700 text-white"
                   data-testid="button-select-base-plan"
+                  onClick={() => checkoutMutation.mutate('base')}
+                  disabled={checkoutMutation.isPending}
                 >
-                  <Link href="/billing">
-                    {!hasActiveSubscription ? 'Select Base Plan' : 'Downgrade to Base'}
-                  </Link>
+                  {checkoutMutation.isPending && checkoutPlan === 'base' ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    !hasActiveSubscription ? 'Select Base Plan' : 'Downgrade to Base'
+                  )}
                 </Button>
               )}
             </CardContent>
@@ -208,13 +240,19 @@ export default function HomeownerPricing() {
                 </Button>
               ) : (
                 <Button 
-                  asChild 
                   className="w-full bg-purple-600 hover:bg-purple-700 text-white"
                   data-testid="button-select-premium-plan"
+                  onClick={() => checkoutMutation.mutate('premium')}
+                  disabled={checkoutMutation.isPending}
                 >
-                  <Link href="/billing">
-                    {!hasActiveSubscription ? 'Select Premium Plan' : actualPlan === 'base' ? 'Upgrade to Premium' : 'Downgrade to Premium'}
-                  </Link>
+                  {checkoutMutation.isPending && checkoutPlan === 'premium' ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    !hasActiveSubscription ? 'Select Premium Plan' : actualPlan === 'base' ? 'Upgrade to Premium' : 'Downgrade to Premium'
+                  )}
                 </Button>
               )}
             </CardContent>
@@ -257,13 +295,19 @@ export default function HomeownerPricing() {
                 </Button>
               ) : (
                 <Button 
-                  asChild 
                   className="w-full bg-purple-600 hover:bg-purple-700 text-white"
                   data-testid="button-select-premium-plus-plan"
+                  onClick={() => checkoutMutation.mutate('premium_plus')}
+                  disabled={checkoutMutation.isPending}
                 >
-                  <Link href="/billing">
-                    {!hasActiveSubscription ? 'Select Premium Plus' : 'Upgrade to Premium Plus'}
-                  </Link>
+                  {checkoutMutation.isPending && checkoutPlan === 'premium_plus' ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    !hasActiveSubscription ? 'Select Premium Plus' : 'Upgrade to Premium Plus'
+                  )}
                 </Button>
               )}
             </CardContent>
