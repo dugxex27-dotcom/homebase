@@ -10541,14 +10541,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Calculate trial status
+      // Calculate trial status - use trialEndsAt if set, otherwise createdAt + 14 days
       const now = new Date();
-      const trialEndsAt = user.trialEndsAt ? new Date(user.trialEndsAt) : null;
-      const isInTrial = user.subscriptionStatus === 'trialing' && trialEndsAt && trialEndsAt > now;
+      let effectiveTrialEndsAt: Date | null = null;
+      if (user.trialEndsAt) {
+        effectiveTrialEndsAt = new Date(user.trialEndsAt);
+      } else if (user.createdAt) {
+        // For older accounts without trialEndsAt, calculate based on account creation + 14 days
+        effectiveTrialEndsAt = new Date(new Date(user.createdAt).getTime() + 14 * 24 * 60 * 60 * 1000);
+      }
+      
+      const isInTrial = user.subscriptionStatus === 'trialing' && effectiveTrialEndsAt && effectiveTrialEndsAt > now;
       // Trial is expired if: has end date that's passed, OR is trialing without an end date (treat as expired)
-      const trialExpired = user.subscriptionStatus === 'trialing' && (!trialEndsAt || trialEndsAt <= now);
-      const trialDaysRemaining = trialEndsAt && trialEndsAt > now 
-        ? Math.ceil((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+      const trialExpired = user.subscriptionStatus === 'trialing' && (!effectiveTrialEndsAt || effectiveTrialEndsAt <= now);
+      const trialDaysRemaining = effectiveTrialEndsAt && effectiveTrialEndsAt > now 
+        ? Math.ceil((effectiveTrialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
         : 0;
       
       // Has active access if: paid subscription active, OR still in trial period
@@ -10573,7 +10580,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isInTrial,
         trialExpired,
         trialDaysRemaining,
-        trialEndsAt: trialEndsAt?.toISOString() || null,
+        trialEndsAt: effectiveTrialEndsAt?.toISOString() || null,
         currentPlan,
         hasCrmAccess: plan?.hasCrmAccess ?? false,
         subscriptionStatus: user.subscriptionStatus || 'inactive',
