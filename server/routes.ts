@@ -2977,7 +2977,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if demo user already exists
       let user = await storage.getUserByEmail(demoEmail);
       
-      // If not, create demo user with realistic profile
+      // Create or update demo user
       if (!user) {
         const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
         
@@ -2990,69 +2990,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
           profileImageUrl: null,
           role: 'contractor',
           zipCode: '98103',
-          subscriptionStatus: 'trialing',
+          subscriptionStatus: 'grandfathered',
           trialEndsAt,
-          companyId: null, // Set to null initially
+          companyId: null,
           companyRole: null
         });
+      }
 
-        // Step 2: Create the company with the user as owner (if it doesn't exist)
-        try {
-          let company = await storage.getCompany(companyId);
-          if (!company) {
-            // Set company creation date to 3 years ago to show tenure
-            const threeYearsAgo = new Date();
-            threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
-            
-            company = await storage.createCompany({
-            id: companyId,
-            name: 'Precision HVAC & Plumbing',
-            ownerId: user.id,
-            location: 'Seattle, WA',
-            address: '1425 Industrial Way, Seattle, WA 98103',
-            countryId: 'USA',
-            regionId: 'WA',
-            postalCode: '98103',
-            latitude: 47.6597,
-            longitude: -122.3331,
-            website: 'https://precisionhvac.example.com',
-            phone: '(206) 555-0142',
-            email: demoEmail,
-            bio: 'Family-owned HVAC and plumbing company serving Seattle and surrounding areas since 2015. Specializing in residential heating, cooling, and plumbing services with a focus on energy efficiency and customer satisfaction. Our certified technicians provide honest, reliable service at fair prices.',
-            services: ['HVAC Installation', 'HVAC Repair', 'AC Maintenance', 'Furnace Service', 'Plumbing Repair', 'Water Heater Installation', 'Emergency Services'],
-            serviceRadius: 25,
-            hasEmergencyServices: true,
-            isLicensed: true,
-            licenseNumber: 'WA-HVAC-98765',
-            licenseState: 'WA',
-            licenseExpiration: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            isInsured: true,
-            createdAt: threeYearsAgo,
-            insuranceProvider: 'State Farm Commercial',
-            insuranceExpiration: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            insuranceCoverageAmount: '$2,000,000',
-            businessHours: 'Mon-Fri: 7am-6pm, Sat: 8am-4pm, Sun: Closed',
-            yearsInBusiness: 9,
-            numberOfEmployees: 12,
-            isBonded: true,
-            bondingCompany: 'Travelers Casualty & Surety',
-            certifications: ['NATE Certified', 'EPA 608 Universal', 'Master Plumber', 'Energy Star Partner'],
-            specialties: ['High-efficiency HVAC systems', 'Tankless water heaters', 'Radiant floor heating', 'Smart thermostat installation'],
-            paymentMethods: ['Cash', 'Check', 'Credit Card', 'Financing Available'],
-            warrantyInfo: 'All installations include 1-year labor warranty. Equipment warranties vary by manufacturer (typically 5-10 years).',
-            insuranceInfo: 'Comprehensive general liability and workers compensation insurance. $2M coverage limit.',
-            rating: '4.8',
-            reviewCount: 127
-          });
-          }
+      // Always ensure company exists and user is linked (runs for new AND existing users)
+      try {
+        let company = await storage.getCompany(companyId);
+        if (!company) {
+          // Set company creation date to 3 years ago to show tenure
+          const threeYearsAgo = new Date();
+          threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
           
-          // Step 3: Update the user with the company reference (always run this)
+          company = await storage.createCompany({
+          id: companyId,
+          name: 'Precision HVAC & Plumbing',
+          ownerId: user.id,
+          location: 'Seattle, WA',
+          address: '1425 Industrial Way, Seattle, WA 98103',
+          countryId: null,
+          regionId: null,
+          postalCode: '98103',
+          latitude: 47.6597,
+          longitude: -122.3331,
+          website: 'https://precisionhvac.example.com',
+          phone: '(206) 555-0142',
+          email: demoEmail,
+          bio: 'Family-owned HVAC and plumbing company serving Seattle and surrounding areas since 2015. Specializing in residential heating, cooling, and plumbing services with a focus on energy efficiency and customer satisfaction. Our certified technicians provide honest, reliable service at fair prices.',
+          services: ['HVAC Installation', 'HVAC Repair', 'AC Maintenance', 'Furnace Service', 'Plumbing Repair', 'Water Heater Installation', 'Emergency Services'],
+          serviceRadius: 25,
+          hasEmergencyServices: true,
+          isLicensed: true,
+          licenseNumber: 'WA-HVAC-98765',
+          licenseMunicipality: 'Washington State',
+          licenseExpiration: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          isInsured: true,
+          createdAt: threeYearsAgo,
+          insuranceProvider: 'State Farm Commercial',
+          insuranceExpiration: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          insuranceCoverageAmount: '$2,000,000',
+          businessHours: 'Mon-Fri: 7am-6pm, Sat: 8am-4pm, Sun: Closed',
+          yearsInBusiness: 9,
+          numberOfEmployees: 12,
+          isBonded: true,
+          bondingCompany: 'Travelers Casualty & Surety',
+          certifications: ['NATE Certified', 'EPA 608 Universal', 'Master Plumber', 'Energy Star Partner'],
+          specialties: ['High-efficiency HVAC systems', 'Tankless water heaters', 'Radiant floor heating', 'Smart thermostat installation'],
+          paymentMethods: ['Cash', 'Check', 'Credit Card', 'Financing Available'],
+          warrantyInfo: 'All installations include 1-year labor warranty. Equipment warranties vary by manufacturer (typically 5-10 years).',
+          insuranceInfo: 'Comprehensive general liability and workers compensation insurance. $2M coverage limit.',
+          rating: '4.8',
+          reviewCount: 127
+        });
+        }
+        
+        // Update the user with the company reference if not already set
+        if (!user.companyId) {
           user = await storage.upsertUser({
             ...user,
             companyId,
             companyRole: 'owner',
             canRespondToProposals: true
           });
+        }
 
           // Step 4: Add realistic 6-month usage data for contractor demo
           try {
@@ -3249,7 +3252,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (companyError) {
           console.error("Error creating demo company:", companyError);
         }
-      }
 
       // Regenerate session to prevent session fixation
       req.session.regenerate((err: any) => {
