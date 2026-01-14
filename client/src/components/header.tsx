@@ -9,7 +9,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { User, Notification } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
 import logoHomeowner from '@assets/my-homebase-logo-purple_1768358983267.png';
-import logoContractor from '@assets/my-homebase-logo-blue_1768271379678.png';
+import logoContractor from '@assets/my-homebase-logo-blue_1768359119978.png';
 import logoAgent from '@assets/my-homebase-logo-green_1768261579045.png';
 import logoDefault from '@assets/my-homebase-logo-color_1768358457518.png';
 
