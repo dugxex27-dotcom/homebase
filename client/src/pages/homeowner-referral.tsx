@@ -291,7 +291,7 @@ export default function HomeownerReferral() {
                     <h4 className="font-semibold text-sm text-purple-600">Instagram Story</h4>
                     <p className="text-xs text-gray-600">Vertical format - 1080x1920px</p>
                     <Button
-                      onClick={() => downloadImageWithCode(instagramStoryImg, `homebase-homeowner-story-${referralCode}.png`, { x: 372, y: 878, color: '#2c0f5b' })}
+                      onClick={() => downloadImageWithCode(instagramStoryImg, `homebase-homeowner-story-${referralCode}.png`, { x: 324, y: 782, color: '#2c0f5b' })}
                       size="sm"
                       className="w-full bg-purple-600 hover:bg-purple-700"
                       data-testid="button-download-homeowner-instagram-story"
