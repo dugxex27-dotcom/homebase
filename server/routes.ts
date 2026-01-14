@@ -2043,7 +2043,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           plan: plan,
           maxHouses: selectedPlan.maxHouses?.toString() || '',
         },
-        success_url: `${baseUrl}/${userRole === 'homeowner' ? 'homeowner-account' : 'contractor-dashboard'}?subscription=success`,
+        success_url: `${baseUrl}/subscription-success?role=${userRole}`,
         cancel_url: `${baseUrl}/${userRole === 'homeowner' ? 'homeowner-pricing' : 'contractor-dashboard'}?subscription=cancelled`,
       });
 

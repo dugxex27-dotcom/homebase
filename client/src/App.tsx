@@ -87,6 +87,7 @@ const Invite = lazy(() => import("./pages/invite"));
 const PayInvoice = lazy(() => import("./pages/pay-invoice").then(m => ({ default: m.default })));
 const PaymentSuccess = lazy(() => import("./pages/pay-invoice").then(m => ({ default: m.PaymentSuccessPage })));
 const PaymentCancelled = lazy(() => import("./pages/pay-invoice").then(m => ({ default: m.PaymentCancelledPage })));
+const SubscriptionSuccess = lazy(() => import("./pages/subscription-success"));
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -168,6 +169,7 @@ function Router() {
         <Route path="/pay/invoice/:invoiceId" component={PayInvoice} />
         <Route path="/pay/success" component={PaymentSuccess} />
         <Route path="/pay/cancelled" component={PaymentCancelled} />
+        <Route path="/subscription-success" component={SubscriptionSuccess} />
         
         {/* Admin routes */}
         {isAdmin && (
