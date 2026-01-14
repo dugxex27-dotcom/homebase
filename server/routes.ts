@@ -587,13 +587,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const housesCount = await storage.getHousesCount(userId);
       
-      // Determine current plan based on maxHousesAllowed
+      // Check if trial is active FIRST (need this for plan determination)
+      const isTrialing = user.subscriptionStatus === 'trialing' && 
+                         user.trialEndsAt && 
+                         new Date(user.trialEndsAt) > new Date();
+      
+      // Check if user has an active paid subscription
+      const hasActiveSubscription = user.subscriptionStatus === 'active';
+      
+      // Determine current plan based on subscription status and maxHousesAllowed
       let currentPlan = 'free';
       let maxHouses = user.maxHousesAllowed ?? 0;
       
       if (isGrandfathered || user.subscriptionStatus === 'grandfathered' || user.maxHousesAllowed === null) {
         currentPlan = 'premium_plus';
         maxHouses = -1; // unlimited
+      } else if (!hasActiveSubscription && !isTrialing) {
+        // Trial expired or no subscription - user is on free plan
+        currentPlan = 'free';
+        maxHouses = 0; // Free users can only search/message, not manage houses
       } else if (maxHouses === 0) {
         currentPlan = 'free';
       } else if (maxHouses <= 2) {
@@ -603,11 +615,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         currentPlan = 'premium_plus';
       }
-      
-      // Check if trial is active
-      const isTrialing = user.subscriptionStatus === 'trialing' && 
-                         user.trialEndsAt && 
-                         new Date(user.trialEndsAt) > new Date();
       
       const trialDaysRemaining = isTrialing && user.trialEndsAt
         ? Math.ceil((new Date(user.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
