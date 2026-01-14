@@ -38,7 +38,7 @@ export default function ContractorReferral() {
   const isPro = tierName === 'contractor_pro';
   const creditProgress = (earnedCredits / referralCreditCap) * 100;
   
-  const shareMessage = `Join me on My HomeBase! Use my referral code ${referralCode} and I get $1 off when you subscribe. You'll get the full My HomeBase experience at regular price while helping me save money! Perfect for contractors! Sign up here: ${referralLink}`;
+  const shareMessage = `Join me on MyHomeBase! Use my referral code ${referralCode} and I get $1 off when you subscribe. You'll get the full MyHomeBase experience at regular price while helping me save money! Perfect for contractors! Sign up here: ${referralLink}`;
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -125,7 +125,7 @@ export default function ContractorReferral() {
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className="mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Referral Program</h1>
-          <p className="text-gray-600 mt-1">Share My HomeBase and earn rewards</p>
+          <p className="text-gray-600 mt-1">Share MyHomeBase and earn rewards</p>
         </div>
 
         <div className="space-y-6">
@@ -190,7 +190,7 @@ export default function ContractorReferral() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="text-sm text-gray-600">
-                Share My HomeBase with other contractors and homeowners. Earn $1 off your subscription for each paid subscriber (up to ${referralCreditCap}/month)!
+                Share MyHomeBase with other contractors and homeowners. Earn $1 off your subscription for each paid subscriber (up to ${referralCreditCap}/month)!
               </div>
               
               {/* Referral Code */}
@@ -289,7 +289,7 @@ export default function ContractorReferral() {
                   </Button>
                 </div>
                 <p className="text-sm text-gray-500 mt-1">
-                  Share with fellow contractors and potential clients. They get the full My HomeBase experience while helping you save $1!
+                  Share with fellow contractors and potential clients. They get the full MyHomeBase experience while helping you save $1!
                 </p>
               </div>
             </CardContent>

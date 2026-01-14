@@ -38,8 +38,8 @@ const faqs = [
     answer: "Contractors connect their bank account through Stripe Connect in their profile settings. When you pay an invoice, the payment goes directly to their connected bank account. Contractors can track all payments in their CRM dashboard."
   },
   {
-    question: "Are there any fees for using My HomeBase payments?",
-    answer: "My HomeBase does not charge any platform fees on payments! Contractors keep 100% of what they charge. Only standard Stripe credit card processing fees apply, which are handled by Stripe directly."
+    question: "Are there any fees for using MyHomeBase payments?",
+    answer: "MyHomeBase does not charge any platform fees on payments! Contractors keep 100% of what they charge. Only standard Stripe credit card processing fees apply, which are handled by Stripe directly."
   },
   {
     question: "What payment methods are accepted?",
@@ -69,7 +69,7 @@ const faqs = [
   },
   {
     question: "How do I add multiple properties?",
-    answer: "My HomeBase supports multiple properties! Simply go to the Houses page and click 'Add House' for each property. You can switch between properties from your dashboard. Higher subscription tiers are recommended for managing more properties and unlock additional features."
+    answer: "MyHomeBase supports multiple properties! Simply go to the Houses page and click 'Add House' for each property. You can switch between properties from your dashboard. Higher subscription tiers are recommended for managing more properties and unlock additional features."
   },
   {
     question: "What is the Home Health Score?",
@@ -225,7 +225,7 @@ export default function SupportPage() {
             <CardHeader>
               <CardTitle>Frequently Asked Questions</CardTitle>
               <CardDescription>
-                Find quick answers to common questions about My HomeBase
+                Find quick answers to common questions about MyHomeBase
               </CardDescription>
             </CardHeader>
             <CardContent>

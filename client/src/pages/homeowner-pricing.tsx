@@ -251,7 +251,7 @@ export default function HomeownerPricing() {
                 All Plans Include a 14-Day Free Trial
               </h3>
               <p className="text-gray-600 max-w-2xl mx-auto">
-                Try My HomeBase risk-free for 14 days. No credit card required. Cancel anytime during your trial with no charges.
+                Try MyHomeBase risk-free for 14 days. No credit card required. Cancel anytime during your trial with no charges.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center mt-6">
                 <Button 

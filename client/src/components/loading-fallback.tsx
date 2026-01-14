@@ -19,7 +19,7 @@ export default function LoadingFallback({ variant = 'full' }: LoadingFallbackPro
   return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="text-center space-y-4">
-        <img src={logoImage} alt="My HomeBase" className="h-12 w-auto mx-auto animate-pulse" />
+        <img src={logoImage} alt="MyHomeBase" className="h-12 w-auto mx-auto animate-pulse" />
         <div className="text-muted-foreground text-sm">Loading...</div>
       </div>
     </div>

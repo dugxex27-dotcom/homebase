@@ -100,7 +100,7 @@ export default function Landing() {
           <a href="/" className="flex items-center ml-3 sm:ml-6">
             <img 
               src={logoColor} 
-              alt="My HomeBase" 
+              alt="MyHomeBase" 
               className="h-8 sm:h-10 w-auto"
               data-testid="img-landing-logo"
             />
@@ -112,7 +112,7 @@ export default function Landing() {
       <div className="w-full relative hidden lg:block">
         <img 
           src={heroImageDesktop} 
-          alt="My HomeBase - Your digital home fingerprint" 
+          alt="MyHomeBase - Your digital home fingerprint" 
           className="w-full h-auto"
           data-testid="img-landing-hero-desktop"
         />
@@ -132,7 +132,7 @@ export default function Landing() {
             }}
             data-testid="text-hero-eyebrow"
           >
-            Welcome to My HomeBase
+            Welcome to MyHomeBase
           </p>
           <h1 
             className="mb-4"
@@ -194,7 +194,7 @@ export default function Landing() {
       <div className="w-full relative hidden sm:block lg:hidden">
         <img 
           src={heroImageTablet} 
-          alt="My HomeBase - Your digital home fingerprint" 
+          alt="MyHomeBase - Your digital home fingerprint" 
           className="w-full h-auto"
           data-testid="img-landing-hero-tablet"
         />
@@ -212,7 +212,7 @@ export default function Landing() {
               color: '#BAACEB',
               letterSpacing: '0.5px'
             }}
-          >Welcome to My HomeBase</p>
+          >Welcome to MyHomeBase</p>
           <h1 
             className="mb-3"
             style={{ 
@@ -267,7 +267,7 @@ export default function Landing() {
       <div className="w-full sm:hidden">
         <img 
           src={heroImageMobile} 
-          alt="My HomeBase - Your digital home fingerprint" 
+          alt="MyHomeBase - Your digital home fingerprint" 
           className="w-full h-auto"
           data-testid="img-landing-hero-mobile"
         />
@@ -286,7 +286,7 @@ export default function Landing() {
               letterSpacing: '0.5px'
             }}
           >
-            Welcome to My HomeBase
+            Welcome to MyHomeBase
           </p>
           <h1 
             className="mb-4"
@@ -341,7 +341,7 @@ export default function Landing() {
       <div id="role-cards" className="max-w-6xl mx-auto px-4 py-12">
         <div className="text-center mb-10">
           <h2 className="font-bold mb-3 text-[24px]" style={{ color: '#2c0f5b' }}>Homes don’t just belong to one person — they move through many hands.</h2>
-          <p className="text-lg text-gray-600">Choose how you’ll use My HomeBase</p>
+          <p className="text-lg text-gray-600">Choose how you’ll use MyHomeBase</p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
@@ -432,7 +432,7 @@ export default function Landing() {
                   I'm a Real Estate Agent
                 </h2>
                 <p className="text-gray-600 mb-6">
-                  Earn commissions by referring homeowners and contractors to My HomeBase
+                  Earn commissions by referring homeowners and contractors to MyHomeBase
                 </p>
                 <ul className="space-y-2 mb-6 text-sm text-gray-700">
                   <li>✓ Earn referral bonuses</li>

@@ -2973,7 +2973,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       {/* Welcome Header */}
       <section className="py-6 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
-          <h1 className="text-xl sm:text-2xl font-bold mb-2" style={{ color: '#2c0f5b' }} data-testid="text-welcome-title">This is your My HomeBase Dashboard</h1>
+          <h1 className="text-xl sm:text-2xl font-bold mb-2" style={{ color: '#2c0f5b' }} data-testid="text-welcome-title">This is your MyHomeBase Dashboard</h1>
           <p className="text-gray-600 max-w-lg mx-auto">Every property you own, every system inside it, and every task that keeps it running — visible at a glance.<br /><br />Track your Home Health Score, log upgrades and appliances, plan tasks, and see exactly what you’re saving by doing it yourself.</p>
         </div>
       </section>
@@ -3499,7 +3499,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                         </div>
                       )}
                       <p className="text-sm pt-2" style={{ color: '#666666' }}>
-                        Thank you for joining My HomeBase through {referringAgent.firstName}'s referral! Feel free to reach out if you have any questions.
+                        Thank you for joining MyHomeBase through {referringAgent.firstName}'s referral! Feel free to reach out if you have any questions.
                       </p>
                     </div>
                   </CardContent>

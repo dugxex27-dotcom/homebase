@@ -158,8 +158,8 @@ export default function AgentDashboard() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: "Join My HomeBase",
-          text: "Use my referral code to join My HomeBase!",
+          title: "Join MyHomeBase",
+          text: "Use my referral code to join MyHomeBase!",
           url: referralUrl,
         });
       } catch (error) {

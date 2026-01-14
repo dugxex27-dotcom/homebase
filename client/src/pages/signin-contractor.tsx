@@ -142,7 +142,7 @@ export default function SignInContractor() {
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
       toast({
         title: "Account created!",
-        description: "Welcome to My HomeBase. Your account has been created successfully.",
+        description: "Welcome to MyHomeBase. Your account has been created successfully.",
       });
       setLocation('/contractor-dashboard');
     },
@@ -262,7 +262,7 @@ export default function SignInContractor() {
         <div className="text-center mb-8">
           <img 
             src={logoImage} 
-            alt="My HomeBase" 
+            alt="MyHomeBase" 
             className="h-10 w-auto mx-auto mb-4"
             data-testid="img-logo-contractor"
           />

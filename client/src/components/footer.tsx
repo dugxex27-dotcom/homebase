@@ -19,7 +19,7 @@ export default function Footer() {
                 <Link href="/" data-testid="footer-logo-home-link">
                   <img 
                     src={whiteLogoIcon} 
-                    alt="My HomeBase" 
+                    alt="MyHomeBase" 
                     className="w-full h-auto object-contain cursor-pointer"
                   />
                 </Link>
@@ -86,7 +86,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-8 sm:mt-12 pt-6 sm:pt-8 border-t border-gray-700 text-center text-gray-400 text-sm sm:text-base">
-          <p>© 2026 My HomeBase. All rights reserved.</p>
+          <p>© 2026 MyHomeBase. All rights reserved.</p>
         </div>
       </div>
     </footer>

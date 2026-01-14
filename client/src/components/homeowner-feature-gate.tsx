@@ -67,7 +67,7 @@ const homeownerFeatures = [
   {
     icon: Gift,
     title: "Referral Rewards",
-    description: "Earn credits by sharing My HomeBase with friends",
+    description: "Earn credits by sharing MyHomeBase with friends",
     benefits: [
       "Get $1/month credit per active referral",
       "Earn a free subscription with enough referrals",
@@ -91,7 +91,7 @@ export function HomeownerBenefitsDialog({ open, onOpenChange, trialDaysRemaining
               <Crown className="h-8 w-8 text-white" />
             </div>
           </div>
-          <DialogTitle className="text-2xl" style={{ color: '#2c0f5b' }}>Unlock Full My HomeBase Access</DialogTitle>
+          <DialogTitle className="text-2xl" style={{ color: '#2c0f5b' }}>Unlock Full MyHomeBase Access</DialogTitle>
           <DialogDescription className="text-base">
             Get all the tools you need to keep your home in perfect condition
           </DialogDescription>
@@ -146,7 +146,7 @@ export function HomeownerBenefitsDialog({ open, onOpenChange, trialDaysRemaining
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <Sparkles className="h-4 w-4 text-purple-600" />
-                <span className="font-semibold" style={{ color: '#2c0f5b' }}>My HomeBase Subscription</span>
+                <span className="font-semibold" style={{ color: '#2c0f5b' }}>MyHomeBase Subscription</span>
               </div>
               <p className="text-sm text-muted-foreground">Everything you need to maintain your home</p>
             </div>
@@ -204,7 +204,7 @@ export function HomeownerFeatureGate({ children, featureName, featureIcon: Featu
               </div>
               <h3 className="text-xl font-bold mb-2" style={{ color: '#2c0f5b' }}>Unlock {featureName}</h3>
               <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
-                Subscribe to My HomeBase to access {featureName.toLowerCase()} and all premium home management features.
+                Subscribe to MyHomeBase to access {featureName.toLowerCase()} and all premium home management features.
               </p>
               <div className="flex flex-col gap-3">
                 <Button asChild size="lg" className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800" data-testid="button-subscribe-gate">

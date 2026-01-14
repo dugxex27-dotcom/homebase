@@ -38,8 +38,8 @@ export default function Invite() {
   const firstName = referralInfo?.firstName || 'A friend';
   const hostUrl = window.location.origin;
   const shareUrl = `${hostUrl}/invite/${referralCode}`;
-  const shareTitle = `${firstName} invited you to My HomeBase!`;
-  const shareDescription = "Join My HomeBase to manage your home maintenance, connect with contractors, and save money on DIY projects. Get a 14-day free trial!";
+  const shareTitle = `${firstName} invited you to MyHomeBase!`;
+  const shareDescription = "Join MyHomeBase to manage your home maintenance, connect with contractors, and save money on DIY projects. Get a 14-day free trial!";
 
   if (isLoading) {
     return (
@@ -70,7 +70,7 @@ export default function Invite() {
   return (
     <>
       <Helmet>
-        <title>{shareTitle} | My HomeBase</title>
+        <title>{shareTitle} | MyHomeBase</title>
         <meta name="description" content={shareDescription} />
         
         {/* Open Graph / Facebook */}
@@ -94,7 +94,7 @@ export default function Invite() {
           <div className="max-w-4xl mx-auto flex items-center justify-between">
             <div className="text-white text-2xl font-bold flex items-center gap-2">
               <HomeIcon className="w-8 h-8" />
-              My HomeBase
+              MyHomeBase
             </div>
             <Link href="/signin">
               <Button variant="outline" className="bg-white/10 text-white border-white/20 hover:bg-white/20" data-testid="button-signin">
@@ -114,7 +114,7 @@ export default function Invite() {
                   <Sparkles className="w-10 h-10 text-white" />
                 </div>
                 <h1 className="text-3xl sm:text-4xl font-bold mb-3" style={{ color: '#2c0f5b' }} data-testid="heading-invite">
-                  {firstName} invited you to My HomeBase!
+                  {firstName} invited you to MyHomeBase!
                 </h1>
                 <p className="text-lg text-gray-600 mb-6">
                   Join thousands of homeowners who are taking control of their home maintenance
@@ -219,7 +219,7 @@ export default function Invite() {
                 Ready to Get Started?
               </h2>
               <p className="text-gray-600 mb-6">
-                Join My HomeBase today and get 14 days free. No credit card required.
+                Join MyHomeBase today and get 14 days free. No credit card required.
               </p>
               <Link href={`/signup?ref=${referralCode}`}>
                 <Button 
@@ -257,7 +257,7 @@ export default function Invite() {
                 <SiInstagram className="w-5 h-5" style={{ color: '#E4405F' }} />
               </a>
             </div>
-            <p>&copy; 2026 My HomeBase. All rights reserved.</p>
+            <p>&copy; 2026 MyHomeBase. All rights reserved.</p>
           </div>
         </footer>
       </div>

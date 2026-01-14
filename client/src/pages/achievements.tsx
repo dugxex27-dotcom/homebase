@@ -34,7 +34,7 @@ const categoryDescriptions: Record<string, string> = {
   'Seasonal': 'Complete seasonal maintenance tasks like winterizing pipes, spring cleaning gutters, and preparing your home for each season.',
   'Financial Savvy': 'Save money by completing DIY tasks under budget and tracking your total savings over time.',
   'Organization': 'Upload documents, create maintenance logs, and take before/after photos to keep your home records organized.',
-  'Referral & Community': 'Earn badges by referring friends and family to My HomeBase and building your community.',
+  'Referral & Community': 'Earn badges by referring friends and family to MyHomeBase and building your community.',
   'Milestones': 'Reach important milestones like completing your first task, logging your first service record, or reaching savings goals.',
   'Streaks': 'Maintain consistency by completing tasks regularly and building up maintenance streaks.',
   'Special': 'Unlock unique achievements through special actions like early adoption, holiday tasks, or rare accomplishments.',
