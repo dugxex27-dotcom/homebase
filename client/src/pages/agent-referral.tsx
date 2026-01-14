@@ -13,7 +13,7 @@ import instagramStoryImg from '@assets/ChatGPT_Image_Dec_26,_2025,_11_44_44_AM_1
 import facebookTwitterImg from '@assets/ChatGPT_Image_Dec_26,_2025,_11_48_57_AM_1766767747499.png';
 import homeownerFacebookTwitterImg from '@assets/homebase-rea-referrals-2_(1)_1766761107420.png';
 import homeownerInstagramStoryImg from '@assets/ChatGPT_Image_Dec_26,_2025,_10_36_13_AM_1766763390739.png';
-import homeownerInstagramPostImg from '@assets/ChatGPT_Image_Dec_26,_2025,_10_28_22_AM_1766762917982.png';
+import homeownerInstagramPostImg from '@assets/homebase-rea-homeowner-ig-post_1768431892928.png';
 
 export default function AgentReferral() {
   const { toast } = useToast();
