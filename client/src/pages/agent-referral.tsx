@@ -9,7 +9,7 @@ import type { User as UserType } from "@shared/schema";
 import { Gift, Copy, Share2, MessageSquare, Download, ImageIcon } from "lucide-react";
 
 import instagramPostImg from '@assets/homebase-rea-rea-ig-post_1768433231855.png';
-import instagramStoryImg from '@assets/ChatGPT_Image_Dec_26,_2025,_11_44_44_AM_1766767496083.png';
+import instagramStoryImg from '@assets/homebase-rea-rea-ig-story_1768433965549.png';
 import facebookTwitterImg from '@assets/homebase-rea-rea-facebook-twitter_1768433756590.png';
 import homeownerFacebookTwitterImg from '@assets/homebase-rea-homeowner-facebook-twitter_1768432226209.png';
 import homeownerInstagramStoryImg from '@assets/homebase-rea-homeowner-ig-story_1768432753751.png';
