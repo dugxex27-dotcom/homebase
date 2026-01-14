@@ -6973,6 +6973,8 @@ class DbStorage implements IStorage {
         userId: users.id,
         userFirstName: users.firstName,
         userLastName: users.lastName,
+        latitude: companies.latitude,
+        longitude: companies.longitude,
       })
       .from(companies)
       .innerJoin(users, eq(users.companyId, companies.id))
@@ -7001,6 +7003,8 @@ class DbStorage implements IStorage {
       projectPhotos: c.projectPhotos || [],
       distance: undefined as string | undefined,
       companyId: c.companyId,
+      latitude: c.latitude,
+      longitude: c.longitude,
     }));
     
     // If location is provided, geocode it and calculate distances
@@ -7010,18 +7014,28 @@ class DbStorage implements IStorage {
         const searchCoords = await this.geocodeLocation(location);
         
         if (searchCoords) {
-          // Calculate distance for each contractor
+          // Calculate distance for each contractor using actual coordinates
           results = results.map(contractor => {
+            // Use actual lat/lon from company record if available
+            if (contractor.latitude && contractor.longitude) {
+              const distance = this.calculateHaversineDistance(
+                searchCoords.lat,
+                searchCoords.lon,
+                Number(contractor.latitude),
+                Number(contractor.longitude)
+              );
+              console.log('[DISTANCE-CALC] Using actual coords for', contractor.company, ':', distance.toFixed(1), 'miles');
+              return { ...contractor, distance: distance.toFixed(1) };
+            }
+            
+            // Fallback to zip code estimation if no coordinates
             if (contractor.postalCode || contractor.location) {
-              // Try to get contractor coordinates
               const contractorLocation = contractor.postalCode || contractor.location;
-              
-              // Simple distance estimation based on zip code proximity (placeholder)
               const distance = this.estimateDistanceByZipCode(
                 location, 
                 contractorLocation
               );
-              
+              console.log('[DISTANCE-CALC] Using zip estimate for', contractor.company, ':', distance, 'miles');
               return { ...contractor, distance: distance.toString() };
             }
             return contractor;
@@ -7105,6 +7119,18 @@ class DbStorage implements IStorage {
   
   // Helper method to estimate distance between zip codes
   // This is a simplified version - real implementation should use actual geocoding
+  private calculateHaversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 3959; // Earth's radius in miles
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
   private estimateDistanceByZipCode(zip1: string, zip2: string): number {
     // Extract zip code from potentially full address strings
     // Match 5-digit zip codes
