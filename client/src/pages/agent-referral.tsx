@@ -12,7 +12,7 @@ import instagramPostImg from '@assets/ChatGPT_Image_Dec_26,_2025,_11_51_20_AM_17
 import instagramStoryImg from '@assets/ChatGPT_Image_Dec_26,_2025,_11_44_44_AM_1766767496083.png';
 import facebookTwitterImg from '@assets/ChatGPT_Image_Dec_26,_2025,_11_48_57_AM_1766767747499.png';
 import homeownerFacebookTwitterImg from '@assets/homebase-rea-homeowner-facebook-twitter_1768432226209.png';
-import homeownerInstagramStoryImg from '@assets/ChatGPT_Image_Dec_26,_2025,_10_36_13_AM_1766763390739.png';
+import homeownerInstagramStoryImg from '@assets/homebase-rea-homeowner-ig-story_1768432753751.png';
 import homeownerInstagramPostImg from '@assets/homebase-rea-homeowner-ig-post_1768431892928.png';
 
 export default function AgentReferral() {
