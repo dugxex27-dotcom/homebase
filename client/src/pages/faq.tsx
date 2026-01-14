@@ -2,6 +2,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { DollarSign, Users, MapPin, HelpCircle, Home, Wrench, Building2 } from "lucide-react";
+import { SiFacebook, SiInstagram } from "react-icons/si";
 import logoColor from "@assets/my-homebase-logo-color_1768271270022.png";
 
 export default function FAQ() {
@@ -446,6 +447,26 @@ export default function FAQ() {
 
       <footer className="bg-gray-100 border-t border-gray-200 py-8 mt-12">
         <div className="max-w-6xl mx-auto px-4 text-center text-gray-600 text-sm">
+          <div className="flex items-center justify-center gap-4 mb-4">
+            <a 
+              href="https://www.facebook.com/share/1H6GxEER1K/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-gray-500 hover:text-purple-600 transition-colors"
+              aria-label="Facebook"
+            >
+              <SiFacebook className="w-5 h-5" />
+            </a>
+            <a 
+              href="https://www.instagram.com/gotohomebase?igsh=MTV3OHJpazkwZXVwYQ==" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-gray-500 hover:text-purple-600 transition-colors"
+              aria-label="Instagram"
+            >
+              <SiInstagram className="w-5 h-5" />
+            </a>
+          </div>
           <p>&copy; {new Date().getFullYear()} My HomeBase. All rights reserved.</p>
           <div className="mt-2 space-x-4">
             <a href="/terms-of-service" className="hover:underline">Terms of Service</a>

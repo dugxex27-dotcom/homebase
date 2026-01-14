@@ -13,6 +13,7 @@ import {
   Sparkles,
   CheckCircle 
 } from "lucide-react";
+import { SiFacebook, SiInstagram } from "react-icons/si";
 import { Helmet } from "react-helmet";
 
 export default function Invite() {
@@ -236,6 +237,26 @@ export default function Invite() {
         {/* Footer */}
         <footer className="py-8 px-4 border-t border-white/20">
           <div className="max-w-4xl mx-auto text-center text-white/80 text-sm">
+            <div className="flex items-center justify-center gap-4 mb-4">
+              <a 
+                href="https://www.facebook.com/share/1H6GxEER1K/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-white/70 hover:text-white transition-colors"
+                aria-label="Facebook"
+              >
+                <SiFacebook className="w-5 h-5" />
+              </a>
+              <a 
+                href="https://www.instagram.com/gotohomebase?igsh=MTV3OHJpazkwZXVwYQ==" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-white/70 hover:text-white transition-colors"
+                aria-label="Instagram"
+              >
+                <SiInstagram className="w-5 h-5" />
+              </a>
+            </div>
             <p>&copy; 2026 My HomeBase. All rights reserved.</p>
           </div>
         </footer>
