@@ -65,6 +65,9 @@ export default function Billing() {
   const now = new Date();
   const isTrialActive = trialEndsAt && trialEndsAt > now && userData?.subscriptionStatus === 'trialing';
   const daysRemaining = trialEndsAt ? Math.ceil((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+  
+  // Check if user has an active paid subscription
+  const hasActiveSubscription = userData?.subscriptionStatus === 'active';
 
   const isContractor = userData?.role === 'contractor';
 
@@ -72,6 +75,9 @@ export default function Billing() {
   const getCurrentPlan = (): Plan => {
     if (userData?.subscriptionStatus === 'grandfathered') return 'grandfathered';
     if (isTrialActive) return 'trial';
+    
+    // If trial expired and no active subscription, treat as trial (needs to subscribe)
+    if (!hasActiveSubscription) return 'trial';
     
     // Contractors have their own plan types (basic or pro)
     if (isContractor) {
@@ -137,6 +143,16 @@ export default function Billing() {
                 ? ' Subscribe below to continue accessing your contractor features after your trial ends.'
                 : ' Select a plan below to continue managing your properties after your trial ends.'
               }
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {/* Expired Trial Alert */}
+        {!isTrialActive && !hasActiveSubscription && currentPlan === 'trial' && userData?.subscriptionStatus !== 'grandfathered' && (
+          <Alert className={`mb-6 ${isContractor ? 'border-red-500 bg-red-100' : 'border-amber-500 bg-amber-100'}`}>
+            <XCircle className={`h-4 w-4 ${isContractor ? 'text-red-700' : 'text-amber-700'}`} />
+            <AlertDescription className={isContractor ? 'text-red-900' : 'text-amber-900'}>
+              <strong>Your free trial has ended.</strong> Subscribe below to continue using MyHomeBase.
             </AlertDescription>
           </Alert>
         )}
