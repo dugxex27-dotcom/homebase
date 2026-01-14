@@ -1,13 +1,51 @@
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Home, Wrench, Building2 } from "lucide-react";
 import heroImageDesktop from "@assets/homebase-hp-hero-desktop-nocopy_1765926450284.png";
 import heroImageTablet from "@assets/homebase-hp-hero-tablet_1765940455985.png";
 import heroImageMobile from "@assets/homebase-hp-hero-mobile_1765940883354.png";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function Landing() {
+  const { toast } = useToast();
+  const [demoLoading, setDemoLoading] = useState<string | null>(null);
+
   const handleRoleSelection = (role: 'homeowner' | 'contractor' | 'agent') => {
     window.location.href = `/signin/${role}`;
+  };
+
+  const handleDemoLogin = async (role: 'homeowner' | 'contractor' | 'agent') => {
+    setDemoLoading(role);
+    try {
+      const endpoint = role === 'homeowner' 
+        ? '/api/auth/homeowner-demo-login'
+        : role === 'contractor'
+        ? '/api/auth/contractor-demo-login'
+        : '/api/auth/agent-demo-login';
+      
+      await apiRequest(endpoint, 'POST', {});
+      
+      toast({
+        title: "Demo login successful",
+        description: `Welcome to the ${role} demo!`,
+      });
+      
+      const redirectPath = role === 'homeowner' 
+        ? '/homeowner-dashboard'
+        : role === 'contractor'
+        ? '/contractor-dashboard'
+        : '/agent-dashboard';
+      window.location.href = redirectPath;
+    } catch (error: any) {
+      toast({
+        title: "Demo login failed",
+        description: error?.message || "Please try again.",
+        variant: "destructive",
+      });
+      setDemoLoading(null);
+    }
   };
 
   return (
@@ -280,6 +318,15 @@ export default function Landing() {
               >
                 Get Started
               </Button>
+              <Button 
+                variant="outline"
+                className="w-full mt-2 border-purple-300 text-purple-700 hover:bg-purple-50"
+                onClick={(e) => { e.stopPropagation(); handleDemoLogin('homeowner'); }}
+                disabled={demoLoading === 'homeowner'}
+                data-testid="button-homeowner-demo"
+              >
+                {demoLoading === 'homeowner' ? 'Loading...' : 'Try Demo'}
+              </Button>
             </CardContent>
           </Card>
 
@@ -316,6 +363,15 @@ export default function Landing() {
               >
                 Get Started
               </Button>
+              <Button 
+                variant="outline"
+                className="w-full mt-2 border-blue-300 text-blue-700 hover:bg-blue-50"
+                onClick={(e) => { e.stopPropagation(); handleDemoLogin('contractor'); }}
+                disabled={demoLoading === 'contractor'}
+                data-testid="button-contractor-demo"
+              >
+                {demoLoading === 'contractor' ? 'Loading...' : 'Try Demo'}
+              </Button>
             </CardContent>
           </Card>
 
@@ -351,6 +407,15 @@ export default function Landing() {
                 data-testid="button-agent-signup"
               >
                 Become an Affiliate
+              </Button>
+              <Button 
+                variant="outline"
+                className="w-full mt-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                onClick={(e) => { e.stopPropagation(); handleDemoLogin('agent'); }}
+                disabled={demoLoading === 'agent'}
+                data-testid="button-agent-demo"
+              >
+                {demoLoading === 'agent' ? 'Loading...' : 'Try Demo'}
               </Button>
             </CardContent>
           </Card>
