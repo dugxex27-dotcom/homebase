@@ -33,7 +33,7 @@ export default function Landing() {
       });
       
       const redirectPath = role === 'homeowner' 
-        ? '/homeowner-dashboard'
+        ? '/'
         : role === 'contractor'
         ? '/contractor-dashboard'
         : '/agent-dashboard';
