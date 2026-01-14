@@ -242,19 +242,19 @@ export default function Invite() {
                 href="https://www.facebook.com/share/1H6GxEER1K/" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-white/70 hover:text-white transition-colors"
+                className="hover:opacity-80 transition-opacity"
                 aria-label="Facebook"
               >
-                <SiFacebook className="w-5 h-5" />
+                <SiFacebook className="w-5 h-5" style={{ color: '#1877F2' }} />
               </a>
               <a 
                 href="https://www.instagram.com/gotohomebase?igsh=MTV3OHJpazkwZXVwYQ==" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-white/70 hover:text-white transition-colors"
+                className="hover:opacity-80 transition-opacity"
                 aria-label="Instagram"
               >
-                <SiInstagram className="w-5 h-5" />
+                <SiInstagram className="w-5 h-5" style={{ color: '#E4405F' }} />
               </a>
             </div>
             <p>&copy; 2026 My HomeBase. All rights reserved.</p>

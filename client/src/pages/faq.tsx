@@ -452,19 +452,19 @@ export default function FAQ() {
               href="https://www.facebook.com/share/1H6GxEER1K/" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="text-gray-500 hover:text-purple-600 transition-colors"
+              className="hover:opacity-80 transition-opacity"
               aria-label="Facebook"
             >
-              <SiFacebook className="w-5 h-5" />
+              <SiFacebook className="w-5 h-5" style={{ color: '#1877F2' }} />
             </a>
             <a 
               href="https://www.instagram.com/gotohomebase?igsh=MTV3OHJpazkwZXVwYQ==" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="text-gray-500 hover:text-purple-600 transition-colors"
+              className="hover:opacity-80 transition-opacity"
               aria-label="Instagram"
             >
-              <SiInstagram className="w-5 h-5" />
+              <SiInstagram className="w-5 h-5" style={{ color: '#E4405F' }} />
             </a>
           </div>
           <p>&copy; {new Date().getFullYear()} My HomeBase. All rights reserved.</p>

@@ -67,19 +67,19 @@ export default function Footer() {
                 href="https://www.facebook.com/share/1H6GxEER1K/" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-gray-300 hover:text-white transition-colors"
+                className="hover:opacity-80 transition-opacity"
                 aria-label="Facebook"
               >
-                <SiFacebook className="w-6 h-6" />
+                <SiFacebook className="w-6 h-6" style={{ color: '#1877F2' }} />
               </a>
               <a 
                 href="https://www.instagram.com/gotohomebase?igsh=MTV3OHJpazkwZXVwYQ==" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-gray-300 hover:text-white transition-colors"
+                className="hover:opacity-80 transition-opacity"
                 aria-label="Instagram"
               >
-                <SiInstagram className="w-6 h-6" />
+                <SiInstagram className="w-6 h-6" style={{ color: '#E4405F' }} />
               </a>
             </div>
           </div>
