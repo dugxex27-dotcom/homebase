@@ -69,10 +69,6 @@ export default function ContractorDashboard() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   
   const { needsSubscription, isInTrial, isLoading: subscriptionLoading } = useContractorSubscription();
-
-  if (needsSubscription && !subscriptionLoading) {
-    return <ContractorTrialExpiredPaywall />;
-  }
   
   const form = useForm<ProposalFormData>({
     resolver: zodResolver(proposalFormSchema),
@@ -203,6 +199,11 @@ export default function ContractorDashboard() {
   const onSubmit = (data: ProposalFormData) => {
     createMutation.mutate(data);
   };
+
+  // Check subscription status AFTER all hooks are called (React hooks rule)
+  if (needsSubscription && !subscriptionLoading) {
+    return <ContractorTrialExpiredPaywall />;
+  }
   
   const referralCount = (referralData as any)?.referralCount || 0;
   
