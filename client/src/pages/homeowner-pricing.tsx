@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,13 @@ import { Link } from "wouter";
 
 export default function HomeownerPricing() {
   const { user } = useAuth();
+  const { 
+    hasActiveSubscription, 
+    isInTrial, 
+    currentPlan: actualPlan,
+    maxHouses: subscriptionMaxHouses,
+    isLoading: subscriptionLoading 
+  } = useHomeownerSubscription();
 
   // Fetch full user data for subscription details
   const { data: userData, isLoading, isError } = useQuery({
@@ -21,7 +29,7 @@ export default function HomeownerPricing() {
   });
 
   // Show loading state while fetching user data
-  if (isLoading) {
+  if (isLoading || subscriptionLoading) {
     return (
       <div className="min-h-screen py-8 px-4 flex items-center justify-center" style={{ backgroundColor: '#f5f5f5' }}>
         <div className="text-center">
@@ -53,7 +61,11 @@ export default function HomeownerPricing() {
     );
   }
 
-  const maxHouses = (userData as any)?.maxHousesAllowed ?? 2;
+  // Only show "Current Plan" if user has an active subscription (not trial, not expired)
+  // Users can always upgrade - they should be directed to billing page
+  const maxHouses = hasActiveSubscription 
+    ? (subscriptionMaxHouses === 'unlimited' ? 999 : Number(subscriptionMaxHouses) || 0)
+    : 0; // Treat trial/expired users as having no current plan so they can subscribe
 
   return (
     <div className="min-h-screen py-8 px-4" style={{ backgroundColor: '#f5f5f5' }}>
@@ -69,10 +81,21 @@ export default function HomeownerPricing() {
         </div>
 
         {/* Current Plan Badge */}
-        {maxHouses && (
+        {hasActiveSubscription && (
           <div className="flex justify-center">
             <Badge variant="secondary" className="px-4 py-2 text-sm bg-purple-100 text-purple-800" data-testid="badge-current-plan">
-              Your Current Plan: {maxHouses <= 2 ? 'Base' : maxHouses <= 6 ? 'Premium' : 'Premium Plus'}
+              Your Current Plan: {actualPlan === 'premium_plus' ? 'Premium Plus' : actualPlan === 'premium' ? 'Premium' : 'Base'}
+            </Badge>
+          </div>
+        )}
+        
+        {/* Trial or Expired Trial Message */}
+        {!hasActiveSubscription && (
+          <div className="flex justify-center">
+            <Badge variant="secondary" className={`px-4 py-2 text-sm ${isInTrial ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
+              {isInTrial 
+                ? 'You are on a 14-day free trial. Select a plan to continue after your trial ends.'
+                : 'Your free trial has ended. Select a plan below to continue using MyHomeBase.'}
             </Badge>
           </div>
         )}
@@ -80,8 +103,8 @@ export default function HomeownerPricing() {
         {/* Pricing Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
           {/* Base Plan */}
-          <Card className={`relative transition-all hover:shadow-lg ${maxHouses <= 2 ? 'border-4 border-purple-600 shadow-xl' : 'border-2'}`}>
-            {maxHouses <= 2 && (
+          <Card className={`relative transition-all hover:shadow-lg ${hasActiveSubscription && actualPlan === 'base' ? 'border-4 border-purple-600 shadow-xl' : 'border-2'}`}>
+            {hasActiveSubscription && actualPlan === 'base' && (
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                 <Badge className="bg-purple-600 text-white px-4 py-1" data-testid="badge-base-plan-current">Current Plan</Badge>
               </div>
@@ -130,7 +153,7 @@ export default function HomeownerPricing() {
                   <span className="text-sm">Email support</span>
                 </li>
               </ul>
-              {maxHouses <= 2 ? (
+              {hasActiveSubscription && actualPlan === 'base' ? (
                 <Button className="w-full" variant="outline" disabled>
                   Current Plan
                 </Button>
@@ -140,15 +163,17 @@ export default function HomeownerPricing() {
                   className="w-full bg-purple-600 hover:bg-purple-700 text-white"
                   data-testid="button-select-base-plan"
                 >
-                  <Link href="/billing">Downgrade to Base</Link>
+                  <Link href="/billing">
+                    {!hasActiveSubscription ? 'Select Base Plan' : 'Downgrade to Base'}
+                  </Link>
                 </Button>
               )}
             </CardContent>
           </Card>
 
           {/* Premium Plan */}
-          <Card className={`relative transition-all hover:shadow-lg ${maxHouses >= 3 && maxHouses <= 6 ? 'border-4 border-purple-600 shadow-xl' : 'border-2'}`}>
-            {maxHouses >= 3 && maxHouses <= 6 && (
+          <Card className={`relative transition-all hover:shadow-lg ${hasActiveSubscription && actualPlan === 'premium' ? 'border-4 border-purple-600 shadow-xl' : 'border-2'}`}>
+            {hasActiveSubscription && actualPlan === 'premium' && (
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                 <Badge className="bg-purple-600 text-white px-4 py-1" data-testid="badge-premium-plan-current">Current Plan</Badge>
               </div>
@@ -177,7 +202,7 @@ export default function HomeownerPricing() {
                   <span className="text-sm"><strong>Everything in Base</strong></span>
                 </li>
               </ul>
-              {maxHouses >= 3 && maxHouses <= 6 ? (
+              {hasActiveSubscription && actualPlan === 'premium' ? (
                 <Button className="w-full" variant="outline" disabled>
                   Current Plan
                 </Button>
@@ -188,7 +213,7 @@ export default function HomeownerPricing() {
                   data-testid="button-select-premium-plan"
                 >
                   <Link href="/billing">
-                    {maxHouses <= 2 ? 'Upgrade to Premium' : 'Downgrade to Premium'}
+                    {!hasActiveSubscription ? 'Select Premium Plan' : actualPlan === 'base' ? 'Upgrade to Premium' : 'Downgrade to Premium'}
                   </Link>
                 </Button>
               )}
@@ -196,8 +221,8 @@ export default function HomeownerPricing() {
           </Card>
 
           {/* Premium Plus Plan */}
-          <Card className={`relative transition-all hover:shadow-lg ${maxHouses >= 7 ? 'border-4 border-purple-600 shadow-xl' : 'border-2'}`}>
-            {maxHouses >= 7 && (
+          <Card className={`relative transition-all hover:shadow-lg ${hasActiveSubscription && actualPlan === 'premium_plus' ? 'border-4 border-purple-600 shadow-xl' : 'border-2'}`}>
+            {hasActiveSubscription && actualPlan === 'premium_plus' && (
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                 <Badge className="bg-purple-600 text-white px-4 py-1" data-testid="badge-premium-plus-plan-current">Current Plan</Badge>
               </div>
@@ -226,7 +251,7 @@ export default function HomeownerPricing() {
                   <span className="text-sm"><strong>Everything in Premium</strong></span>
                 </li>
               </ul>
-              {maxHouses >= 7 ? (
+              {hasActiveSubscription && actualPlan === 'premium_plus' ? (
                 <Button className="w-full" variant="outline" disabled>
                   Current Plan
                 </Button>
@@ -236,7 +261,9 @@ export default function HomeownerPricing() {
                   className="w-full bg-purple-600 hover:bg-purple-700 text-white"
                   data-testid="button-select-premium-plus-plan"
                 >
-                  <Link href="/billing">Upgrade to Premium Plus</Link>
+                  <Link href="/billing">
+                    {!hasActiveSubscription ? 'Select Premium Plus' : 'Upgrade to Premium Plus'}
+                  </Link>
                 </Button>
               )}
             </CardContent>
