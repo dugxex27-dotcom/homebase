@@ -1,15 +1,17 @@
 import { ReactNode, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation } from 'wouter';
+import PublicHeader from '@/components/public-header';
 import Footer from '@/components/footer';
 import LoadingFallback from '@/components/loading-fallback';
 import ErrorBoundary from '@/components/error-boundary';
 
 interface UnauthenticatedLayoutProps {
   children: ReactNode;
+  hideHeader?: boolean;
 }
 
-export default function UnauthenticatedLayout({ children }: UnauthenticatedLayoutProps) {
+export default function UnauthenticatedLayout({ children, hideHeader = false }: UnauthenticatedLayoutProps) {
   const [location] = useLocation();
 
   return (
@@ -22,6 +24,7 @@ export default function UnauthenticatedLayout({ children }: UnauthenticatedLayou
         transition={{ duration: 0.15, ease: 'easeInOut' }}
         className="min-h-screen flex flex-col"
       >
+        {!hideHeader && <PublicHeader />}
         <ErrorBoundary>
           <Suspense fallback={<LoadingFallback variant="full" />}>
             <div className="flex-1">
