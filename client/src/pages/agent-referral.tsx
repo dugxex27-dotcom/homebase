@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import type { User as UserType } from "@shared/schema";
 import { Gift, Copy, Share2, MessageSquare, Download, ImageIcon } from "lucide-react";
 
-import instagramPostImg from '@assets/ChatGPT_Image_Dec_26,_2025,_11_51_20_AM_1766767899453.png';
+import instagramPostImg from '@assets/homebase-rea-rea-ig-post_1768433231855.png';
 import instagramStoryImg from '@assets/ChatGPT_Image_Dec_26,_2025,_11_44_44_AM_1766767496083.png';
 import facebookTwitterImg from '@assets/ChatGPT_Image_Dec_26,_2025,_11_48_57_AM_1766767747499.png';
 import homeownerFacebookTwitterImg from '@assets/homebase-rea-homeowner-facebook-twitter_1768432226209.png';
