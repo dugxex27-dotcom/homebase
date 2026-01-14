@@ -30,7 +30,7 @@ export default function Landing() {
                 <Menu className="h-6 w-6 text-gray-700" />
               </button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[280px] sm:w-[320px]">
+            <SheetContent side="left" className="w-[280px] sm:w-[320px]">
               <SheetHeader>
                 <SheetTitle className="text-left">Sign In</SheetTitle>
               </SheetHeader>
