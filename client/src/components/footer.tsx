@@ -25,29 +25,9 @@ export default function Footer() {
                 </Link>
               </div>
             </div>
-            <p className="text-gray-300 mb-4 sm:mb-6 leading-relaxed text-sm sm:text-base">
+            <p className="text-gray-300 leading-relaxed text-sm sm:text-base">
               Your trusted partner for connecting with skilled contractors, discovering quality DIY products, and maintaining your home with confidence.
             </p>
-            <div className="flex items-center justify-center sm:justify-start gap-4">
-              <a 
-                href="https://www.facebook.com/share/1H6GxEER1K/" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-gray-300 hover:text-white transition-colors"
-                aria-label="Facebook"
-              >
-                <SiFacebook className="w-6 h-6" />
-              </a>
-              <a 
-                href="https://www.instagram.com/gotohomebase?igsh=MTV3OHJpazkwZXVwYQ==" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-gray-300 hover:text-white transition-colors"
-                aria-label="Instagram"
-              >
-                <SiInstagram className="w-6 h-6" />
-              </a>
-            </div>
           </div>
 
           {typedUser?.role === 'homeowner' && (
@@ -78,6 +58,30 @@ export default function Footer() {
               <li><Link href="/privacy-policy" className="transition-colors hover:text-white" data-testid="link-privacy">Privacy Policy</Link></li>
               <li><Link href="/legal-disclaimer" className="transition-colors hover:text-white" data-testid="link-disclaimer">Legal Disclaimer</Link></li>
             </ul>
+          </div>
+
+          <div className="text-center sm:text-left">
+            <h4 className="text-base sm:text-lg font-semibold mb-4 sm:mb-6 text-white">Connect</h4>
+            <div className="flex items-center justify-center sm:justify-start gap-4">
+              <a 
+                href="https://www.facebook.com/share/1H6GxEER1K/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-gray-300 hover:text-white transition-colors"
+                aria-label="Facebook"
+              >
+                <SiFacebook className="w-6 h-6" />
+              </a>
+              <a 
+                href="https://www.instagram.com/gotohomebase?igsh=MTV3OHJpazkwZXVwYQ==" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-gray-300 hover:text-white transition-colors"
+                aria-label="Instagram"
+              >
+                <SiInstagram className="w-6 h-6" />
+              </a>
+            </div>
           </div>
         </div>
 
