@@ -13,7 +13,7 @@ import { Gift, Copy, Share2, MessageSquare, Download, ImageIcon, Crown, Trending
 import instagramPostImg from '@assets/homebase-contractor-contractor-ig-post_1768431031559.png';
 import instagramStoryImg from '@assets/homebase-contractor-contractor-ig-story_1768430820224.png';
 import facebookTwitterImg from '@assets/homebase-contractor-contractor-facebook-twitter_1768431146991.png';
-import homeownerFacebookTwitterImg from '@assets/homebase-contractor-referral-2_(2)_1766772524078.png';
+import homeownerFacebookTwitterImg from '@assets/homebase-contractor-homeowner-facebook-twitter_1768431701172.png';
 import homeownerInstagramStoryImg from '@assets/homebase-contractor-homeowner-ig-story_1768431505778.png';
 import homeownerInstagramPostImg from '@assets/homebase-contractor-homeowner-ig-post_1768431233148.png';
 
