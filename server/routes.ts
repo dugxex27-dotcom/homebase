@@ -586,11 +586,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isGrandfathered = user.email && grandfatheredEmails.includes(user.email.toLowerCase());
       
       const housesCount = await storage.getHousesCount(userId);
+      const now = new Date();
+      
+      // Calculate trial end date - use trialEndsAt if set, otherwise calculate from createdAt + 14 days
+      let effectiveTrialEndsAt: Date | null = null;
+      if (user.trialEndsAt) {
+        effectiveTrialEndsAt = new Date(user.trialEndsAt);
+      } else if (user.createdAt) {
+        // For older accounts without trialEndsAt, calculate based on account creation + 14 days
+        effectiveTrialEndsAt = new Date(new Date(user.createdAt).getTime() + 14 * 24 * 60 * 60 * 1000);
+      }
       
       // Check if trial is active FIRST (need this for plan determination)
       const isTrialing = user.subscriptionStatus === 'trialing' && 
-                         user.trialEndsAt && 
-                         new Date(user.trialEndsAt) > new Date();
+                         effectiveTrialEndsAt && 
+                         effectiveTrialEndsAt > now;
       
       // Check if user has an active paid subscription
       const hasActiveSubscription = user.subscriptionStatus === 'active';
@@ -616,8 +626,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         currentPlan = 'premium_plus';
       }
       
-      const trialDaysRemaining = isTrialing && user.trialEndsAt
-        ? Math.ceil((new Date(user.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+      const trialDaysRemaining = isTrialing && effectiveTrialEndsAt
+        ? Math.ceil((effectiveTrialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
         : 0;
       
       res.json({
@@ -628,7 +638,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         subscriptionStatus: isGrandfathered ? 'grandfathered' : user.subscriptionStatus,
         isTrialing: isGrandfathered ? false : isTrialing,
         trialDaysRemaining: isGrandfathered ? 0 : trialDaysRemaining,
-        trialEndsAt: isGrandfathered ? null : user.trialEndsAt,
+        trialEndsAt: isGrandfathered ? null : (effectiveTrialEndsAt?.toISOString() || null),
         isPremium: isGrandfathered ? true : user.isPremium,
         isGrandfathered
       });

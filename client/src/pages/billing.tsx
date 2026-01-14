@@ -60,11 +60,20 @@ export default function Billing() {
     },
   });
 
-  // Calculate trial status
-  const trialEndsAt = userData?.trialEndsAt ? new Date(userData.trialEndsAt) : null;
+  // Calculate trial status - use trialEndsAt if set, otherwise createdAt + 14 days
   const now = new Date();
-  const isTrialActive = trialEndsAt && trialEndsAt > now && userData?.subscriptionStatus === 'trialing';
-  const daysRemaining = trialEndsAt ? Math.ceil((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+  let effectiveTrialEndsAt: Date | null = null;
+  if (userData?.trialEndsAt) {
+    effectiveTrialEndsAt = new Date(userData.trialEndsAt);
+  } else if (userData?.createdAt) {
+    // For older accounts without trialEndsAt, calculate based on account creation + 14 days
+    effectiveTrialEndsAt = new Date(new Date(userData.createdAt).getTime() + 14 * 24 * 60 * 60 * 1000);
+  }
+  
+  const isTrialActive = effectiveTrialEndsAt && effectiveTrialEndsAt > now && userData?.subscriptionStatus === 'trialing';
+  const daysRemaining = effectiveTrialEndsAt && effectiveTrialEndsAt > now 
+    ? Math.ceil((effectiveTrialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) 
+    : 0;
   
   // Check if user has an active paid subscription
   const hasActiveSubscription = userData?.subscriptionStatus === 'active';

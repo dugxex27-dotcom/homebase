@@ -57,24 +57,30 @@ export function useHomeownerSubscription(): SubscriptionStatus {
   const data = userData as any;
   const subData = subscriptionData as any;
   const subscriptionStatus = data.subscriptionStatus || 'inactive';
-  const trialEndsAt = data.trialEndsAt ? new Date(data.trialEndsAt) : null;
   const now = new Date();
+  
+  // Calculate effective trial end date - use trialEndsAt if set, otherwise createdAt + 14 days
+  let effectiveTrialEndsAt: Date | null = null;
+  if (data.trialEndsAt) {
+    effectiveTrialEndsAt = new Date(data.trialEndsAt);
+  } else if (data.createdAt) {
+    // For older accounts without trialEndsAt, calculate based on account creation + 14 days
+    effectiveTrialEndsAt = new Date(new Date(data.createdAt).getTime() + 14 * 24 * 60 * 60 * 1000);
+  }
 
   // Calculate trial status
   // User is only in trial if they have status 'trialing' AND a valid future trial end date
-  const isInTrial = subscriptionStatus === 'trialing' && !!trialEndsAt && trialEndsAt > now;
-  const trialDaysRemaining = trialEndsAt 
-    ? Math.max(0, Math.ceil((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+  const isInTrial = subscriptionStatus === 'trialing' && !!effectiveTrialEndsAt && effectiveTrialEndsAt > now;
+  const trialDaysRemaining = effectiveTrialEndsAt && effectiveTrialEndsAt > now
+    ? Math.max(0, Math.ceil((effectiveTrialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
     : 0;
   
   // Trial is expired if:
-  // 1. Status is 'trialing' but trialEndsAt is missing (data issue - treat as expired)
-  // 2. Status is 'trialing' and trialEndsAt is in the past
-  // 3. TrialEndsAt exists and is in the past (regardless of status, unless active/grandfathered)
+  // 1. Status is 'trialing' and effectiveTrialEndsAt is in the past (or missing createdAt to calculate)
+  // 2. TrialEndsAt/effectiveTrialEndsAt exists and is in the past (regardless of status, unless active/grandfathered)
   const trialExpired = Boolean(
-    (subscriptionStatus === 'trialing' && !trialEndsAt) || // Missing trial end date
-    (subscriptionStatus === 'trialing' && trialEndsAt && trialEndsAt <= now) || // Trial date passed
-    (trialEndsAt && trialEndsAt <= now && subscriptionStatus !== 'active' && subscriptionStatus !== 'grandfathered')
+    (subscriptionStatus === 'trialing' && (!effectiveTrialEndsAt || effectiveTrialEndsAt <= now)) || // Trial ended or can't calculate
+    (effectiveTrialEndsAt && effectiveTrialEndsAt <= now && subscriptionStatus !== 'active' && subscriptionStatus !== 'grandfathered')
   );
 
   // Check if user has an active paid subscription
