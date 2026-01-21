@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Users, Home, Briefcase, Plus, Ban, TrendingUp, DollarSign, UserMinus, MessageSquare, ArrowRight, Flag, UserCheck, CheckCircle, XCircle, Clock, Eye, ChevronDown, ChevronUp, FileText, ExternalLink, Mail } from "lucide-react";
+import { Users, Home, Briefcase, Plus, Ban, TrendingUp, DollarSign, UserMinus, MessageSquare, ArrowRight, Flag, UserCheck, CheckCircle, XCircle, Clock, Eye, ChevronDown, ChevronUp, FileText, ExternalLink, Mail, Phone } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { format } from "date-fns";
@@ -120,6 +120,10 @@ Feel free to reply to this email with any thoughts. We read every response!
 
 Best regards,
 The MyHomeBase Team`);
+
+  // Bulk SMS state
+  const [bulkSmsAudience, setBulkSmsAudience] = useState<"all" | "homeowners" | "contractors">("all");
+  const [bulkSmsMessage, setBulkSmsMessage] = useState("MyHomeBase: We hope you're enjoying the app! Reply with any questions or feedback. We'd love to hear from you!");
 
   // Fetch admin stats
   const { data: stats, isLoading: statsLoading, error: statsError } = useQuery<AdminStats>({
@@ -248,6 +252,26 @@ The MyHomeBase Team`);
       toast({
         title: "Error",
         description: error.message || "Failed to send bulk emails",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Bulk SMS mutation
+  const bulkSmsMutation = useMutation({
+    mutationFn: async ({ audience, message }: { audience: string; message: string }) => {
+      return apiRequest("/api/admin/send-bulk-sms", "POST", { audience, message });
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "SMS Messages Sent",
+        description: `Sent ${data.sent} SMS messages successfully${data.failed > 0 ? `, ${data.failed} failed` : ''}${data.skipped > 0 ? `, ${data.skipped} skipped (no phone)` : ''}`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send bulk SMS",
         variant: "destructive",
       });
     },
@@ -433,6 +457,69 @@ The MyHomeBase Team`);
               >
                 {bulkEmailMutation.isPending ? "Sending..." : `Send to ${bulkEmailAudience === 'all' ? 'All Users' : bulkEmailAudience === 'homeowners' ? 'Homeowners' : 'Contractors'}`}
                 <Mail className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Bulk SMS Section */}
+        <Card className="mb-8" data-testid="card-bulk-sms">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Phone className="h-5 w-5 text-green-600" />
+              Send Bulk SMS
+            </CardTitle>
+            <CardDescription>
+              Send a text message to users with phone numbers on file
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Send To</Label>
+              <Select value={bulkSmsAudience} onValueChange={(v) => setBulkSmsAudience(v as "all" | "homeowners" | "contractors")}>
+                <SelectTrigger data-testid="select-bulk-sms-audience">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Users</SelectItem>
+                  <SelectItem value="homeowners">Homeowners Only</SelectItem>
+                  <SelectItem value="contractors">Contractors Only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="sms-message">Message</Label>
+              <Textarea
+                id="sms-message"
+                value={bulkSmsMessage}
+                onChange={(e) => setBulkSmsMessage(e.target.value)}
+                placeholder="Enter your SMS message..."
+                rows={3}
+                maxLength={160}
+                data-testid="input-bulk-sms-message"
+              />
+              <p className="text-xs text-muted-foreground">{bulkSmsMessage.length}/160 characters (SMS limit)</p>
+            </div>
+            
+            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border">
+              <p className="text-sm font-medium mb-2">Preview:</p>
+              <div className="text-sm text-muted-foreground whitespace-pre-wrap">
+                {bulkSmsMessage || "(No message)"}
+              </div>
+            </div>
+            
+            <div className="flex justify-end">
+              <Button
+                onClick={() => bulkSmsMutation.mutate({ 
+                  audience: bulkSmsAudience,
+                  message: bulkSmsMessage
+                })}
+                disabled={bulkSmsMutation.isPending || !bulkSmsMessage.trim()}
+                data-testid="button-send-bulk-sms"
+              >
+                {bulkSmsMutation.isPending ? "Sending..." : `Send to ${bulkSmsAudience === 'all' ? 'All Users' : bulkSmsAudience === 'homeowners' ? 'Homeowners' : 'Contractors'}`}
+                <Phone className="h-4 w-4 ml-2" />
               </Button>
             </div>
           </CardContent>

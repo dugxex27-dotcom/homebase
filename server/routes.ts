@@ -4427,6 +4427,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Send bulk SMS to users
+  app.post('/api/admin/send-bulk-sms', requireAdmin, async (req: any, res) => {
+    try {
+      const { audience, message } = req.body;
+      
+      // Validate message
+      if (!message || typeof message !== 'string' || message.trim().length === 0) {
+        return res.status(400).json({ message: "SMS message is required" });
+      }
+      if (message.length > 160) {
+        return res.status(400).json({ message: "Message must be 160 characters or less" });
+      }
+      
+      // Build query based on audience selection - only users with phone numbers
+      let allUsers;
+      if (audience === 'homeowners') {
+        allUsers = await db.select({
+          id: users.id,
+          phone: users.phone,
+          firstName: users.firstName,
+          role: users.role
+        }).from(users).where(and(isNotNull(users.phone), eq(users.role, 'homeowner')));
+      } else if (audience === 'contractors') {
+        allUsers = await db.select({
+          id: users.id,
+          phone: users.phone,
+          firstName: users.firstName,
+          role: users.role
+        }).from(users).where(and(isNotNull(users.phone), eq(users.role, 'contractor')));
+      } else {
+        // 'all' - get everyone with phone numbers
+        allUsers = await db.select({
+          id: users.id,
+          phone: users.phone,
+          firstName: users.firstName,
+          role: users.role
+        }).from(users).where(isNotNull(users.phone));
+      }
+
+      // Filter users with valid phone numbers
+      const usersWithPhone = allUsers.filter(u => u.phone && u.phone.trim().length >= 10);
+
+      if (usersWithPhone.length === 0) {
+        return res.status(400).json({ message: "No users with phone numbers found for the selected audience" });
+      }
+
+      let sent = 0;
+      let failed = 0;
+      let skipped = allUsers.length - usersWithPhone.length;
+
+      // Send SMS to each user
+      for (const user of usersWithPhone) {
+        try {
+          const success = await smsService.sendSMS({
+            to: user.phone!,
+            body: message.trim()
+          });
+          if (success) {
+            sent++;
+          } else {
+            failed++;
+          }
+        } catch (error) {
+          console.error(`Failed to send SMS to user ${user.id}:`, error);
+          failed++;
+        }
+      }
+
+      // Log the action
+      await auditLogger.log({
+        eventType: 'admin.bulk_sms_sent',
+        userId: req.user?.id || 'unknown',
+        userEmail: req.user?.email || 'unknown',
+        severity: 'info',
+        details: {
+          totalUsers: allUsers.length,
+          sent,
+          failed,
+          skipped,
+          audience
+        }
+      });
+
+      res.json({
+        message: `Bulk SMS sent`,
+        totalUsers: allUsers.length,
+        sent,
+        failed,
+        skipped
+      });
+    } catch (error) {
+      console.error("Error sending bulk SMS:", error);
+      res.status(500).json({ message: "Failed to send bulk SMS" });
+    }
+  });
+
   // Security Dashboard - Admin endpoints for SOC 2 compliance
   app.get('/api/admin/security/audit-logs', requireAdmin, async (req: any, res) => {
     try {
