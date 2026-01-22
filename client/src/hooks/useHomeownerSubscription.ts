@@ -56,6 +56,26 @@ export function useHomeownerSubscription(): SubscriptionStatus {
 
   const data = userData as any;
   const subData = subscriptionData as any;
+  
+  // Demo accounts get full access - use subscription endpoint data directly
+  if (subData?.isDemoAccount) {
+    return {
+      isLoading: false,
+      isInTrial: false,
+      trialDaysRemaining: 0,
+      hasActiveSubscription: true,
+      isPaidSubscriber: true,
+      trialExpired: false,
+      subscriptionStatus: 'active',
+      needsUpgrade: false,
+      currentPlan: subData.currentPlan || 'premium_plus',
+      maxHouses: subData.maxHouses ?? 'unlimited',
+      currentHouses: subData.currentHouses ?? 0,
+      canAddHomes: true,
+      isFreeUser: false,
+    };
+  }
+  
   const subscriptionStatus = data.subscriptionStatus || 'inactive';
   const now = new Date();
   

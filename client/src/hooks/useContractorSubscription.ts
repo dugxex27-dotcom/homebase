@@ -51,6 +51,26 @@ export function useContractorSubscription(): ContractorSubscriptionStatus {
 
   const data = subscriptionData as any;
   
+  // Demo accounts get full Pro access - never show subscription prompts
+  if (data.isDemoAccount) {
+    return {
+      isLoading: false,
+      hasActiveSubscription: true,
+      needsSubscription: false,
+      isInTrial: false,
+      trialExpired: false,
+      trialDaysRemaining: 0,
+      trialEndsAt: null,
+      currentPlan: 'pro',
+      hasCrmAccess: true,
+      subscriptionStatus: 'active',
+      monthlyPrice: 0,
+      features: data.features ?? [],
+      needsUpgrade: false,
+      planName: data.planName ?? 'Pro (Demo Account)',
+    };
+  }
+  
   return {
     isLoading: false,
     hasActiveSubscription: data.hasActiveSubscription ?? false,
