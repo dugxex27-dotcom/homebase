@@ -581,8 +581,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'User not found' });
       }
       
-      // Demo homeowner account gets unlimited access - never expires
-      if (userId === 'demo-homeowner-permanent-id') {
+      // Demo homeowner accounts get unlimited access - never expires
+      // Check for demo-homeowner prefix to catch all demo homeowner accounts
+      if (userId.startsWith('demo-homeowner') || user.email?.includes('demo@homeowner') || user.email?.includes('@homebase.com')) {
         const housesCount = await storage.getHousesCount(userId);
         return res.json({
           currentPlan: 'premium_plus',
@@ -10814,8 +10815,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Not a contractor account' });
       }
       
-      // Demo contractor account gets full Pro access - never expires
-      if (userId === 'demo-contractor-permanent-id') {
+      // Demo contractor accounts get full Pro access - never expires
+      // Check for demo-contractor prefix to catch all demo contractor accounts
+      if (userId.startsWith('demo-contractor') || user.email?.includes('demo@contractor') || user.email?.includes('precisionhvac')) {
         return res.json({
           hasActiveSubscription: true,
           needsSubscription: false,
