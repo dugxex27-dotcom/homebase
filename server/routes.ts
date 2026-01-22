@@ -76,6 +76,11 @@ const requireHomeownerSubscription = async (req: any, res: any, next: any) => {
       return next();
     }
     
+    // Demo accounts get unlimited access - check for demo-homeowner prefix or demo email patterns
+    if (userId.startsWith('demo-homeowner') || user.email?.includes('demo@homeowner') || user.email?.includes('@homebase.com')) {
+      return next();
+    }
+    
     // Check if grandfathered - free unlimited access
     const isGrandfathered = user.email && GRANDFATHERED_EMAILS.includes(user.email.toLowerCase());
     if (isGrandfathered || user.subscriptionStatus === 'grandfathered') {
