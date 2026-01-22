@@ -10325,62 +10325,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "House not found" });
       }
 
-      const currentDate = new Date();
-      const currentYear = currentDate.getFullYear();
-      const currentMonth = currentDate.getMonth() + 1; // 1-12
-
-      // Get all completed tasks for this house in the current year
+      // Get ALL completed tasks for this house across all years (cumulative score)
       const completedTasks = await db.select()
         .from(taskCompletions)
-        .where(
-          and(
-            eq(taskCompletions.houseId, houseId),
-            eq(taskCompletions.year, currentYear)
-          )
-        );
+        .where(eq(taskCompletions.houseId, houseId));
 
       const completedCount = completedTasks.length;
 
-      // Get all seasonal maintenance tasks for past months (including current)
-      const seasonalTasks = await db.select()
-        .from(maintenanceTasks)
-        .where(
-          lte(maintenanceTasks.month, currentMonth)
-        );
+      // Score is simply +4 per completed task (cumulative, never resets)
+      // This rewards consistent home maintenance over time
+      const score = completedCount * 4;
 
-      // Filter seasonal tasks by climate zone
-      const applicableTasks = seasonalTasks.filter(task => 
-        task.climateZones.includes(house.climateZone || '')
-      );
-
-      // Get custom tasks for this house
-      const customTasks = await db.select()
-        .from(customMaintenanceTasks)
-        .where(
-          and(
-            eq(customMaintenanceTasks.homeownerId, homeownerId),
-            or(
-              eq(customMaintenanceTasks.houseId, houseId),
-              isNull(customMaintenanceTasks.houseId)
-            ),
-            eq(customMaintenanceTasks.isActive, true)
-          )
-        );
-
-      // Calculate expected tasks (seasonal + custom)
-      const expectedTasksCount = applicableTasks.length + customTasks.length;
-
-      // Missed tasks = expected tasks - completed tasks
-      const missedCount = Math.max(0, expectedTasksCount - completedCount);
-
-      // Calculate score: +4 per completed, -4 per missed (minimum 0)
-      const score = Math.max(0, (completedCount * 4) - (missedCount * 4));
+      // Track missed tasks as 0 since we're using cumulative scoring
+      const missedCount = 0;
 
       res.json({
         score,
         completedTasks: completedCount,
         missedTasks: missedCount,
-        totalExpectedTasks: expectedTasksCount
+        totalExpectedTasks: completedCount // Cumulative - no "expected" tasks concept
       });
     } catch (error) {
       console.error("Error calculating home health score:", error);
