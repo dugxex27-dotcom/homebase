@@ -581,6 +581,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'User not found' });
       }
       
+      // Demo homeowner account gets unlimited access - never expires
+      if (userId === 'demo-homeowner-permanent-id') {
+        const housesCount = await storage.getHousesCount(userId);
+        return res.json({
+          currentPlan: 'premium_plus',
+          maxHouses: 'unlimited',
+          currentHouses: housesCount,
+          canAddHomes: true,
+          isTrialing: false,
+          trialDaysRemaining: 0,
+          hasActiveSubscription: true,
+          subscriptionStatus: 'active',
+          isDemoAccount: true,
+        });
+      }
+      
       // Check if user is grandfathered (free unlimited access forever)
       const grandfatheredEmails = (process.env.GRANDFATHERED_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
       const isGrandfathered = user.email && grandfatheredEmails.includes(user.email.toLowerCase());
@@ -10796,6 +10812,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!user || user.role !== 'contractor') {
         return res.status(403).json({ message: 'Not a contractor account' });
+      }
+      
+      // Demo contractor account gets full Pro access - never expires
+      if (userId === 'demo-contractor-permanent-id') {
+        return res.json({
+          hasActiveSubscription: true,
+          needsSubscription: false,
+          isInTrial: false,
+          trialExpired: false,
+          trialDaysRemaining: 0,
+          trialEndsAt: null,
+          currentPlan: 'pro',
+          hasCrmAccess: true,
+          subscriptionStatus: 'active',
+          monthlyPrice: 0,
+          features: ['Lead management', 'Client management', 'Job scheduling', 'Quotes and invoices', 'Dashboard analytics', 'Referral program'],
+          planName: 'Pro (Demo Account)',
+          tierName: 'contractor_pro',
+          isDemoAccount: true,
+        });
       }
       
       // Check if user is grandfathered (free Pro access forever)
