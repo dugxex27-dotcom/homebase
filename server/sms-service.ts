@@ -70,27 +70,28 @@ async function canSendSMS(userId: string, notificationType: 'maintenance' | 'app
 
 export async function sendSMS(notification: SMSNotification): Promise<boolean> {
   if (!twilioClient || !fromNumber) {
-    console.log('[SMS] Twilio not configured, skipping SMS');
+    console.log('[SMS] Twilio not configured - accountSid:', !!accountSid, 'authToken:', !!authToken, 'fromNumber:', !!fromNumber);
     return false;
   }
 
   try {
     const formattedNumber = await formatPhoneNumber(notification.to);
     if (!formattedNumber) {
-      console.log('[SMS] Invalid phone number:', notification.to);
+      console.log('[SMS] Invalid phone number format:', notification.to);
       return false;
     }
 
+    console.log('[SMS] Attempting to send to:', formattedNumber, 'from:', fromNumber);
     const message = await twilioClient.messages.create({
       body: notification.body,
       from: fromNumber,
       to: formattedNumber,
     });
 
-    console.log('[SMS] Message sent:', message.sid);
+    console.log('[SMS] Message sent successfully - SID:', message.sid, 'Status:', message.status);
     return true;
-  } catch (error) {
-    console.error('[SMS] Failed to send message:', error);
+  } catch (error: any) {
+    console.error('[SMS] Failed to send message - Error:', error?.message || error, 'Code:', error?.code);
     return false;
   }
 }

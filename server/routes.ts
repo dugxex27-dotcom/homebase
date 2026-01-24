@@ -4491,7 +4491,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Filter users with valid phone numbers
       const usersWithPhone = allUsers.filter(u => u.phone && u.phone.trim().length >= 10);
 
+      console.log(`[BULK SMS] Audience: ${audience}, Total users: ${allUsers.length}, With phone: ${usersWithPhone.length}`);
+
       if (usersWithPhone.length === 0) {
+        console.log('[BULK SMS] No users with phone numbers found');
         return res.status(400).json({ message: "No users with phone numbers found for the selected audience" });
       }
 
@@ -4502,17 +4505,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Send SMS to each user
       for (const user of usersWithPhone) {
         try {
+          console.log(`[BULK SMS] Sending to user ${user.id}, phone: ${user.phone}`);
           const success = await smsService.sendSMS({
             to: user.phone!,
             body: message.trim()
           });
           if (success) {
             sent++;
+            console.log(`[BULK SMS] Success for user ${user.id}`);
           } else {
             failed++;
+            console.log(`[BULK SMS] Failed for user ${user.id}`);
           }
         } catch (error) {
-          console.error(`Failed to send SMS to user ${user.id}:`, error);
+          console.error(`[BULK SMS] Error for user ${user.id}:`, error);
           failed++;
         }
       }
