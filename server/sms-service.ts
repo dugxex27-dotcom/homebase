@@ -6,15 +6,34 @@ import { eq, and } from 'drizzle-orm';
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
-const fromNumber = process.env.TWILIO_PHONE_NUMBER;
+const rawFromNumber = process.env.TWILIO_PHONE_NUMBER;
+
+// Format the from number to E.164 format if needed
+function formatFromNumber(phone: string | undefined): string | null {
+  if (!phone) return null;
+  const cleaned = phone.replace(/\D/g, '');
+  if (cleaned.length === 10) {
+    return `+1${cleaned}`;
+  } else if (cleaned.length === 11 && cleaned.startsWith('1')) {
+    return `+${cleaned}`;
+  } else if (phone.startsWith('+')) {
+    return phone;
+  } else if (cleaned.length > 10) {
+    return `+${cleaned}`;
+  }
+  return phone;
+}
+
+const fromNumber = formatFromNumber(rawFromNumber);
 
 let twilioClient: twilio.Twilio | null = null;
 
 if (accountSid && authToken && fromNumber) {
   twilioClient = twilio(accountSid, authToken);
-  console.log('[SMS] Twilio client initialized');
+  console.log('[SMS] Twilio client initialized with from number:', fromNumber);
 } else {
   console.warn('[SMS] Twilio credentials not configured - SMS notifications disabled');
+  console.warn('[SMS] accountSid:', !!accountSid, 'authToken:', !!authToken, 'fromNumber:', fromNumber);
 }
 
 export interface SMSNotification {
