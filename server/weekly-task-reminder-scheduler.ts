@@ -92,6 +92,13 @@ async function getRemainingTasksForHouse(
   }
 }
 
+function isNthFridayOfMonth(date: Date, nthWeeks: number[]): boolean {
+  if (date.getDay() !== 5) return false; // Not Friday
+  const dayOfMonth = date.getDate();
+  const weekOfMonth = Math.ceil(dayOfMonth / 7);
+  return nthWeeks.includes(weekOfMonth);
+}
+
 async function sendWeeklyTaskReminders() {
   const now = new Date();
   const dayOfWeek = now.getDay();
@@ -105,7 +112,12 @@ async function sendWeeklyTaskReminders() {
     return;
   }
   
-  console.log('[WEEKLY-TASK-SCHEDULER] Sending weekly task reminders (Friday)...');
+  // Only run on 2nd and 4th Friday of the month
+  if (!isNthFridayOfMonth(now, [2, 4])) {
+    return;
+  }
+  
+  console.log('[WEEKLY-TASK-SCHEDULER] Sending task reminders (2nd/4th Friday)...');
   
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
@@ -208,7 +220,7 @@ export function startWeeklyTaskReminderScheduler() {
     return;
   }
   
-  console.log('[WEEKLY-TASK-SCHEDULER] Starting weekly task reminder scheduler');
+  console.log('[WEEKLY-TASK-SCHEDULER] Starting task reminder scheduler (runs 2nd and 4th Friday at 9 AM)');
   
   sendWeeklyTaskReminders();
   

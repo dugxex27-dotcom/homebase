@@ -8,11 +8,11 @@ const CHECK_INTERVAL_MS = 60 * 60 * 1000; // Check every hour
 
 async function sendReferralReminders() {
   const now = new Date();
-  const dayOfWeek = now.getDay();
+  const dayOfMonth = now.getDate();
   const hour = now.getHours();
   
-  // Only run on Wednesdays (3) at 10 AM
-  if (dayOfWeek !== 3 || hour !== 10) {
+  // Only run on the 1st of each month at 10 AM
+  if (dayOfMonth !== 1 || hour !== 10) {
     return;
   }
   
@@ -122,7 +122,7 @@ export function startReferralReminderScheduler() {
     return;
   }
   
-  console.log('[REFERRAL-REMINDER-SCHEDULER] Starting referral reminder scheduler (runs Wednesdays at 10 AM)');
+  console.log('[REFERRAL-REMINDER-SCHEDULER] Starting referral reminder scheduler (runs 1st of each month at 10 AM)');
   
   // Run immediately on startup to check
   sendReferralReminders().catch(err => 

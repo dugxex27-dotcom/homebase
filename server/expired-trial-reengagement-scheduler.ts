@@ -11,13 +11,24 @@ const GRANDFATHERED_EMAILS = [
   'freshandcleangutters@gmail.com',
 ];
 
+function isNthSundayOfMonth(date: Date, nthWeeks: number[]): boolean {
+  if (date.getDay() !== 0) return false; // Not Sunday
+  const dayOfMonth = date.getDate();
+  const weekOfMonth = Math.ceil(dayOfMonth / 7);
+  return nthWeeks.includes(weekOfMonth);
+}
+
 async function sendExpiredTrialReengagementEmails() {
   const now = new Date();
   const dayOfWeek = now.getDay();
   const hour = now.getHours();
   
-  // Only run on Sundays at 10 AM
+  // Only run on 1st and 3rd Sunday at 10 AM
   if (dayOfWeek !== 0 || hour !== 10) {
+    return;
+  }
+  
+  if (!isNthSundayOfMonth(now, [1, 3])) {
     return;
   }
   
@@ -107,7 +118,7 @@ export function startExpiredTrialReengagementScheduler() {
     return;
   }
   
-  console.log('[EXPIRED-TRIAL-SCHEDULER] Starting expired trial re-engagement scheduler (runs Sundays at 10 AM)');
+  console.log('[EXPIRED-TRIAL-SCHEDULER] Starting expired trial re-engagement scheduler (runs 1st and 3rd Sunday at 10 AM)');
   
   // Run immediately on startup to check
   sendExpiredTrialReengagementEmails().catch(err => 
