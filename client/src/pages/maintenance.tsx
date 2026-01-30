@@ -3350,16 +3350,6 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
               </div>
             )}
 
-            {referringAgentError && !referringAgentLoading && (
-              <div className="mb-6">
-                <Alert variant="destructive" className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription className="text-sm text-red-800 dark:text-red-300">
-                    Unable to load referring agent information. Please try again later.
-                  </AlertDescription>
-                </Alert>
-              </div>
-            )}
 
             {referringAgent && !referringAgentLoading && (
               <div className="mb-6">
