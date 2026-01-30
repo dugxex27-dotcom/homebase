@@ -811,6 +811,7 @@ interface TaskDetailDialogProps {
   toast: any;
   taskOverrides: TaskOverride[] | undefined;
   selectedHouseId: string;
+  houseName?: string;
 }
 
 function TaskDetailDialog({
@@ -835,6 +836,7 @@ function TaskDetailDialog({
   toast,
   taskOverrides,
   selectedHouseId,
+  houseName,
 }: TaskDetailDialogProps) {
   if (!task) return null;
 
@@ -869,6 +871,12 @@ function TaskDetailDialog({
         <div className={`${completed ? 'bg-green-50' : 'bg-white'}`}>
           <div className="sticky top-0 z-10 bg-white border-b px-6 py-4 flex items-start justify-between gap-4">
             <div className="flex-1">
+              {houseName && (
+                <div className="flex items-center gap-2 mb-2 text-sm text-gray-600">
+                  <Home className="w-4 h-4" />
+                  <span>{houseName}</span>
+                </div>
+              )}
               <div className="flex items-center gap-3 mb-2">
                 {getPriorityBadge()}
                 <Badge variant="outline" className="text-xs">
@@ -4793,6 +4801,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             toast={toast}
             taskOverrides={taskOverrides}
             selectedHouseId={selectedHouseId}
+            houseName={houses.find((h: House) => h.id === selectedHouseId)?.name}
           />
         )}
       </div>
