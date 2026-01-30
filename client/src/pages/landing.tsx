@@ -286,7 +286,7 @@ export default function Landing() {
           <p className="text-lg text-gray-600">Choose how you’ll use MyHomeBase</p>
         </div>
 
-        <div className="flex flex-col gap-8 max-w-xl mx-auto">
+        <div className="flex flex-col gap-8 w-full">
           {/* Homeowner Card */}
           <Card 
             className="hover:shadow-lg transition-all cursor-pointer border-2 hover:border-purple-400 flex flex-col"
