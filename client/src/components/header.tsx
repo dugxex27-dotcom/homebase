@@ -198,22 +198,10 @@ export default function Header() {
                             )}
                           </button>
                         </Link>
-                        <Link href="/contractors" onClick={() => setMobileMenuOpen(false)}>
-                          <button className={mobileNavItemClass(['/contractors', '/find-contractors'])}>
-                            <Building2 className="w-4 h-4" />
-                            Contractors
-                          </button>
-                        </Link>
                         <Link href="/service-records" onClick={() => setMobileMenuOpen(false)}>
                           <button className={mobileNavItemClass('/service-records')}>
                             <FileText className="w-4 h-4" />
                             Service Records
-                          </button>
-                        </Link>
-                        <Link href="/products" onClick={() => setMobileMenuOpen(false)}>
-                          <button className={mobileNavItemClass('/products')}>
-                            <Package className="w-4 h-4" />
-                            Products
                           </button>
                         </Link>
                         <Link href="/messages" onClick={() => setMobileMenuOpen(false)}>
@@ -223,6 +211,18 @@ export default function Header() {
                             {hasNotificationsForTab('messages') && (
                               <span className="ml-auto h-2 w-2 rounded-full bg-red-500" />
                             )}
+                          </button>
+                        </Link>
+                        <Link href="/contractors" onClick={() => setMobileMenuOpen(false)}>
+                          <button className={mobileNavItemClass(['/contractors', '/find-contractors'])}>
+                            <Building2 className="w-4 h-4" />
+                            Contractors
+                          </button>
+                        </Link>
+                        <Link href="/products" onClick={() => setMobileMenuOpen(false)}>
+                          <button className={mobileNavItemClass('/products')}>
+                            <Package className="w-4 h-4" />
+                            Products
                           </button>
                         </Link>
                         <Link href="/achievements" onClick={() => setMobileMenuOpen(false)}>
