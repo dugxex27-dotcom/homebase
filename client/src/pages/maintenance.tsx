@@ -788,90 +788,6 @@ function generateAgeBasedRecommendations(system: HomeSystem): SystemRecommendati
   return recommendations;
 }
 
-// DIY Savings Tracker Component
-function DIYSavingsTracker({ houseId, houseName }: { houseId: string; houseName: string }) {
-  if (!houseId) return null;
-  
-  const { data, isLoading, isError } = useQuery<{ totalSavings: number; taskCount: number }>({
-    queryKey: ['/api/houses', houseId, 'diy-savings'],
-    enabled: !!houseId,
-  });
-
-  const formattedSavings = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(data?.totalSavings || 0);
-
-  return (
-    <Card className="bg-white border border-gray-200 shadow-sm" data-testid={`diy-savings-tracker-${houseId}`}>
-      <CardContent className="p-4">
-        <div className="text-center mb-3">
-          <div className="flex items-center justify-center gap-2 mb-1">
-            <PiggyBank className="w-4 h-4 text-green-500" />
-            <h3 className="font-semibold text-gray-900 text-sm">DIY Savings</h3>
-          </div>
-          <p className="text-xs text-gray-500">{houseName}</p>
-        </div>
-        
-        {isLoading ? (
-          <div className="flex items-center justify-center py-4">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
-          </div>
-        ) : isError ? (
-          <div className="flex items-center justify-center py-4">
-            <div className="text-center">
-              <AlertTriangle className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
-              <p className="text-xs text-gray-500">Unable to load</p>
-            </div>
-          </div>
-        ) : (data?.totalSavings === 0 && data?.taskCount === 0) ? (
-          <div className="flex items-center justify-center py-4">
-            <div className="text-center">
-              <PiggyBank className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-              <p className="text-xs text-gray-500">No savings yet</p>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-4">
-            <div className="text-center">
-              <p className="text-xs text-gray-500 mb-1">Total Saved</p>
-              <span 
-                className="text-xl font-bold text-green-600"
-                data-testid="total-savings-amount"
-              >
-                {formattedSavings}
-              </span>
-              <p className="text-[10px] text-gray-400 mt-1">Doing it Yourself</p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-gray-500 mb-1">Tasks Completed</p>
-              <div className="flex items-baseline justify-center gap-1">
-                <span 
-                  className="text-xl font-bold text-purple-700"
-                  data-testid="diy-task-count"
-                >
-                  {data?.taskCount || 0}
-                </span>
-                <span className="text-xs text-gray-500">tasks</span>
-              </div>
-              <p className="text-[10px] text-gray-400 mt-1">
-                Avg: {data && data.taskCount > 0 ? new Intl.NumberFormat('en-US', {
-                  style: 'currency',
-                  currency: 'USD',
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 0,
-                }).format(data.totalSavings / data.taskCount) : '$0'}/task
-              </p>
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
 // Task Card Component - Mobile-First Collapsed Design
 interface TaskCardProps {
   task: MaintenanceTask;
@@ -3001,22 +2917,6 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             </div>
           </section>
         </HomeownerFeatureGate>
-      )}
-      {/* DIY Savings Tracker Section - Show separate card for each house */}
-      {userRole === 'homeowner' && houses.length > 0 && (
-        <section className="py-4 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-7xl mx-auto">
-            <div className={`grid gap-4 ${houses.length === 1 ? 'grid-cols-1 max-w-md mx-auto' : houses.length === 2 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
-              {houses.map((house: House) => (
-                <DIYSavingsTracker 
-                  key={house.id} 
-                  houseId={house.id}
-                  houseName={house.name}
-                />
-              ))}
-            </div>
-          </div>
-        </section>
       )}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="mb-6">
