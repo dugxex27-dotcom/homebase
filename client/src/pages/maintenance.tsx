@@ -22,7 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { HomeownerFeatureGate, HomeownerTrialBanner, FreeUserUpgradePrompt } from "@/components/homeowner-feature-gate";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
-import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, ChevronUp, Settings, Plus, Edit, Trash2, Home, FileText, Building2, User, Building, Phone, MessageSquare, AlertTriangle, Thermometer, Cloud, Monitor, Book, ExternalLink, Upload, Trophy, Mail, Handshake, Globe, TrendingDown, PiggyBank, Truck, CheckCircle2, Circle, Download } from "lucide-react";
+import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, ChevronUp, Settings, Plus, Edit, Trash2, Home, FileText, Building2, User, Building, Phone, MessageSquare, AlertTriangle, Thermometer, Cloud, Monitor, Book, ExternalLink, Upload, Trophy, Mail, Handshake, Globe, TrendingDown, PiggyBank, Truck, CheckCircle2, Circle, Download, X } from "lucide-react";
 import { AppointmentScheduler } from "@/components/appointment-scheduler";
 import { CustomMaintenanceTasks } from "@/components/custom-maintenance-tasks";
 import { US_MAINTENANCE_DATA, getRegionFromClimateZone, getCurrentMonthTasks } from "@shared/location-maintenance-data";
@@ -788,21 +788,22 @@ function generateAgeBasedRecommendations(system: HomeSystem): SystemRecommendati
   return recommendations;
 }
 
-// Task Card Component - Mobile-First Collapsed Design
-interface TaskCardProps {
-  task: MaintenanceTask;
+// Task Detail Dialog Props
+interface TaskDetailDialogProps {
+  task: MaintenanceTask | null;
+  open: boolean;
+  onClose: () => void;
   completed: boolean;
   isCustomTask: boolean;
   displayDescription: string;
   previousContractor: any;
   taskOverride: TaskOverride | undefined;
-  onToggleComplete: () => void;
-  onCustomize: () => void;
   onViewContractor: (id: string) => void;
   onContractorComplete: (task: MaintenanceTask) => void;
   showCustomizeTask: string | null;
-  getTaskOverride: (taskTitle: string, overrides: TaskOverride[] | undefined) => TaskOverride | undefined;
-  isTaskEnabled: (taskTitle: string, overrides: TaskOverride[] | undefined) => boolean;
+  setShowCustomizeTask: (id: string | null) => void;
+  getTaskOverride: (taskTitle: string, overrides: TaskOverride[]) => TaskOverride | undefined;
+  isTaskEnabled: (taskTitle: string, overrides: TaskOverride[]) => boolean;
   generateTaskId: (title: string) => string;
   upsertTaskOverrideMutation: any;
   deleteTaskOverrideMutation: any;
@@ -812,18 +813,19 @@ interface TaskCardProps {
   selectedHouseId: string;
 }
 
-function TaskCard({
+function TaskDetailDialog({
   task,
+  open,
+  onClose,
   completed,
   isCustomTask,
   displayDescription,
   previousContractor,
   taskOverride,
-  onToggleComplete,
-  onCustomize,
   onViewContractor,
   onContractorComplete,
   showCustomizeTask,
+  setShowCustomizeTask,
   getTaskOverride,
   isTaskEnabled,
   generateTaskId,
@@ -833,14 +835,396 @@ function TaskCard({
   toast,
   taskOverrides,
   selectedHouseId,
-}: TaskCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [showReadDetails, setShowReadDetails] = useState(false);
-  
-  // Calculate progress - for now use completed state as 0/1, structured for future step tracking
-  const currentProgress = completed ? 1 : 0;
-  const totalSteps = 1; // Future: this could come from task.steps?.length or similar
+}: TaskDetailDialogProps) {
+  if (!task) return null;
 
+  const getPriorityBadge = () => {
+    if (task.priority === 'high') {
+      return (
+        <Badge className="bg-red-500 text-white text-xs px-3 py-1 rounded-full font-medium">
+          HIGH PRIORITY
+        </Badge>
+      );
+    }
+    if (task.priority === 'medium') {
+      return (
+        <Badge className="bg-yellow-500 text-white text-xs px-3 py-1 rounded-full font-medium">
+          MEDIUM PRIORITY
+        </Badge>
+      );
+    }
+    if (task.priority === 'low') {
+      return (
+        <Badge className="bg-green-500 text-white text-xs px-3 py-1 rounded-full font-medium">
+          LOW PRIORITY
+        </Badge>
+      );
+    }
+    return null;
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] overflow-y-auto p-0">
+        <div className={`${completed ? 'bg-green-50' : 'bg-white'}`}>
+          <div className="sticky top-0 z-10 bg-white border-b px-6 py-4 flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                {getPriorityBadge()}
+                <Badge variant="outline" className="text-xs">
+                  {task.category}
+                </Badge>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-bold" style={{ color: '#2c0f5b' }}>
+                {task.title}
+              </h2>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="flex-shrink-0"
+            >
+              <X className="w-5 h-5" />
+            </Button>
+          </div>
+          
+          <div className="p-6 space-y-6">
+            <div className="prose max-w-none">
+              <p className="text-gray-700 text-base sm:text-lg leading-relaxed">
+                {task.actionSummary || displayDescription}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                  <h3 className="font-semibold text-gray-900">Cost Information</h3>
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-gray-700">DIY Cost:</span>
+                    <span className="font-semibold text-green-600 text-lg">
+                      {task.costEstimate ? formatDIYSavings(task.costEstimate) : '–'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-gray-700">Professional Cost:</span>
+                    <span className="font-semibold text-gray-900 text-lg">
+                      {task.costEstimate ? formatCostEstimate(task.costEstimate) : 'TBD'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                  <h3 className="font-semibold text-gray-900">Task Details</h3>
+                  {task.difficulty && (
+                    <div className="flex items-center gap-2">
+                      <Wrench className="w-4 h-4 text-gray-600" />
+                      <span className="text-gray-700">Difficulty: <span className="font-medium">{task.difficulty}</span></span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-yellow-500" />
+                    <span className="text-gray-700">Time: <span className="font-medium">{task.estimatedTime}</span></span>
+                  </div>
+                  {task.cost && (
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-4 h-4 text-green-500" />
+                      <span className="text-gray-700">{task.cost}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {!completed && (
+                  <div className="space-y-3">
+                    <Button
+                      className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-4 text-base"
+                      onClick={() => {
+                        completeTaskMutation.mutate({
+                          houseId: selectedHouseId,
+                          taskTitle: task.title,
+                          completionMethod: 'diy',
+                          costEstimate: task.costEstimate,
+                        });
+                        onClose();
+                      }}
+                      disabled={completeTaskMutation.isPending}
+                    >
+                      {completeTaskMutation.isPending ? 'Saving...' : 'Completed DIY'}
+                    </Button>
+                    <Button
+                      className="w-full text-white hover:opacity-90 font-medium py-4 text-base border-0"
+                      style={{ backgroundColor: '#2c0f5b' }}
+                      onClick={() => {
+                        onContractorComplete(task);
+                        onClose();
+                      }}
+                    >
+                      Completed by Contractor
+                    </Button>
+                  </div>
+                )}
+                
+                <a
+                  href={`/contractors?category=${encodeURIComponent(task.category)}&service=${encodeURIComponent(task.title)}&houseId=${selectedHouseId}&maxDistance=20`}
+                  className="block w-full text-center py-3 px-4 bg-blue-50 text-blue-700 font-medium rounded-lg hover:bg-blue-100 transition-colors"
+                >
+                  Find a Contractor
+                </a>
+              </div>
+            </div>
+
+            {task.steps && task.steps.length > 0 && (
+              <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                <h3 className="font-semibold mb-3" style={{ color: '#2c0f5b' }}>Steps to Complete:</h3>
+                <ul className="space-y-2">
+                  {task.steps.map((step, index) => (
+                    <li key={index} className="flex items-start gap-3 text-gray-700">
+                      <div className="flex-shrink-0 w-6 h-6 rounded-full bg-purple-600 text-white flex items-center justify-center text-sm font-medium">
+                        {index + 1}
+                      </div>
+                      <span className="pt-0.5">{step}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {task.toolsAndSupplies && task.toolsAndSupplies.length > 0 && (
+              <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
+                <h3 className="font-semibold mb-3 flex items-center gap-2" style={{ color: '#2c0f5b' }}>
+                  <Wrench className="w-5 h-5" />
+                  Tools & Supplies Needed:
+                </h3>
+                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {task.toolsAndSupplies.map((item, index) => (
+                    <li key={index} className="flex items-center gap-2 text-gray-700">
+                      <div className="w-4 h-4 border-2 border-amber-400 rounded flex-shrink-0" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {task.tools && task.tools.length > 0 && (
+              <div>
+                <h3 className="font-semibold mb-2 flex items-center gap-2" style={{ color: '#2c0f5b' }}>
+                  <Wrench className="w-4 h-4 text-red-500" />
+                  Tools Needed:
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {task.tools.map((tool, index) => (
+                    <Badge key={index} variant="secondary" className="text-sm py-1 px-3">
+                      {tool}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!isCustomTask && (
+              <div className="border rounded-lg p-4 bg-slate-50">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-medium flex items-center" style={{ color: '#2c0f5b' }}>
+                    <Settings className="w-4 h-4 mr-2" />
+                    Customize This Task
+                  </h4>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowCustomizeTask(showCustomizeTask === task.id ? null : task.id)}
+                    className="text-sm"
+                  >
+                    {showCustomizeTask === task.id ? 'Hide' : 'Show'} Options
+                  </Button>
+                </div>
+
+                <Collapsible open={showCustomizeTask === task.id}>
+                  <CollapsibleContent>
+                    {(() => {
+                      const currentOverride = getTaskOverride(task.title, taskOverrides || []);
+                      const taskId = generateTaskId(task.title);
+                      
+                      return (
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`dialog-enable-${taskId}`}
+                                checked={isTaskEnabled(task.title, taskOverrides || [])}
+                                onCheckedChange={(checked) => {
+                                  upsertTaskOverrideMutation.mutate({
+                                    taskId,
+                                    isEnabled: checked as boolean,
+                                    frequencyType: currentOverride?.frequencyType || undefined,
+                                    specificMonths: currentOverride?.specificMonths || undefined,
+                                  });
+                                }}
+                              />
+                              <label htmlFor={`dialog-enable-${taskId}`} className="text-sm font-medium" style={{ color: '#2c0f5b' }}>
+                                Enable this task
+                              </label>
+                            </div>
+                            {currentOverride && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => deleteTaskOverrideMutation.mutate(taskId)}
+                                className="text-xs"
+                              >
+                                Reset to Default
+                              </Button>
+                            )}
+                          </div>
+
+                          <div>
+                            <label className="text-sm font-medium mb-2 block" style={{ color: '#2c0f5b' }}>
+                              Task Frequency
+                            </label>
+                            <Select
+                              value={currentOverride?.frequencyType || 'default'}
+                              onValueChange={(value) => {
+                                if (value === 'default') {
+                                  if (currentOverride) {
+                                    deleteTaskOverrideMutation.mutate(taskId);
+                                  }
+                                } else {
+                                  upsertTaskOverrideMutation.mutate({
+                                    taskId,
+                                    isEnabled: isTaskEnabled(task.title, taskOverrides || []),
+                                    frequencyType: value,
+                                    specificMonths: currentOverride?.specificMonths || undefined,
+                                  });
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select frequency" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="default">Default (As Shown)</SelectItem>
+                                <SelectItem value="monthly">Monthly</SelectItem>
+                                <SelectItem value="quarterly">Quarterly</SelectItem>
+                                <SelectItem value="biannually">Twice per Year</SelectItem>
+                                <SelectItem value="annually">Once per Year</SelectItem>
+                                <SelectItem value="custom">Custom</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div>
+                            <label className="text-sm font-medium mb-2 block" style={{ color: '#2c0f5b' }}>
+                              Custom Description (Optional)
+                            </label>
+                            <textarea
+                              className="w-full p-2 border rounded-md min-h-[80px]"
+                              placeholder="Enter custom instructions for this task..."
+                              defaultValue={currentOverride?.customDescription || ''}
+                              onBlur={(e) => {
+                                const newDescription = e.target.value.trim();
+                                if (newDescription !== (currentOverride?.customDescription || '')) {
+                                  upsertTaskOverrideMutation.mutate({
+                                    taskId,
+                                    isEnabled: isTaskEnabled(task.title, taskOverrides || []),
+                                    frequencyType: currentOverride?.frequencyType || undefined,
+                                    specificMonths: currentOverride?.specificMonths || undefined,
+                                    customDescription: newDescription || undefined,
+                                  });
+                                }
+                              }}
+                            />
+                            <p className="text-xs mt-1" style={{ color: '#2c0f5b' }}>
+                              Leave blank to use the default description
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
+            )}
+
+            {previousContractor && (
+              <div className="rounded-lg p-4" style={{ backgroundColor: '#2c0f5b' }}>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center mb-2">
+                      <User className="w-5 h-5 mr-2 text-white" />
+                      <span className="font-medium text-white">
+                        Previous contractor used for {previousContractor.serviceType}
+                      </span>
+                    </div>
+                    <div className="text-white">
+                      <div className="font-medium text-lg">
+                        {previousContractor.contractorName}
+                        {previousContractor.contractorCompany && (
+                          <span className="font-normal text-white/80"> - {previousContractor.contractorCompany}</span>
+                        )}
+                      </div>
+                      <div className="text-sm mt-1 text-white/80">
+                        Last service: {new Date(previousContractor.lastServiceDate).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 ml-4">
+                    {previousContractor.contractorId ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-sm"
+                        style={{ backgroundColor: '#b6a6f4', color: '#ffffff', borderColor: '#b6a6f4' }}
+                        onClick={() => onViewContractor(previousContractor.contractorId)}
+                      >
+                        <User className="w-4 h-4 mr-1" />
+                        View Profile
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-sm"
+                        style={{ backgroundColor: '#b6a6f4', color: '#ffffff', borderColor: '#b6a6f4' }}
+                        onClick={() => {
+                          toast({
+                            title: "Contact Contractor",
+                            description: `You can contact ${previousContractor.contractorName} for this service again. Check your previous service records for contact details.`
+                          });
+                        }}
+                      >
+                        <MessageSquare className="w-4 h-4 mr-1" />
+                        Contact Again
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Task Card Component - Simplified Click-to-Open Design
+interface TaskCardProps {
+  task: MaintenanceTask;
+  completed: boolean;
+  displayDescription: string;
+  generateTaskId: (title: string) => string;
+  onOpenDialog: () => void;
+}
+
+function TaskCard({
+  task,
+  completed,
+  displayDescription,
+  generateTaskId,
+  onOpenDialog,
+}: TaskCardProps) {
   const getPriorityBadge = () => {
     if (task.priority === 'high') {
       return (
@@ -867,387 +1251,47 @@ function TaskCard({
   };
 
   return (
-    <>
     <Card 
-      className={`transition-all border-0 shadow-sm ${completed ? 'bg-green-100' : 'bg-white'}`}
+      className={`transition-all border-0 shadow-sm hover:shadow-md cursor-pointer ${completed ? 'bg-green-100' : 'bg-white'}`}
       data-testid={`card-task-${task.id}`}
+      onClick={onOpenDialog}
     >
-      {/* Collapsed Header - Always Visible */}
-      <div 
-        className="p-4 cursor-pointer"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
+      <div className="p-4">
         <div className="flex items-start justify-between gap-3 mb-2">
           <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 flex-1" style={{ color: '#2c0f5b' }} data-testid={`title-task-${generateTaskId(task.title)}`}>
             {task.title}
           </h3>
           <div className="flex items-center gap-2 flex-shrink-0">
             {getPriorityBadge()}
-            {isExpanded ? (
-              <ChevronUp className="w-5 h-5 text-gray-500" />
-            ) : (
-              <ChevronDown className="w-5 h-5 text-gray-500" />
+            {completed && (
+              <CheckCircle2 className="w-5 h-5 text-green-600" />
             )}
           </div>
         </div>
 
-        {/* Description - 1-2 lines */}
-        <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 line-clamp-2">
+        <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 line-clamp-2 mb-3">
           {task.actionSummary || displayDescription}
         </p>
+        
+        <div className="flex items-center justify-between text-sm text-gray-500">
+          <div className="flex items-center gap-4">
+            {task.costEstimate && (
+              <span className="flex items-center gap-1">
+                <DollarSign className="w-4 h-4 text-green-500" />
+                {formatDIYSavings(task.costEstimate)}
+              </span>
+            )}
+            {task.estimatedTime && (
+              <span className="flex items-center gap-1">
+                <Clock className="w-4 h-4 text-yellow-500" />
+                {task.estimatedTime}
+              </span>
+            )}
+          </div>
+          <span className="text-blue-600 font-medium text-sm">View Details →</span>
+        </div>
       </div>
-
-      {/* Expanded Content - Only show when expanded */}
-      {isExpanded && (
-        <div className="px-4 pb-4 space-y-3 border-t pt-3">
-          {/* Cost Information */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm sm:text-base">
-              <span className="font-bold text-gray-900">DIY Cost:</span>
-              <span className="font-semibold text-gray-900">
-                {task.costEstimate ? formatDIYSavings(task.costEstimate) : '–'}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-sm sm:text-base">
-              <span className="font-bold text-gray-900">Pro Cost:</span>
-              <span className="font-semibold text-gray-900">
-                {task.costEstimate ? formatCostEstimate(task.costEstimate) : 'TBD'}
-              </span>
-            </div>
-          </div>
-
-          {/* Difficulty */}
-          {task.difficulty && (
-            <div className="flex items-center gap-2 text-sm sm:text-base">
-              <Wrench className="w-4 h-4 text-gray-600" />
-              <span className="font-medium text-gray-700">{task.difficulty}</span>
-            </div>
-          )}
-
-          {/* Find Contractor Link */}
-          <a
-            href={`/contractors?category=${encodeURIComponent(task.category)}&service=${encodeURIComponent(task.title)}&houseId=${selectedHouseId}&maxDistance=20`}
-            className="text-blue-600 hover:text-blue-700 font-medium text-sm sm:text-base block"
-            data-testid={`link-find-contractor-${task.id}`}
-          >
-            Find Contractor
-          </a>
-
-          {/* Completion Buttons - Stacked Vertically */}
-          {!completed && (
-            <div className="space-y-2 pt-2">
-              <Button
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-3 text-sm sm:text-base"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  completeTaskMutation.mutate({
-                    houseId: selectedHouseId,
-                    taskTitle: task.title,
-                    completionMethod: 'diy',
-                    costEstimate: task.costEstimate,
-                  });
-                }}
-                disabled={completeTaskMutation.isPending}
-                data-testid={`button-complete-diy-${task.id}`}
-              >
-                {completeTaskMutation.isPending ? 'Saving...' : 'Completed DIY'}
-              </Button>
-              <Button
-                className="w-full text-white hover:opacity-90 font-medium py-3 text-sm sm:text-base border-0"
-                style={{ backgroundColor: '#2c0f5b' }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onContractorComplete(task);
-                }}
-                data-testid={`button-complete-contractor-${task.id}`}
-              >
-                Completed by Contractor
-              </Button>
-            </div>
-          )}
-
-          {/* View Full Checklist Button */}
-          <Button
-            variant="outline"
-            className="w-full py-3 text-sm sm:text-base font-medium text-blue-600 border-blue-600 hover:bg-blue-50"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowReadDetails(!showReadDetails);
-            }}
-            data-testid={`button-view-checklist-${task.id}`}
-          >
-            {showReadDetails ? 'Hide' : 'View'} Full Checklist
-          </Button>
-        </div>
-      )}
-
-      {/* Full Checklist Collapsible Content */}
-      {showReadDetails && (
-        <div className="px-4 pb-4 border-t pt-3">
-          <div className="space-y-4">
-              {/* Steps - Bullet points */}
-              {task.steps && task.steps.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-sm font-bold" style={{ color: '#2c0f5b' }}>Steps:</h4>
-                  <ul className="space-y-1.5 ml-1">
-                    {task.steps.map((step, index) => (
-                      <li key={index} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
-                        <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0 text-purple-600 dark:text-purple-400" />
-                        <span>{step}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Tools and Supplies Checklist */}
-              {task.toolsAndSupplies && task.toolsAndSupplies.length > 0 && (
-                <div className="bg-purple-50 dark:bg-purple-950 rounded-lg p-3 border border-purple-200 dark:border-purple-800">
-                  <h4 className="text-sm font-bold mb-2 flex items-center gap-2" style={{ color: '#2c0f5b' }}>
-                    <Wrench className="w-4 h-4" />
-                    Tools & Supplies Needed:
-                  </h4>
-                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                    {task.toolsAndSupplies.map((item, index) => (
-                      <li key={index} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                        <div className="w-4 h-4 border-2 border-purple-400 dark:border-purple-600 rounded flex-shrink-0" />
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Additional Task Info */}
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="flex items-center">
-                  <Clock className="w-4 h-4 mr-2" style={{ color: '#fbbf24' }} />
-                  <span style={{ color: '#2c0f5b' }}>{task.estimatedTime}</span>
-                </div>
-                {task.cost && (
-                  <div className="flex items-center">
-                    <DollarSign className="w-4 h-4 mr-2" style={{ color: '#10b981' }} />
-                    <span style={{ color: '#2c0f5b' }}>{task.cost}</span>
-                  </div>
-                )}
-                <div className="flex items-center">
-                  <Badge variant="outline" className="text-xs">
-                    {task.category}
-                  </Badge>
-                </div>
-              </div>
-
-              {/* Tools Needed */}
-              {task.tools && task.tools.length > 0 && (
-                <div>
-                  <div className="flex items-center mb-2">
-                    <Wrench className="w-4 h-4 mr-2" style={{ color: '#ef4444' }} />
-                    <span className="text-sm font-medium" style={{ color: '#2c0f5b' }}>Tools needed:</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {task.tools.map((tool, index) => (
-                      <Badge key={index} variant="secondary" className="text-xs">
-                        {tool}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Customization Panel */}
-              {!isCustomTask && (
-                <div className="border rounded-lg p-4 bg-slate-50 dark:bg-slate-800">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-medium flex items-center" style={{ color: '#2c0f5b' }}>
-                      <Settings className="w-4 h-4 mr-2" />
-                      Customize This Task
-                    </h4>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={onCustomize}
-                      className="text-xs"
-                    >
-                      {showCustomizeTask === task.id ? 'Hide' : 'Show'} Options
-                    </Button>
-                  </div>
-
-                  <Collapsible open={showCustomizeTask === task.id}>
-                    <CollapsibleContent>
-                      {(() => {
-                        const currentOverride = getTaskOverride(task.title, taskOverrides);
-                        const taskId = generateTaskId(task.title);
-                        
-                        return (
-                          <div className="space-y-4">
-                            {/* Enable/Disable Task */}
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-2">
-                                <Checkbox
-                                  id={`enable-${taskId}`}
-                                  checked={isTaskEnabled(task.title, taskOverrides)}
-                                  onCheckedChange={(checked) => {
-                                    upsertTaskOverrideMutation.mutate({
-                                      taskId,
-                                      isEnabled: checked as boolean,
-                                      frequencyType: currentOverride?.frequencyType || undefined,
-                                      specificMonths: currentOverride?.specificMonths || undefined,
-                                    });
-                                  }}
-                                  data-testid={`checkbox-enable-${taskId}`}
-                                />
-                                <label htmlFor={`enable-${taskId}`} className="text-sm font-medium" style={{ color: '#2c0f5b' }}>
-                                  Enable this task
-                                </label>
-                              </div>
-                              {currentOverride && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => deleteTaskOverrideMutation.mutate(taskId)}
-                                  className="text-xs"
-                                  data-testid={`button-reset-${taskId}`}
-                                >
-                                  Reset to Default
-                                </Button>
-                              )}
-                            </div>
-
-                            {/* Frequency Selector */}
-                            <div>
-                              <label className="text-sm font-medium mb-2 block" style={{ color: '#2c0f5b' }}>
-                                Task Frequency
-                              </label>
-                              <Select
-                                value={currentOverride?.frequencyType || 'default'}
-                                onValueChange={(value) => {
-                                  if (value === 'default') {
-                                    if (currentOverride) {
-                                      deleteTaskOverrideMutation.mutate(taskId);
-                                    }
-                                  } else {
-                                    upsertTaskOverrideMutation.mutate({
-                                      taskId,
-                                      isEnabled: isTaskEnabled(task.title, taskOverrides),
-                                      frequencyType: value,
-                                      specificMonths: currentOverride?.specificMonths || undefined,
-                                    });
-                                  }
-                                }}
-                                data-testid={`select-frequency-${taskId}`}
-                              >
-                                <SelectTrigger className="w-full">
-                                  <SelectValue placeholder="Select frequency" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="default">Default (As Shown)</SelectItem>
-                                  <SelectItem value="monthly">Monthly</SelectItem>
-                                  <SelectItem value="quarterly">Quarterly</SelectItem>
-                                  <SelectItem value="biannually">Twice per Year</SelectItem>
-                                  <SelectItem value="annually">Once per Year</SelectItem>
-                                  <SelectItem value="custom">Custom</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            {/* Custom Description */}
-                            <div>
-                              <label className="text-sm font-medium mb-2 block" style={{ color: '#2c0f5b' }}>
-                                Custom Description (Optional)
-                              </label>
-                              <textarea
-                                className="w-full p-2 border rounded-md min-h-[80px]"
-                                placeholder="Enter custom instructions for this task..."
-                                defaultValue={currentOverride?.customDescription || ''}
-                                onBlur={(e) => {
-                                  const newDescription = e.target.value.trim();
-                                  if (newDescription !== (currentOverride?.customDescription || '')) {
-                                    upsertTaskOverrideMutation.mutate({
-                                      taskId,
-                                      isEnabled: isTaskEnabled(task.title, taskOverrides),
-                                      frequencyType: currentOverride?.frequencyType || undefined,
-                                      specificMonths: currentOverride?.specificMonths || undefined,
-                                      customDescription: newDescription || undefined,
-                                    });
-                                  }
-                                }}
-                                data-testid={`textarea-description-${taskId}`}
-                              />
-                              <p className="text-xs mt-1" style={{ color: '#2c0f5b' }}>
-                                Leave blank to use the default description
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </CollapsibleContent>
-                  </Collapsible>
-                </div>
-              )}
-
-              {/* Previous Contractor Section */}
-              {previousContractor && (
-                <div className="rounded-lg p-3" style={{ backgroundColor: '#2c0f5b' }}>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center mb-2">
-                        <User className="w-4 h-4 mr-2 text-white" />
-                        <span className="text-sm font-medium text-white">
-                          Previous contractor used for {previousContractor.serviceType}
-                        </span>
-                      </div>
-                      <div className="text-sm text-white">
-                        <div className="font-medium">
-                          {previousContractor.contractorName}
-                          {previousContractor.contractorCompany && (
-                            <span className="font-normal"> - {previousContractor.contractorCompany}</span>
-                          )}
-                        </div>
-                        <div className="text-xs mt-1">
-                          Last service: {new Date(previousContractor.lastServiceDate).toLocaleDateString()}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex gap-2 ml-4">
-                      {previousContractor.contractorId ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-xs"
-                          style={{ backgroundColor: '#b6a6f4', color: '#ffffff', borderColor: '#b6a6f4' }}
-                          onClick={() => onViewContractor(previousContractor.contractorId)}
-                          data-testid={`button-view-contractor-${task.id}`}
-                        >
-                          <User className="w-3 h-3 mr-1" />
-                          View Profile
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-xs"
-                          style={{ backgroundColor: '#b6a6f4', color: '#ffffff', borderColor: '#b6a6f4' }}
-                          onClick={() => {
-                            toast({
-                              title: "Contact Contractor",
-                              description: `You can contact ${previousContractor.contractorName} for this service again. Check your previous service records for contact details.`
-                            });
-                          }}
-                          data-testid={`button-contact-contractor-${task.id}`}
-                        >
-                          <MessageSquare className="w-3 h-3 mr-1" />
-                          Contact Again
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-          </div>
-        </div>
-      )}
     </Card>
-    </>
   );
 }
 
@@ -1299,6 +1343,10 @@ export default function Maintenance() {
   const [applianceToDelete, setApplianceToDelete] = useState<HomeAppliance | null>(null);
   const [deleteSystemConfirmOpen, setDeleteSystemConfirmOpen] = useState(false);
   const [systemToDelete, setSystemToDelete] = useState<HomeSystem | null>(null);
+
+  // Task detail dialog state
+  const [selectedTask, setSelectedTask] = useState<MaintenanceTask | null>(null);
+  const [isTaskDetailDialogOpen, setIsTaskDetailDialogOpen] = useState(false);
 
   // Use authenticated user's ID  
   const homeownerId = (user as any)?.id;
@@ -3502,8 +3550,6 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {filteredTasks.map((task) => {
                 const completed = isTaskCompleted(task.id);
-                const previousContractor = findPreviousContractor(task.category, task.title);
-                const isCustomTask = task.id.startsWith('custom-');
                 const taskOverride = getTaskOverride(task.title, taskOverrides);
                 const displayDescription = taskOverride?.customDescription || task.description;
                 
@@ -3512,24 +3558,12 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     key={task.id}
                     task={task}
                     completed={completed}
-                    isCustomTask={isCustomTask}
                     displayDescription={displayDescription}
-                    previousContractor={previousContractor}
-                    taskOverride={taskOverride}
-                    onToggleComplete={() => toggleTaskCompletion(task.id)}
-                    onCustomize={() => setShowCustomizeTask(showCustomizeTask === task.id ? null : task.id)}
-                    onViewContractor={(id) => window.open(`/contractor-profile/${id}`, '_blank')}
-                    onContractorComplete={handleContractorCompletion}
-                    showCustomizeTask={showCustomizeTask}
-                    getTaskOverride={getTaskOverride}
-                    isTaskEnabled={isTaskEnabled}
                     generateTaskId={generateTaskId}
-                    upsertTaskOverrideMutation={upsertTaskOverrideMutation}
-                    deleteTaskOverrideMutation={deleteTaskOverrideMutation}
-                    completeTaskMutation={completeTaskMutation}
-                    toast={toast}
-                    taskOverrides={taskOverrides}
-                    selectedHouseId={selectedHouseId}
+                    onOpenDialog={() => {
+                      setSelectedTask(task);
+                      setIsTaskDetailDialogOpen(true);
+                    }}
                   />
                 );
               })}
@@ -4731,6 +4765,36 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
           onConfirm={confirmDeleteSystem}
           variant="destructive"
         />
+
+        {/* Task Detail Dialog - Full Window View */}
+        {selectedTask && (
+          <TaskDetailDialog
+            task={selectedTask}
+            open={isTaskDetailDialogOpen}
+            onClose={() => {
+              setIsTaskDetailDialogOpen(false);
+              setSelectedTask(null);
+            }}
+            completed={isTaskCompleted(selectedTask.id)}
+            isCustomTask={selectedTask.id.startsWith('custom-')}
+            displayDescription={getTaskOverride(selectedTask.title, taskOverrides)?.customDescription || selectedTask.description}
+            previousContractor={findPreviousContractor(selectedTask.category, selectedTask.title)}
+            taskOverride={getTaskOverride(selectedTask.title, taskOverrides)}
+            onViewContractor={(id) => window.open(`/contractor-profile/${id}`, '_blank')}
+            onContractorComplete={handleContractorCompletion}
+            showCustomizeTask={showCustomizeTask}
+            setShowCustomizeTask={setShowCustomizeTask}
+            getTaskOverride={getTaskOverride}
+            isTaskEnabled={isTaskEnabled}
+            generateTaskId={generateTaskId}
+            upsertTaskOverrideMutation={upsertTaskOverrideMutation}
+            deleteTaskOverrideMutation={deleteTaskOverrideMutation}
+            completeTaskMutation={completeTaskMutation}
+            toast={toast}
+            taskOverrides={taskOverrides}
+            selectedHouseId={selectedHouseId}
+          />
+        )}
       </div>
     </div>
   );
