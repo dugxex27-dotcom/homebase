@@ -178,16 +178,16 @@ export default function Sidebar() {
                 )}
               </button>
             </Link>
-            <Link href="/contractors">
-              <button className={navItemClass(['/contractors', '/find-contractors'])} data-testid="nav-contractors">
-                <Building2 className="w-5 h-5" />
-                Contractors
-              </button>
-            </Link>
             <Link href="/service-records">
               <button className={navItemClass('/service-records')} data-testid="nav-service-records">
                 <FileText className="w-5 h-5" />
                 Service Records
+              </button>
+            </Link>
+            <Link href="/contractors">
+              <button className={navItemClass(['/contractors', '/find-contractors'])} data-testid="nav-contractors">
+                <Building2 className="w-5 h-5" />
+                Contractors
               </button>
             </Link>
             <Link href="/products">
