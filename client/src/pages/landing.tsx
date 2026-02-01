@@ -282,7 +282,11 @@ export default function Landing() {
       {/* Role Selection Cards */}
       <div id="role-cards" className="max-w-6xl mx-auto px-4 py-12">
         <div className="text-center mb-10">
-          <h2 className="font-bold mb-3 text-[24px]" style={{ color: '#2c0f5b' }}>Homes don’t just belong to one person — they move through many hands.</h2>
+          <h2 className="font-bold mb-3 text-[24px]" style={{ color: '#2c0f5b' }}>
+            Your car tells you when it needs attention.<br />
+            Your home doesn't.<br />
+            HomeBase is the dashboard your home never had.
+          </h2>
           <p className="text-lg text-gray-600">Choose how you’ll use MyHomeBase</p>
         </div>
 
