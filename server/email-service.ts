@@ -36,13 +36,17 @@ function getEmailHeader(title: string, gradientColors: string = '#6B46C1 0%, #80
   `;
 }
 
-// Reusable email wrapper
+// Reusable email wrapper with footer
 function wrapEmailContent(headerHtml: string, bodyHtml: string): string {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       ${headerHtml}
       <div style="padding: 30px; background: #f9f9f9;">
         ${bodyHtml}
+      </div>
+      <div style="padding: 20px; background: #1a1a2e; text-align: center;">
+        <p style="color: #ffffff; margin: 0 0 10px 0; font-size: 14px;">Your home is one of your biggest assets.</p>
+        <p style="margin: 0;"><a href="https://gotohomebase.com" style="color: #a78bfa; text-decoration: none; font-weight: bold;">Protect it with MyHomeBase today</a></p>
       </div>
     </div>
   `;
