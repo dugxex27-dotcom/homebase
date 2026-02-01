@@ -44,9 +44,9 @@ function wrapEmailContent(headerHtml: string, bodyHtml: string): string {
       <div style="padding: 30px; background: #f9f9f9;">
         ${bodyHtml}
       </div>
-      <div style="padding: 20px; background: #1a1a2e; text-align: center;">
-        <p style="color: #ffffff; margin: 0 0 10px 0; font-size: 14px;">Your home is one of your biggest assets.</p>
-        <p style="margin: 0;"><a href="https://gotohomebase.com" style="color: #a78bfa; text-decoration: none; font-weight: bold;">Protect it with MyHomeBase today</a></p>
+      <div style="padding: 30px 20px; background: #1a1a2e; text-align: center;">
+        <p style="color: #ffffff; margin: 0 0 15px 0; font-size: 20px; font-weight: 500;">Your home is one of your biggest assets.</p>
+        <p style="margin: 0;"><a href="https://gotohomebase.com" style="color: #a78bfa; text-decoration: none; font-weight: bold; font-size: 18px;">Protect it with MyHomeBase today</a></p>
       </div>
     </div>
   `;
