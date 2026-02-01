@@ -198,22 +198,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Test email endpoint (for development testing)
   app.post('/api/test-email', async (_req, res) => {
     try {
+      const html = emailService.wrapEmailContent(
+        emailService.getEmailHeader('HomeBase Test Email'),
+        `
+          <p>This is a test email from HomeBase to verify the email service is working correctly.</p>
+          <p>If you received this email, the SendGrid integration is functioning properly!</p>
+          <p>Timestamp: ${new Date().toISOString()}</p>
+        `
+      );
+      
       const success = await sendEmail({
         to: 'lihandyman2008@gmail.com',
         subject: 'HomeBase Test Email',
         text: 'This is a test email from HomeBase to verify the email service is working correctly.',
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <div style="background: linear-gradient(135deg, #6B46C1 0%, #805AD5 100%); padding: 30px; text-align: center;">
-              <h1 style="color: #ffffff !important; margin: 0;">HomeBase Test Email</h1>
-            </div>
-            <div style="padding: 30px; background: #f9f9f9;">
-              <p>This is a test email from HomeBase to verify the email service is working correctly.</p>
-              <p>If you received this email, the SendGrid integration is functioning properly!</p>
-              <p>Timestamp: ${new Date().toISOString()}</p>
-            </div>
-          </div>
-        `,
+        html,
       });
       
       if (success) {

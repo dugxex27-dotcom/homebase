@@ -988,4 +988,6 @@ export const emailService = {
   sendWeeklyTaskReminderEmail,
   sendExpiredTrialReengagementEmail,
   sendReferralReminderEmail,
+  getEmailHeader,
+  wrapEmailContent,
 };
