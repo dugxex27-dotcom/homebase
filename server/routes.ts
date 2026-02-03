@@ -199,7 +199,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/test-email', async (_req, res) => {
     try {
       const html = emailService.wrapEmailContent(
-        emailService.getEmailHeader('HomeBase Test Email'),
+        emailService.getEmailHeader(),
         `
           <p>This is a test email from HomeBase to verify the email service is working correctly.</p>
           <p>If you received this email, the SendGrid integration is functioning properly!</p>
