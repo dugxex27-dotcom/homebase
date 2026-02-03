@@ -27,10 +27,10 @@ interface EmailData {
 const emailLogoUrl = 'https://gotohomebase.com/email-logo.png';
 
 // Reusable email header with logo
-function getEmailHeader(title?: string, gradientColors: string = '#6B46C1 0%, #805AD5 100%'): string {
-  const titleHtml = title ? `<h1 style="color: #ffffff !important; margin: 0; font-size: 24px;">${title}</h1>` : '';
+function getEmailHeader(title?: string): string {
+  const titleHtml = title ? `<h1 style="color: #333333 !important; margin: 0; font-size: 24px;">${title}</h1>` : '';
   return `
-    <div style="background: linear-gradient(135deg, ${gradientColors}); padding: 30px; text-align: center;">
+    <div style="background: #ffffff; padding: 30px; text-align: center;">
       <img src="${emailLogoUrl}" alt="MyHomeBase" style="height: 50px; width: auto;${title ? ' margin-bottom: 15px;' : ''}" />
       ${titleHtml}
     </div>
@@ -164,7 +164,7 @@ export async function sendTrialExpiringEmail(userId: string, userName: string, d
   const urgency = daysRemaining <= 1 ? 'expires tomorrow' : `expires in ${daysRemaining} days`;
   
   const html = wrapEmailContent(
-    getEmailHeader(undefined, '#E53E3E 0%, #FC8181 100%'),
+    getEmailHeader(),
     `
       <p>Hi ${userName || 'there'},</p>
       <p>Your HomeBase free trial <strong>${urgency}</strong>!</p>
@@ -239,7 +239,7 @@ export async function sendAgentSignupNotification(
   });
 
   const html = wrapEmailContent(
-    getEmailHeader(undefined, '#22C55E 0%, #16A34A 100%'),
+    getEmailHeader(),
     `
       <p>A new real estate agent has signed up and needs verification:</p>
       <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 20px 0;">
@@ -292,7 +292,7 @@ export async function sendQuoteEmail(data: CrmDocumentEmailData): Promise<boolea
   `).join('') || '';
 
   const html = wrapEmailContent(
-    getEmailHeader(undefined, '#1e3a5f 0%, #2d5a87 100%'),
+    getEmailHeader(),
     `
       <p>Hi ${data.clientName},</p>
       <p>You've received a quote for services. Here are the details:</p>
@@ -348,7 +348,7 @@ export async function sendQuoteEmail(data: CrmDocumentEmailData): Promise<boolea
 
 export async function sendJobNotificationEmail(data: CrmDocumentEmailData & { scheduledDate?: string; status?: string }): Promise<boolean> {
   const html = wrapEmailContent(
-    getEmailHeader(undefined, '#1e3a5f 0%, #2d5a87 100%'),
+    getEmailHeader(),
     `
       <p>Hi ${data.clientName},</p>
       <p>Here's an update on your scheduled service:</p>
@@ -394,7 +394,7 @@ export async function sendInvoiceEmail(data: CrmDocumentEmailData): Promise<bool
   `).join('') || '';
 
   const html = wrapEmailContent(
-    getEmailHeader(undefined, '#1e3a5f 0%, #2d5a87 100%'),
+    getEmailHeader(),
     `
       <p>Hi ${data.clientName},</p>
       <p>Please find your invoice below:</p>
@@ -930,7 +930,7 @@ export async function sendReferralReminderEmail(
   const progressPercent = Math.round((currentReferrals / referralCap) * 100);
 
   const html = wrapEmailContent(
-    getEmailHeader(undefined, '#22C55E 0%, #16A34A 100%'),
+    getEmailHeader(),
     `
       <p>Hi ${userName || 'there'},</p>
       <p>Did you know you can earn <strong>free subscription credits</strong> by referring friends to HomeBase?</p>
