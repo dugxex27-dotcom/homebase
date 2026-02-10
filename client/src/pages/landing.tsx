@@ -304,9 +304,9 @@ export default function Landing() {
                     <Home className="h-12 w-12 text-purple-600" />
                   </div>
                 </div>
-                <h2 className="text-2xl font-bold mb-3" style={{ color: '#2c0f5b' }}>
+                <h3 className="text-2xl font-bold mb-3" style={{ color: '#2c0f5b' }}>
                   I'm a Homeowner
-                </h2>
+                </h3>
                 <p className="text-gray-600 mb-6">"The Carfax-style home history your house has always needed."</p>
                 <ul className="space-y-2 mb-6 text-sm text-gray-700">
                   <li>✓ Multi-property management</li>
@@ -347,9 +347,9 @@ export default function Landing() {
                     <Wrench className="h-12 w-12 text-blue-600" />
                   </div>
                 </div>
-                <h2 className="text-2xl font-bold mb-3" style={{ color: '#1560a2' }}>
+                <h3 className="text-2xl font-bold mb-3" style={{ color: '#1560a2' }}>
                   I'm a Contractor
-                </h2>
+                </h3>
                 <p className="text-gray-600 mb-6">
                   Grow your business, manage client relationships, and showcase your services to homeowners
                 </p>
@@ -392,9 +392,9 @@ export default function Landing() {
                     <Building2 className="h-12 w-12 text-emerald-600" />
                   </div>
                 </div>
-                <h2 className="text-2xl font-bold mb-3" style={{ color: '#059669' }}>
+                <h3 className="text-2xl font-bold mb-3" style={{ color: '#059669' }}>
                   I'm a Real Estate Agent
-                </h2>
+                </h3>
                 <p className="text-gray-600 mb-6">
                   Earn commissions by referring homeowners and contractors to MyHomeBase
                 </p>
