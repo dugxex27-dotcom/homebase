@@ -4371,7 +4371,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Bulk email endpoint for admins
   app.post('/api/admin/send-bulk-email', requireAdmin, async (req: any, res) => {
     try {
-      const { replyToEmail, audience, subject, body } = req.body;
+      const { replyToEmail, audience, subject, body, imageUrl } = req.body;
       
       // Validate subject and body
       if (!subject || typeof subject !== 'string' || subject.trim().length === 0) {
@@ -4418,7 +4418,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         allUsers.filter(u => u.email) as Array<{ email: string; firstName: string | null }>,
         subject.trim(),
         body.trim(),
-        replyToEmail || 'gotohomebase2025@gmail.com'
+        replyToEmail || 'gotohomebase2025@gmail.com',
+        imageUrl || undefined
       );
 
       // Log the action

@@ -111,6 +111,7 @@ export default function AdminDashboard() {
   const [denyNotes, setDenyNotes] = useState("");
   const [bulkEmailReplyTo, setBulkEmailReplyTo] = useState("gotohomebase2025@gmail.com");
   const [bulkEmailAudience, setBulkEmailAudience] = useState<"all" | "homeowners" | "contractors">("all");
+  const [bulkEmailImageUrl, setBulkEmailImageUrl] = useState("");
   const [bulkEmailSubject, setBulkEmailSubject] = useState("How are you enjoying MyHomeBase?");
   const [bulkEmailBody, setBulkEmailBody] = useState(`Hi there!
 
@@ -407,6 +408,19 @@ The MyHomeBase Team`);
             </div>
             
             <div className="space-y-2">
+              <Label htmlFor="email-image">Image URL (optional)</Label>
+              <Input
+                id="email-image"
+                type="url"
+                value={bulkEmailImageUrl}
+                onChange={(e) => setBulkEmailImageUrl(e.target.value)}
+                placeholder="https://example.com/image.png"
+                data-testid="input-bulk-email-image"
+              />
+              <p className="text-xs text-muted-foreground">Paste a link to an image to include in the email</p>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="email-subject">Subject Line</Label>
               <Input
                 id="email-subject"
@@ -436,6 +450,11 @@ The MyHomeBase Team`);
             <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border">
               <p className="text-sm font-medium mb-2">Preview:</p>
               <p className="text-sm font-semibold">Subject: {bulkEmailSubject || "(No subject)"}</p>
+              {bulkEmailImageUrl && (
+                <div className="mt-2 border-t pt-2">
+                  <img src={bulkEmailImageUrl} alt="Email image" className="max-w-full max-h-48 rounded-md object-contain" />
+                </div>
+              )}
               <div className="mt-2 text-sm text-muted-foreground whitespace-pre-wrap border-t pt-2">
                 {bulkEmailBody || "(No content)"}
               </div>
@@ -450,7 +469,8 @@ The MyHomeBase Team`);
                   replyToEmail: bulkEmailReplyTo, 
                   audience: bulkEmailAudience,
                   subject: bulkEmailSubject,
-                  body: bulkEmailBody
+                  body: bulkEmailBody,
+                  imageUrl: bulkEmailImageUrl || undefined
                 })}
                 disabled={bulkEmailMutation.isPending || !bulkEmailReplyTo || !bulkEmailSubject.trim() || !bulkEmailBody.trim()}
                 data-testid="button-send-bulk-email"
