@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Users, Home, Briefcase, Plus, Ban, TrendingUp, DollarSign, UserMinus, MessageSquare, ArrowRight, Flag, UserCheck, CheckCircle, XCircle, Clock, Eye, ChevronDown, ChevronUp, FileText, ExternalLink, Mail, Phone } from "lucide-react";
+import { Users, Home, Briefcase, Plus, Ban, TrendingUp, DollarSign, UserMinus, MessageSquare, ArrowRight, Flag, UserCheck, CheckCircle, XCircle, Clock, Eye, ChevronDown, ChevronUp, FileText, ExternalLink, Mail, Phone, ImagePlus, X, Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { format } from "date-fns";
@@ -112,6 +112,7 @@ export default function AdminDashboard() {
   const [bulkEmailReplyTo, setBulkEmailReplyTo] = useState("gotohomebase2025@gmail.com");
   const [bulkEmailAudience, setBulkEmailAudience] = useState<"all" | "homeowners" | "contractors">("all");
   const [bulkEmailImageUrl, setBulkEmailImageUrl] = useState("");
+  const [bulkEmailImageUploading, setBulkEmailImageUploading] = useState(false);
   const [bulkEmailSubject, setBulkEmailSubject] = useState("How are you enjoying MyHomeBase?");
   const [bulkEmailBody, setBulkEmailBody] = useState(`Hi there!
 
@@ -408,16 +409,74 @@ The MyHomeBase Team`);
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="email-image">Image URL (optional)</Label>
-              <Input
-                id="email-image"
-                type="url"
-                value={bulkEmailImageUrl}
-                onChange={(e) => setBulkEmailImageUrl(e.target.value)}
-                placeholder="https://example.com/image.png"
-                data-testid="input-bulk-email-image"
-              />
-              <p className="text-xs text-muted-foreground">Paste a link to an image to include in the email</p>
+              <Label>Image (optional)</Label>
+              {bulkEmailImageUrl ? (
+                <div className="relative inline-block">
+                  <img src={bulkEmailImageUrl} alt="Email image" className="max-h-32 rounded-md border" />
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                    onClick={() => setBulkEmailImageUrl("")}
+                    data-testid="button-remove-email-image"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ) : (
+                <div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    id="email-image-upload"
+                    data-testid="input-bulk-email-image"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (file.size > 5 * 1024 * 1024) {
+                        toast({ title: "Image too large", description: "Maximum size is 5MB", variant: "destructive" });
+                        return;
+                      }
+                      setBulkEmailImageUploading(true);
+                      const reader = new FileReader();
+                      reader.onload = async () => {
+                        try {
+                          const imageData = reader.result as string;
+                          const res = await apiRequest("/api/admin/upload-email-image", "POST", { imageData });
+                          const data = await res.json();
+                          if (!data.url) throw new Error("No URL returned");
+                          const origin = window.location.origin;
+                          setBulkEmailImageUrl(`${origin}${data.url}`);
+                        } catch (err) {
+                          toast({ title: "Upload failed", description: "Could not upload image", variant: "destructive" });
+                        } finally {
+                          setBulkEmailImageUploading(false);
+                        }
+                      };
+                      reader.onerror = () => {
+                        toast({ title: "Upload failed", description: "Could not read file", variant: "destructive" });
+                        setBulkEmailImageUploading(false);
+                      };
+                      reader.readAsDataURL(file);
+                      e.target.value = "";
+                    }}
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => document.getElementById("email-image-upload")?.click()}
+                    disabled={bulkEmailImageUploading}
+                    data-testid="button-upload-email-image"
+                  >
+                    {bulkEmailImageUploading ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Uploading...</>
+                    ) : (
+                      <><ImagePlus className="h-4 w-4 mr-2" /> Upload Image</>
+                    )}
+                  </Button>
+                  <p className="text-xs text-muted-foreground mt-1">Upload an image to include in the email (max 5MB)</p>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">

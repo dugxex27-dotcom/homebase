@@ -4368,6 +4368,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin email image upload endpoint
+  app.post('/api/admin/upload-email-image', requireAdmin, async (req: any, res) => {
+    try {
+      const { imageData } = req.body;
+      if (!imageData) {
+        return res.status(400).json({ message: "Missing imageData" });
+      }
+
+      const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+      const fileExtension = imageData.match(/^data:image\/(\w+);/)?.[1] || 'jpg';
+      const filename = `${randomUUID()}.${fileExtension}`;
+      const path = `email-images/${filename}`;
+
+      const objectStorage = new ObjectStorageService();
+      await objectStorage.uploadFile(path, buffer, `image/${fileExtension}`);
+
+      const url = `/public/email-images/${filename}`;
+      res.json({ url });
+    } catch (error) {
+      console.error("[ADMIN] Error uploading email image:", error);
+      res.status(500).json({ message: "Failed to upload image" });
+    }
+  });
+
   // Bulk email endpoint for admins
   app.post('/api/admin/send-bulk-email', requireAdmin, async (req: any, res) => {
     try {
