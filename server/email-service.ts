@@ -538,7 +538,8 @@ export async function sendBulkCustomEmail(
   users: Array<{ email: string; firstName?: string | null; id?: string }>,
   subject: string,
   body: string,
-  replyToEmail: string = 'gotohomebase2025@gmail.com'
+  replyToEmail: string = 'gotohomebase2025@gmail.com',
+  imageUrl?: string
 ): Promise<{ sent: number; failed: number; skipped: number }> {
   if (!apiKey) {
     console.log('[EMAIL] SendGrid not configured, skipping bulk email');
@@ -565,9 +566,12 @@ export async function sendBulkCustomEmail(
     const personalizedBody = escapedBody.replace(/\{\{name\}\}/gi, escapeHtml(userName));
     const personalizedTextBody = body.replace(/\{\{name\}\}/gi, userName);
     
+    const imageHtml = imageUrl ? `<div style="text-align: center; margin: 20px 0;"><img src="${escapeHtml(imageUrl)}" alt="" style="max-width: 100%; height: auto; border-radius: 8px;" /></div>` : '';
+
     const html = wrapEmailContent(
       getEmailHeader(),
       `
+        ${imageHtml}
         <p>${personalizedBody}</p>
         <div style="padding-top: 20px; text-align: center; font-size: 12px; color: #666;">
           <p>This email was sent from HomeBase. Reply to <a href="mailto:${escapeHtml(replyToEmail)}">${escapeHtml(replyToEmail)}</a></p>
