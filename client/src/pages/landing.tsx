@@ -102,7 +102,7 @@ export default function Landing() {
             }}
             data-testid="text-hero-subcopy-1"
           >
-            A single, living record that keeps a home's systems, maintenance, upgrades, and history organized in one place.
+            Our house maintenance list keeps your home history, upgrades, contractors, and realtor organized in one place.
           </p>
           <p 
             style={{ 
@@ -177,7 +177,7 @@ export default function Landing() {
               color: '#ffffff'
             }}
           >
-            A single, living record that keeps a home's systems, maintenance, upgrades, and history organized in one place.
+            Our house maintenance list keeps your home history, upgrades, contractors, and realtor organized in one place.
           </p>
           <p 
             style={{ 
@@ -252,7 +252,7 @@ export default function Landing() {
               color: '#ffffff'
             }}
           >
-            A single, living record that keeps a home's systems, maintenance, upgrades, and history organized in one place.
+            Our house maintenance list keeps your home history, upgrades, contractors, and realtor organized in one place.
           </p>
           <p 
             style={{ 
