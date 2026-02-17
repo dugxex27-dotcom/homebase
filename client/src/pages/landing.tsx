@@ -115,7 +115,7 @@ export default function Landing() {
             }}
             data-testid="text-hero-subcopy-2"
           >
-            We're built for homeowners first. Look up house history, get an ongoing house maintenance checklist, and share it seamlessly with contractors and real estate agents when it matters.
+            Look up house history, get an ongoing house maintenance checklist, and share it seamlessly with contractors and real estate agents when it matters. <strong>We're built for homeowners first.</strong>
           </p>
           <a 
             href="#role-cards"
@@ -188,7 +188,7 @@ export default function Landing() {
               color: '#ffffff'
             }}
           >
-            We're built for homeowners first. Look up house history, get an ongoing house maintenance checklist, and share it seamlessly with contractors and real estate agents when it matters.
+            Look up house history, get an ongoing house maintenance checklist, and share it seamlessly with contractors and real estate agents when it matters. <strong>We're built for homeowners first.</strong>
           </p>
           <a 
             href="#role-cards"
@@ -263,7 +263,7 @@ export default function Landing() {
               color: '#ffffff'
             }}
           >
-            We're built for homeowners first. Look up house history, get an ongoing house maintenance checklist, and share it seamlessly with contractors and real estate agents when it matters.
+            Look up house history, get an ongoing house maintenance checklist, and share it seamlessly with contractors and real estate agents when it matters. <strong>We're built for homeowners first.</strong>
           </p>
           <a 
             href="#role-cards"
