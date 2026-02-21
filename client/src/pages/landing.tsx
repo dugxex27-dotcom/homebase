@@ -102,7 +102,7 @@ export default function Landing() {
             }}
             data-testid="text-hero-subcopy-1"
           >
-            Our house maintenance list keeps your home history, upgrades, contractors, and realtor organized in one place.
+            Keep your home history, upgrades, contractors, realtor, and house maintenance list in a single dashboard.
           </p>
           <p 
             style={{ 
@@ -177,7 +177,7 @@ export default function Landing() {
               color: '#ffffff'
             }}
           >
-            Our house maintenance list keeps your home history, upgrades, contractors, and realtor organized in one place.
+            Keep your home history, upgrades, contractors, realtor, and house maintenance list in a single dashboard.
           </p>
           <p 
             style={{ 
@@ -252,7 +252,7 @@ export default function Landing() {
               color: '#ffffff'
             }}
           >
-            Our house maintenance list keeps your home history, upgrades, contractors, and realtor organized in one place.
+            Keep your home history, upgrades, contractors, realtor, and house maintenance list in a single dashboard.
           </p>
           <p 
             style={{ 
