@@ -128,7 +128,7 @@ export default function Landing() {
             }}
             data-testid="button-choose-role-desktop"
           >
-            Choose Your Role
+            Get Started
           </a>
         </div>
       </div>
@@ -201,7 +201,7 @@ export default function Landing() {
             }}
             data-testid="button-choose-role-tablet"
           >
-            Choose Your Role
+            Get Started
           </a>
         </div>
       </div>
@@ -275,7 +275,7 @@ export default function Landing() {
             }}
             data-testid="button-choose-role-mobile"
           >
-            Choose Your Role
+            Get Started
           </a>
         </div>
       </div>
