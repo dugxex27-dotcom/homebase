@@ -115,7 +115,7 @@ export default function Landing() {
             }}
             data-testid="text-hero-subcopy-2"
           >
-            Look up house history, get your house maintenance checklist, and share it all with contractors and real estate agents when it matters most. <strong>We're built for homeowners first.</strong>
+            <strong>We're built for homeowners first</strong> and with one question in mind: Why is your home history not stored like your car history? Now, it is. Get monthly house maintenance checklist reminders to keep your home healthy while you store your complete home records.
           </p>
           <a 
             href="#role-cards"
@@ -188,7 +188,7 @@ export default function Landing() {
               color: '#ffffff'
             }}
           >
-            Look up house history, get your house maintenance checklist, and share it all with contractors and real estate agents when it matters most. <strong>We're built for homeowners first.</strong>
+            <strong>We're built for homeowners first</strong> and with one question in mind: Why is your home history not stored like your car history? Now, it is. Get monthly house maintenance checklist reminders to keep your home healthy while you store your complete home records.
           </p>
           <a 
             href="#role-cards"
@@ -263,7 +263,7 @@ export default function Landing() {
               color: '#ffffff'
             }}
           >
-            Look up house history, get your house maintenance checklist, and share it all with contractors and real estate agents when it matters most. <strong>We're built for homeowners first.</strong>
+            <strong>We're built for homeowners first</strong> and with one question in mind: Why is your home history not stored like your car history? Now, it is. Get monthly house maintenance checklist reminders to keep your home healthy while you store your complete home records.
           </p>
           <a 
             href="#role-cards"
