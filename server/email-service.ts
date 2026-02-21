@@ -5,13 +5,13 @@ import { notificationPreferences } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 
 const apiKey = process.env.SENDGRID_API_KEY;
-const fromEmail = 'noreply@gotohomebase.com';
+const fromEmail = process.env.SENDGRID_FROM_EMAIL || 'noreply@gotohomebase.com';
 const fromName = 'HomeBase';
 const testEmailOverride = '';
 
 if (apiKey) {
   sgMail.setApiKey(apiKey);
-  console.log('[EMAIL] SendGrid client initialized');
+  console.log(`[EMAIL] SendGrid client initialized (from: ${fromEmail})`);
 } else {
   console.warn('[EMAIL] SendGrid API key not configured - email notifications disabled');
 }
@@ -603,13 +603,18 @@ export async function sendBulkCustomEmail(
       if (i < users.length - 1) {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
-    } catch (error) {
-      console.error('[EMAIL] Failed to send custom bulk email to:', user.email, error);
+    } catch (error: any) {
+      const sgError = error?.response?.body?.errors;
+      if (sgError) {
+        console.error('[EMAIL] SendGrid API error for:', user.email, JSON.stringify(sgError));
+      } else {
+        console.error('[EMAIL] Failed to send custom bulk email to:', user.email, error?.message || error);
+      }
       failed++;
     }
   }
 
-  console.log(`[EMAIL] Custom bulk send complete: ${sent} sent, ${failed} failed, ${skipped} skipped`);
+  console.log(`[EMAIL] Custom bulk send complete: ${sent} sent, ${failed} failed, ${skipped} skipped (from: ${fromEmail})`);
   return { sent, failed, skipped };
 }
 

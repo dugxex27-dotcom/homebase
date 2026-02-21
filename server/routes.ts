@@ -4397,6 +4397,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/admin/send-bulk-email', requireAdmin, async (req: any, res) => {
     try {
       const { replyToEmail, audience, subject, body, imageUrl } = req.body;
+      console.log(`[ADMIN-EMAIL] Bulk email request received - audience: ${audience}, subject: "${subject}", from admin: ${req.session?.user?.email}`);
       
       // Validate subject and body
       if (!subject || typeof subject !== 'string' || subject.trim().length === 0) {
@@ -4435,6 +4436,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }).from(users).where(isNotNull(users.email));
       }
 
+      console.log(`[ADMIN-EMAIL] Found ${allUsers.length} users with emails for audience: ${audience}`);
       if (allUsers.length === 0) {
         return res.status(400).json({ message: "No users with email addresses found for the selected audience" });
       }
