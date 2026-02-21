@@ -115,7 +115,19 @@ export default function Landing() {
             }}
             data-testid="text-hero-subcopy-2"
           >
-            <strong>We're built for homeowners first</strong> and with one question in mind: Why is your home history not stored like your car history? Now, it is. Get monthly house maintenance checklist reminders to keep your home healthy while you store your complete home records.
+            <strong>We're built for homeowners first</strong> and with one question in mind: Why is your home history not stored like your car history? Now, it is.
+          </p>
+          <p 
+            style={{ 
+              fontFamily: "'Quicksand', sans-serif",
+              fontSize: '1rem',
+              lineHeight: 1.6,
+              color: '#ffffff',
+              maxWidth: '420px'
+            }}
+            data-testid="text-hero-subcopy-3"
+          >
+            Get monthly house maintenance checklist reminders to keep your home healthy while you store your complete home records.
           </p>
           <a 
             href="#role-cards"
@@ -188,7 +200,18 @@ export default function Landing() {
               color: '#ffffff'
             }}
           >
-            <strong>We're built for homeowners first</strong> and with one question in mind: Why is your home history not stored like your car history? Now, it is. Get monthly house maintenance checklist reminders to keep your home healthy while you store your complete home records.
+            <strong>We're built for homeowners first</strong> and with one question in mind: Why is your home history not stored like your car history? Now, it is.
+          </p>
+          <p 
+            style={{ 
+              fontFamily: "'Quicksand', sans-serif",
+              fontSize: '0.85rem',
+              lineHeight: 1.5,
+              color: '#ffffff'
+            }}
+            data-testid="text-hero-subcopy-3"
+          >
+            Get monthly house maintenance checklist reminders to keep your home healthy while you store your complete home records.
           </p>
           <a 
             href="#role-cards"
@@ -263,7 +286,18 @@ export default function Landing() {
               color: '#ffffff'
             }}
           >
-            <strong>We're built for homeowners first</strong> and with one question in mind: Why is your home history not stored like your car history? Now, it is. Get monthly house maintenance checklist reminders to keep your home healthy while you store your complete home records.
+            <strong>We're built for homeowners first</strong> and with one question in mind: Why is your home history not stored like your car history? Now, it is.
+          </p>
+          <p 
+            style={{ 
+              fontFamily: "'Quicksand', sans-serif",
+              fontSize: '1rem',
+              lineHeight: 1.6,
+              color: '#ffffff'
+            }}
+            data-testid="text-hero-subcopy-3"
+          >
+            Get monthly house maintenance checklist reminders to keep your home healthy while you store your complete home records.
           </p>
           <a 
             href="#role-cards"
