@@ -102,7 +102,7 @@ export default function Landing() {
             }}
             data-testid="text-hero-subcopy-1"
           >
-            Keep your home history, upgrades, contractors, realtor, and house maintenance list in a single dashboard.
+            Keep your home history, contractors, realtor paperwork, and house maintenance list in a single dashboard.
           </p>
           <p 
             style={{ 
@@ -115,7 +115,7 @@ export default function Landing() {
             }}
             data-testid="text-hero-subcopy-2"
           >
-            <strong>We're built for homeowners first</strong> and with one question in mind: Why is your home history not stored like your car history? Now, it is.
+            <strong>We're built for homeowners first</strong> and driven by a single question: What if your home history was stored like your car history? Now, it is.
           </p>
           <a 
             href="#role-cards"
@@ -177,7 +177,7 @@ export default function Landing() {
               color: '#ffffff'
             }}
           >
-            Keep your home history, upgrades, contractors, realtor, and house maintenance list in a single dashboard.
+            Keep your home history, contractors, realtor paperwork, and house maintenance list in a single dashboard.
           </p>
           <p 
             style={{ 
@@ -188,7 +188,7 @@ export default function Landing() {
               color: '#ffffff'
             }}
           >
-            <strong>We're built for homeowners first</strong> and with one question in mind: Why is your home history not stored like your car history? Now, it is.
+            <strong>We're built for homeowners first</strong> and driven by a single question: What if your home history was stored like your car history? Now, it is.
           </p>
           <a 
             href="#role-cards"
@@ -252,7 +252,7 @@ export default function Landing() {
               color: '#ffffff'
             }}
           >
-            Keep your home history, upgrades, contractors, realtor, and house maintenance list in a single dashboard.
+            Keep your home history, contractors, realtor paperwork, and house maintenance list in a single dashboard.
           </p>
           <p 
             style={{ 
@@ -263,7 +263,7 @@ export default function Landing() {
               color: '#ffffff'
             }}
           >
-            <strong>We're built for homeowners first</strong> and with one question in mind: Why is your home history not stored like your car history? Now, it is.
+            <strong>We're built for homeowners first</strong> and driven by a single question: What if your home history was stored like your car history? Now, it is.
           </p>
           <a 
             href="#role-cards"
