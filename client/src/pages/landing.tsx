@@ -7,6 +7,7 @@ import heroImageTablet from "@assets/homebase-hp-hero-tablet_1765940455985.png";
 import heroImageMobile from "@assets/homebase-hp-hero-mobile_1765940883354.png";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { EditableText, useSiteContent } from "@/components/editable-text";
 
 export default function Landing() {
   const { toast } = useToast();
@@ -63,7 +64,10 @@ export default function Landing() {
           className="absolute inset-0 flex flex-col justify-center"
           style={{ paddingLeft: '5%', paddingRight: '50%' }}
         >
-          <p 
+          <EditableText
+            contentKey="hero_eyebrow"
+            defaultValue="Welcome to MyHomeBase"
+            as="p"
             className="mb-2"
             style={{ 
               fontFamily: "'Quicksand', sans-serif",
@@ -73,10 +77,11 @@ export default function Landing() {
               letterSpacing: '0.5px'
             }}
             data-testid="text-hero-eyebrow"
-          >
-            Welcome to MyHomeBase
-          </p>
-          <h1 
+          />
+          <EditableText
+            contentKey="hero_headline"
+            defaultValue="Your Home's Digital Record Starts Here"
+            as="h1"
             className="mb-4"
             style={{ 
               fontFamily: "'Quicksand', sans-serif",
@@ -87,10 +92,18 @@ export default function Landing() {
               maxWidth: '420px'
             }}
             data-testid="text-hero-headline"
-          >
-            Your Home's <span style={{ color: '#BAACEB' }}>Digital Record</span> Starts Here
-          </h1>
-          <h2 
+            renderContent={(text) => {
+              const parts = text.split("Digital Record");
+              if (parts.length === 2) {
+                return <>{parts[0]}<span style={{ color: '#BAACEB' }}>Digital Record</span>{parts[1]}</>;
+              }
+              return text;
+            }}
+          />
+          <EditableText
+            contentKey="hero_subcopy_1"
+            defaultValue="Keep your home history, contractors, realtor paperwork, and house maintenance list in a single dashboard."
+            as="h2"
             className="mb-3"
             style={{ 
               fontFamily: "'Quicksand', sans-serif",
@@ -101,10 +114,11 @@ export default function Landing() {
               maxWidth: '420px'
             }}
             data-testid="text-hero-subcopy-1"
-          >
-            Keep your home history, contractors, realtor paperwork, and house maintenance list in a single dashboard.
-          </h2>
-          <p 
+          />
+          <EditableText
+            contentKey="hero_subcopy_2"
+            defaultValue="We're built for homeowners first and driven by a single question: What if your home history was stored like your car history? Now, it is."
+            as="p"
             style={{ 
               fontFamily: "'Quicksand', sans-serif",
               fontWeight: 500,
@@ -114,9 +128,7 @@ export default function Landing() {
               maxWidth: '420px'
             }}
             data-testid="text-hero-subcopy-2"
-          >
-            <strong>We're built for homeowners first</strong> and driven by a single question: What if your home history was stored like your car history? Now, it is.
-          </p>
+          />
           <a 
             href="#role-cards"
             className="mt-6 px-5 py-3 rounded-lg font-bold text-base transition-all hover:shadow-lg"
@@ -145,7 +157,10 @@ export default function Landing() {
           className="absolute inset-0 flex flex-col justify-center"
           style={{ paddingLeft: '5%', paddingRight: '45%' }}
         >
-          <p 
+          <EditableText
+            contentKey="hero_eyebrow"
+            defaultValue="Welcome to MyHomeBase"
+            as="p"
             className="mb-2"
             style={{ 
               fontFamily: "'Quicksand', sans-serif",
@@ -154,8 +169,11 @@ export default function Landing() {
               color: '#BAACEB',
               letterSpacing: '0.5px'
             }}
-          >Welcome to MyHomeBase</p>
-          <h1 
+          />
+          <EditableText
+            contentKey="hero_headline"
+            defaultValue="Your Home's Digital Record Starts Here"
+            as="h1"
             className="mb-3"
             style={{ 
               fontFamily: "'Quicksand', sans-serif",
@@ -164,10 +182,18 @@ export default function Landing() {
               lineHeight: 1.2,
               color: '#ffffff'
             }}
-          >
-            Your Home's <span style={{ color: '#BAACEB' }}>Digital Record</span> Starts Here
-          </h1>
-          <h2 
+            renderContent={(text) => {
+              const parts = text.split("Digital Record");
+              if (parts.length === 2) {
+                return <>{parts[0]}<span style={{ color: '#BAACEB' }}>Digital Record</span>{parts[1]}</>;
+              }
+              return text;
+            }}
+          />
+          <EditableText
+            contentKey="hero_subcopy_1"
+            defaultValue="Keep your home history, contractors, realtor paperwork, and house maintenance list in a single dashboard."
+            as="h2"
             className="mb-2"
             style={{ 
               fontFamily: "'Quicksand', sans-serif",
@@ -176,10 +202,11 @@ export default function Landing() {
               lineHeight: 1.5,
               color: '#ffffff'
             }}
-          >
-            Keep your home history, contractors, realtor paperwork, and house maintenance list in a single dashboard.
-          </h2>
-          <p 
+          />
+          <EditableText
+            contentKey="hero_subcopy_2"
+            defaultValue="We're built for homeowners first and driven by a single question: What if your home history was stored like your car history? Now, it is."
+            as="p"
             style={{ 
               fontFamily: "'Quicksand', sans-serif",
               fontWeight: 500,
@@ -187,9 +214,7 @@ export default function Landing() {
               lineHeight: 1.5,
               color: '#ffffff'
             }}
-          >
-            <strong>We're built for homeowners first</strong> and driven by a single question: What if your home history was stored like your car history? Now, it is.
-          </p>
+          />
           <a 
             href="#role-cards"
             className="mt-4 px-4 py-2 rounded-lg font-bold text-sm transition-all hover:shadow-lg"
@@ -218,7 +243,10 @@ export default function Landing() {
           className="px-6 py-8 text-center"
           style={{ backgroundColor: '#2c0f5b' }}
         >
-          <p 
+          <EditableText
+            contentKey="hero_eyebrow"
+            defaultValue="Welcome to MyHomeBase"
+            as="p"
             className="mb-2"
             style={{ 
               fontFamily: "'Quicksand', sans-serif",
@@ -227,10 +255,11 @@ export default function Landing() {
               color: '#BAACEB',
               letterSpacing: '0.5px'
             }}
-          >
-            Welcome to MyHomeBase
-          </p>
-          <h1 
+          />
+          <EditableText
+            contentKey="hero_headline"
+            defaultValue="Your Home's Digital Record Starts Here"
+            as="h1"
             className="mb-4"
             style={{ 
               fontFamily: "'Quicksand', sans-serif",
@@ -239,10 +268,18 @@ export default function Landing() {
               lineHeight: 1.2,
               color: '#ffffff'
             }}
-          >
-            Your Home's <span style={{ color: '#BAACEB' }}>Digital Record</span> Starts Here
-          </h1>
-          <h2 
+            renderContent={(text) => {
+              const parts = text.split("Digital Record");
+              if (parts.length === 2) {
+                return <>{parts[0]}<span style={{ color: '#BAACEB' }}>Digital Record</span>{parts[1]}</>;
+              }
+              return text;
+            }}
+          />
+          <EditableText
+            contentKey="hero_subcopy_1"
+            defaultValue="Keep your home history, contractors, realtor paperwork, and house maintenance list in a single dashboard."
+            as="h2"
             className="mb-3"
             style={{ 
               fontFamily: "'Quicksand', sans-serif",
@@ -251,10 +288,11 @@ export default function Landing() {
               lineHeight: 1.6,
               color: '#ffffff'
             }}
-          >
-            Keep your home history, contractors, realtor paperwork, and house maintenance list in a single dashboard.
-          </h2>
-          <p 
+          />
+          <EditableText
+            contentKey="hero_subcopy_2"
+            defaultValue="We're built for homeowners first and driven by a single question: What if your home history was stored like your car history? Now, it is."
+            as="p"
             style={{ 
               fontFamily: "'Quicksand', sans-serif",
               fontWeight: 500,
@@ -262,9 +300,7 @@ export default function Landing() {
               lineHeight: 1.6,
               color: '#ffffff'
             }}
-          >
-            <strong>We're built for homeowners first</strong> and driven by a single question: What if your home history was stored like your car history? Now, it is.
-          </p>
+          />
           <a 
             href="#role-cards"
             className="inline-block mt-6 px-5 py-3 rounded-lg font-bold text-sm transition-all hover:shadow-lg"
@@ -282,12 +318,19 @@ export default function Landing() {
       {/* Role Selection Cards */}
       <div id="role-cards" className="max-w-6xl mx-auto px-4 py-12">
         <div className="text-center mb-10">
-          <h3 className="font-bold mb-3 text-[24px]" style={{ color: '#2c0f5b' }}>
-            We're built for homeowners first and driven by a single question:<br />
-            What if your home history was stored like your car history?<br />
-            Now, it is.
-          </h3>
-          <p className="text-lg text-gray-600">Choose how you’ll use MyHomeBase</p>
+          <EditableText
+            contentKey="role_section_heading"
+            defaultValue="We're built for homeowners first and driven by a single question: What if your home history was stored like your car history? Now, it is."
+            as="h3"
+            className="font-bold mb-3 text-[24px]"
+            style={{ color: '#2c0f5b' }}
+          />
+          <EditableText
+            contentKey="role_section_subtitle"
+            defaultValue="Choose how you'll use MyHomeBase"
+            as="p"
+            className="text-lg text-gray-600"
+          />
         </div>
 
         <div className="flex flex-col gap-8 w-full">
@@ -307,7 +350,12 @@ export default function Landing() {
                 <h3 className="text-2xl font-bold mb-3" style={{ color: '#2c0f5b' }}>
                   I'm a Homeowner
                 </h3>
-                <p className="text-gray-600 mb-6">"The Carfax-style home history your house has always needed."</p>
+                <EditableText
+                  contentKey="homeowner_card_description"
+                  defaultValue={'"The Carfax-style home history your house has always needed."'}
+                  as="p"
+                  className="text-gray-600 mb-6"
+                />
                 <ul className="space-y-2 mb-6 text-sm text-gray-700">
                   <li>✓ Multi-property management</li>
                   <li>✓ Maintenance scheduling</li>
@@ -350,9 +398,12 @@ export default function Landing() {
                 <h3 className="text-2xl font-bold mb-3" style={{ color: '#1560a2' }}>
                   I'm a Contractor
                 </h3>
-                <p className="text-gray-600 mb-6">
-                  Grow your business, manage client relationships, and showcase your services to homeowners
-                </p>
+                <EditableText
+                  contentKey="contractor_card_description"
+                  defaultValue="Grow your business, manage client relationships, and showcase your services to homeowners"
+                  as="p"
+                  className="text-gray-600 mb-6"
+                />
                 <ul className="space-y-2 mb-6 text-sm text-gray-700">
                   <li>✓ Professional profile</li>
                   <li>✓ Client management</li>
@@ -395,9 +446,12 @@ export default function Landing() {
                 <h3 className="text-2xl font-bold mb-3" style={{ color: '#059669' }}>
                   I'm a Real Estate Agent
                 </h3>
-                <p className="text-gray-600 mb-6">
-                  Earn commissions by referring homeowners and contractors to MyHomeBase
-                </p>
+                <EditableText
+                  contentKey="agent_card_description"
+                  defaultValue="Earn commissions by referring homeowners and contractors to MyHomeBase"
+                  as="p"
+                  className="text-gray-600 mb-6"
+                />
                 <ul className="space-y-2 mb-6 text-sm text-gray-700">
                   <li>✓ Earn referral bonuses</li>
                   <li>✓ Track your referrals</li>

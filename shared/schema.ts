@@ -2036,3 +2036,13 @@ export const rateLimitTracking = pgTable("rate_limit_tracking", {
 export const insertRateLimitTrackingSchema = createInsertSchema(rateLimitTracking).omit({ id: true });
 export type InsertRateLimitTracking = z.infer<typeof insertRateLimitTrackingSchema>;
 export type RateLimitTracking = typeof rateLimitTracking.$inferSelect;
+
+export const siteContent = pgTable("site_content", {
+  key: varchar("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertSiteContentSchema = createInsertSchema(siteContent);
+export type InsertSiteContent = z.infer<typeof insertSiteContentSchema>;
+export type SiteContent = typeof siteContent.$inferSelect;

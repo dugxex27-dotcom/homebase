@@ -9,7 +9,7 @@ import { z } from "zod";
 import { randomUUID } from "crypto";
 import rateLimit from "express-rate-limit";
 import { eq, and, or, lte, isNull, isNotNull, desc } from "drizzle-orm";
-import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, maintenanceTasks, customMaintenanceTasks, insertSupportTicketSchema, insertSubscriptionCycleEventSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, crmClients, crmJobs, crmQuotes, crmInvoices, securitySessions, referralCredits, agentProfiles, users } from "@shared/schema";
+import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, maintenanceTasks, customMaintenanceTasks, insertSupportTicketSchema, insertSubscriptionCycleEventSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, crmClients, crmJobs, crmQuotes, crmInvoices, securitySessions, referralCredits, agentProfiles, users, siteContent, insertSiteContentSchema } from "@shared/schema";
 import { calculateDIYSavingsAmount } from "@shared/cost-helpers";
 import pushRoutes from "./push-routes";
 import { pushService } from "./push-service";
@@ -13182,6 +13182,45 @@ Important: Only recommend service types from the available list. Match problems 
     } catch (error) {
       console.error('[PUSH] Error deleting push token:', error);
       res.status(500).json({ message: "Failed to delete push token" });
+    }
+  });
+
+  // Site Content API - for inline editing on the landing page
+  app.get("/api/site-content", async (_req, res) => {
+    try {
+      const rows = await db.select().from(siteContent);
+      const content: Record<string, string> = {};
+      for (const row of rows) {
+        content[row.key] = row.value;
+      }
+      res.json(content);
+    } catch (error) {
+      console.error("[SiteContent] Error fetching content:", error);
+      res.status(500).json({ message: "Failed to fetch site content" });
+    }
+  });
+
+  app.put("/api/site-content/:key", async (req, res) => {
+    if (!req.isAuthenticated() || !req.user) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+    const { key } = req.params;
+    const bodySchema = z.object({ value: z.string().min(1).max(2000) });
+    const parsed = bodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Value is required (1-2000 characters)" });
+    }
+    const { value } = parsed.data;
+    try {
+      await db.insert(siteContent).values({ key, value: value.trim(), updatedAt: new Date() })
+        .onConflictDoUpdate({ target: siteContent.key, set: { value: value.trim(), updatedAt: new Date() } });
+      res.json({ key, value: value.trim() });
+    } catch (error) {
+      console.error("[SiteContent] Error updating content:", error);
+      res.status(500).json({ message: "Failed to update site content" });
     }
   });
 
