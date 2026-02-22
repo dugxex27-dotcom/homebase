@@ -380,18 +380,18 @@ export default function Header() {
               </Sheet>
             )}
             
-            <Link href="/" aria-label="Home" data-testid="link-home-logo">
-              <button
-                className="p-1.5 sm:p-2 rounded-xl transition-all duration-200 hover:bg-gray-100 active:bg-gray-200"
-                aria-label="Return to homepage"
-              >
-                <img 
-                  src={typedUser?.role === 'homeowner' ? logoHomeowner : typedUser?.role === 'contractor' ? logoContractor : typedUser?.role === 'agent' ? logoAgent : logoDefault} 
-                  alt="MyHomeBase" 
-                  className="h-6 sm:h-7 w-auto"
-                />
-              </button>
-            </Link>
+            <button
+              className="p-1.5 sm:p-2 rounded-xl transition-all duration-200 hover:bg-gray-100 active:bg-gray-200"
+              aria-label="Return to homepage"
+              data-testid="link-home-logo"
+              onClick={handleLogout}
+            >
+              <img 
+                src={typedUser?.role === 'homeowner' ? logoHomeowner : typedUser?.role === 'contractor' ? logoContractor : typedUser?.role === 'agent' ? logoAgent : logoDefault} 
+                alt="MyHomeBase" 
+                className="h-6 sm:h-7 w-auto"
+              />
+            </button>
           </div>
           
           <div className="flex items-center gap-2">
