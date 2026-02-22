@@ -252,7 +252,7 @@ export default function Landing() {
         {/* Welcome Banner */}
         <div className="w-full py-4 mb-8 rounded-lg" style={{ backgroundColor: '#2c0f5b' }}>
           <a href="#card-homeowner" className="block text-center text-white font-bold text-xl no-underline hover:underline" style={{ fontFamily: "'Quicksand', sans-serif" }}>
-            Welcome to MyHomeBase
+            Try a Demo of MyHomeBase
           </a>
         </div>
 
