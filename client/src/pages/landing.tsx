@@ -88,7 +88,7 @@ export default function Landing() {
           />
           <EditableText
             contentKey="hero_subcopy_1"
-            defaultValue="Keep your home history, contractors, realtor paperwork, and house maintenance list in a single dashboard."
+            defaultValue="MyHomeBase keep your home history, contractors, realtor paperwork, and house maintenance list in a single dashboard."
             as="h2"
             className="mb-3"
             style={{ 
@@ -165,7 +165,7 @@ export default function Landing() {
           />
           <EditableText
             contentKey="hero_subcopy_1"
-            defaultValue="Keep your home history, contractors, realtor paperwork, and house maintenance list in a single dashboard."
+            defaultValue="MyHomeBase keep your home history, contractors, realtor paperwork, and house maintenance list in a single dashboard."
             as="h2"
             className="mb-2"
             style={{ 
@@ -238,7 +238,7 @@ export default function Landing() {
           />
           <EditableText
             contentKey="hero_subcopy_1"
-            defaultValue="Keep your home history, contractors, realtor paperwork, and house maintenance list in a single dashboard."
+            defaultValue="MyHomeBase keep your home history, contractors, realtor paperwork, and house maintenance list in a single dashboard."
             as="h2"
             className="mb-3"
             style={{ 
