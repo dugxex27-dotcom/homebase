@@ -101,20 +101,6 @@ export default function Landing() {
             }}
             data-testid="text-hero-subcopy-1"
           />
-          <EditableText
-            contentKey="hero_subcopy_2"
-            defaultValue="We're built for homeowners first and driven by a single question: What if your home history was stored like your car history? Now, it is."
-            as="p"
-            style={{ 
-              fontFamily: "'Quicksand', sans-serif",
-              fontWeight: 500,
-              fontSize: '14px',
-              lineHeight: 1.6,
-              color: '#ffffff',
-              maxWidth: '420px'
-            }}
-            data-testid="text-hero-subcopy-2"
-          />
           <a 
             href="#role-cards"
             className="mt-6 px-5 py-3 rounded-lg font-bold text-base transition-all hover:shadow-lg"
@@ -176,18 +162,6 @@ export default function Landing() {
               color: '#ffffff'
             }}
           />
-          <EditableText
-            contentKey="hero_subcopy_2"
-            defaultValue="We're built for homeowners first and driven by a single question: What if your home history was stored like your car history? Now, it is."
-            as="p"
-            style={{ 
-              fontFamily: "'Quicksand', sans-serif",
-              fontWeight: 500,
-              fontSize: '12px',
-              lineHeight: 1.5,
-              color: '#ffffff'
-            }}
-          />
           <a 
             href="#role-cards"
             className="mt-4 px-4 py-2 rounded-lg font-bold text-sm transition-all hover:shadow-lg"
@@ -241,18 +215,6 @@ export default function Landing() {
             defaultValue="MyHomeBase keep your home history, contractors, realtor paperwork, and house maintenance list in a single dashboard."
             as="h2"
             className="mb-3"
-            style={{ 
-              fontFamily: "'Quicksand', sans-serif",
-              fontWeight: 500,
-              fontSize: '13px',
-              lineHeight: 1.6,
-              color: '#ffffff'
-            }}
-          />
-          <EditableText
-            contentKey="hero_subcopy_2"
-            defaultValue="We're built for homeowners first and driven by a single question: What if your home history was stored like your car history? Now, it is."
-            as="p"
             style={{ 
               fontFamily: "'Quicksand', sans-serif",
               fontWeight: 500,
