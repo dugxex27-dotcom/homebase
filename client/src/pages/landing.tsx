@@ -244,8 +244,8 @@ export default function Landing() {
             className="font-bold mb-3 text-[24px]"
             style={{ color: '#2c0f5b' }}
           >
-            We're built for homeowners first and driven by a single question:<br />
-            What if your home history was stored like your car history? Now, it is.
+            <p className="mb-2">We're built for homeowners first and driven by a single question:</p>
+            <p>What if your home history was stored like your car history? Now, it is.</p>
           </h3>
         </div>
 
