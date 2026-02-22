@@ -240,13 +240,13 @@ export default function Landing() {
       {/* Role Selection Cards */}
       <div id="role-cards" className="max-w-6xl mx-auto px-4 py-12">
         <div className="text-center mb-10">
-          <EditableText
-            contentKey="role_section_heading"
-            defaultValue="We're built for homeowners first and driven by a single question: What if your home history was stored like your car history? Now, it is."
-            as="h3"
+          <h3
             className="font-bold mb-3 text-[24px]"
             style={{ color: '#2c0f5b' }}
-          />
+          >
+            We're built for homeowners first and driven by a single question:<br />
+            What if your home history was stored like your car history? Now, it is.
+          </h3>
         </div>
 
         {/* Welcome Banner */}
