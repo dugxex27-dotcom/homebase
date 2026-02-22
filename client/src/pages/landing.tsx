@@ -251,14 +251,15 @@ export default function Landing() {
 
         {/* Welcome Banner */}
         <div className="w-full py-4 mb-8 rounded-lg" style={{ backgroundColor: '#2c0f5b' }}>
-          <h2 className="text-center text-white font-bold text-xl" style={{ fontFamily: "'Quicksand', sans-serif" }}>
+          <a href="#card-homeowner" className="block text-center text-white font-bold text-xl no-underline hover:underline" style={{ fontFamily: "'Quicksand', sans-serif" }}>
             Welcome to MyHomeBase
-          </h2>
+          </a>
         </div>
 
         <div className="flex flex-col gap-8 w-full">
           {/* Homeowner Card */}
           <Card 
+            id="card-homeowner"
             className="hover:shadow-lg transition-all cursor-pointer border-2 hover:border-purple-400 flex flex-col"
             onClick={() => handleRoleSelection('homeowner')}
             data-testid="card-role-homeowner"
