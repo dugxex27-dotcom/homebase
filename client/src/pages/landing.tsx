@@ -282,11 +282,11 @@ export default function Landing() {
       {/* Role Selection Cards */}
       <div id="role-cards" className="max-w-6xl mx-auto px-4 py-12">
         <div className="text-center mb-10">
-          <h2 className="font-bold mb-3 text-[24px]" style={{ color: '#2c0f5b' }}>
+          <h3 className="font-bold mb-3 text-[24px]" style={{ color: '#2c0f5b' }}>
             We're built for homeowners first and driven by a single question:<br />
             What if your home history was stored like your car history?<br />
             Now, it is.
-          </h2>
+          </h3>
           <p className="text-lg text-gray-600">Choose how you’ll use MyHomeBase</p>
         </div>
 
