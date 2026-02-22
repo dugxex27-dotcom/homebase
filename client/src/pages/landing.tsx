@@ -90,7 +90,7 @@ export default function Landing() {
           >
             Your Home's <span style={{ color: '#BAACEB' }}>Digital Record</span> Starts Here
           </h1>
-          <p 
+          <h2 
             className="mb-3"
             style={{ 
               fontFamily: "'Quicksand', sans-serif",
@@ -103,7 +103,7 @@ export default function Landing() {
             data-testid="text-hero-subcopy-1"
           >
             Keep your home history, contractors, realtor paperwork, and house maintenance list in a single dashboard.
-          </p>
+          </h2>
           <p 
             style={{ 
               fontFamily: "'Quicksand', sans-serif",
@@ -167,7 +167,7 @@ export default function Landing() {
           >
             Your Home's <span style={{ color: '#BAACEB' }}>Digital Record</span> Starts Here
           </h1>
-          <p 
+          <h2 
             className="mb-2"
             style={{ 
               fontFamily: "'Quicksand', sans-serif",
@@ -178,7 +178,7 @@ export default function Landing() {
             }}
           >
             Keep your home history, contractors, realtor paperwork, and house maintenance list in a single dashboard.
-          </p>
+          </h2>
           <p 
             style={{ 
               fontFamily: "'Quicksand', sans-serif",
@@ -242,7 +242,7 @@ export default function Landing() {
           >
             Your Home's <span style={{ color: '#BAACEB' }}>Digital Record</span> Starts Here
           </h1>
-          <p 
+          <h2 
             className="mb-3"
             style={{ 
               fontFamily: "'Quicksand', sans-serif",
@@ -253,7 +253,7 @@ export default function Landing() {
             }}
           >
             Keep your home history, contractors, realtor paperwork, and house maintenance list in a single dashboard.
-          </p>
+          </h2>
           <p 
             style={{ 
               fontFamily: "'Quicksand', sans-serif",
