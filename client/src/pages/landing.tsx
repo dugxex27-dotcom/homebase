@@ -52,7 +52,7 @@ export default function Landing() {
   return (
     <div style={{ background: 'linear-gradient(to bottom, #f8f4fc, #faf9fb)' }}>
       {/* Hero Section - Desktop (1024px+) */}
-      <div className="w-full relative hidden lg:block">
+      <div className="w-full relative hidden lg:block overflow-hidden" style={{ maxHeight: '420px' }}>
         <img 
           src={heroImageDesktop} 
           alt="MyHomeBase - Your digital home fingerprint" 
@@ -62,7 +62,7 @@ export default function Landing() {
         {/* Text Overlay - Left aligned */}
         <div 
           className="absolute inset-0 flex flex-col justify-center"
-          style={{ paddingLeft: '5%', paddingRight: '50%', paddingBottom: '12%' }}
+          style={{ paddingLeft: '5%', paddingRight: '50%' }}
         >
           <EditableText
             contentKey="hero_headline"
@@ -131,7 +131,7 @@ export default function Landing() {
         </div>
       </div>
       {/* Hero Section - Tablet (640px - 1023px) */}
-      <div className="w-full relative hidden sm:block lg:hidden">
+      <div className="w-full relative hidden sm:block lg:hidden overflow-hidden" style={{ maxHeight: '350px' }}>
         <img 
           src={heroImageTablet} 
           alt="MyHomeBase - Your digital home fingerprint" 
@@ -141,7 +141,7 @@ export default function Landing() {
         {/* Text Overlay - Left aligned */}
         <div 
           className="absolute inset-0 flex flex-col justify-center"
-          style={{ paddingLeft: '5%', paddingRight: '45%', paddingBottom: '12%' }}
+          style={{ paddingLeft: '5%', paddingRight: '45%' }}
         >
           <EditableText
             contentKey="hero_headline"
