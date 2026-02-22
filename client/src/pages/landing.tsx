@@ -65,20 +65,6 @@ export default function Landing() {
           style={{ paddingLeft: '5%', paddingRight: '50%' }}
         >
           <EditableText
-            contentKey="hero_eyebrow"
-            defaultValue="Welcome to MyHomeBase"
-            as="p"
-            className="mb-2"
-            style={{ 
-              fontFamily: "'Quicksand', sans-serif",
-              fontWeight: 700,
-              fontSize: '14px',
-              color: '#BAACEB',
-              letterSpacing: '0.5px'
-            }}
-            data-testid="text-hero-eyebrow"
-          />
-          <EditableText
             contentKey="hero_headline"
             defaultValue="Your Home's Digital Record Starts Here"
             as="h1"
@@ -158,19 +144,6 @@ export default function Landing() {
           style={{ paddingLeft: '5%', paddingRight: '45%' }}
         >
           <EditableText
-            contentKey="hero_eyebrow"
-            defaultValue="Welcome to MyHomeBase"
-            as="p"
-            className="mb-2"
-            style={{ 
-              fontFamily: "'Quicksand', sans-serif",
-              fontWeight: 700,
-              fontSize: '12px',
-              color: '#BAACEB',
-              letterSpacing: '0.5px'
-            }}
-          />
-          <EditableText
             contentKey="hero_headline"
             defaultValue="Your Home's Digital Record Starts Here"
             as="h1"
@@ -243,19 +216,6 @@ export default function Landing() {
           className="px-6 py-8 text-center"
           style={{ backgroundColor: '#2c0f5b' }}
         >
-          <EditableText
-            contentKey="hero_eyebrow"
-            defaultValue="Welcome to MyHomeBase"
-            as="p"
-            className="mb-2"
-            style={{ 
-              fontFamily: "'Quicksand', sans-serif",
-              fontWeight: 700,
-              fontSize: '12px',
-              color: '#BAACEB',
-              letterSpacing: '0.5px'
-            }}
-          />
           <EditableText
             contentKey="hero_headline"
             defaultValue="Your Home's Digital Record Starts Here"
