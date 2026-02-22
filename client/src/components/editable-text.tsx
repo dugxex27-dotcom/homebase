@@ -4,6 +4,8 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Pencil, Check, X } from "lucide-react";
 
+const isDev = import.meta.env.DEV;
+
 export function useSiteContent() {
   return useQuery<Record<string, string>>({
     queryKey: ["/api/site-content"],
@@ -32,6 +34,7 @@ export function EditableText({
 }: EditableTextProps) {
   const { user } = useAuth();
   const isAdmin = (user as any)?.role === "admin";
+  const canEdit = isAdmin || isDev;
   const { data: siteContent } = useSiteContent();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -46,6 +49,9 @@ export function EditableText({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/site-content"] });
+      setIsEditing(false);
+    },
+    onError: () => {
       setIsEditing(false);
     },
   });
@@ -73,7 +79,7 @@ export function EditableText({
     setIsEditing(true);
   };
 
-  if (isEditing && isAdmin) {
+  if (isEditing && canEdit) {
     return (
       <div className="relative group" style={style}>
         <textarea
@@ -104,7 +110,7 @@ export function EditableText({
             minHeight: "1.5em",
           }}
         />
-        <div className="absolute -top-8 right-0 flex gap-1">
+        <div className="absolute -top-8 right-0 flex gap-1 z-50">
           <button
             onClick={handleSave}
             disabled={mutation.isPending}
@@ -125,14 +131,14 @@ export function EditableText({
 
   return (
     <Tag
-      className={`${className || ""} ${isAdmin ? "relative group cursor-pointer" : ""}`}
+      className={`${className || ""} ${canEdit ? "relative group cursor-pointer" : ""}`}
       style={style}
       data-testid={testId}
-      onClick={isAdmin ? handleStartEdit : undefined}
+      onClick={canEdit ? handleStartEdit : undefined}
     >
       {renderContent ? renderContent(currentValue) : currentValue}
-      {isAdmin && (
-        <span className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded bg-purple-600 text-white shadow">
+      {canEdit && (
+        <span className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded bg-purple-600 text-white shadow z-50">
           <Pencil className="h-3 w-3" />
         </span>
       )}
