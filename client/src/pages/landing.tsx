@@ -247,12 +247,6 @@ export default function Landing() {
             className="font-bold mb-3 text-[24px]"
             style={{ color: '#2c0f5b' }}
           />
-          <EditableText
-            contentKey="role_section_subtitle"
-            defaultValue="Choose how you'll use MyHomeBase"
-            as="p"
-            className="text-lg text-gray-600"
-          />
         </div>
 
         <div className="flex flex-col gap-8 w-full">
