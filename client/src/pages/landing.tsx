@@ -62,7 +62,7 @@ export default function Landing() {
         {/* Text Overlay - Left aligned */}
         <div 
           className="absolute inset-0 flex flex-col justify-center"
-          style={{ paddingLeft: '5%', paddingRight: '50%' }}
+          style={{ paddingLeft: '5%', paddingRight: '50%', paddingBottom: '12%' }}
         >
           <EditableText
             contentKey="hero_headline"
@@ -141,7 +141,7 @@ export default function Landing() {
         {/* Text Overlay - Left aligned */}
         <div 
           className="absolute inset-0 flex flex-col justify-center"
-          style={{ paddingLeft: '5%', paddingRight: '45%' }}
+          style={{ paddingLeft: '5%', paddingRight: '45%', paddingBottom: '12%' }}
         >
           <EditableText
             contentKey="hero_headline"
