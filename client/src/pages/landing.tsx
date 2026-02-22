@@ -52,7 +52,7 @@ export default function Landing() {
   return (
     <div style={{ background: 'linear-gradient(to bottom, #f8f4fc, #faf9fb)' }}>
       {/* Hero Section - Desktop (1024px+) */}
-      <div className="w-full relative hidden lg:block overflow-hidden" style={{ maxHeight: '420px' }}>
+      <div className="w-full relative hidden lg:block overflow-hidden" style={{ maxHeight: '370px' }}>
         <img 
           src={heroImageDesktop} 
           alt="MyHomeBase - Your digital home fingerprint" 
@@ -117,7 +117,7 @@ export default function Landing() {
         </div>
       </div>
       {/* Hero Section - Tablet (640px - 1023px) */}
-      <div className="w-full relative hidden sm:block lg:hidden overflow-hidden" style={{ maxHeight: '350px' }}>
+      <div className="w-full relative hidden sm:block lg:hidden overflow-hidden" style={{ maxHeight: '300px' }}>
         <img 
           src={heroImageTablet} 
           alt="MyHomeBase - Your digital home fingerprint" 
