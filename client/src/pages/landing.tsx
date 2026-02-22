@@ -237,6 +237,13 @@ export default function Landing() {
           </a>
         </div>
       </div>
+      {/* Welcome Banner */}
+      <div className="w-full py-4" style={{ backgroundColor: '#2c0f5b' }}>
+        <h2 className="text-center text-white font-bold text-xl" style={{ fontFamily: "'Quicksand', sans-serif" }}>
+          Welcome to MyHomeBase
+        </h2>
+      </div>
+
       {/* Role Selection Cards */}
       <div id="role-cards" className="max-w-6xl mx-auto px-4 py-12">
         <div className="text-left mb-10">
