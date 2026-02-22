@@ -239,7 +239,7 @@ export default function Landing() {
       </div>
       {/* Role Selection Cards */}
       <div id="role-cards" className="max-w-6xl mx-auto px-4 py-12">
-        <div className="text-left mb-10">
+        <div className="text-center mb-10">
           <EditableText
             contentKey="role_section_heading"
             defaultValue="We're built for homeowners first and driven by a single question: What if your home history was stored like your car history? Now, it is."
