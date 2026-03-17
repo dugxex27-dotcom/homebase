@@ -9,7 +9,7 @@ import { z } from "zod";
 import { randomUUID } from "crypto";
 import rateLimit from "express-rate-limit";
 import { eq, and, or, lte, isNull, isNotNull, desc } from "drizzle-orm";
-import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, maintenanceTasks, customMaintenanceTasks, insertSupportTicketSchema, insertSubscriptionCycleEventSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, crmClients, crmJobs, crmQuotes, crmInvoices, securitySessions, referralCredits, agentProfiles, users, siteContent, insertSiteContentSchema } from "@shared/schema";
+import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, maintenanceTasks, customMaintenanceTasks, insertSupportTicketSchema, insertSubscriptionCycleEventSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, crmClients, crmJobs, crmQuotes, crmInvoices, securitySessions, referralCredits, agentProfiles, users, siteContent, insertSiteContentSchema, maintenanceLogs, homeAppliances, homeSystems, taskOverrides, type House } from "@shared/schema";
 import { calculateDIYSavingsAmount } from "@shared/cost-helpers";
 import pushRoutes from "./push-routes";
 import { pushService } from "./push-service";
@@ -2556,22 +2556,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existingHouses = await storage.getHouses(demoId);
 
       // Remove any rogue houses that are not in the canonical set
-      const rogueHouses = existingHouses.filter((h: any) => !canonicalHouseIds.has(h.id));
+      const rogueHouses = existingHouses.filter((h: House) => !canonicalHouseIds.has(h.id));
       if (rogueHouses.length > 0) {
         console.log(`[DEMO] Removing ${rogueHouses.length} rogue house(s) from demo account`);
         for (const rogue of rogueHouses) {
+          // Explicitly remove dependent records before deleting the house (no DB-level cascades)
+          await db.delete(maintenanceLogs).where(eq(maintenanceLogs.houseId, rogue.id));
+          await db.delete(taskOverrides).where(eq(taskOverrides.houseId, rogue.id));
+          await db.delete(taskCompletions).where(eq(taskCompletions.houseId, rogue.id));
+          await db.delete(homeSystems).where(eq(homeSystems.houseId, rogue.id));
+          await db.delete(homeAppliances).where(eq(homeAppliances.houseId, rogue.id));
           await storage.deleteHouse(rogue.id);
         }
       }
 
-      // Re-fetch houses after cleanup to get accurate count
+      // Re-fetch houses after cleanup to get accurate picture of what's present
       const cleanedHouses = await storage.getHouses(demoId);
+      const cleanedHouseIds = new Set(cleanedHouses.map((h: House) => h.id));
 
-      // Only create houses if canonical ones are missing
-      if (cleanedHouses.length === 0) {
-        // Create sample houses for the demo homeowner - showing 6 months of active usage
+      // Enforce each canonical house individually so neither can be missing after login
+      const mainHouseMissing = !cleanedHouseIds.has(mainHouseId);
+      const lakeHouseMissing = !cleanedHouseIds.has(lakeHouseId);
+
+      // Create each canonical house independently if missing
+      if (mainHouseMissing) {
         try {
-          // Main Residence - use fixed ID to prevent duplicates
           const house1 = await storage.createHouse({
             id: mainHouseId,
             homeownerId: demoId,
@@ -2600,7 +2609,190 @@ export async function registerRoutes(app: Express): Promise<Server> {
             primaryHeatingFuel: 'natural-gas'
           });
 
-          // Vacation Rental Property - second home
+          // Service records spanning 6 months for Main Residence
+          await storage.createMaintenanceLog({
+            homeownerId: demoId,
+            houseId: house1.id,
+            serviceDate: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            serviceType: 'installation',
+            homeArea: 'security',
+            serviceDescription: 'Smart doorbell and security camera installation',
+            cost: '450.00',
+            contractorName: 'Tech Solutions Pro',
+            contractorCompany: 'SecureHome Systems',
+            notes: 'Installed Ring doorbell and two outdoor cameras. Configured mobile app and tested motion detection.',
+            completionMethod: 'contractor'
+          });
+          await storage.createMaintenanceLog({
+            homeownerId: demoId,
+            houseId: house1.id,
+            serviceDate: new Date(Date.now() - 150 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            serviceType: 'repair',
+            homeArea: 'plumbing',
+            serviceDescription: 'Kitchen faucet replacement',
+            cost: '0.00',
+            contractorName: 'Sarah Anderson',
+            contractorCompany: null,
+            notes: 'Replaced old leaking faucet with new Moen model. Used YouTube tutorial for installation. Turned out great!',
+            completionMethod: 'diy',
+            diySavingsAmount: '275.00'
+          });
+          await storage.createMaintenanceLog({
+            homeownerId: demoId,
+            houseId: house1.id,
+            serviceDate: new Date(Date.now() - 145 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            serviceType: 'maintenance',
+            homeArea: 'exterior',
+            serviceDescription: 'Pressure washing deck and siding',
+            cost: '0.00',
+            contractorName: 'Sarah Anderson',
+            contractorCompany: null,
+            notes: 'Rented pressure washer from Home Depot. Took 4 hours but saved a ton of money. Deck looks brand new!',
+            completionMethod: 'diy',
+            diySavingsAmount: '325.00'
+          });
+          await storage.createMaintenanceLog({
+            homeownerId: demoId,
+            houseId: house1.id,
+            serviceDate: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            serviceType: 'maintenance',
+            homeArea: 'exterior',
+            serviceDescription: 'Gutter cleaning and inspection',
+            cost: '150.00',
+            contractorName: 'James Wilson',
+            contractorCompany: 'ProGutter Services',
+            notes: 'Cleaned all gutters and downspouts. Found and repaired small leak in north gutter. Recommended annual service.',
+            completionMethod: 'contractor'
+          });
+          await storage.createMaintenanceLog({
+            homeownerId: demoId,
+            houseId: house1.id,
+            serviceDate: new Date(Date.now() - 110 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            serviceType: 'repair',
+            homeArea: 'electrical',
+            serviceDescription: 'Replaced living room light fixture',
+            cost: '0.00',
+            contractorName: 'Sarah Anderson',
+            contractorCompany: null,
+            notes: 'Upgraded to modern LED fixture. Turned off breaker and followed safety guidelines. Much brighter now!',
+            completionMethod: 'diy',
+            diySavingsAmount: '185.00'
+          });
+          await storage.createMaintenanceLog({
+            homeownerId: demoId,
+            houseId: house1.id,
+            serviceDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            serviceType: 'maintenance',
+            homeArea: 'landscaping',
+            serviceDescription: 'Tree trimming and yard cleanup',
+            cost: '285.00',
+            contractorName: 'Green Thumb Landscaping',
+            contractorCompany: 'Green Thumb Services',
+            notes: 'Trimmed large oak tree branches overhanging roof. Cleaned up yard debris and mulched flower beds.',
+            completionMethod: 'contractor'
+          });
+          await storage.createMaintenanceLog({
+            homeownerId: demoId,
+            houseId: house1.id,
+            serviceDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            serviceType: 'inspection',
+            homeArea: 'hvac',
+            serviceDescription: 'Annual HVAC maintenance and tune-up',
+            cost: '185.00',
+            contractorName: 'Mike Johnson',
+            contractorCompany: 'Elite Heating & Cooling',
+            notes: 'System is running efficiently. Replaced air filters, cleaned coils, checked refrigerant levels. No issues found.',
+            completionMethod: 'contractor'
+          });
+          await storage.createMaintenanceLog({
+            homeownerId: demoId,
+            houseId: house1.id,
+            serviceDate: new Date(Date.now() - 50 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            serviceType: 'maintenance',
+            homeArea: 'interior',
+            serviceDescription: 'Caulked bathroom tiles and repaired grout',
+            cost: '0.00',
+            contractorName: 'Sarah Anderson',
+            contractorCompany: null,
+            notes: 'Regrouted master bathroom shower. Bought supplies at hardware store. Looks professional!',
+            completionMethod: 'diy',
+            diySavingsAmount: '225.00'
+          });
+          await storage.createMaintenanceLog({
+            homeownerId: demoId,
+            houseId: house1.id,
+            serviceDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            serviceType: 'repair',
+            homeArea: 'garage',
+            serviceDescription: 'Garage door spring replacement',
+            cost: '195.00',
+            contractorName: 'Quick Fix Garage Doors',
+            contractorCompany: 'Reliable Garage Services',
+            notes: 'Spring broke suddenly. Same-day service. Professional and courteous. Door works perfectly now.',
+            completionMethod: 'contractor'
+          });
+          await storage.createMaintenanceLog({
+            homeownerId: demoId,
+            houseId: house1.id,
+            serviceDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            serviceType: 'maintenance',
+            homeArea: 'hvac',
+            serviceDescription: 'Changed air filters',
+            cost: '0.00',
+            contractorName: 'Sarah Anderson',
+            contractorCompany: null,
+            notes: 'Quarterly filter change. Bought MERV 11 filters. Quick 15-minute job.',
+            completionMethod: 'diy',
+            diySavingsAmount: '75.00'
+          });
+
+          // Task completions for seasonal maintenance (home health score)
+          const currentYear = new Date().getFullYear();
+          const taskCompletionsData = [
+            { taskTitle: 'Inspect and clean air conditioner', taskCategory: 'HVAC', month: 5, completionMethod: 'diy', daysAgo: 180, costSavings: 150 },
+            { taskTitle: 'Check smoke and CO detectors', taskCategory: 'Safety', month: 5, completionMethod: 'diy', daysAgo: 175, costSavings: 0 },
+            { taskTitle: 'Clean gutters and downspouts', taskCategory: 'Exterior', month: 6, completionMethod: 'diy', daysAgo: 150, costSavings: 200 },
+            { taskTitle: 'Inspect roof for damage', taskCategory: 'Exterior', month: 6, completionMethod: 'diy', daysAgo: 145, costSavings: 0 },
+            { taskTitle: 'Service lawn equipment', taskCategory: 'Outdoor', month: 6, completionMethod: 'diy', daysAgo: 140, costSavings: 80 },
+            { taskTitle: 'Check and replace weather stripping', taskCategory: 'Doors & Windows', month: 7, completionMethod: 'diy', daysAgo: 120, costSavings: 120 },
+            { taskTitle: 'Test garage door safety features', taskCategory: 'Safety', month: 7, completionMethod: 'diy', daysAgo: 115, costSavings: 0 },
+            { taskTitle: 'Drain water heater sediment', taskCategory: 'Plumbing', month: 8, completionMethod: 'diy', daysAgo: 90, costSavings: 100 },
+            { taskTitle: 'Clean range hood filters', taskCategory: 'Kitchen', month: 8, completionMethod: 'diy', daysAgo: 85, costSavings: 0 },
+            { taskTitle: 'Inspect and seal driveway cracks', taskCategory: 'Exterior', month: 9, completionMethod: 'diy', daysAgo: 60, costSavings: 250 },
+            { taskTitle: 'Change HVAC filters', taskCategory: 'HVAC', month: 9, completionMethod: 'diy', daysAgo: 55, costSavings: 0 },
+            { taskTitle: 'Inspect furnace before winter', taskCategory: 'HVAC', month: 10, completionMethod: 'professional', daysAgo: 30, costSavings: 0 },
+            { taskTitle: 'Clean and store outdoor furniture', taskCategory: 'Outdoor', month: 10, completionMethod: 'diy', daysAgo: 25, costSavings: 0 },
+            { taskTitle: 'Check attic insulation', taskCategory: 'Insulation', month: 11, completionMethod: 'diy', daysAgo: 10, costSavings: 0 },
+            { taskTitle: 'Test sump pump operation', taskCategory: 'Plumbing', month: 11, completionMethod: 'diy', daysAgo: 5, costSavings: 0 }
+          ];
+          await Promise.all(taskCompletionsData.map(async (task) => {
+            const completedDate = new Date(Date.now() - task.daysAgo * 24 * 60 * 60 * 1000);
+            await db.insert(taskCompletions).values({
+              id: randomUUID(),
+              homeownerId: demoId,
+              houseId: house1.id,
+              taskId: null,
+              taskType: 'maintenance',
+              taskTitle: task.taskTitle,
+              taskCategory: task.taskCategory,
+              completedAt: completedDate,
+              month: task.month,
+              year: currentYear,
+              completionMethod: task.completionMethod,
+              estimatedCost: task.costSavings > 0 ? task.costSavings.toString() : null,
+              actualCost: task.completionMethod === 'professional' ? '150.00' : '0.00',
+              costSavings: task.costSavings > 0 ? task.costSavings.toString() : null,
+              notes: task.completionMethod === 'diy' ? 'Completed as DIY project' : null
+            });
+          }));
+          console.log(`[DEMO DATA] Inserted ${taskCompletionsData.length} task completions for Sarah Anderson`);
+        } catch (houseError) {
+          console.error("Error creating demo Main Residence:", houseError);
+        }
+      }
+
+      if (lakeHouseMissing) {
+        try {
           const house2 = await storage.createHouse({
             id: lakeHouseId,
             homeownerId: demoId,
@@ -2629,159 +2821,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             primaryHeatingFuel: 'natural-gas'
           });
 
-          // Service records spanning 6 months for Main Residence
-          // Month 1 (6 months ago)
-          await storage.createMaintenanceLog({
-            homeownerId: demoId,
-            houseId: house1.id,
-            serviceDate: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            serviceType: 'installation',
-            homeArea: 'security',
-            serviceDescription: 'Smart doorbell and security camera installation',
-            cost: '450.00',
-            contractorName: 'Tech Solutions Pro',
-            contractorCompany: 'SecureHome Systems',
-            notes: 'Installed Ring doorbell and two outdoor cameras. Configured mobile app and tested motion detection.',
-            completionMethod: 'contractor'
-          });
-
-          // Month 2 (5 months ago)
-          await storage.createMaintenanceLog({
-            homeownerId: demoId,
-            houseId: house1.id,
-            serviceDate: new Date(Date.now() - 150 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            serviceType: 'repair',
-            homeArea: 'plumbing',
-            serviceDescription: 'Kitchen faucet replacement',
-            cost: '0.00',
-            contractorName: 'Sarah Anderson',
-            contractorCompany: null,
-            notes: 'Replaced old leaking faucet with new Moen model. Used YouTube tutorial for installation. Turned out great!',
-            completionMethod: 'diy',
-            diySavingsAmount: '275.00'
-          });
-
-          await storage.createMaintenanceLog({
-            homeownerId: demoId,
-            houseId: house1.id,
-            serviceDate: new Date(Date.now() - 145 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            serviceType: 'maintenance',
-            homeArea: 'exterior',
-            serviceDescription: 'Pressure washing deck and siding',
-            cost: '0.00',
-            contractorName: 'Sarah Anderson',
-            contractorCompany: null,
-            notes: 'Rented pressure washer from Home Depot. Took 4 hours but saved a ton of money. Deck looks brand new!',
-            completionMethod: 'diy',
-            diySavingsAmount: '325.00'
-          });
-
-          // Month 3 (4 months ago)
-          await storage.createMaintenanceLog({
-            homeownerId: demoId,
-            houseId: house1.id,
-            serviceDate: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            serviceType: 'maintenance',
-            homeArea: 'exterior',
-            serviceDescription: 'Gutter cleaning and inspection',
-            cost: '150.00',
-            contractorName: 'James Wilson',
-            contractorCompany: 'ProGutter Services',
-            notes: 'Cleaned all gutters and downspouts. Found and repaired small leak in north gutter. Recommended annual service.',
-            completionMethod: 'contractor'
-          });
-
-          await storage.createMaintenanceLog({
-            homeownerId: demoId,
-            houseId: house1.id,
-            serviceDate: new Date(Date.now() - 110 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            serviceType: 'repair',
-            homeArea: 'electrical',
-            serviceDescription: 'Replaced living room light fixture',
-            cost: '0.00',
-            contractorName: 'Sarah Anderson',
-            contractorCompany: null,
-            notes: 'Upgraded to modern LED fixture. Turned off breaker and followed safety guidelines. Much brighter now!',
-            completionMethod: 'diy',
-            diySavingsAmount: '185.00'
-          });
-
-          // Month 4 (3 months ago)
-          await storage.createMaintenanceLog({
-            homeownerId: demoId,
-            houseId: house1.id,
-            serviceDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            serviceType: 'maintenance',
-            homeArea: 'landscaping',
-            serviceDescription: 'Tree trimming and yard cleanup',
-            cost: '285.00',
-            contractorName: 'Green Thumb Landscaping',
-            contractorCompany: 'Green Thumb Services',
-            notes: 'Trimmed large oak tree branches overhanging roof. Cleaned up yard debris and mulched flower beds.',
-            completionMethod: 'contractor'
-          });
-
-          // Month 5 (2 months ago)
-          await storage.createMaintenanceLog({
-            homeownerId: demoId,
-            houseId: house1.id,
-            serviceDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            serviceType: 'inspection',
-            homeArea: 'hvac',
-            serviceDescription: 'Annual HVAC maintenance and tune-up',
-            cost: '185.00',
-            contractorName: 'Mike Johnson',
-            contractorCompany: 'Elite Heating & Cooling',
-            notes: 'System is running efficiently. Replaced air filters, cleaned coils, checked refrigerant levels. No issues found.',
-            completionMethod: 'contractor'
-          });
-
-          await storage.createMaintenanceLog({
-            homeownerId: demoId,
-            houseId: house1.id,
-            serviceDate: new Date(Date.now() - 50 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            serviceType: 'maintenance',
-            homeArea: 'interior',
-            serviceDescription: 'Caulked bathroom tiles and repaired grout',
-            cost: '0.00',
-            contractorName: 'Sarah Anderson',
-            contractorCompany: null,
-            notes: 'Regrouted master bathroom shower. Bought supplies at hardware store. Looks professional!',
-            completionMethod: 'diy',
-            diySavingsAmount: '225.00'
-          });
-
-          // Month 6 (1 month ago)
-          await storage.createMaintenanceLog({
-            homeownerId: demoId,
-            houseId: house1.id,
-            serviceDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            serviceType: 'repair',
-            homeArea: 'garage',
-            serviceDescription: 'Garage door spring replacement',
-            cost: '195.00',
-            contractorName: 'Quick Fix Garage Doors',
-            contractorCompany: 'Reliable Garage Services',
-            notes: 'Spring broke suddenly. Same-day service. Professional and courteous. Door works perfectly now.',
-            completionMethod: 'contractor'
-          });
-
-          // Recent maintenance
-          await storage.createMaintenanceLog({
-            homeownerId: demoId,
-            houseId: house1.id,
-            serviceDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            serviceType: 'maintenance',
-            homeArea: 'hvac',
-            serviceDescription: 'Changed air filters',
-            cost: '0.00',
-            contractorName: 'Sarah Anderson',
-            contractorCompany: null,
-            notes: 'Quarterly filter change. Bought MERV 11 filters. Quick 15-minute job.',
-            completionMethod: 'diy',
-            diySavingsAmount: '75.00'
-          });
-
           // Lake House service records
           await storage.createMaintenanceLog({
             homeownerId: demoId,
@@ -2796,7 +2835,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             notes: 'System in good condition. Recommended pumping in 2 years. All drains flowing properly.',
             completionMethod: 'contractor'
           });
-
           await storage.createMaintenanceLog({
             homeownerId: demoId,
             houseId: house2.id,
@@ -2810,7 +2848,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             notes: 'Replaced damaged boards and restained entire dock. Looks great for summer rentals.',
             completionMethod: 'contractor'
           });
-
           await storage.createMaintenanceLog({
             homeownerId: demoId,
             houseId: house2.id,
@@ -2824,70 +2861,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             notes: 'Professional deep clean after summer guests. Carpets, windows, all appliances. Ready for fall bookings.',
             completionMethod: 'contractor'
           });
-
-          // Add task completions for seasonal maintenance (for home health score)
-          // Representing 6 months of good home maintenance
-          const currentDate = new Date();
-          const currentYear = currentDate.getFullYear();
-          
-          // Task completions spanning the past 6 months (May through November 2025)
-          const taskCompletionsData = [
-            // May 2025 tasks
-            { taskTitle: 'Inspect and clean air conditioner', taskCategory: 'HVAC', month: 5, completionMethod: 'diy', daysAgo: 180, costSavings: 150 },
-            { taskTitle: 'Check smoke and CO detectors', taskCategory: 'Safety', month: 5, completionMethod: 'diy', daysAgo: 175, costSavings: 0 },
-            
-            // June 2025 tasks
-            { taskTitle: 'Clean gutters and downspouts', taskCategory: 'Exterior', month: 6, completionMethod: 'diy', daysAgo: 150, costSavings: 200 },
-            { taskTitle: 'Inspect roof for damage', taskCategory: 'Exterior', month: 6, completionMethod: 'diy', daysAgo: 145, costSavings: 0 },
-            { taskTitle: 'Service lawn equipment', taskCategory: 'Outdoor', month: 6, completionMethod: 'diy', daysAgo: 140, costSavings: 80 },
-            
-            // July 2025 tasks
-            { taskTitle: 'Check and replace weather stripping', taskCategory: 'Doors & Windows', month: 7, completionMethod: 'diy', daysAgo: 120, costSavings: 120 },
-            { taskTitle: 'Test garage door safety features', taskCategory: 'Safety', month: 7, completionMethod: 'diy', daysAgo: 115, costSavings: 0 },
-            
-            // August 2025 tasks
-            { taskTitle: 'Drain water heater sediment', taskCategory: 'Plumbing', month: 8, completionMethod: 'diy', daysAgo: 90, costSavings: 100 },
-            { taskTitle: 'Clean range hood filters', taskCategory: 'Kitchen', month: 8, completionMethod: 'diy', daysAgo: 85, costSavings: 0 },
-            
-            // September 2025 tasks
-            { taskTitle: 'Inspect and seal driveway cracks', taskCategory: 'Exterior', month: 9, completionMethod: 'diy', daysAgo: 60, costSavings: 250 },
-            { taskTitle: 'Change HVAC filters', taskCategory: 'HVAC', month: 9, completionMethod: 'diy', daysAgo: 55, costSavings: 0 },
-            
-            // October 2025 tasks
-            { taskTitle: 'Inspect furnace before winter', taskCategory: 'HVAC', month: 10, completionMethod: 'professional', daysAgo: 30, costSavings: 0 },
-            { taskTitle: 'Clean and store outdoor furniture', taskCategory: 'Outdoor', month: 10, completionMethod: 'diy', daysAgo: 25, costSavings: 0 },
-            
-            // November 2025 tasks (current month)
-            { taskTitle: 'Check attic insulation', taskCategory: 'Insulation', month: 11, completionMethod: 'diy', daysAgo: 10, costSavings: 0 },
-            { taskTitle: 'Test sump pump operation', taskCategory: 'Plumbing', month: 11, completionMethod: 'diy', daysAgo: 5, costSavings: 0 }
-          ];
-
-          // Insert task completions into database
-          await Promise.all(taskCompletionsData.map(async (task) => {
-            const completedDate = new Date(Date.now() - task.daysAgo * 24 * 60 * 60 * 1000);
-            await db.insert(taskCompletions).values({
-              id: randomUUID(),
-              homeownerId: demoId,
-              houseId: house1.id,
-              taskId: null,
-              taskType: 'maintenance',
-              taskTitle: task.taskTitle,
-              taskCategory: task.taskCategory,
-              completedAt: completedDate,
-              month: task.month,
-              year: currentYear,
-              completionMethod: task.completionMethod,
-              estimatedCost: task.costSavings > 0 ? task.costSavings.toString() : null,
-              actualCost: task.completionMethod === 'professional' ? '150.00' : '0.00',
-              costSavings: task.costSavings > 0 ? task.costSavings.toString() : null,
-              notes: task.completionMethod === 'diy' ? 'Completed as DIY project' : null
-            });
-          }));
-
-          console.log(`[DEMO DATA] Inserted ${taskCompletionsData.length} task completions for Sarah Anderson`);
-
         } catch (houseError) {
-          console.error("Error creating demo houses:", houseError);
+          console.error("Error creating demo Lake House:", houseError);
         }
       }
 
