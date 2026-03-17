@@ -7659,9 +7659,10 @@ class DbStorage implements IStorage {
   }
 
   async createHouse(house: InsertHouse): Promise<House> {
+    const providedId = (house as InsertHouse & { id?: string }).id;
     const newHouse = {
       ...house,
-      id: randomUUID(),
+      id: providedId || randomUUID(),
       isDefault: house.isDefault ?? false,
       createdAt: new Date(),
     };
