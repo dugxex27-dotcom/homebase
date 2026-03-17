@@ -2547,17 +2547,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Canonical demo house IDs - the only two houses that should exist for the demo user
+      const mainHouseId = '8d44c1d0-af55-4f1c-bada-b70e54c823bc';
+      const lakeHouseId = 'f5c8a9d2-3e1b-4f7c-a6b3-8d9e5f2c1a4b';
+      const canonicalHouseIds = new Set([mainHouseId, lakeHouseId]);
+
       // Check if demo houses already exist (seeded from database)
       const existingHouses = await storage.getHouses(demoId);
-      
-      // Only create houses if demo user has none
-      if (existingHouses.length === 0) {
+
+      // Remove any rogue houses that are not in the canonical set
+      const rogueHouses = existingHouses.filter((h: any) => !canonicalHouseIds.has(h.id));
+      if (rogueHouses.length > 0) {
+        console.log(`[DEMO] Removing ${rogueHouses.length} rogue house(s) from demo account`);
+        for (const rogue of rogueHouses) {
+          await storage.deleteHouse(rogue.id);
+        }
+      }
+
+      // Re-fetch houses after cleanup to get accurate count
+      const cleanedHouses = await storage.getHouses(demoId);
+
+      // Only create houses if canonical ones are missing
+      if (cleanedHouses.length === 0) {
         // Create sample houses for the demo homeowner - showing 6 months of active usage
         try {
           // Main Residence - use fixed ID to prevent duplicates
-          const mainHouseId = '8d44c1d0-af55-4f1c-bada-b70e54c823bc';
-          const lakeHouseId = 'f5c8a9d2-3e1b-4f7c-a6b3-8d9e5f2c1a4b';
-          
           const house1 = await storage.createHouse({
             id: mainHouseId,
             homeownerId: demoId,
