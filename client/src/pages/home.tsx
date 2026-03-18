@@ -136,7 +136,7 @@ export default function Home() {
             <div className="max-w-7xl mx-auto">
               <div className="text-center mb-6">
                 <h2 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: '#2c0f5b' }}>Your Home at a Glance</h2>
-                <p className="text-gray-600 max-w-xl mx-auto">Track your home's health, savings, and maintenance all in one place.</p>
+                <p className="text-gray-600 max-w-xl mx-auto">Track your home's health and maintenance all in one place.</p>
               </div>
               
               <div className="rounded-xl p-6 mb-6" style={{ backgroundColor: '#ffffff' }}>
