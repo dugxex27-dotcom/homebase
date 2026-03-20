@@ -11,7 +11,9 @@ const config: CapacitorConfig = {
   ios: {
     contentInset: 'automatic',
     scheme: 'HomeBase',
-    limitsNavigationsToAppBoundDomains: true,
+    // Note: Do NOT set limitsNavigationsToAppBoundDomains: true without also adding
+    // WKAppBoundDomains = ["gotohomebase.com"] to ios/App/App/Info.plist
+    // Omitting here to avoid white-screen navigation blocks in the WebView
   },
   android: {
     allowMixedContent: false,

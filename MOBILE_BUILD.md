@@ -47,7 +47,7 @@ Every time you push an update to production, the mobile app automatically picks 
 
 If you ever want to ship a **self-contained** native bundle instead of loading the live URL, you can switch to the local bundle approach:
 
-1. Remove `server.url` from `capacitor.config.ts` (leave `webDir: 'dist'`)
+1. Remove `server.url` from `capacitor.config.ts` (leave `webDir: 'dist/public'`)
 2. Create a `.env.native` file with:
    ```
    VITE_API_BASE_URL=https://gotohomebase.com

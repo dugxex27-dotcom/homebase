@@ -84,7 +84,9 @@ app.use((req, res, next) => {
 });
 
 // CORS Configuration
-// capacitor://localhost and https://localhost are used by Capacitor native apps on iOS/Android
+// capacitor://localhost  — iOS WebView origin in Capacitor apps
+// https://localhost      — used by some Capacitor/WKWebView variants on iOS
+// http://localhost       — Android WebView origin in Capacitor apps (Android uses http for localhost)
 const CAPACITOR_ORIGINS = ['capacitor://localhost', 'https://localhost', 'http://localhost'];
 const allowedOrigins = process.env.NODE_ENV === 'production'
   ? [...(process.env.ALLOWED_ORIGINS?.split(',') || []), ...CAPACITOR_ORIGINS]
