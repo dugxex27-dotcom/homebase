@@ -72,6 +72,16 @@ Preferred communication style: Simple, everyday language.
 - **Session Management**: connect-pg-simple
 - **Authentication**: bcryptjs, passport
 
+### Mobile App (iOS & Android)
+- **Framework**: Capacitor wraps the existing web app as a native iOS/Android app
+- **App ID**: `com.gotohomebase.app`
+- **Approach**: `server.url = 'https://gotohomebase.com'` — native app loads live web server (auto-updates without store releases)
+- **Native projects**: `ios/` (Xcode) and `android/` (Android Studio) directories are committed
+- **Icons/Splash**: Source images in `resources/`; generated sizes in native projects via `npx @capacitor/assets generate`
+- **Config**: `capacitor.config.ts` at project root
+- **Build guide**: `MOBILE_BUILD.md` covers prerequisites, build steps, and store submission for both platforms
+- **CORS**: `capacitor://localhost` and `https://localhost` origins allowed for native WebView API calls
+
 ### Third-Party Services
 - **Geocoding**: OpenStreetMap Nominatim
 - **Address Autocomplete**: Google Places API, OpenStreetMap

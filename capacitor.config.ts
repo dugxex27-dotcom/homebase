@@ -6,20 +6,33 @@ const config: CapacitorConfig = {
   webDir: 'dist/public',
   server: {
     url: 'https://gotohomebase.com',
-    cleartext: false
+    cleartext: false,
   },
   ios: {
     contentInset: 'automatic',
-    scheme: 'HomeBase'
+    scheme: 'HomeBase',
+    limitsNavigationsToAppBoundDomains: true,
   },
   android: {
-    allowMixedContent: false
+    allowMixedContent: false,
+    captureInput: true,
+    webContentsDebuggingEnabled: false,
   },
   plugins: {
+    SplashScreen: {
+      launchShowDuration: 2000,
+      launchAutoHide: true,
+      backgroundColor: '#8B70D4',
+      androidSplashResourceName: 'splash',
+      androidScaleType: 'CENTER_CROP',
+      showSpinner: false,
+      splashFullScreen: true,
+      splashImmersive: true,
+    },
     PushNotifications: {
-      presentationOptions: ['badge', 'sound', 'alert']
-    }
-  }
+      presentationOptions: ['badge', 'sound', 'alert'],
+    },
+  },
 };
 
 export default config;

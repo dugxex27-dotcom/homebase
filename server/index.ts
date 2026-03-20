@@ -84,13 +84,15 @@ app.use((req, res, next) => {
 });
 
 // CORS Configuration
+// capacitor://localhost and https://localhost are used by Capacitor native apps on iOS/Android
+const CAPACITOR_ORIGINS = ['capacitor://localhost', 'https://localhost', 'http://localhost'];
 const allowedOrigins = process.env.NODE_ENV === 'production'
-  ? process.env.ALLOWED_ORIGINS?.split(',') || []
-  : ['http://localhost:5000', 'http://localhost:5173'];
+  ? [...(process.env.ALLOWED_ORIGINS?.split(',') || []), ...CAPACITOR_ORIGINS]
+  : ['http://localhost:5000', 'http://localhost:5173', ...CAPACITOR_ORIGINS];
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, Postman, etc.)
+    // Allow requests with no origin (mobile apps, Postman, server-to-server, etc.)
     if (!origin) return callback(null, true);
     
     if (allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {

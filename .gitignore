@@ -4,3 +4,13 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Capacitor native build artifacts
+ios/App/Pods/
+ios/App/App/public/
+android/app/src/main/assets/public/
+android/.gradle/
+android/app/release/
+android/app/build/
+*.keystore
+*.jks

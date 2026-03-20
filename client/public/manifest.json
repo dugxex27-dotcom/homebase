@@ -1,4 +1,5 @@
 {
+  "id": "com.gotohomebase.app",
   "name": "HomeBase - Home Maintenance Manager",
   "short_name": "HomeBase",
   "description": "The Carfax-style home history your house has always needed. Manage properties, connect with contractors, and track all your home maintenance in one place.",
@@ -10,16 +11,58 @@
   "scope": "/",
   "icons": [
     {
+      "src": "/icons/icon-48.webp",
+      "sizes": "48x48",
+      "type": "image/webp",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-72.webp",
+      "sizes": "72x72",
+      "type": "image/webp",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-96.webp",
+      "sizes": "96x96",
+      "type": "image/webp",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-128.webp",
+      "sizes": "128x128",
+      "type": "image/webp",
+      "purpose": "any"
+    },
+    {
       "src": "/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192.webp",
+      "sizes": "192x192",
+      "type": "image/webp",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-256.webp",
+      "sizes": "256x256",
+      "type": "image/webp",
+      "purpose": "any"
     },
     {
       "src": "/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.webp",
+      "sizes": "512x512",
+      "type": "image/webp",
+      "purpose": "maskable"
     }
   ],
   "categories": ["productivity", "utilities", "lifestyle"],
@@ -62,6 +105,16 @@
     }
   ],
   "screenshots": [],
-  "related_applications": [],
+  "related_applications": [
+    {
+      "platform": "play",
+      "url": "https://play.google.com/store/apps/details?id=com.gotohomebase.app",
+      "id": "com.gotohomebase.app"
+    },
+    {
+      "platform": "itunes",
+      "url": "https://apps.apple.com/app/homebase/id0000000000"
+    }
+  ],
   "prefer_related_applications": false
 }
