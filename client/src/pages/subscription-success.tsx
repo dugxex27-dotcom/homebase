@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Home, Wrench, PartyPopper, Loader2 } from "lucide-react";
+import { CheckCircle2, Home, Wrench, PartyPopper, ShieldCheck } from "lucide-react";
 import { Helmet } from "react-helmet";
 
 export default function SubscriptionSuccess() {
@@ -15,6 +15,7 @@ export default function SubscriptionSuccess() {
   
   const urlParams = new URLSearchParams(window.location.search);
   const role = urlParams.get('role') || 'homeowner';
+  const isTrial = urlParams.get('trial') === 'true';
   
   const dashboardPath = role === 'contractor' ? '/contractor-dashboard' : '/maintenance';
 
@@ -69,12 +70,23 @@ export default function SubscriptionSuccess() {
           </div>
           
           <h1 className="text-3xl font-bold mb-3" style={{ color: '#2c0f5b' }}>
-            Welcome to MyHomeBase!
+            {isTrial ? 'Your Free Trial Has Started!' : 'Welcome to MyHomeBase!'}
           </h1>
           
           <p className="text-lg text-gray-600 mb-6">
-            Your subscription is now active. Thank you for choosing MyHomeBase!
+            {isTrial
+              ? 'Enjoy 14 days of full access — no charge today. We\'ll remind you before your trial ends.'
+              : 'Your subscription is now active. Thank you for choosing MyHomeBase!'}
           </p>
+
+          {isTrial && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4 flex items-start gap-3">
+              <ShieldCheck className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-green-800 text-left">
+                Your card is saved but <strong>not charged</strong> until your 14-day trial ends. Cancel anytime and owe nothing.
+              </p>
+            </div>
+          )}
           
           <div className="bg-purple-50 rounded-lg p-4 mb-6">
             <div className="flex items-center justify-center gap-2 mb-2">

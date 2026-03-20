@@ -18,16 +18,18 @@ export default function Home() {
   const { user } = useAuth();
   const typedUser = user as User | undefined;
   const [, setLocation] = useLocation();
-  const { isPaidSubscriber } = useHomeownerSubscription();
+  const { isPaidSubscriber, subscriptionStatus, isLoading: subLoading } = useHomeownerSubscription();
 
-  // Redirect contractors and agents to their dashboards
+  // Redirect contractors and agents to their dashboards; redirect inactive homeowners to trial setup
   useEffect(() => {
     if (typedUser?.role === 'contractor') {
       setLocation('/contractor-dashboard');
     } else if (typedUser?.role === 'agent') {
       setLocation('/agent-dashboard');
+    } else if (typedUser?.role === 'homeowner' && !subLoading && subscriptionStatus === 'inactive') {
+      setLocation('/homeowner-pricing?onboarding=true');
     }
-  }, [typedUser, setLocation]);
+  }, [typedUser, setLocation, subscriptionStatus, subLoading]);
 
   // Referral data query for homeowners - only fetch if paid subscriber
   const { data: referralData } = useQuery({

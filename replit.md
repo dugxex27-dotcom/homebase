@@ -45,6 +45,7 @@ Preferred communication style: Simple, everyday language.
 - **Notifications**: Bi-directional real-time notifications, including Twilio SMS for reminders and messages.
 - **Proposal System**: Contractors can create and homeowners can manage detailed proposals.
 - **Billing and Subscription**:
+    - **Card-preload trial flow for homeowners**: New homeowner registrations start as `inactive`. After registration they are redirected to `/homeowner-pricing?onboarding=true`, where they pick a plan and complete Stripe Checkout with `trial_period_days: 14`. The card is saved but not charged until the 14-day trial ends. Contractors still auto-trial.
     - 14-day free trial, tiered subscription plans for homeowners.
     - Tiered contractor subscription plans (Basic, Pro) with referral credit caps.
     - Referral rewards system.

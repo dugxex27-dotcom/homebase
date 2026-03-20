@@ -6,13 +6,15 @@ import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, CreditCard, Home, Zap, Crown, Loader2 } from "lucide-react";
-import { Link } from "wouter";
+import { Check, CreditCard, Home, Zap, Crown, Loader2, ShieldCheck } from "lucide-react";
+import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
 export default function HomeownerPricing() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [location] = useLocation();
+  const isOnboarding = new URLSearchParams(location.split('?')[1] || '').get('onboarding') === 'true';
   const [checkoutPlan, setCheckoutPlan] = useState<string | null>(null);
   const { 
     hasActiveSubscription, 
@@ -26,7 +28,7 @@ export default function HomeownerPricing() {
   const checkoutMutation = useMutation({
     mutationFn: async (plan: string) => {
       setCheckoutPlan(plan);
-      const res = await apiRequest('/api/create-subscription-checkout', 'POST', { plan });
+      const res = await apiRequest('/api/create-subscription-checkout', 'POST', { plan, trialMode: isOnboarding });
       return res.json();
     },
     onSuccess: (data) => {
@@ -98,16 +100,33 @@ export default function HomeownerPricing() {
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Header */}
         <div className="text-center space-y-4">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900">
-            Choose Your Plan
-          </h1>
-          <p className="text-lg max-w-2xl mx-auto text-gray-600">
-            Select the plan that fits your property management needs. Upgrade or downgrade anytime.
-          </p>
+          {isOnboarding ? (
+            <>
+              <h1 className="text-4xl md:text-5xl font-bold text-gray-900">
+                Start Your Free 14-Day Trial
+              </h1>
+              <p className="text-lg max-w-2xl mx-auto text-gray-600">
+                Choose a plan and enter your payment info to get started. You won't be charged until your 14-day trial ends — cancel anytime.
+              </p>
+              <div className="flex items-center justify-center gap-2 text-green-700 font-medium">
+                <ShieldCheck className="w-5 h-5" />
+                <span>No charge today. Trial starts the moment you sign up.</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <h1 className="text-4xl md:text-5xl font-bold text-gray-900">
+                Choose Your Plan
+              </h1>
+              <p className="text-lg max-w-2xl mx-auto text-gray-600">
+                Select the plan that fits your property management needs. Upgrade or downgrade anytime.
+              </p>
+            </>
+          )}
         </div>
 
         {/* Current Plan Badge */}
-        {hasActiveSubscription && (
+        {hasActiveSubscription && !isOnboarding && (
           <div className="flex justify-center">
             <Badge variant="secondary" className="px-4 py-2 text-sm bg-purple-100 text-purple-800" data-testid="badge-current-plan">
               Your Current Plan: {actualPlan === 'premium_plus' ? 'Premium Plus' : actualPlan === 'premium' ? 'Premium' : 'Base'}
@@ -116,7 +135,7 @@ export default function HomeownerPricing() {
         )}
         
         {/* Trial or Expired Trial Message */}
-        {!hasActiveSubscription && (
+        {!hasActiveSubscription && !isOnboarding && (
           <div className="flex justify-center">
             <Badge variant="secondary" className={`px-4 py-2 text-sm ${isInTrial ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
               {isInTrial 
@@ -195,9 +214,9 @@ export default function HomeownerPricing() {
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       Processing...
                     </>
-                  ) : (
-                    !hasActiveSubscription ? 'Select Base Plan' : 'Downgrade to Base'
-                  )}
+                  ) : isOnboarding ? (
+                    'Start Free Trial — Base'
+                  ) : !hasActiveSubscription ? 'Select Base Plan' : 'Downgrade to Base'}
                 </Button>
               )}
             </CardContent>
@@ -250,9 +269,9 @@ export default function HomeownerPricing() {
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       Processing...
                     </>
-                  ) : (
-                    !hasActiveSubscription ? 'Select Premium Plan' : actualPlan === 'base' ? 'Upgrade to Premium' : 'Downgrade to Premium'
-                  )}
+                  ) : isOnboarding ? (
+                    'Start Free Trial — Premium'
+                  ) : !hasActiveSubscription ? 'Select Premium Plan' : actualPlan === 'base' ? 'Upgrade to Premium' : 'Downgrade to Premium'}
                 </Button>
               )}
             </CardContent>
@@ -305,9 +324,9 @@ export default function HomeownerPricing() {
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       Processing...
                     </>
-                  ) : (
-                    !hasActiveSubscription ? 'Select Premium Plus' : 'Upgrade to Premium Plus'
-                  )}
+                  ) : isOnboarding ? (
+                    'Start Free Trial — Premium Plus'
+                  ) : !hasActiveSubscription ? 'Select Premium Plus' : 'Upgrade to Premium Plus'}
                 </Button>
               )}
             </CardContent>
@@ -319,10 +338,12 @@ export default function HomeownerPricing() {
           <CardContent className="pt-6">
             <div className="text-center space-y-4">
               <h3 className="text-xl font-semibold" style={{ color: '#2c0f5b' }}>
-                All Plans Include a 14-Day Free Trial
+                {isOnboarding ? '14-Day Free Trial — No Charge Today' : 'All Plans Include a 14-Day Free Trial'}
               </h3>
               <p className="text-gray-600 max-w-2xl mx-auto">
-                Try MyHomeBase risk-free for 14 days. No credit card required. Cancel anytime during your trial with no charges.
+                {isOnboarding
+                  ? 'Your card is saved securely but not charged until your 14-day trial ends. Cancel before then and you owe nothing.'
+                  : 'Try MyHomeBase risk-free for 14 days. Cancel anytime during your trial with no charges.'}
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center mt-6">
                 <Button 
@@ -379,7 +400,7 @@ export default function HomeownerPricing() {
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600">
-                  We offer a 14-day free trial with no credit card required. After your trial, subscriptions are billed monthly with no long-term contracts, and you can cancel anytime.
+                  Every new account includes a 14-day free trial. Your card is saved securely but not charged during the trial. If you cancel before the trial ends, you won't be charged at all. After the trial, subscriptions are billed monthly with no long-term contracts.
                 </p>
               </CardContent>
             </Card>

@@ -1988,7 +1988,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.session.user.id;
       const userRole = req.session.user.role;
-      const { plan } = req.body;
+      const { plan, trialMode } = req.body;
 
       // Validate plan
       const validHomeownerPlans = ['base', 'premium', 'premium_plus'];
@@ -2068,8 +2068,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           plan: plan,
           maxHouses: selectedPlan.maxHouses?.toString() || '',
         },
-        success_url: `${baseUrl}/subscription-success?role=${userRole}`,
-        cancel_url: `${baseUrl}/${userRole === 'homeowner' ? 'homeowner-pricing' : 'contractor-dashboard'}?subscription=cancelled`,
+        ...(trialMode ? {
+          subscription_data: {
+            trial_period_days: 14,
+            metadata: { userId: user.id, plan },
+          },
+        } : {}),
+        success_url: `${baseUrl}/subscription-success?role=${userRole}${trialMode ? '&trial=true' : ''}`,
+        cancel_url: `${baseUrl}/${userRole === 'homeowner' ? 'homeowner-pricing?onboarding=true' : 'contractor-dashboard'}?subscription=cancelled`,
       });
 
       console.log(`[SUBSCRIPTION] Created checkout session for user ${user.email}, plan: ${plan}`);
@@ -3617,9 +3623,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           user.id
         ).catch(err => console.error('[EMAIL] Failed to send agent signup notification:', err));
       } else {
-        // Homeowners and contractors get 14-day trial
-        const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
-        
+        // Contractors get an automatic 14-day trial
+        // Homeowners must provide payment info first — trial starts via Stripe with trial_period_days
+        const isHomeowner = role === 'homeowner';
+        const trialEndsAt = isHomeowner ? undefined : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+
         user = await storage.createUserWithPassword({
           email,
           passwordHash,
@@ -3628,9 +3636,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           role: role as 'homeowner' | 'contractor',
           zipCode,
           trialEndsAt,
-          maxHousesAllowed: role === 'homeowner' ? 2 : undefined, // Base plan: 2 houses during trial
-          subscriptionStatus: 'trialing',
-          referredBy: referralCode || undefined, // Store referral code for credit tracking
+          maxHousesAllowed: isHomeowner ? 2 : undefined,
+          subscriptionStatus: isHomeowner ? 'inactive' : 'trialing',
+          referredBy: referralCode || undefined,
         });
 
         // Handle contractor company setup - always create a new company
@@ -3697,7 +3705,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       notificationOrchestrator.sendWelcomeNotifications(user.id, userName || 'there', role)
         .catch(err => console.error('[REGISTRATION] Error sending welcome notifications:', err));
 
-      res.json({ success: true, user });
+      res.json({ success: true, user, requiresPaymentSetup: role === 'homeowner' });
     } catch (error) {
       console.error("Error registering user:", error);
       res.status(500).json({ message: "Failed to create account" });

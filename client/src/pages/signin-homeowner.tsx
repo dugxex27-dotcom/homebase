@@ -143,13 +143,21 @@ export default function SignInHomeowner() {
       });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
-      toast({
-        title: "Account created!",
-        description: "Welcome to MyHomeBase. Your account has been created successfully.",
-      });
-      setLocation('/');
+      if (data.requiresPaymentSetup) {
+        toast({
+          title: "Account created!",
+          description: "One last step — choose your plan to start your free 14-day trial.",
+        });
+        setLocation('/homeowner-pricing?onboarding=true');
+      } else {
+        toast({
+          title: "Account created!",
+          description: "Welcome to MyHomeBase. Your account has been created successfully.",
+        });
+        setLocation('/');
+      }
     },
     onError: (error: Error) => {
       toast({
