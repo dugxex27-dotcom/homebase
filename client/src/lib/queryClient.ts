@@ -1,5 +1,11 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+// In native Capacitor builds, VITE_API_BASE_URL is set to the production API root
+// (e.g. https://gotohomebase.com) so relative /api/* paths resolve correctly.
+// In development and in the live-URL Capacitor approach the value is empty and
+// relative paths are used as-is.
+const API_BASE = (import.meta.env.VITE_API_BASE_URL as string) || '';
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     // Handle 401 Unauthorized - clear cache and redirect to signin
@@ -22,7 +28,7 @@ export async function apiRequest(
   method: string = "GET",
   data?: unknown | undefined,
 ): Promise<Response> {
-  const res = await fetch(url, {
+  const res = await fetch(`${API_BASE}${url}`, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
     body: data ? JSON.stringify(data) : undefined,
@@ -37,7 +43,7 @@ export async function apiFileUpload(
   url: string,
   formData: FormData,
 ): Promise<Response> {
-  const res = await fetch(url, {
+  const res = await fetch(`${API_BASE}${url}`, {
     method: "POST",
     body: formData,
     credentials: "include",
@@ -53,7 +59,7 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
+    const res = await fetch(`${API_BASE}${queryKey.join("/") as string}`, {
       credentials: "include",
     });
 

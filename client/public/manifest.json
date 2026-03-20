@@ -104,7 +104,15 @@
       ]
     }
   ],
-  "screenshots": [],
+  "screenshots": [
+    {
+      "src": "/og-image.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "HomeBase — Manage your properties and home history"
+    }
+  ],
   "related_applications": [
     {
       "platform": "play",

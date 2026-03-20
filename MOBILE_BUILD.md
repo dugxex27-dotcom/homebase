@@ -35,13 +35,27 @@ HomeBase uses the **live web server approach**: the native app loads `https://go
 | **CocoaPods** | iOS dependencies | `sudo gem install cocoapods` |
 | **Android Studio** | Android builds | [developer.android.com/studio](https://developer.android.com/studio) |
 | **Java 17+** | Android builds | Included with Android Studio |
-| **Node.js 18+** | Build scripts | Already in this project |
+| **Node.js 22+** | Capacitor CLI v8 | Already in this project |
 
 ---
 
 ## Update Workflow (After Code Changes)
 
 Every time you push an update to production, the mobile app automatically picks it up (because it loads the live URL). No store update is needed for regular code changes.
+
+### Optional: Local Bundle Approach
+
+If you ever want to ship a **self-contained** native bundle instead of loading the live URL, you can switch to the local bundle approach:
+
+1. Remove `server.url` from `capacitor.config.ts` (leave `webDir: 'dist'`)
+2. Create a `.env.native` file with:
+   ```
+   VITE_API_BASE_URL=https://gotohomebase.com
+   ```
+3. Build with `VITE_API_BASE_URL=https://gotohomebase.com npm run build`
+4. Sync and rebuild the native app
+
+The `VITE_API_BASE_URL` environment variable is already wired into `client/src/lib/queryClient.ts`. In development (where it's empty), all API calls use relative paths as usual.
 
 If you change native configuration (icons, splash, permissions, `capacitor.config.ts`), you'll need to re-build and re-submit:
 
