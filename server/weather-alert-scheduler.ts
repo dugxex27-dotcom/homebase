@@ -11,22 +11,15 @@ const SEVERE_WEATHER_EVENT_TYPES = new Set([
   'Tornado Warning',
   'Tornado Watch',
   'Severe Thunderstorm Warning',
-  'Severe Thunderstorm Watch',
   'Flash Flood Warning',
   'Flash Flood Watch',
-  'Flood Warning',
   'Hurricane Warning',
   'Hurricane Watch',
-  'Tropical Storm Warning',
-  'Tropical Storm Watch',
   'Winter Storm Warning',
   'Blizzard Warning',
   'Ice Storm Warning',
   'Freeze Warning',
-  'Extreme Cold Warning',
-  'Extreme Heat Warning',
   'High Wind Warning',
-  'Dust Storm Warning',
 ]);
 
 interface NWSAlert {
@@ -54,6 +47,13 @@ interface HouseRow {
   address: string;
   latitude: string | null;
   longitude: string | null;
+}
+
+interface WeatherChannelPrefs {
+  enabled: boolean;
+  email: boolean;
+  sms: boolean;
+  push: boolean;
 }
 
 async function getActiveAlerts(latitude: number, longitude: number): Promise<NWSAlert[]> {
@@ -112,17 +112,30 @@ async function recordAlertSent(userId: string, houseId: string, nwsAlertId: stri
   }
 }
 
-async function isWeatherAlertEnabled(userId: string): Promise<boolean> {
-  const prefs = await db.select()
+async function getWeatherChannelPrefs(userId: string): Promise<WeatherChannelPrefs> {
+  const rows = await db.select()
     .from(notificationPreferences)
-    .where(and(
-      eq(notificationPreferences.userId, userId),
-      eq(notificationPreferences.notificationType, 'weather')
-    ))
-    .limit(1);
+    .where(eq(notificationPreferences.userId, userId));
 
-  if (prefs.length === 0) return true;
-  return prefs[0].isEnabled;
+  const byType = new Map(rows.map(r => [r.notificationType, r]));
+
+  const weatherPref = byType.get('weather');
+  const emailPref = byType.get('email');
+  const smsPref = byType.get('sms');
+
+  const weatherEnabled = weatherPref ? weatherPref.isEnabled : true;
+
+  const emailEnabled = emailPref ? emailPref.isEnabled : true;
+  const smsEnabled = smsPref ? smsPref.isEnabled : false;
+
+  const pushEnabled = weatherPref ? weatherPref.channels.includes('push') : true;
+
+  return {
+    enabled: weatherEnabled,
+    email: weatherEnabled && emailEnabled,
+    sms: weatherEnabled && smsEnabled,
+    push: weatherEnabled && pushEnabled,
+  };
 }
 
 async function getOrGeocodeHouse(house: HouseRow): Promise<{ latitude: number; longitude: number } | null> {
@@ -151,8 +164,8 @@ async function checkWeatherAlertsForAllHomes(): Promise<void> {
       if (isDemoId(homeowner.id)) continue;
       if (!homeowner.email) continue;
 
-      const enabled = await isWeatherAlertEnabled(homeowner.id);
-      if (!enabled) continue;
+      const channelPrefs = await getWeatherChannelPrefs(homeowner.id);
+      if (!channelPrefs.enabled) continue;
 
       const userHouses = await db.select({
         id: houses.id,
@@ -180,8 +193,10 @@ async function checkWeatherAlertsForAllHomes(): Promise<void> {
 
             const { event, headline, description, severity, urgency, expires } = alert.properties;
 
-            await Promise.allSettled([
-              sendWeatherAlertEmail(
+            const sends: Promise<boolean>[] = [];
+
+            if (channelPrefs.email) {
+              sends.push(sendWeatherAlertEmail(
                 homeowner.id,
                 house.name,
                 house.address,
@@ -191,21 +206,28 @@ async function checkWeatherAlertsForAllHomes(): Promise<void> {
                 severity || 'Unknown',
                 urgency || 'Unknown',
                 expires || ''
-              ),
-              smsService.sendWeatherAlertSMS(
+              ));
+            }
+
+            if (channelPrefs.sms) {
+              sends.push(smsService.sendWeatherAlertSMS(
                 homeowner.id,
                 house.name,
                 event,
                 headline || event,
                 severity || 'Unknown'
-              ),
-              pushNotificationService.sendToUser(homeowner.id, {
+              ));
+            }
+
+            if (channelPrefs.push) {
+              sends.push(pushNotificationService.sendToUser(homeowner.id, {
                 title: `⚠️ Weather Alert: ${event}`,
                 body: `${house.name}: ${headline || event}`,
                 data: { type: 'weather_alert', houseId: house.id },
-              }),
-            ]);
+              }));
+            }
 
+            await Promise.allSettled(sends);
             await recordAlertSent(homeowner.id, house.id, alert.id, event);
             alertsSent++;
             console.log(`[WEATHER] Sent ${event} alert to homeowner ${homeowner.id} for house ${house.id}`);

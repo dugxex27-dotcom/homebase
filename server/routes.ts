@@ -7490,7 +7490,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { notificationPreferences: notifPrefsTable } = await import('@shared/schema');
 
-      const upsertPref = async (type: string, isEnabled: boolean) => {
+      const upsertPref = async (type: string, isEnabled: boolean, defaultChannels: string[] = ['email']) => {
         const existing = await db.select({ id: notifPrefsTable.id })
           .from(notifPrefsTable)
           .where(and(eq(notifPrefsTable.userId, userId), eq(notifPrefsTable.notificationType, type)))
@@ -7505,24 +7505,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
             userId,
             notificationType: type,
             isEnabled,
-            channels: ['email'],
+            channels: defaultChannels,
           });
         }
       };
 
-      const updates: [string, boolean | undefined][] = [
+      const updates: [string, boolean | undefined, string[]?][] = [
         ['email', emailNotifications],
         ['sms', smsNotifications],
         ['maintenance', maintenanceReminders],
         ['appointment', appointmentReminders],
         ['messages', contractorMessages],
         ['weeklyDigest', weeklyDigest],
-        ['weather', weatherAlerts],
+        ['weather', weatherAlerts, ['email', 'push']],
       ];
 
-      for (const [type, val] of updates) {
+      for (const [type, val, channels] of updates) {
         if (val !== undefined) {
-          await upsertPref(type, val);
+          await upsertPref(type, val, channels);
         }
       }
 
