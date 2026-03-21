@@ -69,6 +69,15 @@ export default function HomeownerAccount() {
     address: (user as any)?.address || ""
   });
 
+  const ALL_WEATHER_ALERT_TYPES = [
+    { group: 'Wind & Tornado', types: ['Tornado Warning', 'Tornado Watch', 'Severe Thunderstorm Warning', 'High Wind Warning'] },
+    { group: 'Flooding', types: ['Flash Flood Warning', 'Flash Flood Watch'] },
+    { group: 'Hurricane', types: ['Hurricane Warning', 'Hurricane Watch'] },
+    { group: 'Winter', types: ['Winter Storm Warning', 'Blizzard Warning', 'Ice Storm Warning', 'Freeze Warning'] },
+    { group: 'Extreme Heat', types: ['Extreme Heat Warning'] },
+  ];
+  const FLAT_ALERT_TYPES = ALL_WEATHER_ALERT_TYPES.flatMap(g => g.types);
+
   // Notification preferences state
   const [notificationPrefs, setNotificationPrefs] = useState({
     emailNotifications: true,
@@ -78,6 +87,7 @@ export default function HomeownerAccount() {
     contractorMessages: true,
     weeklyDigest: false,
     weatherAlerts: true,
+    weatherAlertTypes: [] as string[], // empty = all enabled
   });
 
   // Load notification preferences from server
@@ -91,6 +101,9 @@ export default function HomeownerAccount() {
       setNotificationPrefs(prev => ({ ...prev, ...serverNotifPrefs }));
     }
   }, [serverNotifPrefs]);
+
+  const isAlertTypeEnabled = (type: string) =>
+    notificationPrefs.weatherAlertTypes.length === 0 || notificationPrefs.weatherAlertTypes.includes(type);
 
   // House transfer state
   const [transferModalOpen, setTransferModalOpen] = useState(false);
@@ -161,6 +174,19 @@ export default function HomeownerAccount() {
 
   const handleNotificationChange = (key: keyof typeof notificationPrefs, value: boolean) => {
     const newPrefs = { ...notificationPrefs, [key]: value };
+    setNotificationPrefs(newPrefs);
+    updateNotificationsMutation.mutate(newPrefs);
+  };
+
+  const handleAlertTypeToggle = (type: string, enabled: boolean) => {
+    let currentTypes = notificationPrefs.weatherAlertTypes.length === 0 ? [...FLAT_ALERT_TYPES] : [...notificationPrefs.weatherAlertTypes];
+    if (enabled) {
+      currentTypes = [...currentTypes, type];
+    } else {
+      currentTypes = currentTypes.filter(t => t !== type);
+    }
+    const newTypes = currentTypes.length === FLAT_ALERT_TYPES.length ? [] : currentTypes;
+    const newPrefs = { ...notificationPrefs, weatherAlertTypes: newTypes };
     setNotificationPrefs(newPrefs);
     updateNotificationsMutation.mutate(newPrefs);
   };
@@ -770,16 +796,40 @@ export default function HomeownerAccount() {
 
                   <Separator />
 
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium" style={{ color: '#2c0f5b' }}>Severe Weather Alerts</p>
-                      <p className="text-sm text-gray-600">Get notified of tornado, flood, hurricane, and other severe weather warnings for your properties</p>
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium" style={{ color: '#2c0f5b' }}>Severe Weather Alerts</p>
+                        <p className="text-sm text-gray-600">Get notified of severe weather warnings for your properties</p>
+                      </div>
+                      <Switch
+                        data-testid="switch-weather-alerts"
+                        checked={notificationPrefs.weatherAlerts}
+                        onCheckedChange={(value) => handleNotificationChange('weatherAlerts', value)}
+                      />
                     </div>
-                    <Switch
-                      data-testid="switch-weather-alerts"
-                      checked={notificationPrefs.weatherAlerts}
-                      onCheckedChange={(value) => handleNotificationChange('weatherAlerts', value)}
-                    />
+
+                    {notificationPrefs.weatherAlerts && (
+                      <div className="mt-4 ml-2 border-l-2 border-purple-100 pl-4 space-y-4">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Alert Types</p>
+                        {ALL_WEATHER_ALERT_TYPES.map(group => (
+                          <div key={group.group}>
+                            <p className="text-xs font-medium text-gray-400 mb-2">{group.group}</p>
+                            <div className="space-y-2">
+                              {group.types.map(type => (
+                                <div key={type} className="flex items-center justify-between py-1">
+                                  <span className="text-sm text-gray-700">{type}</span>
+                                  <Switch
+                                    checked={isAlertTypeEnabled(type)}
+                                    onCheckedChange={(val) => handleAlertTypeToggle(type, val)}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>

@@ -7456,6 +7456,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return row ? row.isEnabled : defaultVal;
       };
 
+      const weatherAlertTypesRow = prefsMap.get('weather_alert_types');
+      const weatherAlertTypes: string[] = (weatherAlertTypesRow?.channels && weatherAlertTypesRow.channels.length > 0)
+        ? weatherAlertTypesRow.channels
+        : [];
+
       res.json({
         emailNotifications: getEnabled('email', true),
         smsNotifications: getEnabled('sms', false),
@@ -7464,6 +7469,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         contractorMessages: getEnabled('messages', true),
         weeklyDigest: getEnabled('weeklyDigest', false),
         weatherAlerts: getEnabled('weather', true),
+        weatherAlertTypes,
       });
     } catch (error) {
       console.error("Error fetching homeowner notification preferences:", error);
@@ -7486,6 +7492,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         contractorMessages,
         weeklyDigest,
         weatherAlerts,
+        weatherAlertTypes,
       } = req.body;
 
       const { notificationPreferences: notifPrefsTable } = await import('@shared/schema');
@@ -7510,6 +7517,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
 
+      const upsertAlertTypes = async (enabledTypes: string[]) => {
+        const existing = await db.select({ id: notifPrefsTable.id })
+          .from(notifPrefsTable)
+          .where(and(eq(notifPrefsTable.userId, userId), eq(notifPrefsTable.notificationType, 'weather_alert_types')))
+          .limit(1);
+
+        if (existing.length > 0) {
+          await db.update(notifPrefsTable)
+            .set({ channels: enabledTypes, updatedAt: new Date() })
+            .where(and(eq(notifPrefsTable.userId, userId), eq(notifPrefsTable.notificationType, 'weather_alert_types')));
+        } else {
+          await db.insert(notifPrefsTable).values({
+            userId,
+            notificationType: 'weather_alert_types',
+            isEnabled: true,
+            channels: enabledTypes,
+          });
+        }
+      };
+
       const updates: [string, boolean | undefined, string[]?][] = [
         ['email', emailNotifications],
         ['sms', smsNotifications],
@@ -7524,6 +7551,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (val !== undefined) {
           await upsertPref(type, val, channels);
         }
+      }
+
+      if (Array.isArray(weatherAlertTypes)) {
+        await upsertAlertTypes(weatherAlertTypes);
       }
 
       console.log(`[NOTIF] Homeowner notification preferences saved for user ${userId}`);

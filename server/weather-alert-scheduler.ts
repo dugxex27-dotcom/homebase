@@ -55,6 +55,7 @@ interface WeatherChannelPrefs {
   email: boolean;
   sms: boolean;
   push: boolean;
+  enabledAlertTypes: string[]; // empty = all enabled
 }
 
 async function getActiveAlerts(latitude: number, longitude: number): Promise<NWSAlert[]> {
@@ -123,19 +124,23 @@ async function getWeatherChannelPrefs(userId: string): Promise<WeatherChannelPre
   const weatherPref = byType.get('weather');
   const emailPref = byType.get('email');
   const smsPref = byType.get('sms');
+  const alertTypesPref = byType.get('weather_alert_types');
 
   const weatherEnabled = weatherPref ? weatherPref.isEnabled : true;
-
   const emailEnabled = emailPref ? emailPref.isEnabled : true;
   const smsEnabled = smsPref ? smsPref.isEnabled : false;
-
   const pushEnabled = weatherPref ? weatherPref.channels.includes('push') : true;
+
+  const enabledAlertTypes: string[] = (alertTypesPref?.channels && alertTypesPref.channels.length > 0)
+    ? alertTypesPref.channels
+    : [];
 
   return {
     enabled: weatherEnabled,
     email: weatherEnabled && emailEnabled,
     sms: weatherEnabled && smsEnabled,
     push: weatherEnabled && pushEnabled,
+    enabledAlertTypes,
   };
 }
 
@@ -192,6 +197,12 @@ async function checkWeatherAlertsForAllHomes(): Promise<void> {
             if (alreadySent) continue;
 
             const { event, headline, description, severity, urgency, expires } = alert.properties;
+
+            // Skip if user has restricted alert types and this event isn't in their list
+            if (channelPrefs.enabledAlertTypes.length > 0 && !channelPrefs.enabledAlertTypes.includes(event)) {
+              console.log(`[WEATHER] Skipping "${event}" — not in user ${homeowner.id} enabled types`);
+              continue;
+            }
 
             const sends: Promise<boolean>[] = [];
 
