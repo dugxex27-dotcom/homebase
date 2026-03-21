@@ -20,6 +20,7 @@ const SEVERE_WEATHER_EVENT_TYPES = new Set([
   'Ice Storm Warning',
   'Freeze Warning',
   'High Wind Warning',
+  'Extreme Heat Warning',
 ]);
 
 interface NWSAlert {

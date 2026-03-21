@@ -22,6 +22,13 @@
       "when": 1765848806037,
       "tag": "0002_aberrant_valeria_richards",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1774059400000,
+      "tag": "0003_weather_alerts_sent",
+      "breakpoints": true
     }
   ]
 }
