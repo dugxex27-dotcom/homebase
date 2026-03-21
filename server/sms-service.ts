@@ -246,6 +246,20 @@ export async function sendInvoiceSMS(data: CrmDocumentSMSData): Promise<boolean>
   });
 }
 
+export async function sendWeatherAlertSMS(
+  userId: string,
+  houseName: string,
+  alertEvent: string,
+  alertHeadline: string,
+  severity: string
+): Promise<boolean> {
+  const user = await storage.getUser(userId);
+  if (!user?.phone) return false;
+
+  const body = `⚠️ HomeBase Weather Alert for ${houseName}: ${alertEvent} (${severity}). ${alertHeadline ? alertHeadline.slice(0, 100) : ''} Take precautions and stay safe.`;
+  return sendSMS({ to: user.phone, body });
+}
+
 export const smsService = {
   sendSMS,
   sendMaintenanceReminder,
@@ -257,4 +271,5 @@ export const smsService = {
   sendQuoteSMS,
   sendJobNotificationSMS,
   sendInvoiceSMS,
+  sendWeatherAlertSMS,
 };

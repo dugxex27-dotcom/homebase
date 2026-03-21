@@ -982,6 +982,81 @@ export async function sendReferralReminderEmail(
   });
 }
 
+export async function sendWeatherAlertEmail(
+  userId: string,
+  houseName: string,
+  houseAddress: string,
+  alertEvent: string,
+  alertHeadline: string,
+  alertDescription: string,
+  alertSeverity: string,
+  alertUrgency: string,
+  alertExpires: string
+): Promise<boolean> {
+  const user = await storage.getUser(userId);
+  if (!user?.email) return false;
+
+  const severityColor = alertSeverity === 'Extreme' ? '#dc2626' : alertSeverity === 'Severe' ? '#ea580c' : '#d97706';
+  const expiresDate = alertExpires ? new Date(alertExpires).toLocaleString('en-US', { timeZoneName: 'short' }) : 'See alert for details';
+
+  const html = wrapEmailContent(
+    getEmailHeader('Severe Weather Alert'),
+    `
+      <p>A severe weather alert has been issued for your property <strong>${houseName}</strong> at ${houseAddress}.</p>
+      
+      <div style="background: ${severityColor}15; border-left: 4px solid ${severityColor}; border-radius: 4px; padding: 20px; margin: 20px 0;">
+        <p style="margin: 0 0 8px 0; font-size: 18px; font-weight: bold; color: ${severityColor};">${alertEvent}</p>
+        <p style="margin: 0; color: #555;">${alertHeadline}</p>
+      </div>
+
+      <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 20px 0;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="padding: 8px 0; font-weight: bold; color: #333; width: 35%;">Severity:</td>
+            <td style="padding: 8px 0; color: ${severityColor}; font-weight: bold;">${alertSeverity}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; font-weight: bold; color: #333;">Urgency:</td>
+            <td style="padding: 8px 0; color: #555;">${alertUrgency}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; font-weight: bold; color: #333;">Expires:</td>
+            <td style="padding: 8px 0; color: #555;">${expiresDate}</td>
+          </tr>
+        </table>
+      </div>
+
+      ${alertDescription ? `
+      <div style="background: #f9f9f9; border-radius: 8px; padding: 20px; margin: 20px 0;">
+        <p style="margin: 0 0 10px 0; font-weight: bold; color: #333;">Alert Details:</p>
+        <p style="margin: 0; color: #555; white-space: pre-wrap; font-size: 14px;">${alertDescription.slice(0, 600)}${alertDescription.length > 600 ? '...' : ''}</p>
+      </div>
+      ` : ''}
+
+      <div style="background: #fef3c7; border-radius: 8px; padding: 15px; margin: 20px 0;">
+        <p style="margin: 0; color: #92400e; font-size: 14px;">
+          ⚠️ Please take appropriate safety precautions and monitor local emergency broadcasts for updates.
+        </p>
+      </div>
+
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="https://gotohomebase.com/dashboard" style="background: linear-gradient(135deg, #7c3aed, #4f46e5); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">View Your Dashboard</a>
+      </div>
+
+      <p style="color: #666; font-size: 12px;">You're receiving this alert because you enabled severe weather notifications for ${houseName}. Manage your notification settings in your <a href="https://gotohomebase.com/account">account settings</a>.</p>
+    `
+  );
+
+  const text = `Severe Weather Alert for ${houseName}: ${alertEvent}. ${alertHeadline}. Severity: ${alertSeverity}, Urgency: ${alertUrgency}. Expires: ${expiresDate}. Please take appropriate safety precautions.`;
+
+  return sendEmail({
+    to: user.email,
+    subject: `⚠️ Weather Alert: ${alertEvent} for ${houseName}`,
+    text,
+    html,
+  });
+}
+
 export const emailService = {
   sendEmail,
   sendWelcomeEmail,
@@ -998,6 +1073,7 @@ export const emailService = {
   sendWeeklyTaskReminderEmail,
   sendExpiredTrialReengagementEmail,
   sendReferralReminderEmail,
+  sendWeatherAlertEmail,
   getEmailHeader,
   wrapEmailContent,
 };

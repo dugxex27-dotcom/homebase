@@ -76,8 +76,21 @@ export default function HomeownerAccount() {
     maintenanceReminders: true,
     appointmentReminders: true,
     contractorMessages: true,
-    weeklyDigest: false
+    weeklyDigest: false,
+    weatherAlerts: true,
   });
+
+  // Load notification preferences from server
+  const { data: serverNotifPrefs } = useQuery<typeof notificationPrefs>({
+    queryKey: ['/api/homeowner/notifications/preferences'],
+    enabled: !!user,
+  });
+
+  useEffect(() => {
+    if (serverNotifPrefs) {
+      setNotificationPrefs(prev => ({ ...prev, ...serverNotifPrefs }));
+    }
+  }, [serverNotifPrefs]);
 
   // House transfer state
   const [transferModalOpen, setTransferModalOpen] = useState(false);
@@ -752,6 +765,20 @@ export default function HomeownerAccount() {
                       data-testid="switch-weekly-digest"
                       checked={notificationPrefs.weeklyDigest}
                       onCheckedChange={(value) => handleNotificationChange('weeklyDigest', value)}
+                    />
+                  </div>
+
+                  <Separator />
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium" style={{ color: '#2c0f5b' }}>Severe Weather Alerts</p>
+                      <p className="text-sm text-gray-600">Get notified of tornado, flood, hurricane, and other severe weather warnings for your properties</p>
+                    </div>
+                    <Switch
+                      data-testid="switch-weather-alerts"
+                      checked={notificationPrefs.weatherAlerts}
+                      onCheckedChange={(value) => handleNotificationChange('weatherAlerts', value)}
                     />
                   </div>
                 </div>

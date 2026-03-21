@@ -7436,19 +7436,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/homeowner/notifications/preferences', async (req: any, res) => {
+    try {
+      if (!req.session?.isAuthenticated || req.session?.user?.role !== 'homeowner') {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const userId = req.session.user.id;
+      const { notificationPreferences: notifPrefsTable } = await import('@shared/schema');
+
+      const rows = await db.select()
+        .from(notifPrefsTable)
+        .where(eq(notifPrefsTable.userId, userId));
+
+      const prefsMap = new Map(rows.map(r => [r.notificationType, r]));
+
+      const getEnabled = (type: string, defaultVal: boolean) => {
+        const row = prefsMap.get(type);
+        return row ? row.isEnabled : defaultVal;
+      };
+
+      res.json({
+        emailNotifications: getEnabled('email', true),
+        smsNotifications: getEnabled('sms', false),
+        maintenanceReminders: getEnabled('maintenance', true),
+        appointmentReminders: getEnabled('appointment', true),
+        contractorMessages: getEnabled('messages', true),
+        weeklyDigest: getEnabled('weeklyDigest', false),
+        weatherAlerts: getEnabled('weather', true),
+      });
+    } catch (error) {
+      console.error("Error fetching homeowner notification preferences:", error);
+      res.status(500).json({ message: "Failed to fetch notification preferences" });
+    }
+  });
+
   app.patch('/api/homeowner/notifications/preferences', async (req: any, res) => {
     try {
       if (!req.session?.isAuthenticated || req.session?.user?.role !== 'homeowner') {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const preferences = req.body;
-      
-      // For now, we'll just return success since we're not persisting preferences
-      // In a real app, you'd save these to a user_preferences table
-      console.log(`Notification preferences updated for user ${req.session.user.id}:`, preferences);
+      const userId = req.session.user.id;
+      const {
+        emailNotifications,
+        smsNotifications,
+        maintenanceReminders,
+        appointmentReminders,
+        contractorMessages,
+        weeklyDigest,
+        weatherAlerts,
+      } = req.body;
 
-      res.json({ success: true, preferences });
+      const { notificationPreferences: notifPrefsTable } = await import('@shared/schema');
+
+      const upsertPref = async (type: string, isEnabled: boolean) => {
+        const existing = await db.select({ id: notifPrefsTable.id })
+          .from(notifPrefsTable)
+          .where(and(eq(notifPrefsTable.userId, userId), eq(notifPrefsTable.notificationType, type)))
+          .limit(1);
+
+        if (existing.length > 0) {
+          await db.update(notifPrefsTable)
+            .set({ isEnabled, updatedAt: new Date() })
+            .where(and(eq(notifPrefsTable.userId, userId), eq(notifPrefsTable.notificationType, type)));
+        } else {
+          await db.insert(notifPrefsTable).values({
+            userId,
+            notificationType: type,
+            isEnabled,
+            channels: ['email'],
+          });
+        }
+      };
+
+      const updates: [string, boolean | undefined][] = [
+        ['email', emailNotifications],
+        ['sms', smsNotifications],
+        ['maintenance', maintenanceReminders],
+        ['appointment', appointmentReminders],
+        ['messages', contractorMessages],
+        ['weeklyDigest', weeklyDigest],
+        ['weather', weatherAlerts],
+      ];
+
+      for (const [type, val] of updates) {
+        if (val !== undefined) {
+          await upsertPref(type, val);
+        }
+      }
+
+      console.log(`[NOTIF] Homeowner notification preferences saved for user ${userId}`);
+      res.json({ success: true });
     } catch (error) {
       console.error("Error updating notification preferences:", error);
       res.status(500).json({ message: "Failed to update notification preferences" });

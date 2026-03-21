@@ -2046,3 +2046,20 @@ export const siteContent = pgTable("site_content", {
 export const insertSiteContentSchema = createInsertSchema(siteContent);
 export type InsertSiteContent = z.infer<typeof insertSiteContentSchema>;
 export type SiteContent = typeof siteContent.$inferSelect;
+
+export const weatherAlertsSent = pgTable("weather_alerts_sent", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: text("user_id").notNull(),
+  houseId: text("house_id").notNull(),
+  nwsAlertId: text("nws_alert_id").notNull(),
+  alertEvent: text("alert_event").notNull(),
+  sentAt: timestamp("sent_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("UX_weather_alerts_user_alert").on(table.userId, table.nwsAlertId),
+  index("IDX_weather_alerts_user").on(table.userId),
+  index("IDX_weather_alerts_sent_at").on(table.sentAt),
+]);
+
+export const insertWeatherAlertSentSchema = createInsertSchema(weatherAlertsSent).omit({ id: true, sentAt: true });
+export type InsertWeatherAlertSent = z.infer<typeof insertWeatherAlertSentSchema>;
+export type WeatherAlertSent = typeof weatherAlertsSent.$inferSelect;
