@@ -1,5 +1,6 @@
 import twilio from 'twilio';
 import { storage } from './storage';
+import { getPreparednessInfo } from './email-service';
 import { db } from './db';
 import { notificationPreferences } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
@@ -256,7 +257,9 @@ export async function sendWeatherAlertSMS(
   const user = await storage.getUser(userId);
   if (!user?.phone) return false;
 
-  const body = `⚠️ HomeBase Weather Alert for ${houseName}: ${alertEvent} (${severity}). ${alertHeadline ? alertHeadline.slice(0, 100) : ''} Take precautions and stay safe.`;
+  const prep = getPreparednessInfo(alertEvent);
+  const headline = alertHeadline ? alertHeadline.slice(0, 80) : alertEvent;
+  const body = `${prep.emoji} HomeBase Alert: ${alertEvent} (${severity}) for ${houseName}. ${headline}\n\nTip: ${prep.smsTip}`;
   return sendSMS({ to: user.phone, body });
 }
 

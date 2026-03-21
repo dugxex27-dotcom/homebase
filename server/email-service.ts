@@ -982,6 +982,217 @@ export async function sendReferralReminderEmail(
   });
 }
 
+interface PreparednessTips {
+  emoji: string;
+  homeTips: string[];
+  safetyTips: string[];
+  smsTip: string;
+}
+
+export function getPreparednessInfo(alertEvent: string): PreparednessTips {
+  const event = alertEvent.toLowerCase();
+
+  if (event.includes('tornado')) {
+    return {
+      emoji: '🌪️',
+      homeTips: [
+        'Move vehicles into a garage or covered parking away from trees',
+        'Secure or bring in outdoor furniture, decorations, and trash cans',
+        'Close all interior doors to reduce pressure damage',
+        'Know your home\'s safest interior room on the lowest floor',
+      ],
+      safetyTips: [
+        'Go immediately to basement, storm shelter, or interior room on lowest floor',
+        'Stay away from windows, doors, and exterior walls',
+        'Cover yourself with a mattress or heavy blankets for protection',
+        'If outside or in a vehicle, lie flat in a low-lying ditch away from trees',
+      ],
+      smsTip: 'Go to lowest floor, interior room. Cover yourself. Stay away from windows.',
+    };
+  }
+
+  if (event.includes('hurricane') || event.includes('tropical storm')) {
+    return {
+      emoji: '🌀',
+      homeTips: [
+        'Board up or shutter all windows and glass doors',
+        'Secure or store outdoor furniture, grills, and loose items',
+        'Fill vehicles with gas and charge all devices now',
+        'Clear gutters and downspouts so water drains freely',
+        'Turn refrigerator and freezer to coldest settings to preserve food longer',
+        'Know your home\'s shut-off valves for gas, water, and electricity',
+      ],
+      safetyTips: [
+        'Evacuate immediately if ordered — do not wait',
+        'Move to an interior room on the lowest floor away from windows',
+        'Have a go-bag ready: documents, medications, 3 days of supplies',
+        'Do not drive through flooded roads',
+      ],
+      smsTip: 'Board windows, evacuate if ordered, avoid flooded roads. Have go-bag ready.',
+    };
+  }
+
+  if (event.includes('flash flood') || event.includes('flood')) {
+    return {
+      emoji: '🌊',
+      homeTips: [
+        'Move valuables, electronics, and important documents to upper floors',
+        'Clear gutters and downspouts of leaves and debris',
+        'Turn off electricity at the breaker if water intrusion is possible',
+        'Seal basement entry points with sandbags if available',
+        'Move vehicles to higher ground immediately',
+      ],
+      safetyTips: [
+        'Never walk or drive through floodwaters — 6 inches can knock you down',
+        'Get to higher ground immediately if flooding threatens',
+        'Stay off bridges and avoid drainage channels',
+        'Do not return home until authorities say it\'s safe',
+      ],
+      smsTip: 'Move to high ground now. Never walk/drive through flood water. Move valuables up.',
+    };
+  }
+
+  if (event.includes('severe thunderstorm')) {
+    return {
+      emoji: '⛈️',
+      homeTips: [
+        'Bring in all outdoor furniture, toys, and loose items',
+        'Close and latch all windows and doors',
+        'Unplug sensitive electronics or use a surge protector',
+        'Park vehicles in a garage or away from trees',
+        'Check that sump pump is working if you have a basement',
+      ],
+      safetyTips: [
+        'Stay indoors and away from windows',
+        'Avoid using corded phones, computers, and appliances during lightning',
+        'Do not take a shower or bath during a storm',
+        'Stay off porches and away from tall trees',
+      ],
+      smsTip: 'Bring in outdoor items, unplug electronics, stay away from windows.',
+    };
+  }
+
+  if (event.includes('winter storm') || event.includes('blizzard')) {
+    return {
+      emoji: '❄️',
+      homeTips: [
+        'Insulate pipes in unheated areas (basement, crawl space, garage) with foam pipe wrap',
+        'Allow faucets to drip slightly to prevent pipe freezing',
+        'Disconnect and drain outdoor hoses',
+        'Stock firewood, generator fuel, and battery-powered lighting',
+        'Keep interior temperature above 55°F even if away',
+        'Clear roof gutters of ice dams to prevent water backup',
+      ],
+      safetyTips: [
+        'Stay indoors if possible and limit travel',
+        'Keep an emergency kit in your car: blanket, flashlight, ice scraper',
+        'Avoid overexertion when shoveling — take frequent breaks',
+        'Check on elderly neighbors and family members',
+        'Have a backup heat source in case power goes out',
+      ],
+      smsTip: 'Drip faucets, insulate pipes. Avoid travel. Have emergency supplies ready.',
+    };
+  }
+
+  if (event.includes('ice storm')) {
+    return {
+      emoji: '🧊',
+      homeTips: [
+        'Allow faucets to drip to prevent pipe freezing',
+        'Prepare for power outages: charge devices, gather flashlights and blankets',
+        'Keep interior temperature above 55°F',
+        'Avoid parking under trees or power lines that may fall under ice weight',
+        'Stock medications and food for several days in case roads are impassable',
+      ],
+      safetyTips: [
+        'Stay off roads entirely — black ice is invisible and deadly',
+        'If you must go outside, wear non-slip footwear and walk slowly',
+        'Do not touch downed power lines',
+        'Avoid using generators, grills, or camp stoves indoors (carbon monoxide risk)',
+      ],
+      smsTip: 'Stay off roads. Drip faucets. Prep for power outage. Avoid downed lines.',
+    };
+  }
+
+  if (event.includes('freeze') || event.includes('frost')) {
+    return {
+      emoji: '🌡️',
+      homeTips: [
+        'Disconnect and drain all outdoor hoses and sprinkler systems',
+        'Insulate exposed pipes in unheated areas with foam wrap or heat tape',
+        'Allow cabinet doors under sinks on exterior walls to stay open',
+        'Let faucets drip slowly overnight to prevent freezing',
+        'Bring in potted plants and cover sensitive outdoor plants',
+        'Shut off and drain outdoor water features (fountains, pools)',
+      ],
+      safetyTips: [
+        'Dress in layers if going outside',
+        'Check on vulnerable family members and neighbors',
+        'Keep pets indoors',
+        'Know the location of your water main shut-off in case a pipe bursts',
+      ],
+      smsTip: 'Disconnect hoses, drip faucets, insulate pipes. Bring in plants and pets.',
+    };
+  }
+
+  if (event.includes('high wind')) {
+    return {
+      emoji: '💨',
+      homeTips: [
+        'Secure or bring inside all outdoor furniture, decorations, and trash cans',
+        'Park vehicles away from trees and power lines',
+        'Clear gutters and roof of any loose debris',
+        'Inspect and secure any loose roofing, siding, or fencing',
+        'Turn off propane tanks and store portable grills safely',
+      ],
+      safetyTips: [
+        'Stay indoors and away from windows during peak gusts',
+        'Be alert for downed power lines if you must go outside',
+        'Do not drive high-profile vehicles (trucks, SUVs) in extreme wind',
+        'Keep a flashlight handy in case of power outage',
+      ],
+      smsTip: 'Secure outdoor items, park away from trees, stay away from windows.',
+    };
+  }
+
+  if (event.includes('extreme heat') || event.includes('heat')) {
+    return {
+      emoji: '🌡️',
+      homeTips: [
+        'Close blinds and curtains on sun-facing windows to reduce heat gain',
+        'Set ceiling fans to counterclockwise to push cool air down',
+        'Avoid using the oven — cook on the stovetop, microwave, or grill outside',
+        'Check that your HVAC air filter is clean for maximum efficiency',
+        'Seal gaps around doors and windows to keep cool air in',
+      ],
+      safetyTips: [
+        'Stay hydrated — drink water even if you don\'t feel thirsty',
+        'Check on elderly neighbors and family members',
+        'Never leave children or pets in parked vehicles',
+        'Limit outdoor activity to early morning or evening hours',
+        'Go to a library, mall, or cooling center if you don\'t have AC',
+      ],
+      smsTip: 'Close blinds, stay hydrated, check on neighbors. Never leave people in cars.',
+    };
+  }
+
+  return {
+    emoji: '⚠️',
+    homeTips: [
+      'Review your home emergency kit and ensure it\'s fully stocked',
+      'Charge all devices and power banks',
+      'Secure loose outdoor items',
+      'Know the location of your utility shut-offs (gas, water, electricity)',
+    ],
+    safetyTips: [
+      'Monitor local emergency broadcasts for updates',
+      'Follow all official evacuation orders immediately',
+      'Keep family members informed of your plan',
+    ],
+    smsTip: 'Review emergency kit, charge devices, secure outdoor items. Monitor local broadcasts.',
+  };
+}
+
 export async function sendWeatherAlertEmail(
   userId: string,
   houseName: string,
@@ -998,6 +1209,15 @@ export async function sendWeatherAlertEmail(
 
   const severityColor = alertSeverity === 'Extreme' ? '#dc2626' : alertSeverity === 'Severe' ? '#ea580c' : '#d97706';
   const expiresDate = alertExpires ? new Date(alertExpires).toLocaleString('en-US', { timeZoneName: 'short' }) : 'See alert for details';
+  const prep = getPreparednessInfo(alertEvent);
+
+  const homeTipsHtml = prep.homeTips.map(tip =>
+    `<li style="margin: 8px 0; color: #374151;">${tip}</li>`
+  ).join('');
+
+  const safetyTipsHtml = prep.safetyTips.map(tip =>
+    `<li style="margin: 8px 0; color: #374151;">${tip}</li>`
+  ).join('');
 
   const html = wrapEmailContent(
     getEmailHeader('Severe Weather Alert'),
@@ -1005,7 +1225,7 @@ export async function sendWeatherAlertEmail(
       <p>A severe weather alert has been issued for your property <strong>${houseName}</strong> at ${houseAddress}.</p>
       
       <div style="background: ${severityColor}15; border-left: 4px solid ${severityColor}; border-radius: 4px; padding: 20px; margin: 20px 0;">
-        <p style="margin: 0 0 8px 0; font-size: 18px; font-weight: bold; color: ${severityColor};">${alertEvent}</p>
+        <p style="margin: 0 0 8px 0; font-size: 20px; font-weight: bold; color: ${severityColor};">${prep.emoji} ${alertEvent}</p>
         <p style="margin: 0; color: #555;">${alertHeadline}</p>
       </div>
 
@@ -1029,13 +1249,27 @@ export async function sendWeatherAlertEmail(
       ${alertDescription ? `
       <div style="background: #f9f9f9; border-radius: 8px; padding: 20px; margin: 20px 0;">
         <p style="margin: 0 0 10px 0; font-weight: bold; color: #333;">Alert Details:</p>
-        <p style="margin: 0; color: #555; white-space: pre-wrap; font-size: 14px;">${alertDescription.slice(0, 600)}${alertDescription.length > 600 ? '...' : ''}</p>
+        <p style="margin: 0; color: #555; white-space: pre-wrap; font-size: 14px;">${alertDescription.slice(0, 500)}${alertDescription.length > 500 ? '...' : ''}</p>
       </div>
       ` : ''}
 
+      <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 20px; margin: 20px 0;">
+        <p style="margin: 0 0 12px 0; font-size: 16px; font-weight: bold; color: #1d4ed8;">🏠 Protect Your Home — Act Now</p>
+        <ul style="margin: 0; padding-left: 20px;">
+          ${homeTipsHtml}
+        </ul>
+      </div>
+
+      <div style="background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 20px; margin: 20px 0;">
+        <p style="margin: 0 0 12px 0; font-size: 16px; font-weight: bold; color: #c2410c;">🛡️ Personal Safety Steps</p>
+        <ul style="margin: 0; padding-left: 20px;">
+          ${safetyTipsHtml}
+        </ul>
+      </div>
+
       <div style="background: #fef3c7; border-radius: 8px; padding: 15px; margin: 20px 0;">
         <p style="margin: 0; color: #92400e; font-size: 14px;">
-          ⚠️ Please take appropriate safety precautions and monitor local emergency broadcasts for updates.
+          ⚠️ Monitor local emergency broadcasts (NOAA Weather Radio, local TV) for real-time updates. Follow all official instructions from local authorities.
         </p>
       </div>
 
@@ -1047,11 +1281,11 @@ export async function sendWeatherAlertEmail(
     `
   );
 
-  const text = `Severe Weather Alert for ${houseName}: ${alertEvent}. ${alertHeadline}. Severity: ${alertSeverity}, Urgency: ${alertUrgency}. Expires: ${expiresDate}. Please take appropriate safety precautions.`;
+  const text = `Severe Weather Alert for ${houseName}: ${alertEvent}. ${alertHeadline}. Severity: ${alertSeverity}. Expires: ${expiresDate}.\n\nHome Prep: ${prep.homeTips.slice(0, 3).join(' | ')}\n\nSafety: ${prep.safetyTips.slice(0, 2).join(' | ')}`;
 
   return sendEmail({
     to: user.email,
-    subject: `⚠️ Weather Alert: ${alertEvent} for ${houseName}`,
+    subject: `${prep.emoji} Weather Alert: ${alertEvent} for ${houseName}`,
     text,
     html,
   });

@@ -1,7 +1,7 @@
 import { db } from './db';
 import { eq, and, lt } from 'drizzle-orm';
 import { users, houses, notificationPreferences, weatherAlertsSent } from '@shared/schema';
-import { sendWeatherAlertEmail } from './email-service';
+import { sendWeatherAlertEmail, getPreparednessInfo } from './email-service';
 import { smsService } from './sms-service';
 import { pushNotificationService } from './push-notification-service';
 import { geocodeAddress } from './geocoding-service';
@@ -220,9 +220,10 @@ async function checkWeatherAlertsForAllHomes(): Promise<void> {
             }
 
             if (channelPrefs.push) {
+              const prep = getPreparednessInfo(event);
               sends.push(pushNotificationService.sendToUser(homeowner.id, {
-                title: `⚠️ Weather Alert: ${event}`,
-                body: `${house.name}: ${headline || event}`,
+                title: `${prep.emoji} ${event} — ${house.name}`,
+                body: `${headline || event} | ${prep.smsTip}`,
                 data: { type: 'weather_alert', houseId: house.id },
               }));
             }
