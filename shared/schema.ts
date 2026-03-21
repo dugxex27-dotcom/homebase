@@ -654,7 +654,7 @@ export const pushSubscriptions = pgTable("push_subscriptions", {
 export const notificationPreferences = pgTable("notification_preferences", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: text("user_id").notNull(), // links to users table
-  notificationType: text("notification_type").notNull(), // "messages", "appointments", "maintenance", "proposals", "referrals", "scheduled_jobs", "contractor_updates"
+  notificationType: text("notification_type").notNull(), // "messages", "appointments", "maintenance", "proposals", "referrals", "scheduled_jobs", "contractor_updates", "weather"
   channels: text("channels").array().notNull().default(sql`'{push}'::text[]`), // Array of enabled channels: "push", "email", "sms"
   isEnabled: boolean("is_enabled").notNull().default(true), // Global toggle for this notification type
   createdAt: timestamp("created_at").defaultNow(),
@@ -2055,7 +2055,7 @@ export const weatherAlertsSent = pgTable("weather_alerts_sent", {
   alertEvent: text("alert_event").notNull(),
   sentAt: timestamp("sent_at").defaultNow().notNull(),
 }, (table) => [
-  uniqueIndex("UX_weather_alerts_user_alert").on(table.userId, table.nwsAlertId),
+  uniqueIndex("UX_weather_alerts_house_alert").on(table.userId, table.houseId, table.nwsAlertId),
   index("IDX_weather_alerts_user").on(table.userId),
   index("IDX_weather_alerts_sent_at").on(table.sentAt),
 ]);

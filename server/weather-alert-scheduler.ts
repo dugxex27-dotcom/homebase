@@ -1,8 +1,9 @@
 import { db } from './db';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, and, lt } from 'drizzle-orm';
 import { users, houses, notificationPreferences, weatherAlertsSent } from '@shared/schema';
 import { sendWeatherAlertEmail } from './email-service';
 import { smsService } from './sms-service';
+import { pushNotificationService } from './push-notification-service';
 import { geocodeAddress } from './geocoding-service';
 import { isDemoId } from './storage';
 
@@ -21,17 +22,11 @@ const SEVERE_WEATHER_EVENT_TYPES = new Set([
   'Winter Storm Warning',
   'Blizzard Warning',
   'Ice Storm Warning',
+  'Freeze Warning',
   'Extreme Cold Warning',
   'Extreme Heat Warning',
   'High Wind Warning',
   'Dust Storm Warning',
-  'Tsunami Warning',
-  'Earthquake Warning',
-  'Tsunami Watch',
-  'Special Weather Statement',
-  'Dense Fog Advisory',
-  'Wind Advisory',
-  'Winter Weather Advisory',
 ]);
 
 interface NWSAlert {
@@ -51,6 +46,14 @@ interface NWSAlert {
 
 interface NWSAlertsResponse {
   features: NWSAlert[];
+}
+
+interface HouseRow {
+  id: string;
+  name: string;
+  address: string;
+  latitude: string | null;
+  longitude: string | null;
 }
 
 async function getActiveAlerts(latitude: number, longitude: number): Promise<NWSAlert[]> {
@@ -84,11 +87,12 @@ async function getActiveAlerts(latitude: number, longitude: number): Promise<NWS
   }
 }
 
-async function hasAlreadySentAlert(userId: string, nwsAlertId: string): Promise<boolean> {
+async function hasAlreadySentAlert(userId: string, houseId: string, nwsAlertId: string): Promise<boolean> {
   const existing = await db.select({ id: weatherAlertsSent.id })
     .from(weatherAlertsSent)
     .where(and(
       eq(weatherAlertsSent.userId, userId),
+      eq(weatherAlertsSent.houseId, houseId),
       eq(weatherAlertsSent.nwsAlertId, nwsAlertId)
     ))
     .limit(1);
@@ -121,7 +125,7 @@ async function isWeatherAlertEnabled(userId: string): Promise<boolean> {
   return prefs[0].isEnabled;
 }
 
-async function getOrGeocodeHouse(house: { id: string; address: string; latitude: string | null; longitude: string | null }) {
+async function getOrGeocodeHouse(house: HouseRow): Promise<{ latitude: number; longitude: number } | null> {
   if (house.latitude && house.longitude) {
     const lat = parseFloat(house.latitude);
     const lon = parseFloat(house.longitude);
@@ -162,7 +166,7 @@ async function checkWeatherAlertsForAllHomes(): Promise<void> {
 
       for (const house of userHouses) {
         try {
-          const coords = await getOrGeocodeHouse(house as any);
+          const coords = await getOrGeocodeHouse(house);
           if (!coords) {
             console.log(`[WEATHER] Could not geocode house ${house.id}: ${house.address}`);
             continue;
@@ -171,34 +175,39 @@ async function checkWeatherAlertsForAllHomes(): Promise<void> {
           const alerts = await getActiveAlerts(coords.latitude, coords.longitude);
 
           for (const alert of alerts) {
-            const alreadySent = await hasAlreadySentAlert(homeowner.id, alert.id);
+            const alreadySent = await hasAlreadySentAlert(homeowner.id, house.id, alert.id);
             if (alreadySent) continue;
 
             const { event, headline, description, severity, urgency, expires } = alert.properties;
 
-            const emailSent = await sendWeatherAlertEmail(
-              homeowner.id,
-              house.name,
-              house.address,
-              event,
-              headline || event,
-              description || '',
-              severity || 'Unknown',
-              urgency || 'Unknown',
-              expires || ''
-            );
-
-            await smsService.sendWeatherAlertSMS(
-              homeowner.id,
-              house.name,
-              event,
-              headline || event,
-              severity || 'Unknown'
-            );
+            await Promise.allSettled([
+              sendWeatherAlertEmail(
+                homeowner.id,
+                house.name,
+                house.address,
+                event,
+                headline || event,
+                description || '',
+                severity || 'Unknown',
+                urgency || 'Unknown',
+                expires || ''
+              ),
+              smsService.sendWeatherAlertSMS(
+                homeowner.id,
+                house.name,
+                event,
+                headline || event,
+                severity || 'Unknown'
+              ),
+              pushNotificationService.sendToUser(homeowner.id, {
+                title: `⚠️ Weather Alert: ${event}`,
+                body: `${house.name}: ${headline || event}`,
+                data: { type: 'weather_alert', houseId: house.id },
+              }),
+            ]);
 
             await recordAlertSent(homeowner.id, house.id, alert.id, event);
-
-            if (emailSent) alertsSent++;
+            alertsSent++;
             console.log(`[WEATHER] Sent ${event} alert to homeowner ${homeowner.id} for house ${house.id}`);
           }
 
@@ -222,7 +231,7 @@ async function cleanupOldAlerts(): Promise<void> {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     await db.delete(weatherAlertsSent)
-      .where(eq(weatherAlertsSent.sentAt, thirtyDaysAgo));
+      .where(lt(weatherAlertsSent.sentAt, thirtyDaysAgo));
     console.log('[WEATHER] Cleaned up old alert records');
   } catch (error) {
     console.error('[WEATHER] Error cleaning up old alerts:', error);
