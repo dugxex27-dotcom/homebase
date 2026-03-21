@@ -228,10 +228,37 @@ async function checkWeatherAlertsForAllHomes(): Promise<void> {
               }));
             }
 
-            await Promise.allSettled(sends);
-            await recordAlertSent(homeowner.id, house.id, alert.id, event);
-            alertsSent++;
-            console.log(`[WEATHER] Sent ${event} alert to homeowner ${homeowner.id} for house ${house.id}`);
+            if (sends.length === 0) {
+              console.log(`[WEATHER] No active channels for homeowner ${homeowner.id} — skipping record`);
+              continue;
+            }
+
+            const results = await Promise.allSettled(sends);
+            const channelNames = [
+              channelPrefs.email ? 'email' : null,
+              channelPrefs.sms ? 'sms' : null,
+              channelPrefs.push ? 'push' : null,
+            ].filter(Boolean);
+
+            let anySucceeded = false;
+            results.forEach((result, i) => {
+              const channel = channelNames[i];
+              if (result.status === 'fulfilled' && result.value === true) {
+                console.log(`[WEATHER] ${channel} sent for alert ${alert.id} to homeowner ${homeowner.id}`);
+                anySucceeded = true;
+              } else {
+                const reason = result.status === 'rejected' ? result.reason : 'returned false';
+                console.warn(`[WEATHER] ${channel} failed for alert ${alert.id}: ${reason}`);
+              }
+            });
+
+            if (anySucceeded) {
+              await recordAlertSent(homeowner.id, house.id, alert.id, event);
+              alertsSent++;
+              console.log(`[WEATHER] Recorded ${event} alert for homeowner ${homeowner.id} house ${house.id}`);
+            } else {
+              console.warn(`[WEATHER] All channels failed for ${event} alert to homeowner ${homeowner.id} house ${house.id} — will retry next cycle`);
+            }
           }
 
           await new Promise(resolve => setTimeout(resolve, 1100));
