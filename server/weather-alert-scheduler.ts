@@ -163,7 +163,6 @@ async function checkWeatherAlertsForAllHomes(): Promise<void> {
 
     for (const homeowner of homeowners) {
       if (isDemoId(homeowner.id)) continue;
-      if (!homeowner.email) continue;
 
       const channelPrefs = await getWeatherChannelPrefs(homeowner.id);
       if (!channelPrefs.enabled) continue;
