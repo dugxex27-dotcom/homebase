@@ -266,7 +266,6 @@ export default function AIContractorHelp() {
   const [activeTab, setActiveTab] = useState("troubleshoot");
   const [problem, setProblem] = useState("");
   const [recommendation, setRecommendation] = useState<AIRecommendation | null>(null);
-  const [prefillProblem, setPrefillProblem] = useState("");
 
   const recommendationMutation = useMutation({
     mutationFn: async (problemDescription: string) => {
@@ -330,7 +329,6 @@ export default function AIContractorHelp() {
 
   const handleSwitchToContractor = (query?: string) => {
     if (query) {
-      setPrefillProblem(`I need help finding a ${query}`);
       setProblem(`I need help finding a ${query}`);
     }
     setActiveTab("contractor");

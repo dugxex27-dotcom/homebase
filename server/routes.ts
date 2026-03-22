@@ -13233,15 +13233,13 @@ Important: Only recommend service types from the available list. Match problems 
         return res.status(400).json({ message: "Please describe your home issue." });
       }
 
-      // Guard off-topic on first message only
-      if (messages.filter((m: any) => m.role === 'user').length === 1) {
-        const topicValidation = isHomeMaintenanceRelated(lastUserMessage.content);
-        if (!topicValidation.valid) {
-          return res.status(400).json({
-            code: 'OFF_TOPIC',
-            message: topicValidation.reason,
-          });
-        }
+      // Validate every new user message is home-related
+      const topicValidation = isHomeMaintenanceRelated(lastUserMessage.content);
+      if (!topicValidation.valid) {
+        return res.status(400).json({
+          code: 'OFF_TOPIC',
+          message: topicValidation.reason,
+        });
       }
 
       const systemPrompt = `You are HomeBase AI, a friendly and knowledgeable home diagnostic expert. Your job is to help homeowners identify and troubleshoot problems in their homes through a step-by-step conversation.
