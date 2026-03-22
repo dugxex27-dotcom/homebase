@@ -9128,62 +9128,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ─── Appliance Model Lookup ──────────────────────────────────────────────────
-  // Given a model number, uses AI to identify the appliance make, type, and name.
-  // Falls back gracefully if the model is unknown or the AI call fails.
+  // Given a model number, searches the IFIXIT product/device API to identify
+  // the home appliance make, type, and name. Falls back gracefully (found: false)
+  // on network errors, non-JSON responses, or when no appliance match is found.
+  // No paid API key required.
   app.get("/api/appliances/lookup", async (req, res) => {
     const modelNumber = (req.query.modelNumber as string || "").trim();
     if (!modelNumber || modelNumber.length < 3) {
       return res.status(400).json({ message: "modelNumber query param is required (min 3 chars)" });
     }
 
-    const aiApiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
-    const aiBaseUrl = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
+    // Known appliance brands for result matching
+    const KNOWN_BRANDS = [
+      "Amana", "Bosch", "Broan", "Carrier", "Dacor", "Electrolux", "Fisher & Paykel",
+      "Frigidaire", "GE", "Haier", "Honeywell", "Hotpoint", "Jenn-Air", "KitchenAid",
+      "LG", "Lennox", "Maytag", "Miele", "Panasonic", "Rheem", "Samsung", "Sharp",
+      "Siemens", "Speed Queen", "Sub-Zero", "Thermador", "Trane", "Viking",
+      "Whirlpool", "Wolf", "York",
+    ];
 
-    if (!aiApiKey) {
-      return res.json({ found: false, reason: "Lookup service unavailable" });
-    }
-
-    const openaiClient = new OpenAI({
-      apiKey: aiApiKey,
-      ...(aiBaseUrl ? { baseURL: aiBaseUrl } : {}),
-    });
+    // Known appliance type keywords and their canonical type names
+    const APPLIANCE_TYPE_KEYWORDS: Record<string, string> = {
+      "refrigerator": "Refrigerator", "fridge": "Refrigerator",
+      "dishwasher": "Dishwasher",
+      "washing machine": "Washing Machine", "washer": "Washing Machine",
+      "dryer": "Dryer",
+      "range": "Range/Oven", "oven": "Range/Oven", "stove": "Range/Oven", "cooktop": "Range/Oven",
+      "microwave": "Microwave",
+      "garbage disposal": "Garbage Disposal", "disposal": "Garbage Disposal",
+      "water heater": "Water Heater",
+      "air conditioner": "Air Conditioner", "air conditioning": "Air Conditioner",
+      "furnace": "Furnace", "heat pump": "Heat Pump",
+      "freezer": "Freezer",
+      "ice maker": "Ice Maker",
+      "dehumidifier": "Dehumidifier",
+      "air purifier": "Air Purifier",
+    };
 
     try {
-      const completion = await openaiClient.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are an appliance identification expert. Given a model number, identify the home appliance. " +
-              "Respond ONLY with valid JSON in this exact format: " +
-              '{"found": true, "make": "Brand name", "name": "Appliance type + short descriptor", "type": "appliance category", "description": "one sentence description"} ' +
-              'or {"found": false} if the model is unknown or not a home appliance. ' +
-              "The type field must be one of: Refrigerator, Dishwasher, Washing Machine, Dryer, Range/Oven, Microwave, " +
-              "Garbage Disposal, Water Heater, HVAC Unit, Air Conditioner, Furnace, Heat Pump, " +
-              "Freezer, Ice Maker, Trash Compactor, Dehumidifier, Air Purifier, Other Appliance. " +
-              "Do not include any text outside the JSON object.",
-          },
-          {
-            role: "user",
-            content: `Identify this home appliance model number: ${modelNumber}`,
-          },
-        ],
-        max_tokens: 200,
-        temperature: 0,
+      // Call IFIXIT search API — no auth required
+      const ifixitUrl = `https://www.ifixit.com/api/2.0/search/10?query=${encodeURIComponent(modelNumber)}&limit=10`;
+      const response = await fetch(ifixitUrl, {
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(8000),
       });
 
-      const raw = completion.choices[0]?.message?.content?.trim() ?? "";
-      // Extract JSON even if the model wraps it in markdown fences
-      const jsonMatch = raw.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        return res.json({ found: false, reason: "Could not parse lookup result" });
+      if (!response.ok) {
+        console.warn(`[APPLIANCE LOOKUP] IFIXIT returned status ${response.status}`);
+        return res.json({ found: false });
       }
-      const parsed = JSON.parse(jsonMatch[0]);
-      return res.json(parsed);
-    } catch (err) {
-      console.error("[APPLIANCE LOOKUP] Error:", err);
-      return res.json({ found: false, reason: "Lookup service error" });
+
+      const contentType = response.headers.get("content-type") || "";
+      if (!contentType.includes("json")) {
+        console.warn("[APPLIANCE LOOKUP] IFIXIT returned non-JSON response");
+        return res.json({ found: false });
+      }
+
+      const data = await response.json() as any;
+      const results: any[] = Array.isArray(data.results) ? data.results : [];
+
+      // Look for a CATEGORY-namespace result whose title/summary references a
+      // known brand AND a known appliance type — strongest signal of a match.
+      for (const item of results) {
+        if (item.namespace !== "CATEGORY") continue;
+        const titleLower = (item.title || "").toLowerCase();
+        const summaryLower = (item.summary || "").toLowerCase();
+        const combined = `${titleLower} ${summaryLower}`;
+
+        const matchedBrand = KNOWN_BRANDS.find(b =>
+          combined.includes(b.toLowerCase())
+        );
+        if (!matchedBrand) continue;
+
+        const matchedType = Object.keys(APPLIANCE_TYPE_KEYWORDS).find(k =>
+          combined.includes(k)
+        );
+        if (!matchedType) continue;
+
+        return res.json({
+          found: true,
+          make: matchedBrand,
+          name: item.title || `${matchedBrand} Appliance`,
+          type: APPLIANCE_TYPE_KEYWORDS[matchedType],
+          description: item.summary?.trim() || `${matchedBrand} home appliance.`,
+        });
+      }
+
+      // No relevant appliance match found in IFIXIT results
+      return res.json({ found: false });
+    } catch (err: any) {
+      // Network/timeout/parse errors — fail gracefully, never throw to client
+      console.warn("[APPLIANCE LOOKUP] IFIXIT fetch error:", err?.message || err);
+      return res.json({ found: false });
     }
   });
 

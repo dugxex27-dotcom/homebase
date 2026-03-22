@@ -1463,12 +1463,12 @@ export default function Maintenance() {
       if (!res.ok) throw new Error("Lookup failed");
       const data = await res.json();
       if (data.found) {
-        if (data.make) applianceForm.setValue("make", data.make);
+        if (data.make) {
+          applianceForm.setValue("make", data.make);
+          setBrandSearch(data.make);
+        }
         if (data.name) applianceForm.setValue("name", data.name);
-        if (data.notes) {
-          const existing = applianceForm.getValues("notes") || "";
-          if (!existing) applianceForm.setValue("notes", data.description || "");
-        } else if (data.description) {
+        if (data.description) {
           const existing = applianceForm.getValues("notes") || "";
           if (!existing) applianceForm.setValue("notes", data.description);
         }
