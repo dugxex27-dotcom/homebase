@@ -9112,6 +9112,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ─── Appliance Brand List ───────────────────────────────────────────────────
+  // Returns a curated list of common appliance brands for autocomplete.
+  // No auth required — purely static reference data.
+  app.get("/api/appliances/brands", (_req, res) => {
+    const APPLIANCE_BRANDS = [
+      "Amana", "Bosch", "Broan", "Carrier", "Dacor", "Electrolux", "Fisher & Paykel",
+      "Frigidaire", "GE Appliances", "GE Profile", "Haier", "Honeywell",
+      "Hotpoint", "Jenn-Air", "KitchenAid", "LG", "Lennox", "Maytag",
+      "Miele", "Panasonic", "Rheem", "Samsung", "Sharp", "Siemens",
+      "Speed Queen", "Sub-Zero", "Thermador", "Trane", "Viking", "Whirlpool",
+      "Wolf", "York"
+    ].sort();
+    res.json(APPLIANCE_BRANDS);
+  });
+
+  // ─── Appliance Model Lookup ──────────────────────────────────────────────────
+  // Given a model number, uses AI to identify the appliance make, type, and name.
+  // Falls back gracefully if the model is unknown or the AI call fails.
+  app.get("/api/appliances/lookup", async (req, res) => {
+    const modelNumber = (req.query.modelNumber as string || "").trim();
+    if (!modelNumber || modelNumber.length < 3) {
+      return res.status(400).json({ message: "modelNumber query param is required (min 3 chars)" });
+    }
+
+    const aiApiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+    const aiBaseUrl = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
+
+    if (!aiApiKey) {
+      return res.json({ found: false, reason: "Lookup service unavailable" });
+    }
+
+    const openaiClient = new OpenAI({
+      apiKey: aiApiKey,
+      ...(aiBaseUrl ? { baseURL: aiBaseUrl } : {}),
+    });
+
+    try {
+      const completion = await openaiClient.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are an appliance identification expert. Given a model number, identify the home appliance. " +
+              "Respond ONLY with valid JSON in this exact format: " +
+              '{"found": true, "make": "Brand name", "name": "Appliance type + short descriptor", "type": "appliance category", "description": "one sentence description"} ' +
+              'or {"found": false} if the model is unknown or not a home appliance. ' +
+              "The type field must be one of: Refrigerator, Dishwasher, Washing Machine, Dryer, Range/Oven, Microwave, " +
+              "Garbage Disposal, Water Heater, HVAC Unit, Air Conditioner, Furnace, Heat Pump, " +
+              "Freezer, Ice Maker, Trash Compactor, Dehumidifier, Air Purifier, Other Appliance. " +
+              "Do not include any text outside the JSON object.",
+          },
+          {
+            role: "user",
+            content: `Identify this home appliance model number: ${modelNumber}`,
+          },
+        ],
+        max_tokens: 200,
+        temperature: 0,
+      });
+
+      const raw = completion.choices[0]?.message?.content?.trim() ?? "";
+      // Extract JSON even if the model wraps it in markdown fences
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        return res.json({ found: false, reason: "Could not parse lookup result" });
+      }
+      const parsed = JSON.parse(jsonMatch[0]);
+      return res.json(parsed);
+    } catch (err) {
+      console.error("[APPLIANCE LOOKUP] Error:", err);
+      return res.json({ found: false, reason: "Lookup service error" });
+    }
+  });
+
   // Home Appliance routes
   app.get("/api/appliances", async (req, res) => {
     try {

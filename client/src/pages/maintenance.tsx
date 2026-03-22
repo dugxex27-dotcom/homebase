@@ -22,7 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { HomeownerFeatureGate, HomeownerTrialBanner, FreeUserUpgradePrompt } from "@/components/homeowner-feature-gate";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
-import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, ChevronUp, Settings, Plus, Edit, Trash2, Home, FileText, Building2, User, Building, Phone, MessageSquare, AlertTriangle, Thermometer, Cloud, Monitor, Book, ExternalLink, Upload, Trophy, Mail, Handshake, Globe, TrendingDown, PiggyBank, Truck, CheckCircle2, Circle, Download, X } from "lucide-react";
+import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, ChevronUp, Settings, Plus, Edit, Trash2, Home, FileText, Building2, User, Building, Phone, MessageSquare, AlertTriangle, Thermometer, Cloud, Monitor, Book, ExternalLink, Upload, Trophy, Mail, Handshake, Globe, TrendingDown, PiggyBank, Truck, CheckCircle2, Circle, Download, X, Search, Loader2 } from "lucide-react";
 import { AppointmentScheduler } from "@/components/appointment-scheduler";
 import { CustomMaintenanceTasks } from "@/components/custom-maintenance-tasks";
 import { US_MAINTENANCE_DATA, getRegionFromClimateZone, getCurrentMonthTasks } from "@shared/location-maintenance-data";
@@ -1339,6 +1339,11 @@ export default function Maintenance() {
   const [isApplianceManualDialogOpen, setIsApplianceManualDialogOpen] = useState(false);
   const [editingApplianceManual, setEditingApplianceManual] = useState<HomeApplianceManual | null>(null);
   const [selectedApplianceId, setSelectedApplianceId] = useState<string>("");
+  // Brand autocomplete
+  const [brandSearch, setBrandSearch] = useState("");
+  const [brandDropdownOpen, setBrandDropdownOpen] = useState(false);
+  // Model lookup
+  const [modelLookupLoading, setModelLookupLoading] = useState(false);
   
   // Service logs filter state
   const [homeAreaFilter, setHomeAreaFilter] = useState<string>("all");
@@ -1438,6 +1443,45 @@ export default function Maintenance() {
     },
     enabled: isAuthenticated && !!homeownerId && !!selectedApplianceId && !isContractor
   });
+
+  // Appliance brands (curated list for autocomplete)
+  const { data: applianceBrands = [] } = useQuery<string[]>({
+    queryKey: ['/api/appliances/brands'],
+    staleTime: Infinity,
+  });
+
+  // Helper: look up a model number via AI
+  const handleModelLookup = async () => {
+    const modelNumber = applianceForm.getValues("model") || "";
+    if (!modelNumber || modelNumber.trim().length < 3) {
+      toast({ title: "Enter a model number", description: "Type at least 3 characters in the Model field first.", variant: "destructive" });
+      return;
+    }
+    setModelLookupLoading(true);
+    try {
+      const res = await fetch(`/api/appliances/lookup?modelNumber=${encodeURIComponent(modelNumber.trim())}`);
+      if (!res.ok) throw new Error("Lookup failed");
+      const data = await res.json();
+      if (data.found) {
+        if (data.make) applianceForm.setValue("make", data.make);
+        if (data.name) applianceForm.setValue("name", data.name);
+        if (data.notes) {
+          const existing = applianceForm.getValues("notes") || "";
+          if (!existing) applianceForm.setValue("notes", data.description || "");
+        } else if (data.description) {
+          const existing = applianceForm.getValues("notes") || "";
+          if (!existing) applianceForm.setValue("notes", data.description);
+        }
+        toast({ title: "Appliance found!", description: `${data.make} ${data.name} identified successfully.` });
+      } else {
+        toast({ title: "No match found", description: "Enter details manually — model not recognized.", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Lookup error", description: "Could not reach lookup service. Please enter details manually.", variant: "destructive" });
+    } finally {
+      setModelLookupLoading(false);
+    }
+  };
 
   // Custom maintenance tasks queries (only for homeowners)
   const { data: customMaintenanceTasks = [], isLoading: customTasksLoading } = useQuery<CustomMaintenanceTask[]>({
@@ -3599,6 +3643,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
               <Button
                 onClick={() => {
                   setEditingAppliance(null);
+                  setBrandSearch("");
+                  setModelLookupLoading(false);
                   applianceForm.reset({
                     homeownerId,
                     houseId: selectedHouseId,
@@ -3679,6 +3725,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                               size="sm"
                               onClick={() => {
                                 setEditingAppliance(appliance);
+                                setBrandSearch(appliance.make || "");
+                                setModelLookupLoading(false);
                                 applianceForm.reset({
                                   ...appliance,
                                   houseId: appliance.houseId || undefined,
@@ -4439,19 +4487,54 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                   <FormField
                     control={applianceForm.control}
                     name="make"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel style={{ color: 'white' }}>Make/Brand</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="e.g., Whirlpool, GE, Samsung" 
-                            {...field} 
-                            style={{ backgroundColor: '#ffffff', color: '#000000' }}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    render={({ field }) => {
+                      const filtered = applianceBrands.filter(b =>
+                        b.toLowerCase().includes(brandSearch.toLowerCase())
+                      );
+                      return (
+                        <FormItem className="relative">
+                          <FormLabel style={{ color: 'white' }}>Make/Brand</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="e.g., Whirlpool, GE, Samsung"
+                              {...field}
+                              value={brandSearch || field.value || ""}
+                              onChange={(e) => {
+                                setBrandSearch(e.target.value);
+                                field.onChange(e.target.value);
+                                setBrandDropdownOpen(true);
+                              }}
+                              onFocus={() => setBrandDropdownOpen(true)}
+                              onBlur={() => setTimeout(() => setBrandDropdownOpen(false), 150)}
+                              autoComplete="off"
+                              style={{ backgroundColor: '#ffffff', color: '#000000' }}
+                            />
+                          </FormControl>
+                          {brandDropdownOpen && filtered.length > 0 && (
+                            <div
+                              className="absolute z-50 w-full mt-1 rounded-md border border-gray-200 bg-white shadow-lg max-h-48 overflow-y-auto"
+                              style={{ top: '100%' }}
+                            >
+                              {filtered.map((brand) => (
+                                <button
+                                  key={brand}
+                                  type="button"
+                                  className="w-full text-left px-3 py-2 text-sm text-gray-900 hover:bg-purple-50 hover:text-purple-900"
+                                  onMouseDown={() => {
+                                    field.onChange(brand);
+                                    setBrandSearch(brand);
+                                    setBrandDropdownOpen(false);
+                                  }}
+                                >
+                                  {brand}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
                   />
 
                   <FormField
@@ -4459,14 +4542,32 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     name="model"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel style={{ color: 'white' }}>Model</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="e.g., WDF520PADM, GTW465ASNWW" 
-                            {...field} 
-                            style={{ backgroundColor: '#ffffff', color: '#000000' }}
-                          />
-                        </FormControl>
+                        <FormLabel style={{ color: 'white' }}>
+                          Model
+                          <span className="ml-2 text-xs font-normal opacity-75">(enter then click Look Up)</span>
+                        </FormLabel>
+                        <div className="flex gap-2">
+                          <FormControl>
+                            <Input
+                              placeholder="e.g., WDF520PADM, GTW465ASNWW"
+                              {...field}
+                              style={{ backgroundColor: '#ffffff', color: '#000000' }}
+                            />
+                          </FormControl>
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={modelLookupLoading}
+                            onClick={handleModelLookup}
+                            style={{ backgroundColor: 'white', color: '#2c0f5b', whiteSpace: 'nowrap', flexShrink: 0 }}
+                            title="Look up appliance details by model number"
+                          >
+                            {modelLookupLoading
+                              ? <Loader2 className="h-4 w-4 animate-spin" />
+                              : <Search className="h-4 w-4" />}
+                            <span className="ml-1 hidden sm:inline">{modelLookupLoading ? "Looking up…" : "Look Up"}</span>
+                          </Button>
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
