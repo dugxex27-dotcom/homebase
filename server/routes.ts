@@ -9225,9 +9225,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // No relevant appliance match found in IFIXIT results
       return res.json({ found: false });
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Network/timeout/parse errors — fail gracefully, never throw to client
-      console.warn("[APPLIANCE LOOKUP] IFIXIT fetch error:", err?.message || err);
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn("[APPLIANCE LOOKUP] IFIXIT fetch error:", msg);
       return res.json({ found: false });
     }
   });
