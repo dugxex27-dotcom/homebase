@@ -13219,6 +13219,96 @@ Important: Only recommend service types from the available list. Match problems 
     }
   });
 
+  // AI Home Troubleshooter - conversational diagnostic chat
+  app.post('/api/ai/troubleshoot', isAuthenticated, async (req: any, res) => {
+    try {
+      const { messages } = req.body;
+
+      if (!Array.isArray(messages) || messages.length === 0) {
+        return res.status(400).json({ message: "messages array is required" });
+      }
+
+      const lastUserMessage = [...messages].reverse().find((m: any) => m.role === 'user');
+      if (!lastUserMessage || typeof lastUserMessage.content !== 'string' || lastUserMessage.content.trim().length < 3) {
+        return res.status(400).json({ message: "Please describe your home issue." });
+      }
+
+      // Guard off-topic on first message only
+      if (messages.filter((m: any) => m.role === 'user').length === 1) {
+        const topicValidation = isHomeMaintenanceRelated(lastUserMessage.content);
+        if (!topicValidation.valid) {
+          return res.status(400).json({
+            code: 'OFF_TOPIC',
+            message: topicValidation.reason,
+          });
+        }
+      }
+
+      const systemPrompt = `You are HomeBase AI, a friendly and knowledgeable home diagnostic expert. Your job is to help homeowners identify and troubleshoot problems in their homes through a step-by-step conversation.
+
+**YOUR APPROACH:**
+1. Ask targeted follow-up questions to narrow down the problem (one or two at a time — never overwhelm)
+2. Guide homeowners through safe, practical diagnostic steps they can do themselves
+3. Explain what each symptom likely means in plain language
+4. Recommend specific DIY fixes when the problem is safe and straightforward
+5. Clearly indicate when the problem requires a professional and explain why
+
+**TONE & FORMAT:**
+- Be warm, clear, and practical — like a knowledgeable neighbor
+- Use bullet points and numbered steps for clarity
+- Keep responses concise (3-6 sentences or a short list)
+- Avoid jargon; explain technical terms when you use them
+
+**WHEN PROFESSIONAL HELP IS NEEDED:**
+- If the problem requires licensed work (electrical panel, gas lines, major plumbing, structural), say so clearly
+- End your response with exactly this phrase when a pro is needed: "[NEEDS_PROFESSIONAL: <contractor type>]"
+  Examples: "[NEEDS_PROFESSIONAL: Electrician]", "[NEEDS_PROFESSIONAL: Plumber]", "[NEEDS_PROFESSIONAL: HVAC Technician]"
+
+**STRICT TOPIC BOUNDARIES:**
+- ONLY discuss home-related issues: plumbing, electrical, HVAC, roofing, appliances, structural, pests, etc.
+- If asked about anything unrelated to homes, politely decline and redirect
+
+**SAFETY FIRST:**
+- Always warn before recommending anything near electrical panels, gas lines, or load-bearing structures
+- If there is any risk of injury, lead with a safety warning`;
+
+      const openaiClient = new OpenAI({
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY
+      });
+
+      const chatMessages = [
+        { role: 'system' as const, content: systemPrompt },
+        ...messages.map((m: any) => ({ role: m.role as 'user' | 'assistant', content: String(m.content) }))
+      ];
+
+      const response = await openaiClient.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: chatMessages,
+        max_tokens: 600,
+        temperature: 0.7
+      });
+
+      const reply = response.choices[0]?.message?.content;
+      if (!reply) {
+        return res.status(500).json({ message: "AI service returned an empty response. Please try again." });
+      }
+
+      // Detect if professional is needed
+      const proMatch = reply.match(/\[NEEDS_PROFESSIONAL:\s*([^\]]+)\]/);
+      const needsProfessional = !!proMatch;
+      const contractorType = proMatch ? proMatch[1].trim() : null;
+      const cleanReply = reply.replace(/\[NEEDS_PROFESSIONAL:[^\]]+\]/g, '').trim();
+
+      console.log('[AI] Troubleshoot response generated');
+      res.json({ reply: cleanReply, needsProfessional, contractorType });
+
+    } catch (error) {
+      console.error("[AI] Error in troubleshoot endpoint:", error);
+      res.status(500).json({ message: "Failed to get a response. Please try again." });
+    }
+  });
+
   // Push token registration endpoint for mobile apps (Firebase)
   app.post('/api/push-token', isAuthenticated, async (req: any, res) => {
     try {
