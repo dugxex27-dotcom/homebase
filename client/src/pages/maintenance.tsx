@@ -1450,7 +1450,7 @@ export default function Maintenance() {
     staleTime: Infinity,
   });
 
-  // Helper: look up a model number via AI
+  // Helper: look up a model number via the IFIXIT product/device API
   const handleModelLookup = async () => {
     const modelNumber = applianceForm.getValues("model") || "";
     if (!modelNumber || modelNumber.trim().length < 3) {

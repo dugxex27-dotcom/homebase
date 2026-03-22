@@ -9184,15 +9184,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ found: false });
       }
 
-      const data = await response.json() as any;
-      const results: any[] = Array.isArray(data.results) ? data.results : [];
+      interface IFixitResultItem {
+        namespace?: string;
+        title?: string;
+        summary?: string;
+      }
+      interface IFixitSearchResponse {
+        results?: IFixitResultItem[];
+      }
+
+      const data: IFixitSearchResponse = await response.json() as IFixitSearchResponse;
+      const results: IFixitResultItem[] = Array.isArray(data.results) ? data.results : [];
 
       // Look for a CATEGORY-namespace result whose title/summary references a
       // known brand AND a known appliance type — strongest signal of a match.
       for (const item of results) {
         if (item.namespace !== "CATEGORY") continue;
-        const titleLower = (item.title || "").toLowerCase();
-        const summaryLower = (item.summary || "").toLowerCase();
+        const titleLower = (item.title ?? "").toLowerCase();
+        const summaryLower = (item.summary ?? "").toLowerCase();
         const combined = `${titleLower} ${summaryLower}`;
 
         const matchedBrand = KNOWN_BRANDS.find(b =>
@@ -9208,7 +9217,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({
           found: true,
           make: matchedBrand,
-          name: item.title || `${matchedBrand} Appliance`,
+          name: item.title ?? `${matchedBrand} Appliance`,
           type: APPLIANCE_TYPE_KEYWORDS[matchedType],
           description: item.summary?.trim() || `${matchedBrand} home appliance.`,
         });
