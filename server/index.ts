@@ -176,6 +176,28 @@ app.use((req, res, next) => {
   // Proxy /info (and any /info/* sub-paths) to SquareSpace while keeping
   // gotohomebase.com/info as the visible URL in the browser.
   const squarespaceBase = "https://gotohomebase.squarespace.com";
+
+  // Rewrite root-relative URLs in HTML so SquareSpace assets resolve correctly.
+  // SquareSpace embeds many /universal/, /assets/, /site/ etc. references that
+  // must become absolute URLs pointing back at squarespace.com.
+  function rewriteHtml(html: string): string {
+    // Insert <base> right after <head> so the browser resolves any remaining
+    // relative URLs against the SquareSpace origin automatically.
+    html = html.replace(/<head([^>]*)>/i, `<head$1><base href="${squarespaceBase}/">`);
+
+    // Rewrite href/src/action/url() attributes that start with a bare /
+    // (i.e. root-relative, not protocol-relative //...)
+    html = html.replace(/(href|src|action)="(\/(?!\/))/gi, `$1="${squarespaceBase}/`);
+    html = html.replace(/(href|src|action)='(\/(?!\/))/gi,  `$1='${squarespaceBase}/`);
+
+    // Rewrite url(/) in inline styles
+    html = html.replace(/url\("(\/(?!\/))/gi, `url("${squarespaceBase}/`);
+    html = html.replace(/url\('(\/(?!\/))/gi, `url('${squarespaceBase}/`);
+    html = html.replace(/url\((\/(?!\/))/gi,  `url(${squarespaceBase}/`);
+
+    return html;
+  }
+
   async function proxyToSquarespace(req: Request, res: Response) {
     const targetUrl = `${squarespaceBase}${req.originalUrl}`;
     console.log(`[INFO-PROXY] Forwarding ${req.method} ${req.originalUrl} -> ${targetUrl}`);
@@ -192,7 +214,7 @@ app.use((req, res, next) => {
         redirect: "follow",
       });
 
-      // Forward status and safe headers
+      // Forward status and safe headers, dropping ones we'll override
       res.status(upstream.status);
       const skipHeaders = new Set([
         "content-encoding", "transfer-encoding",
@@ -206,8 +228,23 @@ app.use((req, res, next) => {
         }
       });
 
-      const body = await upstream.arrayBuffer();
-      res.end(Buffer.from(body));
+      // Permissive CSP so SquareSpace's own scripts/styles/fonts/images load
+      res.setHeader(
+        "content-security-policy",
+        "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;"
+      );
+
+      const contentType = upstream.headers.get("content-type") || "";
+      if (contentType.includes("text/html")) {
+        // For HTML responses rewrite root-relative URLs → absolute SquareSpace URLs
+        const text = await upstream.text();
+        const rewritten = rewriteHtml(text);
+        res.setHeader("content-type", "text/html; charset=utf-8");
+        res.end(rewritten);
+      } else {
+        const body = await upstream.arrayBuffer();
+        res.end(Buffer.from(body));
+      }
     } catch (err) {
       console.error("[INFO-PROXY] Error:", err);
       res.status(502).send("Bad gateway – could not reach SquareSpace.");
