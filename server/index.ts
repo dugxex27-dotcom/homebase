@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import helmet from "helmet";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
+import { createProxyMiddleware } from "http-proxy-middleware";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { db } from "./db";
@@ -172,6 +173,22 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Proxy /info to SquareSpace while preserving the gotohomebase.com/info URL
+  app.use("/info", createProxyMiddleware({
+    target: "https://www.gotohomebase.squarespace.com",
+    changeOrigin: true,
+    on: {
+      proxyRes: (proxyRes) => {
+        // Remove headers that would block the proxied response from rendering
+        delete proxyRes.headers["x-frame-options"];
+        delete proxyRes.headers["content-security-policy"];
+        delete proxyRes.headers["x-content-security-policy"];
+        // Strip Squarespace's HSTS so it doesn't interfere
+        delete proxyRes.headers["strict-transport-security"];
+      },
+    },
+  }));
+
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
