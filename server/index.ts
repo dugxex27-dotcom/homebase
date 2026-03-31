@@ -2,7 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import helmet from "helmet";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
-import { createProxyMiddleware } from "http-proxy-middleware";
+
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { db } from "./db";
@@ -173,25 +173,49 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Proxy /info (and any /info/* sub-paths) to SquareSpace while keeping the
-  // gotohomebase.com/info URL visible in the browser.
-  // Mounting at root (no Express path prefix) preserves the full path so
-  // SquareSpace receives exactly /info instead of a stripped /.
-  app.use(createProxyMiddleware({
-    pathFilter: ["/info", "/info/**"],
-    target: "https://www.gotohomebase.squarespace.com",
-    changeOrigin: true,
-    on: {
-      proxyRes: (proxyRes) => {
-        // Remove headers that would block the proxied response from rendering
-        delete proxyRes.headers["x-frame-options"];
-        delete proxyRes.headers["content-security-policy"];
-        delete proxyRes.headers["x-content-security-policy"];
-        // Strip Squarespace's HSTS so it doesn't interfere
-        delete proxyRes.headers["strict-transport-security"];
-      },
-    },
-  }));
+  // Proxy /info (and any /info/* sub-paths) to SquareSpace while keeping
+  // gotohomebase.com/info as the visible URL in the browser.
+  const squarespaceBase = "https://gotohomebase.squarespace.com";
+  async function proxyToSquarespace(req: Request, res: Response) {
+    const targetUrl = `${squarespaceBase}${req.originalUrl}`;
+    console.log(`[INFO-PROXY] Forwarding ${req.method} ${req.originalUrl} -> ${targetUrl}`);
+    try {
+      const upstream = await fetch(targetUrl, {
+        method: req.method,
+        headers: {
+          "User-Agent": req.headers["user-agent"] || "Mozilla/5.0",
+          "Accept": req.headers["accept"] || "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "Accept-Language": req.headers["accept-language"] || "en-US,en;q=0.5",
+          "Accept-Encoding": "identity",
+          "Host": "gotohomebase.squarespace.com",
+        },
+        redirect: "follow",
+      });
+
+      // Forward status and safe headers
+      res.status(upstream.status);
+      const skipHeaders = new Set([
+        "content-encoding", "transfer-encoding",
+        "x-frame-options", "content-security-policy",
+        "x-content-security-policy", "strict-transport-security",
+        "connection", "keep-alive",
+      ]);
+      upstream.headers.forEach((value, key) => {
+        if (!skipHeaders.has(key.toLowerCase())) {
+          res.setHeader(key, value);
+        }
+      });
+
+      const body = await upstream.arrayBuffer();
+      res.end(Buffer.from(body));
+    } catch (err) {
+      console.error("[INFO-PROXY] Error:", err);
+      res.status(502).send("Bad gateway – could not reach SquareSpace.");
+    }
+  }
+
+  app.get("/info", proxyToSquarespace);
+  app.get("/info/*", proxyToSquarespace);
 
   const server = await registerRoutes(app);
 
