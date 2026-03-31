@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Menu, Calendar, Crown, LogOut, Wrench, Building2, Package, MessageCircle, Trophy, Gift, User as UserIcon, HelpCircle, FileText, LayoutDashboard, Users, Download, Shield } from "lucide-react";
+import { Menu, Calendar, Crown, LogOut, Wrench, Building2, Package, MessageCircle, Trophy, Gift, User as UserIcon, HelpCircle, FileText, LayoutDashboard, Users, Download, Shield, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Notifications } from "@/components/notifications";
@@ -380,6 +380,32 @@ export default function Header() {
               </Sheet>
             )}
             
+            {typedUser?.role === 'homeowner' && (
+              <a
+                href="https://gotohomebase.com/info"
+                target="_blank"
+                rel="noopener noreferrer"
+                data-testid="link-myhomebase-info-header"
+              >
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="hidden sm:flex items-center gap-1.5 text-xs h-8 px-3 border-purple-300 text-purple-700 hover:bg-purple-50"
+                >
+                  <Info className="h-3.5 w-3.5" />
+                  MyHomeBase Info
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="sm:hidden p-2 text-purple-700"
+                  aria-label="MyHomeBase Info"
+                >
+                  <Info className="h-5 w-5" />
+                </Button>
+              </a>
+            )}
+
             <button
               className="p-1.5 sm:p-2 rounded-xl transition-all duration-200 hover:bg-gray-100 active:bg-gray-200"
               aria-label="Return to homepage"

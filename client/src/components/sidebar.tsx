@@ -15,7 +15,8 @@ import {
   Shield,
   LayoutDashboard,
   Users,
-  CreditCard
+  CreditCard,
+  Info
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient } from "@/lib/queryClient";
@@ -229,6 +230,18 @@ export default function Sidebar() {
                 Support
               </button>
             </Link>
+            <a
+              href="https://gotohomebase.com/info"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full"
+              data-testid="nav-myhomebase-info"
+            >
+              <button className="w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium text-purple-600 hover:bg-purple-50 transition-colors">
+                <Info className="w-5 h-5" />
+                MyHomeBase Info
+              </button>
+            </a>
             {isInstallable && (
               <button
                 onClick={handleInstallClick}
