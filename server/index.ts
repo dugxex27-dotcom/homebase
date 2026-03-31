@@ -173,8 +173,12 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  // Proxy /info to SquareSpace while preserving the gotohomebase.com/info URL
-  app.use("/info", createProxyMiddleware({
+  // Proxy /info (and any /info/* sub-paths) to SquareSpace while keeping the
+  // gotohomebase.com/info URL visible in the browser.
+  // Mounting at root (no Express path prefix) preserves the full path so
+  // SquareSpace receives exactly /info instead of a stripped /.
+  app.use(createProxyMiddleware({
+    pathFilter: ["/info", "/info/**"],
     target: "https://www.gotohomebase.squarespace.com",
     changeOrigin: true,
     on: {
