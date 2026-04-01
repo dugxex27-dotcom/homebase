@@ -454,6 +454,66 @@ export default function AgentHandoff() {
                         </Button>
                       </div>
                     </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-800 mb-3">Property Details</h3>
+                      <div className="grid grid-cols-2 gap-3 p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <Label className="text-xs text-gray-500 mb-1 block">Year Built</Label>
+                          <Input type="number" placeholder="e.g. 1998" value={editingData.propertyDetails.yearBuilt ?? ""} onChange={e => setEditingData({ ...editingData, propertyDetails: { ...editingData.propertyDetails, yearBuilt: e.target.value ? parseInt(e.target.value) : null } })} />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-gray-500 mb-1 block">Square Footage</Label>
+                          <Input type="number" placeholder="e.g. 2400" value={editingData.propertyDetails.squareFootage ?? ""} onChange={e => setEditingData({ ...editingData, propertyDetails: { ...editingData.propertyDetails, squareFootage: e.target.value ? parseInt(e.target.value) : null } })} />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-gray-500 mb-1 block">Roof Type</Label>
+                          <Input placeholder="e.g. Asphalt shingle" value={editingData.propertyDetails.roofType ?? ""} onChange={e => setEditingData({ ...editingData, propertyDetails: { ...editingData.propertyDetails, roofType: e.target.value || null } })} />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-gray-500 mb-1 block">Roof Age (years)</Label>
+                          <Input type="number" placeholder="e.g. 5" value={editingData.propertyDetails.roofAge ?? ""} onChange={e => setEditingData({ ...editingData, propertyDetails: { ...editingData.propertyDetails, roofAge: e.target.value ? parseInt(e.target.value) : null } })} />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-gray-500 mb-1 block">Foundation Type</Label>
+                          <Input placeholder="e.g. Poured concrete" value={editingData.propertyDetails.foundationType ?? ""} onChange={e => setEditingData({ ...editingData, propertyDetails: { ...editingData.propertyDetails, foundationType: e.target.value || null } })} />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-gray-500 mb-1 block">Electrical Panel (amps)</Label>
+                          <Input type="number" placeholder="e.g. 200" value={editingData.propertyDetails.electricalPanelAmps ?? ""} onChange={e => setEditingData({ ...editingData, propertyDetails: { ...editingData.propertyDetails, electricalPanelAmps: e.target.value ? parseInt(e.target.value) : null } })} />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-gray-500 mb-1 block">Heating Fuel</Label>
+                          <Input placeholder="e.g. Natural gas" value={editingData.propertyDetails.heatingFuel ?? ""} onChange={e => setEditingData({ ...editingData, propertyDetails: { ...editingData.propertyDetails, heatingFuel: e.target.value || null } })} />
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-800 mb-3">Warranties ({editingData.warranties.length})</h3>
+                      <div className="space-y-3">
+                        {editingData.warranties.map((w, idx) => (
+                          <div key={idx} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                            <div className="flex-1 grid grid-cols-2 gap-2">
+                              <Input placeholder="Item (e.g. Roof)" value={w.item} onChange={e => { const ws = [...editingData.warranties]; ws[idx] = { ...ws[idx], item: e.target.value }; setEditingData({ ...editingData, warranties: ws }); }} />
+                              <Input placeholder="Expiration date" value={w.expiration ?? ""} onChange={e => { const ws = [...editingData.warranties]; ws[idx] = { ...ws[idx], expiration: e.target.value || null }; setEditingData({ ...editingData, warranties: ws }); }} />
+                              <Input className="col-span-2" placeholder="Notes" value={w.notes ?? ""} onChange={e => { const ws = [...editingData.warranties]; ws[idx] = { ...ws[idx], notes: e.target.value || null }; setEditingData({ ...editingData, warranties: ws }); }} />
+                            </div>
+                            <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700 mt-1" onClick={() => setEditingData({ ...editingData, warranties: editingData.warranties.filter((_, i) => i !== idx) })}><Trash2 className="w-4 h-4" /></Button>
+                          </div>
+                        ))}
+                        <Button variant="outline" size="sm" onClick={() => setEditingData({ ...editingData, warranties: [...editingData.warranties, { item: "", expiration: null, notes: null }] })}>
+                          <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Warranty
+                        </Button>
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-800 mb-2">General Notes</h3>
+                      <Textarea
+                        placeholder="Any additional notes about this property..."
+                        value={editingData.generalNotes ?? ""}
+                        onChange={e => setEditingData({ ...editingData, generalNotes: e.target.value || null })}
+                        rows={3}
+                      />
+                    </div>
                   </div>
                 ) : detail.extractedData ? (
                   <ExtractedDataView data={detail.extractedData} />
@@ -472,7 +532,7 @@ function ExtractedDataView({ data }: { data: ExtractedData }) {
 
   return (
     <div className="space-y-6">
-      {Object.keys(propertyDetails).some(k => (propertyDetails as any)[k]) && (
+      {Object.keys(propertyDetails).some(k => Boolean((propertyDetails as Record<string, unknown>)[k])) && (
         <div>
           <h3 className="font-semibold text-gray-800 mb-3 text-sm uppercase tracking-wide text-gray-500">Property Details</h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">

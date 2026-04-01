@@ -9,6 +9,14 @@ export default function Onboarding() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
+  // Capture handoff_token from URL param or sessionStorage so we can redirect
+  // the new buyer back to their claim page after registration.
+  const urlParams = new URLSearchParams(window.location.search);
+  const handoffToken = urlParams.get("handoff_token") || sessionStorage.getItem("pendingHandoffToken") || null;
+  if (handoffToken) {
+    sessionStorage.setItem("pendingHandoffToken", handoffToken);
+  }
+
   const registerMutation = useMutation({
     mutationFn: async (data: any) => {
       const response = await apiRequest("/api/auth/register", "POST", {
@@ -35,14 +43,19 @@ export default function Onboarding() {
         description: "Your account has been created successfully. Let's get started!",
       });
       
-      // Redirect based on role
+      // Redirect based on role — homeowners with a pending handoff go to their claim page
       const role = data.user?.role || 'homeowner';
       if (role === 'contractor') {
         setLocation('/contractor-dashboard');
       } else if (role === 'agent') {
         setLocation('/agent-dashboard');
       } else {
-        setLocation('/');
+        const pendingToken = sessionStorage.getItem("pendingHandoffToken");
+        if (pendingToken) {
+          setLocation(`/handoff/${pendingToken}`);
+        } else {
+          setLocation('/');
+        }
       }
     },
     onError: (error: Error) => {
