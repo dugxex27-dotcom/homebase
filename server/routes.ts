@@ -13754,10 +13754,11 @@ If the document contains no relevant home information, return the structure with
       // Extract content and run AI analysis
       if (req.file.mimetype === "application/pdf") {
         try {
-          // Dynamic import for pdf-parse (CJS module)
-          const pdfParse = (await import("pdf-parse")).default;
-          const pdfData = await pdfParse(req.file.buffer);
-          extractedText = pdfData.text;
+          // pdf-parse@2.x uses a class-based API: new PDFParse({ data: Buffer, verbosity })
+          const { PDFParse, VerbosityLevel } = await import("pdf-parse");
+          const parser = new PDFParse({ data: req.file.buffer, verbosity: VerbosityLevel.ERRORS });
+          const result = await parser.getText();
+          extractedText = result.text ?? "";
         } catch (pdfErr) {
           console.warn("[HANDOFF] PDF parse error:", pdfErr);
           extractedText = "(PDF text extraction failed - AI will analyze without text)";
