@@ -254,22 +254,19 @@ function placeDots(items: DotItem[], zone: ZoneDef): PlacedDot[] {
   const usableW = Math.max(DOT_R * 2, zone.w - DOT_R * 2);
   const usableH = Math.max(DOT_R * 2, zone.h - DOT_R * 2);
 
-  // Find columns + spacing that keep all dots within w×h bounding box.
-  // Try standard spacing first, then reduce if rows overflow the zone height.
+  // Reduce spacing until all rows fit within usableH.
+  // Columns are always capped by usableW (never push cols beyond what fits).
   let spacing = 20;
-  let cols = Math.min(items.length, Math.max(1, Math.floor((usableW + spacing) / spacing)));
-  let rows = Math.ceil(items.length / cols);
+  let cols: number;
+  let rows: number;
 
-  // If rows overflow vertically, push more items into each row (more columns)
-  while (rows > 1 && (rows - 1) * spacing > usableH && cols < items.length) {
-    cols++;
+  do {
+    const maxColsByWidth = Math.max(1, Math.floor((usableW + spacing) / spacing));
+    cols = Math.min(items.length, maxColsByWidth);
     rows = Math.ceil(items.length / cols);
-  }
-
-  // If still overflowing, shrink spacing to fit vertically (min 14px)
-  if (rows > 1 && (rows - 1) * spacing > usableH) {
-    spacing = Math.max(14, Math.floor(usableH / (rows - 1)));
-  }
+    if (rows <= 1 || (rows - 1) * spacing <= usableH) break;
+    spacing -= 2;
+  } while (spacing >= 14);
 
   const totalW = (cols - 1) * spacing;
   const totalH = (rows - 1) * spacing;
@@ -283,7 +280,7 @@ function placeDots(items: DotItem[], zone: ZoneDef): PlacedDot[] {
     const isLastRow = row === rows - 1 && rowCount < cols;
     const rowShiftX = isLastRow ? ((cols - rowCount) * spacing) / 2 : 0;
 
-    // Compute position and clamp within zone bounding box
+    // Clamp to zone bounding box as a final safety net
     const rawCx = zone.cx - totalW / 2 + col * spacing + rowShiftX;
     const rawCy = zone.cy - totalH / 2 + row * spacing;
     const cx = Math.max(zone.cx - halfW, Math.min(zone.cx + halfW, rawCx));
@@ -343,7 +340,7 @@ export default function HouseMap({ houseId, homeownerId }: HouseMapProps) {
 
   const openDot = placed.find(d => d.id === openId);
 
-  if (systems.length === 0 && appliances.length === 0) return null;
+  const isEmpty = systems.length === 0 && appliances.length === 0;
 
   return (
     <div className="mt-2">
@@ -401,6 +398,15 @@ export default function HouseMap({ houseId, homeownerId }: HouseMapProps) {
           <text x="116" y="494" fill="#4b5563" fontSize="8.5">Replace Soon</text>
           <circle cx="175" cy="490" r="5" fill="#9ca3af" />
           <text x="184" y="494" fill="#4b5563" fontSize="8.5">Date Unknown</text>
+
+          {/* ── Empty state ── */}
+          {isEmpty && (
+            <>
+              <rect x="160" y="240" width="300" height="52" rx="8" fill="white" stroke="#d1d5db" strokeWidth="1.5" />
+              <text x="310" y="261" textAnchor="middle" fill="#6b7280" fontSize="10" fontWeight="600">No items tracked yet</text>
+              <text x="310" y="280" textAnchor="middle" fill="#9ca3af" fontSize="8.5">Add systems &amp; appliances to see them here</text>
+            </>
+          )}
 
           {/* ── Dots ── */}
           {placed.map(dot => (
