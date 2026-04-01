@@ -4,7 +4,6 @@ import { Users, Package, Calendar, Search, MapPin, Star, CheckCircle, TrendingUp
 import HeroSection from "@/components/hero-section";
 import HomeHealthScore from "@/components/home-health-score";
 import HouseMap from "@/components/house-map";
-import HomeownerSetupWizard from "@/components/homeowner-setup-wizard";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +20,6 @@ export default function Home() {
   const typedUser = user as User | undefined;
   const [, setLocation] = useLocation();
   const { isPaidSubscriber, subscriptionStatus, isLoading: subLoading } = useHomeownerSubscription();
-  const [wizardDismissed, setWizardDismissed] = useState(false);
 
   // Redirect contractors and agents to their dashboards; redirect inactive homeowners to trial setup
   useEffect(() => {
@@ -34,12 +32,6 @@ export default function Home() {
     }
   }, [typedUser, setLocation, subscriptionStatus, subLoading]);
 
-  // Wizard progress query
-  const { data: wizardProgress } = useQuery<{ step: number; completedAt: string | null; data: object }>({
-    queryKey: ["/api/homeowner/wizard-progress"],
-    enabled: typedUser?.role === "homeowner" && subscriptionStatus !== "inactive",
-  });
-
   // Inspection summary query
   const { data: inspectionSummary } = useQuery<{
     id: string; inspectionDate: string | null; inspectorName: string | null;
@@ -48,16 +40,6 @@ export default function Home() {
     queryKey: ["/api/homeowner/inspection-summary"],
     enabled: typedUser?.role === "homeowner",
   });
-
-  // Show wizard for new homeowners who haven't completed it (skip for demo accounts)
-  const isDemo = typedUser?.id?.startsWith("demo-");
-  const showWizard = !wizardDismissed &&
-    !isDemo &&
-    typedUser?.role === "homeowner" &&
-    subscriptionStatus !== "inactive" &&
-    !subLoading &&
-    wizardProgress !== undefined &&
-    !wizardProgress?.completedAt;
 
   // Referral data query for homeowners - only fetch if paid subscriber
   const { data: referralData } = useQuery({
@@ -84,11 +66,6 @@ export default function Home() {
   const referralsNeeded = subscriptionCost;
   const referralsRemaining = Math.max(0, referralsNeeded - referralCount);
   const progressPercentage = Math.min(100, (referralCount / referralsNeeded) * 100);
-
-  // Show wizard overlay for new homeowners
-  if (showWizard) {
-    return <HomeownerSetupWizard onComplete={() => setWizardDismissed(true)} />;
-  }
 
   return (
     <div className="min-h-screen" style={{ 
@@ -128,7 +105,7 @@ export default function Home() {
                 <p className="text-gray-600 max-w-xl mx-auto">Track your home's health and maintenance all in one place.</p>
               </div>
               
-              <div className="rounded-xl p-6 mb-6" style={{ backgroundColor: '#ffffff' }}>
+              <div className="rounded-xl p-6 mb-6" style={{ backgroundColor: '#ffffff' }} data-tour-id="health-score">
                 <h3 className="text-xl font-bold text-center mb-4" style={{ color: '#2c0f5b' }}>Home Health Score</h3>
                 <div className={`grid gap-4 ${houses.length === 1 ? 'grid-cols-1 max-w-md mx-auto' : houses.length === 2 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 max-w-2xl mx-auto' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
                   {houses.map((house: House) => (
@@ -211,7 +188,7 @@ export default function Home() {
 
               <p className="text-lg mb-8 max-w-3xl mx-auto leading-relaxed text-center" style={{ color: '#2c0f5b' }}>Create a clear, living record of your home — from systems and appliances to maintenance, upgrades, and health.</p>
               
-              <div className="text-center">
+              <div className="text-center" data-tour-id="property-details">
                 <Link href="/maintenance">
                   <Button 
                     size="lg"
@@ -275,7 +252,7 @@ export default function Home() {
       )}
       {/* Referral Card Section - Paid Subscribers Only */}
       {typedUser?.role === 'homeowner' && isPaidSubscriber && (
-        <section className="py-8 sm:py-12" style={{ background: 'transparent' }}>
+        <section className="py-8 sm:py-12" style={{ background: 'transparent' }} data-tour-id="referral">
           <div className="max-w-4xl mx-auto px-3 sm:px-4 lg:px-6">
             <Card className="bg-white border-purple-200 shadow-xl">
               <CardHeader className="pb-4">

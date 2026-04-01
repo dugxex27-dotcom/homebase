@@ -267,7 +267,7 @@ export default function Achievements() {
           <HomeownerTrialBanner />
           
           {/* Page Header */}
-          <div className="mb-6 sm:mb-8">
+          <div className="mb-6 sm:mb-8" data-tour-id="achievements">
             <h1 className="text-xl sm:text-2xl lg:text-4xl font-bold mb-2 text-gray-900 flex items-center gap-2 sm:gap-3">
               <Trophy className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 text-yellow-400" />
               Achievements

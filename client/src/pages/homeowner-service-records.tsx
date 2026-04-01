@@ -381,7 +381,7 @@ export default function HomeownerServiceRecords() {
         </div>
 
         {/* Add Service Record Button */}
-        <div className="mb-6">
+        <div className="mb-6" data-tour-id="service-records">
           <Button 
             onClick={handleAddNewMaintenanceLog} 
             className="bg-white text-purple-900 hover:bg-gray-100"

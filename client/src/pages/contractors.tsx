@@ -372,7 +372,7 @@ export default function Contractors() {
           </h2>
           
           {/* Horizontal Filters */}
-          <div className="bg-card rounded-xl shadow-sm border p-4 sm:p-6 mb-6 sm:mb-8">
+          <div className="bg-card rounded-xl shadow-sm border p-4 sm:p-6 mb-6 sm:mb-8" data-tour-id="find-contractors">
             <h3 className="text-base sm:text-lg font-semibold text-foreground mb-4 sm:mb-6">Find Your Perfect Contractor</h3>
             
             {/* House Selection Banner - Only show for authenticated homeowners with houses */}

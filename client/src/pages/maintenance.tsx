@@ -3294,6 +3294,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       className="px-8 py-3 text-lg font-semibold"
                       style={{ backgroundColor: '#1560a2', color: 'white' }}
                       data-testid="button-find-contractors-general"
+                      data-tour-id="find-contractors"
                     >
                       <MapPin className="w-5 h-5 mr-2" />
                       Find Contractors
@@ -3767,24 +3768,25 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             })()}
 
             {/* Tasks Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {filteredTasks.map((task) => {
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" data-tour-id="task-list">
+              {filteredTasks.map((task, taskIdx) => {
                 const completed = isTaskCompleted(task.id);
                 const taskOverride = getTaskOverride(task.title, taskOverrides);
                 const displayDescription = taskOverride?.customDescription || task.description;
                 
                 return (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    completed={completed}
-                    displayDescription={displayDescription}
-                    generateTaskId={generateTaskId}
-                    onOpenDialog={() => {
-                      setSelectedTask(task);
-                      setIsTaskDetailDialogOpen(true);
-                    }}
-                  />
+                  <div key={task.id} {...(taskIdx === 0 ? { 'data-tour-id': 'task-complete' } : {})}>
+                    <TaskCard
+                      task={task}
+                      completed={completed}
+                      displayDescription={displayDescription}
+                      generateTaskId={generateTaskId}
+                      onOpenDialog={() => {
+                        setSelectedTask(task);
+                        setIsTaskDetailDialogOpen(true);
+                      }}
+                    />
+                  </div>
                 );
               })}
 
@@ -3812,7 +3814,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
         {/* Appliances Section */}
         {selectedHouseId && (
-          <div className="mt-12">
+          <div className="mt-12" data-tour-id="appliances">
             <div className="text-center space-y-3 mb-6">
               <h2 className="text-2xl font-bold" style={{ color: '#2c0f5b' }}>Home Appliances</h2>
               <p className="text-lg" style={{ color: '#2c0f5b' }}>
