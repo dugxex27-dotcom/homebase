@@ -360,6 +360,42 @@ export default function AgentDashboard() {
           </CardContent>
         </Card>
 
+        {/* Home Handoffs Section */}
+        <Card className="mb-8 bg-white dark:bg-gray-800 border-emerald-200 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span className="flex items-center gap-2 text-gray-900 dark:text-white">
+                <ArrowRight className="h-5 w-5 text-emerald-600" />
+                Home Handoff Packages
+              </span>
+              <Link href="/agent-handoff">
+                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                  Manage Handoffs <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                </Button>
+              </Link>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Upload closing documents for new buyers and let AI extract home system and appliance data into a pre-filled home record. Send buyers a magic link to claim their record instantly.
+            </p>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+                <div className="text-lg font-bold text-emerald-600">1</div>
+                <div className="text-xs text-gray-500">Upload docs</div>
+              </div>
+              <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <div className="text-lg font-bold text-blue-600">2</div>
+                <div className="text-xs text-gray-500">AI extracts data</div>
+              </div>
+              <div className="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                <div className="text-lg font-bold text-purple-600">3</div>
+                <div className="text-xs text-gray-500">Buyer claims record</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Stripe Connect Section */}
         <Card className="mb-8 bg-white dark:bg-gray-800 border-emerald-200 shadow-lg">
           <CardHeader>

@@ -2063,3 +2063,48 @@ export const weatherAlertsSent = pgTable("weather_alerts_sent", {
 export const insertWeatherAlertSentSchema = createInsertSchema(weatherAlertsSent).omit({ id: true, sentAt: true });
 export type InsertWeatherAlertSent = z.infer<typeof insertWeatherAlertSentSchema>;
 export type WeatherAlertSent = typeof weatherAlertsSent.$inferSelect;
+
+// ─── Home Handoff Packages ───────────────────────────────────────────────────
+// Agents upload closing/disclosure documents, AI extracts home info,
+// and the agent sends a magic link to the new homeowner to claim their record.
+
+export const homeHandoffPackages = pgTable("home_handoff_packages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: varchar("agent_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  propertyAddress: text("property_address").notNull(),
+  buyerName: text("buyer_name").notNull(),
+  buyerEmail: text("buyer_email").notNull(),
+  status: text("status").notNull().default("draft"), // "draft" | "sent" | "claimed"
+  inviteToken: varchar("invite_token").unique(),
+  extractedData: jsonb("extracted_data"), // AI-parsed home info (see ExtractedHomeData)
+  notes: text("notes"),
+  claimedByUserId: varchar("claimed_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  claimedAt: timestamp("claimed_at"),
+  sentAt: timestamp("sent_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_handoff_packages_agent_id").on(table.agentId),
+  index("IDX_handoff_packages_invite_token").on(table.inviteToken),
+  index("IDX_handoff_packages_status").on(table.status),
+]);
+
+export const insertHomeHandoffPackageSchema = createInsertSchema(homeHandoffPackages).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertHomeHandoffPackage = z.infer<typeof insertHomeHandoffPackageSchema>;
+export type HomeHandoffPackage = typeof homeHandoffPackages.$inferSelect;
+
+export const handoffDocuments = pgTable("handoff_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  handoffPackageId: varchar("handoff_package_id").notNull().references(() => homeHandoffPackages.id, { onDelete: "cascade" }),
+  fileName: text("file_name").notNull(),
+  fileType: text("file_type").notNull(), // "pdf" | "image" | "other"
+  storageKey: text("storage_key"), // GCS path or null if text-only
+  extractedText: text("extracted_text"), // raw text content returned by AI
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_handoff_documents_package_id").on(table.handoffPackageId),
+]);
+
+export const insertHandoffDocumentSchema = createInsertSchema(handoffDocuments).omit({ id: true, createdAt: true });
+export type InsertHandoffDocument = z.infer<typeof insertHandoffDocumentSchema>;
+export type HandoffDocument = typeof handoffDocuments.$inferSelect;

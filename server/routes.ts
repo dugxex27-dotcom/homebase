@@ -9,7 +9,7 @@ import { z } from "zod";
 import { randomUUID } from "crypto";
 import rateLimit from "express-rate-limit";
 import { eq, and, or, lte, isNull, isNotNull, desc } from "drizzle-orm";
-import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, maintenanceTasks, customMaintenanceTasks, insertSupportTicketSchema, insertSubscriptionCycleEventSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, crmClients, crmJobs, crmQuotes, crmInvoices, securitySessions, referralCredits, agentProfiles, users, siteContent, insertSiteContentSchema, maintenanceLogs, homeAppliances, homeSystems, taskOverrides, type House } from "@shared/schema";
+import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, maintenanceTasks, customMaintenanceTasks, insertSupportTicketSchema, insertSubscriptionCycleEventSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, crmClients, crmJobs, crmQuotes, crmInvoices, securitySessions, referralCredits, agentProfiles, users, siteContent, insertSiteContentSchema, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, type House } from "@shared/schema";
 import { calculateDIYSavingsAmount } from "@shared/cost-helpers";
 import pushRoutes from "./push-routes";
 import { pushService } from "./push-service";
@@ -13542,6 +13542,462 @@ Important: Only recommend service types from the available list. Match problems 
       res.status(500).json({ message: "Failed to update site content" });
     }
   });
+
+  // ─── Home Handoff Package Routes ─────────────────────────────────────────────
+  // (objectStorageService is already instantiated earlier in this function)
+
+  // Helper: extract home data from document content using OpenAI
+  async function extractHomeDataFromText(documentText: string, fileName: string): Promise<any> {
+    const systemPrompt = `You are an expert at reading real estate closing documents, disclosure forms, and home inspection reports.
+Extract structured home information from the provided document text.
+Return ONLY valid JSON matching this exact structure (use null for unknown values):
+{
+  "systems": [
+    { "name": "string (e.g. Central AC, Gas Furnace)", "brand": "string|null", "model": "string|null", "yearInstalled": number|null, "notes": "string|null" }
+  ],
+  "appliances": [
+    { "name": "string (e.g. Dishwasher, Water Heater)", "make": "string|null", "model": "string|null", "serialNumber": "string|null", "yearInstalled": number|null, "warrantyExpiration": "string|null", "notes": "string|null" }
+  ],
+  "propertyDetails": {
+    "yearBuilt": number|null,
+    "squareFootage": number|null,
+    "roofType": "string|null",
+    "roofAge": number|null,
+    "foundationType": "string|null",
+    "electricalPanelAmps": number|null,
+    "heatingFuel": "string|null"
+  },
+  "warranties": [
+    { "item": "string", "expiration": "string|null", "notes": "string|null" }
+  ],
+  "generalNotes": "string|null"
+}
+Systems include: HVAC, furnace, air conditioner, heat pump, water heater, plumbing, electrical panel, roof, gutters, siding, windows, doors, septic, well pump, sump pump, etc.
+Appliances include: refrigerator, dishwasher, washer, dryer, range/oven, microwave, garbage disposal, etc.
+If the document contains no relevant home information, return the structure with empty arrays.`;
+
+    const userPrompt = `Document: ${fileName}\n\nContent:\n${documentText.slice(0, 12000)}`;
+
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.1,
+      });
+      const raw = response.choices[0]?.message?.content || "{}";
+      return JSON.parse(raw);
+    } catch (err) {
+      console.error("[HANDOFF AI] extraction error:", err);
+      return { systems: [], appliances: [], propertyDetails: {}, warranties: [], generalNotes: null };
+    }
+  }
+
+  // Helper: merge AI extraction results into existing extractedData
+  function mergeExtractedData(existing: any, incoming: any): any {
+    const base = existing || { systems: [], appliances: [], propertyDetails: {}, warranties: [], generalNotes: null };
+    return {
+      systems: [...(base.systems || []), ...(incoming.systems || [])],
+      appliances: [...(base.appliances || []), ...(incoming.appliances || [])],
+      propertyDetails: { ...(base.propertyDetails || {}), ...(incoming.propertyDetails || {}) },
+      warranties: [...(base.warranties || []), ...(incoming.warranties || [])],
+      generalNotes: [base.generalNotes, incoming.generalNotes].filter(Boolean).join(" | ") || null,
+    };
+  }
+
+  // List handoff packages for the authenticated agent
+  app.get("/api/agent/handoff-packages", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.user?.id;
+      if (req.session?.user?.role !== "agent") return res.status(403).json({ message: "Agent access only" });
+
+      const packages = await db.select()
+        .from(homeHandoffPackages)
+        .where(eq(homeHandoffPackages.agentId, userId))
+        .orderBy(desc(homeHandoffPackages.createdAt));
+
+      res.json(packages);
+    } catch (err) {
+      console.error("[HANDOFF] list error:", err);
+      res.status(500).json({ message: "Failed to fetch handoff packages" });
+    }
+  });
+
+  // Create a new handoff package
+  app.post("/api/agent/handoff-packages", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.user?.id;
+      if (req.session?.user?.role !== "agent") return res.status(403).json({ message: "Agent access only" });
+
+      const schema = z.object({
+        propertyAddress: z.string().min(5, "Address is required"),
+        buyerName: z.string().min(1, "Buyer name is required"),
+        buyerEmail: z.string().email("Valid email required"),
+        notes: z.string().optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0].message });
+
+      const [pkg] = await db.insert(homeHandoffPackages).values({
+        agentId: userId,
+        propertyAddress: parsed.data.propertyAddress,
+        buyerName: parsed.data.buyerName,
+        buyerEmail: parsed.data.buyerEmail,
+        notes: parsed.data.notes || null,
+        status: "draft",
+      }).returning();
+
+      res.json(pkg);
+    } catch (err) {
+      console.error("[HANDOFF] create error:", err);
+      res.status(500).json({ message: "Failed to create handoff package" });
+    }
+  });
+
+  // Get a single handoff package with its documents
+  app.get("/api/agent/handoff-packages/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.user?.id;
+      if (req.session?.user?.role !== "agent") return res.status(403).json({ message: "Agent access only" });
+
+      const [pkg] = await db.select().from(homeHandoffPackages)
+        .where(and(eq(homeHandoffPackages.id, req.params.id), eq(homeHandoffPackages.agentId, userId)));
+      if (!pkg) return res.status(404).json({ message: "Package not found" });
+
+      const docs = await db.select().from(handoffDocuments)
+        .where(eq(handoffDocuments.handoffPackageId, pkg.id))
+        .orderBy(desc(handoffDocuments.createdAt));
+
+      res.json({ ...pkg, documents: docs });
+    } catch (err) {
+      console.error("[HANDOFF] get error:", err);
+      res.status(500).json({ message: "Failed to fetch package" });
+    }
+  });
+
+  // Upload a document to a handoff package and trigger AI extraction
+  app.post("/api/agent/handoff-packages/:id/documents", isAuthenticated, uploadLimiter, upload.single("document"), async (req: any, res) => {
+    try {
+      const userId = req.session?.user?.id;
+      if (req.session?.user?.role !== "agent") return res.status(403).json({ message: "Agent access only" });
+
+      const [pkg] = await db.select().from(homeHandoffPackages)
+        .where(and(eq(homeHandoffPackages.id, req.params.id), eq(homeHandoffPackages.agentId, userId)));
+      if (!pkg) return res.status(404).json({ message: "Package not found" });
+
+      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+
+      const allowedTypes = ["application/pdf", "image/jpeg", "image/jpg", "image/png", "image/webp", "image/tiff"];
+      if (!allowedTypes.includes(req.file.mimetype)) {
+        return res.status(400).json({ message: "Unsupported file type. Please upload PDF or image files." });
+      }
+
+      const ext = req.file.originalname.split(".").pop()?.toLowerCase() || "bin";
+      const storageKey = `handoff-documents/${pkg.id}/${randomUUID()}.${ext}`;
+      let fileType = req.file.mimetype.startsWith("image/") ? "image" : req.file.mimetype === "application/pdf" ? "pdf" : "other";
+      let extractedText = "";
+      let aiData: any = { systems: [], appliances: [], propertyDetails: {}, warranties: [], generalNotes: null };
+
+      // Upload to object storage
+      try {
+        await objectStorageService.uploadFile(storageKey, req.file.buffer, req.file.mimetype);
+      } catch (uploadErr) {
+        console.warn("[HANDOFF] Object storage upload failed (may not be configured):", uploadErr);
+      }
+
+      // Extract content and run AI analysis
+      if (req.file.mimetype === "application/pdf") {
+        try {
+          // Dynamic import for pdf-parse (CJS module)
+          const pdfParse = (await import("pdf-parse")).default;
+          const pdfData = await pdfParse(req.file.buffer);
+          extractedText = pdfData.text;
+        } catch (pdfErr) {
+          console.warn("[HANDOFF] PDF parse error:", pdfErr);
+          extractedText = "(PDF text extraction failed - AI will analyze without text)";
+        }
+
+        if (extractedText.trim().length > 50) {
+          aiData = await extractHomeDataFromText(extractedText, req.file.originalname);
+        }
+      } else if (req.file.mimetype.startsWith("image/")) {
+        // Use GPT-4o vision for images
+        try {
+          const base64 = req.file.buffer.toString("base64");
+          const imageUrl = `data:${req.file.mimetype};base64,${base64}`;
+          const response = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [
+              {
+                role: "system",
+                content: `Extract home information from this real estate document image and return ONLY valid JSON:
+{
+  "systems": [{"name":"string","brand":"string|null","model":"string|null","yearInstalled":number|null,"notes":"string|null"}],
+  "appliances": [{"name":"string","make":"string|null","model":"string|null","serialNumber":"string|null","yearInstalled":number|null,"warrantyExpiration":"string|null","notes":"string|null"}],
+  "propertyDetails": {"yearBuilt":number|null,"squareFootage":number|null,"roofType":"string|null","roofAge":number|null,"foundationType":"string|null","electricalPanelAmps":number|null,"heatingFuel":"string|null"},
+  "warranties": [{"item":"string","expiration":"string|null","notes":"string|null"}],
+  "generalNotes":"string|null"
+}`
+              },
+              {
+                role: "user",
+                content: [
+                  { type: "image_url", image_url: { url: imageUrl } }
+                ] as any
+              }
+            ],
+            response_format: { type: "json_object" },
+            temperature: 0.1,
+          });
+          const raw = response.choices[0]?.message?.content || "{}";
+          aiData = JSON.parse(raw);
+          extractedText = "(image analyzed by AI vision)";
+        } catch (visionErr) {
+          console.error("[HANDOFF] Vision API error:", visionErr);
+          extractedText = "(image AI analysis failed)";
+        }
+      }
+
+      // Insert the document record
+      const [doc] = await db.insert(handoffDocuments).values({
+        handoffPackageId: pkg.id,
+        fileName: req.file.originalname,
+        fileType,
+        storageKey,
+        extractedText: extractedText.slice(0, 10000),
+      }).returning();
+
+      // Merge AI-extracted data into the package
+      const newExtractedData = mergeExtractedData(pkg.extractedData, aiData);
+      await db.update(homeHandoffPackages)
+        .set({ extractedData: newExtractedData, updatedAt: new Date() })
+        .where(eq(homeHandoffPackages.id, pkg.id));
+
+      res.json({ document: doc, extractedData: newExtractedData });
+    } catch (err) {
+      console.error("[HANDOFF] document upload error:", err);
+      res.status(500).json({ message: "Failed to process document" });
+    }
+  });
+
+  // Update handoff package extracted data (agent edits the AI results)
+  app.patch("/api/agent/handoff-packages/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.user?.id;
+      if (req.session?.user?.role !== "agent") return res.status(403).json({ message: "Agent access only" });
+
+      const [pkg] = await db.select().from(homeHandoffPackages)
+        .where(and(eq(homeHandoffPackages.id, req.params.id), eq(homeHandoffPackages.agentId, userId)));
+      if (!pkg) return res.status(404).json({ message: "Package not found" });
+
+      const schema = z.object({
+        propertyAddress: z.string().min(5).optional(),
+        buyerName: z.string().min(1).optional(),
+        buyerEmail: z.string().email().optional(),
+        notes: z.string().nullable().optional(),
+        extractedData: z.any().optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0].message });
+
+      const updates: Record<string, any> = { updatedAt: new Date() };
+      if (parsed.data.propertyAddress !== undefined) updates.propertyAddress = parsed.data.propertyAddress;
+      if (parsed.data.buyerName !== undefined) updates.buyerName = parsed.data.buyerName;
+      if (parsed.data.buyerEmail !== undefined) updates.buyerEmail = parsed.data.buyerEmail;
+      if (parsed.data.notes !== undefined) updates.notes = parsed.data.notes;
+      if (parsed.data.extractedData !== undefined) updates.extractedData = parsed.data.extractedData;
+
+      const [updated] = await db.update(homeHandoffPackages).set(updates)
+        .where(eq(homeHandoffPackages.id, pkg.id)).returning();
+
+      res.json(updated);
+    } catch (err) {
+      console.error("[HANDOFF] update error:", err);
+      res.status(500).json({ message: "Failed to update package" });
+    }
+  });
+
+  // Send the handoff package to the buyer (generates magic link + sends email)
+  app.post("/api/agent/handoff-packages/:id/send", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.user?.id;
+      if (req.session?.user?.role !== "agent") return res.status(403).json({ message: "Agent access only" });
+
+      const [pkg] = await db.select().from(homeHandoffPackages)
+        .where(and(eq(homeHandoffPackages.id, req.params.id), eq(homeHandoffPackages.agentId, userId)));
+      if (!pkg) return res.status(404).json({ message: "Package not found" });
+      if (pkg.status === "claimed") return res.status(400).json({ message: "This package has already been claimed" });
+
+      // Generate or reuse invite token
+      const token = pkg.inviteToken || randomUUID().replace(/-/g, "");
+      const claimUrl = `${req.protocol}://${req.get("host")}/handoff/${token}`;
+
+      // Get agent info for email personalization
+      const agent = await storage.getUser(userId);
+      const agentName = [agent?.firstName, agent?.lastName].filter(Boolean).join(" ") || "Your real estate agent";
+
+      // Update package status and token
+      await db.update(homeHandoffPackages).set({
+        status: "sent",
+        inviteToken: token,
+        sentAt: new Date(),
+        updatedAt: new Date(),
+      }).where(eq(homeHandoffPackages.id, pkg.id));
+
+      // Send email to buyer
+      const extractedData = pkg.extractedData as any || {};
+      const systemCount = (extractedData.systems || []).length;
+      const applianceCount = (extractedData.appliances || []).length;
+
+      const emailHtml = emailService.wrapEmailContent(
+        emailService.getEmailHeader("Your New Home Record is Ready"),
+        `
+          <p>Hi ${pkg.buyerName},</p>
+          <p>${agentName} has prepared a digital home record for your new property at <strong>${pkg.propertyAddress}</strong>.</p>
+          <p>This record includes:</p>
+          <ul>
+            ${systemCount > 0 ? `<li><strong>${systemCount} home system${systemCount !== 1 ? "s" : ""}</strong> (HVAC, plumbing, electrical, etc.)</li>` : ""}
+            ${applianceCount > 0 ? `<li><strong>${applianceCount} appliance${applianceCount !== 1 ? "s" : ""}</strong> with make, model, and age information</li>` : ""}
+            <li>Extracted from your closing documents</li>
+          </ul>
+          <p>Click below to claim your home record and keep everything in one place:</p>
+          <div style="text-align:center;margin:30px 0;">
+            <a href="${claimUrl}" style="background:#059669;color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:16px;">
+              Claim Your Home Record
+            </a>
+          </div>
+          <p style="color:#888;font-size:13px;">Or copy this link: ${claimUrl}</p>
+          <p>Welcome home! 🏡</p>
+        `
+      );
+
+      const emailSent = await sendEmail({
+        to: pkg.buyerEmail,
+        subject: `Your home record for ${pkg.propertyAddress} is ready`,
+        text: `Hi ${pkg.buyerName}, your agent ${agentName} has prepared your home record. Claim it at: ${claimUrl}`,
+        html: emailHtml,
+      });
+
+      if (!emailSent) {
+        console.log(`[HANDOFF] Email not sent (SendGrid not configured). Claim URL: ${claimUrl}`);
+      }
+
+      res.json({ success: true, claimUrl, emailSent, token });
+    } catch (err) {
+      console.error("[HANDOFF] send error:", err);
+      res.status(500).json({ message: "Failed to send package" });
+    }
+  });
+
+  // PUBLIC: Get handoff package preview by invite token (no auth required)
+  app.get("/api/handoff/:token", async (req, res) => {
+    try {
+      const [pkg] = await db.select().from(homeHandoffPackages)
+        .where(eq(homeHandoffPackages.inviteToken, req.params.token));
+
+      if (!pkg) return res.status(404).json({ message: "Handoff package not found or link is invalid" });
+
+      const extractedData = pkg.extractedData as any || {};
+      res.json({
+        id: pkg.id,
+        propertyAddress: pkg.propertyAddress,
+        buyerName: pkg.buyerName,
+        status: pkg.status,
+        systemCount: (extractedData.systems || []).length,
+        applianceCount: (extractedData.appliances || []).length,
+        hasWarranties: (extractedData.warranties || []).length > 0,
+        propertyDetails: extractedData.propertyDetails || {},
+        generalNotes: extractedData.generalNotes || null,
+        // Full extracted data shown to authenticated claimant
+        extractedData: pkg.status !== "claimed" ? extractedData : undefined,
+      });
+    } catch (err) {
+      console.error("[HANDOFF] public get error:", err);
+      res.status(500).json({ message: "Failed to fetch handoff package" });
+    }
+  });
+
+  // AUTHENTICATED: Homeowner claims the handoff package, creates their home record
+  app.post("/api/handoff/:token/claim", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.user?.id;
+      const userRole = req.session?.user?.role;
+      if (userRole !== "homeowner") return res.status(403).json({ message: "Only homeowners can claim handoff packages" });
+
+      const [pkg] = await db.select().from(homeHandoffPackages)
+        .where(eq(homeHandoffPackages.inviteToken, req.params.token));
+
+      if (!pkg) return res.status(404).json({ message: "Package not found or link is invalid" });
+      if (pkg.status === "claimed") return res.status(400).json({ message: "This home record has already been claimed" });
+
+      const extractedData = pkg.extractedData as any || {};
+
+      // Create the house
+      const [house] = await db.insert(houses).values({
+        homeownerId: userId,
+        name: pkg.propertyAddress.split(",")[0] || pkg.propertyAddress,
+        address: pkg.propertyAddress,
+        climateZone: "temperate",
+        homeSystems: (extractedData.systems || []).map((s: any) => s.name).filter(Boolean),
+        isDefault: false,
+      }).returning();
+
+      // Seed home systems
+      const systemInserts = (extractedData.systems || []).map((s: any) => ({
+        homeownerId: userId,
+        houseId: house.id,
+        systemType: s.name,
+        brand: s.brand || null,
+        model: s.model || null,
+        installationYear: s.yearInstalled || null,
+        notes: s.notes || null,
+      }));
+      if (systemInserts.length > 0) {
+        await db.insert(homeSystems).values(systemInserts);
+      }
+
+      // Seed appliances
+      const applianceInserts = (extractedData.appliances || []).map((a: any) => ({
+        homeownerId: userId,
+        houseId: house.id,
+        name: a.name,
+        make: a.make || "Unknown",
+        model: a.model || "Unknown",
+        serialNumber: a.serialNumber || null,
+        yearInstalled: a.yearInstalled || null,
+        warrantyExpiration: a.warrantyExpiration || null,
+        notes: a.notes || null,
+        location: "",
+      }));
+      if (applianceInserts.length > 0) {
+        await db.insert(homeAppliances).values(applianceInserts);
+      }
+
+      // Mark package as claimed
+      await db.update(homeHandoffPackages).set({
+        status: "claimed",
+        claimedByUserId: userId,
+        claimedAt: new Date(),
+        updatedAt: new Date(),
+      }).where(eq(homeHandoffPackages.id, pkg.id));
+
+      res.json({
+        success: true,
+        houseId: house.id,
+        systemsAdded: systemInserts.length,
+        appliancesAdded: applianceInserts.length,
+        message: `Your home record has been created with ${systemInserts.length} systems and ${applianceInserts.length} appliances.`,
+      });
+    } catch (err) {
+      console.error("[HANDOFF] claim error:", err);
+      res.status(500).json({ message: "Failed to claim handoff package" });
+    }
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
 
   const httpServer = createServer(app);
   

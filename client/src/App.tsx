@@ -58,6 +58,8 @@ const ContractorUpgrade = lazy(() => import("./pages/contractor-upgrade"));
 const AgentDashboard = lazy(() => import("./pages/agent-dashboard"));
 const AgentAccount = lazy(() => import("./pages/agent-account"));
 const AgentReferral = lazy(() => import("./pages/agent-referral"));
+const AgentHandoff = lazy(() => import("./pages/agent-handoff"));
+const HandoffClaim = lazy(() => import("./pages/handoff-claim"));
 
 // Lazy-loaded pages - Admin
 const AdminDashboard = lazy(() => import("./pages/admin"));
@@ -130,6 +132,7 @@ function Router() {
           <Route path="/pay/invoice/:invoiceId" component={PayInvoice} />
           <Route path="/pay/success" component={PaymentSuccess} />
           <Route path="/pay/cancelled" component={PaymentCancelled} />
+          <Route path="/handoff/:token" component={HandoffClaim} />
           <Route path="/" component={Landing} />
           <Route component={Landing} />
         </Switch>
@@ -220,6 +223,8 @@ function Router() {
             <Route path="/agent-dashboard" component={AgentDashboard} />
             <Route path="/agent-account" component={AgentAccount} />
             <Route path="/agent-referral" component={AgentReferral} />
+            <Route path="/agent-handoff" component={AgentHandoff} />
+            <Route path="/handoff/:token" component={HandoffClaim} />
             <Route path="/billing" component={Billing} />
           </>
         )}

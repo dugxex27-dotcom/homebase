@@ -51,6 +51,7 @@ Preferred communication style: Simple, everyday language.
     - Referral rewards system.
     - Stripe Billing Reconciliation for subscription management and billing history.
 - **Real Estate Agent Affiliate System**: Agents earn referral commissions via unique codes, with automated $15 payouts after 4 months of paid subscription, managed through Stripe Connect.
+- **Agent Home Handoff Package**: Agents upload closing/disclosure documents (PDF or images), AI (GPT-4o-mini) extracts home system and appliance data, and a magic-link email is sent to the buyer. Buyers click the link to claim a pre-populated home record (systems + appliances seeded). Routes: `/agent-handoff` (agent management), `/handoff/:token` (buyer claim). DB tables: `home_handoff_packages`, `handoff_documents`.
 - **Gamified Achievement System**: 66 achievements across 8 categories with real-time progress tracking and house-based filtering.
 - **Review Fraud Prevention System**: Comprehensive measures including email verification, account age requirement, one review per customer-contractor, 90-day service window, device fingerprinting, IP address tracking, and an admin flagging system.
 - **Error Tracking**: React ErrorBoundary, client-side error logger, and database schema for error tracking accessible via an admin console.
