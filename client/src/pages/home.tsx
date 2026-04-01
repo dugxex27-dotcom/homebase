@@ -49,8 +49,10 @@ export default function Home() {
     enabled: typedUser?.role === "homeowner",
   });
 
-  // Show wizard for new homeowners who haven't completed it
+  // Show wizard for new homeowners who haven't completed it (skip for demo accounts)
+  const isDemo = typedUser?.id?.startsWith("demo-");
   const showWizard = !wizardDismissed &&
+    !isDemo &&
     typedUser?.role === "homeowner" &&
     subscriptionStatus !== "inactive" &&
     !subLoading &&
