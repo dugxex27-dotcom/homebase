@@ -13843,7 +13843,39 @@ If the document contains no relevant home information, return the structure with
         buyerName: z.string().min(1).optional(),
         buyerEmail: z.string().email().optional(),
         notes: z.string().nullable().optional(),
-        extractedData: z.record(z.string(), z.unknown()).optional(),
+        extractedData: z.object({
+          systems: z.array(z.object({
+            name: z.string(),
+            brand: z.string().nullable().optional(),
+            model: z.string().nullable().optional(),
+            yearInstalled: z.number().nullable().optional(),
+            notes: z.string().nullable().optional(),
+          })).optional(),
+          appliances: z.array(z.object({
+            name: z.string(),
+            make: z.string().nullable().optional(),
+            model: z.string().nullable().optional(),
+            serialNumber: z.string().nullable().optional(),
+            yearInstalled: z.number().nullable().optional(),
+            warrantyExpiration: z.string().nullable().optional(),
+            notes: z.string().nullable().optional(),
+          })).optional(),
+          propertyDetails: z.object({
+            yearBuilt: z.number().nullable().optional(),
+            squareFootage: z.number().nullable().optional(),
+            roofType: z.string().nullable().optional(),
+            roofAge: z.number().nullable().optional(),
+            foundationType: z.string().nullable().optional(),
+            electricalPanelAmps: z.number().nullable().optional(),
+            heatingFuel: z.string().nullable().optional(),
+          }).optional(),
+          warranties: z.array(z.object({
+            item: z.string(),
+            expiration: z.string().nullable().optional(),
+            notes: z.string().nullable().optional(),
+          })).optional(),
+          generalNotes: z.string().nullable().optional(),
+        }).optional(),
       });
       const parsed = schema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0].message });
