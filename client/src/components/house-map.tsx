@@ -133,9 +133,11 @@ const REPLACEMENT_COSTS: Record<string, string> = {
 };
 
 function getArea(name: string, location?: string): AreaKey {
-  const n = name.toLowerCase();
-  const l = (location || "").toLowerCase();
+  // Normalize hyphens to spaces so "central-ac", "gas-furnace", etc. match correctly
+  const n = name.toLowerCase().replace(/-/g, " ");
+  const l = (location || "").toLowerCase().replace(/-/g, " ");
 
+  // Location overrides come first
   if (l.includes("attic")) return "attic";
   if (l.includes("garage")) return "garage";
   if (l.includes("laundry")) return "laundry";
@@ -146,6 +148,7 @@ function getArea(name: string, location?: string): AreaKey {
   if (l.includes("exterior") || l.includes("outside")) return "exterior";
   if (l.includes("crawl") || l.includes("foundation")) return "foundation";
 
+  // Exterior systems
   if (n.includes("garage door")) return "garage";
 
   if (n.includes("roof") || n.includes("shingle") || n.includes("gutter") || n.includes("downspout") ||
@@ -155,28 +158,33 @@ function getArea(name: string, location?: string): AreaKey {
 
   if (n.includes("solar") && !n.includes("water heater")) return "exterior";
 
+  // Foundation / underground
   if (n.includes("foundation") || n.includes("crawl space") || n.includes("vapor barrier") ||
       n.includes("sump pump") || n.includes("ejector pump") || n.includes("septic") ||
       n.includes("well pump") || n.includes("well water") || n.includes("radon")) return "foundation";
 
+  // Attic — HVAC air handler, AC, ductwork, insulation live up here
   if (n.includes("attic insulation") || n.includes("insulation")) return "attic";
-
   if (n.includes("central air") || n.includes("central ac") || n.includes("hvac") ||
-      n.includes("air condition") || n.includes("heat pump") || n.includes("ac unit") ||
-      n.includes("mini split") || n.includes("ductwork")) return "attic";
+      n.includes("air condition") || n.includes("air handler") || n.includes("heat pump") ||
+      n.includes("ac unit") || n.includes("mini split") || n.includes("ductwork")) return "attic";
 
+  // Mechanical room (lower main floor) — furnace, water heater, electrical, plumbing
   if (n.includes("furnace") || n.includes("gas heat") || n.includes("electric heat") ||
       n.includes("boiler") || n.includes("water heater") || n.includes("electrical") ||
-      n.includes("plumbing") || n.includes("copper pipe") || n.includes("pvc pipe")) return "mechanical";
+      n.includes("electrical panel") || n.includes("plumbing") ||
+      n.includes("copper pipe") || n.includes("pvc pipe") ||
+      n.includes("water softener") || n.includes("water filter") || n.includes("water treatment")) return "mechanical";
 
+  // Laundry room
   if (n.includes("washer") || n.includes("dryer")) return "laundry";
 
+  // Kitchen appliances
   if (n.includes("dishwasher") || n.includes("refrigerator") || n.includes("fridge") ||
       n.includes("range") || n.includes("oven") || n.includes("stove") || n.includes("microwave") ||
       n.includes("garbage disposal") || n.includes("disposal") || n.includes("freezer")) return "kitchen";
 
-  if (n.includes("water softener") || n.includes("water filter") || n.includes("water treatment")) return "bathroom";
-
+  // Safety devices — spread across living area
   if (n.includes("security") || n.includes("alarm") || n.includes("smoke") ||
       n.includes("carbon monoxide") || n.includes("co detector")) return "living";
 
@@ -199,7 +207,7 @@ function getAge(item: HomeSystem | HomeAppliance): number | null {
 }
 
 function getLifespan(name: string): number {
-  const n = name.toLowerCase();
+  const n = name.toLowerCase().replace(/-/g, " ");
   for (const [key, val] of Object.entries(LIFESPANS)) {
     if (n.includes(key)) return val;
   }
@@ -207,7 +215,7 @@ function getLifespan(name: string): number {
 }
 
 function getReplacementCost(name: string): string {
-  const n = name.toLowerCase();
+  const n = name.toLowerCase().replace(/-/g, " ");
   for (const [key, val] of Object.entries(REPLACEMENT_COSTS)) {
     if (n.includes(key)) return val;
   }
