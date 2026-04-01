@@ -42,22 +42,22 @@ type AreaKey =
 
 type StatusType = "green" | "yellow" | "red" | "unknown";
 
-const VB_W = 620;
-const VB_H = 506;
+const VB_W = 800;
+const VB_H = 486;
 
 type ZoneDef = { label: string; cx: number; cy: number; w: number; h: number };
 
 const ZONES: Record<AreaKey, ZoneDef> = {
-  exterior:   { label: "Exterior Systems",  cx: 310, cy: 34,  w: 580, h: 42  },
-  attic:      { label: "Attic",             cx: 235, cy: 100, w: 160, h: 22  },
-  bedroom:    { label: "Bedroom(s)",        cx: 118, cy: 192, w: 200, h: 74  },
-  bathroom:   { label: "Bathroom(s)",       cx: 348, cy: 192, w: 200, h: 74  },
-  living:     { label: "Living / Dining",   cx: 118, cy: 294, w: 200, h: 74  },
-  kitchen:    { label: "Kitchen",           cx: 348, cy: 294, w: 200, h: 74  },
-  mechanical: { label: "Mechanical Room",   cx: 118, cy: 389, w: 200, h: 60  },
-  laundry:    { label: "Laundry Room",      cx: 348, cy: 389, w: 200, h: 60  },
-  foundation: { label: "Foundation",        cx: 235, cy: 462, w: 420, h: 24  },
-  garage:     { label: "Garage",            cx: 535, cy: 330, w: 126, h: 140 },
+  exterior:   { label: "Exterior Systems",  cx: 404, cy: 30,  w: 784, h: 48  },
+  attic:      { label: "Attic",             cx: 285, cy: 101, w: 220, h: 28  },
+  bedroom:    { label: "Bedroom(s)",        cx: 145, cy: 200, w: 270, h: 128 },
+  bathroom:   { label: "Bathroom(s)",       cx: 415, cy: 200, w: 270, h: 128 },
+  living:     { label: "Living / Dining",   cx: 145, cy: 300, w: 270, h: 84  },
+  kitchen:    { label: "Kitchen",           cx: 415, cy: 300, w: 270, h: 84  },
+  mechanical: { label: "Mechanical Room",   cx: 145, cy: 386, w: 270, h: 68  },
+  laundry:    { label: "Laundry Room",      cx: 415, cy: 386, w: 270, h: 68  },
+  foundation: { label: "Foundation",        cx: 285, cy: 438, w: 540, h: 44  },
+  garage:     { label: "Garage",            cx: 670, cy: 340, w: 220, h: 152 },
 };
 
 const LIFESPANS: Record<string, number> = {
@@ -348,63 +348,52 @@ export default function HouseMap({ houseId, homeownerId }: HouseMapProps) {
         <svg viewBox={`0 0 ${VB_W} ${VB_H}`} className="w-full h-auto" style={{ maxHeight: 440 }}>
 
           {/* ── Exterior Systems Banner ── */}
-          <rect x="8" y="6" width="604" height="52" rx="6" fill="#dbeafe" stroke="#93c5fd" strokeWidth="1.5" />
-          <text x="310" y="23" textAnchor="middle" fill="#1e3a8a" fontSize="10" fontWeight="700" letterSpacing="0.5">EXTERIOR SYSTEMS</text>
-          <text x="310" y="38" textAnchor="middle" fill="#2563eb" fontSize="8">Roof · Gutters · Siding · Windows · Doors · Deck · Driveway · Solar · Fence</text>
+          <rect x="8" y="6" width="784" height="48" rx="6" fill="#dbeafe" stroke="#93c5fd" strokeWidth="1.5" />
+          <text x="404" y="24" textAnchor="middle" fill="#1e3a8a" fontSize="10" fontWeight="700" letterSpacing="0.5">EXTERIOR SYSTEMS</text>
+          <text x="404" y="40" textAnchor="middle" fill="#2563eb" fontSize="8">Roof · Gutters · Siding · Windows · Doors · Deck · Driveway · Solar · Fence</text>
 
           {/* ── Attic / Roof Triangle ── */}
-          <polygon points="235,66 464,136 6,136" fill="#ddd6f3" stroke="#7c6ab5" strokeWidth="1.5" />
-          <text x="235" y="124" textAnchor="middle" fill="#5b4d8a" fontSize="9.5" fontWeight="600">Attic</text>
+          <polygon points="285,66 555,136 15,136" fill="#ddd6f3" stroke="#7c6ab5" strokeWidth="1.5" />
+          <text x="285" y="124" textAnchor="middle" fill="#5b4d8a" fontSize="9.5" fontWeight="600">Attic</text>
 
-          {/* ── House Main Body outline ── */}
-          {/* Upper floor */}
-          <rect x="15" y="136" width="440" height="102" fill="#ede8f8" stroke="#7c6ab5" strokeWidth="1.5" />
-          <line x1="235" y1="136" x2="235" y2="238" stroke="#7c6ab5" strokeWidth="1" strokeDasharray="4 3" />
-          <text x="118" y="151" textAnchor="middle" fill="#5b4d8a" fontSize="9.5" fontWeight="600">Bedroom(s)</text>
-          <text x="348" y="151" textAnchor="middle" fill="#5b4d8a" fontSize="9.5" fontWeight="600">Bathroom(s)</text>
+          {/* ── Story 2 (upper floor) ── */}
+          <rect x="15" y="136" width="540" height="128" fill="#ede8f8" stroke="#7c6ab5" strokeWidth="1.5" />
+          <line x1="285" y1="136" x2="285" y2="264" stroke="#7c6ab5" strokeWidth="1" strokeDasharray="4 3" />
 
-          {/* Main floor */}
-          <rect x="15" y="238" width="440" height="102" fill="#f0edf8" stroke="#7c6ab5" strokeWidth="1.5" />
-          <line x1="235" y1="238" x2="235" y2="340" stroke="#7c6ab5" strokeWidth="1" strokeDasharray="4 3" />
-          <text x="118" y="253" textAnchor="middle" fill="#5b4d8a" fontSize="9.5" fontWeight="600">Living / Dining</text>
-          <text x="348" y="253" textAnchor="middle" fill="#5b4d8a" fontSize="9.5" fontWeight="600">Kitchen</text>
+          {/* ── Story 1 (main floor) ── */}
+          <rect x="15" y="264" width="540" height="152" fill="#f0edf8" stroke="#7c6ab5" strokeWidth="1.5" />
+          <line x1="285" y1="264" x2="285" y2="416" stroke="#7c6ab5" strokeWidth="1" strokeDasharray="4 3" />
+          {/* subtle internal divider between living and mechanical areas */}
+          <line x1="15" y1="352" x2="555" y2="352" stroke="#7c6ab5" strokeWidth="0.5" strokeDasharray="2 4" opacity="0.4" />
 
-          {/* Lower level */}
-          <rect x="15" y="340" width="440" height="88" fill="#e8e0f0" stroke="#7c6ab5" strokeWidth="1.5" />
-          <line x1="235" y1="340" x2="235" y2="428" stroke="#7c6ab5" strokeWidth="1" strokeDasharray="4 3" />
-          <text x="118" y="355" textAnchor="middle" fill="#5b4d8a" fontSize="9.5" fontWeight="600">Mechanical Room</text>
-          <text x="348" y="355" textAnchor="middle" fill="#5b4d8a" fontSize="9.5" fontWeight="600">Laundry Room</text>
+          {/* ── Foundation strip ── */}
+          <rect x="15" y="416" width="540" height="44" fill="#d1c8e8" stroke="#6b5ca0" strokeWidth="1.5" />
+          <text x="285" y="441" textAnchor="middle" fill="#4a3d7a" fontSize="8.5" fontWeight="600">Foundation · Crawl Space · Sump Pump · Septic · Radon</text>
 
-          {/* Foundation strip */}
-          <rect x="15" y="428" width="440" height="50" rx="0" fill="#d1c8e8" stroke="#6b5ca0" strokeWidth="1.5" />
-          <text x="235" y="441" textAnchor="middle" fill="#4a3d7a" fontSize="8.5" fontWeight="600">Foundation · Crawl Space · Sump Pump · Septic · Radon</text>
-
-          {/* ── Garage ── */}
-          <rect x="462" y="238" width="146" height="240" rx="4" fill="#e8e0f0" stroke="#7c6ab5" strokeWidth="1.5" />
-          <text x="535" y="254" textAnchor="middle" fill="#5b4d8a" fontSize="9.5" fontWeight="600">Garage</text>
+          {/* ── Garage (1 story — aligns with main floor only) ── */}
+          <rect x="560" y="264" width="220" height="152" rx="4" fill="#e8e0f0" stroke="#7c6ab5" strokeWidth="1.5" />
           {/* Garage door sketch */}
-          <rect x="486" y="390" width="96" height="74" rx="3" fill="none" stroke="#9480c4" strokeWidth="1.5" strokeDasharray="3 2" />
-          <line x1="486" y1="415" x2="582" y2="415" stroke="#9480c4" strokeWidth="0.75" strokeDasharray="3 2" />
-          <line x1="486" y1="440" x2="582" y2="440" stroke="#9480c4" strokeWidth="0.75" strokeDasharray="3 2" />
-          <line x1="534" y1="390" x2="534" y2="464" stroke="#9480c4" strokeWidth="0.75" strokeDasharray="3 2" />
-          <text x="534" y="475" textAnchor="middle" fill="#7c6ab5" fontSize="7.5">Garage Door</text>
+          <rect x="592" y="348" width="156" height="62" rx="3" fill="none" stroke="#9480c4" strokeWidth="1.5" strokeDasharray="3 2" />
+          <line x1="592" y1="369" x2="748" y2="369" stroke="#9480c4" strokeWidth="0.75" strokeDasharray="3 2" />
+          <line x1="592" y1="390" x2="748" y2="390" stroke="#9480c4" strokeWidth="0.75" strokeDasharray="3 2" />
+          <line x1="670" y1="348" x2="670" y2="410" stroke="#9480c4" strokeWidth="0.75" strokeDasharray="3 2" />
 
           {/* ── Legend ── */}
-          <circle cx="18" cy="490" r="5" fill="#22c55e" />
-          <text x="27" y="494" fill="#4b5563" fontSize="8.5">Good</text>
-          <circle cx="62" cy="490" r="5" fill="#eab308" />
-          <text x="71" y="494" fill="#4b5563" fontSize="8.5">Aging</text>
-          <circle cx="107" cy="490" r="5" fill="#ef4444" />
-          <text x="116" y="494" fill="#4b5563" fontSize="8.5">Replace Soon</text>
-          <circle cx="175" cy="490" r="5" fill="#9ca3af" />
-          <text x="184" y="494" fill="#4b5563" fontSize="8.5">Date Unknown</text>
+          <circle cx="18" cy="472" r="5" fill="#22c55e" />
+          <text x="27" y="476" fill="#4b5563" fontSize="8.5">Good</text>
+          <circle cx="62" cy="472" r="5" fill="#eab308" />
+          <text x="71" y="476" fill="#4b5563" fontSize="8.5">Aging</text>
+          <circle cx="107" cy="472" r="5" fill="#ef4444" />
+          <text x="116" y="476" fill="#4b5563" fontSize="8.5">Replace Soon</text>
+          <circle cx="175" cy="472" r="5" fill="#9ca3af" />
+          <text x="184" y="476" fill="#4b5563" fontSize="8.5">Date Unknown</text>
 
           {/* ── Empty state ── */}
           {isEmpty && (
             <>
-              <rect x="160" y="240" width="300" height="52" rx="8" fill="white" stroke="#d1d5db" strokeWidth="1.5" />
-              <text x="310" y="261" textAnchor="middle" fill="#6b7280" fontSize="10" fontWeight="600">No items tracked yet</text>
-              <text x="310" y="280" textAnchor="middle" fill="#9ca3af" fontSize="8.5">Add systems &amp; appliances to see them here</text>
+              <rect x="210" y="272" width="300" height="52" rx="8" fill="white" stroke="#d1d5db" strokeWidth="1.5" />
+              <text x="360" y="293" textAnchor="middle" fill="#6b7280" fontSize="10" fontWeight="600">No items tracked yet</text>
+              <text x="360" y="312" textAnchor="middle" fill="#9ca3af" fontSize="8.5">Add systems &amp; appliances to see them here</text>
             </>
           )}
 
