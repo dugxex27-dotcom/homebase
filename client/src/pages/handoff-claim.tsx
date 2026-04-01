@@ -24,7 +24,13 @@ interface HandoffPreview {
     roofType?: string | null;
   };
   generalNotes?: string | null;
-  extractedData?: any;
+  extractedData?: Record<string, unknown>;
+}
+
+interface AuthUser {
+  role?: string;
+  firstName?: string;
+  lastName?: string;
 }
 
 export default function HandoffClaim() {
@@ -75,7 +81,7 @@ export default function HandoffClaim() {
     },
   });
 
-  const typedUser = user as { role?: string } | undefined;
+  const typedUser = user as AuthUser | undefined;
   const isHomeowner = typedUser?.role === "homeowner";
 
   // Redirect non-homeowners who are authenticated
@@ -255,7 +261,7 @@ export default function HandoffClaim() {
           <CardContent className="p-6">
             {isAuthenticated && isHomeowner ? (
               <div className="text-center">
-                <p className="text-gray-600 mb-4">You're signed in as {(user as any)?.firstName || "a homeowner"}. Ready to claim your home record?</p>
+                <p className="text-gray-600 mb-4">You're signed in as {typedUser?.firstName || "a homeowner"}. Ready to claim your home record?</p>
                 <Button
                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 text-base font-semibold"
                   onClick={() => claimMutation.mutate()}

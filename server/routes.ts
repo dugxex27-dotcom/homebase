@@ -13547,7 +13547,7 @@ Important: Only recommend service types from the available list. Match problems 
   // (objectStorageService is already instantiated earlier in this function)
 
   // Helper: extract home data from document content using OpenAI
-  async function extractHomeDataFromText(documentText: string, fileName: string): Promise<any> {
+  async function extractHomeDataFromText(documentText: string, fileName: string): Promise<HandoffExtractedData> {
     const systemPrompt = `You are an expert at reading real estate closing documents, disclosure forms, and home inspection reports.
 Extract structured home information from the provided document text.
 Return ONLY valid JSON matching this exact structure (use null for unknown values):
@@ -13589,22 +13589,65 @@ If the document contains no relevant home information, return the structure with
         temperature: 0.1,
       });
       const raw = response.choices[0]?.message?.content || "{}";
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      // normalised via mergeExtractedData (declared below — TypeScript hoists function declarations)
+      return {
+        systems: Array.isArray(parsed.systems) ? parsed.systems as Record<string, unknown>[] : [],
+        appliances: Array.isArray(parsed.appliances) ? parsed.appliances as Record<string, unknown>[] : [],
+        propertyDetails: (typeof parsed.propertyDetails === "object" && parsed.propertyDetails !== null)
+          ? parsed.propertyDetails as Record<string, unknown>
+          : {},
+        warranties: Array.isArray(parsed.warranties) ? parsed.warranties as Record<string, unknown>[] : [],
+        generalNotes: typeof parsed.generalNotes === "string" ? parsed.generalNotes : null,
+      };
     } catch (err) {
       console.error("[HANDOFF AI] extraction error:", err);
       return { systems: [], appliances: [], propertyDetails: {}, warranties: [], generalNotes: null };
     }
   }
 
+  // Typed shape for AI-extracted home data
+  interface HandoffExtractedData {
+    systems: Record<string, unknown>[];
+    appliances: Record<string, unknown>[];
+    propertyDetails: Record<string, unknown>;
+    warranties: Record<string, unknown>[];
+    generalNotes: string | null;
+  }
+
+  function emptyExtractedData(): HandoffExtractedData {
+    return { systems: [], appliances: [], propertyDetails: {}, warranties: [], generalNotes: null };
+  }
+
   // Helper: merge AI extraction results into existing extractedData
-  function mergeExtractedData(existing: any, incoming: any): any {
-    const base = existing || { systems: [], appliances: [], propertyDetails: {}, warranties: [], generalNotes: null };
+  function mergeExtractedData(
+    existing: Record<string, unknown> | null | undefined,
+    incoming: Record<string, unknown>
+  ): HandoffExtractedData {
+    const base: HandoffExtractedData = {
+      systems: Array.isArray(existing?.systems) ? existing.systems as Record<string, unknown>[] : [],
+      appliances: Array.isArray(existing?.appliances) ? existing.appliances as Record<string, unknown>[] : [],
+      propertyDetails: (typeof existing?.propertyDetails === "object" && existing.propertyDetails !== null)
+        ? existing.propertyDetails as Record<string, unknown>
+        : {},
+      warranties: Array.isArray(existing?.warranties) ? existing.warranties as Record<string, unknown>[] : [],
+      generalNotes: typeof existing?.generalNotes === "string" ? existing.generalNotes : null,
+    };
+    const inc: HandoffExtractedData = {
+      systems: Array.isArray(incoming.systems) ? incoming.systems as Record<string, unknown>[] : [],
+      appliances: Array.isArray(incoming.appliances) ? incoming.appliances as Record<string, unknown>[] : [],
+      propertyDetails: (typeof incoming.propertyDetails === "object" && incoming.propertyDetails !== null)
+        ? incoming.propertyDetails as Record<string, unknown>
+        : {},
+      warranties: Array.isArray(incoming.warranties) ? incoming.warranties as Record<string, unknown>[] : [],
+      generalNotes: typeof incoming.generalNotes === "string" ? incoming.generalNotes : null,
+    };
     return {
-      systems: [...(base.systems || []), ...(incoming.systems || [])],
-      appliances: [...(base.appliances || []), ...(incoming.appliances || [])],
-      propertyDetails: { ...(base.propertyDetails || {}), ...(incoming.propertyDetails || {}) },
-      warranties: [...(base.warranties || []), ...(incoming.warranties || [])],
-      generalNotes: [base.generalNotes, incoming.generalNotes].filter(Boolean).join(" | ") || null,
+      systems: [...base.systems, ...inc.systems],
+      appliances: [...base.appliances, ...inc.appliances],
+      propertyDetails: { ...base.propertyDetails, ...inc.propertyDetails },
+      warranties: [...base.warranties, ...inc.warranties],
+      generalNotes: [base.generalNotes, inc.generalNotes].filter(Boolean).join(" | ") || null,
     };
   }
 
@@ -13699,7 +13742,7 @@ If the document contains no relevant home information, return the structure with
       const storageKey = `handoff-documents/${pkg.id}/${randomUUID()}.${ext}`;
       let fileType = req.file.mimetype.startsWith("image/") ? "image" : req.file.mimetype === "application/pdf" ? "pdf" : "other";
       let extractedText = "";
-      let aiData: any = { systems: [], appliances: [], propertyDetails: {}, warranties: [], generalNotes: null };
+      let aiData: HandoffExtractedData = emptyExtractedData();
 
       // Upload to object storage
       try {
@@ -13753,7 +13796,8 @@ If the document contains no relevant home information, return the structure with
             temperature: 0.1,
           });
           const raw = response.choices[0]?.message?.content || "{}";
-          aiData = JSON.parse(raw);
+          const parsed = JSON.parse(raw) as Record<string, unknown>;
+          aiData = mergeExtractedData(null, parsed);
           extractedText = "(image analyzed by AI vision)";
         } catch (visionErr) {
           console.error("[HANDOFF] Vision API error:", visionErr);
@@ -13848,9 +13892,9 @@ If the document contains no relevant home information, return the structure with
       }).where(eq(homeHandoffPackages.id, pkg.id));
 
       // Send email to buyer
-      const extractedData = pkg.extractedData as any || {};
-      const systemCount = (extractedData.systems || []).length;
-      const applianceCount = (extractedData.appliances || []).length;
+      const extractedData = (pkg.extractedData ?? {}) as Record<string, unknown>;
+      const systemCount = Array.isArray(extractedData.systems) ? extractedData.systems.length : 0;
+      const applianceCount = Array.isArray(extractedData.appliances) ? extractedData.appliances.length : 0;
 
       const emailHtml = emailService.wrapEmailContent(
         emailService.getEmailHeader("Your New Home Record is Ready"),

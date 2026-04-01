@@ -29,6 +29,13 @@
       "when": 1774059400000,
       "tag": "0003_weather_alerts_sent",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1743465600000,
+      "tag": "0004_home_handoff_packages",
+      "breakpoints": true
     }
   ]
 }

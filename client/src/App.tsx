@@ -157,6 +157,7 @@ function Router() {
         <Route path="/test-upload" component={TestUpload} />
         <Route path="/complete-profile" component={CompleteProfile} />
         <Route path="/house-transfer/:token" component={HouseTransferAccept} />
+        <Route path="/handoff/:token" component={HandoffClaim} />
         <Route path="/messages" component={Messages} />
         <Route path="/my-home" component={MyHome} />
         <Route path="/maintenance" component={Maintenance} />
@@ -224,7 +225,6 @@ function Router() {
             <Route path="/agent-account" component={AgentAccount} />
             <Route path="/agent-referral" component={AgentReferral} />
             <Route path="/agent-handoff" component={AgentHandoff} />
-            <Route path="/handoff/:token" component={HandoffClaim} />
             <Route path="/billing" component={Billing} />
           </>
         )}
