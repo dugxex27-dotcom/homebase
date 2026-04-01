@@ -493,6 +493,9 @@ export const serviceRecords = pgTable("service_records", {
   warrantyPeriod: text("warranty_period"),
   followUpDate: text("follow_up_date"),
   isVisibleToHomeowner: boolean("is_visible_to_homeowner").notNull().default(true), // Allow contractors to control visibility
+  completedAt: timestamp("completed_at"), // When status changed to completed (for 48h review lock)
+  invoiceUrl: text("invoice_url"), // Proof of work: attached invoice
+  servicePhotos: text("service_photos").array().notNull().default(sql`'{}'::text[]`), // Proof of work: photos
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -549,6 +552,10 @@ export const contractorReviews = pgTable("contractor_reviews", {
   deviceFingerprint: text("device_fingerprint"), // Browser fingerprint for duplicate detection
   ipAddress: varchar("ip_address", { length: 45 }), // IPv4 or IPv6 address
   isVerifiedService: boolean("is_verified_service").notNull().default(false), // True if service record exists
+  serviceRecordId: varchar("service_record_id"), // FK to service_records (verified proof of work)
+  reviewPhotoUrl: text("review_photo_url"), // Optional photo submitted with review
+  contractorResponse: text("contractor_response"), // Single public response from contractor (immutable once set)
+  contractorRespondedAt: timestamp("contractor_responded_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -578,6 +585,25 @@ export const reviewFlags = pgTable("review_flags", {
   index("IDX_review_flags_status").on(table.status),
   index("IDX_review_flags_reported_by").on(table.reportedBy),
 ]);
+
+// Review requests table — contractor asks homeowner to leave a review
+export const reviewRequests = pgTable("review_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contractorId: varchar("contractor_id").notNull(),
+  homeownerId: varchar("homeowner_id").notNull(),
+  serviceRecordId: varchar("service_record_id"), // Which job the request is about
+  message: text("message"), // Optional personal message from contractor
+  status: text("status").notNull().default("pending"), // "pending" | "accepted" | "dismissed"
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_review_requests_homeowner").on(table.homeownerId),
+  index("IDX_review_requests_contractor").on(table.contractorId),
+  index("IDX_review_requests_status").on(table.status),
+]);
+
+export const insertReviewRequestSchema = createInsertSchema(reviewRequests).omit({ id: true, createdAt: true });
+export type InsertReviewRequest = z.infer<typeof insertReviewRequestSchema>;
+export type ReviewRequest = typeof reviewRequests.$inferSelect;
 
 // Contractor licenses table for multiple licenses per contractor
 export const contractorLicenses = pgTable("contractor_licenses", {

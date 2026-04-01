@@ -8,8 +8,8 @@ import { setupGoogleAuth } from "./googleAuth";
 import { z } from "zod";
 import { randomUUID } from "crypto";
 import rateLimit from "express-rate-limit";
-import { eq, and, or, lte, isNull, isNotNull, desc } from "drizzle-orm";
-import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, maintenanceTasks, customMaintenanceTasks, insertSupportTicketSchema, insertSubscriptionCycleEventSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, crmClients, crmJobs, crmQuotes, crmInvoices, securitySessions, referralCredits, agentProfiles, users, siteContent, insertSiteContentSchema, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, type House } from "@shared/schema";
+import { eq, and, or, lte, gte, sql as drizzleSql, isNull, isNotNull, desc, count } from "drizzle-orm";
+import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, maintenanceTasks, customMaintenanceTasks, insertSupportTicketSchema, insertSubscriptionCycleEventSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, crmClients, crmJobs, crmQuotes, crmInvoices, securitySessions, referralCredits, agentProfiles, users, siteContent, insertSiteContentSchema, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, type House } from "@shared/schema";
 import { calculateDIYSavingsAmount } from "@shared/cost-helpers";
 import pushRoutes from "./push-routes";
 import { pushService } from "./push-service";
@@ -12089,7 +12089,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/contractors/:id/rating', async (req, res) => {
     try {
       const rating = await storage.getContractorAverageRating(req.params.id);
-      res.json(rating);
+
+      // Build star breakdown (1-5) using direct DB aggregation
+      const breakdownRows = await db
+        .select({
+          star: contractorReviews.rating,
+          cnt: drizzleSql<number>`count(*)::int`,
+        })
+        .from(contractorReviews)
+        .where(eq(contractorReviews.contractorId, req.params.id))
+        .groupBy(contractorReviews.rating);
+
+      const starBreakdown: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+      for (const row of breakdownRows) {
+        starBreakdown[row.star] = row.cnt;
+      }
+
+      res.json({ ...rating, starBreakdown });
     } catch (error) {
       console.error("Error fetching contractor rating:", error);
       res.status(500).json({ message: "Failed to fetch rating" });
@@ -12097,137 +12113,215 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Check if homeowner can review contractor (requires exchanged messages)
+  // Helper: check if a service record qualifies as proof of work
+  function recordHasProof(record: { invoiceUrl: string | null; servicePhotos: string[] }): boolean {
+    return !!(record.invoiceUrl || (record.servicePhotos && record.servicePhotos.length > 0));
+  }
+
+  // Helper: check if a service record is 48+ hours past completion (unlocks review)
+  function recordPast48h(record: { completedAt: Date | null; createdAt: Date | null; status: string }): boolean {
+    const FORTY_EIGHT_HOURS = 48 * 60 * 60 * 1000;
+    const anchor = record.completedAt ?? record.createdAt;
+    if (!anchor) return false;
+    return Date.now() - new Date(anchor).getTime() >= FORTY_EIGHT_HOURS;
+  }
+
   app.get('/api/contractors/:id/can-review', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.session.user.id;
       const userType = req.session.user.role;
       const contractorId = req.params.id;
-      
-      // Only homeowners can review
+
       if (userType !== 'homeowner') {
         return res.json({ canReview: false, reason: "Only homeowners can review contractors" });
       }
-      
-      // Check if homeowner has exchanged messages with this contractor
-      const conversations = await storage.getConversationsByUser(userId);
-      const hasConversation = conversations.some(conv => 
-        (conv.homeownerId === userId && conv.contractorId === contractorId) ||
-        (conv.contractorId === userId && conv.homeownerId === contractorId)
-      );
-      
-      if (!hasConversation) {
-        return res.json({ canReview: false, reason: "You can only review contractors after exchanging messages with them" });
+
+      // Check if already reviewed
+      const existingReviews = await storage.getReviewsByHomeowner(userId);
+      if (existingReviews.some(r => r.contractorId === contractorId)) {
+        return res.json({ canReview: false, reason: "You have already reviewed this contractor", alreadyReviewed: true });
       }
-      
-      res.json({ canReview: true });
+
+      // Find qualifying service records: linked to this homeowner + this contractor,
+      // completed, with proof (invoice OR photos), and 48h+ past completion
+      const allRecords = await db.select().from(serviceRecords)
+        .where(and(
+          eq(serviceRecords.homeownerId, userId),
+          eq(serviceRecords.contractorId, contractorId),
+          eq(serviceRecords.status, "completed"),
+        ));
+
+      const eligibleRecords = allRecords.filter(r => recordHasProof(r) && recordPast48h(r));
+
+      if (allRecords.length === 0) {
+        return res.json({ canReview: false, reason: "No completed service records found between you and this contractor. A verified service record with an invoice or photo is required." });
+      }
+
+      const proofRecords = allRecords.filter(r => recordHasProof(r));
+      if (proofRecords.length === 0) {
+        return res.json({ canReview: false, reason: "Your service records must have an invoice or photo attached as proof of work before you can leave a review." });
+      }
+
+      if (eligibleRecords.length === 0) {
+        // Has proof but 48h hasn't passed
+        const soonestUnlock = proofRecords
+          .map(r => {
+            const anchor = r.completedAt ?? r.createdAt;
+            return anchor ? new Date(anchor).getTime() + 48 * 60 * 60 * 1000 : null;
+          })
+          .filter(Boolean)
+          .sort()[0];
+        const hoursRemaining = soonestUnlock ? Math.ceil((soonestUnlock - Date.now()) / (60 * 60 * 1000)) : 48;
+        return res.json({
+          canReview: false,
+          reason: `Reviews are unlocked 48 hours after a service is completed to give you time to assess the quality of work. ${hoursRemaining > 0 ? `Your review will be available in approximately ${hoursRemaining} hour${hoursRemaining !== 1 ? "s" : ""}.` : ""}`,
+        });
+      }
+
+      res.json({
+        canReview: true,
+        eligibleRecords: eligibleRecords.map(r => ({
+          id: r.id,
+          serviceType: r.serviceType,
+          serviceDate: r.serviceDate,
+          serviceDescription: r.serviceDescription,
+          completedAt: r.completedAt,
+          hasInvoice: !!r.invoiceUrl,
+          photoCount: r.servicePhotos?.length ?? 0,
+        })),
+      });
     } catch (error) {
       console.error("Error checking review eligibility:", error);
       res.status(500).json({ message: "Failed to check review eligibility" });
     }
   });
 
-  app.post('/api/contractors/:id/reviews', isAuthenticated, async (req: any, res) => {
+  // GET eligible service records for review (subset of can-review logic, returns more detail)
+  app.get('/api/contractors/:id/eligible-service-records', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.user.id;
+      if (req.session.user.role !== 'homeowner') return res.status(403).json({ message: "Homeowner access only" });
+      const contractorId = req.params.id;
+
+      const allRecords = await db.select().from(serviceRecords)
+        .where(and(
+          eq(serviceRecords.homeownerId, userId),
+          eq(serviceRecords.contractorId, contractorId),
+          eq(serviceRecords.status, "completed"),
+        ));
+
+      const eligible = allRecords.filter(r => recordHasProof(r) && recordPast48h(r));
+      res.json(eligible);
+    } catch (error) {
+      console.error("Error fetching eligible service records:", error);
+      res.status(500).json({ message: "Failed to fetch eligible service records" });
+    }
+  });
+
+  app.post('/api/contractors/:id/reviews', isAuthenticated, upload.single("photo"), async (req: any, res) => {
     try {
       const userId = req.session.user.id;
       const userType = req.session.user.role;
       const contractorId = req.params.id;
-      
-      // Only homeowners can leave reviews
+
       if (userType !== 'homeowner') {
         return res.status(403).json({ message: "Only homeowners can leave reviews" });
       }
 
-      // Get user info for fraud prevention checks
+      // --- Fraud prevention checks ---
       const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
+      if (!user) return res.status(404).json({ message: "User not found" });
 
-      // FRAUD PREVENTION CHECK 1: Email verification required
       if (!user.emailVerified) {
-        return res.status(403).json({ 
-          message: "Email verification required",
-          details: "Please verify your email address before leaving reviews. Check your inbox for the verification link."
-        });
+        return res.status(403).json({ message: "Email verification required before leaving reviews." });
       }
 
-      // FRAUD PREVENTION CHECK 2: Account age must be at least 7 days
       const accountAge = Date.now() - new Date(user.createdAt!).getTime();
-      const sevenDays = 7 * 24 * 60 * 60 * 1000;
-      if (accountAge < sevenDays) {
-        const daysRemaining = Math.ceil((sevenDays - accountAge) / (24 * 60 * 60 * 1000));
-        return res.status(403).json({ 
-          message: "Account too new",
-          details: `You must wait ${daysRemaining} more day(s) before leaving reviews. This helps prevent spam.`
-        });
+      if (accountAge < 7 * 24 * 60 * 60 * 1000) {
+        const daysRemaining = Math.ceil((7 * 24 * 60 * 60 * 1000 - accountAge) / (24 * 60 * 60 * 1000));
+        return res.status(403).json({ message: `Your account must be at least 7 days old before leaving reviews (${daysRemaining} day(s) remaining).` });
       }
 
-      // FRAUD PREVENTION CHECK 3: Check for existing review (only 1 review per customer-contractor pair)
       const existingReviews = await storage.getReviewsByHomeowner(userId);
-      const alreadyReviewed = existingReviews.some(r => r.contractorId === contractorId);
-      if (alreadyReviewed) {
-        return res.status(409).json({ 
-          message: "Review already exists",
-          details: "You have already reviewed this contractor. You can edit your existing review instead."
-        });
+      if (existingReviews.some(r => r.contractorId === contractorId)) {
+        return res.status(409).json({ message: "You have already reviewed this contractor." });
       }
 
-      // FRAUD PREVENTION CHECK 4: Verify service record exists within 90 days
-      const serviceRecords = await storage.getServiceRecords(userId);
-      const ninetyDaysAgo = new Date();
-      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-      
-      const hasRecentService = serviceRecords.some(record => {
-        const serviceDate = new Date(record.serviceDate);
-        return record.contractorId === contractorId && serviceDate >= ninetyDaysAgo;
-      });
+      // --- Verified service record requirement ---
+      const serviceRecordId = req.body.serviceRecordId;
+      if (!serviceRecordId) {
+        return res.status(400).json({ message: "A verified service record is required to leave a review." });
+      }
 
-      // FRAUD PREVENTION CHECK 5: Capture device fingerprint and IP address
+      const [record] = await db.select().from(serviceRecords)
+        .where(and(
+          eq(serviceRecords.id, serviceRecordId),
+          eq(serviceRecords.homeownerId, userId),
+          eq(serviceRecords.contractorId, contractorId),
+          eq(serviceRecords.status, "completed"),
+        ));
+
+      if (!record) {
+        return res.status(403).json({ message: "Service record not found or not eligible for review." });
+      }
+
+      if (!recordHasProof(record)) {
+        return res.status(403).json({ message: "This service record requires an invoice or photo as proof of work before it can be used for a review." });
+      }
+
+      if (!recordPast48h(record)) {
+        return res.status(403).json({ message: "Reviews are unlocked 48 hours after a service is completed." });
+      }
+
+      // --- IP / device fingerprint logging ---
       const deviceFingerprint = req.body.deviceFingerprint || req.headers['x-device-fingerprint'];
       const ipAddress = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
-      // FRAUD PREVENTION CHECK 6: Detect duplicate IP/device fingerprints (>3 reviews)
-      if (deviceFingerprint || ipAddress) {
-        const allReviews = await storage.getAllReviews();
-        
-        if (deviceFingerprint) {
-          const reviewsFromSameDevice = allReviews.filter(r => r.deviceFingerprint === deviceFingerprint);
-          if (reviewsFromSameDevice.length >= 3) {
-            console.warn(`[FRAUD ALERT] Device fingerprint ${deviceFingerprint} has ${reviewsFromSameDevice.length} reviews`);
-            // Auto-flag for admin review but allow submission
-          }
-        }
-        
-        if (ipAddress) {
-          const reviewsFromSameIP = allReviews.filter(r => r.ipAddress === ipAddress);
-          if (reviewsFromSameIP.length >= 3) {
-            console.warn(`[FRAUD ALERT] IP address ${ipAddress} has ${reviewsFromSameIP.length} reviews`);
-            // Auto-flag for admin review but allow submission
-          }
+      // --- Optional photo upload ---
+      let reviewPhotoUrl: string | null = null;
+      if (req.file) {
+        try {
+          const ext = req.file.originalname.split(".").pop()?.toLowerCase() || "jpg";
+          const storageKey = `review-photos/${randomUUID()}.${ext}`;
+          await objectStorageService.uploadFile(storageKey, req.file.buffer, req.file.mimetype);
+          const { ObjectStorageService: OSSvc } = await import("./objectStorage");
+          reviewPhotoUrl = await new OSSvc().getSignedUrl(storageKey);
+        } catch (uploadErr) {
+          console.warn("[REVIEW] Photo upload failed:", uploadErr);
         }
       }
-      
-      // Check if homeowner has exchanged messages with this contractor
-      const conversations = await storage.getConversationsByUser(userId);
-      const hasConversation = conversations.some(conv => 
-        (conv.homeownerId === userId && conv.contractorId === contractorId) ||
-        (conv.contractorId === userId && conv.homeownerId === contractorId)
-      );
-      
-      if (!hasConversation) {
-        return res.status(403).json({ message: "You can only review contractors after exchanging messages with them" });
+
+      const rating = parseInt(req.body.rating, 10);
+      if (!rating || rating < 1 || rating > 5) {
+        return res.status(400).json({ message: "Rating must be between 1 and 5." });
       }
-      
+
       const reviewData = insertContractorReviewSchema.parse({
-        ...req.body,
-        contractorId: contractorId,
+        rating,
+        comment: req.body.comment || null,
+        serviceType: record.serviceType,
+        serviceDate: record.serviceDate ? new Date(record.serviceDate) : null,
+        wouldRecommend: req.body.wouldRecommend !== "false",
+        contractorId,
         homeownerId: userId,
         deviceFingerprint: deviceFingerprint || null,
         ipAddress: ipAddress ? String(ipAddress).split(',')[0].trim() : null,
-        isVerifiedService: hasRecentService
+        isVerifiedService: true,
+        serviceRecordId,
+        reviewPhotoUrl,
       });
-      
+
       const review = await storage.createContractorReview(reviewData);
+
+      // Mark any pending review request for this homeowner+contractor as accepted
+      await db.update(reviewRequests)
+        .set({ status: "accepted" })
+        .where(and(
+          eq(reviewRequests.homeownerId, userId),
+          eq(reviewRequests.contractorId, contractorId),
+          eq(reviewRequests.status, "pending"),
+        ));
+
       res.status(201).json(review);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -12255,67 +12349,199 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Reviews are immutable after submission — only admins can delete
   app.put('/api/reviews/:id', isAuthenticated, async (req: any, res) => {
+    if (req.session.user.role !== 'admin') {
+      return res.status(403).json({ message: "Reviews cannot be edited after submission. Contact support if there is an issue." });
+    }
     try {
-      const userId = req.session.user.id;
-      const userType = req.session.user.role;
-      
-      if (userType !== 'homeowner') {
-        return res.status(403).json({ message: "Only homeowners can edit reviews" });
-      }
-      
-      // Check if the review belongs to the user
-      const reviews = await storage.getReviewsByHomeowner(userId);
-      const existingReview = reviews.find(r => r.id === req.params.id);
-      
-      if (!existingReview) {
-        return res.status(404).json({ message: "Review not found or access denied" });
-      }
-      
       const reviewData = insertContractorReviewSchema.partial().parse(req.body);
       const review = await storage.updateContractorReview(req.params.id, reviewData);
-      
-      if (!review) {
-        return res.status(404).json({ message: "Review not found" });
-      }
-      
+      if (!review) return res.status(404).json({ message: "Review not found" });
       res.json(review);
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid review data", errors: error.errors });
-      }
+      if (error instanceof z.ZodError) return res.status(400).json({ message: "Invalid review data", errors: error.errors });
       console.error("Error updating review:", error);
       res.status(500).json({ message: "Failed to update review" });
     }
   });
 
   app.delete('/api/reviews/:id', isAuthenticated, async (req: any, res) => {
+    if (req.session.user.role !== 'admin') {
+      return res.status(403).json({ message: "Reviews can only be deleted by administrators." });
+    }
     try {
-      const userId = req.session.user.id;
-      const userType = req.session.user.role;
-      
-      if (userType !== 'homeowner') {
-        return res.status(403).json({ message: "Only homeowners can delete reviews" });
-      }
-      
-      // Check if the review belongs to the user
-      const reviews = await storage.getReviewsByHomeowner(userId);
-      const existingReview = reviews.find(r => r.id === req.params.id);
-      
-      if (!existingReview) {
-        return res.status(404).json({ message: "Review not found or access denied" });
-      }
-      
       const deleted = await storage.deleteContractorReview(req.params.id);
-      
-      if (!deleted) {
-        return res.status(404).json({ message: "Review not found" });
-      }
-      
+      if (!deleted) return res.status(404).json({ message: "Review not found" });
       res.json({ message: "Review deleted successfully" });
     } catch (error) {
       console.error("Error deleting review:", error);
       res.status(500).json({ message: "Failed to delete review" });
+    }
+  });
+
+  // Contractor one-time response to a review
+  app.post('/api/reviews/:id/response', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.user.id;
+      if (req.session.user.role !== 'contractor') {
+        return res.status(403).json({ message: "Only contractors can respond to reviews." });
+      }
+
+      const reviewId = req.params.id;
+      const [existing] = await db.select().from(contractorReviews).where(eq(contractorReviews.id, reviewId));
+      if (!existing) return res.status(404).json({ message: "Review not found" });
+
+      if (existing.contractorId !== userId) {
+        return res.status(403).json({ message: "You can only respond to reviews about your own business." });
+      }
+
+      if (existing.contractorResponse) {
+        return res.status(409).json({ message: "You have already responded to this review. Responses are final and cannot be changed." });
+      }
+
+      const responseText = (req.body.response || "").trim();
+      if (!responseText) return res.status(400).json({ message: "Response text is required." });
+      if (responseText.length > 2000) return res.status(400).json({ message: "Response must be under 2000 characters." });
+
+      const [updated] = await db.update(contractorReviews)
+        .set({ contractorResponse: responseText, contractorRespondedAt: new Date() })
+        .where(eq(contractorReviews.id, reviewId))
+        .returning();
+
+      // Notify the homeowner
+      try {
+        await storage.createNotification({
+          userId: existing.homeownerId,
+          title: "Contractor Responded to Your Review",
+          message: "The contractor has responded to your review. Tap to view their response.",
+          type: "review_response",
+          relatedEntityId: reviewId,
+          relatedEntityType: "contractor_review",
+          isRead: false,
+        });
+      } catch (notifyErr) {
+        console.warn("[REVIEW] Notification failed:", notifyErr);
+      }
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Error adding contractor response:", error);
+      res.status(500).json({ message: "Failed to add response" });
+    }
+  });
+
+  // Contractor requests a review from a homeowner
+  app.post('/api/contractors/:id/review-request', isAuthenticated, async (req: any, res) => {
+    try {
+      const contractorId = req.session.user.id;
+      if (req.session.user.role !== 'contractor') {
+        return res.status(403).json({ message: "Only contractors can request reviews." });
+      }
+
+      if (contractorId !== req.params.id) {
+        return res.status(403).json({ message: "You can only request reviews for your own profile." });
+      }
+
+      const homeownerId: string = req.body.homeownerId;
+      const serviceRecordId: string | undefined = req.body.serviceRecordId;
+      const message: string | undefined = req.body.message;
+
+      if (!homeownerId) return res.status(400).json({ message: "homeownerId is required." });
+
+      // Check an existing pending request doesn't exist
+      const [existing] = await db.select().from(reviewRequests)
+        .where(and(
+          eq(reviewRequests.contractorId, contractorId),
+          eq(reviewRequests.homeownerId, homeownerId),
+          eq(reviewRequests.status, "pending"),
+        ));
+
+      if (existing) {
+        return res.status(409).json({ message: "A review request is already pending for this homeowner." });
+      }
+
+      const requestData = insertReviewRequestSchema.parse({
+        contractorId,
+        homeownerId,
+        serviceRecordId: serviceRecordId || null,
+        message: message || null,
+        status: "pending",
+      });
+
+      const [created] = await db.insert(reviewRequests).values(requestData).returning();
+
+      // In-app notification
+      try {
+        const contractor = await storage.getUser(contractorId);
+        await storage.createNotification({
+          userId: homeownerId,
+          title: "Review Request",
+          message: `${contractor?.fullName || "Your contractor"} is requesting a review of their services. Verified reviews help homeowners in your community.`,
+          type: "review_request",
+          relatedEntityId: created.id,
+          relatedEntityType: "review_request",
+          isRead: false,
+        });
+      } catch (notifyErr) {
+        console.warn("[REVIEW REQUEST] Notification failed:", notifyErr);
+      }
+
+      // Push notification
+      try {
+        const contractor = await storage.getUser(contractorId);
+        await pushService.sendToUser(homeownerId, {
+          title: "Review Request",
+          body: `${contractor?.fullName || "Your contractor"} is requesting a review. Share your experience!`,
+          data: { type: "review_request", reviewRequestId: created.id, contractorId },
+        });
+      } catch (pushErr) {
+        console.warn("[REVIEW REQUEST] Push notification failed:", pushErr);
+      }
+
+      res.status(201).json(created);
+    } catch (error) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: "Invalid request data", errors: error.errors });
+      console.error("Error creating review request:", error);
+      res.status(500).json({ message: "Failed to create review request" });
+    }
+  });
+
+  // Homeowner fetches pending review requests
+  app.get('/api/homeowner/review-requests', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.user.id;
+      if (req.session.user.role !== 'homeowner') return res.status(403).json({ message: "Homeowner access only." });
+
+      const requests = await db.select().from(reviewRequests)
+        .where(and(
+          eq(reviewRequests.homeownerId, userId),
+          eq(reviewRequests.status, "pending"),
+        ))
+        .orderBy(desc(reviewRequests.createdAt));
+
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching review requests:", error);
+      res.status(500).json({ message: "Failed to fetch review requests" });
+    }
+  });
+
+  // Dismiss a review request
+  app.patch('/api/review-requests/:id/dismiss', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.user.id;
+      const [request] = await db.select().from(reviewRequests).where(eq(reviewRequests.id, req.params.id));
+      if (!request) return res.status(404).json({ message: "Review request not found." });
+      if (request.homeownerId !== userId) return res.status(403).json({ message: "Access denied." });
+      const [updated] = await db.update(reviewRequests)
+        .set({ status: "declined" })
+        .where(eq(reviewRequests.id, req.params.id))
+        .returning();
+      res.json(updated);
+    } catch (error) {
+      console.error("Error dismissing review request:", error);
+      res.status(500).json({ message: "Failed to dismiss review request" });
     }
   });
 

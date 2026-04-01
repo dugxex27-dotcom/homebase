@@ -53,7 +53,17 @@ Preferred communication style: Simple, everyday language.
 - **Real Estate Agent Affiliate System**: Agents earn referral commissions via unique codes, with automated $15 payouts after 4 months of paid subscription, managed through Stripe Connect.
 - **Agent Home Handoff Package**: Agents upload closing/disclosure documents (PDF or images), AI (GPT-4o-mini) extracts home system and appliance data, and a magic-link email is sent to the buyer. Buyers click the link to claim a pre-populated home record (systems + appliances seeded). Routes: `/agent-handoff` (agent management), `/handoff/:token` (buyer claim). DB tables: `home_handoff_packages`, `handoff_documents`.
 - **Gamified Achievement System**: 66 achievements across 8 categories with real-time progress tracking and house-based filtering.
-- **Review Fraud Prevention System**: Comprehensive measures including email verification, account age requirement, one review per customer-contractor, 90-day service window, device fingerprinting, IP address tracking, and an admin flagging system.
+- **Review System (Upgraded - Task #8)**:
+    - Reviews require a **verified service record** linked to the homeowner + contractor, marked completed, with proof of work (invoice URL or photos), and at least **48 hours** past completion before a review can be submitted.
+    - Reviews are **immutable** — cannot be edited or deleted by homeowners or contractors. Only admins can delete reviews.
+    - **Star breakdown**: GET /api/contractors/:id/rating now returns `starBreakdown` (count per 1–5 stars) displayed with a collapsible progress bar breakdown in the UI.
+    - **Contractor one-time response**: POST /api/reviews/:id/response — contractors can respond once (final, cannot be changed). Displayed in a blue-bordered box below the review.
+    - **Review requests**: POST /api/contractors/:id/review-request — contractors can send a review request to a homeowner for a completed job. Sends in-app + push notification. GET /api/homeowner/review-requests for homeowner to see pending requests.
+    - **Photo upload**: Review submission accepts an optional photo (multipart/form-data). Stored to object storage, URL saved as `reviewPhotoUrl`.
+    - **Service record proof**: `service_records` table has `completedAt`, `invoiceUrl`, `servicePhotos[]`. `contractor_reviews` has `serviceRecordId`, `reviewPhotoUrl`, `contractorResponse`, `contractorRespondedAt`.
+    - New `review_requests` table: tracks contractor-initiated review requests with status (pending/accepted/declined).
+    - **Verified Service badge**: shown on reviews that have `isVerifiedService=true` (always true for new reviews since service record is required).
+    - "Request Review" button in contractor's service records page for completed jobs with a linked homeownerId.
 - **Error Tracking**: React ErrorBoundary, client-side error logger, and database schema for error tracking accessible via an admin console.
 
 ## External Dependencies

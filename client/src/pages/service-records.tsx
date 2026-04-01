@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { apiRequest } from "@/lib/queryClient";
 import type { House } from "@shared/schema";
 import { 
   Plus, 
@@ -23,7 +24,9 @@ import {
   Filter,
   Edit,
   Trash2,
-  Home
+  Home,
+  Star,
+  SendHorizonal
 } from "lucide-react";
 
 interface ServiceRecord {
@@ -104,6 +107,7 @@ export default function ServiceRecords() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedHouseId, setSelectedHouseId] = useState<string>("");
+  const [reviewRequestedIds, setReviewRequestedIds] = useState<Set<string>>(new Set());
   
   const [formData, setFormData] = useState({
     customerName: '',
@@ -225,6 +229,29 @@ export default function ServiceRecords() {
       toast({
         title: "Delete Failed",
         description: "Failed to delete service record. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const reviewRequestMutation = useMutation({
+    mutationFn: async (record: ServiceRecord) => {
+      const contractorId = (user as any)?.id;
+      if (!contractorId) throw new Error("Not authenticated");
+      return apiRequest(`/api/contractors/${contractorId}/review-request`, "POST", {
+        homeownerId: (record as any).homeownerId,
+        serviceRecordId: record.id,
+        message: `Thank you for choosing us for your ${record.serviceType}. We'd love to hear your feedback!`,
+      });
+    },
+    onSuccess: (_, record) => {
+      setReviewRequestedIds((prev) => new Set(prev).add(record.id));
+      toast({ title: "Review request sent!", description: "The homeowner has been notified." });
+    },
+    onError: (e: any) => {
+      toast({
+        title: "Could not send request",
+        description: e.message || "Failed to send review request",
         variant: "destructive",
       });
     },
@@ -918,7 +945,29 @@ export default function ServiceRecords() {
                         )}
                       </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
+                      {record.status === "completed" && (record as any).homeownerId && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-blue-700 border-blue-300 hover:bg-blue-50"
+                          disabled={reviewRequestMutation.isPending || reviewRequestedIds.has(record.id)}
+                          onClick={() => reviewRequestMutation.mutate(record)}
+                          title="Ask homeowner to leave a review"
+                        >
+                          {reviewRequestedIds.has(record.id) ? (
+                            <>
+                              <Star className="w-4 h-4 mr-1 fill-yellow-400 text-yellow-400" />
+                              Requested
+                            </>
+                          ) : (
+                            <>
+                              <SendHorizonal className="w-4 h-4 mr-1" />
+                              Request Review
+                            </>
+                          )}
+                        </Button>
+                      )}
                       <Button 
                         variant="outline" 
                         size="sm"
