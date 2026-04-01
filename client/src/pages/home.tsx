@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Users, Package, Calendar, Search, MapPin, Star, CheckCircle, TrendingUp, Shield, Home as HomeIcon, Wrench, Bell, BarChart3, Gift, Sparkles } from "lucide-react";
+import { Users, Package, Calendar, Search, MapPin, Star, CheckCircle, TrendingUp, Shield, Home as HomeIcon, Wrench, Bell, BarChart3, Gift, Sparkles, FileText, AlertTriangle, ClipboardList } from "lucide-react";
 import HeroSection from "@/components/hero-section";
 import HomeHealthScore from "@/components/home-health-score";
 import HouseMap from "@/components/house-map";
+import HomeownerSetupWizard from "@/components/homeowner-setup-wizard";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +21,7 @@ export default function Home() {
   const typedUser = user as User | undefined;
   const [, setLocation] = useLocation();
   const { isPaidSubscriber, subscriptionStatus, isLoading: subLoading } = useHomeownerSubscription();
+  const [wizardDismissed, setWizardDismissed] = useState(false);
 
   // Redirect contractors and agents to their dashboards; redirect inactive homeowners to trial setup
   useEffect(() => {
@@ -31,6 +33,29 @@ export default function Home() {
       setLocation('/homeowner-pricing?onboarding=true');
     }
   }, [typedUser, setLocation, subscriptionStatus, subLoading]);
+
+  // Wizard progress query
+  const { data: wizardProgress } = useQuery<{ step: number; completedAt: string | null; data: object }>({
+    queryKey: ["/api/homeowner/wizard-progress"],
+    enabled: typedUser?.role === "homeowner" && subscriptionStatus !== "inactive",
+  });
+
+  // Inspection summary query
+  const { data: inspectionSummary } = useQuery<{
+    id: string; inspectionDate: string | null; inspectorName: string | null;
+    flaggedItemCount: number; propertyAddress: string | null; uploadedAt: string;
+  } | null>({
+    queryKey: ["/api/homeowner/inspection-summary"],
+    enabled: typedUser?.role === "homeowner",
+  });
+
+  // Show wizard for new homeowners who haven't completed it
+  const showWizard = !wizardDismissed &&
+    typedUser?.role === "homeowner" &&
+    subscriptionStatus !== "inactive" &&
+    !subLoading &&
+    wizardProgress !== undefined &&
+    !wizardProgress?.completedAt;
 
   // Referral data query for homeowners - only fetch if paid subscriber
   const { data: referralData } = useQuery({
@@ -57,6 +82,11 @@ export default function Home() {
   const referralsNeeded = subscriptionCost;
   const referralsRemaining = Math.max(0, referralsNeeded - referralCount);
   const progressPercentage = Math.min(100, (referralCount / referralsNeeded) * 100);
+
+  // Show wizard overlay for new homeowners
+  if (showWizard) {
+    return <HomeownerSetupWizard onComplete={() => setWizardDismissed(true)} />;
+  }
 
   return (
     <div className="min-h-screen" style={{ 
@@ -123,6 +153,59 @@ export default function Home() {
                   />
                 </div>
               ))}
+
+              {/* Inspection Summary Card */}
+              {inspectionSummary && (
+                <div className="rounded-xl p-4 mb-6 border border-amber-200 bg-amber-50">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <ClipboardList className="w-5 h-5 text-amber-700" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-amber-900">Home Inspection on File</span>
+                          {inspectionSummary.flaggedItemCount > 0 && (
+                            <Badge variant="destructive" className="text-xs">
+                              <AlertTriangle className="w-3 h-3 mr-1" />
+                              {inspectionSummary.flaggedItemCount} flagged
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-amber-700 mt-0.5">
+                          {inspectionSummary.inspectionDate || "Date unknown"} · Inspector: {inspectionSummary.inspectorName || "Unknown"}
+                        </p>
+                      </div>
+                    </div>
+                    <Link href="/documents">
+                      <Button size="sm" variant="outline" className="border-amber-300 text-amber-800 hover:bg-amber-100 flex-shrink-0">
+                        <FileText className="w-4 h-4 mr-1" />
+                        View Report
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              )}
+
+              {/* Quick Actions */}
+              {!inspectionSummary && (
+                <div className="rounded-xl p-4 mb-6 border border-dashed border-purple-200 bg-purple-50/50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <ClipboardList className="w-5 h-5 text-purple-500" />
+                      <div>
+                        <p className="font-medium text-purple-800 text-sm">Upload a Home Inspection Report</p>
+                        <p className="text-xs text-purple-500">AI will extract key info and generate maintenance tasks automatically</p>
+                      </div>
+                    </div>
+                    <Link href="/documents">
+                      <Button size="sm" variant="outline" className="border-purple-200 text-purple-700 hover:bg-purple-100 flex-shrink-0 text-xs">
+                        Upload
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              )}
 
               <p className="text-lg mb-8 max-w-3xl mx-auto leading-relaxed text-center" style={{ color: '#2c0f5b' }}>Create a clear, living record of your home — from systems and appliances to maintenance, upgrades, and health.</p>
               

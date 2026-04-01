@@ -9,7 +9,7 @@ import { z } from "zod";
 import { randomUUID } from "crypto";
 import rateLimit from "express-rate-limit";
 import { eq, and, or, lte, gte, sql as drizzleSql, isNull, isNotNull, desc, count } from "drizzle-orm";
-import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, maintenanceTasks, customMaintenanceTasks, insertSupportTicketSchema, insertSubscriptionCycleEventSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, crmClients, crmJobs, crmQuotes, crmInvoices, securitySessions, referralCredits, agentProfiles, users, siteContent, insertSiteContentSchema, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, type House } from "@shared/schema";
+import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, maintenanceTasks, customMaintenanceTasks, insertSupportTicketSchema, insertSubscriptionCycleEventSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, crmClients, crmJobs, crmQuotes, crmInvoices, securitySessions, referralCredits, agentProfiles, users, siteContent, insertSiteContentSchema, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, homeDocuments, insertHomeDocumentSchema, type House } from "@shared/schema";
 import { calculateDIYSavingsAmount } from "@shared/cost-helpers";
 import pushRoutes from "./push-routes";
 import { pushService } from "./push-service";
@@ -34,6 +34,12 @@ const upload = multer({
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB max
   }
+});
+
+// Larger multer instance for document vault uploads (50MB)
+const uploadDocument = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 },
 });
 
 // Extend session data interface
@@ -14335,6 +14341,451 @@ If the document contains no relevant home information, return the structure with
     } catch (err) {
       console.error("[HANDOFF] claim error:", err);
       res.status(500).json({ message: "Failed to claim handoff package" });
+    }
+  });
+
+  // ─── Home Document Vault + Inspection Upload ──────────────────────────────────
+
+  // Helper: Extract structured home inspection data from text using GPT-4o
+  async function extractInspectionData(content: string | null, imageBase64: string | null, mimeType: string): Promise<Record<string, unknown>> {
+    const systemPrompt = `You are an expert home inspection analyst. Extract structured information from this home inspection report.
+Return ONLY valid JSON with this structure (use null for fields that cannot be determined):
+{
+  "propertyAddress": "string|null",
+  "inspectionDate": "string|null (ISO date or human-readable)",
+  "inspectorName": "string|null",
+  "inspectorLicense": "string|null",
+  "roofAge": "string|null (e.g. '10 years', 'Approximately 15 years')",
+  "roofCondition": "string|null",
+  "hvacAge": "string|null",
+  "hvacCondition": "string|null",
+  "hvacType": "string|null",
+  "electricalPanelType": "string|null",
+  "electricalPanelCondition": "string|null",
+  "plumbingCondition": "string|null",
+  "foundationCondition": "string|null",
+  "waterHeaterAge": "string|null",
+  "waterHeaterCondition": "string|null",
+  "deficiencies": [
+    {
+      "description": "string",
+      "severity": "critical|monitor|informational",
+      "area": "string (e.g. Roof, Electrical, Plumbing)"
+    }
+  ],
+  "generalSummary": "string|null"
+}
+Severity levels:
+- critical: items needing immediate attention, safety hazards, major defects
+- monitor: items to watch, minor defects, items past their useful life
+- informational: maintenance recommendations, cosmetic issues`;
+
+    try {
+      let response;
+      if (imageBase64) {
+        response = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: systemPrompt },
+            {
+              role: "user",
+              content: [{ type: "image_url" as const, image_url: { url: `data:${mimeType};base64,${imageBase64}` } }],
+            }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.1,
+        });
+      } else {
+        response = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `Inspection report content:\n\n${(content || "").slice(0, 14000)}` }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.1,
+        });
+      }
+      const raw = response.choices[0]?.message?.content || "{}";
+      return JSON.parse(raw) as Record<string, unknown>;
+    } catch (err) {
+      console.error("[INSPECTION] AI extraction error:", err);
+      return { deficiencies: [], generalSummary: null };
+    }
+  }
+
+  // GET /api/homeowner/wizard-progress — get wizard state
+  app.get("/api/homeowner/wizard-progress", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.user?.id;
+      if (req.session?.user?.role !== "homeowner") return res.status(403).json({ message: "Homeowner access only" });
+      const [user] = await db.select({
+        homeWizardStep: users.homeWizardStep,
+        homeWizardCompletedAt: users.homeWizardCompletedAt,
+        homeWizardData: users.homeWizardData,
+      }).from(users).where(eq(users.id, userId));
+      if (!user) return res.status(404).json({ message: "User not found" });
+      res.json({
+        step: user.homeWizardStep,
+        completedAt: user.homeWizardCompletedAt,
+        data: user.homeWizardData || {},
+      });
+    } catch (err) {
+      console.error("[WIZARD] Error fetching progress:", err);
+      res.status(500).json({ message: "Failed to fetch wizard progress" });
+    }
+  });
+
+  // PUT /api/homeowner/wizard-progress — save wizard step + data
+  app.put("/api/homeowner/wizard-progress", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.user?.id;
+      if (req.session?.user?.role !== "homeowner") return res.status(403).json({ message: "Homeowner access only" });
+      const { step, data } = req.body;
+      if (typeof step !== "number") return res.status(400).json({ message: "step is required" });
+      const isCompleted = step >= 8;
+      await db.update(users).set({
+        homeWizardStep: step,
+        homeWizardData: data || {},
+        homeWizardCompletedAt: isCompleted ? new Date() : undefined,
+        updatedAt: new Date(),
+      }).where(eq(users.id, userId));
+      res.json({ step, completed: isCompleted });
+    } catch (err) {
+      console.error("[WIZARD] Error saving progress:", err);
+      res.status(500).json({ message: "Failed to save wizard progress" });
+    }
+  });
+
+  // GET /api/home-documents — list documents for homeowner
+  app.get("/api/home-documents", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.user?.id;
+      if (req.session?.user?.role !== "homeowner") return res.status(403).json({ message: "Homeowner access only" });
+      const { houseId, category } = req.query;
+      let query = db.select().from(homeDocuments).where(eq(homeDocuments.homeownerId, userId));
+      const docs = await db.select().from(homeDocuments)
+        .where(and(
+          eq(homeDocuments.homeownerId, userId),
+          ...(houseId ? [eq(homeDocuments.houseId, houseId as string)] : []),
+          ...(category ? [eq(homeDocuments.category, category as string)] : []),
+        ))
+        .orderBy(desc(homeDocuments.createdAt));
+      res.json(docs);
+    } catch (err) {
+      console.error("[DOCUMENTS] Error listing:", err);
+      res.status(500).json({ message: "Failed to list documents" });
+    }
+  });
+
+  // POST /api/home-documents/upload — upload any document to vault
+  app.post("/api/home-documents/upload", isAuthenticated, uploadLimiter, uploadDocument.single("document"), async (req: any, res) => {
+    try {
+      const userId = req.session?.user?.id;
+      if (req.session?.user?.role !== "homeowner") return res.status(403).json({ message: "Homeowner access only" });
+      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+
+      // Trial users: max 3 documents
+      const user = await db.select({ subscriptionStatus: users.subscriptionStatus }).from(users).where(eq(users.id, userId));
+      const isTrial = user[0]?.subscriptionStatus === "inactive" || user[0]?.subscriptionStatus === "trialing";
+      if (isTrial) {
+        const docCount = await db.select({ count: drizzleSql<number>`count(*)::int` }).from(homeDocuments).where(eq(homeDocuments.homeownerId, userId));
+        if ((docCount[0]?.count || 0) >= 3) {
+          return res.status(403).json({ message: "Free trial users can store up to 3 documents. Upgrade to store unlimited documents." });
+        }
+      }
+
+      const allowedTypes = ["application/pdf", "image/jpeg", "image/jpg", "image/png"];
+      if (!allowedTypes.includes(req.file.mimetype)) {
+        return res.status(400).json({ message: "Unsupported file type. Upload PDF, JPG, or PNG files only." });
+      }
+
+      const { category = "other", notes, houseId, fileName } = req.body;
+      const ext = req.file.originalname.split(".").pop()?.toLowerCase() || "bin";
+      const storageKey = `home-documents/${userId}/${randomUUID()}.${ext}`;
+
+      let fileUrl = storageKey;
+      try {
+        await objectStorageService.uploadFile(storageKey, req.file.buffer, req.file.mimetype);
+      } catch (uploadErr) {
+        console.warn("[DOCUMENTS] Object storage upload failed:", uploadErr);
+      }
+
+      const [doc] = await db.insert(homeDocuments).values({
+        homeownerId: userId,
+        houseId: houseId || null,
+        fileName: fileName || req.file.originalname,
+        originalFileName: req.file.originalname,
+        fileUrl,
+        storageKey,
+        category,
+        notes: notes || null,
+        fileSize: req.file.size,
+        mimeType: req.file.mimetype,
+        isInspectionReport: false,
+      }).returning();
+
+      res.json({ document: doc });
+    } catch (err) {
+      console.error("[DOCUMENTS] Upload error:", err);
+      res.status(500).json({ message: "Failed to upload document" });
+    }
+  });
+
+  // POST /api/home-documents/upload-inspection — upload + AI extract inspection report
+  app.post("/api/home-documents/upload-inspection", isAuthenticated, uploadLimiter, uploadDocument.single("document"), async (req: any, res) => {
+    try {
+      const userId = req.session?.user?.id;
+      if (req.session?.user?.role !== "homeowner") return res.status(403).json({ message: "Homeowner access only" });
+      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+
+      // Trial users: max 3 documents
+      const userRow = await db.select({ subscriptionStatus: users.subscriptionStatus }).from(users).where(eq(users.id, userId));
+      const isTrial = userRow[0]?.subscriptionStatus === "inactive" || userRow[0]?.subscriptionStatus === "trialing";
+      if (isTrial) {
+        const docCount = await db.select({ count: drizzleSql<number>`count(*)::int` }).from(homeDocuments).where(eq(homeDocuments.homeownerId, userId));
+        if ((docCount[0]?.count || 0) >= 3) {
+          return res.status(403).json({ message: "Free trial users can store up to 3 documents. Upgrade to store unlimited documents." });
+        }
+      }
+
+      const allowedTypes = ["application/pdf", "image/jpeg", "image/jpg", "image/png"];
+      if (!allowedTypes.includes(req.file.mimetype)) {
+        return res.status(400).json({ message: "Unsupported file type. Upload PDF, JPG, or PNG only." });
+      }
+
+      const { houseId } = req.body;
+      const ext = req.file.originalname.split(".").pop()?.toLowerCase() || "bin";
+      const storageKey = `home-documents/${userId}/${randomUUID()}.${ext}`;
+
+      let fileUrl = storageKey;
+      try {
+        await objectStorageService.uploadFile(storageKey, req.file.buffer, req.file.mimetype);
+      } catch (uploadErr) {
+        console.warn("[INSPECTION] Object storage upload failed:", uploadErr);
+      }
+
+      // Run AI extraction
+      let extractedData: Record<string, unknown> = { deficiencies: [] };
+      if (req.file.mimetype === "application/pdf") {
+        try {
+          const { PDFParse, VerbosityLevel } = await import("pdf-parse");
+          const parser = new PDFParse({ data: req.file.buffer, verbosity: VerbosityLevel.ERRORS });
+          const result = await parser.getText();
+          const text = result.text ?? "";
+          if (text.trim().length > 50) {
+            extractedData = await extractInspectionData(text, null, req.file.mimetype);
+          }
+        } catch (pdfErr) {
+          console.warn("[INSPECTION] PDF parse error:", pdfErr);
+          extractedData = await extractInspectionData("(PDF text extraction failed)", null, req.file.mimetype);
+        }
+      } else if (req.file.mimetype.startsWith("image/")) {
+        const base64 = req.file.buffer.toString("base64");
+        extractedData = await extractInspectionData(null, base64, req.file.mimetype);
+      }
+
+      const deficiencies = Array.isArray(extractedData.deficiencies) ? extractedData.deficiencies as Record<string, unknown>[] : [];
+      const flaggedCount = deficiencies.length;
+
+      const [doc] = await db.insert(homeDocuments).values({
+        homeownerId: userId,
+        houseId: houseId || null,
+        fileName: req.file.originalname,
+        originalFileName: req.file.originalname,
+        fileUrl,
+        storageKey,
+        category: "inspection_report",
+        fileSize: req.file.size,
+        mimeType: req.file.mimetype,
+        isInspectionReport: true,
+        extractedData,
+        extractionConfirmed: false,
+        flaggedItemCount: flaggedCount,
+      }).returning();
+
+      res.json({ document: doc, extractedData });
+    } catch (err) {
+      console.error("[INSPECTION] Upload error:", err);
+      res.status(500).json({ message: "Failed to upload inspection report" });
+    }
+  });
+
+  // POST /api/home-documents/inspection/:id/confirm — confirm extracted data, populate profile + tasks
+  app.post("/api/home-documents/inspection/:id/confirm", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.user?.id;
+      if (req.session?.user?.role !== "homeowner") return res.status(403).json({ message: "Homeowner access only" });
+
+      const [doc] = await db.select().from(homeDocuments)
+        .where(and(eq(homeDocuments.id, req.params.id), eq(homeDocuments.homeownerId, userId)));
+      if (!doc) return res.status(404).json({ message: "Document not found" });
+
+      const confirmedData: Record<string, unknown> = req.body.extractedData || doc.extractedData || {};
+      const deficiencies = Array.isArray(confirmedData.deficiencies) ? confirmedData.deficiencies as Record<string, unknown>[] : [];
+
+      // Update the document with confirmed data
+      await db.update(homeDocuments).set({
+        extractedData: confirmedData,
+        extractionConfirmed: true,
+        flaggedItemCount: deficiencies.length,
+      }).where(eq(homeDocuments.id, doc.id));
+
+      // Populate home profile if a house is linked
+      if (doc.houseId) {
+        const profileUpdate: Record<string, unknown> = {};
+        if (confirmedData.roofCondition) profileUpdate.notes = `Roof condition (from inspection): ${confirmedData.roofCondition}`;
+        // Map extracted fields to house schema fields
+        const hvacType = confirmedData.hvacType as string | null;
+        if (hvacType) {
+          const hvacMap: Record<string, string> = {
+            "furnace": "furnace", "gas furnace": "furnace", "heat pump": "heat_pump",
+            "central air": "central_air", "boiler": "boiler", "ductless": "ductless",
+          };
+          const mappedHvac = hvacMap[hvacType.toLowerCase()] || null;
+          if (mappedHvac) profileUpdate.hvacType = mappedHvac;
+        }
+        if (Object.keys(profileUpdate).length > 0) {
+          await db.update(houses).set(profileUpdate as any).where(eq(houses.id, doc.houseId));
+        }
+
+        // Create a service record for the inspection baseline
+        const inspectionDate = confirmedData.inspectionDate as string | null;
+        const inspectorName = confirmedData.inspectorName as string | null;
+        const serviceDesc = `Home Inspection${inspectorName ? ` by ${inspectorName}` : ""}${inspectionDate ? ` on ${inspectionDate}` : ""}`;
+        try {
+          const [homeowner] = await db.select({ id: users.id }).from(users).where(eq(users.id, userId));
+          if (homeowner) {
+            await db.insert(serviceRecords).values({
+              homeownerId: userId,
+              houseId: doc.houseId,
+              serviceType: "Home Inspection",
+              description: serviceDesc,
+              status: "completed",
+              completedAt: inspectionDate ? new Date(inspectionDate) : new Date(),
+              notes: `Inspector: ${inspectorName || "Unknown"}\nLicense: ${confirmedData.inspectorLicense || "N/A"}\nFlagged items: ${deficiencies.length}`,
+            } as any);
+          }
+        } catch (srErr) {
+          console.warn("[INSPECTION] Failed to create service record:", srErr);
+        }
+
+        // Generate maintenance tasks from deficiencies
+        for (const deficiency of deficiencies) {
+          const desc = deficiency.description as string | null;
+          const severity = deficiency.severity as string | null;
+          const area = deficiency.area as string | null;
+          if (!desc) continue;
+          const priority = severity === "critical" ? "high" : severity === "monitor" ? "medium" : "low";
+          try {
+            await db.insert(customMaintenanceTasks).values({
+              homeownerId: userId,
+              houseId: doc.houseId,
+              title: `[Inspection] ${area || "Home"}: ${desc.slice(0, 80)}`,
+              description: `From home inspection report: ${desc}`,
+              priority,
+              status: "pending",
+              dueDate: null,
+              notes: `Auto-generated from inspection report uploaded on ${new Date().toLocaleDateString()}`,
+            } as any);
+          } catch (taskErr) {
+            console.warn("[INSPECTION] Failed to create task:", taskErr);
+          }
+        }
+      }
+
+      const [updated] = await db.select().from(homeDocuments).where(eq(homeDocuments.id, doc.id));
+      res.json({ document: updated, tasksCreated: deficiencies.length });
+    } catch (err) {
+      console.error("[INSPECTION] Confirm error:", err);
+      res.status(500).json({ message: "Failed to confirm inspection data" });
+    }
+  });
+
+  // PUT /api/home-documents/:id — update document metadata
+  app.put("/api/home-documents/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.user?.id;
+      const [doc] = await db.select().from(homeDocuments)
+        .where(and(eq(homeDocuments.id, req.params.id), eq(homeDocuments.homeownerId, userId)));
+      if (!doc) return res.status(404).json({ message: "Document not found" });
+      const { fileName, notes, category } = req.body;
+      const [updated] = await db.update(homeDocuments).set({
+        ...(fileName ? { fileName } : {}),
+        ...(notes !== undefined ? { notes } : {}),
+        ...(category ? { category } : {}),
+      }).where(eq(homeDocuments.id, doc.id)).returning();
+      res.json(updated);
+    } catch (err) {
+      console.error("[DOCUMENTS] Update error:", err);
+      res.status(500).json({ message: "Failed to update document" });
+    }
+  });
+
+  // DELETE /api/home-documents/:id — delete a document
+  app.delete("/api/home-documents/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.user?.id;
+      const [doc] = await db.select().from(homeDocuments)
+        .where(and(eq(homeDocuments.id, req.params.id), eq(homeDocuments.homeownerId, userId)));
+      if (!doc) return res.status(404).json({ message: "Document not found" });
+      // Delete from object storage
+      try {
+        await objectStorageService.deleteFile(doc.storageKey);
+      } catch (storageErr) {
+        console.warn("[DOCUMENTS] Object storage delete failed:", storageErr);
+      }
+      await db.delete(homeDocuments).where(eq(homeDocuments.id, doc.id));
+      res.json({ success: true });
+    } catch (err) {
+      console.error("[DOCUMENTS] Delete error:", err);
+      res.status(500).json({ message: "Failed to delete document" });
+    }
+  });
+
+  // GET /api/home-documents/:id/download — proxy download
+  app.get("/api/home-documents/:id/download", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.user?.id;
+      const [doc] = await db.select().from(homeDocuments)
+        .where(and(eq(homeDocuments.id, req.params.id), eq(homeDocuments.homeownerId, userId)));
+      if (!doc) return res.status(404).json({ message: "Document not found" });
+      const file = await objectStorageService.searchPublicObject(doc.storageKey);
+      if (!file) return res.status(404).json({ message: "File not found in storage" });
+      res.setHeader("Content-Disposition", `attachment; filename="${doc.originalFileName}"`);
+      await objectStorageService.downloadObject(file, res);
+    } catch (err) {
+      console.error("[DOCUMENTS] Download error:", err);
+      res.status(500).json({ message: "Failed to download document" });
+    }
+  });
+
+  // GET /api/homeowner/inspection-summary — latest confirmed inspection for dashboard
+  app.get("/api/homeowner/inspection-summary", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.user?.id;
+      if (req.session?.user?.role !== "homeowner") return res.status(403).json({ message: "Homeowner access only" });
+      const [doc] = await db.select().from(homeDocuments)
+        .where(and(
+          eq(homeDocuments.homeownerId, userId),
+          eq(homeDocuments.isInspectionReport, true),
+          eq(homeDocuments.extractionConfirmed, true),
+        ))
+        .orderBy(desc(homeDocuments.createdAt))
+        .limit(1);
+      if (!doc) return res.json(null);
+      const data = doc.extractedData as Record<string, unknown> | null || {};
+      res.json({
+        id: doc.id,
+        inspectionDate: data.inspectionDate || null,
+        inspectorName: data.inspectorName || null,
+        flaggedItemCount: doc.flaggedItemCount || 0,
+        propertyAddress: data.propertyAddress || null,
+        uploadedAt: doc.createdAt,
+      });
+    } catch (err) {
+      console.error("[INSPECTION] Summary error:", err);
+      res.status(500).json({ message: "Failed to fetch inspection summary" });
     }
   });
 

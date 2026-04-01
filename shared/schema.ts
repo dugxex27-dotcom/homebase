@@ -167,6 +167,10 @@ export const users = pgTable("users", {
   subscriptionEndDate: timestamp("subscription_end_date"),
   accountStatus: text("account_status").notNull().default("active"), // "active", "cancelled", "deleted"
   accountCancelledAt: timestamp("account_cancelled_at"),
+  // Home setup wizard for new homeowners (7-step post-signup wizard)
+  homeWizardStep: integer("home_wizard_step").notNull().default(0), // 0 = not started, 1-7 = current step, 8 = completed
+  homeWizardCompletedAt: timestamp("home_wizard_completed_at"),
+  homeWizardData: jsonb("home_wizard_data"), // Persisted wizard form data per step
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -2134,3 +2138,35 @@ export const handoffDocuments = pgTable("handoff_documents", {
 export const insertHandoffDocumentSchema = createInsertSchema(handoffDocuments).omit({ id: true, createdAt: true });
 export type InsertHandoffDocument = z.infer<typeof insertHandoffDocumentSchema>;
 export type HandoffDocument = typeof handoffDocuments.$inferSelect;
+
+// ─── Home Document Vault ─────────────────────────────────────────────────────
+// Homeowners can upload and organize any home-related documents.
+// Inspection reports get AI-extracted data stored in extractedData.
+
+export const homeDocuments = pgTable("home_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  homeownerId: varchar("homeowner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  houseId: varchar("house_id"), // optional link to specific house
+  fileName: text("file_name").notNull(), // display name
+  originalFileName: text("original_file_name").notNull(),
+  fileUrl: text("file_url").notNull(), // accessible URL
+  storageKey: text("storage_key").notNull(), // internal object storage path
+  category: text("category").notNull().default("other"), // inspection_report | insurance | warranty | permit | mortgage | hoa | other
+  notes: text("notes"),
+  fileSize: integer("file_size"), // bytes
+  mimeType: text("mime_type"),
+  // Inspection-specific fields
+  isInspectionReport: boolean("is_inspection_report").notNull().default(false),
+  extractedData: jsonb("extracted_data"), // AI-extracted inspection fields
+  extractionConfirmed: boolean("extraction_confirmed").notNull().default(false), // true after user reviews/confirms
+  flaggedItemCount: integer("flagged_item_count").default(0), // count of deficiencies flagged
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_home_documents_homeowner_id").on(table.homeownerId),
+  index("IDX_home_documents_house_id").on(table.houseId),
+  index("IDX_home_documents_category").on(table.category),
+]);
+
+export const insertHomeDocumentSchema = createInsertSchema(homeDocuments).omit({ id: true, createdAt: true });
+export type InsertHomeDocument = z.infer<typeof insertHomeDocumentSchema>;
+export type HomeDocument = typeof homeDocuments.$inferSelect;

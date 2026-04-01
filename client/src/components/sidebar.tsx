@@ -16,7 +16,8 @@ import {
   LayoutDashboard,
   Users,
   CreditCard,
-  Info
+  Info,
+  FolderOpen
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient } from "@/lib/queryClient";
@@ -183,6 +184,12 @@ export default function Sidebar() {
               <button className={navItemClass('/service-records')} data-testid="nav-service-records">
                 <FileText className="w-5 h-5" />
                 Service Records
+              </button>
+            </Link>
+            <Link href="/documents">
+              <button className={navItemClass('/documents')} data-testid="nav-documents">
+                <FolderOpen className="w-5 h-5" />
+                Home Documents
               </button>
             </Link>
             <Link href="/contractors">

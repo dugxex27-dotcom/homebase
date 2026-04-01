@@ -116,6 +116,22 @@ export class ObjectStorageService {
     }
   }
 
+  // Delete a file from object storage by path key
+  async deleteFile(path: string): Promise<void> {
+    try {
+      const searchPaths = this.getPublicObjectSearchPaths();
+      if (searchPaths.length === 0) return;
+      const fullPath = `${searchPaths[0]}/${path}`;
+      const { bucketName, objectName } = parseObjectPath(fullPath);
+      const bucket = objectStorageClient.bucket(bucketName);
+      const file = bucket.file(objectName);
+      const [exists] = await file.exists();
+      if (exists) await file.delete();
+    } catch (error) {
+      console.warn("Error deleting file from object storage:", error);
+    }
+  }
+
   // Downloads an object to the response.
   async downloadObject(file: File, res: Response, cacheTtlSec: number = 3600) {
     try {
