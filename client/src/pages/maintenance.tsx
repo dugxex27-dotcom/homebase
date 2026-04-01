@@ -354,6 +354,52 @@ const HOME_SYSTEMS = {
     { value: "sump-pump", label: "Sump Pump" },
     { value: "security-system", label: "Security System" },
     { value: "sprinkler-system", label: "Irrigation/Sprinkler System" }
+  ],
+  exterior: [
+    { value: "roof-asphalt", label: "Asphalt Shingle Roof" },
+    { value: "roof-metal", label: "Metal Roof" },
+    { value: "roof-tile", label: "Tile / Slate Roof" },
+    { value: "roof-flat", label: "Flat Roof (TPO/EPDM)" },
+    { value: "gutters", label: "Gutters & Downspouts" },
+    { value: "siding-vinyl", label: "Vinyl Siding" },
+    { value: "siding-fibercement", label: "Fiber Cement Siding" },
+    { value: "siding-wood", label: "Wood Siding" },
+    { value: "windows-ext", label: "Exterior Windows" },
+    { value: "entry-doors", label: "Entry Doors" },
+    { value: "garage-door", label: "Garage Door" },
+    { value: "deck-wood", label: "Wood Deck" },
+    { value: "deck-composite", label: "Composite Deck" }
+  ],
+  electrical: [
+    { value: "electrical-panel", label: "Electrical Panel (Breaker Box)" },
+    { value: "electrical-subpanel", label: "Sub Panel" },
+    { value: "surge-protector", label: "Whole-home Surge Protector" },
+    { value: "ev-charger", label: "EV Charger (Level 2)" },
+    { value: "smoke-co-detectors", label: "Smoke / CO Detectors" }
+  ],
+  plumbing: [
+    { value: "pipes-copper", label: "Supply Pipes (Copper)" },
+    { value: "pipes-pex", label: "Supply Pipes (PEX)" },
+    { value: "pipes-galvanized", label: "Supply Pipes (Galvanized)" },
+    { value: "pipes-cpvc", label: "Supply Pipes (CPVC)" },
+    { value: "sewer-line", label: "Main Sewer Line" },
+    { value: "drain-pipes", label: "Drain / Waste Pipes" },
+    { value: "main-shutoff", label: "Main Water Shutoff Valve" }
+  ],
+  structural: [
+    { value: "foundation-slab", label: "Foundation (Slab)" },
+    { value: "foundation-crawl", label: "Foundation (Crawl Space)" },
+    { value: "foundation-basement", label: "Foundation (Full Basement)" },
+    { value: "vapor-barrier", label: "Vapor Barrier" },
+    { value: "radon-mitigation", label: "Radon Mitigation System" },
+    { value: "waterproofing", label: "Basement Waterproofing" }
+  ],
+  insulation: [
+    { value: "attic-insulation", label: "Attic Insulation" },
+    { value: "wall-insulation", label: "Wall Insulation" },
+    { value: "crawl-insulation", label: "Crawl Space Insulation" },
+    { value: "attic-ventilation", label: "Attic Ventilation" },
+    { value: "air-sealing", label: "Air Sealing" }
   ]
 };
 
@@ -785,6 +831,132 @@ function generateAgeBasedRecommendations(system: HomeSystem): SystemRecommendati
     });
   }
   
+  // ── Roof & Exterior ──────────────────────────────────────────────────────
+  else if (system.systemType === 'Asphalt Shingle Roof' || system.systemType === 'roof-asphalt') {
+    if (age >= 20) {
+      recommendations.push({ title: 'Roof Replacement Due', description: `Your asphalt shingle roof is ${age} years old. Typical lifespan is 20–30 years. Have a roofer evaluate it promptly.`, priority: 'high', urgency: 'critical', estimatedCost: '$7,000 – $15,000' });
+    } else if (age >= 15) {
+      recommendations.push({ title: 'Roof Inspection Recommended', description: `At ${age} years, your roof is in its second half of life. Schedule an annual professional inspection and check for missing or curling shingles.`, priority: 'high', urgency: 'important', estimatedCost: '$150 – $400' });
+    }
+    recommendations.push({ title: 'Annual Roof Check', description: 'Inspect after major storms. Clear debris from valleys and around penetrations. Look for curling, cracking, or missing shingles.', priority: 'medium', urgency: 'routine', estimatedCost: '$0 – $200' });
+  }
+  else if (system.systemType === 'Metal Roof' || system.systemType === 'roof-metal') {
+    if (age >= 40) {
+      recommendations.push({ title: 'Metal Roof Inspection', description: `Your metal roof is ${age} years old (lifespan 40–70 yrs). Check fasteners, seams, and coatings.`, priority: 'medium', urgency: 'important', estimatedCost: '$500 – $2,000' });
+    }
+    recommendations.push({ title: 'Metal Roof Maintenance', description: 'Inspect fasteners and seams every 3–5 years. Re-coat if paint or sealant is fading. Clear debris to prevent rust spots.', priority: 'low', urgency: 'routine', estimatedCost: '$300 – $1,500' });
+  }
+  else if (system.systemType === 'Tile / Slate Roof' || system.systemType === 'roof-tile') {
+    if (age >= 50) {
+      recommendations.push({ title: 'Roof Underlayment Replacement', description: `Tile/slate roofs last 50–100 years, but the underlayment beneath may need replacement around ${age} years. Have it inspected.`, priority: 'high', urgency: 'important', estimatedCost: '$5,000 – $12,000' });
+    }
+    recommendations.push({ title: 'Tile Roof Inspection', description: 'Inspect annually for cracked or slipped tiles. Walk carefully — tile is fragile. Check flashing around chimneys and valleys.', priority: 'medium', urgency: 'routine', estimatedCost: '$150 – $500' });
+  }
+  else if (system.systemType === 'Flat Roof (TPO/EPDM)' || system.systemType === 'roof-flat') {
+    if (age >= 12) {
+      recommendations.push({ title: 'Flat Roof Replacement', description: `Your flat roof is ${age} years old. TPO/EPDM typically lasts 10–20 years. Inspect for blistering, ponding water, and seam separation.`, priority: 'high', urgency: age >= 18 ? 'critical' : 'important', estimatedCost: '$5,000 – $14,000' });
+    }
+    recommendations.push({ title: 'Flat Roof Maintenance', description: 'Inspect seams and drains twice a year. Clear debris after storms. Patch small punctures promptly to prevent moisture intrusion.', priority: 'high', urgency: 'routine', estimatedCost: '$200 – $800' });
+  }
+  else if (system.systemType === 'Gutters & Downspouts' || system.systemType === 'gutters') {
+    if (age >= 20) {
+      recommendations.push({ title: 'Gutter Replacement', description: `Your gutters are ${age} years old. Aluminum gutters last 20–30 years. Look for rust, sagging, or separating seams.`, priority: 'medium', urgency: 'routine', estimatedCost: '$800 – $2,500' });
+    }
+    recommendations.push({ title: 'Gutter Cleaning', description: 'Clean gutters twice a year (spring and fall). Inspect downspout extensions — water should discharge at least 6 ft from the foundation.', priority: 'high', urgency: 'routine', estimatedCost: '$100 – $300' });
+  }
+  else if (['Vinyl Siding', 'Fiber Cement Siding', 'Wood Siding', 'siding-vinyl', 'siding-fibercement', 'siding-wood'].includes(system.systemType)) {
+    const lifespan = system.systemType.includes('vinyl') || system.systemType === 'Vinyl Siding' ? 25 : system.systemType.includes('fiber') || system.systemType === 'Fiber Cement Siding' ? 35 : 20;
+    if (age >= lifespan - 5) {
+      recommendations.push({ title: 'Siding Replacement Planning', description: `Your siding is ${age} years old (typical lifespan ${lifespan} yrs). Budget for replacement and look for warping, cracking, or moisture damage.`, priority: 'medium', urgency: age >= lifespan ? 'important' : 'routine', estimatedCost: '$6,000 – $20,000' });
+    }
+    recommendations.push({ title: 'Siding Inspection', description: 'Check annually for cracks, gaps, warping, or mold. Caulk around windows and trim. Power-wash every 1–2 years.', priority: 'medium', urgency: 'routine', estimatedCost: '$100 – $500' });
+  }
+  else if (system.systemType === 'Exterior Windows' || system.systemType === 'windows-ext') {
+    if (age >= 20) {
+      recommendations.push({ title: 'Window Replacement', description: `Your windows are ${age} years old. Seals often fail after 15–25 years causing fogging, drafts, and energy loss.`, priority: 'medium', urgency: 'important', estimatedCost: '$300 – $900 per window' });
+    }
+    recommendations.push({ title: 'Window Maintenance', description: 'Check weatherstripping and caulking annually. Look for fogging between panes (seal failure). Clean tracks and lubricate hardware.', priority: 'low', urgency: 'routine', estimatedCost: '$50 – $200' });
+  }
+  else if (system.systemType === 'Entry Doors' || system.systemType === 'entry-doors') {
+    if (age >= 25) {
+      recommendations.push({ title: 'Door Replacement Consideration', description: `Entry doors typically last 20–30 years. At ${age} years, check for warping, poor sealing, and compromised security.`, priority: 'medium', urgency: 'routine', estimatedCost: '$800 – $3,500' });
+    }
+    recommendations.push({ title: 'Door Maintenance', description: 'Inspect weatherstripping annually. Lubricate hinges and deadbolts. Re-caulk exterior trim. Check threshold seal.', priority: 'low', urgency: 'routine', estimatedCost: '$30 – $150' });
+  }
+  else if (system.systemType === 'Garage Door' || system.systemType === 'garage-door') {
+    if (age >= 15) {
+      recommendations.push({ title: 'Garage Door / Opener Evaluation', description: `Your garage door is ${age} years old. Springs last 10–15 years and are a safety hazard when worn. Have a pro evaluate.`, priority: 'high', urgency: age >= 15 ? 'important' : 'routine', estimatedCost: '$200 – $600 (springs) / $800 – $2,500 (full door)' });
+    }
+    recommendations.push({ title: 'Garage Door Maintenance', description: 'Lubricate rollers, hinges, and tracks annually. Test auto-reverse safety feature monthly. Replace weather seal when cracked.', priority: 'medium', urgency: 'routine', estimatedCost: '$0 – $100' });
+  }
+  else if (['Wood Deck', 'Composite Deck', 'deck-wood', 'deck-composite'].includes(system.systemType)) {
+    const isWood = system.systemType === 'Wood Deck' || system.systemType === 'deck-wood';
+    if (age >= (isWood ? 12 : 20)) {
+      recommendations.push({ title: `${systemLabel} Evaluation`, description: `${isWood ? `Wood decks` : `Composite decks`} last ${isWood ? '10–20' : '20–30'} years. At ${age} years, check for rot, loose fasteners, and structural integrity.`, priority: 'high', urgency: 'important', estimatedCost: isWood ? '$3,000 – $15,000' : '$8,000 – $25,000' });
+    }
+    recommendations.push({ title: `${systemLabel} Maintenance`, description: isWood ? 'Seal or stain every 2–3 years. Check joists for rot annually. Replace cracked boards promptly.' : 'Clean with soap and water twice a year. Check fasteners and framing annually. Avoid abrasive cleaners.', priority: 'medium', urgency: 'routine', estimatedCost: isWood ? '$300 – $1,500' : '$100 – $400' });
+  }
+
+  // ── Electrical ───────────────────────────────────────────────────────────
+  else if (system.systemType === 'Electrical Panel (Breaker Box)' || system.systemType === 'electrical-panel') {
+    if (age >= 25) {
+      recommendations.push({ title: 'Electrical Panel Inspection', description: `Your electrical panel is ${age} years old. Panels over 25–40 years should be professionally inspected. Look for recalled brands (Zinsco, Federal Pacific).`, priority: 'high', urgency: age >= 35 ? 'critical' : 'important', estimatedCost: '$150 – $400 (inspection) / $1,500 – $4,000 (replacement)' });
+    }
+    recommendations.push({ title: 'Panel Annual Check', description: 'Look for tripping breakers, warm panel cover, or burning smells. Label all breakers. Ensure adequate capacity for home loads.', priority: 'high', urgency: 'routine', estimatedCost: '$0' });
+  }
+  else if (system.systemType === 'Smoke / CO Detectors' || system.systemType === 'smoke-co-detectors') {
+    if (age >= 10) {
+      recommendations.push({ title: 'Detector Replacement Required', description: `Smoke and CO detectors must be replaced every 10 years. Yours are ${age} years old — replace immediately.`, priority: 'high', urgency: 'critical', estimatedCost: '$30 – $80 each' });
+    }
+    recommendations.push({ title: 'Monthly Detector Test', description: 'Press the test button monthly. Replace batteries annually (or get 10-year sealed battery models). Vacuum gently to clear dust from sensors.', priority: 'high', urgency: 'routine', estimatedCost: '$10 – $30/year' });
+  }
+
+  // ── Plumbing ─────────────────────────────────────────────────────────────
+  else if (system.systemType === 'Supply Pipes (Galvanized)' || system.systemType === 'pipes-galvanized') {
+    if (age >= 30) {
+      recommendations.push({ title: 'Galvanized Pipe Replacement', description: `Galvanized pipes corrode from the inside and have a lifespan of 40–70 years, but water quality and pressure degrade significantly after ${age} years. Budget for full replacement.`, priority: 'high', urgency: age >= 50 ? 'critical' : 'important', estimatedCost: '$4,000 – $15,000' });
+    } else {
+      recommendations.push({ title: 'Galvanized Pipe Monitoring', description: 'Check water pressure and color at faucets. Orange/brown water signals interior corrosion. Have pipes inspected to plan ahead for replacement.', priority: 'medium', urgency: 'routine', estimatedCost: '$100 – $300' });
+    }
+  }
+  else if (['Supply Pipes (Copper)', 'Supply Pipes (PEX)', 'Supply Pipes (CPVC)', 'pipes-copper', 'pipes-pex', 'pipes-cpvc'].includes(system.systemType)) {
+    if (age >= 40) {
+      recommendations.push({ title: 'Pipe Inspection', description: `At ${age} years, have a plumber inspect joints and fittings for pinhole leaks or degradation.`, priority: 'medium', urgency: 'important', estimatedCost: '$150 – $400' });
+    }
+    recommendations.push({ title: 'Annual Leak Check', description: 'Inspect under sinks, at water heater connections, and at shutoff valves for drips. Ensure water pressure is 40–80 PSI (install a regulator if over 80).', priority: 'medium', urgency: 'routine', estimatedCost: '$0' });
+  }
+  else if (system.systemType === 'Main Sewer Line' || system.systemType === 'sewer-line') {
+    if (age >= 30) {
+      recommendations.push({ title: 'Sewer Scope Inspection', description: `Sewer lines 30+ years old are prone to root intrusion, bellying, and cracking. Schedule a camera inspection.`, priority: 'high', urgency: age >= 40 ? 'critical' : 'important', estimatedCost: '$150 – $300 (scope) / $3,000 – $25,000 (replacement)' });
+    }
+    recommendations.push({ title: 'Drain Maintenance', description: 'Avoid flushing wipes, grease, or non-biodegradable items. Scope the line every 5–7 years in older homes. Know your cleanout location.', priority: 'medium', urgency: 'routine', estimatedCost: '$100 – $300' });
+  }
+
+  // ── Foundation & Structure ───────────────────────────────────────────────
+  else if (['Foundation (Slab)', 'Foundation (Crawl Space)', 'Foundation (Full Basement)', 'foundation-slab', 'foundation-crawl', 'foundation-basement'].includes(system.systemType)) {
+    if (age >= 20) {
+      recommendations.push({ title: 'Foundation Inspection', description: `Have a structural engineer or foundation specialist inspect for cracks, settling, water intrusion, and drainage issues — especially with a ${age}-year-old foundation.`, priority: age >= 40 ? 'high' : 'medium', urgency: 'important', estimatedCost: '$300 – $700 (inspection) / $5,000 – $50,000+ (repairs)' });
+    }
+    recommendations.push({ title: 'Annual Foundation Check', description: 'Walk the perimeter annually. Look for new cracks wider than 1/8", doors that stick, uneven floors, or water staining. Grade soil away from the foundation.', priority: 'high', urgency: 'routine', estimatedCost: '$0' });
+  }
+  else if (system.systemType === 'Radon Mitigation System' || system.systemType === 'radon-mitigation') {
+    if (age >= 10) {
+      recommendations.push({ title: 'Radon System Inspection', description: `Radon mitigation fans typically last 10–15 years. At ${age} years, verify the fan is still operating and test radon levels.`, priority: 'high', urgency: age >= 12 ? 'important' : 'routine', estimatedCost: '$15 – $30 (test kit) / $150 – $300 (fan replacement)' });
+    }
+    recommendations.push({ title: 'Radon Level Testing', description: 'Test radon levels every 2 years or after significant home renovations. EPA action level is 4 pCi/L. Keep fan indicator/manometer visible.', priority: 'high', urgency: 'routine', estimatedCost: '$15 – $30' });
+  }
+
+  // ── Attic & Insulation ───────────────────────────────────────────────────
+  else if (system.systemType === 'Attic Insulation' || system.systemType === 'attic-insulation') {
+    if (age >= 20) {
+      recommendations.push({ title: 'Attic Insulation Upgrade', description: `Blown-in insulation settles over time. At ${age} years, measure your current R-value (recommended R-38 to R-60 for most climates). Adding insulation can cut energy bills 15–20%.`, priority: 'medium', urgency: 'routine', estimatedCost: '$1,500 – $4,000' });
+    }
+    recommendations.push({ title: 'Attic Insulation Check', description: 'Inspect annually for signs of moisture, pest damage, or compression. Ensure attic access hatch is insulated and sealed. Check that ventilation paths are unblocked.', priority: 'medium', urgency: 'routine', estimatedCost: '$0' });
+  }
+  else if (system.systemType === 'Attic Ventilation' || system.systemType === 'attic-ventilation') {
+    recommendations.push({ title: 'Attic Ventilation Inspection', description: 'Check ridge vents, soffit vents, and gable vents annually for blockages, pest nests, or damage. Proper ventilation prevents ice dams, moisture, and premature shingle aging.', priority: 'medium', urgency: 'routine', estimatedCost: '$0 – $300' });
+  }
+
   return recommendations;
 }
 
@@ -3328,7 +3500,13 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     {Object.entries(HOME_SYSTEMS).map(([category, systems]) => (
                       <div key={category}>
                         <h4 className="font-medium text-sm mb-3 capitalize" style={{ color: '#2c0f5b' }}>
-                          {category === 'features' ? 'Special Features' : `${category} System`}
+                          {category === 'features' ? 'Special Features' :
+                           category === 'exterior' ? 'Roof & Exterior' :
+                           category === 'electrical' ? 'Electrical' :
+                           category === 'plumbing' ? 'Plumbing' :
+                           category === 'structural' ? 'Foundation & Structure' :
+                           category === 'insulation' ? 'Attic & Insulation' :
+                           `${category.charAt(0).toUpperCase() + category.slice(1)} System`}
                         </h4>
                         <div className="space-y-2">
                           {systems.map((system) => {
