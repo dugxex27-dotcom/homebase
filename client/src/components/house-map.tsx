@@ -93,7 +93,7 @@ const LIFESPANS: Record<string, number> = {
 
 const REPLACEMENT_COSTS: Record<string, string> = {
   "central air": "$4,000–$8,000", "central ac": "$4,000–$8,000", "hvac": "$4,000–$8,000",
-  "air conditioner": "$4,000–$8,000",
+  "air conditioner": "$4,000–$8,000", "ac unit": "$4,000–$8,000",
   "gas heat": "$2,500–$5,000", "gas furnace": "$2,500–$5,000", "furnace": "$2,500–$5,000",
   "boiler": "$3,000–$6,000", "heat pump": "$3,500–$7,500", "mini split": "$2,000–$5,500",
   "electric heat": "$1,500–$4,000", "ductwork": "$1,500–$5,000",
@@ -114,10 +114,14 @@ const REPLACEMENT_COSTS: Record<string, string> = {
   "concrete driveway": "$4,000–$10,000", "fence": "$1,500–$6,000",
   "solar": "$10,000–$25,000", "solar panel": "$10,000–$25,000",
   "foundation": "$5,000–$50,000+", "crawl space": "$1,500–$6,000",
+  "vapor barrier": "$1,500–$6,000",
   "sump pump": "$500–$1,200", "ejector pump": "$800–$2,000",
-  "septic": "$3,000–$15,000", "well pump": "$800–$2,500",
+  "septic": "$3,000–$15,000", "septic tank": "$3,000–$15,000",
+  "well pump": "$800–$2,500", "well": "$800–$5,000",
   "attic insulation": "$1,500–$4,000", "insulation": "$1,500–$4,000",
   "radon": "$800–$2,500", "radon mitigation": "$800–$2,500",
+  "water treatment": "$500–$2,500",
+  "triple pane": "$500–$1,200 each",
   "smoke detector": "$20–$80 each", "smoke alarm": "$20–$80 each",
   "carbon monoxide": "$25–$100 each", "co detector": "$25–$100 each",
   "security": "$300–$1,500", "alarm": "$300–$1,500",
@@ -242,27 +246,50 @@ type DotItem = {
 
 type PlacedDot = DotItem & { cx: number; cy: number };
 
-const DOT_SPACING = 20;
+const DOT_R = 8;
 
 function placeDots(items: DotItem[], zone: ZoneDef): PlacedDot[] {
-  const usableW = zone.w - 24;
-  const maxCols = Math.max(1, Math.floor(usableW / DOT_SPACING));
-  const cols = Math.min(maxCols, items.length);
-  const rows = Math.ceil(items.length / cols);
-  const totalW = (cols - 1) * DOT_SPACING;
-  const totalH = (rows - 1) * DOT_SPACING;
+  if (items.length === 0) return [];
+
+  const usableW = Math.max(DOT_R * 2, zone.w - DOT_R * 2);
+  const usableH = Math.max(DOT_R * 2, zone.h - DOT_R * 2);
+
+  // Find columns + spacing that keep all dots within w×h bounding box.
+  // Try standard spacing first, then reduce if rows overflow the zone height.
+  let spacing = 20;
+  let cols = Math.min(items.length, Math.max(1, Math.floor((usableW + spacing) / spacing)));
+  let rows = Math.ceil(items.length / cols);
+
+  // If rows overflow vertically, push more items into each row (more columns)
+  while (rows > 1 && (rows - 1) * spacing > usableH && cols < items.length) {
+    cols++;
+    rows = Math.ceil(items.length / cols);
+  }
+
+  // If still overflowing, shrink spacing to fit vertically (min 14px)
+  if (rows > 1 && (rows - 1) * spacing > usableH) {
+    spacing = Math.max(14, Math.floor(usableH / (rows - 1)));
+  }
+
+  const totalW = (cols - 1) * spacing;
+  const totalH = (rows - 1) * spacing;
+  const halfW = usableW / 2;
+  const halfH = usableH / 2;
 
   return items.map((item, i) => {
     const col = i % cols;
     const row = Math.floor(i / cols);
     const rowCount = Math.min(cols, items.length - row * cols);
     const isLastRow = row === rows - 1 && rowCount < cols;
-    const rowShiftX = isLastRow ? ((cols - rowCount) * DOT_SPACING) / 2 : 0;
-    return {
-      ...item,
-      cx: zone.cx - totalW / 2 + col * DOT_SPACING + rowShiftX,
-      cy: zone.cy - totalH / 2 + row * DOT_SPACING,
-    };
+    const rowShiftX = isLastRow ? ((cols - rowCount) * spacing) / 2 : 0;
+
+    // Compute position and clamp within zone bounding box
+    const rawCx = zone.cx - totalW / 2 + col * spacing + rowShiftX;
+    const rawCy = zone.cy - totalH / 2 + row * spacing;
+    const cx = Math.max(zone.cx - halfW, Math.min(zone.cx + halfW, rawCx));
+    const cy = Math.max(zone.cy - halfH, Math.min(zone.cy + halfH, rawCy));
+
+    return { ...item, cx, cy };
   });
 }
 
