@@ -13743,10 +13743,10 @@ If the document contains no relevant home information, return the structure with
 }`
               },
               {
-                role: "user",
+                role: "user" as const,
                 content: [
-                  { type: "image_url", image_url: { url: imageUrl } }
-                ] as any
+                  { type: "image_url" as const, image_url: { url: imageUrl } }
+                ],
               }
             ],
             response_format: { type: "json_object" },
@@ -13798,7 +13798,7 @@ If the document contains no relevant home information, return the structure with
         buyerName: z.string().min(1).optional(),
         buyerEmail: z.string().email().optional(),
         notes: z.string().nullable().optional(),
-        extractedData: z.any().optional(),
+        extractedData: z.record(z.string(), z.unknown()).optional(),
       });
       const parsed = schema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0].message });
@@ -13900,18 +13900,23 @@ If the document contains no relevant home information, return the structure with
 
       if (!pkg) return res.status(404).json({ message: "Handoff package not found or link is invalid" });
 
-      const extractedData = pkg.extractedData as any || {};
+      const extractedData = (pkg.extractedData ?? {}) as Record<string, unknown>;
+      const systems = Array.isArray(extractedData.systems) ? extractedData.systems : [];
+      const appliances = Array.isArray(extractedData.appliances) ? extractedData.appliances : [];
+      const warranties = Array.isArray(extractedData.warranties) ? extractedData.warranties : [];
       res.json({
         id: pkg.id,
         propertyAddress: pkg.propertyAddress,
         buyerName: pkg.buyerName,
         status: pkg.status,
-        systemCount: (extractedData.systems || []).length,
-        applianceCount: (extractedData.appliances || []).length,
-        hasWarranties: (extractedData.warranties || []).length > 0,
-        propertyDetails: extractedData.propertyDetails || {},
-        generalNotes: extractedData.generalNotes || null,
-        // Full extracted data shown to authenticated claimant
+        systemCount: systems.length,
+        applianceCount: appliances.length,
+        hasWarranties: warranties.length > 0,
+        propertyDetails: typeof extractedData.propertyDetails === "object" && extractedData.propertyDetails !== null
+          ? extractedData.propertyDetails
+          : {},
+        generalNotes: typeof extractedData.generalNotes === "string" ? extractedData.generalNotes : null,
+        // Full extracted data shown to buyer for preview (omitted once claimed)
         extractedData: pkg.status !== "claimed" ? extractedData : undefined,
       });
     } catch (err) {
@@ -13933,43 +13938,74 @@ If the document contains no relevant home information, return the structure with
       if (!pkg) return res.status(404).json({ message: "Package not found or link is invalid" });
       if (pkg.status === "claimed") return res.status(400).json({ message: "This home record has already been claimed" });
 
-      const extractedData = pkg.extractedData as any || {};
+      const extractedData = (pkg.extractedData ?? {}) as Record<string, unknown>;
+      const extractedSystems = Array.isArray(extractedData.systems) ? extractedData.systems as Record<string, unknown>[] : [];
+      const extractedAppliances = Array.isArray(extractedData.appliances) ? extractedData.appliances as Record<string, unknown>[] : [];
 
-      // Create the house
-      const [house] = await db.insert(houses).values({
-        homeownerId: userId,
-        name: pkg.propertyAddress.split(",")[0] || pkg.propertyAddress,
-        address: pkg.propertyAddress,
-        climateZone: "temperate",
-        homeSystems: (extractedData.systems || []).map((s: any) => s.name).filter(Boolean),
-        isDefault: false,
-      }).returning();
+      // Find existing house for this homeowner at the same address (merge if found)
+      const existingHouses = await db.select().from(houses).where(eq(houses.homeownerId, userId));
+      const normalizeAddr = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+      const normalizedPkgAddr = normalizeAddr(pkg.propertyAddress);
+      const matchingHouse = existingHouses.find(h =>
+        h.address && normalizeAddr(h.address) === normalizedPkgAddr
+      );
+
+      let targetHouseId: string;
+      let createdNewHouse = false;
+
+      if (matchingHouse) {
+        // Merge into existing house — update its homeSystems array
+        targetHouseId = matchingHouse.id;
+        const existingSystems: string[] = Array.isArray(matchingHouse.homeSystems) ? matchingHouse.homeSystems as string[] : [];
+        const newSystemNames = extractedSystems
+          .map(s => typeof s.name === "string" ? s.name : null)
+          .filter((n): n is string => n !== null && !existingSystems.includes(n));
+        if (newSystemNames.length > 0) {
+          await db.update(houses)
+            .set({ homeSystems: [...existingSystems, ...newSystemNames] })
+            .where(eq(houses.id, matchingHouse.id));
+        }
+      } else {
+        // Create new house
+        const [newHouse] = await db.insert(houses).values({
+          homeownerId: userId,
+          name: pkg.propertyAddress.split(",")[0] || pkg.propertyAddress,
+          address: pkg.propertyAddress,
+          climateZone: "temperate",
+          homeSystems: extractedSystems
+            .map(s => typeof s.name === "string" ? s.name : null)
+            .filter((n): n is string => n !== null),
+          isDefault: false,
+        }).returning();
+        targetHouseId = newHouse.id;
+        createdNewHouse = true;
+      }
 
       // Seed home systems
-      const systemInserts = (extractedData.systems || []).map((s: any) => ({
+      const systemInserts = extractedSystems.map(s => ({
         homeownerId: userId,
-        houseId: house.id,
-        systemType: s.name,
-        brand: s.brand || null,
-        model: s.model || null,
-        installationYear: s.yearInstalled || null,
-        notes: s.notes || null,
+        houseId: targetHouseId,
+        systemType: typeof s.name === "string" ? s.name : "Unknown System",
+        brand: typeof s.brand === "string" ? s.brand : null,
+        model: typeof s.model === "string" ? s.model : null,
+        installationYear: typeof s.yearInstalled === "number" ? s.yearInstalled : null,
+        notes: typeof s.notes === "string" ? s.notes : null,
       }));
       if (systemInserts.length > 0) {
         await db.insert(homeSystems).values(systemInserts);
       }
 
       // Seed appliances
-      const applianceInserts = (extractedData.appliances || []).map((a: any) => ({
+      const applianceInserts = extractedAppliances.map(a => ({
         homeownerId: userId,
-        houseId: house.id,
-        name: a.name,
-        make: a.make || "Unknown",
-        model: a.model || "Unknown",
-        serialNumber: a.serialNumber || null,
-        yearInstalled: a.yearInstalled || null,
-        warrantyExpiration: a.warrantyExpiration || null,
-        notes: a.notes || null,
+        houseId: targetHouseId,
+        name: typeof a.name === "string" ? a.name : "Unknown Appliance",
+        make: typeof a.make === "string" ? a.make : "Unknown",
+        model: typeof a.model === "string" ? a.model : "Unknown",
+        serialNumber: typeof a.serialNumber === "string" ? a.serialNumber : null,
+        yearInstalled: typeof a.yearInstalled === "number" ? a.yearInstalled : null,
+        warrantyExpiration: typeof a.warrantyExpiration === "string" ? a.warrantyExpiration : null,
+        notes: typeof a.notes === "string" ? a.notes : null,
         location: "",
       }));
       if (applianceInserts.length > 0) {
@@ -13984,12 +14020,14 @@ If the document contains no relevant home information, return the structure with
         updatedAt: new Date(),
       }).where(eq(homeHandoffPackages.id, pkg.id));
 
+      const action = createdNewHouse ? "created" : "merged into existing record";
       res.json({
         success: true,
-        houseId: house.id,
+        houseId: targetHouseId,
+        mergedExisting: !createdNewHouse,
         systemsAdded: systemInserts.length,
         appliancesAdded: applianceInserts.length,
-        message: `Your home record has been created with ${systemInserts.length} systems and ${applianceInserts.length} appliances.`,
+        message: `Your home record has been ${action} with ${systemInserts.length} systems and ${applianceInserts.length} appliances.`,
       });
     } catch (err) {
       console.error("[HANDOFF] claim error:", err);

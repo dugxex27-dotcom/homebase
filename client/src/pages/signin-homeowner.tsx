@@ -113,6 +113,15 @@ export default function SignInHomeowner() {
     },
   });
 
+  // Helper: after successful auth, redirect to pending handoff claim or default location
+  function resolvePostAuthRedirect(defaultPath: string): string {
+    const urlHandoffToken = new URLSearchParams(window.location.search).get('handoff_token');
+    const sessionHandoffToken = sessionStorage.getItem('pendingHandoffToken');
+    const handoffToken = urlHandoffToken || sessionHandoffToken;
+    if (handoffToken) return `/handoff/${handoffToken}`;
+    return defaultPath;
+  }
+
   const loginMutation = useMutation({
     mutationFn: async (data: LoginFormData) => {
       const response = await apiRequest("/api/auth/login", "POST", data);
@@ -124,7 +133,7 @@ export default function SignInHomeowner() {
         title: "Welcome back!",
         description: "You have successfully logged in.",
       });
-      setLocation('/');
+      setLocation(resolvePostAuthRedirect('/'));
     },
     onError: (error: Error) => {
       toast({
@@ -145,7 +154,14 @@ export default function SignInHomeowner() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
-      if (data.requiresPaymentSetup) {
+      const pendingHandoff = resolvePostAuthRedirect('');
+      if (pendingHandoff) {
+        toast({
+          title: "Account created!",
+          description: "Welcome! Let's claim your home record.",
+        });
+        setLocation(pendingHandoff);
+      } else if (data.requiresPaymentSetup) {
         toast({
           title: "Account created!",
           description: "One last step — choose your plan to start your free 14-day trial.",

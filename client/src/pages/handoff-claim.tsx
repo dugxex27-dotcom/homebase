@@ -34,6 +34,13 @@ export default function HandoffClaim() {
   const [, navigate] = useLocation();
   const [claimed, setClaimed] = useState(false);
 
+  // Persist the handoff token in sessionStorage so it survives sign-in redirects
+  useEffect(() => {
+    if (token) {
+      sessionStorage.setItem("pendingHandoffToken", token);
+    }
+  }, [token]);
+
   const { data: preview, isLoading, error } = useQuery<HandoffPreview>({
     queryKey: ["/api/handoff", token],
     enabled: !!token,
@@ -54,15 +61,17 @@ export default function HandoffClaim() {
       return res.json();
     },
     onSuccess: (data) => {
+      sessionStorage.removeItem("pendingHandoffToken");
       setClaimed(true);
       toast({
-        title: "Home record created!",
+        title: data.mergedExisting ? "Home record updated!" : "Home record created!",
         description: data.message,
       });
       setTimeout(() => navigate("/my-home"), 2500);
     },
-    onError: (err: any) => {
-      toast({ title: "Could not claim", description: err.message, variant: "destructive" });
+    onError: (err: unknown) => {
+      const message = err instanceof Error ? err.message : "Something went wrong";
+      toast({ title: "Could not claim", description: message, variant: "destructive" });
     },
   });
 
