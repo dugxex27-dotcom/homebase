@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle, AlertTriangle, AlertCircle, X } from "lucide-react";
-import houseGraphic from "@assets/house-graphic.png";
+import houseGraphic from "@assets/myhomebase-home-graphic_1775143116799.png";
 
 type HomeSystem = {
   id: string;
