@@ -129,6 +129,7 @@ export default function Home() {
                     houseId={house.id}
                     homeownerId={typedUser?.id ?? ""}
                     houseName={house.name}
+                    checkedSystems={Array.isArray(house.homeSystems) ? house.homeSystems as string[] : []}
                   />
                 </div>
               ))}

@@ -297,9 +297,10 @@ interface HouseMapProps {
   houseId: string;
   homeownerId: string;
   houseName?: string;
+  checkedSystems?: string[];
 }
 
-export default function HouseMap({ houseId, homeownerId }: HouseMapProps) {
+export default function HouseMap({ houseId, homeownerId, checkedSystems = [] }: HouseMapProps) {
   const [openId, setOpenId] = useState<string | null>(null);
 
   const { data: systems = [] } = useQuery<HomeSystem[]>({
@@ -312,6 +313,9 @@ export default function HouseMap({ houseId, homeownerId }: HouseMapProps) {
     queryFn: () => fetch(`/api/appliances?homeownerId=${encodeURIComponent(homeownerId)}&houseId=${encodeURIComponent(houseId)}`).then(r => r.json()),
   });
 
+  // System types that already have a detailed record in the homeSystems table
+  const detailedSystemTypes = new Set(systems.map(s => s.systemType));
+
   const dots: DotItem[] = [
     ...systems.map(s => {
       const age = getAge(s);
@@ -322,6 +326,15 @@ export default function HouseMap({ houseId, homeownerId }: HouseMapProps) {
         replacementCost: getReplacementCost(s.systemType), notes: s.notes,
       };
     }),
+    // Checked systems that have no detailed record yet — show as gray "unknown" dots
+    ...checkedSystems
+      .filter(v => !detailedSystemTypes.has(v))
+      .map(v => ({
+        id: `chk-${v}`, name: v, make: null, model: null,
+        age: null, area: getArea(v), status: "unknown" as StatusType,
+        statusReason: "Installation date not recorded — add it in your home record for accurate tracking.",
+        replacementCost: getReplacementCost(v), notes: null,
+      })),
     ...appliances.map(a => {
       const age = getAge(a);
       const { status, reason } = getStatus(a.name, age);
