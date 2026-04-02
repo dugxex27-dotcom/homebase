@@ -25,6 +25,7 @@ import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
 import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, ChevronUp, Settings, Plus, Edit, Trash2, Home, FileText, Building2, User, Building, Phone, MessageSquare, AlertTriangle, Thermometer, Cloud, Monitor, Book, ExternalLink, Upload, Trophy, Mail, Handshake, Globe, TrendingDown, PiggyBank, Truck, CheckCircle2, Circle, Download, X, Search, Loader2 } from "lucide-react";
 import { AppointmentScheduler } from "@/components/appointment-scheduler";
 import { CustomMaintenanceTasks } from "@/components/custom-maintenance-tasks";
+import HouseMap from "@/components/house-map";
 import { US_MAINTENANCE_DATA, getRegionFromClimateZone, getCurrentMonthTasks } from "@shared/location-maintenance-data";
 import { enrichTasksWithCosts } from "@shared/cost-helpers";
 import { formatCostEstimate, formatDIYSavings, type CostEstimate } from "@shared/cost-baselines";
@@ -3488,60 +3489,75 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                   </Button>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="mt-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-4 border-2 rounded-lg" style={{ backgroundColor: '#f2f2f2', borderColor: '#2c0f5b' }}>
-                    {Object.entries(HOME_SYSTEMS).map(([category, systems]) => (
-                      <div key={category}>
-                        <h4 className="font-medium text-sm mb-3 capitalize" style={{ color: '#2c0f5b' }}>
-                          {category === 'features' ? 'Special Features' :
-                           category === 'exterior' ? 'Roof & Exterior' :
-                           category === 'electrical' ? 'Electrical' :
-                           category === 'plumbing' ? 'Plumbing' :
-                           category === 'structural' ? 'Foundation & Structure' :
-                           category === 'insulation' ? 'Attic & Insulation' :
-                           `${category.charAt(0).toUpperCase() + category.slice(1)} System`}
-                        </h4>
-                        <div className="space-y-2">
-                          {systems.map((system) => {
-                            const systemData = getSystemData(system.label);
-                            return (
-                              <div key={system.value} className="flex items-center justify-between space-x-2">
-                                <div className="flex items-center space-x-2">
-                                  <Checkbox
-                                    id={system.value}
-                                    checked={homeSystems.includes(system.value)}
-                                    onCheckedChange={() => toggleHomeSystem(system.value)}
-                                  />
-                                  <label
-                                    htmlFor={system.value}
-                                    className="text-sm cursor-pointer"
-                                    style={{ color: '#2c0f5b' }}
-                                  >
-                                    {system.label}
-                                  </label>
+                  <div className="flex flex-col lg:flex-row gap-4 p-4 border-2 rounded-lg" style={{ backgroundColor: '#f2f2f2', borderColor: '#2c0f5b' }}>
+                    {/* Systems checklist */}
+                    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                      {Object.entries(HOME_SYSTEMS).map(([category, systems]) => (
+                        <div key={category}>
+                          <h4 className="font-medium text-sm mb-3 capitalize" style={{ color: '#2c0f5b' }}>
+                            {category === 'features' ? 'Special Features' :
+                             category === 'exterior' ? 'Roof & Exterior' :
+                             category === 'electrical' ? 'Electrical' :
+                             category === 'plumbing' ? 'Plumbing' :
+                             category === 'structural' ? 'Foundation & Structure' :
+                             category === 'insulation' ? 'Attic & Insulation' :
+                             `${category.charAt(0).toUpperCase() + category.slice(1)} System`}
+                          </h4>
+                          <div className="space-y-2">
+                            {systems.map((system) => {
+                              const systemData = getSystemData(system.label);
+                              return (
+                                <div key={system.value} className="flex items-center justify-between space-x-2">
+                                  <div className="flex items-center space-x-2">
+                                    <Checkbox
+                                      id={system.value}
+                                      checked={homeSystems.includes(system.value)}
+                                      onCheckedChange={() => toggleHomeSystem(system.value)}
+                                    />
+                                    <label
+                                      htmlFor={system.value}
+                                      className="text-sm cursor-pointer"
+                                      style={{ color: '#2c0f5b' }}
+                                    >
+                                      {system.label}
+                                    </label>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    {systemData && (
+                                      <span className="text-xs px-2 py-1 rounded" style={{ backgroundColor: '#e8e0f0', color: '#2c0f5b' }}>
+                                        {systemData.installationYear || 'Unknown'}
+                                      </span>
+                                    )}
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="h-6 w-6 p-0 text-xs"
+                                      style={{ color: '#2c0f5b' }}
+                                      onClick={() => systemData ? handleEditHomeSystem(systemData) : handleAddHomeSystem(system.label)}
+                                      data-testid={`button-add-date-${system.value}`}
+                                    >
+                                      {systemData ? <Edit className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                                    </Button>
+                                  </div>
                                 </div>
-                                <div className="flex items-center space-x-2">
-                                  {systemData && (
-                                    <span className="text-xs px-2 py-1 rounded" style={{ backgroundColor: '#e8e0f0', color: '#2c0f5b' }}>
-                                      {systemData.installationYear || 'Unknown'}
-                                    </span>
-                                  )}
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="h-6 w-6 p-0 text-xs"
-                                    style={{ color: '#2c0f5b' }}
-                                    onClick={() => systemData ? handleEditHomeSystem(systemData) : handleAddHomeSystem(system.label)}
-                                    data-testid={`button-add-date-${system.value}`}
-                                  >
-                                    {systemData ? <Edit className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
-                                  </Button>
-                                </div>
-                              </div>
-                            );
-                          })}
+                              );
+                            })}
+                          </div>
                         </div>
+                      ))}
+                    </div>
+
+                    {/* Live house map — updates as systems are checked */}
+                    {selectedHouseId && (
+                      <div className="lg:w-64 xl:w-72 flex-shrink-0 bg-white rounded-lg p-2 border border-purple-100">
+                        <p className="text-xs font-semibold text-center mb-1" style={{ color: '#2c0f5b' }}>Your Home Map</p>
+                        <HouseMap
+                          houseId={selectedHouseId}
+                          homeownerId={homeownerId}
+                          checkedSystems={homeSystems}
+                        />
                       </div>
-                    ))}
+                    )}
                   </div>
                 </CollapsibleContent>
               </Collapsible>
