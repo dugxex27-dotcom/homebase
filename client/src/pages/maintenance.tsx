@@ -330,22 +330,26 @@ const HOME_SYSTEMS = {
     { value: "heat-pump", label: "Heat Pump" },
     { value: "boiler", label: "Boiler" },
     { value: "radiant-floor", label: "Radiant Floor Heating" },
-    { value: "wood-stove", label: "Wood Stove/Fireplace" }
+    { value: "wood-stove", label: "Wood Stove/Fireplace" },
+    { value: "humidifier", label: "Whole-Home Humidifier" }
   ],
   cooling: [
     { value: "central-ac", label: "Central AC" },
     { value: "window-ac", label: "Window AC Units" },
     { value: "mini-split", label: "Mini-Split System" },
-    { value: "evaporative", label: "Evaporative Cooler" }
+    { value: "evaporative", label: "Evaporative Cooler" },
+    { value: "dehumidifier", label: "Whole-Home Dehumidifier" },
+    { value: "air-purifier", label: "Air Purifier / Filtration" }
   ],
   water: [
     { value: "gas-water-heater", label: "Gas Water Heater" },
     { value: "electric-water-heater", label: "Electric Water Heater" },
-    { value: "tankless-gas", label: "Tankless Gas" },
-    { value: "tankless-electric", label: "Tankless Electric" },
+    { value: "tankless-gas", label: "Tankless Gas Water Heater" },
+    { value: "tankless-electric", label: "Tankless Electric Water Heater" },
     { value: "solar-water", label: "Solar Water Heating" },
     { value: "well-water", label: "Well Water System" },
-    { value: "water-softener", label: "Water Softener" }
+    { value: "water-softener", label: "Water Softener" },
+    { value: "reverse-osmosis", label: "Reverse Osmosis System" }
   ],
   features: [
     { value: "solar-panels", label: "Solar Panels" },
@@ -415,29 +419,6 @@ const APPLIANCE_TYPES: { category: string; items: { value: string; label: string
       { value: "Washing Machine", label: "Washing Machine", brands: ["Whirlpool", "LG", "Samsung", "GE", "Maytag", "Speed Queen", "Electrolux", "Bosch", "Miele"] },
       { value: "Dryer", label: "Dryer", brands: ["Whirlpool", "LG", "Samsung", "GE", "Maytag", "Speed Queen", "Electrolux", "Bosch", "Miele"] },
       { value: "Washer/Dryer Combo", label: "Washer/Dryer Combo", brands: ["LG", "Samsung", "Bosch", "Whirlpool", "GE", "Miele"] },
-    ],
-  },
-  {
-    category: "HVAC & Water",
-    items: [
-      { value: "Water Heater", label: "Water Heater", brands: ["Rheem", "A.O. Smith", "Bradford White", "Navien", "Rinnai", "State", "American Water Heaters", "Bosch"] },
-      { value: "Tankless Water Heater", label: "Tankless Water Heater", brands: ["Navien", "Rinnai", "Rheem", "Noritz", "Bosch", "EcoSmart", "Takagi"] },
-      { value: "Furnace", label: "Furnace", brands: ["Carrier", "Trane", "Lennox", "Goodman", "Rheem", "Bryant", "American Standard", "Daikin"] },
-      { value: "Central Air Conditioner", label: "Central Air Conditioner", brands: ["Carrier", "Trane", "Lennox", "Goodman", "Rheem", "Bryant", "American Standard", "Daikin"] },
-      { value: "Heat Pump", label: "Heat Pump", brands: ["Carrier", "Trane", "Lennox", "Goodman", "Mitsubishi", "Daikin", "American Standard", "Rheem"] },
-      { value: "Mini-Split (Ductless)", label: "Mini-Split (Ductless)", brands: ["Mitsubishi", "Daikin", "LG", "Samsung", "Fujitsu", "Gree", "Senville"] },
-      { value: "Dehumidifier", label: "Dehumidifier", brands: ["hOmeLabs", "Frigidaire", "LG", "Honeywell", "Whirlpool", "GE", "Midea", "Aprilaire"] },
-      { value: "Humidifier", label: "Humidifier", brands: ["Aprilaire", "Honeywell", "GeneralAire", "Carrier", "Lennox", "Bryant"] },
-      { value: "Air Purifier", label: "Air Purifier", brands: ["Honeywell", "Dyson", "Blueair", "IQAir", "Winix", "Coway", "Austin Air", "Aprilaire"] },
-    ],
-  },
-  {
-    category: "Plumbing",
-    items: [
-      { value: "Sump Pump", label: "Sump Pump", brands: ["Zoeller", "Wayne", "Little Giant", "Liberty Pumps", "Basement Watchdog", "Flotec"] },
-      { value: "Water Softener", label: "Water Softener", brands: ["Fleck", "Whirlpool", "GE", "EcoWater", "Culligan", "Morton", "Pelican", "Kinetico"] },
-      { value: "Reverse Osmosis System", label: "Reverse Osmosis System", brands: ["APEC Water", "iSpring", "Waterdrop", "Home Master", "Express Water", "Aquasana"] },
-      { value: "Well Pump", label: "Well Pump", brands: ["Goulds", "Franklin Electric", "Grundfos", "Sta-Rite", "Myers", "Pentair"] },
     ],
   },
   {
