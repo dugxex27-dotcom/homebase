@@ -393,13 +393,13 @@ export default function Header() {
                   className="hidden sm:flex items-center gap-1.5 text-xs h-8 px-3 border-purple-300 text-purple-700 hover:bg-purple-50"
                 >
                   <Info className="h-3.5 w-3.5" />
-                  MyHomeBase Info
+                  Home Maintenance Info
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="sm:hidden p-2 text-purple-700"
-                  aria-label="MyHomeBase Info"
+                  aria-label="Home Maintenance Info"
                 >
                   <Info className="h-5 w-5" />
                 </Button>
