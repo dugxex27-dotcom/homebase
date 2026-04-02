@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { X, ChevronRight, CheckCircle2, Home, Wrench, ClipboardList, Package, Users, Trophy, ArrowRight, Star } from "lucide-react";
+import { X, ChevronRight, CheckCircle2, Home, Wrench, ClipboardList, Package, Users, Trophy, ArrowRight, Star, Plus, Settings } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import type { User } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -40,6 +40,22 @@ const STEPS: StepDef[] = [
     title: "Your Home Profile",
     body: "Add your home's mechanical systems — HVAC, roof, plumbing, and more — to get personalized maintenance tasks tailored to your specific home.",
     icon: Home,
+    preferBelow: true,
+  },
+  {
+    tourId: "add-home",
+    page: "/maintenance",
+    title: "Add Your Property",
+    body: "Head to the Maintenance page and click 'Add House' to enter your home's address, year built, and details. You can track multiple properties — great for a vacation home or rental.",
+    icon: Plus,
+    preferBelow: true,
+  },
+  {
+    tourId: "home-systems",
+    page: "/maintenance",
+    title: "Home Systems & Features",
+    body: "Check off every system your home has — heating, cooling, water, roof, and more. Use the pencil/plus icon next to each system to log its installation year. This unlocks age-based maintenance recommendations personalized to your equipment.",
+    icon: Settings,
     preferBelow: true,
   },
   {

@@ -3399,6 +3399,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                         size="lg" 
                         onClick={handleAddNewHouse}
                         className="whitespace-nowrap text-base w-full" style={{ backgroundColor: '#2c0f5b', color: 'white', borderColor: '#2c0f5b' }}
+                        data-tour-id="add-home"
                       >
                         <Plus className="w-5 h-5 mr-2" />
                         Add House
@@ -3532,7 +3533,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
               {/* Home Systems Filter */}
               <Collapsible open={showSystemFilters} onOpenChange={setShowSystemFilters}>
                 <CollapsibleTrigger asChild>
-                  <Button variant="outline" className="w-full justify-between h-14" style={{ backgroundColor: '#ffffff', color: '#2c0f5b', borderColor: '#2c0f5b' }}>
+                  <Button variant="outline" className="w-full justify-between h-14" style={{ backgroundColor: '#ffffff', color: '#2c0f5b', borderColor: '#2c0f5b' }} data-tour-id="home-systems">
                     <div className="flex items-center">
                       <Settings className="w-4 h-4 mr-2" style={{ color: '#2c0f5b' }} />
                       Home Systems & Features ({homeSystems.length} selected)
