@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle, AlertTriangle, AlertCircle, X } from "lucide-react";
+import houseGraphic from "@assets/house-graphic.png";
 
 type HomeSystem = {
   id: string;
@@ -42,22 +43,26 @@ type AreaKey =
 
 type StatusType = "green" | "yellow" | "red" | "unknown";
 
-const VB_W = 800;
-const VB_H = 486;
+// Percentage-based coordinate space (0–100 maps to 0%–100% of image)
+const VB_W = 100;
+const VB_H = 100;
 
 type ZoneDef = { label: string; cx: number; cy: number; w: number; h: number };
 
+// Zones tuned to the house illustration:
+//   Roof peak ≈ y 7%  |  Upper-floor band ≈ y 30–54%
+//   Lower-floor band  ≈ y 54–87%  |  Ground ≈ y 87%
 const ZONES: Record<AreaKey, ZoneDef> = {
-  exterior:   { label: "Exterior Systems",  cx: 404, cy: 30,  w: 784, h: 48  },
-  attic:      { label: "Attic",             cx: 285, cy: 101, w: 220, h: 28  },
-  bedroom:    { label: "Bedroom(s)",        cx: 145, cy: 200, w: 270, h: 128 },
-  bathroom:   { label: "Bathroom(s)",       cx: 415, cy: 200, w: 270, h: 128 },
-  living:     { label: "Living / Dining",   cx: 145, cy: 300, w: 270, h: 84  },
-  kitchen:    { label: "Kitchen",           cx: 415, cy: 300, w: 270, h: 84  },
-  mechanical: { label: "Mechanical Room",   cx: 145, cy: 386, w: 270, h: 68  },
-  laundry:    { label: "Laundry Room",      cx: 415, cy: 386, w: 270, h: 68  },
-  foundation: { label: "Foundation",        cx: 285, cy: 438, w: 540, h: 44  },
-  garage:     { label: "Garage",            cx: 670, cy: 340, w: 220, h: 152 },
+  exterior:   { label: "Exterior Systems",  cx: 50, cy: 6,   w: 76, h: 10  },
+  attic:      { label: "Attic",             cx: 50, cy: 20,  w: 30, h: 14  },
+  bedroom:    { label: "Bedroom(s)",        cx: 27, cy: 41,  w: 22, h: 18  },
+  bathroom:   { label: "Bathroom(s)",       cx: 69, cy: 41,  w: 22, h: 18  },
+  living:     { label: "Living / Dining",   cx: 22, cy: 69,  w: 18, h: 14  },
+  kitchen:    { label: "Kitchen",           cx: 74, cy: 69,  w: 18, h: 14  },
+  mechanical: { label: "Mechanical Room",   cx: 33, cy: 79,  w: 18, h: 8   },
+  laundry:    { label: "Laundry Room",      cx: 63, cy: 79,  w: 18, h: 8   },
+  foundation: { label: "Foundation",        cx: 50, cy: 92,  w: 56, h: 6   },
+  garage:     { label: "Garage",            cx: 88, cy: 72,  w: 12, h: 20  },
 };
 
 const LIFESPANS: Record<string, number> = {
@@ -133,11 +138,9 @@ const REPLACEMENT_COSTS: Record<string, string> = {
 };
 
 function getArea(name: string, location?: string): AreaKey {
-  // Normalize hyphens to spaces so "central-ac", "gas-furnace", etc. match correctly
   const n = name.toLowerCase().replace(/-/g, " ");
   const l = (location || "").toLowerCase().replace(/-/g, " ");
 
-  // Location overrides come first
   if (l.includes("attic")) return "attic";
   if (l.includes("garage")) return "garage";
   if (l.includes("laundry")) return "laundry";
@@ -148,7 +151,6 @@ function getArea(name: string, location?: string): AreaKey {
   if (l.includes("exterior") || l.includes("outside")) return "exterior";
   if (l.includes("crawl") || l.includes("foundation")) return "foundation";
 
-  // Exterior systems
   if (n.includes("garage door")) return "garage";
 
   if (n.includes("roof") || n.includes("shingle") || n.includes("gutter") || n.includes("downspout") ||
@@ -158,33 +160,27 @@ function getArea(name: string, location?: string): AreaKey {
 
   if (n.includes("solar") && !n.includes("water heater")) return "exterior";
 
-  // Foundation / underground
   if (n.includes("foundation") || n.includes("crawl space") || n.includes("vapor barrier") ||
       n.includes("sump pump") || n.includes("ejector pump") || n.includes("septic") ||
       n.includes("well pump") || n.includes("well water") || n.includes("radon")) return "foundation";
 
-  // Attic — HVAC air handler, AC, ductwork, insulation live up here
   if (n.includes("attic insulation") || n.includes("insulation")) return "attic";
   if (n.includes("central air") || n.includes("central ac") || n.includes("hvac") ||
       n.includes("air condition") || n.includes("air handler") || n.includes("heat pump") ||
       n.includes("ac unit") || n.includes("mini split") || n.includes("ductwork")) return "attic";
 
-  // Mechanical room (lower main floor) — furnace, water heater, electrical, plumbing
   if (n.includes("furnace") || n.includes("gas heat") || n.includes("electric heat") ||
       n.includes("boiler") || n.includes("water heater") || n.includes("electrical") ||
       n.includes("electrical panel") || n.includes("plumbing") ||
       n.includes("copper pipe") || n.includes("pvc pipe") ||
       n.includes("water softener") || n.includes("water filter") || n.includes("water treatment")) return "mechanical";
 
-  // Laundry room
   if (n.includes("washer") || n.includes("dryer")) return "laundry";
 
-  // Kitchen appliances
   if (n.includes("dishwasher") || n.includes("refrigerator") || n.includes("fridge") ||
       n.includes("range") || n.includes("oven") || n.includes("stove") || n.includes("microwave") ||
       n.includes("garbage disposal") || n.includes("disposal") || n.includes("freezer")) return "kitchen";
 
-  // Safety devices — spread across living area
   if (n.includes("security") || n.includes("alarm") || n.includes("smoke") ||
       n.includes("carbon monoxide") || n.includes("co detector")) return "living";
 
@@ -254,17 +250,13 @@ type DotItem = {
 
 type PlacedDot = DotItem & { cx: number; cy: number };
 
-const DOT_R = 8;
-
 function placeDots(items: DotItem[], zone: ZoneDef): PlacedDot[] {
   if (items.length === 0) return [];
 
-  const usableW = Math.max(DOT_R * 2, zone.w - DOT_R * 2);
-  const usableH = Math.max(DOT_R * 2, zone.h - DOT_R * 2);
+  const usableW = Math.max(2, zone.w - 2);
+  const usableH = Math.max(2, zone.h - 2);
 
-  // Reduce spacing until all rows fit within usableH.
-  // Columns are always capped by usableW (never push cols beyond what fits).
-  let spacing = 20;
+  let spacing = 5;
   let cols: number;
   let rows: number;
 
@@ -273,8 +265,8 @@ function placeDots(items: DotItem[], zone: ZoneDef): PlacedDot[] {
     cols = Math.min(items.length, maxColsByWidth);
     rows = Math.ceil(items.length / cols);
     if (rows <= 1 || (rows - 1) * spacing <= usableH) break;
-    spacing -= 2;
-  } while (spacing >= 14);
+    spacing -= 0.5;
+  } while (spacing >= 2);
 
   const totalW = (cols - 1) * spacing;
   const totalH = (rows - 1) * spacing;
@@ -288,7 +280,6 @@ function placeDots(items: DotItem[], zone: ZoneDef): PlacedDot[] {
     const isLastRow = row === rows - 1 && rowCount < cols;
     const rowShiftX = isLastRow ? ((cols - rowCount) * spacing) / 2 : 0;
 
-    // Clamp to zone bounding box as a final safety net
     const rawCx = zone.cx - totalW / 2 + col * spacing + rowShiftX;
     const rawCy = zone.cy - totalH / 2 + row * spacing;
     const cx = Math.max(zone.cx - halfW, Math.min(zone.cx + halfW, rawCx));
@@ -347,140 +338,136 @@ export default function HouseMap({ houseId, homeownerId }: HouseMapProps) {
   });
 
   const openDot = placed.find(d => d.id === openId);
-
   const isEmpty = systems.length === 0 && appliances.length === 0;
 
   return (
     <div className="mt-2">
       <div className="relative select-none" onClick={() => setOpenId(null)}>
-        <svg viewBox={`0 0 ${VB_W} ${VB_H}`} className="w-full h-auto" style={{ maxHeight: 440 }}>
+        {/* House illustration */}
+        <img src={houseGraphic} alt="Your home" className="w-full h-auto block" />
 
-          {/* ── Exterior Systems Banner ── */}
-          <rect x="8" y="6" width="784" height="48" rx="6" fill="#dbeafe" stroke="#93c5fd" strokeWidth="1.5" />
-          <text x="404" y="24" textAnchor="middle" fill="#1e3a8a" fontSize="10" fontWeight="700" letterSpacing="0.5">EXTERIOR SYSTEMS</text>
-          <text x="404" y="40" textAnchor="middle" fill="#2563eb" fontSize="8">Roof · Gutters · Siding · Windows · Doors · Deck · Driveway · Solar · Fence</text>
-
-          {/* ── Attic / Roof Triangle ── */}
-          <polygon points="285,66 555,136 15,136" fill="#ddd6f3" stroke="#7c6ab5" strokeWidth="1.5" />
-          <text x="285" y="124" textAnchor="middle" fill="#5b4d8a" fontSize="9.5" fontWeight="600">Attic</text>
-
-          {/* ── Story 2 (upper floor) ── */}
-          <rect x="15" y="136" width="540" height="128" fill="#ede8f8" stroke="#7c6ab5" strokeWidth="1.5" />
-          <line x1="285" y1="136" x2="285" y2="264" stroke="#7c6ab5" strokeWidth="1" strokeDasharray="4 3" />
-
-          {/* ── Story 1 (main floor) ── */}
-          <rect x="15" y="264" width="540" height="152" fill="#f0edf8" stroke="#7c6ab5" strokeWidth="1.5" />
-          <line x1="285" y1="264" x2="285" y2="416" stroke="#7c6ab5" strokeWidth="1" strokeDasharray="4 3" />
-          {/* subtle internal divider between living and mechanical areas */}
-          <line x1="15" y1="352" x2="555" y2="352" stroke="#7c6ab5" strokeWidth="0.5" strokeDasharray="2 4" opacity="0.4" />
-
-          {/* ── Foundation strip ── */}
-          <rect x="15" y="416" width="540" height="44" fill="#d1c8e8" stroke="#6b5ca0" strokeWidth="1.5" />
-          <text x="285" y="441" textAnchor="middle" fill="#4a3d7a" fontSize="8.5" fontWeight="600">Foundation · Crawl Space · Sump Pump · Septic · Radon</text>
-
-          {/* ── Garage (1 story — aligns with main floor only) ── */}
-          <rect x="560" y="264" width="220" height="152" rx="4" fill="#e8e0f0" stroke="#7c6ab5" strokeWidth="1.5" />
-          {/* Garage door sketch */}
-          <rect x="592" y="348" width="156" height="62" rx="3" fill="none" stroke="#9480c4" strokeWidth="1.5" strokeDasharray="3 2" />
-          <line x1="592" y1="369" x2="748" y2="369" stroke="#9480c4" strokeWidth="0.75" strokeDasharray="3 2" />
-          <line x1="592" y1="390" x2="748" y2="390" stroke="#9480c4" strokeWidth="0.75" strokeDasharray="3 2" />
-          <line x1="670" y1="348" x2="670" y2="410" stroke="#9480c4" strokeWidth="0.75" strokeDasharray="3 2" />
-
-          {/* ── Legend ── */}
-          <circle cx="18" cy="472" r="5" fill="#22c55e" />
-          <text x="27" y="476" fill="#4b5563" fontSize="8.5">Good</text>
-          <circle cx="62" cy="472" r="5" fill="#eab308" />
-          <text x="71" y="476" fill="#4b5563" fontSize="8.5">Aging</text>
-          <circle cx="107" cy="472" r="5" fill="#ef4444" />
-          <text x="116" y="476" fill="#4b5563" fontSize="8.5">Replace Soon</text>
-          <circle cx="175" cy="472" r="5" fill="#9ca3af" />
-          <text x="184" y="476" fill="#4b5563" fontSize="8.5">Date Unknown</text>
-
-          {/* ── Empty state ── */}
-          {isEmpty && (
-            <>
-              <rect x="210" y="272" width="300" height="52" rx="8" fill="white" stroke="#d1d5db" strokeWidth="1.5" />
-              <text x="360" y="293" textAnchor="middle" fill="#6b7280" fontSize="10" fontWeight="600">No items tracked yet</text>
-              <text x="360" y="312" textAnchor="middle" fill="#9ca3af" fontSize="8.5">Add systems &amp; appliances to see them here</text>
-            </>
-          )}
-
-          {/* ── Dots ── */}
-          {placed.map(dot => (
-            <circle
-              key={dot.id}
-              cx={dot.cx}
-              cy={dot.cy}
-              r="8"
-              fill={STATUS_FILL[dot.status]}
-              stroke="white"
-              strokeWidth="2"
-              style={{ cursor: "pointer", filter: "drop-shadow(0 1px 3px rgba(0,0,0,0.3))" }}
-              onClick={e => { e.stopPropagation(); setOpenId(openId === dot.id ? null : dot.id); }}
-            />
-          ))}
-        </svg>
-
-        {/* ── Popover ── */}
-        {openDot && (
-          <div
-            className="absolute z-50 bg-white rounded-xl shadow-2xl border border-purple-200 p-4 w-64"
+        {/* Interactive dots overlaid on the image */}
+        {placed.map(dot => (
+          <button
+            key={dot.id}
             style={{
-              left: `${(openDot.cx / VB_W) * 100}%`,
-              top: `${(openDot.cy / VB_H) * 100}%`,
-              transform: "translate(-50%, calc(-100% - 14px))",
+              position: "absolute",
+              left: `${dot.cx}%`,
+              top: `${dot.cy}%`,
+              transform: "translate(-50%, -50%)",
+              width: "16px",
+              height: "16px",
+              borderRadius: "50%",
+              backgroundColor: STATUS_FILL[dot.status],
+              border: "2.5px solid white",
+              boxShadow: "0 1px 4px rgba(0,0,0,0.45)",
+              cursor: "pointer",
+              zIndex: 10,
+              padding: 0,
             }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div
-              className="absolute left-1/2 -translate-x-1/2 bottom-0 translate-y-full w-0 h-0"
-              style={{ borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderTop: "8px solid white" }}
-            />
-            <button
-              className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
-              onClick={() => setOpenId(null)}
-            >
-              <X className="w-4 h-4" />
-            </button>
+            aria-label={dot.name}
+            onClick={e => { e.stopPropagation(); setOpenId(openId === dot.id ? null : dot.id); }}
+          />
+        ))}
 
-            <div className="flex items-start gap-2 mb-3 pr-5">
-              {openDot.status === "green"  && <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />}
-              {openDot.status === "yellow" && <AlertTriangle className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />}
-              {openDot.status === "red"    && <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />}
-              <h4 className="font-bold text-gray-900 text-sm leading-tight">{openDot.name}</h4>
+        {/* Empty state */}
+        {isEmpty && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="bg-white/90 rounded-xl px-5 py-3 text-center shadow border border-gray-200">
+              <p className="text-sm font-semibold text-gray-600">No items tracked yet</p>
+              <p className="text-xs text-gray-400 mt-0.5">Add systems &amp; appliances to see them here</p>
             </div>
-
-            <div className="space-y-1.5 text-xs text-gray-700">
-              {openDot.make  && <div><span className="font-semibold text-gray-500 w-24 inline-block">Make:</span>{openDot.make}</div>}
-              {openDot.model && <div><span className="font-semibold text-gray-500 w-24 inline-block">Model:</span>{openDot.model}</div>}
-              <div>
-                <span className="font-semibold text-gray-500 w-24 inline-block">Age:</span>
-                {openDot.age !== null ? `${openDot.age} yr${openDot.age !== 1 ? "s" : ""}` : "Unknown"}
-              </div>
-              <div>
-                <span className="font-semibold text-gray-500 w-24 inline-block">Est. Replace:</span>
-                {openDot.replacementCost}
-              </div>
-            </div>
-
-            <div className={`mt-3 rounded-lg px-2.5 py-2 text-xs leading-relaxed ${
-              openDot.status === "red"    ? "bg-red-50 text-red-700" :
-              openDot.status === "yellow" ? "bg-yellow-50 text-yellow-700" :
-              openDot.status === "green"  ? "bg-green-50 text-green-700" :
-              "bg-gray-50 text-gray-600"
-            }`}>
-              {openDot.statusReason}
-            </div>
-
-            {openDot.notes && (
-              <div className="mt-2 text-xs text-gray-500 italic border-t border-gray-100 pt-2">
-                {openDot.notes}
-              </div>
-            )}
           </div>
         )}
+
+        {/* Popover — flips above/below and left/right to stay on screen */}
+        {openDot && (() => {
+          const flipY = openDot.cy < 22;
+          const flipX = openDot.cx > 68;
+          return (
+            <div
+              className="absolute z-50 bg-white rounded-xl shadow-2xl border border-purple-200 p-4 w-64"
+              style={{
+                left: flipX ? "auto" : `${openDot.cx}%`,
+                right: flipX ? `${100 - openDot.cx}%` : "auto",
+                top: flipY ? `${openDot.cy}%` : "auto",
+                bottom: flipY ? "auto" : `${100 - openDot.cy}%`,
+                transform: flipY
+                  ? `translate(${flipX ? "50%" : "-50%"}, 14px)`
+                  : `translate(${flipX ? "50%" : "-50%"}, -14px)`,
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Caret */}
+              <div
+                className="absolute left-1/2 -translate-x-1/2 w-0 h-0"
+                style={flipY
+                  ? { top: 0, transform: "translateX(-50%) translateY(-100%)", borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderBottom: "8px solid white" }
+                  : { bottom: 0, transform: "translateX(-50%) translateY(100%)", borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderTop: "8px solid white" }
+                }
+              />
+              <button
+                className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
+                onClick={() => setOpenId(null)}
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="flex items-start gap-2 mb-3 pr-5">
+                {openDot.status === "green"   && <CheckCircle  className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />}
+                {openDot.status === "yellow"  && <AlertTriangle className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />}
+                {openDot.status === "red"     && <AlertCircle  className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />}
+                {openDot.status === "unknown" && <AlertCircle  className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />}
+                <h4 className="font-bold text-gray-900 text-sm leading-tight">{openDot.name}</h4>
+              </div>
+
+              <div className="space-y-1.5 text-xs text-gray-700">
+                {openDot.make  && <div><span className="font-semibold text-gray-500 w-24 inline-block">Make:</span>{openDot.make}</div>}
+                {openDot.model && <div><span className="font-semibold text-gray-500 w-24 inline-block">Model:</span>{openDot.model}</div>}
+                <div>
+                  <span className="font-semibold text-gray-500 w-24 inline-block">Age:</span>
+                  {openDot.age !== null ? `${openDot.age} yr${openDot.age !== 1 ? "s" : ""}` : "Unknown"}
+                </div>
+                <div>
+                  <span className="font-semibold text-gray-500 w-24 inline-block">Est. Replace:</span>
+                  {openDot.replacementCost}
+                </div>
+              </div>
+
+              <div className={`mt-3 rounded-lg px-2.5 py-2 text-xs leading-relaxed ${
+                openDot.status === "red"    ? "bg-red-50 text-red-700" :
+                openDot.status === "yellow" ? "bg-yellow-50 text-yellow-700" :
+                openDot.status === "green"  ? "bg-green-50 text-green-700" :
+                "bg-gray-50 text-gray-600"
+              }`}>
+                {openDot.statusReason}
+              </div>
+
+              {openDot.notes && (
+                <div className="mt-2 text-xs text-gray-500 italic border-t border-gray-100 pt-2">
+                  {openDot.notes}
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
+      {/* Legend */}
+      <div className="flex items-center justify-center gap-4 mt-2 text-xs text-gray-500 flex-wrap">
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: "#22c55e" }} />Good
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: "#eab308" }} />Aging
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: "#ef4444" }} />Replace Soon
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: "#9ca3af" }} />Date Unknown
+        </span>
+      </div>
       <p className="text-center text-xs text-gray-400 mt-1">
         Tap a dot to see details &nbsp;·&nbsp; {dots.length} item{dots.length !== 1 ? "s" : ""} tracked
       </p>

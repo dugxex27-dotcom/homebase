@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Users, Package, Calendar, Search, MapPin, Star, CheckCircle, TrendingUp, Shield, Home as HomeIcon, Wrench, Bell, BarChart3, Gift, Sparkles, FileText, AlertTriangle, ClipboardList } from "lucide-react";
 import HeroSection from "@/components/hero-section";
 import HomeHealthScore from "@/components/home-health-score";
-import houseGraphic from "@assets/house-graphic.png";
+import HouseMap from "@/components/house-map";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -119,14 +119,19 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* House Graphic */}
-              <div className="flex justify-center mb-6">
-                <img
-                  src={houseGraphic}
-                  alt="Your home"
-                  className="w-48 h-48 sm:w-56 sm:h-56 object-contain"
-                />
-              </div>
+              {/* House Map — one per property */}
+              {houses.map((house: House) => (
+                <div key={`map-${house.id}`} className="rounded-xl px-4 sm:px-6 pb-4 mb-6 bg-white">
+                  {houses.length > 1 && (
+                    <h3 className="text-base font-semibold text-center mb-1" style={{ color: '#2c0f5b' }}>{house.name}</h3>
+                  )}
+                  <HouseMap
+                    houseId={house.id}
+                    homeownerId={typedUser?.id ?? ""}
+                    houseName={house.name}
+                  />
+                </div>
+              ))}
 
               {/* Inspection Summary Card */}
               {inspectionSummary && (
