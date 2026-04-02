@@ -377,15 +377,6 @@ const HOME_SYSTEMS = {
     { value: "ev-charger", label: "EV Charger (Level 2)" },
     { value: "smoke-co-detectors", label: "Smoke / CO Detectors" }
   ],
-  plumbing: [
-    { value: "pipes-copper", label: "Supply Pipes (Copper)" },
-    { value: "pipes-pex", label: "Supply Pipes (PEX)" },
-    { value: "pipes-galvanized", label: "Supply Pipes (Galvanized)" },
-    { value: "pipes-cpvc", label: "Supply Pipes (CPVC)" },
-    { value: "sewer-line", label: "Main Sewer Line" },
-    { value: "drain-pipes", label: "Drain / Waste Pipes" },
-    { value: "main-shutoff", label: "Main Water Shutoff Valve" }
-  ],
   structural: [
     { value: "foundation-slab", label: "Foundation (Slab)" },
     { value: "foundation-crawl", label: "Foundation (Crawl Space)" },
