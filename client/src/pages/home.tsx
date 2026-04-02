@@ -120,19 +120,21 @@ export default function Home() {
               </div>
 
               {/* House Map — one per property */}
-              {houses.map((house: House) => (
-                <div key={`map-${house.id}`} className="rounded-xl px-4 sm:px-6 pb-4 mb-6 bg-white">
-                  {houses.length > 1 && (
-                    <h3 className="text-base font-semibold text-center mb-1" style={{ color: '#2c0f5b' }}>{house.name}</h3>
-                  )}
-                  <HouseMap
-                    houseId={house.id}
-                    homeownerId={typedUser?.id ?? ""}
-                    houseName={house.name}
-                    checkedSystems={Array.isArray(house.homeSystems) ? house.homeSystems as string[] : []}
-                  />
-                </div>
-              ))}
+              <div className={`gap-4 mb-6 ${houses.length === 2 ? 'grid grid-cols-1 lg:grid-cols-2' : 'flex flex-col'}`}>
+                {houses.map((house: House) => (
+                  <div key={`map-${house.id}`} className="rounded-xl px-4 sm:px-6 pb-4 bg-white">
+                    {houses.length > 1 && (
+                      <h3 className="text-base font-semibold text-center mb-1" style={{ color: '#2c0f5b' }}>{house.name}</h3>
+                    )}
+                    <HouseMap
+                      houseId={house.id}
+                      homeownerId={typedUser?.id ?? ""}
+                      houseName={house.name}
+                      checkedSystems={Array.isArray(house.homeSystems) ? house.homeSystems as string[] : []}
+                    />
+                  </div>
+                ))}
+              </div>
 
               {/* Inspection Summary Card */}
               {inspectionSummary && (
