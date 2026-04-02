@@ -3954,7 +3954,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             {/* System-Based Maintenance Recommendations */}
             {selectedHouseId && homeSystemsData && homeSystemsData.length > 0 && (() => {
               const allRecommendations = homeSystemsData
-                .filter(system => system.houseId === selectedHouseId)
+                .filter(system => system.houseId === selectedHouseId && homeSystems.includes(system.systemType))
                 .flatMap(system => 
                   generateAgeBasedRecommendations(system).map(rec => ({
                     ...rec,
