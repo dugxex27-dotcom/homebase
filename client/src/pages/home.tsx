@@ -166,19 +166,19 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Quick Actions */}
-              {!inspectionSummary && (
-                <div className="rounded-xl p-4 mb-6 border border-dashed border-purple-200 bg-purple-50/50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <ClipboardList className="w-5 h-5 text-purple-500" />
+              {/* Upload Inspection Banner — hides once done, stays if multi-property user still has others to do */}
+              {(!inspectionSummary || houses.length > 1) && (
+                <div className="rounded-xl p-5 mb-6 border border-dashed border-purple-200 bg-purple-50/50">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <ClipboardList className="w-6 h-6 text-purple-500 flex-shrink-0" />
                       <div>
-                        <p className="font-medium text-purple-800 text-sm">Upload a Home Inspection Report</p>
-                        <p className="text-xs text-purple-500">AI will extract key info and generate maintenance tasks automatically</p>
+                        <p className="font-medium text-purple-800 text-base">Upload a Home Inspection Report</p>
+                        <p className="text-sm text-purple-500">AI will extract key info and generate maintenance tasks automatically</p>
                       </div>
                     </div>
                     <Link href="/documents">
-                      <Button size="sm" variant="outline" className="border-purple-200 text-purple-700 hover:bg-purple-100 flex-shrink-0 text-xs">
+                      <Button variant="outline" className="border-purple-200 text-purple-700 hover:bg-purple-100 flex-shrink-0 px-4">
                         Upload
                       </Button>
                     </Link>
