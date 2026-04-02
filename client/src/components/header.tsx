@@ -406,18 +406,19 @@ export default function Header() {
               </a>
             )}
 
-            <button
-              className="p-1.5 sm:p-2 rounded-xl transition-all duration-200 hover:bg-gray-100 active:bg-gray-200"
-              aria-label="Return to homepage"
-              data-testid="link-home-logo"
-              onClick={handleLogout}
-            >
-              <img 
-                src={typedUser?.role === 'homeowner' ? logoHomeowner : typedUser?.role === 'contractor' ? logoContractor : typedUser?.role === 'agent' ? logoAgent : logoDefault} 
-                alt="MyHomeBase" 
-                className="h-6 sm:h-7 w-auto"
-              />
-            </button>
+            <Link href="/">
+              <button
+                className="p-1.5 sm:p-2 rounded-xl transition-all duration-200 hover:bg-gray-100 active:bg-gray-200"
+                aria-label="Return to homepage"
+                data-testid="link-home-logo"
+              >
+                <img 
+                  src={typedUser?.role === 'homeowner' ? logoHomeowner : typedUser?.role === 'contractor' ? logoContractor : typedUser?.role === 'agent' ? logoAgent : logoDefault} 
+                  alt="MyHomeBase" 
+                  className="h-6 sm:h-7 w-auto"
+                />
+              </button>
+            </Link>
           </div>
           
           <div className="flex items-center gap-2">
