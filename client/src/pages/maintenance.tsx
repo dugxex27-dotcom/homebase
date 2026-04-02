@@ -3554,7 +3554,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                         <HouseMap
                           houseId={selectedHouseId}
                           homeownerId={homeownerId}
-                          checkedSystems={homeSystems}
+                          checkedSystems={homeSystems.map(v =>
+                            Object.values(HOME_SYSTEMS).flat().find(s => s.value === v)?.label || v
+                          )}
                         />
                       </div>
                     )}

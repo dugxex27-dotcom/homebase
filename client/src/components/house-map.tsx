@@ -313,8 +313,12 @@ export default function HouseMap({ houseId, homeownerId, checkedSystems = [] }: 
     queryFn: () => fetch(`/api/appliances?homeownerId=${encodeURIComponent(homeownerId)}&houseId=${encodeURIComponent(houseId)}`).then(r => r.json()),
   });
 
+  // Normalize a system name/value to a common key for deduplication:
+  // strips hyphens, underscores, spaces and lowercases so "gas-furnace" == "Gas Furnace"
+  const normalize = (s: string) => s.toLowerCase().replace(/[-_\s]+/g, "");
+
   // System types that already have a detailed record in the homeSystems table
-  const detailedSystemTypes = new Set(systems.map(s => s.systemType));
+  const detailedNorm = new Set(systems.map(s => normalize(s.systemType)));
 
   const dots: DotItem[] = [
     ...systems.map(s => {
@@ -328,7 +332,7 @@ export default function HouseMap({ houseId, homeownerId, checkedSystems = [] }: 
     }),
     // Checked systems that have no detailed record yet — show as gray "unknown" dots
     ...checkedSystems
-      .filter(v => !detailedSystemTypes.has(v))
+      .filter(v => !detailedNorm.has(normalize(v)))
       .map(v => ({
         id: `chk-${v}`, name: v, make: null, model: null,
         age: null, area: getArea(v), status: "unknown" as StatusType,
