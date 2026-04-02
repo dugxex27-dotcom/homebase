@@ -256,38 +256,6 @@ app.use((req, res, next) => {
 
   const server = await registerRoutes(app);
 
-  // One-time user creation on startup — triggered by USERS_TO_CREATE env var (remove after use)
-  // Format: "email|passwordHash|firstName|lastName|role" (comma-separated for multiple)
-  if (process.env.USERS_TO_CREATE) {
-    const entries = process.env.USERS_TO_CREATE.split(',').map((s: string) => s.trim()).filter(Boolean);
-    console.log('[CREATE] Starting one-time user creation, entries:', entries.length);
-    for (const entry of entries) {
-      const [email, passwordHash, firstName, lastName, role] = entry.split('|');
-      if (!email || !passwordHash) { console.log('[CREATE] Skipping malformed entry'); continue; }
-      try {
-        const existing = await storage.getUserByEmail(email);
-        if (existing) {
-          console.log('[CREATE] User already exists, skipping:', email);
-        } else {
-          await storage.createUserWithPassword({
-            email,
-            passwordHash,
-            firstName: firstName || 'User',
-            lastName: lastName || '',
-            role: (role as 'homeowner' | 'contractor') || 'homeowner',
-            zipCode: '',
-            subscriptionStatus: 'active',
-            maxHousesAllowed: 10,
-          });
-          console.log('[CREATE] Created user:', email, 'role:', role);
-        }
-      } catch (err) {
-        console.error('[CREATE] Error creating user', email, err);
-      }
-    }
-    console.log('[CREATE] User creation complete.');
-  }
-
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
