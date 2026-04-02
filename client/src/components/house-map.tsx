@@ -298,9 +298,11 @@ interface HouseMapProps {
   homeownerId: string;
   houseName?: string;
   checkedSystems?: string[];
+  /** When true, only render one dot per entry in checkedSystems (no appliances, no extra DB records) */
+  strictChecked?: boolean;
 }
 
-export default function HouseMap({ houseId, homeownerId, checkedSystems = [] }: HouseMapProps) {
+export default function HouseMap({ houseId, homeownerId, checkedSystems = [], strictChecked = false }: HouseMapProps) {
   const [openId, setOpenId] = useState<string | null>(null);
 
   const { data: systems = [] } = useQuery<HomeSystem[]>({
@@ -313,42 +315,57 @@ export default function HouseMap({ houseId, homeownerId, checkedSystems = [] }: 
     queryFn: () => fetch(`/api/appliances?homeownerId=${encodeURIComponent(homeownerId)}&houseId=${encodeURIComponent(houseId)}`).then(r => r.json()),
   });
 
-  // Normalize a system name/value to a common key for deduplication:
-  // strips hyphens, underscores, spaces and lowercases so "gas-furnace" == "Gas Furnace"
-  const normalize = (s: string) => s.toLowerCase().replace(/[-_\s]+/g, "");
+  // Normalize a system name/value for fuzzy matching:
+  // strips hyphens, underscores, spaces, slashes, parens and lowercases
+  // so "gas-furnace" == "Gas Furnace", "electrical-panel" == "Electrical Panel (Breaker Box)"
+  const normalize = (s: string) => s.toLowerCase().replace(/[-_\s/\\()&,]+/g, "");
 
-  // System types that already have a detailed record in the homeSystems table
-  const detailedNorm = new Set(systems.map(s => normalize(s.systemType)));
+  let dots: DotItem[];
 
-  const dots: DotItem[] = [
-    ...systems.map(s => {
-      const age = getAge(s);
-      const { status, reason } = getStatus(s.systemType, age);
+  if (strictChecked || checkedSystems.length > 0) {
+    // Strict mode: exactly one dot per checked system, nothing else.
+    // Use DB record for color/age if one matches; otherwise gray "unknown".
+    dots = checkedSystems.map(v => {
+      const dbRecord = systems.find(s => normalize(s.systemType) === normalize(v));
+      if (dbRecord) {
+        const age = getAge(dbRecord);
+        const { status, reason } = getStatus(dbRecord.systemType, age);
+        return {
+          id: `sys-${dbRecord.id}`, name: dbRecord.systemType, make: dbRecord.brand, model: dbRecord.model,
+          age, area: getArea(dbRecord.systemType), status, statusReason: reason,
+          replacementCost: getReplacementCost(dbRecord.systemType), notes: dbRecord.notes,
+        };
+      }
       return {
-        id: `sys-${s.id}`, name: s.systemType, make: s.brand, model: s.model,
-        age, area: getArea(s.systemType), status, statusReason: reason,
-        replacementCost: getReplacementCost(s.systemType), notes: s.notes,
-      };
-    }),
-    // Checked systems that have no detailed record yet — show as gray "unknown" dots
-    ...checkedSystems
-      .filter(v => !detailedNorm.has(normalize(v)))
-      .map(v => ({
         id: `chk-${v}`, name: v, make: null, model: null,
         age: null, area: getArea(v), status: "unknown" as StatusType,
         statusReason: "Installation date not recorded — add it in your home record for accurate tracking.",
         replacementCost: getReplacementCost(v), notes: null,
-      })),
-    ...appliances.map(a => {
-      const age = getAge(a);
-      const { status, reason } = getStatus(a.name, age);
-      return {
-        id: `app-${a.id}`, name: a.name, make: a.make, model: a.model,
-        age, area: getArea(a.name, a.location), status, statusReason: reason,
-        replacementCost: getReplacementCost(a.name), notes: a.notes,
       };
-    }),
-  ];
+    });
+  } else {
+    // Overview mode (no checkedSystems): show all DB home systems + appliances
+    dots = [
+      ...systems.map(s => {
+        const age = getAge(s);
+        const { status, reason } = getStatus(s.systemType, age);
+        return {
+          id: `sys-${s.id}`, name: s.systemType, make: s.brand, model: s.model,
+          age, area: getArea(s.systemType), status, statusReason: reason,
+          replacementCost: getReplacementCost(s.systemType), notes: s.notes,
+        };
+      }),
+      ...appliances.map(a => {
+        const age = getAge(a);
+        const { status, reason } = getStatus(a.name, age);
+        return {
+          id: `app-${a.id}`, name: a.name, make: a.make, model: a.model,
+          age, area: getArea(a.name, a.location), status, statusReason: reason,
+          replacementCost: getReplacementCost(a.name), notes: a.notes,
+        };
+      }),
+    ];
+  }
 
   const byArea: Partial<Record<AreaKey, DotItem[]>> = {};
   dots.forEach(d => { (byArea[d.area] ??= []).push(d); });
@@ -359,7 +376,7 @@ export default function HouseMap({ houseId, homeownerId, checkedSystems = [] }: 
   });
 
   const openDot = placed.find(d => d.id === openId);
-  const isEmpty = systems.length === 0 && appliances.length === 0;
+  const isEmpty = dots.length === 0;
 
   return (
     <div className="mt-2">
