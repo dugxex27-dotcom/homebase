@@ -151,6 +151,9 @@ function getArea(name: string, location?: string): AreaKey {
   if (l.includes("exterior") || l.includes("outside")) return "exterior";
   if (l.includes("crawl") || l.includes("foundation")) return "foundation";
 
+  if (n.includes("bedroom") || n.includes("master bedroom")) return "bedroom";
+  if (n.includes("bathroom") || (n.includes("bath") && !n.includes("water"))) return "bathroom";
+
   if (n.includes("garage door")) return "garage";
 
   if (n.includes("roof") || n.includes("shingle") || n.includes("gutter") || n.includes("downspout") ||
@@ -175,11 +178,11 @@ function getArea(name: string, location?: string): AreaKey {
       n.includes("copper pipe") || n.includes("pvc pipe") ||
       n.includes("water softener") || n.includes("water filter") || n.includes("water treatment")) return "mechanical";
 
-  if (n.includes("washer") || n.includes("dryer")) return "laundry";
-
   if (n.includes("dishwasher") || n.includes("refrigerator") || n.includes("fridge") ||
       n.includes("range") || n.includes("oven") || n.includes("stove") || n.includes("microwave") ||
       n.includes("garbage disposal") || n.includes("disposal") || n.includes("freezer")) return "kitchen";
+
+  if ((n.includes("washer") && !n.includes("dish")) || n.includes("dryer") || n.includes("washing machine")) return "laundry";
 
   if (n.includes("security") || n.includes("alarm") || n.includes("smoke") ||
       n.includes("carbon monoxide") || n.includes("co detector")) return "living";

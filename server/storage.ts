@@ -2591,6 +2591,145 @@ export class MemStorage implements IStorage {
         notes: null,
         createdAt: new Date(),
         updatedAt: new Date()
+      },
+      // --- Exterior zone ---
+      {
+        id: "demo-system-roof-001",
+        homeownerId: demoHomeownerId,
+        houseId: mainHouseId,
+        systemType: "shingle-roof",
+        brand: "CertainTeed",
+        model: "Landmark Pro",
+        installationYear: 2012,
+        lastServiceYear: 2021,
+        notes: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        id: "demo-system-gutters-001",
+        homeownerId: demoHomeownerId,
+        houseId: mainHouseId,
+        systemType: "gutters-and-downspouts",
+        brand: "Amerimax",
+        model: "K-Style Aluminum",
+        installationYear: 2012,
+        lastServiceYear: 2023,
+        notes: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      // --- Attic zone ---
+      {
+        id: "demo-system-insulation-001",
+        homeownerId: demoHomeownerId,
+        houseId: mainHouseId,
+        systemType: "attic-insulation",
+        brand: "Owens Corning",
+        model: "R-38 Blown-In",
+        installationYear: 2005,
+        lastServiceYear: null,
+        notes: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      // --- Electrical in mechanical room ---
+      {
+        id: "demo-system-panel-001",
+        homeownerId: demoHomeownerId,
+        houseId: mainHouseId,
+        systemType: "electrical-panel",
+        brand: "Square D",
+        model: "QO 200A",
+        installationYear: 2003,
+        lastServiceYear: 2022,
+        notes: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      // --- Living zone ---
+      {
+        id: "demo-system-smoke-001",
+        homeownerId: demoHomeownerId,
+        houseId: mainHouseId,
+        systemType: "smoke-carbon-monoxide-detector",
+        brand: "Nest",
+        model: "Protect (3rd Gen)",
+        installationYear: 2020,
+        lastServiceYear: null,
+        notes: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      // --- Kitchen zone ---
+      {
+        id: "demo-system-dishwasher-001",
+        homeownerId: demoHomeownerId,
+        houseId: mainHouseId,
+        systemType: "dishwasher",
+        brand: "Bosch",
+        model: "500 Series SHPM88Z75N",
+        installationYear: 2018,
+        lastServiceYear: null,
+        notes: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      // --- Laundry zone ---
+      {
+        id: "demo-system-washer-dryer-001",
+        homeownerId: demoHomeownerId,
+        houseId: mainHouseId,
+        systemType: "washer-dryer",
+        brand: "LG",
+        model: "WM4000HWA / DLGX4001W",
+        installationYear: 2019,
+        lastServiceYear: null,
+        notes: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      // --- Garage zone ---
+      {
+        id: "demo-system-garage-door-001",
+        homeownerId: demoHomeownerId,
+        houseId: mainHouseId,
+        systemType: "garage-door-opener",
+        brand: "Chamberlain",
+        model: "B6765",
+        installationYear: 2016,
+        lastServiceYear: 2023,
+        notes: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      // --- Bedroom zone ---
+      {
+        id: "demo-system-bedroom-detector-001",
+        homeownerId: demoHomeownerId,
+        houseId: mainHouseId,
+        systemType: "bedroom-smoke-co-detector",
+        brand: "First Alert",
+        model: "SCO7CN",
+        installationYear: 2020,
+        lastServiceYear: null,
+        notes: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      // --- Bathroom zone ---
+      {
+        id: "demo-system-bath-fan-001",
+        homeownerId: demoHomeownerId,
+        houseId: mainHouseId,
+        systemType: "bathroom-exhaust-fan",
+        brand: "Panasonic",
+        model: "FV-11VQ5",
+        installationYear: 2019,
+        lastServiceYear: null,
+        notes: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
       }
     ];
 
@@ -2598,7 +2737,7 @@ export class MemStorage implements IStorage {
       await Promise.all(demoHomeSystemsData.map(async (system) => {
         await db.insert(homeSystems).values(system).onConflictDoNothing();
       }));
-      console.log('[DEMO DATA] Seeded 4 home systems for demo homeowner Main Residence');
+      console.log('[DEMO DATA] Seeded 14 home systems for demo homeowner Main Residence (all 10 map zones covered)');
     } catch (error) {
       console.error('[DEMO DATA] Error inserting demo home systems:', error);
     }
