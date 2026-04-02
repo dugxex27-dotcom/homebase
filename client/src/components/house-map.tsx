@@ -228,6 +228,7 @@ function getStatus(name: string, age: number | null): { status: StatusType; reas
   const remaining = lifespan - age;
   if (pct < 0.5) return { status: "green", reason: `${age} yr${age !== 1 ? "s" : ""} old — approximately ${remaining} yr${remaining !== 1 ? "s" : ""} of typical lifespan remaining.` };
   if (pct < 0.8) return { status: "yellow", reason: `${age} yr${age !== 1 ? "s" : ""} old — approaching end of its typical ${lifespan}-year lifespan. Plan ahead for replacement.` };
+  if (age < lifespan) return { status: "red", reason: `${age} yr${age !== 1 ? "s" : ""} old — nearing the end of its typical ${lifespan}-year lifespan. Start planning for replacement.` };
   return { status: "red", reason: `${age} yr${age !== 1 ? "s" : ""} old — past its typical ${lifespan}-year lifespan. Replacement is recommended.` };
 }
 
