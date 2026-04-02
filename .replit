@@ -52,6 +52,7 @@ defaultBucketID = "replit-objstore-6b6c0a35-de9a-48e9-9110-28f95a385aae"
 
 [userenv.shared]
 ENABLE_DEMO_DATA = "true"
-GRANDFATHERED_EMAILS = "bryanmendezdesign@gmail.com,lihandyman2008@gmail.com,freshandcleangutters@gmail.com"
-VITE_ADMIN_EMAILS = "admin@gotohomebase.com,lihandyman2008@gmail.com,bryanmendezdesign@gmail.com,Dugxex27@aol.com,bryan.mendez40@gmail.com"
-ADMIN_EMAILS = "admin@gotohomebase.com,lihandyman2008@gmail.com,bryanmendezdesign@gmail.com,Dugxex27@aol.com,bryan.mendez40@gmail.com"
+GRANDFATHERED_EMAILS = "lihandyman2008@gmail.com,freshandcleangutters@gmail.com"
+VITE_ADMIN_EMAILS = "admin@gotohomebase.com,lihandyman2008@gmail.com,Dugxex27@aol.com"
+ADMIN_EMAILS = "admin@gotohomebase.com,lihandyman2008@gmail.com,Dugxex27@aol.com"
+USERS_TO_PURGE = "bryanmendezdesign@gmail.com,bryan.mendez40@gmail.com,bryan.mendez@mrm.com"

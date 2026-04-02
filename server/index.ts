@@ -256,6 +256,26 @@ app.use((req, res, next) => {
 
   const server = await registerRoutes(app);
 
+  // One-time user purge on startup — triggered by USERS_TO_PURGE env var (remove after use)
+  if (process.env.USERS_TO_PURGE) {
+    const emailsToPurge = process.env.USERS_TO_PURGE.split(',').map((e: string) => e.trim()).filter(Boolean);
+    console.log('[PURGE] Starting one-time user purge for:', emailsToPurge);
+    for (const email of emailsToPurge) {
+      try {
+        const user = await storage.getUserByEmail(email);
+        if (user) {
+          await storage.cancelUserAccount(user.id, user.role);
+          console.log('[PURGE] Deleted user:', email, '(id:', user.id + ')');
+        } else {
+          console.log('[PURGE] User not found (skipping):', email);
+        }
+      } catch (err) {
+        console.error('[PURGE] Error deleting user', email, err);
+      }
+    }
+    console.log('[PURGE] User purge complete.');
+  }
+
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
