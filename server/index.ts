@@ -256,24 +256,36 @@ app.use((req, res, next) => {
 
   const server = await registerRoutes(app);
 
-  // One-time user purge on startup — triggered by USERS_TO_PURGE env var (remove after use)
-  if (process.env.USERS_TO_PURGE) {
-    const emailsToPurge = process.env.USERS_TO_PURGE.split(',').map((e: string) => e.trim()).filter(Boolean);
-    console.log('[PURGE] Starting one-time user purge for:', emailsToPurge);
-    for (const email of emailsToPurge) {
+  // One-time user creation on startup — triggered by USERS_TO_CREATE env var (remove after use)
+  // Format: "email|passwordHash|firstName|lastName|role" (comma-separated for multiple)
+  if (process.env.USERS_TO_CREATE) {
+    const entries = process.env.USERS_TO_CREATE.split(',').map((s: string) => s.trim()).filter(Boolean);
+    console.log('[CREATE] Starting one-time user creation, entries:', entries.length);
+    for (const entry of entries) {
+      const [email, passwordHash, firstName, lastName, role] = entry.split('|');
+      if (!email || !passwordHash) { console.log('[CREATE] Skipping malformed entry'); continue; }
       try {
-        const user = await storage.getUserByEmail(email);
-        if (user) {
-          await storage.cancelUserAccount(user.id, user.role);
-          console.log('[PURGE] Deleted user:', email, '(id:', user.id + ')');
+        const existing = await storage.getUserByEmail(email);
+        if (existing) {
+          console.log('[CREATE] User already exists, skipping:', email);
         } else {
-          console.log('[PURGE] User not found (skipping):', email);
+          await storage.createUserWithPassword({
+            email,
+            passwordHash,
+            firstName: firstName || 'User',
+            lastName: lastName || '',
+            role: (role as 'homeowner' | 'contractor') || 'homeowner',
+            zipCode: '',
+            subscriptionStatus: 'active',
+            maxHousesAllowed: 10,
+          });
+          console.log('[CREATE] Created user:', email, 'role:', role);
         }
       } catch (err) {
-        console.error('[PURGE] Error deleting user', email, err);
+        console.error('[CREATE] Error creating user', email, err);
       }
     }
-    console.log('[PURGE] User purge complete.');
+    console.log('[CREATE] User creation complete.');
   }
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
