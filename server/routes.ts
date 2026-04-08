@@ -2224,8 +2224,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Credit stats from DB
       const [earnedRows, pendingFreeMonths, allFreeMonths, activeReferralRows] = await Promise.all([
-        // Count credits with status 'earned' (not yet consumed)
-        db.select({ count: drizzleSql<number>`count(*)` })
+        // Sum credit_amount for 'earned' credits (handles non-$1 bonus/promo credits correctly)
+        db.select({ total: drizzleSql<number>`COALESCE(SUM(credit_amount), 0)` })
           .from(referralCredits)
           .where(and(eq(referralCredits.referrerUserId, userId), eq(referralCredits.status, 'earned'))),
         // Count pending free months (earned but not yet applied)
@@ -2246,7 +2246,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `),
       ]);
 
-      const creditBalance = Number(earnedRows[0]?.count || 0);
+      const creditBalance = Number(earnedRows[0]?.total || 0);
       const freeMonthsPending = Number(pendingFreeMonths[0]?.count || 0);
       const freeMonthsTotal = Number(allFreeMonths[0]?.count || 0);
       const activeReferrals = Number((activeReferralRows.rows[0] as { count: number } | undefined)?.count || 0);
