@@ -9,7 +9,7 @@ import { z } from "zod";
 import { randomUUID } from "crypto";
 import rateLimit from "express-rate-limit";
 import { eq, and, or, lte, gte, sql as drizzleSql, isNull, isNotNull, desc, count } from "drizzle-orm";
-import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, maintenanceTasks, customMaintenanceTasks, insertSupportTicketSchema, insertSubscriptionCycleEventSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, crmClients, crmJobs, crmQuotes, crmInvoices, securitySessions, referralCredits, agentProfiles, users, siteContent, insertSiteContentSchema, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, homeDocuments, insertHomeDocumentSchema, type House } from "@shared/schema";
+import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, maintenanceTasks, customMaintenanceTasks, insertSupportTicketSchema, insertSubscriptionCycleEventSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, crmClients, crmJobs, crmQuotes, crmInvoices, securitySessions, referralCredits, referralFreeMonths, agentProfiles, users, siteContent, insertSiteContentSchema, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, homeDocuments, insertHomeDocumentSchema, type House } from "@shared/schema";
 import { calculateDIYSavingsAmount } from "@shared/cost-helpers";
 import pushRoutes from "./push-routes";
 import { pushService } from "./push-service";
@@ -874,46 +874,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Don't fail the webhook for affiliate errors
           }
 
-          // Handle user-to-user referral credits (Option 1: automatic credit system)
+          // Handle user-to-user referral credits — 1 credit per referral per billing month
           try {
-            // Check if this user was referred by another user (not an agent)
             if (user.referredBy) {
-              // Find the referrer by their referral code
               const referrer = await storage.getUserByReferralCode(user.referredBy);
-              
-              if (referrer && referrer.id !== user.id) {
-                // Check if we've already created a credit for this referral pair
-                const existingCredit = await db.select()
-                  .from(referralCredits)
-                  .where(and(
-                    eq(referralCredits.referrerUserId, referrer.id),
-                    eq(referralCredits.referredUserId, user.id)
-                  ))
-                  .limit(1);
 
-                if (existingCredit.length === 0) {
-                  // First payment from this referred user - create $1 credit for referrer
+              if (referrer && referrer.id !== user.id) {
+                // Derive billing month from invoice period (format YYYY-MM)
+                const invoiceObj = event.data.object as Stripe.Invoice;
+                const periodTimestamp = (invoiceObj as any).period_start || Math.floor(Date.now() / 1000);
+                const periodDate = new Date(periodTimestamp * 1000);
+                const billingMonth = `${periodDate.getFullYear()}-${String(periodDate.getMonth() + 1).padStart(2, '0')}`;
+
+                // Insert credit — unique constraint (referrer, referred, billingMonth) prevents duplicates
+                try {
                   await db.insert(referralCredits).values({
                     referrerUserId: referrer.id,
                     referredUserId: user.id,
+                    billingMonth,
                     creditAmount: "1.00",
                     status: "earned",
                     earnedAt: new Date(),
                     source: "referral",
-                    notes: `Credit earned from referral of ${user.email}`,
+                    notes: `Monthly credit for ${billingMonth} — referred user: ${user.email}`,
                   });
 
-                  // Update referrer's referralCount
-                  const currentCount = referrer.referralCount || 0;
-                  await storage.upsertUser({
-                    ...referrer,
-                    referralCount: currentCount + 1,
-                  });
+                  console.log(`[REFERRAL CREDITS] Issued credit for ${billingMonth}: ${referrer.email} <- ${user.email}`);
 
-                  console.log(`[REFERRAL CREDITS] Created $1 credit for referrer ${referrer.email} (referred: ${user.email})`);
-                } else {
-                  console.log(`[REFERRAL CREDITS] Credit already exists for referral pair: ${referrer.email} -> ${user.email}`);
+                  // Check if referrer has now reached free-month threshold
+                  const referrerPlan = referrer.subscriptionPlanId
+                    ? await db.select({ monthlyPrice: subscriptionPlans.monthlyPrice })
+                        .from(subscriptionPlans)
+                        .where(eq(subscriptionPlans.id, referrer.subscriptionPlanId))
+                        .limit(1)
+                    : [];
+                  const threshold = referrerPlan.length > 0 && referrerPlan[0].monthlyPrice
+                    ? Math.round(parseFloat(referrerPlan[0].monthlyPrice))
+                    : 5; // fallback $5 plan
+
+                  const earnedCredits = await db.select()
+                    .from(referralCredits)
+                    .where(and(
+                      eq(referralCredits.referrerUserId, referrer.id),
+                      eq(referralCredits.status, 'earned')
+                    ));
+
+                  if (earnedCredits.length >= threshold) {
+                    // Grant a free month — consume the oldest N credits
+                    const toRedeem = earnedCredits.slice(0, threshold);
+                    const now = new Date();
+                    for (const credit of toRedeem) {
+                      await db.update(referralCredits)
+                        .set({ status: 'redeemed', appliedAt: now })
+                        .where(eq(referralCredits.id, credit.id));
+                    }
+                    await db.insert(referralFreeMonths).values({
+                      userId: referrer.id,
+                      creditsConsumed: threshold,
+                      status: 'pending',
+                      earnedAt: now,
+                      notes: `Free month earned — ${threshold} credits redeemed`,
+                    });
+                    console.log(`[REFERRAL CREDITS] Free month earned for ${referrer.email} (${threshold} credits consumed)`);
+                  }
+                } catch (insertErr: any) {
+                  // Unique constraint violation means credit already issued for this month — skip silently
+                  if (insertErr.code === '23505') {
+                    console.log(`[REFERRAL CREDITS] Credit already issued for ${billingMonth}: ${referrer.email} <- ${user.email}`);
+                  } else {
+                    throw insertErr;
+                  }
                 }
+
+                // Keep referralCount in sync (count distinct active referrals)
+                const activeReferralCount = await db.select({ count: drizzleSql<number>`count(distinct referred_user_id)` })
+                  .from(referralCredits)
+                  .where(and(
+                    eq(referralCredits.referrerUserId, referrer.id),
+                    eq(referralCredits.status, 'earned')
+                  ));
+                await storage.upsertUser({
+                  ...referrer,
+                  referralCount: Number(activeReferralCount[0]?.count || 0),
+                });
               }
             }
           } catch (referralError: any) {
@@ -985,6 +1028,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           await storage.updateUserSubscriptionStatus(user.id, 'cancelled');
           console.log('[STRIPE WEBHOOK] Subscription deleted for user:', user.email);
+
+          // Cancel all future referral credits where this user is the referred party
+          // (existing redeemed credits are unaffected — only stop future earning)
+          try {
+            await db.update(referralCredits)
+              .set({ status: 'cancelled', updatedAt: new Date() })
+              .where(and(
+                eq(referralCredits.referredUserId, user.id),
+                eq(referralCredits.status, 'earned')
+              ));
+            console.log(`[REFERRAL CREDITS] Cancelled future credits for cancelled user: ${user.email}`);
+          } catch (cancelErr: any) {
+            console.error('[REFERRAL CREDITS] Error cancelling credits on subscription delete:', cancelErr.message);
+          }
           break;
         }
 
@@ -1069,159 +1126,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               
               console.log('[STRIPE WEBHOOK] Payment intent succeeded for invoice:', invoiceId);
             }
-          }
-          break;
-        }
-
-        // Handle upcoming invoice - apply referral credits as discount
-        case 'invoice.upcoming': {
-          const invoice = event.data.object as Stripe.Invoice;
-          const customerId = invoice.customer as string;
-
-          // Only process subscription invoices
-          if (!invoice.subscription) {
-            console.log('[REFERRAL CREDITS] Skipping non-subscription invoice');
-            break;
-          }
-
-          const user = await storage.getUserByStripeCustomerId(customerId);
-          if (!user) {
-            console.log('[REFERRAL CREDITS] User not found for customer:', customerId);
-            break;
-          }
-
-          // Calculate referral credits for this user from the referralCredits table
-          try {
-            // Query only "earned" status credits for this referrer (not yet applied)
-            const earnedCreditsRows = await db.select()
-              .from(referralCredits)
-              .where(and(
-                eq(referralCredits.referrerUserId, user.id),
-                eq(referralCredits.status, 'earned')
-              ))
-              .orderBy(referralCredits.earnedAt); // FIFO - oldest first
-
-            if (earnedCreditsRows.length === 0) {
-              console.log('[REFERRAL CREDITS] No earned credits for user:', user.email);
-              break;
-            }
-
-            // Get referral cap based on subscription tier
-            let referralCreditCap = 5; // Default cap
-            if (user.subscriptionPlanId) {
-              const plans = await db.select().from(subscriptionPlans)
-                .where(eq(subscriptionPlans.id, user.subscriptionPlanId))
-                .limit(1);
-              if (plans.length > 0 && plans[0].referralCreditCap) {
-                referralCreditCap = parseFloat(plans[0].referralCreditCap);
-              } else if (plans.length > 0 && plans[0].monthlyPrice) {
-                referralCreditCap = parseFloat(plans[0].monthlyPrice);
-              }
-            }
-
-            // Sum up available credits, respecting the cap (with partial support)
-            let totalCreditsToApply = 0;
-            const creditsToConsume: { id: string; fullAmount: number; appliedAmount: number }[] = [];
-            
-            for (const credit of earnedCreditsRows) {
-              const creditAmount = parseFloat(credit.creditAmount || "1.00");
-              const remainingCap = referralCreditCap - totalCreditsToApply;
-              
-              if (remainingCap <= 0) break; // Cap reached
-              
-              if (creditAmount <= remainingCap) {
-                // Full credit can be applied
-                totalCreditsToApply += creditAmount;
-                creditsToConsume.push({ id: credit.id, fullAmount: creditAmount, appliedAmount: creditAmount });
-              } else {
-                // Partial credit application - apply only what fits in remaining cap
-                totalCreditsToApply += remainingCap;
-                creditsToConsume.push({ id: credit.id, fullAmount: creditAmount, appliedAmount: remainingCap });
-                break; // Cap now fully used
-              }
-            }
-
-            if (totalCreditsToApply <= 0) {
-              console.log('[REFERRAL CREDITS] No credits to apply for user:', user.email);
-              break;
-            }
-
-            console.log(`[REFERRAL CREDITS] Applying $${totalCreditsToApply.toFixed(2)} credit from ${creditsToConsume.length} referrals (cap: $${referralCreditCap}) for user: ${user.email}`);
-
-            // Create a unique coupon ID for this billing cycle
-            const billingCycleId = invoice.id || new Date().toISOString().slice(0, 7);
-            const couponId = `ref_${user.id.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 20)}_${Math.round(totalCreditsToApply * 100)}`;
-            
-            try {
-              // Try to retrieve existing coupon
-              await stripe.coupons.retrieve(couponId);
-              console.log('[REFERRAL CREDITS] Using existing coupon:', couponId);
-            } catch (couponErr: any) {
-              // Coupon doesn't exist, create it
-              if (couponErr.code === 'resource_missing') {
-                await stripe.coupons.create({
-                  id: couponId,
-                  amount_off: Math.round(totalCreditsToApply * 100), // Convert to cents
-                  currency: 'usd',
-                  duration: 'once',
-                  name: `Referral Credit - $${totalCreditsToApply.toFixed(2)} (${creditsToConsume.length} referrals)`,
-                  metadata: {
-                    userId: user.id,
-                    creditIds: creditsToConsume.map(c => c.id).join(','),
-                    referralCount: creditsToConsume.length.toString(),
-                    creditCap: referralCreditCap.toString(),
-                  },
-                });
-                console.log('[REFERRAL CREDITS] Created new coupon:', couponId);
-              } else {
-                throw couponErr;
-              }
-            }
-
-            // Apply the coupon to the subscription using discounts array
-            const subscriptionId = invoice.subscription as string;
-            await stripe.subscriptions.update(subscriptionId, {
-              discounts: [{ coupon: couponId }],
-            });
-
-            console.log(`[REFERRAL CREDITS] Successfully applied $${totalCreditsToApply.toFixed(2)} referral credit to subscription ${subscriptionId} for user ${user.email}`);
-
-            // Get billing period from invoice lines (more accurate than invoice-level period)
-            let periodStart: Date | null = null;
-            let periodEnd: Date | null = null;
-            const invoiceLines = (invoice as any).lines?.data;
-            if (invoiceLines && invoiceLines.length > 0 && invoiceLines[0].period) {
-              periodStart = invoiceLines[0].period.start ? new Date(invoiceLines[0].period.start * 1000) : null;
-              periodEnd = invoiceLines[0].period.end ? new Date(invoiceLines[0].period.end * 1000) : null;
-            } else if (invoice.period_start && invoice.period_end) {
-              periodStart = new Date(invoice.period_start * 1000);
-              periodEnd = new Date(invoice.period_end * 1000);
-            }
-
-            // Mark consumed credits with per-credit applied amounts
-            const now = new Date();
-            for (const creditEntry of creditsToConsume) {
-              const isFullyConsumed = creditEntry.appliedAmount === creditEntry.fullAmount;
-              
-              await db.update(referralCredits)
-                .set({
-                  status: isFullyConsumed ? 'applied' : 'partial', // Mark partial if not fully consumed
-                  appliedAt: now,
-                  appliedToInvoiceId: invoice.id || null,
-                  appliedAmount: creditEntry.appliedAmount.toFixed(2), // Actual amount applied from this credit
-                  billingPeriodStart: periodStart,
-                  billingPeriodEnd: periodEnd,
-                  // If partial, update creditAmount to remaining balance
-                  ...(isFullyConsumed ? {} : { creditAmount: (creditEntry.fullAmount - creditEntry.appliedAmount).toFixed(2) }),
-                })
-                .where(eq(referralCredits.id, creditEntry.id));
-            }
-
-            console.log(`[REFERRAL CREDITS] Marked ${creditsToConsume.length} credits as applied/partial`);
-
-          } catch (creditError: any) {
-            console.error('[REFERRAL CREDITS] Error applying credits:', creditError.message);
-            // Don't fail the webhook for credit errors
           }
           break;
         }
@@ -2292,97 +2196,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Get referral cap based on subscription tier
-      let referralCreditCap = 20; // Default cap for contractors
-      let tierName = 'contractor';
-      
+      // Resolve plan details for this user
+      let referralCreditCap = 5; // default threshold (# credits needed for a free month)
+      let tierName = user.role === 'contractor' ? 'contractor' : 'homeowner';
+      let monthlyPrice = 5;
+
       if (user.subscriptionPlanId) {
         const plans = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, user.subscriptionPlanId)).limit(1);
-        if (plans.length > 0 && plans[0].referralCreditCap) {
-          referralCreditCap = parseFloat(plans[0].referralCreditCap);
-          tierName = plans[0].tierName;
+        if (plans.length > 0) {
+          tierName = plans[0].tierName || tierName;
+          if (plans[0].referralCreditCap) referralCreditCap = parseFloat(plans[0].referralCreditCap);
+          if (plans[0].monthlyPrice) monthlyPrice = parseFloat(plans[0].monthlyPrice);
         }
       } else if ((user as any).subscriptionTierName === 'contractor_pro') {
         referralCreditCap = 40;
         tierName = 'contractor_pro';
       }
-      
-      // For homeowners, cap is their subscription price
+
+      // Threshold for homeowners = monthly subscription cost (1 credit per referral per month)
       if (user.role === 'homeowner') {
-        if (user.subscriptionPlanId) {
-          const plans = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, user.subscriptionPlanId)).limit(1);
-          if (plans.length > 0 && plans[0].referralCreditCap) {
-            referralCreditCap = parseFloat(plans[0].referralCreditCap);
-          } else if (plans.length > 0 && plans[0].monthlyPrice) {
-            referralCreditCap = parseFloat(plans[0].monthlyPrice);
-          }
-        } else {
-          referralCreditCap = 5; // Default for basic homeowner
-        }
+        referralCreditCap = monthlyPrice || referralCreditCap;
       }
 
-      // Calculate current monthly credits: each referral = $1, capped by tier
+      // Credit stats from DB
+      const [earnedRows, pendingFreeMonths, allFreeMonths, activeReferralRows] = await Promise.all([
+        // Count credits with status 'earned' (not yet consumed)
+        db.select({ count: drizzleSql<number>`count(*)` })
+          .from(referralCredits)
+          .where(and(eq(referralCredits.referrerUserId, userId), eq(referralCredits.status, 'earned'))),
+        // Count pending free months (earned but not yet applied)
+        db.select({ count: drizzleSql<number>`count(*)` })
+          .from(referralFreeMonths)
+          .where(and(eq(referralFreeMonths.userId, userId), eq(referralFreeMonths.status, 'pending'))),
+        // Count all free months ever earned
+        db.select({ count: drizzleSql<number>`count(*)` })
+          .from(referralFreeMonths)
+          .where(eq(referralFreeMonths.userId, userId)),
+        // Count active referrals (unique referred users with at least one 'earned' credit)
+        db.select({ count: drizzleSql<number>`count(distinct referred_user_id)` })
+          .from(referralCredits)
+          .where(and(eq(referralCredits.referrerUserId, userId), eq(referralCredits.status, 'earned'))),
+      ]);
+
+      const creditBalance = Number(earnedRows[0]?.count || 0);
+      const freeMonthsPending = Number(pendingFreeMonths[0]?.count || 0);
+      const freeMonthsTotal = Number(allFreeMonths[0]?.count || 0);
+      const activeReferrals = Number(activeReferralRows[0]?.count || 0);
       const rawReferralCount = user.referralCount || 0;
-      const earnedCredits = rawReferralCount * 1; // $1 per active referral
-      const currentCredits = Math.min(earnedCredits, referralCreditCap);
-      
+
       // For contractors, use the company's referral code instead of personal code
       if (user.role === 'contractor' && user.companyId) {
         const company = await storage.getCompany(user.companyId);
         if (company) {
-          // If company doesn't have a referral code, generate one
           if (!company.referralCode) {
             const newCode = await generateUniqueReferralCode(storage);
-
-            // Update company with new referral code
             await storage.updateCompany(user.companyId, { referralCode: newCode });
-            
-            return res.json({ 
+            return res.json({
               referralCode: newCode,
               referralCount: rawReferralCount,
-              earnedCredits,
-              referralCreditCap,
-              currentCredits,
+              creditBalance,
+              creditsNeeded: referralCreditCap,
+              freeMonthsPending,
+              freeMonthsTotal,
+              activeReferrals,
               tierName,
-              referralLink: `${req.protocol}://${req.get('host')}/invite/${newCode}`
+              referralLink: `${req.protocol}://${req.get('host')}/invite/${newCode}`,
             });
           }
-          
-          // Return company's existing referral code
-          return res.json({ 
+          return res.json({
             referralCode: company.referralCode,
             referralCount: rawReferralCount,
-            earnedCredits,
-            referralCreditCap,
-            currentCredits,
+            creditBalance,
+            creditsNeeded: referralCreditCap,
+            freeMonthsPending,
+            freeMonthsTotal,
+            activeReferrals,
             tierName,
-            referralLink: `${req.protocol}://${req.get('host')}/invite/${company.referralCode}`
+            referralLink: `${req.protocol}://${req.get('host')}/invite/${company.referralCode}`,
           });
         }
       }
 
-      // For homeowners, use personal referral code
+      // For homeowners and agents — use personal referral code
       if (!user.referralCode) {
         const newCode = await generateUniqueReferralCode(storage);
-
-        // Update user with new referral code
-        user = await storage.upsertUser({
-          ...user,
-          referralCode: newCode
-        });
-
-        // Update session user data
+        user = await storage.upsertUser({ ...user, referralCode: newCode });
         req.session.user = { ...req.session.user, referralCode: newCode };
       }
 
-      res.json({ 
+      res.json({
         referralCode: user.referralCode,
         referralCount: rawReferralCount,
-        earnedCredits,
-        referralCreditCap,
-        currentCredits,
+        creditBalance,
+        creditsNeeded: referralCreditCap,
+        freeMonthsPending,
+        freeMonthsTotal,
+        activeReferrals,
         tierName,
-        referralLink: `${req.protocol}://${req.get('host')}/invite/${user.referralCode}`
+        referralLink: `${req.protocol}://${req.get('host')}/invite/${user.referralCode}`,
       });
     } catch (error) {
       console.error("Error getting referral code:", error);

@@ -40,27 +40,37 @@ export const referralCredits = pgTable("referral_credits", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   referrerUserId: varchar("referrer_user_id").notNull().references(() => users.id, { onDelete: 'cascade' }), // User who made the referral
   referredUserId: varchar("referred_user_id").notNull().references(() => users.id, { onDelete: 'cascade' }), // User who was referred
-  creditAmount: decimal("credit_amount", { precision: 10, scale: 2 }).notNull().default("1.00"), // Amount of credit earned
-  status: text("status").notNull().default("earned"), // "earned", "applied", "expired", "cancelled"
+  billingMonth: varchar("billing_month", { length: 7 }), // Format YYYY-MM — which month this credit was earned (null for legacy rows)
+  creditAmount: decimal("credit_amount", { precision: 10, scale: 2 }).notNull().default("1.00"), // Amount of credit earned (always 1 per referral per month)
+  status: text("status").notNull().default("earned"), // "earned", "redeemed", "cancelled"
   earnedAt: timestamp("earned_at").notNull().defaultNow(), // When the credit was earned
-  appliedAt: timestamp("applied_at"), // When credit was applied to a bill
-  appliedToInvoiceId: varchar("applied_to_invoice_id"), // Stripe invoice ID where credit was applied
-  appliedAmount: decimal("applied_amount", { precision: 10, scale: 2 }), // Actual amount applied (may be less than credit_amount)
-  billingPeriodStart: timestamp("billing_period_start"), // Start of billing period where applied
-  billingPeriodEnd: timestamp("billing_period_end"), // End of billing period where applied
-  expiresAt: timestamp("expires_at"), // Optional expiration date for credits
+  appliedAt: timestamp("applied_at"), // When credit was redeemed toward a free month
   source: text("source").notNull().default("referral"), // "referral", "bonus", "promotion", etc.
   notes: text("notes"), // Additional notes about the credit
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
-  // Unique constraint to prevent duplicate referral credits
-  uniqueIndex("UX_referral_pair").on(table.referrerUserId, table.referredUserId),
+  // One credit per referral pair per billing month (allows monthly recurring credits)
+  uniqueIndex("UX_referral_pair_month").on(table.referrerUserId, table.referredUserId, table.billingMonth),
   // Performance indexes
-  index("IDX_referral_referrer_status_applied_at").on(table.referrerUserId, table.status, table.appliedAt),
+  index("IDX_referral_referrer_status").on(table.referrerUserId, table.status),
   index("IDX_referral_referred").on(table.referredUserId),
   // Check constraint to prevent self-referrals
   check("CHK_not_self", sql`referrer_user_id <> referred_user_id`),
+]);
+
+// Tracks free months earned through referral credit accumulation
+export const referralFreeMonths = pgTable("referral_free_months", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }), // The referrer who earned the free month
+  creditsConsumed: integer("credits_consumed").notNull().default(0), // How many credits were consumed for this free month
+  status: text("status").notNull().default("pending"), // "pending" | "applied"
+  earnedAt: timestamp("earned_at").notNull().defaultNow(), // When the threshold was reached
+  appliedAt: timestamp("applied_at"), // When the free month was granted
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_free_months_user_status").on(table.userId, table.status),
 ]);
 
 // Users table for Replit Auth with role and subscription support
@@ -1188,10 +1198,17 @@ export const insertReferralCreditSchema = createInsertSchema(referralCredits).om
   updatedAt: true,
 });
 
+export const insertReferralFreeMonthSchema = createInsertSchema(referralFreeMonths).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertSubscriptionPlan = z.infer<typeof insertSubscriptionPlanSchema>;
 export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
 export type InsertReferralCredit = z.infer<typeof insertReferralCreditSchema>;
 export type ReferralCredit = typeof referralCredits.$inferSelect;
+export type InsertReferralFreeMonth = z.infer<typeof insertReferralFreeMonthSchema>;
+export type ReferralFreeMonth = typeof referralFreeMonths.$inferSelect;
 export type InsertContractor = z.infer<typeof insertContractorSchema>;
 export type Contractor = typeof contractors.$inferSelect;
 export type InsertCompany = z.infer<typeof insertCompanySchema>;
