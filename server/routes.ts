@@ -933,17 +933,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       if (runningSum >= threshold) break;
                     }
                     const now = new Date();
-                    for (const credit of toRedeem) {
-                      await db.update(referralCredits)
-                        .set({ status: 'redeemed', appliedAt: now })
-                        .where(eq(referralCredits.id, credit.id));
-                    }
-                    await db.insert(referralFreeMonths).values({
-                      userId: referrer.id,
-                      creditsConsumed: threshold,
-                      status: 'pending',
-                      earnedAt: now,
-                      notes: `Free month earned — ${threshold} credits (${runningSum.toFixed(2)} total) redeemed`,
+                    // Wrap redemption + free-month insert in a transaction for idempotency:
+                    // if the insert fails, credits are not marked redeemed, avoiding orphaned state.
+                    await db.transaction(async (tx) => {
+                      for (const credit of toRedeem) {
+                        await tx.update(referralCredits)
+                          .set({ status: 'redeemed', appliedAt: now })
+                          .where(eq(referralCredits.id, credit.id));
+                      }
+                      await tx.insert(referralFreeMonths).values({
+                        userId: referrer.id,
+                        creditsConsumed: threshold,
+                        status: 'pending',
+                        earnedAt: now,
+                        notes: `Free month earned — ${threshold} credits (${runningSum.toFixed(2)} total) redeemed`,
+                      });
                     });
                     console.log(`[REFERRAL CREDITS] Free month earned for ${referrer.email} (${threshold} credits consumed)`);
                   }
