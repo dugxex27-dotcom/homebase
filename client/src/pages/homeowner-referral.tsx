@@ -186,7 +186,7 @@ export default function HomeownerReferral() {
                             {freeMonthsPending} free month{freeMonthsPending > 1 ? 's' : ''} pending
                           </p>
                           <p className="text-xs text-green-700 mt-0.5">
-                            Your free month{freeMonthsPending > 1 ? 's' : ''} will be applied to your next billing cycle automatically.
+                            Our team will apply your free month{freeMonthsPending > 1 ? 's' : ''} to your account shortly.
                           </p>
                         </div>
                       </div>
