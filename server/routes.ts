@@ -1028,20 +1028,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           await storage.updateUserSubscriptionStatus(user.id, 'cancelled');
           console.log('[STRIPE WEBHOOK] Subscription deleted for user:', user.email);
-
-          // Cancel all future referral credits where this user is the referred party
-          // (existing redeemed credits are unaffected — only stop future earning)
-          try {
-            await db.update(referralCredits)
-              .set({ status: 'cancelled', updatedAt: new Date() })
-              .where(and(
-                eq(referralCredits.referredUserId, user.id),
-                eq(referralCredits.status, 'earned')
-              ));
-            console.log(`[REFERRAL CREDITS] Cancelled future credits for cancelled user: ${user.email}`);
-          } catch (cancelErr: any) {
-            console.error('[REFERRAL CREDITS] Error cancelling credits on subscription delete:', cancelErr.message);
-          }
+          // Note: no referral credits are cancelled here. The monthly credit model is
+          // self-regulating — if this user no longer pays, no new invoice.payment_succeeded
+          // event fires for them, so no new credits are issued to their referrer.
+          // All previously earned credits for referrers remain valid.
           break;
         }
 
@@ -2232,16 +2222,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         db.select({ count: drizzleSql<number>`count(*)` })
           .from(referralFreeMonths)
           .where(eq(referralFreeMonths.userId, userId)),
-        // Count active referrals (unique referred users with at least one 'earned' credit)
-        db.select({ count: drizzleSql<number>`count(distinct referred_user_id)` })
-          .from(referralCredits)
-          .where(and(eq(referralCredits.referrerUserId, userId), eq(referralCredits.status, 'earned'))),
+        // Count active referrals: unique referred users who are currently paying (active or trialing)
+        db.execute(drizzleSql`
+          SELECT COUNT(DISTINCT rc.referred_user_id)::int AS count
+          FROM referral_credits rc
+          INNER JOIN users u ON rc.referred_user_id = u.id
+          WHERE rc.referrer_user_id = ${userId}
+            AND u.subscription_status IN ('active', 'trialing')
+        `),
       ]);
 
       const creditBalance = Number(earnedRows[0]?.count || 0);
       const freeMonthsPending = Number(pendingFreeMonths[0]?.count || 0);
       const freeMonthsTotal = Number(allFreeMonths[0]?.count || 0);
-      const activeReferrals = Number(activeReferralRows[0]?.count || 0);
+      const activeReferrals = Number((activeReferralRows.rows?.[0] as any)?.count || activeReferralRows[0]?.count || 0);
       const rawReferralCount = user.referralCount || 0;
 
       // For contractors, use the company's referral code instead of personal code
@@ -4279,6 +4273,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching advanced analytics:", error);
       res.status(500).json({ message: "Failed to fetch analytics" });
+    }
+  });
+
+  // Admin: list all users with referral free months summary
+  app.get('/api/admin/referral-free-months', requireAdmin, async (req, res) => {
+    try {
+      const rows = await db.execute(drizzleSql`
+        SELECT
+          u.id AS user_id,
+          u.email,
+          u.first_name,
+          u.last_name,
+          u.subscription_status,
+          COUNT(DISTINCT rfm.id)::int AS total_free_months,
+          COUNT(DISTINCT CASE WHEN rfm.status = 'pending' THEN rfm.id END)::int AS pending_free_months,
+          COUNT(DISTINCT CASE WHEN rfm.status = 'applied' THEN rfm.id END)::int AS applied_free_months,
+          COUNT(DISTINCT CASE WHEN rc.status = 'earned' THEN rc.referred_user_id END)::int AS active_credits,
+          MAX(rfm.earned_at) AS last_free_month_earned_at
+        FROM users u
+        LEFT JOIN referral_free_months rfm ON rfm.user_id = u.id
+        LEFT JOIN referral_credits rc ON rc.referrer_user_id = u.id
+        WHERE u.referral_code IS NOT NULL
+          AND (rfm.id IS NOT NULL OR rc.referrer_user_id IS NOT NULL)
+        GROUP BY u.id, u.email, u.first_name, u.last_name, u.subscription_status
+        ORDER BY total_free_months DESC, active_credits DESC
+        LIMIT 200
+      `);
+      res.json(rows.rows || []);
+    } catch (err: any) {
+      console.error('[ADMIN] Error fetching referral free months:', err.message);
+      res.status(500).json({ message: 'Failed to fetch referral data' });
     }
   });
 

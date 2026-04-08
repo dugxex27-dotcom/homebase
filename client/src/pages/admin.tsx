@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Users, Home, Briefcase, Plus, Ban, TrendingUp, DollarSign, UserMinus, MessageSquare, ArrowRight, Flag, UserCheck, CheckCircle, XCircle, Clock, Eye, ChevronDown, ChevronUp, FileText, ExternalLink, Mail, Phone, ImagePlus, X, Loader2 } from "lucide-react";
+import { Users, Home, Briefcase, Plus, Ban, TrendingUp, DollarSign, UserMinus, MessageSquare, ArrowRight, Flag, UserCheck, CheckCircle, XCircle, Clock, Eye, ChevronDown, ChevronUp, FileText, ExternalLink, Mail, Phone, ImagePlus, X, Loader2, Gift } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { format } from "date-fns";
@@ -171,6 +171,11 @@ The MyHomeBase Team`);
   // Fetch agents for verification
   const { data: agents, isLoading: agentsLoading } = useQuery<AgentWithUser[]>({
     queryKey: ["/api/admin/agents"],
+  });
+
+  // Fetch referral free months data
+  const { data: referralFreeMonthsData, isLoading: referralLoading } = useQuery<any[]>({
+    queryKey: ["/api/admin/referral-free-months"],
   });
 
   // Verify agent mutation
@@ -1441,6 +1446,87 @@ The MyHomeBase Team`);
             )}
           </CardContent>
         </Card>
+
+        {/* Referral Free Months Panel */}
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Gift className="w-5 h-5 text-purple-600" />
+              Referral Free Months
+            </CardTitle>
+            <CardDescription>
+              Users who have earned free months through referrals
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {referralLoading ? (
+              <div className="space-y-2">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-center">Active Credits</TableHead>
+                      <TableHead className="text-center">Pending Free Months</TableHead>
+                      <TableHead className="text-center">Applied Free Months</TableHead>
+                      <TableHead className="text-center">Total</TableHead>
+                      <TableHead>Last Earned</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {referralFreeMonthsData && referralFreeMonthsData.length > 0 ? (
+                      referralFreeMonthsData.map((row: any, idx: number) => (
+                        <TableRow key={row.user_id} data-testid={`row-referral-${idx}`}>
+                          <TableCell>
+                            <div className="font-medium text-sm">
+                              {row.first_name || ''} {row.last_name || ''}
+                            </div>
+                            <div className="text-xs text-gray-500">{row.email}</div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={row.subscription_status === 'active' ? 'default' : 'secondary'}>
+                              {row.subscription_status || 'unknown'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center font-mono">{row.active_credits ?? 0}</TableCell>
+                          <TableCell className="text-center">
+                            {Number(row.pending_free_months) > 0 ? (
+                              <Badge className="bg-amber-100 text-amber-800">
+                                {row.pending_free_months}
+                              </Badge>
+                            ) : (
+                              <span className="text-gray-400">0</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center font-mono">{row.applied_free_months ?? 0}</TableCell>
+                          <TableCell className="text-center font-bold text-purple-700">{row.total_free_months ?? 0}</TableCell>
+                          <TableCell className="text-xs text-gray-500">
+                            {row.last_free_month_earned_at
+                              ? format(new Date(row.last_free_month_earned_at), "MMM d, yyyy")
+                              : "—"}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center text-gray-500">
+                          No referral free month data yet
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
       </div>
     </div>
   );
