@@ -1472,7 +1472,7 @@ The MyHomeBase Team`);
                     <TableRow>
                       <TableHead>User</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead className="text-center">Active Credits</TableHead>
+                      <TableHead className="text-center">Earned Credits</TableHead>
                       <TableHead className="text-center">Pending Free Months</TableHead>
                       <TableHead className="text-center">Applied Free Months</TableHead>
                       <TableHead className="text-center">Total</TableHead>
@@ -1494,7 +1494,7 @@ The MyHomeBase Team`);
                               {row.subscription_status || 'unknown'}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-center font-mono">{row.active_credits ?? 0}</TableCell>
+                          <TableCell className="text-center font-mono">{row.earned_credits ?? 0}</TableCell>
                           <TableCell className="text-center">
                             {Number(row.pending_free_months) > 0 ? (
                               <Badge className="bg-amber-100 text-amber-800">

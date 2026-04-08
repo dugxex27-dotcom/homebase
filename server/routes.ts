@@ -4294,7 +4294,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           COUNT(DISTINCT rfm.id)::int AS total_free_months,
           COUNT(DISTINCT CASE WHEN rfm.status = 'pending' THEN rfm.id END)::int AS pending_free_months,
           COUNT(DISTINCT CASE WHEN rfm.status = 'applied' THEN rfm.id END)::int AS applied_free_months,
-          COUNT(DISTINCT CASE WHEN rc.status = 'earned' THEN rc.referred_user_id END)::int AS active_credits,
+          COUNT(CASE WHEN rc.status = 'earned' THEN 1 END)::int AS earned_credits,
           MAX(rfm.earned_at) AS last_free_month_earned_at
         FROM users u
         LEFT JOIN referral_free_months rfm ON rfm.user_id = u.id
@@ -4302,7 +4302,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         WHERE u.referral_code IS NOT NULL
           AND (rfm.id IS NOT NULL OR rc.referrer_user_id IS NOT NULL)
         GROUP BY u.id, u.email, u.first_name, u.last_name, u.subscription_status
-        ORDER BY total_free_months DESC, active_credits DESC
+        ORDER BY total_free_months DESC, earned_credits DESC
         LIMIT 200
       `);
       res.json(rows.rows || []);
