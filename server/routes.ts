@@ -874,12 +874,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Don't fail the webhook for affiliate errors
           }
 
-          // Handle user-to-user referral credits — 1 credit per referral per billing month
+          // Handle user-to-user referral credits — homeowners and contractors only
+          // Real estate agents use the separate cash-payout affiliate model (handled above)
           try {
-            if (user.referredBy) {
+            if (user.referredBy && user.role !== 'agent') {
               const referrer = await storage.getUserByReferralCode(user.referredBy);
 
-              if (referrer && referrer.id !== user.id) {
+              if (referrer && referrer.id !== user.id && referrer.role !== 'agent') {
                 // Derive billing month from invoice period_start (format YYYY-MM)
                 const invoiceObj = event.data.object as Stripe.Invoice;
                 const periodTimestamp = invoiceObj.period_start || Math.floor(Date.now() / 1000);
@@ -2204,7 +2205,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Resolve plan details for this user
+      // Real estate agents use the cash-payout affiliate model — return basic referral info only
+      if (user.role === 'agent') {
+        if (!user.referralCode) {
+          const newCode = await generateUniqueReferralCode(storage);
+          user = await storage.upsertUser({ ...user, referralCode: newCode });
+        }
+        return res.json({
+          referralCode: user.referralCode,
+          referralCount: user.referralCount || 0,
+          referralLink: `${req.protocol}://${req.get('host')}/invite/${user.referralCode}`,
+        });
+      }
+
+      // Resolve plan details for this user (homeowners + contractors only)
       let referralCreditCap = 5; // default threshold (# credits needed for a free month)
       let tierName = user.role === 'contractor' ? 'contractor' : 'homeowner';
       let monthlyPrice = 5;
