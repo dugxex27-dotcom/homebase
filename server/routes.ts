@@ -1033,23 +1033,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           await storage.updateUserSubscriptionStatus(user.id, 'cancelled');
           console.log('[STRIPE WEBHOOK] Subscription deleted for user:', user.email);
-
-          // Mark all EARNED (not yet redeemed) referral credits for this referred user as cancelled.
-          // This represents credits that were accumulated but not yet consumed toward a free month;
-          // they are voided because the referring relationship is no longer active.
-          // Existing REDEEMED credits stay intact — those free months are already earned.
-          try {
-            await db.update(referralCredits)
-              .set({ status: 'cancelled', updatedAt: new Date() })
-              .where(and(
-                eq(referralCredits.referredUserId, user.id),
-                eq(referralCredits.status, 'earned')
-              ));
-            console.log(`[REFERRAL CREDITS] Cancelled earned (unredeemed) credits for cancelled user: ${user.email}`);
-          } catch (cancelErr: unknown) {
-            const err = cancelErr as { message?: string };
-            console.error('[REFERRAL CREDITS] Error cancelling credits on subscription delete:', err.message);
-          }
+          // Future monthly credits are stopped automatically: credits are only issued when
+          // invoice.payment_succeeded fires. A cancelled user no longer pays, so no new
+          // credits are ever issued. Existing earned credits for their referrers remain valid.
           break;
         }
 
