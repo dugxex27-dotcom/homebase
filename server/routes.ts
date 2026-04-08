@@ -1033,9 +1033,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           await storage.updateUserSubscriptionStatus(user.id, 'cancelled');
           console.log('[STRIPE WEBHOOK] Subscription deleted for user:', user.email);
-          // Future monthly credits stop naturally: credits are only issued via invoice.payment_succeeded,
-          // which Stripe will no longer fire for this user once their subscription is cancelled.
-          // Previously earned credits (representing real past payments) remain valid for the referrer.
+
+          // Per task spec step 3: cancel EARNED credits attributed to this referred user.
+          // "Earned" credits are pending free-month accumulation that have not yet been redeemed.
+          // Cancelling them voids outstanding balance owed to the referrer for this now-inactive user.
+          // REDEEMED credits (already consumed toward granted free months) remain untouched.
+          try {
+            await db.update(referralCredits)
+              .set({ status: 'cancelled', updatedAt: new Date() })
+              .where(and(
+                eq(referralCredits.referredUserId, user.id),
+                eq(referralCredits.status, 'earned')
+              ));
+            console.log(`[REFERRAL CREDITS] Cancelled unredeemed earned credits for cancelled user: ${user.email}`);
+          } catch (cancelErr: unknown) {
+            const err = cancelErr as { message?: string };
+            console.error('[REFERRAL CREDITS] Error cancelling credits on subscription delete:', err.message);
+          }
           break;
         }
 
