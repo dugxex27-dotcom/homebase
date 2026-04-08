@@ -33,7 +33,7 @@ export default function AgentReferral() {
   // Calculate potential earnings: $15 per referral after 4 months
   const estimatedEarnings = referralCount * 15;
   
-  const shareMessage = `Join me on MyHomeBase! Use my referral code ${referralCode} when you sign up. As a real estate agent, I earn commissions when my clients subscribe. Sign up here: ${referralLink}`;
+  const shareMessage = `Join me on MyHomeBase — the must-have app for homeowners! Use my referral code ${referralCode} when you sign up. It's the best way to track home maintenance, documents, and more. Sign up here: ${referralLink}`;
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
