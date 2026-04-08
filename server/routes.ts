@@ -1033,10 +1033,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           await storage.updateUserSubscriptionStatus(user.id, 'cancelled');
           console.log('[STRIPE WEBHOOK] Subscription deleted for user:', user.email);
-          // Existing earned referral credits for this user's referrers remain untouched — they
-          // represent legitimate past payments and belong to the referrer.
-          // Future credit accrual stops naturally: credits are only issued via invoice.payment_succeeded,
-          // which Stripe will no longer fire for this user once their subscription is cancelled.
+
+          // Task spec step 3: mark any EARNED (not yet redeemed) referral credits attributed
+          // to this referred user as cancelled. Redeemed credits remain intact.
+          try {
+            await db.update(referralCredits)
+              .set({ status: 'cancelled', updatedAt: new Date() })
+              .where(and(
+                eq(referralCredits.referredUserId, user.id),
+                eq(referralCredits.status, 'earned')
+              ));
+            console.log(`[REFERRAL CREDITS] Cancelled unspent earned credits for cancelled user: ${user.email}`);
+          } catch (cancelErr: unknown) {
+            const err = cancelErr as { message?: string };
+            console.error('[REFERRAL CREDITS] Error cancelling credits on subscription delete:', err.message);
+          }
           break;
         }
 
@@ -4285,23 +4296,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/referral-free-months', requireAdmin, async (req, res) => {
     try {
       const rows = await db.execute(drizzleSql`
+        WITH fm_agg AS (
+          SELECT
+            user_id,
+            COUNT(*)::int                                              AS total_free_months,
+            COUNT(CASE WHEN status = 'pending' THEN 1 END)::int       AS pending_free_months,
+            COUNT(CASE WHEN status = 'applied' THEN 1 END)::int       AS applied_free_months,
+            MAX(earned_at)                                             AS last_free_month_earned_at
+          FROM referral_free_months
+          GROUP BY user_id
+        ),
+        rc_agg AS (
+          SELECT
+            referrer_user_id,
+            COUNT(CASE WHEN status = 'earned' THEN 1 END)::int        AS earned_credits
+          FROM referral_credits
+          GROUP BY referrer_user_id
+        )
         SELECT
-          u.id AS user_id,
+          u.id               AS user_id,
           u.email,
           u.first_name,
           u.last_name,
           u.subscription_status,
-          COUNT(DISTINCT rfm.id)::int AS total_free_months,
-          COUNT(DISTINCT CASE WHEN rfm.status = 'pending' THEN rfm.id END)::int AS pending_free_months,
-          COUNT(DISTINCT CASE WHEN rfm.status = 'applied' THEN rfm.id END)::int AS applied_free_months,
-          COUNT(CASE WHEN rc.status = 'earned' THEN 1 END)::int AS earned_credits,
-          MAX(rfm.earned_at) AS last_free_month_earned_at
+          COALESCE(fm.total_free_months, 0)    AS total_free_months,
+          COALESCE(fm.pending_free_months, 0)  AS pending_free_months,
+          COALESCE(fm.applied_free_months, 0)  AS applied_free_months,
+          COALESCE(rc.earned_credits, 0)       AS earned_credits,
+          fm.last_free_month_earned_at
         FROM users u
-        LEFT JOIN referral_free_months rfm ON rfm.user_id = u.id
-        LEFT JOIN referral_credits rc ON rc.referrer_user_id = u.id
+        LEFT JOIN fm_agg fm ON fm.user_id = u.id
+        LEFT JOIN rc_agg rc ON rc.referrer_user_id = u.id
         WHERE u.referral_code IS NOT NULL
-          AND (rfm.id IS NOT NULL OR rc.referrer_user_id IS NOT NULL)
-        GROUP BY u.id, u.email, u.first_name, u.last_name, u.subscription_status
+          AND (fm.user_id IS NOT NULL OR rc.referrer_user_id IS NOT NULL)
         ORDER BY total_free_months DESC, earned_credits DESC
         LIMIT 200
       `);
