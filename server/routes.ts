@@ -917,10 +917,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     .where(and(
                       eq(referralCredits.referrerUserId, referrer.id),
                       eq(referralCredits.status, 'earned')
-                    ));
+                    ))
+                    .orderBy(referralCredits.earnedAt); // oldest first (FIFO)
 
                   if (earnedCredits.length >= threshold) {
-                    // Grant a free month — consume the oldest N credits
+                    // Grant a free month — consume the oldest N credits (deterministic FIFO order)
                     const toRedeem = earnedCredits.slice(0, threshold);
                     const now = new Date();
                     for (const credit of toRedeem) {
@@ -1028,10 +1029,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           await storage.updateUserSubscriptionStatus(user.id, 'cancelled');
           console.log('[STRIPE WEBHOOK] Subscription deleted for user:', user.email);
-          // Note: no referral credits are cancelled here. The monthly credit model is
-          // self-regulating — if this user no longer pays, no new invoice.payment_succeeded
-          // event fires for them, so no new credits are issued to their referrer.
-          // All previously earned credits for referrers remain valid.
+
+          // Cancel all EARNED (not yet redeemed) referral credits where this user is the referred party.
+          // This stops future credit accrual for their referrers.
+          // Existing REDEEMED credits are intentionally untouched — they've already been granted.
+          try {
+            const cancelResult = await db.update(referralCredits)
+              .set({ status: 'cancelled', updatedAt: new Date() })
+              .where(and(
+                eq(referralCredits.referredUserId, user.id),
+                eq(referralCredits.status, 'earned')
+              ));
+            console.log(`[REFERRAL CREDITS] Cancelled earned credits for cancelled referred user: ${user.email}`);
+          } catch (cancelErr: any) {
+            console.error('[REFERRAL CREDITS] Error cancelling credits on subscription delete:', cancelErr.message);
+          }
           break;
         }
 

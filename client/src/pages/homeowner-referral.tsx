@@ -37,7 +37,7 @@ export default function HomeownerReferral() {
 
   const progressPercent = creditsNeeded > 0 ? Math.min((creditBalance / creditsNeeded) * 100, 100) : 0;
 
-  const shareMessage = `Join me on MyHomeBase! Use my referral code ${referralCode} when you sign up. I get rewards when you subscribe, and you'll get the full MyHomeBase experience! Perfect for homeowners! Sign up here: ${referralLink}`;
+  const shareMessage = `Join me on MyHomeBase — the best app for homeowners! Use my referral code ${referralCode} when you sign up. Every month you stay subscribed, I earn 1 credit toward a free month — and you get the full MyHomeBase experience! Sign up here: ${referralLink}`;
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
