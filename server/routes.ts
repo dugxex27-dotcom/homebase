@@ -920,9 +920,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     ))
                     .orderBy(referralCredits.earnedAt); // oldest first (FIFO)
 
-                  if (earnedCredits.length >= threshold) {
-                    // Grant a free month — consume the oldest N credits (deterministic FIFO order)
-                    const toRedeem = earnedCredits.slice(0, threshold);
+                  // Use SUM(credit_amount) for threshold check to handle non-$1 credits correctly
+                  const totalEarned = earnedCredits.reduce((sum, c) => sum + parseFloat(c.creditAmount || '1'), 0);
+
+                  if (totalEarned >= threshold) {
+                    // Grant a free month — FIFO: accumulate credits until their sum reaches the threshold
+                    const toRedeem: typeof earnedCredits = [];
+                    let runningSum = 0;
+                    for (const credit of earnedCredits) {
+                      toRedeem.push(credit);
+                      runningSum += parseFloat(credit.creditAmount || '1');
+                      if (runningSum >= threshold) break;
+                    }
                     const now = new Date();
                     for (const credit of toRedeem) {
                       await db.update(referralCredits)
@@ -934,7 +943,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       creditsConsumed: threshold,
                       status: 'pending',
                       earnedAt: now,
-                      notes: `Free month earned — ${threshold} credits redeemed`,
+                      notes: `Free month earned — ${threshold} credits (${runningSum.toFixed(2)} total) redeemed`,
                     });
                     console.log(`[REFERRAL CREDITS] Free month earned for ${referrer.email} (${threshold} credits consumed)`);
                   }
