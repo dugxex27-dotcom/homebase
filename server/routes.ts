@@ -1033,21 +1033,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           await storage.updateUserSubscriptionStatus(user.id, 'cancelled');
           console.log('[STRIPE WEBHOOK] Subscription deleted for user:', user.email);
-
-          // Task spec step 3: mark any EARNED (not yet redeemed) referral credits attributed
-          // to this referred user as cancelled. Redeemed credits remain intact.
-          try {
-            await db.update(referralCredits)
-              .set({ status: 'cancelled', updatedAt: new Date() })
-              .where(and(
-                eq(referralCredits.referredUserId, user.id),
-                eq(referralCredits.status, 'earned')
-              ));
-            console.log(`[REFERRAL CREDITS] Cancelled unspent earned credits for cancelled user: ${user.email}`);
-          } catch (cancelErr: unknown) {
-            const err = cancelErr as { message?: string };
-            console.error('[REFERRAL CREDITS] Error cancelling credits on subscription delete:', err.message);
-          }
+          // Future monthly credits stop naturally: credits are only issued via invoice.payment_succeeded,
+          // which Stripe will no longer fire for this user once their subscription is cancelled.
+          // Previously earned credits (representing real past payments) remain valid for the referrer.
           break;
         }
 
@@ -2271,6 +2259,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               activeReferrals,
               tierName,
               referralLink: `${req.protocol}://${req.get('host')}/invite/${newCode}`,
+              // Legacy fields for contractor-referral.tsx backward compat
+              earnedCredits: creditBalance,
+              currentCredits: creditBalance,
+              referralCreditCap,
             });
           }
           return res.json({
@@ -2283,6 +2275,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             activeReferrals,
             tierName,
             referralLink: `${req.protocol}://${req.get('host')}/invite/${company.referralCode}`,
+            // Legacy fields for contractor-referral.tsx backward compat
+            earnedCredits: creditBalance,
+            currentCredits: creditBalance,
+            referralCreditCap,
           });
         }
       }
@@ -2304,6 +2300,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         activeReferrals,
         tierName,
         referralLink: `${req.protocol}://${req.get('host')}/invite/${user.referralCode}`,
+        // Legacy fields for backward compat
+        earnedCredits: creditBalance,
+        currentCredits: creditBalance,
+        referralCreditCap,
       });
     } catch (error) {
       console.error("Error getting referral code:", error);
