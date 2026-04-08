@@ -880,9 +880,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const referrer = await storage.getUserByReferralCode(user.referredBy);
 
               if (referrer && referrer.id !== user.id) {
-                // Derive billing month from invoice period (format YYYY-MM)
+                // Derive billing month from invoice period_start (format YYYY-MM)
                 const invoiceObj = event.data.object as Stripe.Invoice;
-                const periodTimestamp = (invoiceObj as any).period_start || Math.floor(Date.now() / 1000);
+                const periodTimestamp = invoiceObj.period_start || Math.floor(Date.now() / 1000);
                 const periodDate = new Date(periodTimestamp * 1000);
                 const billingMonth = `${periodDate.getFullYear()}-${String(periodDate.getMonth() + 1).padStart(2, '0')}`;
 
@@ -938,30 +938,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     });
                     console.log(`[REFERRAL CREDITS] Free month earned for ${referrer.email} (${threshold} credits consumed)`);
                   }
-                } catch (insertErr: any) {
+                } catch (insertErr: unknown) {
                   // Unique constraint violation means credit already issued for this month — skip silently
-                  if (insertErr.code === '23505') {
+                  const pgErr = insertErr as { code?: string };
+                  if (pgErr.code === '23505') {
                     console.log(`[REFERRAL CREDITS] Credit already issued for ${billingMonth}: ${referrer.email} <- ${user.email}`);
                   } else {
                     throw insertErr;
                   }
                 }
 
-                // Keep referralCount in sync (count distinct active referrals)
-                const activeReferralCount = await db.select({ count: drizzleSql<number>`count(distinct referred_user_id)` })
-                  .from(referralCredits)
-                  .where(and(
-                    eq(referralCredits.referrerUserId, referrer.id),
-                    eq(referralCredits.status, 'earned')
-                  ));
+                // Sync referralCount: count distinct referred users with active/trialing subscription
+                const activeReferralRows = await db.execute(drizzleSql`
+                  SELECT COUNT(DISTINCT rc.referred_user_id)::int AS cnt
+                  FROM referral_credits rc
+                  INNER JOIN users u ON rc.referred_user_id = u.id
+                  WHERE rc.referrer_user_id = ${referrer.id}
+                    AND u.subscription_status IN ('active', 'trialing')
+                `);
+                const activeCount = Number((activeReferralRows.rows[0] as { cnt: number } | undefined)?.cnt || 0);
                 await storage.upsertUser({
                   ...referrer,
-                  referralCount: Number(activeReferralCount[0]?.count || 0),
+                  referralCount: activeCount,
                 });
               }
             }
-          } catch (referralError: any) {
-            console.error('[REFERRAL CREDITS] Error creating referral credit:', referralError.message);
+          } catch (referralError: unknown) {
+            const err = referralError as { message?: string };
+            console.error('[REFERRAL CREDITS] Error creating referral credit:', err.message);
             // Don't fail the webhook for referral errors
           }
 
@@ -1029,9 +1033,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           await storage.updateUserSubscriptionStatus(user.id, 'cancelled');
           console.log('[STRIPE WEBHOOK] Subscription deleted for user:', user.email);
-          // Future monthly referral credits for this user's referrers stop automatically:
-          // credits are only issued on invoice.payment_succeeded — if this user no longer pays,
-          // no new credits are issued. Existing earned credits remain valid for their referrers.
+
+          // Mark all EARNED (not yet redeemed) referral credits for this referred user as cancelled.
+          // This represents credits that were accumulated but not yet consumed toward a free month;
+          // they are voided because the referring relationship is no longer active.
+          // Existing REDEEMED credits stay intact — those free months are already earned.
+          try {
+            await db.update(referralCredits)
+              .set({ status: 'cancelled', updatedAt: new Date() })
+              .where(and(
+                eq(referralCredits.referredUserId, user.id),
+                eq(referralCredits.status, 'earned')
+              ));
+            console.log(`[REFERRAL CREDITS] Cancelled earned (unredeemed) credits for cancelled user: ${user.email}`);
+          } catch (cancelErr: unknown) {
+            const err = cancelErr as { message?: string };
+            console.error('[REFERRAL CREDITS] Error cancelling credits on subscription delete:', err.message);
+          }
           break;
         }
 
@@ -2235,7 +2253,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const creditBalance = Number(earnedRows[0]?.count || 0);
       const freeMonthsPending = Number(pendingFreeMonths[0]?.count || 0);
       const freeMonthsTotal = Number(allFreeMonths[0]?.count || 0);
-      const activeReferrals = Number((activeReferralRows.rows?.[0] as any)?.count || activeReferralRows[0]?.count || 0);
+      const activeReferrals = Number((activeReferralRows.rows[0] as { count: number } | undefined)?.count || 0);
       const rawReferralCount = user.referralCount || 0;
 
       // For contractors, use the company's referral code instead of personal code
