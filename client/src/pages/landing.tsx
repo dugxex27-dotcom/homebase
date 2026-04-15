@@ -55,7 +55,7 @@ export default function Landing() {
       <div className="w-full relative hidden lg:block overflow-hidden" style={{ maxHeight: '450px' }}>
         <img 
           src={heroImageDesktop} 
-          alt="MyHomeBase - Your digital home fingerprint" 
+          alt="MyHomeBase™ - Your digital home fingerprint" 
           className="w-full h-auto"
           data-testid="img-landing-hero-desktop"
         />
@@ -88,7 +88,7 @@ export default function Landing() {
           />
           <EditableText
             contentKey="hero_subcopy_1"
-            defaultValue="MyHomeBase keep your home history, contractors, realtor paperwork, and house maintenance list in a single dashboard."
+            defaultValue="MyHomeBase™ keep your home history, contractors, realtor paperwork, and house maintenance list in a single dashboard."
             as="h2"
             className="mb-3"
             style={{ 
@@ -120,7 +120,7 @@ export default function Landing() {
       <div className="w-full relative hidden sm:block lg:hidden overflow-hidden" style={{ maxHeight: '380px' }}>
         <img 
           src={heroImageTablet} 
-          alt="MyHomeBase - Your digital home fingerprint" 
+          alt="MyHomeBase™ - Your digital home fingerprint" 
           className="w-full h-auto"
           data-testid="img-landing-hero-tablet"
         />
@@ -151,7 +151,7 @@ export default function Landing() {
           />
           <EditableText
             contentKey="hero_subcopy_1"
-            defaultValue="MyHomeBase keep your home history, contractors, realtor paperwork, and house maintenance list in a single dashboard."
+            defaultValue="MyHomeBase™ keep your home history, contractors, realtor paperwork, and house maintenance list in a single dashboard."
             as="h2"
             className="mb-2"
             style={{ 
@@ -181,7 +181,7 @@ export default function Landing() {
       <div className="w-full sm:hidden">
         <img 
           src={heroImageMobile} 
-          alt="MyHomeBase - Your digital home fingerprint" 
+          alt="MyHomeBase™ - Your digital home fingerprint" 
           className="w-full h-auto"
           data-testid="img-landing-hero-mobile"
         />
@@ -212,7 +212,7 @@ export default function Landing() {
           />
           <EditableText
             contentKey="hero_subcopy_1"
-            defaultValue="MyHomeBase keep your home history, contractors, realtor paperwork, and house maintenance list in a single dashboard."
+            defaultValue="MyHomeBase™ keep your home history, contractors, realtor paperwork, and house maintenance list in a single dashboard."
             as="h2"
             className="mb-3"
             style={{ 
@@ -372,7 +372,7 @@ export default function Landing() {
                 </h3>
                 <EditableText
                   contentKey="agent_card_description"
-                  defaultValue="Earn commissions by referring homeowners and contractors to MyHomeBase"
+                  defaultValue="Earn commissions by referring homeowners and contractors to MyHomeBase™"
                   as="p"
                   className="text-gray-600 mb-6"
                 />

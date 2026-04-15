@@ -53,7 +53,7 @@ export default function SubscriptionSuccess() {
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#eeedf9' }}>
       <Helmet>
-        <title>Welcome to MyHomeBase! | Subscription Confirmed</title>
+        <title>Welcome to MyHomeBase™! | Subscription Confirmed</title>
       </Helmet>
       
       <Card className="max-w-md mx-4 shadow-lg border-2 border-green-200">
@@ -70,13 +70,13 @@ export default function SubscriptionSuccess() {
           </div>
           
           <h1 className="text-3xl font-bold mb-3" style={{ color: '#2c0f5b' }}>
-            {isTrial ? 'Your Free Trial Has Started!' : 'Welcome to MyHomeBase!'}
+            {isTrial ? 'Your Free Trial Has Started!' : 'Welcome to MyHomeBase™!'}
           </h1>
           
           <p className="text-lg text-gray-600 mb-6">
             {isTrial
               ? 'Enjoy 14 days of full access — no charge today. We\'ll remind you before your trial ends.'
-              : 'Your subscription is now active. Thank you for choosing MyHomeBase!'}
+              : 'Your subscription is now active. Thank you for choosing MyHomeBase™!'}
           </p>
 
           {isTrial && (

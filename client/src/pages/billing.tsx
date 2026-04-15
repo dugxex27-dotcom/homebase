@@ -161,7 +161,7 @@ export default function Billing() {
           <Alert className={`mb-6 ${isContractor ? 'border-red-500 bg-red-100' : 'border-amber-500 bg-amber-100'}`}>
             <XCircle className={`h-4 w-4 ${isContractor ? 'text-red-700' : 'text-amber-700'}`} />
             <AlertDescription className={isContractor ? 'text-red-900' : 'text-amber-900'}>
-              <strong>Your free trial has ended.</strong> Subscribe below to continue using MyHomeBase.
+              <strong>Your free trial has ended.</strong> Subscribe below to continue using MyHomeBase™.
             </AlertDescription>
           </Alert>
         )}

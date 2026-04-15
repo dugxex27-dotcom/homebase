@@ -37,7 +37,7 @@ export default function HomeownerReferral() {
 
   const progressPercent = creditsNeeded > 0 ? Math.min((creditBalance / creditsNeeded) * 100, 100) : 0;
 
-  const shareMessage = `Join me on MyHomeBase — the best app for homeowners! Use my referral code ${referralCode} when you sign up. Every month you stay subscribed, I earn 1 credit toward a free month — and you get the full MyHomeBase experience! Sign up here: ${referralLink}`;
+  const shareMessage = `Join me on MyHomeBase™ — the best app for homeowners! Use my referral code ${referralCode} when you sign up. Every month you stay subscribed, I earn 1 credit toward a free month — and you get the full MyHomeBase™ experience! Sign up here: ${referralLink}`;
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -99,7 +99,7 @@ export default function HomeownerReferral() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Referral Program</h1>
-          <p className="text-gray-600">Share MyHomeBase and earn free months</p>
+          <p className="text-gray-600">Share MyHomeBase™ and earn free months</p>
         </div>
 
         <PaidSubscriberGate featureName="Referral Rewards">
@@ -118,7 +118,7 @@ export default function HomeownerReferral() {
                   <div className="p-4 bg-purple-50 rounded-lg">
                     <Share2 className="w-8 h-8 text-purple-600 mx-auto mb-2" />
                     <p className="font-semibold text-gray-900 text-sm">1. Share Your Code</p>
-                    <p className="text-xs text-gray-600 mt-1">Invite friends and family to join MyHomeBase</p>
+                    <p className="text-xs text-gray-600 mt-1">Invite friends and family to join MyHomeBase™</p>
                   </div>
                   <div className="p-4 bg-purple-50 rounded-lg">
                     <Users className="w-8 h-8 text-purple-600 mx-auto mb-2" />
@@ -206,7 +206,7 @@ export default function HomeownerReferral() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="text-sm text-gray-600">
-                  Share MyHomeBase with friends and family. You earn 1 credit every month each person stays subscribed — and free months stack up fast!
+                  Share MyHomeBase™ with friends and family. You earn 1 credit every month each person stays subscribed — and free months stack up fast!
                 </div>
 
                 {/* Referral Code */}
@@ -312,7 +312,7 @@ export default function HomeownerReferral() {
                     </Button>
                   </div>
                   <p className="text-sm text-gray-600 mt-1">
-                    Share with friends, family, and neighbors. They get the full MyHomeBase experience while you earn free months!
+                    Share with friends, family, and neighbors. They get the full MyHomeBase™ experience while you earn free months!
                   </p>
                 </div>
               </CardContent>

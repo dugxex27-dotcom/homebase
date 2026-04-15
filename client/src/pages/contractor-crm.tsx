@@ -1137,7 +1137,7 @@ export default function ContractorCRMPage() {
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Add CRM Integration</DialogTitle>
-                  <DialogDescription>Connect your external CRM platform to automatically sync leads to MyHomeBase</DialogDescription>
+                  <DialogDescription>Connect your external CRM platform to automatically sync leads to MyHomeBase™</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
@@ -1172,7 +1172,7 @@ export default function ContractorCRMPage() {
               <CardContent className="py-12 text-center">
                 <Plug className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                 <h3 className="text-lg font-semibold mb-2">No integrations yet</h3>
-                <p className="text-muted-foreground mb-4">Connect your CRM platform to automatically sync leads to MyHomeBase</p>
+                <p className="text-muted-foreground mb-4">Connect your CRM platform to automatically sync leads to MyHomeBase™</p>
                 <Button onClick={() => setIsAddIntegrationOpen(true)} data-testid="button-add-first-integration">
                   <Plus className="h-4 w-4 mr-2" />Add Your First Integration
                 </Button>
@@ -2307,10 +2307,10 @@ export default function ContractorCRMPage() {
                   <CardContent>
                     <div className="space-y-4">
                       <p className="text-sm text-muted-foreground">
-                        When customers pay invoices through MyHomeBase, payments go directly to your connected Stripe account.
+                        When customers pay invoices through MyHomeBase™, payments go directly to your connected Stripe account.
                       </p>
                       <div className="p-4 rounded-lg bg-green-50 border border-green-100">
-                        <p className="text-sm text-green-700 font-medium">No MyHomeBase fees on payments!</p>
+                        <p className="text-sm text-green-700 font-medium">No MyHomeBase™ fees on payments!</p>
                         <p className="text-xs text-green-600 mt-1">You keep 100% of what you charge (standard Stripe processing applies)</p>
                       </div>
                     </div>

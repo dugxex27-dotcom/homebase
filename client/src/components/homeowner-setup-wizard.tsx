@@ -243,7 +243,7 @@ export default function HomeownerSetupWizard({ onComplete }: HomeownerSetupWizar
               <Home className="w-10 h-10 text-purple-600" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Welcome to MyHomeBase!</h1>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Welcome to MyHomeBase™!</h1>
               <p className="text-gray-500 dark:text-gray-400">Let's get your home set up. This takes about 5 minutes.</p>
             </div>
             <div className="bg-purple-50 dark:bg-purple-950/30 rounded-xl p-6 text-left space-y-3">
@@ -270,7 +270,7 @@ export default function HomeownerSetupWizard({ onComplete }: HomeownerSetupWizar
                   <Star className="w-4 h-4 text-purple-600" />
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900 dark:text-white">Build your Home Health Score</p>
+                  <p className="font-semibold text-gray-900 dark:text-white">Build your Home Health Score™</p>
                   <p className="text-sm text-gray-500">Get a clear picture of your home's condition and value.</p>
                 </div>
               </div>
@@ -720,7 +720,7 @@ export default function HomeownerSetupWizard({ onComplete }: HomeownerSetupWizar
             </div>
             <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-sm text-blue-700 dark:text-blue-300">
               <Info className="w-4 h-4 inline mr-2" />
-              You can find contractors and invite them to join MyHomeBase from the Contractors section in your dashboard.
+              You can find contractors and invite them to join MyHomeBase™ from the Contractors section in your dashboard.
             </div>
             <div>
               <Label>Search for a Contractor</Label>

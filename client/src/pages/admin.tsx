@@ -113,19 +113,19 @@ export default function AdminDashboard() {
   const [bulkEmailAudience, setBulkEmailAudience] = useState<"all" | "homeowners" | "contractors">("all");
   const [bulkEmailImageUrl, setBulkEmailImageUrl] = useState("");
   const [bulkEmailImageUploading, setBulkEmailImageUploading] = useState(false);
-  const [bulkEmailSubject, setBulkEmailSubject] = useState("How are you enjoying MyHomeBase?");
+  const [bulkEmailSubject, setBulkEmailSubject] = useState("How are you enjoying MyHomeBase™?");
   const [bulkEmailBody, setBulkEmailBody] = useState(`Hi there!
 
-We hope you're enjoying MyHomeBase so far. We'd love to hear about your experience - whether you have questions, feedback, or just want to share how things are going.
+We hope you're enjoying MyHomeBase™ so far. We'd love to hear about your experience - whether you have questions, feedback, or just want to share how things are going.
 
 Feel free to reply to this email with any thoughts. We read every response!
 
 Best regards,
-The MyHomeBase Team`);
+The MyHomeBase™ Team`);
 
   // Bulk SMS state
   const [bulkSmsAudience, setBulkSmsAudience] = useState<"all" | "homeowners" | "contractors">("all");
-  const [bulkSmsMessage, setBulkSmsMessage] = useState("MyHomeBase: We hope you're enjoying the app! Reply with any questions or feedback. We'd love to hear from you!");
+  const [bulkSmsMessage, setBulkSmsMessage] = useState("MyHomeBase™: We hope you're enjoying the app! Reply with any questions or feedback. We'd love to hear from you!");
 
   // Fetch admin stats
   const { data: stats, isLoading: statsLoading, error: statsError } = useQuery<AdminStats>({

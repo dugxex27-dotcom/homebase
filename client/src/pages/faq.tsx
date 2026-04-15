@@ -13,7 +13,7 @@ export default function FAQ() {
           <a href="/" className="flex items-center">
             <img 
               src={logoColor} 
-              alt="MyHomeBase" 
+              alt="MyHomeBase™" 
               className="h-8 sm:h-10 w-auto"
             />
           </a>
@@ -32,7 +32,7 @@ export default function FAQ() {
             Frequently Asked Questions
           </h1>
           <p className="text-gray-600 text-lg">
-            Everything you need to know about MyHomeBase
+            Everything you need to know about MyHomeBase™
           </p>
         </div>
 
@@ -74,7 +74,7 @@ export default function FAQ() {
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="text-gray-600 space-y-3">
-                      <p>MyHomeBase offers tiered subscription plans based on the number of homes you manage:</p>
+                      <p>MyHomeBase™ offers tiered subscription plans based on the number of homes you manage:</p>
                       <ul className="list-disc pl-6 space-y-2">
                         <li><strong>Free:</strong> $0/month - Search for contractors, view your past contractors, and make payments through the app. No home management features.</li>
                         <li><strong>Base:</strong> $5/month - Manage 1-2 homes with maintenance tracking, home health score, DIY savings tracker, and service records. Earn up to $5/month in referral credits.</li>
@@ -157,7 +157,7 @@ export default function FAQ() {
                       How does the referral program work?
                     </AccordionTrigger>
                     <AccordionContent className="text-gray-600 space-y-3">
-                      <p>MyHomeBase rewards you for spreading the word! Here's how it works:</p>
+                      <p>MyHomeBase™ rewards you for spreading the word! Here's how it works:</p>
                       <ol className="list-decimal pl-6 space-y-2">
                         <li>Share your unique referral code or link with friends and colleagues</li>
                         <li>When someone signs up using your code and subscribes to a paid plan</li>
@@ -248,7 +248,7 @@ export default function FAQ() {
                       How does location-based maintenance work?
                     </AccordionTrigger>
                     <AccordionContent className="text-gray-600 space-y-3">
-                      <p>When you add a home to MyHomeBase, we use the address you provide to determine your property's climate zone. This allows us to generate personalized maintenance schedules based on:</p>
+                      <p>When you add a home to MyHomeBase™, we use the address you provide to determine your property's climate zone. This allows us to generate personalized maintenance schedules based on:</p>
                       <ul className="list-disc pl-6 space-y-2">
                         <li><strong>Climate Zone:</strong> Hot, cold, humid, or mixed climates have different maintenance needs</li>
                         <li><strong>Seasonal Timing:</strong> Tasks are scheduled for the appropriate season in your region</li>
@@ -260,7 +260,7 @@ export default function FAQ() {
 
                   <AccordionItem value="climate-zones">
                     <AccordionTrigger className="text-left">
-                      What climate zones does MyHomeBase support?
+                      What climate zones does MyHomeBase™ support?
                     </AccordionTrigger>
                     <AccordionContent className="text-gray-600 space-y-3">
                       <p>We support multiple climate zones across the United States:</p>
@@ -331,10 +331,10 @@ export default function FAQ() {
                 <Accordion type="single" collapsible className="w-full">
                   <AccordionItem value="what-is-homebase">
                     <AccordionTrigger className="text-left">
-                      What is MyHomeBase?
+                      What is MyHomeBase™?
                     </AccordionTrigger>
                     <AccordionContent className="text-gray-600 space-y-3">
-                      <p>MyHomeBase is a comprehensive home management platform that serves as your home's digital record - like a Carfax for your house. We help you:</p>
+                      <p>MyHomeBase™ is a comprehensive home management platform that serves as your home's digital record - like a Carfax for your house. We help you:</p>
                       <ul className="list-disc pl-6 space-y-2">
                         <li>Track all home systems, appliances, and their maintenance history</li>
                         <li>Receive personalized, location-based maintenance reminders</li>
@@ -350,23 +350,23 @@ export default function FAQ() {
                       Can I manage multiple properties?
                     </AccordionTrigger>
                     <AccordionContent className="text-gray-600">
-                      Yes! MyHomeBase supports multiple properties under a single account. Each property gets its own maintenance schedule based on its location and systems. This is perfect for homeowners with vacation homes, rental properties, or investment properties.
+                      Yes! MyHomeBase™ supports multiple properties under a single account. Each property gets its own maintenance schedule based on its location and systems. This is perfect for homeowners with vacation homes, rental properties, or investment properties.
                     </AccordionContent>
                   </AccordionItem>
 
                   <AccordionItem value="home-health-score">
                     <AccordionTrigger className="text-left">
-                      What is the Home Health Score?
+                      What is the Home Health Score™?
                     </AccordionTrigger>
                     <AccordionContent className="text-gray-600 space-y-3">
-                      <p>The Home Health Score is a gamified metric that reflects how well-maintained your home is. Your score improves when you:</p>
+                      <p>The Home Health Score™ is a gamified metric that reflects how well-maintained your home is. Your score improves when you:</p>
                       <ul className="list-disc pl-6 space-y-2">
                         <li>Complete recommended maintenance tasks on time</li>
                         <li>Add and track all your home systems</li>
                         <li>Log service records from contractors</li>
                         <li>Keep your home information up to date</li>
                       </ul>
-                      <p className="mt-3">A high Home Health Score demonstrates to potential buyers that your home has been well-cared for.</p>
+                      <p className="mt-3">A high Home Health Score™ demonstrates to potential buyers that your home has been well-cared for.</p>
                     </AccordionContent>
                   </AccordionItem>
 
@@ -391,7 +391,7 @@ export default function FAQ() {
                       Can I share my home records with others?
                     </AccordionTrigger>
                     <AccordionContent className="text-gray-600 space-y-3">
-                      <p>Yes! MyHomeBase makes it easy to share your home information:</p>
+                      <p>Yes! MyHomeBase™ makes it easy to share your home information:</p>
                       <ul className="list-disc pl-6 space-y-2">
                         <li><strong>Connection Codes:</strong> Generate a permanent code to share with contractors for service access</li>
                         <li><strong>House Transfer:</strong> When selling your home, transfer the complete history to the new owner</li>
@@ -419,7 +419,7 @@ export default function FAQ() {
                       Is there a mobile app?
                     </AccordionTrigger>
                     <AccordionContent className="text-gray-600">
-                      MyHomeBase is built as a progressive web app (PWA), which means you can access it from any device's web browser. You can also add it to your phone's home screen for an app-like experience without needing to download from an app store.
+                      MyHomeBase™ is built as a progressive web app (PWA), which means you can access it from any device's web browser. You can also add it to your phone's home screen for an app-like experience without needing to download from an app store.
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
@@ -467,7 +467,7 @@ export default function FAQ() {
               <SiInstagram className="w-5 h-5" style={{ color: '#E4405F' }} />
             </a>
           </div>
-          <p>&copy; {new Date().getFullYear()} MyHomeBase. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} MyHomeBase™. All rights reserved.</p>
           <div className="mt-2 space-x-4">
             <a href="/terms-of-service" className="hover:underline">Terms of Service</a>
             <a href="/privacy-policy" className="hover:underline">Privacy Policy</a>

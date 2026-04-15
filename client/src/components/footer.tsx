@@ -19,7 +19,7 @@ export default function Footer() {
                 <Link href="/" data-testid="footer-logo-home-link">
                   <img 
                     src={whiteLogoIcon} 
-                    alt="MyHomeBase" 
+                    alt="MyHomeBase™" 
                     className="w-full h-auto object-contain cursor-pointer"
                   />
                 </Link>
@@ -39,7 +39,7 @@ export default function Footer() {
                 <li><Link href="/maintenance" className="hover:text-white transition-colors" data-testid="link-maintenance">Maintenance Schedule</Link></li>
                 <li><Link href="/service-records" className="hover:text-white transition-colors" data-testid="link-service-history">Service History</Link></li>
                 <li><Link href="/homeowner-pricing" className="hover:text-white transition-colors" data-testid="link-pricing-footer">Pricing Plans</Link></li>
-                <li><a href="https://gotohomebase.com/info" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors" data-testid="link-myhomebase-info-footer">MyHomeBase Info</a></li>
+                <li><a href="https://gotohomebase.com/info" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors" data-testid="link-myhomebase-info-footer">MyHomeBase™ Info</a></li>
               </ul>
             </div>
           )}
@@ -87,7 +87,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-8 sm:mt-12 pt-6 sm:pt-8 border-t border-gray-700 text-center text-gray-400 text-sm sm:text-base">
-          <p>© 2026 MyHomeBase. All rights reserved.</p>
+          <p>© 2026 MyHomeBase™. All rights reserved.</p>
         </div>
       </div>
     </footer>

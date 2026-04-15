@@ -29,7 +29,7 @@ const STEPS: StepDef[] = [
   {
     tourId: "health-score",
     page: "/",
-    title: "Your Home Health Score",
+    title: "Your Home Health Score™",
     body: "This score reflects how well-documented your home is. It grows every time you complete a maintenance task — giving you better protection for insurance claims and resale.",
     icon: Star,
     preferBelow: false,
@@ -70,7 +70,7 @@ const STEPS: StepDef[] = [
     tourId: "task-complete",
     page: "/maintenance",
     title: "Completing a Task",
-    body: "Tap any task card to view details and mark it complete. Your Home Health Score goes up with every task — building your verified maintenance record over time.",
+    body: "Tap any task card to view details and mark it complete. Your Home Health Score™ goes up with every task — building your verified maintenance record over time.",
     icon: CheckCircle2,
     preferBelow: false,
   },
@@ -94,7 +94,7 @@ const STEPS: StepDef[] = [
     tourId: "find-contractors",
     page: "/contractors",
     title: "Finding Contractors",
-    body: "Find verified contractors in your area — linked to real service records and homeowner reviews. When you hire through MyHomeBase, they can upload your service records directly.",
+    body: "Find verified contractors in your area — linked to real service records and homeowner reviews. When you hire through MyHomeBase™, they can upload your service records directly.",
     icon: Users,
     preferBelow: true,
   },
@@ -198,7 +198,7 @@ function WelcomeModal({
         style={{ background: "linear-gradient(135deg, #2c0f5b 0%, #4a1a8c 100%)" }}
       >
         <div className="flex justify-center mb-4">
-          <img src={logoPath} alt="MyHomeBase" className="h-14 object-contain" />
+          <img src={logoPath} alt="MyHomeBase™" className="h-14 object-contain" />
         </div>
 
         {agent && (
@@ -220,7 +220,7 @@ function WelcomeModal({
           </div>
         )}
 
-        <h1 className="text-2xl font-bold text-white mb-2">Welcome to MyHomeBase</h1>
+        <h1 className="text-2xl font-bold text-white mb-2">Welcome to MyHomeBase™</h1>
         <p className="text-purple-200 text-sm mb-6 leading-relaxed">
           Your personal home management platform. We'll show you around in about 3 minutes.
         </p>
@@ -297,7 +297,7 @@ function CompletionModal({
           onClick={onShare}
           className="w-full text-sm text-purple-300 hover:text-white transition-colors"
         >
-          Share MyHomeBase with a Friend
+          Share MyHomeBase™ with a Friend
         </button>
       </div>
     </div>

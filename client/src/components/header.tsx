@@ -414,7 +414,7 @@ export default function Header() {
               >
                 <img 
                   src={typedUser?.role === 'homeowner' ? logoHomeowner : typedUser?.role === 'contractor' ? logoContractor : typedUser?.role === 'agent' ? logoAgent : logoDefault} 
-                  alt="MyHomeBase" 
+                  alt="MyHomeBase™" 
                   className="h-6 sm:h-7 w-auto"
                 />
               </button>

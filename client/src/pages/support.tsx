@@ -38,8 +38,8 @@ const faqs = [
     answer: "Contractors connect their bank account through Stripe Connect in their profile settings. When you pay an invoice, the payment goes directly to their connected bank account. Contractors can track all payments in their CRM dashboard."
   },
   {
-    question: "Are there any fees for using MyHomeBase payments?",
-    answer: "MyHomeBase does not charge any platform fees on payments! Contractors keep 100% of what they charge. Only standard Stripe credit card processing fees apply, which are handled by Stripe directly."
+    question: "Are there any fees for using MyHomeBase™ payments?",
+    answer: "MyHomeBase™ does not charge any platform fees on payments! Contractors keep 100% of what they charge. Only standard Stripe credit card processing fees apply, which are handled by Stripe directly."
   },
   {
     question: "What payment methods are accepted?",
@@ -69,11 +69,11 @@ const faqs = [
   },
   {
     question: "How do I add multiple properties?",
-    answer: "MyHomeBase supports multiple properties! Simply go to the Houses page and click 'Add House' for each property. You can switch between properties from your dashboard. Higher subscription tiers are recommended for managing more properties and unlock additional features."
+    answer: "MyHomeBase™ supports multiple properties! Simply go to the Houses page and click 'Add House' for each property. You can switch between properties from your dashboard. Higher subscription tiers are recommended for managing more properties and unlock additional features."
   },
   {
-    question: "What is the Home Health Score?",
-    answer: "Your Home Health Score is a gamified metric (0-100) based on completed vs. missed maintenance tasks. Complete seasonal tasks to improve your score and unlock achievements. It helps you track how well you're maintaining your property."
+    question: "What is the Home Health Score™?",
+    answer: "Your Home Health Score™ is a gamified metric (0-100) based on completed vs. missed maintenance tasks. Complete seasonal tasks to improve your score and unlock achievements. It helps you track how well you're maintaining your property."
   },
   {
     question: "How do I find contractors in my area?",
@@ -225,7 +225,7 @@ export default function SupportPage() {
             <CardHeader>
               <CardTitle>Frequently Asked Questions</CardTitle>
               <CardDescription>
-                Find quick answers to common questions about MyHomeBase
+                Find quick answers to common questions about MyHomeBase™
               </CardDescription>
             </CardHeader>
             <CardContent>

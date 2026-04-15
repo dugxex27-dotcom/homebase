@@ -89,7 +89,7 @@ export default function PublicHeader() {
         <a href="/" className="flex items-center ml-3 sm:ml-6">
           <img 
             src={logoColor} 
-            alt="MyHomeBase" 
+            alt="MyHomeBase™" 
             className="h-8 sm:h-10 w-auto"
             data-testid="img-public-logo"
           />

@@ -5,7 +5,7 @@ export default function Logo({ className = "h-[28px] sm:h-[32px] w-auto", clicka
   const image = (
     <img 
       src={logoIcon} 
-      alt="MyHomeBase" 
+      alt="MyHomeBase™" 
       className={`${className} object-contain`}
     />
   );

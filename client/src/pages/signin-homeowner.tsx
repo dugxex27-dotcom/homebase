@@ -170,7 +170,7 @@ export default function SignInHomeowner() {
       } else {
         toast({
           title: "Account created!",
-          description: "Welcome to MyHomeBase. Your account has been created successfully.",
+          description: "Welcome to MyHomeBase™. Your account has been created successfully.",
         });
         setLocation('/');
       }
@@ -293,7 +293,7 @@ export default function SignInHomeowner() {
         <div className="text-center mb-8">
           <img 
             src={logoImage} 
-            alt="MyHomeBase" 
+            alt="MyHomeBase™" 
             className="h-10 w-auto mx-auto mb-4"
             data-testid="img-logo-homeowner"
           />

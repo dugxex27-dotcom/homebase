@@ -140,7 +140,7 @@ export default function HomeownerPricing() {
             <Badge variant="secondary" className={`px-4 py-2 text-sm ${isInTrial ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
               {isInTrial 
                 ? 'You are on a 14-day free trial. Select a plan to continue after your trial ends.'
-                : 'Your free trial has ended. Select a plan below to continue using MyHomeBase.'}
+                : 'Your free trial has ended. Select a plan below to continue using MyHomeBase™.'}
             </Badge>
           </div>
         )}
@@ -343,7 +343,7 @@ export default function HomeownerPricing() {
               <p className="text-gray-600 max-w-2xl mx-auto">
                 {isOnboarding
                   ? 'Your card is saved securely but not charged until your 14-day trial ends. Cancel before then and you owe nothing.'
-                  : 'Try MyHomeBase risk-free for 14 days. Cancel anytime during your trial with no charges.'}
+                  : 'Try MyHomeBase™ risk-free for 14 days. Cancel anytime during your trial with no charges.'}
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center mt-6">
                 <Button 

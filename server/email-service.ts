@@ -31,7 +31,7 @@ function getEmailHeader(title?: string): string {
   const titleHtml = title ? `<h1 style="color: #333333 !important; margin: 0; font-size: 24px;">${title}</h1>` : '';
   return `
     <div style="background: #ffffff; padding: 30px; text-align: center;">
-      <img src="${emailLogoUrl}" alt="MyHomeBase" style="height: 50px; width: auto;${title ? ' margin-bottom: 15px;' : ''}" />
+      <img src="${emailLogoUrl}" alt="MyHomeBase™" style="height: 50px; width: auto;${title ? ' margin-bottom: 15px;' : ''}" />
       ${titleHtml}
     </div>
   `;
@@ -47,7 +47,7 @@ function wrapEmailContent(headerHtml: string, bodyHtml: string): string {
       </div>
       <div style="padding: 30px 20px; background: #1a1a2e; text-align: center;">
         <p style="color: #ffffff; margin: 0 0 15px 0; font-size: 20px; font-weight: 500;">Your home is one of your biggest assets.</p>
-        <p style="margin: 0; font-size: 18px;">👉 <a href="https://gotohomebase.com" style="color: #a78bfa; text-decoration: none; font-weight: bold; font-size: 18px;">Protect it with MyHomeBase today</a> 👈</p>
+        <p style="margin: 0; font-size: 18px;">👉 <a href="https://gotohomebase.com" style="color: #a78bfa; text-decoration: none; font-weight: bold; font-size: 18px;">Protect it with MyHomeBase™ today</a> 👈</p>
       </div>
     </div>
   `;
@@ -842,7 +842,7 @@ export async function sendWeeklyTaskReminderEmail(data: WeeklyTaskReminderData):
           <li>Prevent costly emergency repairs</li>
           <li>Extend the life of your home systems</li>
           <li>Maintain your home's value</li>
-          <li>Boost your Home Health Score!</li>
+          <li>Boost your Home Health Score™!</li>
         </ul>
       </div>
       
@@ -877,7 +877,7 @@ export async function sendExpiredTrialReengagementEmail(
       <ul>
         <li>Track all your home maintenance history in one place</li>
         <li>Get personalized seasonal maintenance reminders</li>
-        <li>Monitor your Home Health Score</li>
+        <li>Monitor your Home Health Score™</li>
         <li>Connect with vetted local contractors</li>
         <li>Build a complete "CARFAX for your home"</li>
       </ul>
