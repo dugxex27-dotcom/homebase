@@ -53,7 +53,7 @@ export default function Home() {
     enabled: typedUser?.role === 'homeowner',
   });
 
-  // Houses query for Home Health Score™ and DIY Savings
+  // Houses query for Property Health Score™ and DIY Savings
   const { data: houses = [] } = useQuery<House[]>({
     queryKey: ['/api/houses'],
     enabled: typedUser?.role === 'homeowner',
@@ -106,7 +106,7 @@ export default function Home() {
               </div>
               
               <div className="rounded-xl p-6 mb-6" style={{ backgroundColor: '#ffffff' }} data-tour-id="health-score">
-                <h3 className="text-xl font-bold text-center mb-4" style={{ color: '#2c0f5b' }}>Home Health Score™</h3>
+                <h3 className="text-xl font-bold text-center mb-4" style={{ color: '#2c0f5b' }}>Property Health Score™</h3>
                 <div className={`grid gap-4 ${houses.length === 1 ? 'grid-cols-1 max-w-md mx-auto' : houses.length === 2 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 max-w-2xl mx-auto' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
                   {houses.map((house: House) => (
                     <HomeHealthScore 

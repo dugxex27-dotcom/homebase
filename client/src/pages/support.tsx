@@ -72,8 +72,8 @@ const faqs = [
     answer: "MyHomeBase™ supports multiple properties! Simply go to the Houses page and click 'Add House' for each property. You can switch between properties from your dashboard. Higher subscription tiers are recommended for managing more properties and unlock additional features."
   },
   {
-    question: "What is the Home Health Score™?",
-    answer: "Your Home Health Score™ is a gamified metric (0-100) based on completed vs. missed maintenance tasks. Complete seasonal tasks to improve your score and unlock achievements. It helps you track how well you're maintaining your property."
+    question: "What is the Property Health Score™?",
+    answer: "Your Property Health Score™ is a gamified metric (0-100) based on completed vs. missed maintenance tasks. Complete seasonal tasks to improve your score and unlock achievements. It helps you track how well you're maintaining your property."
   },
   {
     question: "How do I find contractors in my area?",

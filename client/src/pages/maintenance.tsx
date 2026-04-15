@@ -3206,7 +3206,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       <section className="py-6 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
           <h1 className="text-xl sm:text-2xl font-bold mb-2" style={{ color: '#2c0f5b' }} data-testid="text-welcome-title">This is your MyHomeBase™ Dashboard</h1>
-          <p className="text-gray-600 max-w-lg mx-auto">Every property you own, every system inside it, and every task that keeps it running — visible at a glance.<br /><br />Track your Home Health Score™, log upgrades and appliances, plan tasks, and see exactly what you’re saving by doing it yourself.</p>
+          <p className="text-gray-600 max-w-lg mx-auto">Every property you own, every system inside it, and every task that keeps it running — visible at a glance.<br /><br />Track your Property Health Score™, log upgrades and appliances, plan tasks, and see exactly what you’re saving by doing it yourself.</p>
         </div>
       </section>
       {/* Trial Banner for Homeowners */}
@@ -3215,7 +3215,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
           <HomeownerTrialBanner />
         </div>
       )}
-      {/* Home Health Score™ Cards - Wrapped in Feature Gate for Homeowners */}
+      {/* Property Health Score™ Cards - Wrapped in Feature Gate for Homeowners */}
       {userRole === 'homeowner' && houses.length > 0 && (
         <HomeownerFeatureGate featureName="Maintenance Scheduling">
           <section className="py-4 px-4 sm:px-6 lg:px-8">
