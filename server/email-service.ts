@@ -842,7 +842,7 @@ export async function sendWeeklyTaskReminderEmail(data: WeeklyTaskReminderData):
           <li>Prevent costly emergency repairs</li>
           <li>Extend the life of your home systems</li>
           <li>Maintain your home's value</li>
-          <li>Boost your Property Health Score™!</li>
+          <li>Boost your Home Wellness Score™!</li>
         </ul>
       </div>
       
@@ -877,7 +877,7 @@ export async function sendExpiredTrialReengagementEmail(
       <ul>
         <li>Track all your home maintenance history in one place</li>
         <li>Get personalized seasonal maintenance reminders</li>
-        <li>Monitor your Property Health Score™</li>
+        <li>Monitor your Home Wellness Score™</li>
         <li>Connect with vetted local contractors</li>
         <li>Build a complete "CARFAX for your home"</li>
       </ul>

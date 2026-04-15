@@ -68,7 +68,7 @@ export default function HomeHealthScore({ houseId, houseName, compact = false }:
             <h3 className="font-semibold text-gray-900 text-sm truncate" data-testid={`text-house-name-${houseId}`}>
               {houseName}
             </h3>
-            <p className="text-xs text-gray-500">Property Health Score™</p>
+            <p className="text-xs text-gray-500">Home Wellness Score™</p>
           </div>
           
           <div className="flex justify-center mb-3">
@@ -130,7 +130,7 @@ export default function HomeHealthScore({ houseId, houseName, compact = false }:
             <h3 className="font-semibold text-gray-900 text-lg" data-testid={`text-house-name-${houseId}`}>
               {houseName}
             </h3>
-            <p className="text-sm text-gray-500">Property Health Score™</p>
+            <p className="text-sm text-gray-500">Home Wellness Score™</p>
           </div>
         </div>
         

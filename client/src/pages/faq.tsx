@@ -356,17 +356,17 @@ export default function FAQ() {
 
                   <AccordionItem value="home-health-score">
                     <AccordionTrigger className="text-left">
-                      What is the Property Health Score™?
+                      What is the Home Wellness Score™?
                     </AccordionTrigger>
                     <AccordionContent className="text-gray-600 space-y-3">
-                      <p>The Property Health Score™ is a gamified metric that reflects how well-maintained your home is. Your score improves when you:</p>
+                      <p>The Home Wellness Score™ is a gamified metric that reflects how well-maintained your home is. Your score improves when you:</p>
                       <ul className="list-disc pl-6 space-y-2">
                         <li>Complete recommended maintenance tasks on time</li>
                         <li>Add and track all your home systems</li>
                         <li>Log service records from contractors</li>
                         <li>Keep your home information up to date</li>
                       </ul>
-                      <p className="mt-3">A high Property Health Score™ demonstrates to potential buyers that your home has been well-cared for.</p>
+                      <p className="mt-3">A high Home Wellness Score™ demonstrates to potential buyers that your home has been well-cared for.</p>
                     </AccordionContent>
                   </AccordionItem>
 

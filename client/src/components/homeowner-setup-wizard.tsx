@@ -270,7 +270,7 @@ export default function HomeownerSetupWizard({ onComplete }: HomeownerSetupWizar
                   <Star className="w-4 h-4 text-purple-600" />
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900 dark:text-white">Build your Property Health Score™</p>
+                  <p className="font-semibold text-gray-900 dark:text-white">Build your Home Wellness Score™</p>
                   <p className="text-sm text-gray-500">Get a clear picture of your home's condition and value.</p>
                 </div>
               </div>

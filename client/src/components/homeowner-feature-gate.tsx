@@ -36,7 +36,7 @@ const homeownerFeatures = [
   },
   {
     icon: Home,
-    title: "Property Health Score™",
+    title: "Home Wellness Score™",
     description: "See how well-maintained your home is at a glance",
     benefits: [
       "Gamified score based on completed maintenance",
