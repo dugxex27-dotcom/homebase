@@ -7,7 +7,7 @@ import { X, ChevronRight, CheckCircle2, Home, Wrench, ClipboardList, Package, Us
 import { useAuth } from "@/hooks/useAuth";
 import type { User } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
-import logoPath from "@assets/homebase-app-logo-color_1765290883467.png";
+import logoPath from "@assets/my-homebase-logo-tm-white_1776283858250.png";
 
 const TOUR_STATE_KEY = "mhb_guided_tour";
 
