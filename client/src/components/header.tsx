@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { User, Notification } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
-import logoTM from '@assets/my-homebase-logo-tm_1776283770766.png';
+import logoTM from '@assets/my-homebase-logo-tm-final_1776295160061.png';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;

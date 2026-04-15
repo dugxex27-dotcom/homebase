@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import logoImage from '@assets/my-homebase-logo-tm_1776283770766.png';
+import logoImage from '@assets/my-homebase-logo-tm-final_1776295160061.png';
 
 const profileSchema = z.object({
   zipCode: z.string().min(5, "Zip code must be at least 5 characters"),

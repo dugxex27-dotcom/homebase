@@ -1,4 +1,4 @@
-import logoImage from '@assets/my-homebase-logo-tm_1776283770766.png';
+import logoImage from '@assets/my-homebase-logo-tm-final_1776295160061.png';
 
 interface LoadingFallbackProps {
   variant?: 'full' | 'inline';

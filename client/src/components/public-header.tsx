@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Menu, Home, Wrench, Building2, HelpCircle, Mail } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import logoColor from '@assets/my-homebase-logo-tm_1776283770766.png';
+import logoColor from '@assets/my-homebase-logo-tm-final_1776295160061.png';
 
 export default function PublicHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
