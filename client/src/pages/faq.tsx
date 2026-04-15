@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { DollarSign, Users, MapPin, HelpCircle, Home, Wrench, Building2 } from "lucide-react";
 import { SiFacebook, SiInstagram } from "react-icons/si";
-import logoColor from "@assets/my-homebase-logo-color_1768358457518.png";
+import logoColor from "@assets/my-homebase-logo-tm_1776283770766.png";
 
 export default function FAQ() {
   return (

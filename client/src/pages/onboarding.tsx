@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { OnboardingWizard } from "@/components/onboarding-wizard";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import logoImage from '@assets/homebase-logo_1756861910640.png';
+import logoImage from '@assets/my-homebase-logo-tm_1776283770766.png';
 
 export default function Onboarding() {
   const [, setLocation] = useLocation();

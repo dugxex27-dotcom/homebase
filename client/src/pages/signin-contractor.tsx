@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Eye, EyeOff } from "lucide-react";
-import logoImage from '@assets/my-homebase-logo-blue_1768359079208.png';
+import logoImage from '@assets/my-homebase-logo-tm_1776283770766.png';
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
