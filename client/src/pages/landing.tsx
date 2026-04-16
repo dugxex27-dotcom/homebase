@@ -49,12 +49,6 @@ export default function Landing() {
 
       {/* Hero */}
       <div className="mhb-hero">
-        {/* Coming soon badge */}
-        <div className="mhb-badge">
-          <div className="mhb-badge-dot" />
-          <div className="mhb-badge-text">Coming soon to iOS & Android</div>
-        </div>
-
         {/* Logo */}
         <img
           src={logoWhite}
@@ -82,6 +76,12 @@ export default function Landing() {
 
           {/* Stat chips — stacked, right column */}
           <div className="mhb-stat-stack">
+            {/* Coming soon badge — sits above tiles */}
+            <div className="mhb-badge">
+              <div className="mhb-badge-dot" />
+              <div className="mhb-badge-text">Coming soon to iOS & Android</div>
+            </div>
+
             <div className="mhb-stat-chip">
               <div className="mhb-stat-num">42<span>%</span></div>
               <div className="mhb-stat-label">Claims denied</div>
