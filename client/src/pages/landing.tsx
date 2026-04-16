@@ -17,6 +17,7 @@ export default function Landing() {
   const { toast } = useToast();
   const [demoLoading, setDemoLoading] = useState<string | null>(null);
   const [referralOpen, setReferralOpen] = useState(false);
+  const [claimsOpen, setClaimsOpen] = useState(false);
 
   useEffect(() => {
     if (!referralOpen) return;
@@ -24,6 +25,13 @@ export default function Landing() {
     document.addEventListener('click', close);
     return () => document.removeEventListener('click', close);
   }, [referralOpen]);
+
+  useEffect(() => {
+    if (!claimsOpen) return;
+    const close = () => setClaimsOpen(false);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [claimsOpen]);
 
   const handleRoleSelection = (role: 'homeowner' | 'contractor' | 'agent') => {
     window.location.href = `/signin/${role}`;
@@ -101,9 +109,43 @@ export default function Landing() {
               <div className="mhb-badge-text">Coming soon to iOS & Android</div>
             </div>
 
-            <div className="mhb-stat-chip">
+            <div
+              className="mhb-stat-chip mhb-referral-chip"
+              onMouseLeave={() => setClaimsOpen(false)}
+            >
               <div className="mhb-stat-num">42<span>%</span></div>
-              <div className="mhb-stat-label">Claims denied</div>
+              <div className="mhb-referral-footer">
+                <div className="mhb-stat-label">Claims denied</div>
+                <button
+                  className="mhb-referral-trigger"
+                  onClick={(e) => { e.stopPropagation(); setClaimsOpen(v => !v); }}
+                  onMouseEnter={() => setClaimsOpen(true)}
+                  aria-label="The numbers behind 42%"
+                ><Info size={11} strokeWidth={2.5} /></button>
+              </div>
+              {claimsOpen && (
+                <div
+                  className="mhb-referral-popover"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    className="mhb-referral-close"
+                    onClick={() => setClaimsOpen(false)}
+                    aria-label="Close"
+                  >✕</button>
+                  <div className="mhb-referral-popover-title">The numbers behind 42%</div>
+                  <div className="mhb-referral-popover-body">
+                    <strong>42%</strong> of claims denied or underpaid nationally<br />
+                    <strong>$18,311</strong> average cost of a denied property claim<br />
+                    <strong>$88,000</strong> average fire and lightning claim payout<br />
+                    <strong>#1 reason</strong> for denial — no maintenance records<br />
+                    <strong>$5/month</strong> — what MyHomeBase costs to protect yourself
+                  </div>
+                  <div className="mhb-referral-popover-footer">
+                    Source: Weiss Ratings
+                  </div>
+                </div>
+              )}
             </div>
             <div className="mhb-stat-chip">
               <div className="mhb-stat-num">$5<span>/mo</span></div>
