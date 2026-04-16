@@ -43,17 +43,17 @@ export default function HomeHealthScore({ houseId, houseName, compact = false }:
     ? Math.round((completedTasks / totalExpectedTasks) * 100) 
     : 0;
 
-  let scoreColor = "#22c55e";
+  let scoreColor = "#4a9e2f";
   let status = "Excellent";
-  
+
   if (score === 0 && missedTasks > 0) {
-    scoreColor = "#ef4444";
+    scoreColor = "#e03e3e";
     status = "Needs Attention";
   } else if (percentage < 50) {
-    scoreColor = "#eab308";
+    scoreColor = "#e8a020";
     status = "Good";
   } else if (percentage < 80) {
-    scoreColor = "#8b5cf6";
+    scoreColor = "#4a9e2f";
     status = "Great";
   }
 
@@ -78,7 +78,7 @@ export default function HomeHealthScore({ houseId, houseName, compact = false }:
                   cx="40"
                   cy="40"
                   r="36"
-                  stroke="#e5e7eb"
+                  stroke="#EEEDFE"
                   strokeWidth="6"
                   fill="none"
                 />
@@ -141,7 +141,7 @@ export default function HomeHealthScore({ houseId, houseName, compact = false }:
                 cx="48"
                 cy="48"
                 r="42"
-                stroke="#e5e7eb"
+                stroke="#EEEDFE"
                 strokeWidth="8"
                 fill="none"
               />

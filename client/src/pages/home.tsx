@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Users, Package, Calendar, Search, MapPin, Star, CheckCircle, TrendingUp, Shield, Home as HomeIcon, Wrench, Bell, BarChart3, Gift, Sparkles, FileText, AlertTriangle, ClipboardList } from "lucide-react";
 import HeroSection from "@/components/hero-section";
-import HomeHealthScore from "@/components/home-health-score";
 import HouseMap from "@/components/house-map";
 
 import { Button } from "@/components/ui/button";
@@ -105,31 +104,23 @@ export default function Home() {
                 <p className="text-gray-600 max-w-xl mx-auto">Track your home's health and maintenance all in one place.</p>
               </div>
               
-              <div className="rounded-xl p-6 mb-6" style={{ backgroundColor: '#ffffff' }} data-tour-id="health-score">
-                <h3 className="text-xl font-bold text-center mb-4" style={{ color: '#2c0f5b' }}>Home Wellness Score™</h3>
-                <div className={`grid gap-4 ${houses.length === 1 ? 'grid-cols-1 max-w-md mx-auto' : houses.length === 2 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 max-w-2xl mx-auto' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
-                  {houses.map((house: House) => (
-                    <HomeHealthScore 
-                      key={house.id} 
-                      houseId={house.id} 
-                      houseName={house.name}
-                      compact={true}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* House Map — one per property */}
-              <div className={`gap-4 mb-6 ${houses.length === 2 ? 'grid grid-cols-1 lg:grid-cols-2' : 'flex flex-col'}`}>
+              {/* Property Cards — one per property, includes HWS score ring + zone grid + systems */}
+              <div className={`gap-4 mb-6 ${houses.length === 2 ? 'grid grid-cols-1 lg:grid-cols-2' : 'flex flex-col'}`} data-tour-id="health-score">
                 {houses.map((house: House) => (
-                  <div key={`map-${house.id}`} className="rounded-xl px-4 sm:px-6 pb-4 bg-white">
-                    {houses.length > 1 && (
-                      <h3 className="text-base font-semibold text-center mb-1" style={{ color: '#2c0f5b' }}>{house.name}</h3>
-                    )}
+                  <div
+                    key={`map-${house.id}`}
+                    style={{
+                      background: "#fff",
+                      borderRadius: "16px",
+                      border: houses.length > 1 ? "1.5px solid #534AB7" : "1px solid rgba(83,74,183,0.08)",
+                      padding: "18px",
+                    }}
+                  >
                     <HouseMap
                       houseId={house.id}
                       homeownerId={typedUser?.id ?? ""}
                       houseName={house.name}
+                      houseAddress={house.address}
                       checkedSystems={Array.isArray(house.homeSystems) ? house.homeSystems as string[] : []}
                     />
                   </div>
