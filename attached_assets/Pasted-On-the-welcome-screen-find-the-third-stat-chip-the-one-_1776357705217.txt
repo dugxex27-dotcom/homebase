@@ -1,0 +1,62 @@
+On the welcome screen, find the third stat chip — the one that currently displays "1k+" and "Homes tracked." Replace it with the following:
+Replace the third stat chip content with:
+html<div class="mhb-stat-chip" style="position:relative">
+  <div class="mhb-stat-num" style="font-size:16px;line-height:1.2">Refer 5.<br>Pay nothing.</div>
+  <div style="display:flex;align-items:center;gap:4px;margin-top:4px">
+    <div class="mhb-stat-label">Free for life</div>
+    <button id="mhb-referral-trigger" style="width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,0.2);border:none;cursor:pointer;font-size:9px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;padding:0;font-family:'Quicksand',system-ui;flex-shrink:0">*</button>
+  </div>
+
+  <!-- Info modal/popover -->
+  <div id="mhb-referral-modal" style="display:none;position:absolute;bottom:calc(100% + 10px);right:0;width:220px;background:#fff;border-radius:14px;padding:14px;z-index:100;border:1px solid rgba(83,74,183,0.12)">
+    <div style="font-size:12px;font-weight:700;color:#2d1f6e;margin-bottom:6px">How it works</div>
+    <div style="font-size:11px;font-weight:600;color:#9b97c4;line-height:1.6">
+      Earn <span style="color:#534AB7;font-weight:700">$1/month</span> for every user you refer who becomes a paid subscriber.<br><br>
+      Refer <span style="color:#534AB7;font-weight:700">5 homeowners</span> or <span style="color:#534AB7;font-weight:700">20 contractors</span> and your MyHomeBase subscription is <span style="color:#534AB7;font-weight:700">free for life.</span>
+    </div>
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(83,74,183,0.08);font-size:10px;font-weight:600;color:#c4c1e0">
+      Your referral link is in your profile after signup.
+    </div>
+    <!-- Close tap target for mobile -->
+    <button id="mhb-referral-close" style="position:absolute;top:10px;right:10px;background:#f0eef8;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;color:#9b97c4;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:'Quicksand',system-ui">✕</button>
+  </div>
+</div>
+Add this JavaScript — place it just before the closing </body> tag or inside your existing JS file:
+javascript// Referral info modal toggle
+(function() {
+  const trigger = document.getElementById('mhb-referral-trigger');
+  const modal   = document.getElementById('mhb-referral-modal');
+  const close   = document.getElementById('mhb-referral-close');
+
+  if (!trigger || !modal) return;
+
+  // Toggle on tap/click
+  trigger.addEventListener('click', function(e) {
+    e.stopPropagation();
+    const isOpen = modal.style.display === 'block';
+    modal.style.display = isOpen ? 'none' : 'block';
+  });
+
+  // Close button
+  if (close) {
+    close.addEventListener('click', function(e) {
+      e.stopPropagation();
+      modal.style.display = 'none';
+    });
+  }
+
+  // Close when tapping anywhere else on the screen
+  document.addEventListener('click', function() {
+    modal.style.display = 'none';
+  });
+
+  // Hover support for desktop
+  trigger.addEventListener('mouseenter', function() {
+    modal.style.display = 'block';
+  });
+
+  trigger.closest('.mhb-stat-chip').addEventListener('mouseleave', function() {
+    modal.style.display = 'none';
+  });
+})();
+Do not change any other tiles, any other screens, or any existing functionality.

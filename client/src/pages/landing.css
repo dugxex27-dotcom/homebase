@@ -296,6 +296,112 @@ body.mhb-landing-active header:first-of-type {
   cursor: default;
 }
 
+/* ── Referral chip ── */
+.mhb-referral-chip {
+  position: relative;
+}
+
+.mhb-referral-headline {
+  font-size: 16px !important;
+  line-height: 1.25 !important;
+}
+
+.mhb-referral-footer {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.mhb-referral-trigger {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-family: 'Quicksand', system-ui;
+  flex-shrink: 0;
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mhb-referral-trigger:hover {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+.mhb-referral-popover {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  right: 0;
+  width: 220px;
+  background: #fff;
+  border-radius: 14px;
+  padding: 14px;
+  z-index: 100;
+  border: 1px solid rgba(83, 74, 183, 0.12);
+  box-shadow: 0 8px 32px rgba(45, 31, 110, 0.18);
+}
+
+.mhb-referral-popover-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #2d1f6e;
+  margin-bottom: 7px;
+}
+
+.mhb-referral-popover-body {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9b97c4;
+  line-height: 1.6;
+}
+
+.mhb-referral-popover-body strong {
+  color: #534AB7;
+  font-weight: 700;
+}
+
+.mhb-referral-popover-footer {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(83, 74, 183, 0.08);
+  font-size: 10px;
+  font-weight: 600;
+  color: #c4c1e0;
+}
+
+.mhb-referral-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: #f0eef8;
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 11px;
+  color: #9b97c4;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Quicksand', system-ui;
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mhb-referral-close:hover {
+  background: #e4e1f5;
+}
+
 /* ── Responsive ── */
 
 /* Extra-small: stack hero columns vertically */

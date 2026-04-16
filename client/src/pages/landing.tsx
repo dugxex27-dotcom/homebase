@@ -15,6 +15,14 @@ export default function Landing() {
   useLandingBodyClass();
   const { toast } = useToast();
   const [demoLoading, setDemoLoading] = useState<string | null>(null);
+  const [referralOpen, setReferralOpen] = useState(false);
+
+  useEffect(() => {
+    if (!referralOpen) return;
+    const close = () => setReferralOpen(false);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [referralOpen]);
 
   const handleRoleSelection = (role: 'homeowner' | 'contractor' | 'agent') => {
     window.location.href = `/signin/${role}`;
@@ -90,9 +98,42 @@ export default function Landing() {
               <div className="mhb-stat-num">$5<span>/mo</span></div>
               <div className="mhb-stat-label">Full protection</div>
             </div>
-            <div className="mhb-stat-chip">
-              <div className="mhb-stat-num">1<span>k+</span></div>
-              <div className="mhb-stat-label">Homes tracked</div>
+            <div
+              className="mhb-stat-chip mhb-referral-chip"
+              onMouseLeave={() => setReferralOpen(false)}
+            >
+              <div className="mhb-stat-num mhb-referral-headline">
+                Refer 5.<br />Pay nothing.
+              </div>
+              <div className="mhb-referral-footer">
+                <div className="mhb-stat-label">Free for life</div>
+                <button
+                  className="mhb-referral-trigger"
+                  onClick={(e) => { e.stopPropagation(); setReferralOpen(v => !v); }}
+                  onMouseEnter={() => setReferralOpen(true)}
+                  aria-label="Learn more about referrals"
+                >*</button>
+              </div>
+              {referralOpen && (
+                <div
+                  className="mhb-referral-popover"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    className="mhb-referral-close"
+                    onClick={() => setReferralOpen(false)}
+                    aria-label="Close"
+                  >✕</button>
+                  <div className="mhb-referral-popover-title">How it works</div>
+                  <div className="mhb-referral-popover-body">
+                    Earn <strong>$1/month</strong> for every user you refer who becomes a paid subscriber.<br /><br />
+                    Refer <strong>5 homeowners</strong> or <strong>20 contractors</strong> and your MyHomeBase subscription is <strong>free for life.</strong>
+                  </div>
+                  <div className="mhb-referral-popover-footer">
+                    Your referral link is in your profile after signup.
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
