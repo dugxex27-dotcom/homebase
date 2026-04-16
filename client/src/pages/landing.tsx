@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import "./landing.css";
+import logoWhite from "@assets/my-homebase-logo-tm-white-final_1776357152257.png";
 
 function useLandingBodyClass() {
   useEffect(() => {
@@ -50,12 +51,7 @@ export default function Landing() {
       <div className="mhb-hero">
         {/* Logo */}
         <div className="mhb-logo-row">
-          <div className="mhb-logo-mark">
-            <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M10 2L2 8v10h5v-6h6v6h5V8z" stroke="#fff" strokeWidth="1.5" strokeLinejoin="round" />
-            </svg>
-          </div>
-          <div className="mhb-logo-text">MyHomeBase™</div>
+          <img src={logoWhite} alt="MyHomeBase" className="mhb-logo-img" />
         </div>
 
         {/* Coming soon badge */}
