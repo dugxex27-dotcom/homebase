@@ -49,14 +49,14 @@ export default function Landing() {
 
       {/* Hero */}
       <div className="mhb-hero">
-        {/* Logo */}
-        <img src={logoWhite} alt="MyHomeBase" className="mhb-logo-img" />
-
         {/* Coming soon badge */}
         <div className="mhb-badge">
           <div className="mhb-badge-dot" />
           <div className="mhb-badge-text">Coming soon to iOS & Android</div>
         </div>
+
+        {/* Logo */}
+        <img src={logoWhite} alt="MyHomeBase" className="mhb-logo-img" />
 
         {/* Two-column layout: copy left, stats right */}
         <div className="mhb-hero-body">
