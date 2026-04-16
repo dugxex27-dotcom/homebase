@@ -257,6 +257,7 @@ body.mhb-landing-active header:first-of-type {
   font-size: 13px;
   font-weight: 600;
   color: rgba(0, 0, 0, 0.45);
+  margin-top: 18px;
 }
 
 .mhb-signin-link {
@@ -270,12 +271,9 @@ body.mhb-landing-active header:first-of-type {
   text-decoration: underline;
 }
 
-/* Demo links strip (optional, below main buttons) */
+/* Demo links strip (hidden for now) */
 .mhb-demo-strip {
-  display: flex;
-  justify-content: center;
-  gap: 18px;
-  padding: 10px 0 6px;
+  display: none;
 }
 
 .mhb-demo-link {
