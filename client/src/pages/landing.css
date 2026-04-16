@@ -285,3 +285,61 @@ body.mhb-landing-active header:first-of-type {
   opacity: 0.5;
   cursor: default;
 }
+
+/* ── Responsive ── */
+
+/* Extra-small: stack hero columns vertically */
+@media (max-width: 420px) {
+  .mhb-hero-body {
+    flex-direction: column;
+    gap: 20px;
+  }
+  .mhb-hero-copy {
+    flex: unset;
+    width: 100%;
+  }
+  .mhb-stat-stack {
+    flex-direction: row;
+    flex: unset;
+    width: 100%;
+    gap: 8px;
+  }
+  .mhb-stat-chip {
+    flex: 1;
+    padding: 12px 10px;
+  }
+  .mhb-stat-num {
+    font-size: 20px;
+  }
+}
+
+/* Large screens: cap and center content so columns don't over-stretch */
+@media (min-width: 768px) {
+  .mhb-hero {
+    max-width: 780px;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 40px;
+    padding-right: 40px;
+  }
+  .mhb-hero-body {
+    gap: 28px;
+    align-items: center;
+  }
+  .mhb-hero-copy {
+    flex: 1;
+  }
+  .mhb-stat-stack {
+    flex: 0 0 240px;
+  }
+  .mhb-sheet {
+    max-width: 700px;
+    width: calc(100% - 80px);
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .mhb-handle {
+    display: none;
+  }
+}
