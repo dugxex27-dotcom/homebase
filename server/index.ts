@@ -7,6 +7,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { db } from "./db";
 import { storage } from "./storage";
+import { runMigrations } from "./migrate";
 import { trialReminderScheduler } from "./trial-reminder-scheduler";
 import { profileViewReportScheduler } from "./profile-view-report-scheduler";
 import { weeklyTaskReminderScheduler } from "./weekly-task-reminder-scheduler";
@@ -253,6 +254,8 @@ app.use((req, res, next) => {
 
   app.get("/info", proxyToSquarespace);
   app.get("/info/*", proxyToSquarespace);
+
+  await runMigrations();
 
   const server = await registerRoutes(app);
 

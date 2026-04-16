@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import "./landing.css";
 import logoWhite from "@assets/my-homebase-logo-tm-white-final_1776357152257.png";
+import "./landing.css";
 
 function useLandingBodyClass() {
   useEffect(() => {
@@ -49,19 +49,22 @@ export default function Landing() {
 
       {/* Hero */}
       <div className="mhb-hero">
+        {/* Logo */}
+        <img
+          src={logoWhite}
+          alt="MyHomeBase"
+          className="mhb-logo"
+        />
+
         {/* Coming soon badge */}
         <div className="mhb-badge">
           <div className="mhb-badge-dot" />
           <div className="mhb-badge-text">Coming soon to iOS & Android</div>
         </div>
 
-        {/* Logo */}
-        <img src={logoWhite} alt="MyHomeBase" className="mhb-logo-img" />
-
         {/* Two-column layout: copy left, stats right */}
         <div className="mhb-hero-body">
           <div className="mhb-hero-copy">
-
             {/* Headline */}
             <div className="mhb-headline">
               Your home's<br />
