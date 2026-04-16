@@ -296,6 +296,22 @@ body.mhb-landing-active header:first-of-type {
   cursor: default;
 }
 
+/* ── CTA link ── */
+.mhb-cta-link {
+  display: inline-flex;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #a89eed;
+  text-decoration: none;
+  letter-spacing: 0.01em;
+  transition: color 0.15s;
+}
+
+.mhb-cta-link:hover {
+  color: #ffffff;
+}
+
 /* ── Referral chip ── */
 .mhb-referral-chip {
   position: relative;

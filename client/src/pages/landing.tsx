@@ -80,6 +80,16 @@ export default function Landing() {
               The reason? No maintenance records.<br />
               We fix that. For $5 a month.
             </div>
+
+            {/* CTA link */}
+            <a
+              href="https://gotohomebase.com/info"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mhb-cta-link"
+            >
+              Home Maintenance Info →
+            </a>
           </div>
 
           {/* Stat chips — stacked, right column */}
