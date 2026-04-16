@@ -1,0 +1,282 @@
+Here it is. Everything in one clean copy-paste.
+
+---
+
+**REPLIT PROMPT:**
+
+---
+
+Please set up Google Sign-In for the MyHomeBase app. The Google Client ID is already configured. Here is everything you need to implement it completely.
+
+Add the Client ID to the project secrets as GOOGLE_CLIENT_ID. Wire up Google Sign-In on the welcome screen to replace the Demo buttons. Route users to the correct dashboard after sign-in based on their user type — homeowner, contractor, or real estate agent. Use the code below exactly as written.
+
+---
+
+**COMPLETE CODE:**
+
+---
+
+```html
+<!-- ============================================
+     Add this to your HTML <head>
+     ============================================ -->
+<meta name="google-signin-client_id" content="YOUR_GOOGLE_CLIENT_ID">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+```
+
+---
+
+```javascript
+// ============================================
+// google-auth.js
+// Create this as a new file and import it
+// into your main app file
+// ============================================
+
+// ---- CONFIG ----
+// Replace with your actual Client ID
+// or pull from environment: process.env.GOOGLE_CLIENT_ID
+const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID';
+
+// ---- ROUTES ----
+// Update these to match your actual dashboard URLs
+const DASHBOARD_ROUTES = {
+  homeowner:  '/dashboard/homeowner',
+  contractor: '/dashboard/contractor',
+  agent:      '/dashboard/agent'
+};
+
+// ---- INITIALIZE ----
+// Call this once when the welcome screen loads
+function initGoogleSignIn() {
+  if (typeof google === 'undefined') {
+    console.error('Google Sign-In library not loaded.');
+    return;
+  }
+
+  google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback: handleGoogleCredential,
+    auto_select: false,
+    cancel_on_tap_outside: true,
+  });
+}
+
+// ---- TRIGGER ----
+// Called when user taps "Continue with Google"
+// Pass the user type: 'homeowner', 'contractor', or 'agent'
+function handleGoogleSignIn(userType) {
+  if (typeof google === 'undefined') {
+    showAuthError();
+    return;
+  }
+
+  // Store user type so we know where to route after auth
+  sessionStorage.setItem('mhb_user_type', userType);
+
+  // Show Google's sign-in popup
+  google.accounts.id.prompt((notification) => {
+    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+      // Popup was blocked or dismissed — fall back to redirect flow
+      triggerGoogleRedirect(userType);
+    }
+  });
+}
+
+// ---- FALLBACK ----
+// If popup is blocked use redirect flow instead
+function triggerGoogleRedirect(userType) {
+  const client = google.accounts.oauth2.initCodeClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: 'email profile openid',
+    ux_mode: 'redirect',
+    redirect_uri: `${window.location.origin}/auth/google/callback`,
+    state: userType,
+  });
+  client.requestCode();
+}
+
+// ---- CALLBACK ----
+// Google calls this with the credential after sign-in
+async function handleGoogleCredential(response) {
+  const userType = sessionStorage.getItem('mhb_user_type') || 'homeowner';
+
+  try {
+    // Send the Google credential token to your backend
+    // Your backend should verify it and create/find the user
+    const result = await fetch('/auth/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        credential: response.credential,
+        user_type: userType,
+      }),
+    });
+
+    if (!result.ok) throw new Error('Auth failed');
+
+    const data = await result.json();
+
+    // Clear the stored user type
+    sessionStorage.removeItem('mhb_user_type');
+
+    // Route to the correct dashboard
+    routeAfterSignIn(userType, data);
+
+  } catch (error) {
+    console.error('Google auth error:', error);
+    showAuthError();
+  }
+}
+
+// ---- ROUTING ----
+function routeAfterSignIn(userType, data) {
+  const route = DASHBOARD_ROUTES[userType] || '/dashboard';
+
+  // If using React Router:   navigate(route)
+  // If using Vue Router:     router.push(route)
+  // If using plain JS:
+  window.location.href = route;
+}
+
+// ---- ERROR ----
+function showAuthError() {
+  // Replace this with however your app shows errors
+  const errorEl = document.getElementById('mhb-auth-error');
+  if (errorEl) {
+    errorEl.style.display = 'block';
+    setTimeout(() => { errorEl.style.display = 'none'; }, 4000);
+  }
+}
+
+// ---- ON LOAD ----
+// Initialize when the page is ready
+document.addEventListener('DOMContentLoaded', initGoogleSignIn);
+```
+
+---
+
+```css
+/* ============================================
+   Google Sign-In Button Styles
+   Add to your existing stylesheet
+   ============================================ */
+
+.mhb-google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  background: #ffffff;
+  border: 1.5px solid rgba(0,0,0,0.12);
+  border-radius: 13px;
+  padding: 13px 16px;
+  font-family: 'Quicksand', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1a1a;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+  text-decoration: none;
+  margin-top: 8px;
+  width: 100%;
+  border: none;
+  outline: none;
+}
+
+.mhb-google-btn:hover {
+  background: #f8f8f8;
+  border: 1.5px solid rgba(0,0,0,0.2);
+}
+
+.mhb-google-btn:active {
+  transform: scale(0.985);
+  background: #f2f2f2;
+}
+
+.mhb-google-logo {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.mhb-or-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.mhb-or-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(0,0,0,0.08);
+}
+
+.mhb-or-text {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9b97c4;
+  font-family: 'Quicksand', system-ui, sans-serif;
+}
+
+.mhb-auth-error {
+  display: none;
+  background: #FCEBEB;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #A32D2D;
+  text-align: center;
+  margin-top: 8px;
+  font-family: 'Quicksand', system-ui, sans-serif;
+}
+```
+
+---
+
+```html
+<!-- ============================================
+     REPLACE EACH "TRY DEMO" BUTTON WITH THIS
+     
+     Change data-user-type to match the section:
+     homeowner / contractor / agent
+     ============================================ -->
+
+<div class="mhb-or-divider">
+  <div class="mhb-or-line"></div>
+  <div class="mhb-or-text">or</div>
+  <div class="mhb-or-line"></div>
+</div>
+
+<button
+  class="mhb-google-btn"
+  type="button"
+  data-user-type="homeowner"
+  onclick="handleGoogleSignIn(this.dataset.userType)"
+>
+  <svg class="mhb-google-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+  </svg>
+  Continue with Google
+</button>
+
+<!-- Error message — place once on the page -->
+<div class="mhb-auth-error" id="mhb-auth-error">
+  Google Sign-In is temporarily unavailable. Please try again.
+</div>
+```
+
+---
+
+**Three things to confirm before running:**
+
+1. Replace `YOUR_GOOGLE_CLIENT_ID` in the JS with your actual Client ID
+2. Confirm `/auth/google` matches your existing backend auth endpoint — if it's different tell me and I'll update it
+3. Confirm your dashboard routes match — `/dashboard/homeowner`, `/dashboard/contractor`, `/dashboard/agent` — or tell me what they actually are and I'll update those too

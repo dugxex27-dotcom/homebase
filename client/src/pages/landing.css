@@ -298,6 +298,68 @@ body.mhb-landing-active header:first-of-type {
   cursor: default;
 }
 
+/* ── Google Sign-In section ── */
+.mhb-google-section {
+  margin-top: 4px;
+}
+
+.mhb-or-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 12px;
+}
+
+.mhb-or-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.mhb-or-text {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9b97c4;
+  font-family: 'Quicksand', system-ui, sans-serif;
+}
+
+.mhb-google-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  background: #ffffff;
+  border: 1.5px solid rgba(0, 0, 0, 0.12);
+  border-radius: 13px;
+  padding: 13px 16px;
+  font-family: 'Quicksand', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1a1a;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+  text-decoration: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.mhb-google-btn:hover {
+  background: #f8f8f8;
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+.mhb-google-btn:active {
+  transform: scale(0.985);
+  background: #f2f2f2;
+}
+
+.mhb-google-logo {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
 /* ── CTA link ── */
 .mhb-cta-link {
   display: inline-flex;
