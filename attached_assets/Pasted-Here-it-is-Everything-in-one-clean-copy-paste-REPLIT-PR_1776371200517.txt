@@ -20,7 +20,7 @@ Add the Client ID to the project secrets as GOOGLE_CLIENT_ID. Wire up Google Sig
 <!-- ============================================
      Add this to your HTML <head>
      ============================================ -->
-<meta name="google-signin-client_id" content="YOUR_GOOGLE_CLIENT_ID">
+<meta name="google-signin-client_id" content="309382820440-3gv5nugurvbo5gf767fdj6o38dq43thk.apps.googleusercontent.com">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 ```
 
@@ -36,7 +36,7 @@ Add the Client ID to the project secrets as GOOGLE_CLIENT_ID. Wire up Google Sig
 // ---- CONFIG ----
 // Replace with your actual Client ID
 // or pull from environment: process.env.GOOGLE_CLIENT_ID
-const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID';
+const GOOGLE_CLIENT_ID = '309382820440-3gv5nugurvbo5gf767fdj6o38dq43thk.apps.googleusercontent.com';
 
 // ---- ROUTES ----
 // Update these to match your actual dashboard URLs
