@@ -486,3 +486,18 @@ body.mhb-landing-active header:first-of-type {
     display: none;
   }
 }
+
+/* Mobile: center popovers fixed on screen */
+@media (max-width: 767px) {
+  .mhb-referral-popover {
+    position: fixed;
+    top: 50% !important;
+    bottom: auto !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translate(-50%, -50%);
+    width: calc(100vw - 48px);
+    max-width: 320px;
+    z-index: 1000;
+  }
+}
