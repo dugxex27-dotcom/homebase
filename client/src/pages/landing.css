@@ -32,35 +32,28 @@ body.mhb-landing-active header:first-of-type {
   gap: 18px;
 }
 
-/* Logo row */
-.mhb-logo-row {
+/* Two-column hero body: copy left, stats right */
+.mhb-hero-body {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.mhb-hero-copy {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+/* Stacked stats — right column */
+.mhb-stat-stack {
+  display: flex;
+  flex-direction: column;
   gap: 10px;
-}
-
-.mhb-logo-mark {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.15);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px;
   flex-shrink: 0;
-}
-
-.mhb-logo-mark svg {
-  width: 100%;
-  height: 100%;
-}
-
-.mhb-logo-text {
-  font-size: 18px;
-  font-weight: 700;
-  color: #ffffff;
-  letter-spacing: -0.01em;
+  width: 108px;
 }
 
 /* Live badge */
@@ -113,33 +106,25 @@ body.mhb-landing-active header:first-of-type {
   max-width: 340px;
 }
 
-/* Stat chips */
-.mhb-stat-row {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
+/* Stat chips — used in .mhb-stat-stack (stacked right column) */
 .mhb-stat-chip {
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 14px;
-  padding: 12px 16px;
-  min-width: 84px;
-  flex: 1;
-  max-width: 110px;
+  padding: 14px 16px;
+  width: 100%;
 }
 
 .mhb-stat-num {
-  font-size: 22px;
+  font-size: 28px;
   font-weight: 700;
   color: #ffffff;
   line-height: 1;
-  margin-bottom: 4px;
+  margin-bottom: 5px;
 }
 
 .mhb-stat-num span {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: rgba(255, 255, 255, 0.6);
   margin-left: 1px;

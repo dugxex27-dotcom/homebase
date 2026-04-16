@@ -48,49 +48,44 @@ export default function Landing() {
 
       {/* Hero */}
       <div className="mhb-hero">
-        {/* Logo */}
-        <div className="mhb-logo-row">
-          <div className="mhb-logo-mark">
-            <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M10 2L2 8v10h5v-6h6v6h5V8z" stroke="#fff" strokeWidth="1.5" strokeLinejoin="round" />
-            </svg>
-          </div>
-          <div className="mhb-logo-text">MyHomeBase™</div>
-        </div>
-
-        {/* Live badge */}
+        {/* Coming soon badge */}
         <div className="mhb-badge">
           <div className="mhb-badge-dot" />
-          <div className="mhb-badge-text">Now on iOS & Android</div>
+          <div className="mhb-badge-text">Coming soon to iOS & Android</div>
         </div>
 
-        {/* Headline */}
-        <div className="mhb-headline">
-          Your home's<br />
-          <span className="mhb-headline-accent">complete record.</span><br />
-          Finally.
-        </div>
+        {/* Two-column layout: copy left, stats right */}
+        <div className="mhb-hero-body">
+          <div className="mhb-hero-copy">
+            {/* Headline */}
+            <div className="mhb-headline">
+              Your home's<br />
+              <span className="mhb-headline-accent">complete record.</span><br />
+              Finally.
+            </div>
 
-        {/* Sub */}
-        <div className="mhb-sub">
-          Nearly half of insurance claims get denied.<br />
-          The reason? No maintenance records.<br />
-          We fix that. For $5 a month.
-        </div>
-
-        {/* Stat chips */}
-        <div className="mhb-stat-row">
-          <div className="mhb-stat-chip">
-            <div className="mhb-stat-num">42<span>%</span></div>
-            <div className="mhb-stat-label">Claims denied</div>
+            {/* Sub */}
+            <div className="mhb-sub">
+              Nearly half of insurance claims get denied.<br />
+              The reason? No maintenance records.<br />
+              We fix that. For $5 a month.
+            </div>
           </div>
-          <div className="mhb-stat-chip">
-            <div className="mhb-stat-num">$5<span>/mo</span></div>
-            <div className="mhb-stat-label">Full protection</div>
-          </div>
-          <div className="mhb-stat-chip">
-            <div className="mhb-stat-num">1<span>k+</span></div>
-            <div className="mhb-stat-label">Homes tracked</div>
+
+          {/* Stat chips — stacked, right column */}
+          <div className="mhb-stat-stack">
+            <div className="mhb-stat-chip">
+              <div className="mhb-stat-num">42<span>%</span></div>
+              <div className="mhb-stat-label">Claims denied</div>
+            </div>
+            <div className="mhb-stat-chip">
+              <div className="mhb-stat-num">$5<span>/mo</span></div>
+              <div className="mhb-stat-label">Full protection</div>
+            </div>
+            <div className="mhb-stat-chip">
+              <div className="mhb-stat-num">1<span>k+</span></div>
+              <div className="mhb-stat-label">Homes tracked</div>
+            </div>
           </div>
         </div>
       </div>
@@ -151,7 +146,7 @@ export default function Landing() {
               </svg>
             </div>
             <div className="mhb-utb-text">
-              <div className="mhb-utb-title">Real estate agent</div>
+              <div className="mhb-utb-title">Real Estate Agent</div>
               <div className="mhb-utb-sub">Refer and earn</div>
             </div>
             <div className="mhb-utb-arrow">›</div>
