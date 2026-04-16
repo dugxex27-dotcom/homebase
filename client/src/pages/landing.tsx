@@ -48,6 +48,16 @@ export default function Landing() {
 
       {/* Hero */}
       <div className="mhb-hero">
+        {/* Logo */}
+        <div className="mhb-logo-row">
+          <div className="mhb-logo-mark">
+            <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M10 2L2 8v10h5v-6h6v6h5V8z" stroke="#fff" strokeWidth="1.5" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <div className="mhb-logo-text">MyHomeBase™</div>
+        </div>
+
         {/* Coming soon badge */}
         <div className="mhb-badge">
           <div className="mhb-badge-dot" />

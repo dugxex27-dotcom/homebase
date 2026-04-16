@@ -32,6 +32,38 @@ body.mhb-landing-active header:first-of-type {
   gap: 18px;
 }
 
+/* Logo row */
+.mhb-logo-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.mhb-logo-mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px;
+  flex-shrink: 0;
+}
+
+.mhb-logo-mark svg {
+  width: 100%;
+  height: 100%;
+}
+
+.mhb-logo-text {
+  font-size: 17px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+}
+
 /* Two-column hero body: copy left, stats right */
 .mhb-hero-body {
   display: flex;
