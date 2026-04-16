@@ -110,7 +110,7 @@ export default function Landing() {
             </div>
 
             <div
-              className="mhb-stat-chip mhb-referral-chip"
+              className="mhb-stat-chip mhb-referral-chip mhb-claims-chip"
               onMouseLeave={() => setClaimsOpen(false)}
             >
               <div className="mhb-stat-num">42<span>%</span></div>
