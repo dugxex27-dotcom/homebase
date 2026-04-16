@@ -33,10 +33,12 @@ body.mhb-landing-active header:first-of-type {
 }
 
 .mhb-logo-img {
-  width: 100%;
-  max-width: 100%;
-  height: auto;
+  height: 32px;
+  width: auto;
+  max-width: 210px;
   display: block;
+  object-fit: contain;
+  object-position: left center;
 }
 
 /* Two-column hero body: copy left, stats right */

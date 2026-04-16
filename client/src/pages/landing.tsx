@@ -49,6 +49,9 @@ export default function Landing() {
 
       {/* Hero */}
       <div className="mhb-hero">
+        {/* Logo */}
+        <img src={logoWhite} alt="MyHomeBase" className="mhb-logo-img" />
+
         {/* Coming soon badge */}
         <div className="mhb-badge">
           <div className="mhb-badge-dot" />
@@ -58,8 +61,6 @@ export default function Landing() {
         {/* Two-column layout: copy left, stats right */}
         <div className="mhb-hero-body">
           <div className="mhb-hero-copy">
-            {/* Logo — constrained to left column width */}
-            <img src={logoWhite} alt="MyHomeBase" className="mhb-logo-img" />
 
             {/* Headline */}
             <div className="mhb-headline">
