@@ -32,14 +32,10 @@ body.mhb-landing-active header:first-of-type {
   gap: 18px;
 }
 
-/* Logo row */
-.mhb-logo-row {
-  margin-bottom: 4px;
-}
-
 .mhb-logo-img {
-  height: 36px;
-  width: auto;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
   display: block;
 }
 
