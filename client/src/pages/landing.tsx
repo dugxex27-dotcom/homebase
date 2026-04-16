@@ -1,15 +1,17 @@
-import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Home, Wrench, Building2 } from "lucide-react";
-import heroImageDesktop from "@assets/homebase-hp-hero-desktop-nocopy_1765926450284.png";
-import heroImageTablet from "@assets/homebase-hp-hero-tablet_1765940455985.png";
-import heroImageMobile from "@assets/homebase-hp-hero-mobile_1765940883354.png";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { EditableText, useSiteContent } from "@/components/editable-text";
+import "./landing.css";
+
+function useLandingBodyClass() {
+  useEffect(() => {
+    document.body.classList.add('mhb-landing-active');
+    return () => document.body.classList.remove('mhb-landing-active');
+  }, []);
+}
 
 export default function Landing() {
+  useLandingBodyClass();
   const { toast } = useToast();
   const [demoLoading, setDemoLoading] = useState<string | null>(null);
 
@@ -20,396 +22,176 @@ export default function Landing() {
   const handleDemoLogin = async (role: 'homeowner' | 'contractor' | 'agent') => {
     setDemoLoading(role);
     try {
-      const endpoint = role === 'homeowner' 
-        ? '/api/auth/homeowner-demo-login'
-        : role === 'contractor'
-        ? '/api/auth/contractor-demo-login'
-        : '/api/auth/agent-demo-login';
-      
+      const endpoint =
+        role === 'homeowner' ? '/api/auth/homeowner-demo-login' :
+        role === 'contractor' ? '/api/auth/contractor-demo-login' :
+        '/api/auth/agent-demo-login';
+
       await apiRequest(endpoint, 'POST', {});
-      
-      toast({
-        title: "Demo login successful",
-        description: `Welcome to the ${role} demo!`,
-      });
-      
-      const redirectPath = role === 'homeowner' 
-        ? '/'
-        : role === 'contractor'
-        ? '/contractor-dashboard'
-        : '/agent-dashboard';
-      window.location.href = redirectPath;
+
+      toast({ title: "Demo login successful", description: `Welcome to the ${role} demo!` });
+
+      const redirect =
+        role === 'homeowner' ? '/' :
+        role === 'contractor' ? '/contractor-dashboard' :
+        '/agent-dashboard';
+      window.location.href = redirect;
     } catch (error: any) {
-      toast({
-        title: "Demo login failed",
-        description: error?.message || "Please try again.",
-        variant: "destructive",
-      });
+      toast({ title: "Demo login failed", description: error?.message || "Please try again.", variant: "destructive" });
       setDemoLoading(null);
     }
   };
 
   return (
-    <div style={{ background: 'linear-gradient(to bottom, #f8f4fc, #faf9fb)' }}>
-      {/* Hero Section - Desktop (1024px+) */}
-      <div className="w-full relative hidden lg:block overflow-hidden" style={{ maxHeight: '450px' }}>
-        <img 
-          src={heroImageDesktop} 
-          alt="MyHomeBase™ - Your digital home fingerprint" 
-          className="w-full h-auto"
-          data-testid="img-landing-hero-desktop"
-        />
-        {/* Text Overlay - Left aligned */}
-        <div 
-          className="absolute inset-0 flex flex-col justify-center"
-          style={{ paddingLeft: '5%', paddingRight: '50%' }}
-        >
-          <EditableText
-            contentKey="hero_headline"
-            defaultValue="Your Home's Digital Record Starts Here"
-            as="h1"
-            className="mb-4"
-            style={{ 
-              fontFamily: "'Quicksand', sans-serif",
-              fontWeight: 700,
-              fontSize: '32px',
-              lineHeight: 1.2,
-              color: '#ffffff',
-              maxWidth: '420px'
-            }}
-            data-testid="text-hero-headline"
-            renderContent={(text) => {
-              const parts = text.split("Digital Record");
-              if (parts.length === 2) {
-                return <>{parts[0]}<span style={{ color: '#BAACEB' }}>Digital Record</span>{parts[1]}</>;
-              }
-              return text;
-            }}
-          />
-          <EditableText
-            contentKey="hero_subcopy_1"
-            defaultValue="MyHomeBase™ keep your home history, contractors, realtor paperwork, and house maintenance list in a single dashboard."
-            as="h2"
-            className="mb-3"
-            style={{ 
-              fontFamily: "'Quicksand', sans-serif",
-              fontWeight: 500,
-              fontSize: '14px',
-              lineHeight: 1.6,
-              color: '#ffffff',
-              maxWidth: '420px'
-            }}
-            data-testid="text-hero-subcopy-1"
-          />
-          <a 
-            href="#role-cards"
-            className="mt-6 px-5 py-3 rounded-lg font-bold text-base transition-all hover:shadow-lg"
-            style={{ 
-              backgroundColor: '#ffffff',
-              color: '#2c0f5b',
-              fontFamily: "'Quicksand', sans-serif",
-              width: 'fit-content'
-            }}
-            data-testid="button-choose-role-desktop"
-          >
-            Get Started
-          </a>
-        </div>
-      </div>
-      {/* Hero Section - Tablet (640px - 1023px) */}
-      <div className="w-full relative hidden sm:block lg:hidden overflow-hidden" style={{ maxHeight: '380px' }}>
-        <img 
-          src={heroImageTablet} 
-          alt="MyHomeBase™ - Your digital home fingerprint" 
-          className="w-full h-auto"
-          data-testid="img-landing-hero-tablet"
-        />
-        {/* Text Overlay - Left aligned */}
-        <div 
-          className="absolute inset-0 flex flex-col justify-center"
-          style={{ paddingLeft: '5%', paddingRight: '45%' }}
-        >
-          <EditableText
-            contentKey="hero_headline"
-            defaultValue="Your Home's Digital Record Starts Here"
-            as="h1"
-            className="mb-3"
-            style={{ 
-              fontFamily: "'Quicksand', sans-serif",
-              fontWeight: 700,
-              fontSize: '24px',
-              lineHeight: 1.2,
-              color: '#ffffff'
-            }}
-            renderContent={(text) => {
-              const parts = text.split("Digital Record");
-              if (parts.length === 2) {
-                return <>{parts[0]}<span style={{ color: '#BAACEB' }}>Digital Record</span>{parts[1]}</>;
-              }
-              return text;
-            }}
-          />
-          <EditableText
-            contentKey="hero_subcopy_1"
-            defaultValue="MyHomeBase™ keep your home history, contractors, realtor paperwork, and house maintenance list in a single dashboard."
-            as="h2"
-            className="mb-2"
-            style={{ 
-              fontFamily: "'Quicksand', sans-serif",
-              fontWeight: 500,
-              fontSize: '12px',
-              lineHeight: 1.5,
-              color: '#ffffff'
-            }}
-          />
-          <a 
-            href="#role-cards"
-            className="mt-4 px-4 py-2 rounded-lg font-bold text-sm transition-all hover:shadow-lg"
-            style={{ 
-              backgroundColor: '#ffffff',
-              color: '#2c0f5b',
-              fontFamily: "'Quicksand', sans-serif",
-              width: 'fit-content'
-            }}
-            data-testid="button-choose-role-tablet"
-          >
-            Get Started
-          </a>
-        </div>
-      </div>
-      {/* Hero Section - Mobile (<640px) - Image on top, purple text section below */}
-      <div className="w-full sm:hidden">
-        <img 
-          src={heroImageMobile} 
-          alt="MyHomeBase™ - Your digital home fingerprint" 
-          className="w-full h-auto"
-          data-testid="img-landing-hero-mobile"
-        />
-        {/* Purple Text Section Below Image */}
-        <div 
-          className="px-6 py-8 text-center"
-          style={{ backgroundColor: '#2c0f5b' }}
-        >
-          <EditableText
-            contentKey="hero_headline"
-            defaultValue="Your Home's Digital Record Starts Here"
-            as="h1"
-            className="mb-4"
-            style={{ 
-              fontFamily: "'Quicksand', sans-serif",
-              fontWeight: 700,
-              fontSize: '24px',
-              lineHeight: 1.2,
-              color: '#ffffff'
-            }}
-            renderContent={(text) => {
-              const parts = text.split("Digital Record");
-              if (parts.length === 2) {
-                return <>{parts[0]}<span style={{ color: '#BAACEB' }}>Digital Record</span>{parts[1]}</>;
-              }
-              return text;
-            }}
-          />
-          <EditableText
-            contentKey="hero_subcopy_1"
-            defaultValue="MyHomeBase™ keep your home history, contractors, realtor paperwork, and house maintenance list in a single dashboard."
-            as="h2"
-            className="mb-3"
-            style={{ 
-              fontFamily: "'Quicksand', sans-serif",
-              fontWeight: 500,
-              fontSize: '13px',
-              lineHeight: 1.6,
-              color: '#ffffff'
-            }}
-          />
-          <a 
-            href="#role-cards"
-            className="inline-block mt-6 px-5 py-3 rounded-lg font-bold text-sm transition-all hover:shadow-lg"
-            style={{ 
-              backgroundColor: '#ffffff',
-              color: '#2c0f5b',
-              fontFamily: "'Quicksand', sans-serif"
-            }}
-            data-testid="button-choose-role-mobile"
-          >
-            Get Started
-          </a>
-        </div>
-      </div>
-      {/* Role Selection Cards */}
-      <div id="role-cards" className="max-w-6xl mx-auto px-4 py-12">
-        <div className="text-center mb-10">
-          <h3
-            className="font-bold mb-3 text-[24px]"
-            style={{ color: '#2c0f5b' }}
-          >
-            <p className="mb-2">We're built for homeowners first and driven by a single question:</p>
-            <p>What if your home history was stored like your car history? Now, it is.</p>
-          </h3>
+    <div className="mhb-welcome">
+      <div className="mhb-status-spacer" />
+
+      {/* Hero */}
+      <div className="mhb-hero">
+        {/* Logo */}
+        <div className="mhb-logo-row">
+          <div className="mhb-logo-mark">
+            <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M10 2L2 8v10h5v-6h6v6h5V8z" stroke="#fff" strokeWidth="1.5" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <div className="mhb-logo-text">MyHomeBase™</div>
         </div>
 
-        {/* Welcome Banner */}
-        <div className="w-full py-4 mb-8 rounded-lg" style={{ backgroundColor: '#2c0f5b' }}>
-          <a href="#card-homeowner" className="block text-center text-white font-bold text-xl no-underline hover:underline" style={{ fontFamily: "'Quicksand', sans-serif" }}>
-            See How it Works
-          </a>
+        {/* Live badge */}
+        <div className="mhb-badge">
+          <div className="mhb-badge-dot" />
+          <div className="mhb-badge-text">Now on iOS & Android</div>
         </div>
 
-        <div className="flex flex-col gap-8 w-full">
-          {/* Homeowner Card */}
-          <Card 
-            id="card-homeowner"
-            className="hover:shadow-lg transition-all cursor-pointer border-2 hover:border-purple-400 flex flex-col"
+        {/* Headline */}
+        <div className="mhb-headline">
+          Your home's<br />
+          <span className="mhb-headline-accent">complete record.</span><br />
+          Finally.
+        </div>
+
+        {/* Sub */}
+        <div className="mhb-sub">
+          Nearly half of insurance claims get denied.<br />
+          The reason? No maintenance records.<br />
+          We fix that. For $5 a month.
+        </div>
+
+        {/* Stat chips */}
+        <div className="mhb-stat-row">
+          <div className="mhb-stat-chip">
+            <div className="mhb-stat-num">42<span>%</span></div>
+            <div className="mhb-stat-label">Claims denied</div>
+          </div>
+          <div className="mhb-stat-chip">
+            <div className="mhb-stat-num">$5<span>/mo</span></div>
+            <div className="mhb-stat-label">Full protection</div>
+          </div>
+          <div className="mhb-stat-chip">
+            <div className="mhb-stat-num">1<span>k+</span></div>
+            <div className="mhb-stat-label">Homes tracked</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom sheet */}
+      <div className="mhb-sheet">
+        <div className="mhb-handle" />
+        <div className="mhb-sheet-label">I am a...</div>
+
+        <div className="mhb-user-types">
+          {/* Homeowner */}
+          <button
+            className="mhb-utb mhb-utb-purple"
             onClick={() => handleRoleSelection('homeowner')}
-            data-testid="card-role-homeowner"
+            data-testid="button-homeowner-signup"
           >
-            <CardContent className="p-8 text-center sm:text-left flex flex-col flex-grow">
-              <div className="flex-grow">
-                <div className="mb-6 flex justify-center sm:justify-start">
-                  <div className="p-4 rounded-full bg-purple-100 inline-flex">
-                    <Home className="h-12 w-12 text-purple-600" />
-                  </div>
-                </div>
-                <h3 className="text-2xl font-bold mb-3" style={{ color: '#2c0f5b' }}>
-                  I'm a Homeowner
-                </h3>
-                <EditableText
-                  contentKey="homeowner_card_description"
-                  defaultValue={'"The Carfax-style home history your house has always needed."'}
-                  as="p"
-                  className="text-gray-600 mb-6"
-                />
-                <ul className="space-y-2 mb-6 text-sm text-gray-700">
-                  <li>✓ Multi-property management</li>
-                  <li>✓ Maintenance scheduling</li>
-                  <li>✓ Contractor directory</li>
-                  <li>✓ Service record tracking</li>
-                </ul>
-              </div>
-              <Button 
-                className="w-full mt-auto"
-                style={{ backgroundColor: '#2c0f5b', color: 'white' }}
-                data-testid="button-homeowner-signup"
-              >
-                Get Started
-              </Button>
-              <Button 
-                variant="outline"
-                className="w-full mt-2 border-purple-300 text-purple-700 hover:bg-purple-50"
-                onClick={(e) => { e.stopPropagation(); handleDemoLogin('homeowner'); }}
-                disabled={demoLoading === 'homeowner'}
-                data-testid="button-homeowner-demo"
-              >
-                {demoLoading === 'homeowner' ? 'Loading...' : 'Try Demo'}
-              </Button>
-            </CardContent>
-          </Card>
+            <div className="mhb-utb-icon">
+              <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 2L2 7v9h4v-5h6v5h4V7z" stroke="#fff" strokeWidth="1.5" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <div className="mhb-utb-text">
+              <div className="mhb-utb-title">Homeowner</div>
+              <div className="mhb-utb-sub">Track, protect &amp; document</div>
+            </div>
+            <div className="mhb-utb-arrow">›</div>
+          </button>
 
-          {/* Contractor Card */}
-          <Card 
-            className="hover:shadow-lg transition-all cursor-pointer border-2 hover:border-blue-400 flex flex-col"
+          {/* Contractor */}
+          <button
+            className="mhb-utb mhb-utb-blue"
             onClick={() => handleRoleSelection('contractor')}
-            data-testid="card-role-contractor"
+            data-testid="button-contractor-signup"
           >
-            <CardContent className="p-8 text-center sm:text-left flex flex-col flex-grow">
-              <div className="flex-grow">
-                <div className="mb-6 flex justify-center sm:justify-start">
-                  <div className="p-4 rounded-full bg-blue-100 inline-flex">
-                    <Wrench className="h-12 w-12 text-blue-600" />
-                  </div>
-                </div>
-                <h3 className="text-2xl font-bold mb-3" style={{ color: '#1560a2' }}>
-                  I'm a Contractor
-                </h3>
-                <EditableText
-                  contentKey="contractor_card_description"
-                  defaultValue="Grow your business, manage client relationships, and showcase your services to homeowners"
-                  as="p"
-                  className="text-gray-600 mb-6"
-                />
-                <ul className="space-y-2 mb-6 text-sm text-gray-700">
-                  <li>✓ Professional profile</li>
-                  <li>✓ Client management</li>
-                  <li>✓ Proposal tools</li>
-                  <li>✓ Service tracking</li>
-                </ul>
-              </div>
-              <Button 
-                className="w-full mt-auto"
-                style={{ backgroundColor: '#1560a2', color: 'white' }}
-                data-testid="button-contractor-signup"
-              >
-                Get Started
-              </Button>
-              <Button 
-                variant="outline"
-                className="w-full mt-2 border-blue-300 text-blue-700 hover:bg-blue-50"
-                onClick={(e) => { e.stopPropagation(); handleDemoLogin('contractor'); }}
-                disabled={demoLoading === 'contractor'}
-                data-testid="button-contractor-demo"
-              >
-                {demoLoading === 'contractor' ? 'Loading...' : 'Try Demo'}
-              </Button>
-            </CardContent>
-          </Card>
+            <div className="mhb-utb-icon">
+              <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 13l3-6 3 3 3-5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="13" cy="5" r="2" stroke="#fff" strokeWidth="1.5" />
+              </svg>
+            </div>
+            <div className="mhb-utb-text">
+              <div className="mhb-utb-title">Contractor</div>
+              <div className="mhb-utb-sub">Grow your business</div>
+            </div>
+            <div className="mhb-utb-arrow">›</div>
+          </button>
 
-          {/* Real Estate Agent Card */}
-          <Card 
-            className="hover:shadow-lg transition-all cursor-pointer border-2 hover:border-emerald-400 flex flex-col"
+          {/* Real estate agent */}
+          <button
+            className="mhb-utb mhb-utb-green"
             onClick={() => handleRoleSelection('agent')}
-            data-testid="card-role-agent"
+            data-testid="button-agent-signup"
           >
-            <CardContent className="p-8 text-center sm:text-left flex flex-col flex-grow">
-              <div className="flex-grow">
-                <div className="mb-6 flex justify-center sm:justify-start">
-                  <div className="p-4 rounded-full bg-emerald-100 inline-flex">
-                    <Building2 className="h-12 w-12 text-emerald-600" />
-                  </div>
-                </div>
-                <h3 className="text-2xl font-bold mb-3" style={{ color: '#059669' }}>
-                  I'm a Real Estate Agent
-                </h3>
-                <EditableText
-                  contentKey="agent_card_description"
-                  defaultValue="Earn commissions by referring homeowners and contractors to MyHomeBase™"
-                  as="p"
-                  className="text-gray-600 mb-6"
-                />
-                <ul className="space-y-2 mb-6 text-sm text-gray-700">
-                  <li>✓ Earn referral bonuses</li>
-                  <li>✓ Track your referrals</li>
-                  <li>✓ Automated payouts</li>
-                  <li>✓ Unique referral link</li>
-                </ul>
-              </div>
-              <Button 
-                className="w-full mt-auto"
-                style={{ backgroundColor: '#059669', color: 'white' }}
-                data-testid="button-agent-signup"
-              >
-                Become an Affiliate
-              </Button>
-              <Button 
-                variant="outline"
-                className="w-full mt-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-                onClick={(e) => { e.stopPropagation(); handleDemoLogin('agent'); }}
-                disabled={demoLoading === 'agent'}
-                data-testid="button-agent-demo"
-              >
-                {demoLoading === 'agent' ? 'Loading...' : 'Try Demo'}
-              </Button>
-            </CardContent>
-          </Card>
+            <div className="mhb-utb-icon">
+              <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="2" y="8" width="14" height="8" rx="1.5" stroke="#fff" strokeWidth="1.5" />
+                <path d="M5 8V6a4 4 0 018 0v2" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            </div>
+            <div className="mhb-utb-text">
+              <div className="mhb-utb-title">Real estate agent</div>
+              <div className="mhb-utb-sub">Refer and earn</div>
+            </div>
+            <div className="mhb-utb-arrow">›</div>
+          </button>
         </div>
 
-        <div className="text-center mt-12">
-          <p className="text-gray-600">
-            Already have an account?{' '}
-            <a href="/signin" className="font-medium hover:underline" style={{ color: '#2c0f5b' }}>
-              Sign In
-            </a>
-          </p>
+        {/* Demo strip */}
+        <div className="mhb-demo-strip">
+          <button
+            className="mhb-demo-link"
+            onClick={() => handleDemoLogin('homeowner')}
+            disabled={demoLoading === 'homeowner'}
+            data-testid="button-homeowner-demo"
+          >
+            {demoLoading === 'homeowner' ? 'Loading…' : 'Homeowner demo'}
+          </button>
+          <button
+            className="mhb-demo-link"
+            onClick={() => handleDemoLogin('contractor')}
+            disabled={demoLoading === 'contractor'}
+            data-testid="button-contractor-demo"
+          >
+            {demoLoading === 'contractor' ? 'Loading…' : 'Contractor demo'}
+          </button>
+          <button
+            className="mhb-demo-link"
+            onClick={() => handleDemoLogin('agent')}
+            disabled={demoLoading === 'agent'}
+            data-testid="button-agent-demo"
+          >
+            {demoLoading === 'agent' ? 'Loading…' : 'Agent demo'}
+          </button>
+        </div>
+
+        {/* Sign in */}
+        <div className="mhb-signin-row">
+          Already have an account?
+          <a className="mhb-signin-link" href="/signin" data-testid="link-signin">
+            Sign in
+          </a>
         </div>
       </div>
     </div>
