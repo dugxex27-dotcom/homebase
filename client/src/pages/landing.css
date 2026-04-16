@@ -432,9 +432,13 @@ body.mhb-landing-active header:first-of-type {
   }
   .mhb-stat-stack {
     flex-direction: row;
+    flex-wrap: wrap;
     flex: unset;
     width: 100%;
     gap: 8px;
+  }
+  .mhb-badge {
+    width: 100%;
   }
   .mhb-stat-chip {
     flex: 1;
