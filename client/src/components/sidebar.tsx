@@ -11,11 +11,9 @@ import {
   HelpCircle, 
   LogOut, 
   Download,
-  ChevronLeft,
   Shield,
   LayoutDashboard,
   Users,
-  CreditCard,
   Info,
   FolderOpen
 } from "lucide-react";
@@ -37,7 +35,6 @@ export default function Sidebar() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstallable, setIsInstallable] = useState(false);
 
-  // Use server-provided isAdmin flag (more reliable than build-time env vars)
   const isAdmin = (typedUser as any)?.isAdmin === true;
 
   const { data: unreadNotifications = [] } = useQuery<Notification[]>({
@@ -49,14 +46,10 @@ export default function Sidebar() {
   const hasNotificationsForTab = (tabName: string) => {
     if (!unreadNotifications.length) return false;
     switch (tabName) {
-      case 'messages':
-        return unreadNotifications.some(n => n.type === 'message');
-      case 'maintenance':
-        return unreadNotifications.some(n => n.category === 'maintenance');
-      case 'dashboard':
-        return unreadNotifications.some(n => n.category === 'appointment');
-      default:
-        return false;
+      case 'messages':   return unreadNotifications.some(n => n.type === 'message');
+      case 'maintenance': return unreadNotifications.some(n => n.category === 'maintenance');
+      case 'dashboard':  return unreadNotifications.some(n => n.category === 'appointment');
+      default:           return false;
     }
   };
 
@@ -70,7 +63,6 @@ export default function Sidebar() {
       const dismissed = localStorage.getItem('pwa-install-dismissed');
       const dismissedTime = dismissed ? parseInt(dismissed) : 0;
       const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
-      
       if (dismissed && Date.now() - dismissedTime < sevenDaysInMs) {
         setIsInstallable(false);
         setDeferredPrompt(null);
@@ -107,26 +99,19 @@ export default function Sidebar() {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      console.log('PWA installed from sidebar');
-    }
+    if (outcome === 'accepted') console.log('PWA installed from sidebar');
     setDeferredPrompt(null);
     setIsInstallable(false);
   };
 
   const handleLogout = async () => {
     try {
-      const response = await fetch('/api/auth/logout', { 
-        method: 'POST',
-        credentials: 'include'
-      });
-      
+      const response = await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
       if (response.ok) {
         queryClient.clear();
         window.location.href = '/';
       }
-    } catch (error) {
-      console.error('Logout error:', error);
+    } catch {
       window.location.href = '/';
     }
   };
@@ -140,25 +125,17 @@ export default function Sidebar() {
   const navItemClass = (path: string | string[]) => {
     const paths = Array.isArray(path) ? path : [path];
     const isActive = paths.some(p => location === p || location.startsWith(p + '/'));
-    return `w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors ${
-      isActive 
-        ? 'bg-purple-50 text-purple-700' 
-        : 'text-gray-700 hover:bg-gray-50'
+    return `w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2 text-sm font-semibold transition-colors ${
+      isActive ? 'theme-nav-active' : 'theme-nav-item'
     }`;
   };
 
-  const contractorNavItemClass = (path: string | string[]) => {
-    const paths = Array.isArray(path) ? path : [path];
-    const isActive = paths.some(p => location === p || location.startsWith(p + '/'));
-    return `w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors ${
-      isActive 
-        ? 'bg-blue-50 text-blue-700' 
-        : 'text-gray-700 hover:bg-gray-50'
-    }`;
-  };
+  const installBtnClass = `w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2 text-sm font-semibold transition-colors theme-nav-item theme-text-accent`;
 
   return (
-    <aside className="hidden md:flex md:flex-col w-44 bg-white border-r border-gray-200 fixed left-0 top-14 sm:top-16 bottom-0 z-40 overflow-y-auto shadow-sm">
+    <aside className="hidden md:flex md:flex-col w-44 bg-white border-r fixed left-0 top-14 sm:top-16 bottom-0 z-40 overflow-y-auto shadow-sm"
+      style={{ borderColor: 'var(--theme-border)' }}
+    >
       <nav className="flex-1 p-3 space-y-1" aria-label="Main navigation">
         {isAdmin && (
           <Link href="/admin">
@@ -168,7 +145,7 @@ export default function Sidebar() {
             </button>
           </Link>
         )}
-        
+
         {isHomeowner && (
           <>
             <Link href="/maintenance">
@@ -244,7 +221,7 @@ export default function Sidebar() {
               className="w-full"
               data-testid="nav-myhomebase-info"
             >
-              <button className="w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium text-purple-600 hover:bg-purple-50 transition-colors">
+              <button className={installBtnClass}>
                 <Info className="w-5 h-5" />
                 MyHomeBase™ Info
               </button>
@@ -252,7 +229,7 @@ export default function Sidebar() {
             {isInstallable && (
               <button
                 onClick={handleInstallClick}
-                className="w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium text-purple-600 hover:bg-purple-50"
+                className={installBtnClass}
                 data-testid="button-install-app-sidebar"
               >
                 <Download className="w-4 h-4" />
@@ -265,7 +242,7 @@ export default function Sidebar() {
         {isContractor && (
           <>
             <Link href="/contractor-dashboard">
-              <button className={contractorNavItemClass('/contractor-dashboard')} data-testid="nav-dashboard">
+              <button className={navItemClass('/contractor-dashboard')} data-testid="nav-dashboard">
                 <LayoutDashboard className="w-5 h-5" />
                 Dashboard
                 {hasNotificationsForTab('dashboard') && (
@@ -274,13 +251,13 @@ export default function Sidebar() {
               </button>
             </Link>
             <Link href="/manage-team">
-              <button className={contractorNavItemClass('/manage-team')} data-testid="nav-manage-team">
+              <button className={navItemClass('/manage-team')} data-testid="nav-manage-team">
                 <Users className="w-5 h-5" />
                 Manage Team
               </button>
             </Link>
             <Link href="/messages">
-              <button className={contractorNavItemClass('/messages')} data-testid="nav-messages">
+              <button className={navItemClass('/messages')} data-testid="nav-messages">
                 <MessageCircle className="w-5 h-5" />
                 Messages
                 {hasNotificationsForTab('messages') && (
@@ -289,25 +266,25 @@ export default function Sidebar() {
               </button>
             </Link>
             <Link href="/crm">
-              <button className={contractorNavItemClass('/crm')} data-testid="nav-crm">
+              <button className={navItemClass('/crm')} data-testid="nav-crm">
                 <Wrench className="w-5 h-5" />
                 CRM
               </button>
             </Link>
             <Link href="/contractor-referral">
-              <button className={contractorNavItemClass('/contractor-referral')} data-testid="nav-referral">
+              <button className={navItemClass('/contractor-referral')} data-testid="nav-referral">
                 <Gift className="w-5 h-5" />
                 Referral
               </button>
             </Link>
             <Link href="/contractor-profile">
-              <button className={contractorNavItemClass('/contractor-profile')} data-testid="nav-account">
+              <button className={navItemClass('/contractor-profile')} data-testid="nav-account">
                 <UserIcon className="w-5 h-5" />
                 Account
               </button>
             </Link>
             <Link href="/support">
-              <button className={contractorNavItemClass('/support')} data-testid="nav-support">
+              <button className={navItemClass('/support')} data-testid="nav-support">
                 <HelpCircle className="w-5 h-5" />
                 Support
               </button>
@@ -315,7 +292,7 @@ export default function Sidebar() {
             {isInstallable && (
               <button
                 onClick={handleInstallClick}
-                className="w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium text-blue-600 hover:bg-blue-50"
+                className={installBtnClass}
                 data-testid="button-install-app-sidebar"
               >
                 <Download className="w-4 h-4" />
@@ -354,7 +331,7 @@ export default function Sidebar() {
             {isInstallable && (
               <button
                 onClick={handleInstallClick}
-                className="w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium text-purple-600 hover:bg-purple-50"
+                className={installBtnClass}
                 data-testid="button-install-app-sidebar"
               >
                 <Download className="w-4 h-4" />
@@ -364,10 +341,11 @@ export default function Sidebar() {
           </>
         )}
       </nav>
-      <div className="p-3 border-t border-gray-100">
+
+      <div className="p-3 border-t" style={{ borderColor: 'var(--theme-border)' }}>
         <button
           onClick={handleLogout}
-          className="w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium text-red-600 hover:bg-red-50"
+          className="w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2 text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
           data-testid="button-logout-sidebar"
         >
           <LogOut className="w-4 h-4" />

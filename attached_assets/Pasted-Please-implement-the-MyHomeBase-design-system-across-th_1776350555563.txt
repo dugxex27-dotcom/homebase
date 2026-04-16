@@ -1,0 +1,175 @@
+Please implement the MyHomeBase design system across the entire application. Create a new file called theme.js (or theme.css if CSS variables are preferred) in the root of the project and paste in the following design tokens. Then apply them consistently across every screen, component, and user type as described below.
+
+STEP 1 — Create the design token file
+export const theme = {
+
+  font: {
+    family: "'Quicksand', -apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+    weight: { medium: 500, semibold: 600, bold: 700 },
+    size: {
+      micro: '9px',
+      label: '10px',
+      small: '11px',
+      body: '12px',
+      bodyStrong: '13px',
+      cardTitle: '16px',
+      sectionHeading: '20px',
+      pageTitle: '24px',
+    }
+  },
+
+  radius: {
+    sm: '8px',
+    md: '10px',
+    lg: '12px',
+    xl: '14px',
+    xxl: '16px',
+    pill: '20px',
+    circle: '50%',
+  },
+
+  homeowner: {
+    primary: '#2d1f6e',
+    accent: '#534AB7',
+    accentLight: '#7F77DD',
+    fill: '#EEEDFE',
+    background: '#f0eef8',
+    muted: '#9b97c4',
+    border: 'rgba(83,74,183,0.1)',
+    borderHover: 'rgba(83,74,183,0.35)',
+    borderActive: '#534AB7',
+  },
+
+  contractor: {
+    primary: '#042C53',
+    accent: '#185FA5',
+    accentLight: '#378ADD',
+    fill: '#E6F1FB',
+    background: '#eef4fc',
+    muted: '#7badd4',
+    border: 'rgba(24,95,165,0.1)',
+    borderHover: 'rgba(24,95,165,0.35)',
+    borderActive: '#185FA5',
+  },
+
+  agent: {
+    primary: '#173404',
+    accent: '#3B6D11',
+    accentLight: '#639922',
+    fill: '#EAF3DE',
+    background: '#f0f7e8',
+    muted: '#7aaa4a',
+    border: 'rgba(59,109,17,0.1)',
+    borderHover: 'rgba(59,109,17,0.35)',
+    borderActive: '#3B6D11',
+  },
+
+  status: {
+    good: { bg: '#EAF3DE', text: '#3B6D11', dot: '#4a9e2f' },
+    aging: { bg: '#FAEEDA', text: '#854F0B', dot: '#e8a020' },
+    replace: { bg: '#FCEBEB', text: '#A32D2D', dot: '#e03e3e' },
+    unknown: { bg: '#EEEDFE', text: '#534AB7', dot: '#c4c1e0' },
+  },
+
+  global: {
+    white: '#ffffff',
+    surface: '#f5f4f2',
+    textPrimary: '#0f0e0d',
+    textMuted: '#888780',
+    border: 'rgba(0,0,0,0.07)',
+    modalBackdrop: {
+      homeowner: 'rgba(45,31,110,0.6)',
+      contractor: 'rgba(4,44,83,0.6)',
+      agent: 'rgba(23,52,4,0.6)',
+    }
+  }
+}
+
+STEP 2 — Apply the theme by user type
+The entire app must detect the logged-in user's account type — homeowner, contractor, or real estate agent — and apply the corresponding theme throughout. Every screen that user sees should use their stakeholder color palette consistently.
+Apply these rules for each user type:
+Homeowner screens — Purple theme
+* Page/screen background: #f0eef8
+* Primary text: #2d1f6e
+* Accent color: #534AB7
+* Light fills: #EEEDFE
+* Muted text: #9b97c4
+* Active nav items, selected states, borders, score rings: #534AB7
+* Modal backdrop: rgba(45,31,110,0.6)
+* Buttons primary background: #534AB7
+* Buttons secondary background: #EEEDFE, text #534AB7
+Contractor screens — Blue theme
+* Page/screen background: #eef4fc
+* Primary text: #042C53
+* Accent color: #185FA5
+* Light fills: #E6F1FB
+* Muted text: #7badd4
+* Active nav items, selected states, borders, score rings: #185FA5
+* Modal backdrop: rgba(4,44,83,0.6)
+* Buttons primary background: #185FA5
+* Buttons secondary background: #E6F1FB, text #185FA5
+Real Estate Agent screens — Green theme
+* Page/screen background: #f0f7e8
+* Primary text: #173404
+* Accent color: #3B6D11
+* Light fills: #EAF3DE
+* Muted text: #7aaa4a
+* Active nav items, selected states, borders, score rings: #3B6D11
+* Modal backdrop: rgba(23,52,4,0.6)
+* Buttons primary background: #3B6D11
+* Buttons secondary background: #EAF3DE, text #3B6D11
+
+STEP 3 — Global rules that apply to ALL user types
+These never change regardless of user type:
+Typography:
+* Font family: Quicksand — import from Google Fonts at weights 500, 600, 700
+* Page titles: 24px, weight 700
+* Section headings: 20px, weight 700
+* Card titles: 16px, weight 700
+* Body strong: 13px, weight 700
+* Body muted: 12px, weight 600
+* Labels and eyebrows: 10px, weight 700, uppercase, 0.1em letter spacing
+* Micro labels: 9px, weight 700, uppercase, 0.1em letter spacing
+Border radius:
+* Screen/page containers: 20px
+* Cards: 16px
+* Inner components, modals: 14px
+* Zone cards, system rows: 12px
+* Badges, inputs, stat cells: 10px
+* Pills and tags: 20px
+Status colors — always the same across all user types:
+* Good: dot #4a9e2f, bg #EAF3DE, text #3B6D11
+* Aging: dot #e8a020, bg #FAEEDA, text #854F0B
+* Replace soon: dot #e03e3e, bg #FCEBEB, text #A32D2D
+* Unknown: dot #c4c1e0, bg #EEEDFE, text #534AB7
+Cards:
+* Background: always white #ffffff
+* Border default: 1px solid rgba(0,0,0,0.07)
+* Border active/selected: 1.5px solid [user accent color]
+* Border radius: 16px
+Inputs:
+* Background default: user fill color (light tint)
+* Background focused: white
+* Border focused: 1.5px solid [user accent color]
+* Border radius: 10px
+* Font: Quicksand 13px weight 600
+* Text color: user primary
+* Placeholder: user muted
+Bottom navigation:
+* Active icon background: user fill color
+* Active label color: user accent color
+* Inactive icon and label: rgba(0,0,0,0.2)
+
+STEP 4 — Score ring component
+The Home Wellness Score™ ring must:
+* Use an SVG circle with the user's fill color as the track
+* Progress arc color: green #4a9e2f if score above 750, amber #e8a020 if 500–750, red #e03e3e if below 500
+* Score number centered inside: user primary color, 12px, weight 700, Quicksand
+* Label below ring: "HWS" in 9px uppercase, user muted color, weight 700
+
+STEP 5 — Confirmation
+After implementing all changes please:
+* List every file that was modified
+* Confirm Quicksand is loading correctly from Google Fonts
+* Confirm the user type detection is working and theme switching is live
+* Flag any screens or components where the theme could not be applied and explain why

@@ -44,14 +44,10 @@ export default function Header() {
   const hasNotificationsForTab = (tabName: string) => {
     if (!unreadNotifications.length) return false;
     switch (tabName) {
-      case 'messages':
-        return unreadNotifications.some(n => n.type === 'message');
-      case 'maintenance':
-        return unreadNotifications.some(n => n.category === 'maintenance');
-      case 'dashboard':
-        return unreadNotifications.some(n => n.category === 'appointment');
-      default:
-        return false;
+      case 'messages':    return unreadNotifications.some(n => n.type === 'message');
+      case 'maintenance': return unreadNotifications.some(n => n.category === 'maintenance');
+      case 'dashboard':   return unreadNotifications.some(n => n.category === 'appointment');
+      default:            return false;
     }
   };
 
@@ -70,7 +66,6 @@ export default function Header() {
       const dismissed = localStorage.getItem('pwa-install-dismissed');
       const dismissedTime = dismissed ? parseInt(dismissed) : 0;
       const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
-      
       if (dismissed && Date.now() - dismissedTime < sevenDaysInMs) {
         setIsInstallable(false);
         setDeferredPrompt(null);
@@ -125,17 +120,12 @@ export default function Header() {
 
   const handleLogout = async () => {
     try {
-      const response = await fetch('/api/auth/logout', { 
-        method: 'POST',
-        credentials: 'include'
-      });
-      
+      const response = await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
       if (response.ok) {
         queryClient.clear();
         window.location.href = '/';
       }
-    } catch (error) {
-      console.error('Logout error:', error);
+    } catch {
       window.location.href = '/';
     }
   };
@@ -143,16 +133,13 @@ export default function Header() {
   const mobileNavItemClass = (path: string | string[]) => {
     const paths = Array.isArray(path) ? path : [path];
     const isActive = paths.some(p => location === p || location.startsWith(p + '/'));
-    const isContractor = typedUser?.role === 'contractor';
-    return `w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm ${
-      isActive 
-        ? isContractor ? 'bg-blue-100 text-blue-700 font-medium' : 'bg-purple-50 text-purple-700 font-medium'
-        : 'hover:bg-muted'
+    return `w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm font-semibold transition-colors ${
+      isActive ? 'theme-nav-active' : 'theme-nav-item'
     }`;
   };
 
   return (
-    <header className="bg-white border-b border-[#fafafa] sticky top-0 z-50">
+    <header className="bg-white border-b sticky top-0 z-50" style={{ borderColor: 'var(--theme-border)' }}>
       <div className="w-full px-3 sm:px-4 lg:px-6">
         <div className="flex justify-between items-center h-14 sm:h-16">
           <div className="flex items-center gap-2">
@@ -172,8 +159,8 @@ export default function Header() {
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="w-64 p-0">
-                  <SheetHeader className="p-4 border-b bg-purple-50">
-                    <SheetTitle className="text-purple-700">Menu</SheetTitle>
+                  <SheetHeader className="p-4 border-b theme-sheet-header">
+                    <SheetTitle className="theme-sheet-title">Menu</SheetTitle>
                   </SheetHeader>
                   <nav className="flex flex-col p-2" aria-label="Mobile navigation">
                     {isAdmin && (
@@ -249,7 +236,7 @@ export default function Header() {
                         {isInstallable && (
                           <button
                             onClick={handleInstallClick}
-                            className="w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm hover:bg-muted text-purple-600 font-medium"
+                            className="w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm font-semibold theme-nav-item theme-text-accent"
                             data-testid="button-install-app-menu"
                           >
                             <Download className="w-4 h-4" />
@@ -311,7 +298,7 @@ export default function Header() {
                         {isInstallable && (
                           <button
                             onClick={handleInstallClick}
-                            className="w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm hover:bg-muted text-blue-600 font-medium"
+                            className="w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm font-semibold theme-nav-item theme-text-accent"
                             data-testid="button-install-app-menu"
                           >
                             <Download className="w-4 h-4" />
@@ -349,7 +336,7 @@ export default function Header() {
                         {isInstallable && (
                           <button
                             onClick={handleInstallClick}
-                            className="w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm hover:bg-muted text-purple-600 font-medium"
+                            className="w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm font-semibold theme-nav-item theme-text-accent"
                             data-testid="button-install-app-menu"
                           >
                             <Download className="w-4 h-4" />
@@ -358,14 +345,11 @@ export default function Header() {
                         )}
                       </>
                     )}
-                    
+
                     <div className="my-2 border-t border-border" />
-                    
+
                     <button
-                      onClick={() => {
-                        setMobileMenuOpen(false);
-                        handleLogout();
-                      }}
+                      onClick={() => { setMobileMenuOpen(false); handleLogout(); }}
                       className="w-full text-left px-3 py-3 rounded-lg flex items-center gap-3 text-sm hover:bg-muted text-red-600"
                       data-testid="button-logout-menu"
                     >
@@ -376,7 +360,7 @@ export default function Header() {
                 </SheetContent>
               </Sheet>
             )}
-            
+
             {typedUser?.role === 'homeowner' && (
               <a
                 href="https://gotohomebase.com/info"
@@ -387,7 +371,8 @@ export default function Header() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="hidden sm:flex items-center gap-1.5 text-xs h-8 px-3 border-purple-300 text-purple-700 hover:bg-purple-50"
+                  className="hidden sm:flex items-center gap-1.5 text-xs h-8 px-3 theme-text-accent"
+                  style={{ borderColor: 'var(--theme-border-hover)' }}
                 >
                   <Info className="h-3.5 w-3.5" />
                   Home Maintenance Info
@@ -395,7 +380,7 @@ export default function Header() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="sm:hidden p-2 text-purple-700"
+                  className="sm:hidden p-2 theme-text-accent"
                   aria-label="Home Maintenance Info"
                 >
                   <Info className="h-5 w-5" />
@@ -409,25 +394,25 @@ export default function Header() {
                 aria-label="Return to homepage"
                 data-testid="link-home-logo"
               >
-                <img 
-                  src={logoTM} 
-                  alt="MyHomeBase™" 
+                <img
+                  src={logoTM}
+                  alt="MyHomeBase™"
                   className="h-6 sm:h-7 w-auto"
                 />
               </button>
             </Link>
           </div>
-          
+
           <div className="flex items-center gap-2">
             {isAuthenticated && (typedUser?.role === 'homeowner' || typedUser?.role === 'contractor') && (
               <Notifications />
             )}
-            
+
             {!isAuthenticated && (
-              <Button 
+              <Button
                 onClick={() => window.location.href = '/signin'}
                 aria-label="Sign in"
-                className="text-sm h-9 px-3 sm:px-4 bg-purple-600 hover:bg-purple-700"
+                className="text-sm h-9 px-3 sm:px-4 theme-btn-primary"
               >
                 Sign In
               </Button>
@@ -437,12 +422,12 @@ export default function Header() {
       </div>
 
       {isTrialActive && (
-        <div className="bg-purple-50 border-b border-purple-200">
+        <div className="theme-banner">
           <div className="w-full px-3 sm:px-4 lg:px-6 py-2">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
-                <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0 text-purple-600" />
-                <span className="text-xs sm:text-sm font-medium truncate text-purple-900">
+                <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0 theme-text-accent" />
+                <span className="text-xs sm:text-sm font-semibold truncate theme-text-primary">
                   <strong>{daysRemaining} day{daysRemaining !== 1 ? 's' : ''}</strong> trial
                 </span>
               </div>
@@ -450,7 +435,8 @@ export default function Header() {
                 variant="outline"
                 size="sm"
                 onClick={() => window.location.href = '/billing'}
-                className="text-xs h-7 px-2 sm:px-3 flex-shrink-0 border-purple-600 text-purple-600 hover:bg-purple-100"
+                className="text-xs h-7 px-2 sm:px-3 flex-shrink-0 theme-text-accent"
+                style={{ borderColor: 'var(--theme-border-active)' }}
                 data-testid="button-trial-upgrade"
               >
                 <Crown className="h-3 w-3 mr-1" />

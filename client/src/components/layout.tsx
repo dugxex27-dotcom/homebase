@@ -18,7 +18,7 @@ export default function Layout({ children, showFooter = true }: LayoutProps) {
   const showSidebar = isAuthenticated && typedUser;
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#f5f5f5' }}>
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--page-background)' }}>
       <Header />
       {showSidebar && <Sidebar />}
       <main className={`flex-1 pb-20 md:pb-0 ${showSidebar ? 'md:ml-64' : ''}`}>

@@ -5,334 +5,460 @@
 @tailwind utilities;
 
 /* ===================================
-   HOMEBASE DESIGN TOKENS - ENVOLVE DESIGN
+   MYHOMEBASE DESIGN SYSTEM
+   Design Tokens + Role-based Theming
    =================================== */
 
+/* ── Global spacing & radius tokens ── */
 :root {
-  /* Spacing Scale */
-  --spacing-xs: 0.25rem;    /* 4px */
-  --spacing-sm: 0.5rem;     /* 8px */
-  --spacing-md: 1rem;       /* 16px */
-  --spacing-lg: 1.5rem;     /* 24px */
-  --spacing-xl: 2rem;       /* 32px */
-  --spacing-2xl: 3rem;      /* 48px */
-  --spacing-3xl: 4rem;      /* 64px */
-  
-  /* Border Radius */
-  --radius-sm: 0.375rem;    /* 6px */
-  --radius-md: 0.5rem;      /* 8px */
-  --radius-lg: 0.75rem;     /* 12px */
-  --radius-xl: 1rem;        /* 16px */
-  --radius-2xl: 1.5rem;     /* 24px */
-  --radius-full: 9999px;
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+  --spacing-3xl: 4rem;
+
+  /* Design system radii */
+  --radius-sm:   8px;
+  --radius-md:  10px;
+  --radius-lg:  12px;
+  --radius-xl:  14px;
+  --radius-xxl: 16px;
+  --radius-pill: 20px;
+  --radius-circle: 50%;
+
+  /* Shadcn compat alias */
   --radius: var(--radius-lg);
-  
-  /* Shadow Scale */
+
+  /* Shadows */
   --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-  
-  /* Typography - Quicksand Family */
+
+  /* Typography */
   --font-sans: 'Quicksand', ui-sans-serif, system-ui, sans-serif;
   --font-heading: 'Quicksand', ui-sans-serif, system-ui, sans-serif;
-  --text-xs: 0.75rem;       /* 12px */
-  --text-sm: 0.875rem;      /* 14px */
-  --text-base: 1rem;        /* 16px */
-  --text-lg: 1.125rem;      /* 18px */
-  --text-xl: 1.25rem;       /* 20px */
-  --text-2xl: 1.5rem;       /* 24px */
-  --text-3xl: 1.875rem;     /* 30px */
-  --text-4xl: 2.25rem;      /* 36px */
-  --text-5xl: 2.5rem;       /* 40px */
-  --text-6xl: 3rem;         /* 48px */
-  
-  /* Sidebar Width */
+  --text-xs:   0.75rem;
+  --text-sm:   0.875rem;
+  --text-base: 1rem;
+  --text-lg:   1.125rem;
+  --text-xl:   1.25rem;
+  --text-2xl:  1.5rem;
+  --text-3xl:  1.875rem;
+  --text-4xl:  2.25rem;
+
+  /* Layout */
   --sidebar-width: 220px;
+
+  /* Global status colors — never change per role */
+  --status-good-dot:     #4a9e2f;
+  --status-good-bg:      #EAF3DE;
+  --status-good-text:    #3B6D11;
+  --status-aging-dot:    #e8a020;
+  --status-aging-bg:     #FAEEDA;
+  --status-aging-text:   #854F0B;
+  --status-replace-dot:  #e03e3e;
+  --status-replace-bg:   #FCEBEB;
+  --status-replace-text: #A32D2D;
+  --status-unknown-dot:  #c4c1e0;
+  --status-unknown-bg:   #EEEDFE;
+  --status-unknown-text: #534AB7;
+
+  /* Global surface colors */
+  --global-white:   #ffffff;
+  --global-surface: #f5f4f2;
+  --global-border:  rgba(0, 0, 0, 0.07);
 }
 
-/* Homeowner Theme (Purple) - Default - Envolve Design */
-:root, [data-role="homeowner"] {
-  /* Brand Colors - Envolve Design System */
-  --brand-primary: hsl(270, 70%, 45%);
-  --brand-primary-dark: hsl(270, 80%, 20%);
-  --brand-primary-light: hsl(270, 50%, 65%);
-  
-  /* Page Background - Light Gray */
-  --page-background: hsl(0, 0%, 96%);
-  
-  /* Semantic Colors */
-  --background: hsl(0, 0%, 100%);
-  --foreground: hsl(270, 30%, 15%);
-  --muted: hsl(0, 0%, 96%);
-  --muted-foreground: hsl(270, 10%, 45%);
-  --popover: hsl(0, 0%, 100%);
-  --popover-foreground: hsl(270, 30%, 15%);
-  --card: hsl(0, 0%, 100%);
-  --card-foreground: hsl(270, 30%, 15%);
-  --border: hsl(0, 0%, 88%);
-  --input: hsl(0, 0%, 88%);
-  
-  /* Action Colors - Purple Primary */
-  --primary: hsl(270, 70%, 45%);
-  --primary-hover: hsl(270, 75%, 38%);
-  --primary-active: hsl(270, 80%, 32%);
-  --primary-foreground: hsl(0, 0%, 100%);
-  
-  --secondary: hsl(0, 0%, 96%);
-  --secondary-hover: hsl(0, 0%, 92%);
-  --secondary-foreground: hsl(270, 30%, 15%);
-  
-  --accent: hsl(270, 20%, 95%);
-  --accent-foreground: hsl(270, 30%, 15%);
-  
-  /* Status Colors */
-  --destructive: hsl(0, 65%, 51%);
-  --destructive-hover: hsl(0, 70%, 45%);
-  --destructive-foreground: hsl(0, 0%, 100%);
-  
-  --success: hsl(142, 71%, 45%);
-  --success-foreground: hsl(0, 0%, 100%);
-  
-  --warning: hsl(45, 93%, 47%);
-  --warning-foreground: hsl(0, 0%, 15%);
-  
-  --info: hsl(199, 89%, 48%);
-  --info-foreground: hsl(0, 0%, 100%);
-  
-  --neutral: hsl(0, 0%, 75%);
-  
-  /* Priority Badge Colors */
-  --priority-high: hsl(14, 100%, 50%);
-  --priority-medium: hsl(45, 93%, 47%);
-  --priority-low: hsl(142, 71%, 45%);
-  
-  /* Focus & Ring */
-  --ring: hsl(270, 70%, 45%);
-  --ring-offset: hsl(0, 0%, 100%);
-  
-  /* Chart Colors */
-  --chart-1: hsl(270, 70%, 45%);
+/* ── Homeowner Theme — Purple (default) ── */
+:root,
+body[data-role="homeowner"] {
+  --theme-primary:        #2d1f6e;
+  --theme-accent:         #534AB7;
+  --theme-accent-light:   #7F77DD;
+  --theme-fill:           #EEEDFE;
+  --theme-bg:             #f0eef8;
+  --theme-muted:          #9b97c4;
+  --theme-border:         rgba(83, 74, 183, 0.1);
+  --theme-border-hover:   rgba(83, 74, 183, 0.35);
+  --theme-border-active:  #534AB7;
+  --theme-modal-backdrop: rgba(45, 31, 110, 0.6);
+
+  /* Shadcn semantic tokens */
+  --background:          #ffffff;
+  --foreground:          #2d1f6e;
+  --muted:               #f0eef8;
+  --muted-foreground:    #9b97c4;
+  --popover:             #ffffff;
+  --popover-foreground:  #2d1f6e;
+  --card:                #ffffff;
+  --card-foreground:     #2d1f6e;
+  --border:              rgba(83, 74, 183, 0.12);
+  --input:               #EEEDFE;
+  --primary:             #534AB7;
+  --primary-foreground:  #ffffff;
+  --secondary:           #EEEDFE;
+  --secondary-foreground: #534AB7;
+  --accent:              #EEEDFE;
+  --accent-foreground:   #2d1f6e;
+  --destructive:         hsl(0, 65%, 51%);
+  --destructive-foreground: #ffffff;
+  --ring:                #534AB7;
+  --ring-offset:         #ffffff;
+  --page-background:     #f0eef8;
+  --sidebar-bg:          #ffffff;
+  --sidebar-border:      rgba(83, 74, 183, 0.12);
+  --sidebar-active:      #534AB7;
+  --sidebar-active-bg:   #EEEDFE;
+  --footer-bg:           #2d1f6e;
+
+  /* Charts */
+  --chart-1: #534AB7;
   --chart-2: hsl(199, 89%, 48%);
   --chart-3: hsl(142, 71%, 45%);
   --chart-4: hsl(45, 93%, 47%);
   --chart-5: hsl(0, 65%, 51%);
-  
-  /* Footer */
-  --footer-bg: hsl(270, 80%, 12%);
-  
-  /* Sidebar */
-  --sidebar-bg: hsl(0, 0%, 100%);
-  --sidebar-border: hsl(0, 0%, 90%);
-  --sidebar-active: hsl(270, 70%, 45%);
-  --sidebar-active-bg: hsl(270, 60%, 95%);
 }
 
-/* Contractor Theme (Blue) */
-[data-role="contractor"] {
-  /* Brand Colors */
-  --brand-primary: hsl(210, 70%, 45%);
-  --brand-primary-dark: hsl(210, 80%, 35%);
-  --brand-primary-light: hsl(210, 60%, 60%);
-  
-  /* Action Colors */
-  --primary: hsl(210, 70%, 45%);
-  --primary-hover: hsl(210, 75%, 38%);
-  --primary-active: hsl(210, 80%, 32%);
-  --primary-foreground: hsl(0, 0%, 100%);
-  
-  /* Focus & Ring */
-  --ring: hsl(210, 70%, 45%);
-  
-  /* Chart Colors */
-  --chart-1: hsl(210, 70%, 45%);
+/* ── Contractor Theme — Blue ── */
+body[data-role="contractor"] {
+  --theme-primary:        #042C53;
+  --theme-accent:         #185FA5;
+  --theme-accent-light:   #378ADD;
+  --theme-fill:           #E6F1FB;
+  --theme-bg:             #eef4fc;
+  --theme-muted:          #7badd4;
+  --theme-border:         rgba(24, 95, 165, 0.1);
+  --theme-border-hover:   rgba(24, 95, 165, 0.35);
+  --theme-border-active:  #185FA5;
+  --theme-modal-backdrop: rgba(4, 44, 83, 0.6);
+
+  --background:           #ffffff;
+  --foreground:           #042C53;
+  --muted:                #eef4fc;
+  --muted-foreground:     #7badd4;
+  --popover:              #ffffff;
+  --popover-foreground:   #042C53;
+  --card:                 #ffffff;
+  --card-foreground:      #042C53;
+  --border:               rgba(24, 95, 165, 0.12);
+  --input:                #E6F1FB;
+  --primary:              #185FA5;
+  --primary-foreground:   #ffffff;
+  --secondary:            #E6F1FB;
+  --secondary-foreground: #185FA5;
+  --accent:               #E6F1FB;
+  --accent-foreground:    #042C53;
+  --ring:                 #185FA5;
+  --ring-offset:          #ffffff;
+  --page-background:      #eef4fc;
+  --sidebar-bg:           #ffffff;
+  --sidebar-border:       rgba(24, 95, 165, 0.12);
+  --sidebar-active:       #185FA5;
+  --sidebar-active-bg:    #E6F1FB;
+  --footer-bg:            #042C53;
+
+  --chart-1: #185FA5;
   --chart-2: hsl(199, 89%, 48%);
   --chart-3: hsl(142, 71%, 45%);
   --chart-4: hsl(45, 93%, 47%);
-  --chart-5: hsl(270, 70%, 45%);
-  
-  /* Sidebar */
-  --sidebar-active: hsl(210, 70%, 45%);
-  --sidebar-active-bg: hsl(210, 60%, 95%);
+  --chart-5: hsl(0, 65%, 51%);
 }
 
-/* Dark Mode */
+/* ── Agent Theme — Green ── */
+body[data-role="agent"] {
+  --theme-primary:        #173404;
+  --theme-accent:         #3B6D11;
+  --theme-accent-light:   #639922;
+  --theme-fill:           #EAF3DE;
+  --theme-bg:             #f0f7e8;
+  --theme-muted:          #7aaa4a;
+  --theme-border:         rgba(59, 109, 17, 0.1);
+  --theme-border-hover:   rgba(59, 109, 17, 0.35);
+  --theme-border-active:  #3B6D11;
+  --theme-modal-backdrop: rgba(23, 52, 4, 0.6);
+
+  --background:           #ffffff;
+  --foreground:           #173404;
+  --muted:                #f0f7e8;
+  --muted-foreground:     #7aaa4a;
+  --popover:              #ffffff;
+  --popover-foreground:   #173404;
+  --card:                 #ffffff;
+  --card-foreground:      #173404;
+  --border:               rgba(59, 109, 17, 0.12);
+  --input:                #EAF3DE;
+  --primary:              #3B6D11;
+  --primary-foreground:   #ffffff;
+  --secondary:            #EAF3DE;
+  --secondary-foreground: #3B6D11;
+  --accent:               #EAF3DE;
+  --accent-foreground:    #173404;
+  --ring:                 #3B6D11;
+  --ring-offset:          #ffffff;
+  --page-background:      #f0f7e8;
+  --sidebar-bg:           #ffffff;
+  --sidebar-border:       rgba(59, 109, 17, 0.12);
+  --sidebar-active:       #3B6D11;
+  --sidebar-active-bg:    #EAF3DE;
+  --footer-bg:            #173404;
+
+  --chart-1: #3B6D11;
+  --chart-2: hsl(199, 89%, 48%);
+  --chart-3: hsl(142, 71%, 45%);
+  --chart-4: hsl(45, 93%, 47%);
+  --chart-5: hsl(0, 65%, 51%);
+}
+
+/* ── Dark Mode ── */
 .dark {
-  --page-background: hsl(270, 25%, 6%);
-  --background: hsl(270, 25%, 8%);
-  --foreground: hsl(0, 0%, 92%);
-  --muted: hsl(270, 15%, 15%);
-  --muted-foreground: hsl(0, 0%, 65%);
-  --popover: hsl(270, 20%, 12%);
+  --page-background:    hsl(270, 25%, 6%);
+  --background:         hsl(270, 25%, 8%);
+  --foreground:         hsl(0, 0%, 92%);
+  --muted:              hsl(270, 15%, 15%);
+  --muted-foreground:   hsl(0, 0%, 65%);
+  --popover:            hsl(270, 20%, 12%);
   --popover-foreground: hsl(0, 0%, 92%);
-  --card: hsl(270, 18%, 12%);
-  --card-foreground: hsl(0, 0%, 92%);
-  --border: hsl(270, 12%, 24%);
-  --input: hsl(270, 12%, 20%);
-  --secondary: hsl(270, 15%, 18%);
-  --secondary-hover: hsl(270, 15%, 22%);
+  --card:               hsl(270, 18%, 12%);
+  --card-foreground:    hsl(0, 0%, 92%);
+  --border:             hsl(270, 12%, 24%);
+  --input:              hsl(270, 12%, 20%);
+  --secondary:          hsl(270, 15%, 18%);
   --secondary-foreground: hsl(0, 0%, 92%);
-  --accent: hsl(270, 15%, 18%);
-  --accent-foreground: hsl(0, 0%, 92%);
-  --neutral: hsl(270, 20%, 25%);
-  --ring-offset: hsl(270, 25%, 8%);
-  --sidebar-bg: hsl(270, 20%, 10%);
-  --sidebar-border: hsl(270, 15%, 20%);
-  --footer-bg: hsl(270, 80%, 8%);
+  --accent:             hsl(270, 15%, 18%);
+  --accent-foreground:  hsl(0, 0%, 92%);
+  --ring-offset:        hsl(270, 25%, 8%);
+  --sidebar-bg:         hsl(270, 20%, 10%);
+  --sidebar-border:     hsl(270, 15%, 20%);
+  --footer-bg:          hsl(270, 80%, 8%);
 }
 
+/* ════════════════════════════════════
+   BASE LAYER
+   ════════════════════════════════════ */
 @layer base {
   * {
     @apply border-border;
   }
 
   body {
-    @apply font-sans antialiased text-foreground;
-    background-color: hsl(var(--page-background));
-    font-weight: 400;
+    @apply antialiased;
+    font-family: var(--font-sans);
+    color: var(--foreground);
+    background-color: var(--page-background);
+    font-weight: 500;
     transition: background-color 0.2s, color 0.2s;
   }
-  
-  /* Headline Typography - Quicksand Bold (700) */
-  h1, h2, h3, h4, h5, h6,
-  .font-heading,
-  h1 *, h2 *, h3 *, h4 *, h5 *, h6 * {
-    font-family: var(--font-heading);
-    font-weight: 700 !important;
-  }
-  
-  /* Tighter line-height for h1 headlines when text wraps */
+
+  /* ── Typography Scale ── */
   h1 {
+    font-family: var(--font-heading);
+    font-size: 24px;
+    font-weight: 700;
     line-height: 1.1;
+    color: var(--theme-primary);
   }
-  
-  /* Subcopy Typography - Quicksand Medium (500) */
-  .text-muted-foreground,
-  .text-gray-600,
-  .text-gray-500,
-  label,
-  .font-medium,
-  p.text-sm,
-  p.text-xs,
-  .description,
-  [class*="CardDescription"],
-  .font-subcopy {
-    font-weight: 500;
+
+  h2 {
+    font-family: var(--font-heading);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--theme-primary);
   }
-  
-  /* Body Copy - Quicksand Regular (400) */
-  p, li, td, th,
-  .font-body {
-    font-weight: 400;
+
+  h3 {
+    font-family: var(--font-heading);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--theme-primary);
   }
-  
+
+  h4, h5, h6 {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    color: var(--theme-primary);
+  }
+
   /* Focus Styles */
   *:focus-visible {
     @apply outline-none ring-2 ring-ring ring-offset-2;
   }
-  
-  /* Remove focus ring for mouse users */
   *:focus:not(:focus-visible) {
     @apply outline-none ring-0;
   }
 }
 
+/* ════════════════════════════════════
+   COMPONENT LAYER — Theme Utilities
+   ════════════════════════════════════ */
 @layer components {
-  /* Page Background */
+
+  /* ── Page background ── */
   .page-bg {
     background-color: var(--page-background);
   }
-  
-  /* Consistent Card Padding */
-  .card-padding {
-    @apply p-6;
+
+  /* ── Theme color utilities ── */
+  .theme-bg          { background-color: var(--theme-bg); }
+  .theme-fill        { background-color: var(--theme-fill); }
+  .theme-text-primary { color: var(--theme-primary); }
+  .theme-text-accent  { color: var(--theme-accent); }
+  .theme-text-muted   { color: var(--theme-muted); }
+
+  /* ── Buttons ── */
+  .theme-btn-primary {
+    background-color: var(--theme-accent);
+    color: #ffffff;
+    border-radius: var(--radius-pill);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 700;
+    transition: background-color 0.15s;
   }
-  
-  .card-padding-sm {
-    @apply p-4;
+  .theme-btn-primary:hover {
+    background-color: var(--theme-primary);
   }
-  
-  .card-padding-lg {
-    @apply p-8;
+
+  .theme-btn-secondary {
+    background-color: var(--theme-fill);
+    color: var(--theme-accent);
+    border-radius: var(--radius-pill);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 700;
+    transition: background-color 0.15s;
   }
-  
-  /* Consistent Section Spacing */
-  .section-spacing {
-    @apply space-y-6;
+  .theme-btn-secondary:hover {
+    filter: brightness(0.97);
   }
-  
-  .section-spacing-sm {
-    @apply space-y-4;
+
+  /* ── Navigation items (sidebar + mobile menu) ── */
+  .theme-nav-item {
+    color: rgba(0, 0, 0, 0.5);
+    transition: background-color 0.15s, color 0.15s;
   }
-  
-  .section-spacing-lg {
-    @apply space-y-8;
+  .theme-nav-item:hover {
+    background-color: var(--theme-fill);
+    color: var(--theme-accent);
   }
-  
-  /* Priority Badges */
-  .badge-high-priority {
-    @apply bg-orange-500 text-white text-xs font-medium px-2 py-0.5 rounded;
+  .theme-nav-active {
+    background-color: var(--theme-fill) !important;
+    color: var(--theme-accent) !important;
   }
-  
-  .badge-medium-priority {
-    @apply bg-yellow-400 text-gray-900 text-xs font-medium px-2 py-0.5 rounded;
+
+  /* ── Bottom nav active state ── */
+  .theme-bottom-nav-active {
+    color: var(--theme-accent);
   }
-  
-  .badge-low-priority {
-    @apply bg-green-500 text-white text-xs font-medium px-2 py-0.5 rounded;
+  .theme-bottom-nav-icon-bg {
+    background-color: var(--theme-fill);
+    border-radius: var(--radius-lg);
+    padding: 4px;
   }
-  
-  /* Sidebar Navigation */
+
+  /* ── Inputs ── */
+  .theme-input {
+    background-color: var(--theme-fill);
+    border-radius: var(--radius-md);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--theme-primary);
+  }
+  .theme-input::placeholder {
+    color: var(--theme-muted);
+  }
+  .theme-input:focus {
+    background-color: #ffffff;
+    border: 1.5px solid var(--theme-border-active);
+    outline: none;
+  }
+
+  /* ── Cards ── */
+  .theme-card {
+    background-color: #ffffff;
+    border: 1px solid var(--global-border);
+    border-radius: var(--radius-xxl);
+  }
+  .theme-card-selected {
+    border: 1.5px solid var(--theme-border-active);
+  }
+
+  /* ── Header mobile sheet ── */
+  .theme-sheet-header {
+    background-color: var(--theme-fill);
+  }
+  .theme-sheet-title {
+    color: var(--theme-accent);
+  }
+
+  /* ── Trial/info banners ── */
+  .theme-banner {
+    background-color: var(--theme-fill);
+    border-bottom: 1px solid var(--theme-border-hover);
+  }
+
+  /* ── Existing card padding utilities ── */
+  .card-padding    { @apply p-6; }
+  .card-padding-sm { @apply p-4; }
+  .card-padding-lg { @apply p-8; }
+
+  .section-spacing    { @apply space-y-6; }
+  .section-spacing-sm { @apply space-y-4; }
+  .section-spacing-lg { @apply space-y-8; }
+
+  /* ── Priority badges ── */
+  .badge-high-priority   { @apply bg-orange-500 text-white text-xs font-medium px-2 py-0.5 rounded; }
+  .badge-medium-priority { @apply bg-yellow-400 text-gray-900 text-xs font-medium px-2 py-0.5 rounded; }
+  .badge-low-priority    { @apply bg-green-500 text-white text-xs font-medium px-2 py-0.5 rounded; }
+
+  /* ── Status badge helpers ── */
+  .status-good    { background-color: var(--status-good-bg);    color: var(--status-good-text); }
+  .status-aging   { background-color: var(--status-aging-bg);   color: var(--status-aging-text); }
+  .status-replace { background-color: var(--status-replace-bg); color: var(--status-replace-text); }
+  .status-unknown { background-color: var(--status-unknown-bg); color: var(--status-unknown-text); }
+
+  /* ── Sidebar ── */
   .sidebar-nav-item {
     @apply w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 text-sm font-medium transition-colors;
-    color: hsl(270, 30%, 25%);
+    color: rgba(0, 0, 0, 0.5);
   }
-  
   .sidebar-nav-item:hover {
     background-color: var(--sidebar-active-bg);
+    color: var(--sidebar-active);
   }
-  
-  .sidebar-nav-item.active {
+  .sidebar-nav-item.active,
+  .sidebar-nav-item[aria-current="page"] {
     background-color: var(--sidebar-active-bg);
     color: var(--sidebar-active);
   }
-  
-  .sidebar-nav-item.active .nav-icon {
-    color: var(--sidebar-active);
+
+  /* ── Health score / HWS ring label typography ── */
+  .hws-label {
+    font-family: var(--font-sans);
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--theme-muted);
   }
-  
-  /* Card Styles */
-  .homebase-card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-100 p-6;
+
+  /* ── Micro labels ── */
+  .label-micro {
+    font-family: var(--font-sans);
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
   }
-  
-  /* Property Card */
-  .property-card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow;
-  }
-  
-  /* Health Score Circle */
-  .health-score-circle {
-    @apply relative w-20 h-20 rounded-full flex items-center justify-center;
-  }
-  
-  .health-score-circle::before {
-    content: '';
-    @apply absolute inset-0 rounded-full;
-    background: conic-gradient(
-      var(--score-color, hsl(270, 70%, 45%)) calc(var(--score-percent, 0) * 1%),
-      hsl(0, 0%, 90%) 0
-    );
-  }
-  
-  .health-score-circle::after {
-    content: '';
-    @apply absolute inset-2 bg-white rounded-full;
-  }
-  
-  .health-score-value {
-    @apply relative z-10 text-2xl font-bold;
-    color: var(--score-color, hsl(270, 70%, 45%));
+  .label-eyebrow {
+    font-family: var(--font-sans);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
   }
 }

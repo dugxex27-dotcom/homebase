@@ -15,7 +15,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
   const [location] = useLocation();
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#f5f5f5' }}>
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--page-background)' }}>
       <Header />
       <Sidebar />
       <AnimatePresence mode="wait">
