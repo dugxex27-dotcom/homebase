@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import logoWhite from "@assets/my-homebase-logo-tm-white-final_1776357152257.png";
@@ -122,7 +123,7 @@ export default function Landing() {
                   onClick={(e) => { e.stopPropagation(); setReferralOpen(v => !v); }}
                   onMouseEnter={() => setReferralOpen(true)}
                   aria-label="Learn more about referrals"
-                >*</button>
+                ><Info size={11} strokeWidth={2.5} /></button>
               </div>
               {referralOpen && (
                 <div
