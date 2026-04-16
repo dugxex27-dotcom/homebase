@@ -76,7 +76,7 @@ export default function Landing() {
 
             {/* Sub */}
             <div className="mhb-sub">
-              Nearly half of insurance claims get denied.<br />
+              <span className="mhb-sub-highlight">Nearly half of insurance claims get denied.</span><br />
               The reason? No maintenance records.<br />
               We fix that. For $5 a month.
             </div>
