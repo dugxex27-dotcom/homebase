@@ -342,6 +342,9 @@ export function GuidedTour() {
   const [isNavigating, setIsNavigating] = useState(false);
   const findTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const navigatedForStepRef = useRef<number | null>(null);
+  const setLocationRef = useRef(setLocation);
+  useEffect(() => { setLocationRef.current = setLocation; }, [setLocation]);
 
   // Wizard progress from server
   const { data: wizardProgress } = useQuery<{ step: number; completedAt: string | null; data: object }>({
@@ -404,22 +407,29 @@ export function GuidedTour() {
 
   const currentStep = tourState.phase === "tour" ? STEPS[tourState.stepIndex] : null;
 
-  // Find element and measure it
+  // Stable ref to current step so closures inside timers always read the latest value
+  const currentStepRef = useRef(currentStep);
+  useEffect(() => { currentStepRef.current = currentStep; }, [currentStep]);
+
+  // Find element and measure it — reads from ref so it's always stable
   const findElement = useCallback(() => {
-    if (!currentStep) return;
-    const el = document.querySelector(`[data-tour-id="${currentStep.tourId}"]`);
+    const step = currentStepRef.current;
+    if (!step) return false;
+    const el = document.querySelector(`[data-tour-id="${step.tourId}"]`);
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "center" });
       setTimeout(() => {
-        const el2 = document.querySelector(`[data-tour-id="${currentStep.tourId}"]`);
+        const el2 = document.querySelector(`[data-tour-id="${step.tourId}"]`);
         if (el2) setTargetRect(el2.getBoundingClientRect());
       }, 350);
       return true;
     }
     return false;
-  }, [currentStep]);
+  }, []); // stable — reads refs, not captured values
 
-  // Navigate to correct page and find element
+  // Navigate to the correct page when the step changes, then poll for the element.
+  // Intentionally does NOT depend on `location` or `setLocation` to avoid re-triggering
+  // the effect every time the URL updates (which caused the infinite render loop).
   useEffect(() => {
     if (tourState.phase !== "tour" || !currentStep) {
       setTargetRect(null);
@@ -430,21 +440,28 @@ export function GuidedTour() {
     if (findTimerRef.current) clearTimeout(findTimerRef.current);
     if (pollRef.current) clearInterval(pollRef.current);
 
-    if (location !== currentStep.page) {
+    const needsNavigation = location !== currentStep.page;
+
+    if (needsNavigation && navigatedForStepRef.current !== tourState.stepIndex) {
+      // Only navigate once per step to prevent looping
+      navigatedForStepRef.current = tourState.stepIndex;
       setTargetRect(null);
       setIsNavigating(true);
-      setLocation(currentStep.page);
-      // Poll for element after navigation
+      setLocationRef.current(currentStep.page);
+      // Poll until the target element appears in the DOM
       let attempts = 0;
       pollRef.current = setInterval(() => {
         const found = findElement();
         attempts++;
-        if (found || attempts > 20) {
+        if (found || attempts > 30) {
           clearInterval(pollRef.current!);
+          pollRef.current = null;
           setIsNavigating(false);
         }
       }, 200);
-    } else {
+    } else if (!needsNavigation) {
+      // Already on the right page — just find the element
+      navigatedForStepRef.current = null;
       setIsNavigating(false);
       findTimerRef.current = setTimeout(findElement, 300);
     }
@@ -453,7 +470,8 @@ export function GuidedTour() {
       if (findTimerRef.current) clearTimeout(findTimerRef.current);
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [tourState.phase, tourState.stepIndex, location, currentStep, setLocation, findElement]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tourState.phase, tourState.stepIndex]);
 
   // Update rect on resize/scroll
   useEffect(() => {
