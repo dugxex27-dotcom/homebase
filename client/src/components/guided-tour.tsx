@@ -518,10 +518,17 @@ export function GuidedTour() {
     setTourState({ ...tourState, phase: "tour" });
   }, [tourState, setTourState]);
 
+  // Only the pages that are actually part of the tour (plus "/" for the welcome modal)
+  const TOUR_PAGES = Array.from(new Set(STEPS.map((s) => s.page)));
+  const isOnTourPage = TOUR_PAGES.includes(location);
+
   // Don't render for non-homeowners / demo / not initialized
   if (!hasInitialized) return null;
   if (!typedUser || typedUser.role !== "homeowner" || typedUser.id?.startsWith("demo-")) return null;
   if (tourState.phase === "inactive") return null;
+
+  // Only show tour UI on pages that are part of the tour flow
+  if (!isOnTourPage) return null;
 
   // Welcome modal
   if (tourState.phase === "welcome") {
