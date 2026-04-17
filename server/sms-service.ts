@@ -90,7 +90,6 @@ async function canSendSMS(userId: string, notificationType: 'maintenance' | 'app
 
 export async function sendSMS(notification: SMSNotification): Promise<boolean> {
   if (!twilioClient || !fromNumber) {
-    console.log('[SMS] Twilio not configured - accountSid:', !!accountSid, 'authToken:', !!authToken, 'fromNumber:', !!fromNumber);
     return false;
   }
 
