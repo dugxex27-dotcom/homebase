@@ -34,7 +34,6 @@ if (accountSid && authToken && fromNumber) {
   console.log('[SMS] Twilio client initialized with from number:', fromNumber);
 } else {
   console.warn('[SMS] Twilio credentials not configured - SMS notifications disabled');
-  console.warn('[SMS] accountSid:', !!accountSid, 'authToken:', !!authToken, 'fromNumber:', fromNumber);
 }
 
 export interface SMSNotification {
