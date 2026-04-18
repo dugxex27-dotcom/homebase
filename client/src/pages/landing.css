@@ -609,27 +609,45 @@
 
   .mhb-badge-text { font-size: 12px; }
 
-  /* Sheet becomes a tall right-column card on desktop */
+  /* Sheet spans the full hero width on desktop */
   .mhb-sheet {
-    flex: 0 0 400px;
-    margin: 0;
+    flex: none;
+    width: calc(100% - 160px);
+    max-width: 1100px;
+    margin: 0 auto 60px;
     border-radius: 24px;
-    padding: 32px 32px 40px;
+    padding: 32px 40px 48px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
-    align-self: center;
+    align-self: auto;
   }
 
   .mhb-handle { display: none; }
 
+  /* Constrain sheet inner content so tiles don't stretch too wide */
+  .mhb-sheet > *:not(.mhb-handle) {
+    max-width: 680px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+  }
+
   .mhb-user-types {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
     gap: 12px;
+    max-width: 680px;
+    margin-left: auto;
+    margin-right: auto;
   }
 
   .mhb-utb {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
     padding: 16px 18px;
   }
+
+  .mhb-utb-arrow { display: none; }
 
   .mhb-sheet-label { font-size: 12px; margin-bottom: 16px; }
 }
