@@ -446,7 +446,7 @@ export default function ServiceRecords() {
                 + Add Record
               </button>
               </DialogTrigger>
-              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" >
+              <DialogContent className="max-w-4xl max-h-[90dvh] overflow-y-auto" >
               <DialogHeader>
                 <DialogTitle style={{ color: '#1560a2' }}>
                   {editingRecord ? 'Edit Service Record' : 'Add New Service Record'}

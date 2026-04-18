@@ -67,7 +67,7 @@ const proFeatures = [
 export function ProBenefitsDialog({ open, onOpenChange }: ProBenefitsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader className="text-center pb-4">
           <div className="flex justify-center mb-4">
             <div className="p-3 rounded-full bg-gradient-to-br from-purple-500 to-purple-700">

@@ -1081,7 +1081,7 @@ function TaskDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] overflow-y-auto p-0">
+      <DialogContent className="max-w-4xl w-[95vw] max-h-[90dvh] overflow-y-auto p-0">
         <div className={`${completed ? 'bg-green-50' : 'bg-white'}`}>
           <div className="sticky top-0 z-10 bg-white border-b px-6 py-4 flex items-start justify-between gap-4">
             <div className="flex-1">
@@ -4090,7 +4090,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
         {/* Maintenance Log Form Dialog */}
         <Dialog open={isMaintenanceLogDialogOpen} onOpenChange={setIsMaintenanceLogDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingMaintenanceLog ? 'Edit Service Record' : 'Add New Service Record'}
@@ -4690,7 +4690,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
         {/* Appliance Dialog */}
         <Dialog open={isApplianceDialogOpen} onOpenChange={(open) => { setIsApplianceDialogOpen(open); if (!open) setDialogApplianceType(""); }}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingAppliance ? 'Edit Appliance' : 'Add New Appliance'}

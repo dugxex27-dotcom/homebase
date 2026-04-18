@@ -904,7 +904,7 @@ export default function ContractorCRMPage() {
                   Add Lead
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Add New Lead</DialogTitle>
                   <DialogDescription>Enter the lead information below to add them to your CRM</DialogDescription>
@@ -1355,7 +1355,7 @@ export default function ContractorCRMPage() {
                 <DialogTrigger asChild>
                   <Button data-testid="button-add-client"><Plus className="h-4 w-4 mr-2" />Add Client</Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>{editingClient ? "Edit Client" : "Add New Client"}</DialogTitle>
                     <DialogDescription>{editingClient ? "Update client information" : "Enter the client information below"}</DialogDescription>
@@ -1590,7 +1590,7 @@ export default function ContractorCRMPage() {
                 <DialogTrigger asChild>
                   <Button data-testid="button-add-job"><Plus className="h-4 w-4 mr-2" />Add Job</Button>
                 </DialogTrigger>
-                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Schedule New Job</DialogTitle>
                       <DialogDescription>Enter the job details to schedule it for a client</DialogDescription>
@@ -1769,7 +1769,7 @@ export default function ContractorCRMPage() {
                   <DialogTrigger asChild>
                     <Button data-testid="button-add-quote"><Plus className="h-4 w-4 mr-2" />Create Quote</Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                  <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Create New Quote</DialogTitle>
                       <DialogDescription>Create a quote for your client with line items</DialogDescription>
@@ -1954,7 +1954,7 @@ export default function ContractorCRMPage() {
                   <DialogTrigger asChild>
                     <Button data-testid="button-add-invoice"><Plus className="h-4 w-4 mr-2" />Create Invoice</Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                  <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Create New Invoice</DialogTitle>
                       <DialogDescription>Create an invoice for your client</DialogDescription>

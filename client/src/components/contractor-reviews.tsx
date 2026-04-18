@@ -624,7 +624,7 @@ export function ContractorReviews({ contractorId, contractorName }: ContractorRe
                 <DialogTrigger asChild>
                   <Button className="bg-purple-600 hover:bg-purple-700">Write a Review</Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Review {contractorName || "Contractor"}</DialogTitle>
                   </DialogHeader>

@@ -260,7 +260,7 @@ export default function DeveloperConsole() {
 
       {/* Error Details Dialog */}
       <Dialog open={!!selectedError} onOpenChange={(open) => !open && setSelectedError(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90dvh] overflow-y-auto">
           {errorDetails && (
             <>
               <DialogHeader>

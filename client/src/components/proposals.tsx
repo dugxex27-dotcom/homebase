@@ -349,7 +349,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
                 </Button>
               </DialogTrigger>
             )}
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" style={{ backgroundColor: '#1560a2' }}>
+            <DialogContent className="max-w-4xl max-h-[90dvh] overflow-y-auto" style={{ backgroundColor: '#1560a2' }}>
               <DialogHeader>
                 <DialogTitle style={{ color: 'white' }}>
                   {editingProposal ? "Edit Proposal" : "Create New Proposal"}

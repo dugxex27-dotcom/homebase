@@ -519,7 +519,7 @@ export default function Messages() {
                       New
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Start a New Conversation</DialogTitle>
                       <DialogDescription>Select contractors and send them a message</DialogDescription>
@@ -677,7 +677,7 @@ export default function Messages() {
                             Create Proposal
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                        <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto">
                           <DialogHeader>
                             <DialogTitle>
                               Create Proposal for {selectedConversation?.otherPartyName}

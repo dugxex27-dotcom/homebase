@@ -585,7 +585,7 @@ export default function ContractorDashboard() {
           });
         }
       }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white">
+        <DialogContent className="max-w-4xl max-h-[90dvh] overflow-y-auto bg-white">
           <DialogHeader>
             <DialogTitle>
               Create New Proposal

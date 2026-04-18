@@ -513,7 +513,7 @@ export default function Documents() {
 
       {/* Inspection Review Dialog */}
       <Dialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Review Extracted Information</DialogTitle>
             <DialogDescription>
