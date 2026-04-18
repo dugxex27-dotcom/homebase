@@ -3614,220 +3614,6 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       </div>
                     )}
                   </div>
-                  {/* Home Appliances — nested inside Home Systems */}
-                  {selectedHouseId && (
-                    <div className="mt-6" data-tour-id="appliances">
-                      <div className="flex items-center justify-between mb-4">
-                        <div>
-                          <h3 className="text-lg font-bold" style={{ color: '#2c0f5b' }}>Home Appliances</h3>
-                          <p className="text-sm" style={{ color: '#2c0f5b' }}>Track appliances, manuals, and maintenance schedules</p>
-                        </div>
-                        <Button
-                          onClick={() => {
-                            setEditingAppliance(null);
-                            setDialogApplianceType("");
-                            setBrandSearch("");
-                            setModelLookupLoading(false);
-                            applianceForm.reset({
-                              homeownerId,
-                              houseId: selectedHouseId,
-                              name: "",
-                              make: "",
-                              model: "",
-                              serialNumber: "",
-                              purchaseDate: "",
-                              installDate: "",
-                              yearInstalled: undefined,
-                              notes: "",
-                              location: "",
-                              warrantyExpiration: "",
-                              lastServiceDate: "",
-                            });
-                            setIsApplianceDialogOpen(true);
-                          }}
-                          style={{ backgroundColor: '#2c0f5b', color: 'white', borderColor: '#2c0f5b' }}
-                          className="hover:opacity-90"
-                          data-testid="button-add-appliance"
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          Add Appliance
-                        </Button>
-                      </div>
-
-                      {appliancesLoading ? (
-                        <div className="text-center py-8">
-                          <div className="text-lg" style={{ color: '#2c0f5b' }}>Loading appliances...</div>
-                        </div>
-                      ) : appliances.length === 0 ? (
-                        <Card className="border-gray-300 shadow-lg" style={{ backgroundColor: '#f2f2f2' }}>
-                          <CardContent className="text-center py-10">
-                            <Monitor className="mx-auto h-10 w-10 mb-3" style={{ color: '#2c0f5b' }} />
-                            <h3 className="text-base font-semibold mb-1" style={{ color: '#2c0f5b' }}>
-                              No appliances added yet
-                            </h3>
-                            <p className="text-sm text-gray-600">
-                              Click "Add Appliance" to start tracking your appliances, manuals, and maintenance schedules.
-                            </p>
-                          </CardContent>
-                        </Card>
-                      ) : (
-                        <Accordion type="multiple" className="space-y-2">
-                          {appliances.map((appliance) => {
-                            const installYear = appliance.installDate
-                              ? new Date(appliance.installDate).getFullYear()
-                              : appliance.yearInstalled;
-                            const age = installYear ? new Date().getFullYear() - installYear : null;
-
-                            return (
-                              <AccordionItem
-                                key={appliance.id}
-                                value={appliance.id}
-                                className="border border-gray-200 rounded-lg overflow-hidden"
-                                style={{ backgroundColor: '#ffffff' }}
-                              >
-                                <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-purple-50 [&>svg]:hidden">
-                                  <div className="flex items-center justify-between w-full gap-3">
-                                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                                      <Monitor className="w-5 h-5 shrink-0" style={{ color: '#2c0f5b' }} />
-                                      <div className="text-left min-w-0">
-                                        <p className="font-semibold text-sm leading-tight truncate" style={{ color: '#2c0f5b' }}>
-                                          {appliance.name}
-                                        </p>
-                                        <p className="text-xs text-gray-500 truncate">
-                                          {[appliance.make, appliance.model].filter(Boolean).join(' · ')}
-                                          {appliance.location ? ` · ${appliance.location}` : ''}
-                                        </p>
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center gap-2 shrink-0">
-                                      {age !== null && (
-                                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: '#e8e0f0', color: '#2c0f5b' }}>
-                                          {age} yr{age !== 1 ? 's' : ''}
-                                        </span>
-                                      )}
-                                      <ChevronDown className="w-4 h-4 text-gray-400 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                                    </div>
-                                  </div>
-                                </AccordionTrigger>
-                                <AccordionContent className="px-4 pb-4 pt-0">
-                                  <div className="border-t border-gray-100 pt-3 space-y-3">
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
-                                      {appliance.make && (
-                                        <div>
-                                          <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Manufacturer</p>
-                                          <p className="font-medium" style={{ color: '#2c0f5b' }}>{appliance.make}</p>
-                                        </div>
-                                      )}
-                                      {appliance.model && (
-                                        <div>
-                                          <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Model #</p>
-                                          <p className="font-medium" style={{ color: '#2c0f5b' }}>{appliance.model}</p>
-                                        </div>
-                                      )}
-                                      {appliance.serialNumber && (
-                                        <div>
-                                          <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Serial #</p>
-                                          <p className="font-medium text-gray-600">{appliance.serialNumber}</p>
-                                        </div>
-                                      )}
-                                      {appliance.location && (
-                                        <div>
-                                          <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Location</p>
-                                          <p className="font-medium text-gray-600">{appliance.location}</p>
-                                        </div>
-                                      )}
-                                      {installYear && (
-                                        <div>
-                                          <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Installed</p>
-                                          <p className="font-medium text-gray-600">{installYear}</p>
-                                        </div>
-                                      )}
-                                      {appliance.warrantyExpiration && (
-                                        <div>
-                                          <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Warranty Exp.</p>
-                                          <p className="font-medium text-gray-600">{appliance.warrantyExpiration}</p>
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    {appliance.notes && (
-                                      <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded border border-gray-100">
-                                        {appliance.notes}
-                                      </p>
-                                    )}
-
-                                    <div className="flex items-center justify-between pt-2">
-                                      <div className="flex gap-2">
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() => {
-                                            setSelectedApplianceId(appliance.id);
-                                            setEditingApplianceManual(null);
-                                            applianceManualForm.reset({
-                                              applianceId: appliance.id,
-                                              title: "",
-                                              type: "owner",
-                                              source: "upload",
-                                              url: "",
-                                              fileName: "",
-                                              fileSize: undefined,
-                                            });
-                                            setIsApplianceManualDialogOpen(true);
-                                          }}
-                                          className="text-xs h-7"
-                                          style={{ borderColor: '#2c0f5b', color: '#2c0f5b' }}
-                                          data-testid={`button-add-manual-${appliance.id}`}
-                                        >
-                                          <Book className="w-3 h-3 mr-1" />
-                                          Add Manual
-                                        </Button>
-                                      </div>
-                                      <div className="flex items-center gap-1">
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => {
-                                            setEditingAppliance(appliance);
-                                            setDialogApplianceType(appliance.name || "");
-                                            setBrandSearch(appliance.make || "");
-                                            setModelLookupLoading(false);
-                                            applianceForm.reset({
-                                              ...appliance,
-                                              houseId: appliance.houseId || undefined,
-                                              notes: appliance.notes || undefined,
-                                            });
-                                            setIsApplianceDialogOpen(true);
-                                          }}
-                                          className="h-7 w-7 p-0"
-                                          style={{ color: '#2c0f5b' }}
-                                          data-testid={`button-edit-appliance-${appliance.id}`}
-                                        >
-                                          <Edit className="w-3.5 h-3.5" />
-                                        </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => {
-                                            setApplianceToDelete(appliance);
-                                            setDeleteApplianceConfirmOpen(true);
-                                          }}
-                                          className="h-7 w-7 p-0 text-red-500 hover:text-red-700"
-                                          data-testid={`button-delete-appliance-${appliance.id}`}
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5" />
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </AccordionContent>
-                              </AccordionItem>
-                            );
-                          })}
-                        </Accordion>
-                      )}
-                    </div>
-                  )}
                 </CollapsibleContent>
               </Collapsible>
             </div>
@@ -4079,6 +3865,217 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
               )}
             </div>
 
+
+        {/* Home Appliances Section */}
+        {selectedHouseId && (
+          <div className="mt-12" data-tour-id="appliances">
+            <div className="space-y-6">
+              <div className="space-y-3 text-center">
+                <h2 className="text-2xl font-semibold" style={{ color: '#2c0f5b' }}>Home Appliances</h2>
+                <Button
+                  onClick={() => {
+                    setEditingAppliance(null);
+                    setDialogApplianceType("");
+                    setBrandSearch("");
+                    setModelLookupLoading(false);
+                    applianceForm.reset({
+                      homeownerId,
+                      houseId: selectedHouseId,
+                      name: "",
+                      make: "",
+                      model: "",
+                      serialNumber: "",
+                      purchaseDate: "",
+                      installDate: "",
+                      yearInstalled: undefined,
+                      notes: "",
+                      location: "",
+                      warrantyExpiration: "",
+                      lastServiceDate: "",
+                    });
+                    setIsApplianceDialogOpen(true);
+                  }}
+                  className="text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 hover:opacity-90 mx-auto"
+                  style={{ backgroundColor: '#2c0f5b' }}
+                  data-testid="button-add-appliance"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Appliance
+                </Button>
+              </div>
+              {appliancesLoading ? (
+                <div className="text-center py-8">
+                  <div className="text-lg" style={{ color: '#2c0f5b' }}>Loading appliances...</div>
+                </div>
+              ) : appliances.length === 0 ? (
+                <Card className="border-2" style={{ borderColor: '#b6a6f4', backgroundColor: '#f8f9fa' }}>
+                  <CardContent className="py-8 text-center">
+                    <Monitor className="h-12 w-12 mx-auto mb-4" style={{ color: '#b6a6f4' }} />
+                    <h3 className="text-lg font-medium mb-2" style={{ color: '#2c0f5b' }}>No appliances added yet</h3>
+                    <p className="text-gray-600">
+                      Track appliances, manuals, and maintenance schedules
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Accordion type="multiple" className="space-y-2">
+                  {appliances.map((appliance) => {
+                    const installYear = appliance.installDate
+                      ? new Date(appliance.installDate).getFullYear()
+                      : appliance.yearInstalled;
+                    const age = installYear ? new Date().getFullYear() - installYear : null;
+
+                    return (
+                      <AccordionItem
+                        key={appliance.id}
+                        value={appliance.id}
+                        className="border border-gray-200 rounded-lg overflow-hidden"
+                        style={{ backgroundColor: '#ffffff' }}
+                      >
+                        <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-purple-50 [&>svg]:hidden">
+                          <div className="flex items-center justify-between w-full gap-3">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <Monitor className="w-5 h-5 shrink-0" style={{ color: '#2c0f5b' }} />
+                              <div className="text-left min-w-0">
+                                <p className="font-semibold text-sm leading-tight truncate" style={{ color: '#2c0f5b' }}>
+                                  {appliance.name}
+                                </p>
+                                <p className="text-xs text-gray-500 truncate">
+                                  {[appliance.make, appliance.model].filter(Boolean).join(' · ')}
+                                  {appliance.location ? ` · ${appliance.location}` : ''}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              {age !== null && (
+                                <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: '#e8e0f0', color: '#2c0f5b' }}>
+                                  {age} yr{age !== 1 ? 's' : ''}
+                                </span>
+                              )}
+                              <ChevronDown className="w-4 h-4 text-gray-400 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                            </div>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="px-4 pb-4 pt-0">
+                          <div className="border-t border-gray-100 pt-3 space-y-3">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                              {appliance.make && (
+                                <div>
+                                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Manufacturer</p>
+                                  <p className="font-medium" style={{ color: '#2c0f5b' }}>{appliance.make}</p>
+                                </div>
+                              )}
+                              {appliance.model && (
+                                <div>
+                                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Model #</p>
+                                  <p className="font-medium" style={{ color: '#2c0f5b' }}>{appliance.model}</p>
+                                </div>
+                              )}
+                              {appliance.serialNumber && (
+                                <div>
+                                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Serial #</p>
+                                  <p className="font-medium text-gray-600">{appliance.serialNumber}</p>
+                                </div>
+                              )}
+                              {appliance.location && (
+                                <div>
+                                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Location</p>
+                                  <p className="font-medium text-gray-600">{appliance.location}</p>
+                                </div>
+                              )}
+                              {installYear && (
+                                <div>
+                                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Installed</p>
+                                  <p className="font-medium text-gray-600">{installYear}</p>
+                                </div>
+                              )}
+                              {appliance.warrantyExpiration && (
+                                <div>
+                                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Warranty Exp.</p>
+                                  <p className="font-medium text-gray-600">{appliance.warrantyExpiration}</p>
+                                </div>
+                              )}
+                            </div>
+
+                            {appliance.notes && (
+                              <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded border border-gray-100">
+                                {appliance.notes}
+                              </p>
+                            )}
+
+                            <div className="flex items-center justify-between pt-2">
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedApplianceId(appliance.id);
+                                    setEditingApplianceManual(null);
+                                    applianceManualForm.reset({
+                                      applianceId: appliance.id,
+                                      title: "",
+                                      type: "owner",
+                                      source: "upload",
+                                      url: "",
+                                      fileName: "",
+                                      fileSize: undefined,
+                                    });
+                                    setIsApplianceManualDialogOpen(true);
+                                  }}
+                                  className="text-xs h-7"
+                                  style={{ borderColor: '#2c0f5b', color: '#2c0f5b' }}
+                                  data-testid={`button-add-manual-${appliance.id}`}
+                                >
+                                  <Book className="w-3 h-3 mr-1" />
+                                  Add Manual
+                                </Button>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setEditingAppliance(appliance);
+                                    setDialogApplianceType(appliance.name || "");
+                                    setBrandSearch(appliance.make || "");
+                                    setModelLookupLoading(false);
+                                    applianceForm.reset({
+                                      ...appliance,
+                                      houseId: appliance.houseId || undefined,
+                                      notes: appliance.notes || undefined,
+                                    });
+                                    setIsApplianceDialogOpen(true);
+                                  }}
+                                  className="h-7 w-7 p-0"
+                                  style={{ color: '#2c0f5b' }}
+                                  data-testid={`button-edit-appliance-${appliance.id}`}
+                                >
+                                  <Edit className="w-3.5 h-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setApplianceToDelete(appliance);
+                                    setDeleteApplianceConfirmOpen(true);
+                                  }}
+                                  className="h-7 w-7 p-0 text-red-500 hover:text-red-700"
+                                  data-testid={`button-delete-appliance-${appliance.id}`}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    );
+                  })}
+                </Accordion>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Custom Maintenance Tasks Section */}
         <div className="mt-12" data-custom-tasks-section>
