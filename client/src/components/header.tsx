@@ -214,15 +214,17 @@ export default function Header() {
               </Link>
             )}
 
-            {/* Sign-out (tablet only) */}
+            {/* Sign-out (mobile + tablet; desktop uses sidebar) */}
             {isAuthenticated && (
               <button
                 onClick={handleLogout}
-                className="hidden md:flex lg:hidden items-center gap-1.5 text-xs font-semibold px-3 h-8 rounded-lg transition-colors"
-                style={{ background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.6)' }}
-                data-testid="button-logout-tablet"
+                className="flex lg:hidden items-center gap-1.5 text-xs font-semibold px-2.5 h-8 rounded-lg transition-colors"
+                style={{ background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.7)' }}
+                data-testid="button-logout-header"
+                aria-label="Sign out"
               >
-                <LogOut className="w-3.5 h-3.5" />Sign Out
+                <LogOut className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="hidden sm:inline">Sign Out</span>
               </button>
             )}
 
