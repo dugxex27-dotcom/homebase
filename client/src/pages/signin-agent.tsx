@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Eye, EyeOff } from "lucide-react";
 import logoAgent from '@assets/my-homebase-logo-tm-re-white-final_1776538414394.png';
+import iconAgent from '@assets/myhomebase-icon-re_1776539226017.png';
 
 const C = {
   header: '#173404',
@@ -167,9 +168,11 @@ export default function SignInAgent() {
 
       {/* ── Role header ── */}
       <div style={{ background: C.header, padding: '40px 24px 44px', textAlign: 'center', flexShrink: 0, position: 'relative', overflow: 'hidden' }}>
-        <div style={{ width: 120, height: 120, borderRadius: '50%', background: '#639922', opacity: 0.1, position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)' }} />
+        <img src={iconAgent} alt="" aria-hidden style={{ width: 130, height: 'auto', position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)', opacity: 0.18, pointerEvents: 'none' }} />
         <div style={{ marginBottom: 18, position: 'relative', zIndex: 2, display: 'flex', justifyContent: 'center' }}>
-          <img src={logoAgent} alt="MyHomeBase™" style={{ width: 200, height: 'auto' }} />
+          <a href="/" style={{ display: 'inline-block' }}>
+            <img src={logoAgent} alt="MyHomeBase™ — go to home" style={{ width: 200, height: 'auto' }} />
+          </a>
         </div>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 20, padding: '4px 12px', marginBottom: 14, position: 'relative', zIndex: 2, background: 'rgba(255,255,255,0.1)' }}>
           <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#C0DD97' }} />

@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Eye, EyeOff } from "lucide-react";
 import logoHomeowner from '@assets/my-homebase-logo-tm-howner-white-final_1776538414393.png';
+import iconHomeowner from '@assets/myhomebase-icon-homeowner_1776539226013.png';
 
 const C = {
   header: '#2d1f6e',
@@ -163,9 +164,11 @@ export default function SignInHomeowner() {
 
       {/* ── Role header ── */}
       <div style={{ background: C.header, padding: '40px 24px 44px', textAlign: 'center', flexShrink: 0, position: 'relative', overflow: 'hidden' }}>
-        <div style={{ width: 120, height: 120, borderRadius: '50%', background: '#7F77DD', opacity: 0.1, position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)' }} />
+        <img src={iconHomeowner} alt="" aria-hidden style={{ width: 130, height: 'auto', position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)', opacity: 0.18, pointerEvents: 'none' }} />
         <div style={{ marginBottom: 18, position: 'relative', zIndex: 2, display: 'flex', justifyContent: 'center' }}>
-          <img src={logoHomeowner} alt="MyHomeBase™" style={{ width: 200, height: 'auto' }} />
+          <a href="/" style={{ display: 'inline-block' }}>
+            <img src={logoHomeowner} alt="MyHomeBase™ — go to home" style={{ width: 200, height: 'auto' }} />
+          </a>
         </div>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 20, padding: '4px 12px', marginBottom: 14, position: 'relative', zIndex: 2, background: 'rgba(255,255,255,0.1)' }}>
           <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#CECBF6' }} />
