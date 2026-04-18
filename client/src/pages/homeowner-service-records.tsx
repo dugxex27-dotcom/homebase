@@ -727,9 +727,9 @@ export default function HomeownerServiceRecords() {
 
         {/* Maintenance Log Form Dialog */}
         <Dialog open={isMaintenanceLogDialogOpen} onOpenChange={setIsMaintenanceLogDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto text-white" style={{ backgroundColor: '#2c0f5b' }}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle style={{ color: 'white' }}>
+              <DialogTitle>
                 {editingMaintenanceLog ? 'Edit Service Record' : 'Add New Service Record'}
               </DialogTitle>
             </DialogHeader>
@@ -742,7 +742,7 @@ export default function HomeownerServiceRecords() {
                     name="houseId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel style={{ color: 'white' }}>House</FormLabel>
+                        <FormLabel>House</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger style={{ backgroundColor: '#ffffff', color: '#000000' }}>
@@ -769,7 +769,7 @@ export default function HomeownerServiceRecords() {
                     name="serviceType"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel style={{ color: 'white' }}>Service Type</FormLabel>
+                        <FormLabel>Service Type</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger style={{ backgroundColor: '#ffffff', color: '#000000' }}>
@@ -794,7 +794,7 @@ export default function HomeownerServiceRecords() {
                     name="homeArea"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel style={{ color: 'white' }}>Home Area</FormLabel>
+                        <FormLabel>Home Area</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger style={{ backgroundColor: '#ffffff', color: '#000000' }}>
@@ -820,7 +820,7 @@ export default function HomeownerServiceRecords() {
                   name="serviceDescription"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel style={{ color: 'white' }}>Service Description</FormLabel>
+                      <FormLabel>Service Description</FormLabel>
                       <FormControl>
                         <Input placeholder="e.g., Annual HVAC tune-up, Gutter cleaning, Roof repair" {...field} style={{ backgroundColor: 'white', color: '#000000' }} />
                       </FormControl>
@@ -835,7 +835,7 @@ export default function HomeownerServiceRecords() {
                     name="serviceDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel style={{ color: 'white' }}>Service Date</FormLabel>
+                        <FormLabel>Service Date</FormLabel>
                         <FormControl>
                           <Input type="date" {...field} value={field.value || ""} style={{ backgroundColor: 'white', color: '#000000' }} />
                         </FormControl>
@@ -849,7 +849,7 @@ export default function HomeownerServiceRecords() {
                     name="cost"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel style={{ color: 'white' }}>Cost</FormLabel>
+                        <FormLabel>Cost</FormLabel>
                         <FormControl>
                           <Input 
                             type="text" 
@@ -875,7 +875,7 @@ export default function HomeownerServiceRecords() {
                     name="contractorName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel style={{ color: 'white' }}>Contractor Name</FormLabel>
+                        <FormLabel>Contractor Name</FormLabel>
                         <FormControl>
                           <Input placeholder="Contractor or technician name" {...field} value={field.value || ""} style={{ backgroundColor: 'white', color: '#000000' }} />
                         </FormControl>
@@ -889,7 +889,7 @@ export default function HomeownerServiceRecords() {
                     name="contractorCompany"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel style={{ color: 'white' }}>Company</FormLabel>
+                        <FormLabel>Company</FormLabel>
                         <FormControl>
                           <Input placeholder="Company or service provider" {...field} value={field.value || ""} style={{ backgroundColor: 'white', color: '#000000' }} />
                         </FormControl>
@@ -905,7 +905,7 @@ export default function HomeownerServiceRecords() {
                     name="warrantyPeriod"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel style={{ color: 'white' }}>Warranty Period</FormLabel>
+                        <FormLabel>Warranty Period</FormLabel>
                         <FormControl>
                           <Input placeholder="e.g., 1 year, 6 months" {...field} value={field.value || ""} style={{ backgroundColor: 'white', color: '#000000' }} />
                         </FormControl>
@@ -919,7 +919,7 @@ export default function HomeownerServiceRecords() {
                     name="nextServiceDue"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel style={{ color: 'white' }}>Next Service Due</FormLabel>
+                        <FormLabel>Next Service Due</FormLabel>
                         <FormControl>
                           <Input type="date" {...field} value={field.value || ""} style={{ backgroundColor: 'white', color: '#000000' }} />
                         </FormControl>
@@ -934,7 +934,7 @@ export default function HomeownerServiceRecords() {
                   name="notes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel style={{ color: 'white' }}>Notes</FormLabel>
+                      <FormLabel>Notes</FormLabel>
                       <FormControl>
                         <textarea 
                           className="flex min-h-[80px] w-full rounded-md border border-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -951,11 +951,11 @@ export default function HomeownerServiceRecords() {
 
                 {/* File Upload Section */}
                 <div className="space-y-4 pt-4 border-t" style={{ borderColor: '#b6a6f4' }}>
-                  <h3 className="text-lg font-semibold" style={{ color: 'white' }}>Attachments</h3>
+                  <h3 className="text-lg font-semibold">Attachments</h3>
                   
                   {/* Receipt Upload */}
                   <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: 'white' }}>
+                    <label className="block text-sm font-medium mb-2">
                       Receipts/Invoices
                     </label>
                     <input
@@ -994,7 +994,7 @@ export default function HomeownerServiceRecords() {
 
                   {/* Before Photos Upload */}
                   <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: 'white' }}>
+                    <label className="block text-sm font-medium mb-2">
                       Before Photos
                     </label>
                     <input
@@ -1033,7 +1033,7 @@ export default function HomeownerServiceRecords() {
 
                   {/* After Photos Upload */}
                   <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: 'white' }}>
+                    <label className="block text-sm font-medium mb-2">
                       After Photos
                     </label>
                     <input

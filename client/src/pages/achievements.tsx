@@ -271,7 +271,7 @@ export default function Achievements() {
             {/* House Selector */}
             {!housesLoading && houses.length > 1 && (
               <div className="mb-6 sm:mb-8">
-                <Card style={{ backgroundColor: '#f2f2f2' }}>
+                <Card >
                   <CardContent className="pt-4 pb-4 sm:pt-6 sm:pb-6">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                       <div className="flex items-center gap-2">
@@ -319,7 +319,7 @@ export default function Achievements() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <Card 
-                  style={{ backgroundColor: '#f2f2f2' }}
+                  
                   className="cursor-pointer hover:shadow-lg transition-shadow"
                   onClick={() => {
                     setModalCategory('all');
@@ -345,7 +345,7 @@ export default function Achievements() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <Card 
-                  style={{ backgroundColor: '#f2f2f2' }}
+                  
                   className="cursor-pointer hover:shadow-lg transition-shadow"
                   onClick={() => {
                     setModalCategory('Seasonal');
@@ -371,7 +371,7 @@ export default function Achievements() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <Card 
-                  style={{ backgroundColor: '#f2f2f2' }}
+                  
                   className="cursor-pointer hover:shadow-lg transition-shadow"
                   onClick={() => {
                     setModalCategory('Financial Savvy');
@@ -397,7 +397,7 @@ export default function Achievements() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <Card 
-                  style={{ backgroundColor: '#f2f2f2' }}
+                  
                   className="cursor-pointer hover:shadow-lg transition-shadow"
                   onClick={() => {
                     setModalCategory('Organization');
@@ -423,7 +423,7 @@ export default function Achievements() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <Card 
-                  style={{ backgroundColor: '#f2f2f2' }}
+                  
                   className="cursor-pointer hover:shadow-lg transition-shadow"
                   onClick={() => {
                     setModalCategory('Referral & Community');
@@ -449,7 +449,7 @@ export default function Achievements() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <Card 
-                  style={{ backgroundColor: '#f2f2f2' }}
+                  
                   className="cursor-pointer hover:shadow-lg transition-shadow"
                   onClick={() => {
                     setModalCategory('Milestones');
@@ -475,7 +475,7 @@ export default function Achievements() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <Card 
-                  style={{ backgroundColor: '#f2f2f2' }}
+                  
                   className="cursor-pointer hover:shadow-lg transition-shadow"
                   onClick={() => {
                     setModalCategory('Streaks');
@@ -501,7 +501,7 @@ export default function Achievements() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <Card 
-                  style={{ backgroundColor: '#f2f2f2' }}
+                  
                   className="cursor-pointer hover:shadow-lg transition-shadow"
                   onClick={() => {
                     setModalCategory('Special');
@@ -527,7 +527,7 @@ export default function Achievements() {
 
           {/* Category Tabs */}
           <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="mb-6 sm:mb-8">
-            <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-4 md:grid-cols-8 mb-4 sm:mb-6" style={{ backgroundColor: '#f2f2f2' }}>
+            <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-4 md:grid-cols-8 mb-4 sm:mb-6" >
               <TabsTrigger value="all" data-testid="tab-all" className="text-xs sm:text-sm text-[#4b435c]" style={{ backgroundColor: '#e9d5ff' }}>All</TabsTrigger>
               <TabsTrigger value="seasonal" data-testid="tab-seasonal" className="text-xs sm:text-sm text-[#4b435c]" style={{ backgroundColor: '#e9d5ff' }}>Seasonal</TabsTrigger>
               <TabsTrigger value="financial savvy" data-testid="tab-financial" className="text-xs sm:text-sm text-[#4b435c]" style={{ backgroundColor: '#e9d5ff' }}>Financial</TabsTrigger>
@@ -539,7 +539,7 @@ export default function Achievements() {
             </TabsList>
 
             <TabsContent value={selectedCategory}>
-              <Card style={{ backgroundColor: '#f2f2f2' }}>
+              <Card >
                 <CardHeader className="pb-4 sm:pb-6">
                   <CardTitle className="text-base sm:text-lg lg:text-xl" style={{ color: '#2c0f5b' }}>
                     {selectedCategory === "all" ? "All Achievements" : 
@@ -663,7 +663,7 @@ export default function Achievements() {
 
           {/* Achievement Detail Modal */}
           <Dialog open={!!selectedAchievement} onOpenChange={() => setSelectedAchievement(null)}>
-            <DialogContent className="sm:max-w-[500px]" style={{ backgroundColor: '#f2f2f2' }}>
+            <DialogContent className="sm:max-w-[500px]" >
               {selectedAchievement && (
                 <>
                   <DialogHeader>
@@ -779,7 +779,7 @@ export default function Achievements() {
 
           {/* Category Modal - Shows all achievements in a category */}
           <Dialog open={categoryModalOpen} onOpenChange={setCategoryModalOpen}>
-            <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto" style={{ backgroundColor: '#f2f2f2' }}>
+            <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto" >
               <DialogHeader>
                 <DialogTitle className="text-xl sm:text-2xl" style={{ color: '#2c0f5b' }}>
                   {modalCategory === 'all' ? 'All Achievements' :

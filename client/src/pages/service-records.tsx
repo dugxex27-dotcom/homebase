@@ -446,7 +446,7 @@ export default function ServiceRecords() {
                 + Add Record
               </button>
               </DialogTrigger>
-              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" style={{ backgroundColor: '#f2f2f2' }}>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" >
               <DialogHeader>
                 <DialogTitle style={{ color: '#1560a2' }}>
                   {editingRecord ? 'Edit Service Record' : 'Add New Service Record'}
@@ -824,7 +824,7 @@ export default function ServiceRecords() {
 
         {/* House Selection for Homeowners */}
         {user?.role === 'homeowner' && houses.length > 0 && (
-          <Card className="mb-4" style={{ backgroundColor: '#f2f2f2' }}>
+          <Card className="mb-4" >
             <CardContent className="py-4">
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
@@ -851,7 +851,7 @@ export default function ServiceRecords() {
         )}
 
         {/* Filters and Search */}
-        <Card className="mb-6" style={{ backgroundColor: '#f2f2f2' }}>
+        <Card className="mb-6" >
           <CardContent className="py-4">
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
@@ -887,7 +887,7 @@ export default function ServiceRecords() {
         {/* Service Records List */}
         <div className="space-y-4">
           {filteredRecords.length === 0 ? (
-            <Card style={{ backgroundColor: '#f2f2f2' }}>
+            <Card >
               <CardContent className="py-12 text-center">
                 <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No Service Records</h3>

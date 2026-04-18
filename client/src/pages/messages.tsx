@@ -677,12 +677,12 @@ export default function Messages() {
                             Create Proposal
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-blue-600">
+                        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                           <DialogHeader>
-                            <DialogTitle style={{ color: 'white' }}>
+                            <DialogTitle>
                               Create Proposal for {selectedConversation?.otherPartyName}
                             </DialogTitle>
-                            <DialogDescription style={{ color: 'rgba(255,255,255,0.9)' }}>
+                            <DialogDescription>
                               Create a detailed proposal for this homeowner
                             </DialogDescription>
                           </DialogHeader>
@@ -694,11 +694,11 @@ export default function Messages() {
                                 name="title"
                                 render={({ field }) => (
                                   <FormItem>
-                                    <FormLabel style={{ color: 'white' }}>Title *</FormLabel>
+                                    <FormLabel>Title *</FormLabel>
                                     <FormControl>
-                                      <Input {...field} data-testid="input-proposal-title" className="bg-white text-black" />
+                                      <Input {...field} data-testid="input-proposal-title" />
                                     </FormControl>
-                                    <FormMessage style={{ color: '#ffcccc' }} />
+                                    <FormMessage />
                                   </FormItem>
                                 )}
                               />
@@ -708,10 +708,10 @@ export default function Messages() {
                                 name="serviceType"
                                 render={({ field }) => (
                                   <FormItem>
-                                    <FormLabel style={{ color: 'white' }}>Service Type *</FormLabel>
+                                    <FormLabel>Service Type *</FormLabel>
                                     <Select onValueChange={field.onChange} value={field.value}>
                                       <FormControl>
-                                        <SelectTrigger data-testid="select-service-type" className="bg-white text-black">
+                                        <SelectTrigger data-testid="select-service-type">
                                           <SelectValue placeholder="Select service type" />
                                         </SelectTrigger>
                                       </FormControl>
@@ -725,7 +725,7 @@ export default function Messages() {
                                         <SelectItem value="other">Other</SelectItem>
                                       </SelectContent>
                                     </Select>
-                                    <FormMessage style={{ color: '#ffcccc' }} />
+                                    <FormMessage />
                                   </FormItem>
                                 )}
                               />
@@ -735,11 +735,11 @@ export default function Messages() {
                                 name="estimatedCost"
                                 render={({ field }) => (
                                   <FormItem>
-                                    <FormLabel style={{ color: 'white' }}>Estimated Cost ($) *</FormLabel>
+                                    <FormLabel>Estimated Cost ($) *</FormLabel>
                                     <FormControl>
-                                      <Input type="number" step="0.01" {...field} data-testid="input-estimated-cost" className="bg-white text-black" />
+                                      <Input type="number" step="0.01" {...field} data-testid="input-estimated-cost" />
                                     </FormControl>
-                                    <FormMessage style={{ color: '#ffcccc' }} />
+                                    <FormMessage />
                                   </FormItem>
                                 )}
                               />
@@ -749,11 +749,11 @@ export default function Messages() {
                                 name="estimatedDuration"
                                 render={({ field }) => (
                                   <FormItem>
-                                    <FormLabel style={{ color: 'white' }}>Estimated Duration *</FormLabel>
+                                    <FormLabel>Estimated Duration *</FormLabel>
                                     <FormControl>
-                                      <Input placeholder="2-3 days, 1 week, etc." {...field} data-testid="input-estimated-duration" className="bg-white text-black" />
+                                      <Input placeholder="2-3 days, 1 week, etc." {...field} data-testid="input-estimated-duration" />
                                     </FormControl>
-                                    <FormMessage style={{ color: '#ffcccc' }} />
+                                    <FormMessage />
                                   </FormItem>
                                 )}
                               />
@@ -763,11 +763,11 @@ export default function Messages() {
                                 name="validUntil"
                                 render={({ field }) => (
                                   <FormItem>
-                                    <FormLabel style={{ color: 'white' }}>Valid Until *</FormLabel>
+                                    <FormLabel>Valid Until *</FormLabel>
                                     <FormControl>
-                                      <Input type="date" {...field} data-testid="input-valid-until" className="bg-white text-black" />
+                                      <Input type="date" {...field} data-testid="input-valid-until" />
                                     </FormControl>
-                                    <FormMessage style={{ color: '#ffcccc' }} />
+                                    <FormMessage />
                                   </FormItem>
                                 )}
                               />
@@ -778,7 +778,7 @@ export default function Messages() {
                                   variant="outline"
                                   onClick={() => setIsProposalDialogOpen(false)}
                                   data-testid="button-cancel-proposal"
-                                  className="bg-white text-black"
+                                 
                                 >
                                   Cancel
                                 </Button>
