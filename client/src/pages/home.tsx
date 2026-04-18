@@ -103,10 +103,6 @@ export default function Home() {
         <HomeownerFeatureGate featureName="Home Dashboard">
           <section className="py-8 px-4 sm:px-6 lg:px-8" style={{ backgroundColor: '#ffffff' }}>
             <div className="max-w-7xl mx-auto">
-              <div className="text-center mb-6">
-                <h2 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: '#2c0f5b' }}>Your Home at a Glance</h2>
-                <p className="text-gray-600 max-w-xl mx-auto">Track your home's health and maintenance all in one place.</p>
-              </div>
               
               {/* Property Cards — one per property, includes HWS score ring + zone grid + systems */}
               <div className={`gap-4 mb-6 ${houses.length === 2 ? 'grid grid-cols-1 lg:grid-cols-2' : 'flex flex-col'}`} data-tour-id="health-score">
