@@ -108,27 +108,27 @@ export default function HomeownerReferral() {
           <div className="space-y-8">
 
             {/* How It Works */}
-            <Card className="shadow-lg border-purple-100">
+            <Card className="shadow-lg" style={{ borderColor: '#e8e0f0' }}>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-purple-600">
+                <CardTitle className="flex items-center gap-2" style={{ color: '#2c0f5b' }}>
                   <Star className="w-5 h-5" />
                   How It Works
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
-                  <div className="p-4 bg-purple-50 rounded-lg">
-                    <Share2 className="w-8 h-8 text-purple-600 mx-auto mb-2" />
+                  <div className="p-4 rounded-lg" style={{ backgroundColor: '#f3eeff' }}>
+                    <Share2 className="w-8 h-8 mx-auto mb-2" style={{ color: '#2c0f5b' }} />
                     <p className="font-semibold text-gray-900 text-sm">1. Share Your Code</p>
                     <p className="text-xs text-gray-600 mt-1">Invite friends and family to join MyHomeBase™</p>
                   </div>
-                  <div className="p-4 bg-purple-50 rounded-lg">
-                    <Users className="w-8 h-8 text-purple-600 mx-auto mb-2" />
+                  <div className="p-4 rounded-lg" style={{ backgroundColor: '#f3eeff' }}>
+                    <Users className="w-8 h-8 mx-auto mb-2" style={{ color: '#2c0f5b' }} />
                     <p className="font-semibold text-gray-900 text-sm">2. Earn 1 Credit/Month</p>
                     <p className="text-xs text-gray-600 mt-1">For every active paying referral, you earn 1 credit each month they stay subscribed</p>
                   </div>
-                  <div className="p-4 bg-purple-50 rounded-lg">
-                    <CalendarCheck className="w-8 h-8 text-purple-600 mx-auto mb-2" />
+                  <div className="p-4 rounded-lg" style={{ backgroundColor: '#f3eeff' }}>
+                    <CalendarCheck className="w-8 h-8 mx-auto mb-2" style={{ color: '#2c0f5b' }} />
                     <p className="font-semibold text-gray-900 text-sm">3. Get a Free Month</p>
                     <p className="text-xs text-gray-600 mt-1">Once you accumulate enough credits (equal to your monthly cost), you earn a free month!</p>
                   </div>
@@ -139,7 +139,7 @@ export default function HomeownerReferral() {
             {/* Credit Progress */}
             <Card className="shadow-lg">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-purple-600">
+                <CardTitle className="flex items-center gap-2" style={{ color: '#2c0f5b' }}>
                   <Gift className="w-5 h-5" />
                   Your Referral Progress
                 </CardTitle>
@@ -151,16 +151,16 @@ export default function HomeownerReferral() {
                   <>
                     {/* Stats row */}
                     <div className="grid grid-cols-3 gap-3 text-center">
-                      <div className="bg-purple-50 rounded-lg p-3">
-                        <div className="text-2xl font-bold text-purple-700">{activeReferrals}</div>
+                      <div className="rounded-lg p-3" style={{ backgroundColor: '#f3eeff' }}>
+                        <div className="text-2xl font-bold" style={{ color: '#2c0f5b' }}>{activeReferrals}</div>
                         <div className="text-xs text-gray-600 mt-1">Active Referrals</div>
                       </div>
-                      <div className="bg-purple-50 rounded-lg p-3">
-                        <div className="text-2xl font-bold text-purple-700">{creditBalance}</div>
+                      <div className="rounded-lg p-3" style={{ backgroundColor: '#f3eeff' }}>
+                        <div className="text-2xl font-bold" style={{ color: '#2c0f5b' }}>{creditBalance}</div>
                         <div className="text-xs text-gray-600 mt-1">Credits Earned</div>
                       </div>
-                      <div className="bg-purple-50 rounded-lg p-3">
-                        <div className="text-2xl font-bold text-purple-700">{freeMonthsTotal}</div>
+                      <div className="rounded-lg p-3" style={{ backgroundColor: '#f3eeff' }}>
+                        <div className="text-2xl font-bold" style={{ color: '#2c0f5b' }}>{freeMonthsTotal}</div>
                         <div className="text-xs text-gray-600 mt-1">Free Months Earned</div>
                       </div>
                     </div>
@@ -169,7 +169,7 @@ export default function HomeownerReferral() {
                     <div>
                       <div className="flex justify-between items-center mb-2">
                         <span className="text-sm font-medium text-gray-700">Progress to next free month</span>
-                        <span className="text-sm font-bold text-purple-700">{creditBalance} / {creditsNeeded} credits</span>
+                        <span className="text-sm font-bold" style={{ color: '#2c0f5b' }}>{creditBalance} / {creditsNeeded} credits</span>
                       </div>
                       <Progress value={progressPercent} className="h-3" />
                       <p className="text-xs text-gray-500 mt-2">
@@ -201,7 +201,7 @@ export default function HomeownerReferral() {
             {/* Referral Code & Sharing */}
             <Card className="shadow-lg">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-purple-600">
+                <CardTitle className="flex items-center gap-2" style={{ color: '#2c0f5b' }}>
                   <Share2 className="w-5 h-5" />
                   Share Your Code
                 </CardTitle>
@@ -213,14 +213,14 @@ export default function HomeownerReferral() {
 
                 {/* Referral Code */}
                 <div>
-                  <Label className="text-purple-600">Your Referral Code</Label>
+                  <Label style={{ color: '#2c0f5b' }}>Your Referral Code</Label>
                   <div className="flex gap-2 mt-2">
                     <Input
                       value={referralCode}
                       readOnly
                       data-testid="input-homeowner-referral-code"
-                      className="font-mono text-lg font-bold text-center border-purple-200 focus:border-purple-500"
-                      style={{ color: '#7c3aed' }}
+                      className="font-mono text-lg font-bold text-center"
+                      style={{ color: '#2c0f5b', borderColor: '#d4c5f9' }}
                     />
                     <Button
                       onClick={() => copyToClipboard(referralCode)}
@@ -229,7 +229,8 @@ export default function HomeownerReferral() {
                       data-testid="button-copy-homeowner-code"
                       title="Copy referral code"
                       type="button"
-                      className="bg-purple-600 text-white hover:bg-purple-700 border-purple-600"
+                      className="text-white hover:opacity-90"
+                      style={{ backgroundColor: '#2c0f5b', borderColor: '#2c0f5b' }}
                     >
                       <Copy className="w-4 h-4" />
                     </Button>
@@ -238,8 +239,8 @@ export default function HomeownerReferral() {
 
                 {/* Share Options */}
                 <div>
-                  <Label className="text-purple-600">Share with Your Network</Label>
-                  <div className="grid grid-cols-2 gap-2 mt-2 p-3 rounded-lg bg-purple-600">
+                  <Label style={{ color: '#2c0f5b' }}>Share with Your Network</Label>
+                  <div className="grid grid-cols-2 gap-2 mt-2 p-3 rounded-lg" style={{ backgroundColor: '#2c0f5b' }}>
                     <Button
                       onClick={shareViaText}
                       variant="outline"
@@ -292,14 +293,14 @@ export default function HomeownerReferral() {
 
                 {/* Copy Link */}
                 <div>
-                  <Label className="text-purple-600">Referral Link</Label>
+                  <Label style={{ color: '#2c0f5b' }}>Referral Link</Label>
                   <div className="flex gap-2 mt-2">
                     <Input
                       value={referralLink}
                       readOnly
                       data-testid="input-homeowner-referral-link"
-                      className="text-sm border-purple-200 focus:border-purple-500"
-                      style={{ color: '#7c3aed' }}
+                      className="text-sm"
+                      style={{ color: '#2c0f5b', borderColor: '#d4c5f9' }}
                     />
                     <Button
                       onClick={() => copyToClipboard(referralLink)}
@@ -308,7 +309,8 @@ export default function HomeownerReferral() {
                       data-testid="button-copy-homeowner-link"
                       title="Copy referral link"
                       type="button"
-                      className="bg-purple-600 text-white hover:bg-purple-700 border-purple-600"
+                      className="text-white hover:opacity-90"
+                      style={{ backgroundColor: '#2c0f5b', borderColor: '#2c0f5b' }}
                     >
                       <Copy className="w-4 h-4" />
                     </Button>
@@ -323,7 +325,7 @@ export default function HomeownerReferral() {
             {/* Shareable Graphics */}
             <Card className="shadow-lg">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-purple-600">
+                <CardTitle className="flex items-center gap-2" style={{ color: '#2c0f5b' }}>
                   <ImageIcon className="w-5 h-5" />
                   Shareable Graphics
                 </CardTitle>
@@ -333,7 +335,7 @@ export default function HomeownerReferral() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-gray-600 mb-4">
-                  Click download on any graphic below to get a personalized version with your referral code <span className="font-mono font-bold text-purple-600">{referralCode}</span> already included!
+                  Click download on any graphic below to get a personalized version with your referral code <span className="font-mono font-bold" style={{ color: '#2c0f5b' }}>{referralCode}</span> already included!
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -342,12 +344,13 @@ export default function HomeownerReferral() {
                       <img src={instagramPostImg} alt="Instagram Post Template" className="w-full h-full object-cover" />
                     </div>
                     <div className="space-y-1">
-                      <h4 className="font-semibold text-sm text-purple-600">Instagram Post</h4>
+                      <h4 className="font-semibold text-sm" style={{ color: '#2c0f5b' }}>Instagram Post</h4>
                       <p className="text-xs text-gray-600">Square format - 1080x1080px</p>
                       <Button
                         onClick={() => downloadImageWithCode(instagramPostImg, `homebase-homeowner-instagram-${referralCode}.png`, { x: 534, y: 782, fontSize: 39, color: '#2c0f5b' })}
                         size="sm"
-                        className="w-full bg-purple-600 hover:bg-purple-700"
+                        className="w-full text-white hover:opacity-90"
+                        style={{ backgroundColor: '#2c0f5b' }}
                         data-testid="button-download-homeowner-instagram-post"
                         type="button"
                       >
@@ -362,12 +365,13 @@ export default function HomeownerReferral() {
                       <img src={instagramStoryImg} alt="Instagram Story Template" className="w-full h-full object-cover" />
                     </div>
                     <div className="space-y-1">
-                      <h4 className="font-semibold text-sm text-purple-600">Instagram Story</h4>
+                      <h4 className="font-semibold text-sm" style={{ color: '#2c0f5b' }}>Instagram Story</h4>
                       <p className="text-xs text-gray-600">Vertical format - 1080x1920px</p>
                       <Button
                         onClick={() => downloadImageWithCode(instagramStoryImg, `homebase-homeowner-story-${referralCode}.png`, { x: 300, y: 734, color: '#2c0f5b' })}
                         size="sm"
-                        className="w-full bg-purple-600 hover:bg-purple-700"
+                        className="w-full text-white hover:opacity-90"
+                        style={{ backgroundColor: '#2c0f5b' }}
                         data-testid="button-download-homeowner-instagram-story"
                         type="button"
                       >
@@ -382,12 +386,13 @@ export default function HomeownerReferral() {
                       <img src={facebookTwitterImg} alt="Facebook/Twitter Template" className="w-full h-full object-cover" />
                     </div>
                     <div className="space-y-1">
-                      <h4 className="font-semibold text-sm text-purple-600">Facebook/Twitter</h4>
+                      <h4 className="font-semibold text-sm" style={{ color: '#2c0f5b' }}>Facebook/Twitter</h4>
                       <p className="text-xs text-gray-600">Horizontal - 1200x630px</p>
                       <Button
                         onClick={() => downloadImageWithCode(facebookTwitterImg, `homebase-homeowner-facebook-${referralCode}.png`, { x: 792, y: 748, fontSize: 43 })}
                         size="sm"
-                        className="w-full bg-purple-600 hover:bg-purple-700"
+                        className="w-full text-white hover:opacity-90"
+                        style={{ backgroundColor: '#2c0f5b' }}
                         data-testid="button-download-homeowner-facebook-twitter"
                         type="button"
                       >
@@ -398,8 +403,8 @@ export default function HomeownerReferral() {
                   </div>
                 </div>
 
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mt-4">
-                  <p className="text-sm text-purple-800">
+                <div className="rounded-lg p-3 mt-4" style={{ backgroundColor: '#f3eeff', borderColor: '#d4c5f9', border: '1px solid #d4c5f9' }}>
+                  <p className="text-sm" style={{ color: '#2c0f5b' }}>
                     <strong>Tip:</strong> Download these graphics and share them on your social media. When friends or family sign up using your code, you'll earn 1 credit per month for every month they stay subscribed!
                   </p>
                 </div>
