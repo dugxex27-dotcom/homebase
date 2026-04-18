@@ -9,10 +9,16 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### Design and UI/UX
-- **Aesthetic**: Modern purple/blue gradient theme with a custom HomeBase logo, optimized for a consistent user experience.
-- **Components**: Utilizes `shadcn/ui` built on Radix UI.
-- **Theming**: Supports light/dark mode with role-based color palettes (purple for homeowners, red for contractors).
-- **Navigation**: Features role-based dashboards.
+- **Aesthetic**: Role-branded design system — Homeowner (purple), Contractor (blue), Agent (green).
+- **Typography**: Inter for body/UI text, Quicksand for headings. Both loaded via Google Fonts.
+- **Components**: Utilises `shadcn/ui` built on Radix UI plus custom design-spec component classes (`.page-header`, `.stat-chip`, `.card`, `.btn-primary`, `.form-input`, etc.) in `index.css`.
+- **Theming**: CSS variables scoped to `body[data-role]` and `.theme-*` classes (applied to body by `App.tsx`). Supports dark mode via `.dark` class.
+- **Navigation — 3 distinct viewport experiences**:
+  - **Phone (< 768px)**: Dark primary-coloured top bar (logo + bell), bottom nav with 4 role-specific items.
+  - **Tablet (768–1023px)**: Dark primary-coloured top bar with horizontal `TabletNav` row below it, no sidebar, no bottom nav.
+  - **Desktop (1024px+)**: White left sidebar (w-52, desktop-only) + dark header (logo + bell + notifications).
+- **Layout files**: `authenticated-layout.tsx` (no footer, `lg:ml-52` main offset), `header.tsx`, `bottom-nav.tsx`, `sidebar.tsx`.
+- **Footer**: Retained in `footer.tsx` but only rendered in the unauthenticated layout (public pages).
 
 ### Technical Implementation
 - **Frontend**: React 18 with TypeScript, Wouter for routing, TanStack Query for state management, and Tailwind CSS for styling.

@@ -1,27 +1,15 @@
 import { Link, useLocation } from "wouter";
-import { 
-  Wrench, 
-  Building2, 
-  FileText, 
-  Package, 
-  MessageCircle, 
-  Trophy, 
-  Gift, 
-  User as UserIcon, 
-  HelpCircle, 
-  LogOut, 
-  Download,
-  Shield,
-  LayoutDashboard,
-  Users,
-  Info,
-  FolderOpen
+import {
+  Wrench, Building2, FileText, Package, MessageCircle, Trophy, Gift,
+  User as UserIcon, HelpCircle, LogOut, Download, Shield, LayoutDashboard,
+  Users, Info, FolderOpen, Home
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient } from "@/lib/queryClient";
 import type { User, Notification } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
+import logoColor from '@assets/my-homebase-logo-tm-final_1776295160061.png';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -43,197 +31,102 @@ export default function Sidebar() {
     refetchInterval: 30000,
   });
 
-  const hasNotificationsForTab = (tabName: string) => {
+  const hasNotif = (tab: string) => {
     if (!unreadNotifications.length) return false;
-    switch (tabName) {
-      case 'messages':   return unreadNotifications.some(n => n.type === 'message');
-      case 'maintenance': return unreadNotifications.some(n => n.category === 'maintenance');
-      case 'dashboard':  return unreadNotifications.some(n => n.category === 'appointment');
-      default:           return false;
-    }
+    if (tab === 'messages') return unreadNotifications.some(n => n.type === 'message');
+    if (tab === 'maintenance') return unreadNotifications.some(n => n.category === 'maintenance');
+    if (tab === 'dashboard') return unreadNotifications.some(n => n.category === 'appointment');
+    return false;
   };
 
   useEffect(() => {
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsInstallable(false);
-      return;
-    }
-
-    const checkDismissal = () => {
-      const dismissed = localStorage.getItem('pwa-install-dismissed');
-      const dismissedTime = dismissed ? parseInt(dismissed) : 0;
-      const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
-      if (dismissed && Date.now() - dismissedTime < sevenDaysInMs) {
-        setIsInstallable(false);
-        setDeferredPrompt(null);
-        return true;
-      }
+    if (window.matchMedia('(display-mode: standalone)').matches) { setIsInstallable(false); return; }
+    const check = () => {
+      const d = localStorage.getItem('pwa-install-dismissed');
+      if (d && Date.now() - parseInt(d) < 7 * 24 * 60 * 60 * 1000) { setIsInstallable(false); setDeferredPrompt(null); return true; }
       return false;
     };
-
-    if (checkDismissal()) return;
-
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      const promptEvent = e as BeforeInstallPromptEvent;
-      setDeferredPrompt(promptEvent);
-      if (!checkDismissal()) setIsInstallable(true);
-    };
-
-    const handleAppInstalled = () => {
-      setDeferredPrompt(null);
-      setIsInstallable(false);
-      localStorage.removeItem('pwa-install-dismissed');
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    window.addEventListener('appinstalled', handleAppInstalled);
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', handleAppInstalled);
-    };
+    if (check()) return;
+    const onPrompt = (e: Event) => { e.preventDefault(); setDeferredPrompt(e as BeforeInstallPromptEvent); if (!check()) setIsInstallable(true); };
+    const onInstalled = () => { setDeferredPrompt(null); setIsInstallable(false); };
+    window.addEventListener('beforeinstallprompt', onPrompt);
+    window.addEventListener('appinstalled', onInstalled);
+    return () => { window.removeEventListener('beforeinstallprompt', onPrompt); window.removeEventListener('appinstalled', onInstalled); };
   }, []);
 
-  const handleInstallClick = async () => {
+  const handleInstall = async () => {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') console.log('PWA installed from sidebar');
-    setDeferredPrompt(null);
-    setIsInstallable(false);
+    await deferredPrompt.userChoice;
+    setDeferredPrompt(null); setIsInstallable(false);
   };
 
   const handleLogout = async () => {
     try {
-      const response = await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-      if (response.ok) {
-        queryClient.clear();
-        window.location.href = '/';
-      }
-    } catch {
-      window.location.href = '/';
-    }
+      const r = await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+      if (r.ok) { queryClient.clear(); window.location.href = '/'; }
+    } catch { window.location.href = '/'; }
   };
 
   if (!isAuthenticated || !typedUser) return null;
 
-  const isHomeowner = typedUser.role === 'homeowner';
-  const isContractor = typedUser.role === 'contractor';
-  const isAgent = typedUser.role === 'agent';
-
-  const navItemClass = (path: string | string[]) => {
-    const paths = Array.isArray(path) ? path : [path];
-    const isActive = paths.some(p => location === p || location.startsWith(p + '/'));
-    return `w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2 text-sm font-semibold transition-colors ${
-      isActive ? 'theme-nav-active' : 'theme-nav-item'
+  const nav = (path: string | string[]) => {
+    const arr = Array.isArray(path) ? path : [path];
+    const active = arr.some(p => location === p || location.startsWith(p + '/'));
+    return `w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-sm transition-colors font-medium ${
+      active
+        ? 'font-semibold'
+        : 'hover:bg-gray-50'
     }`;
   };
+  const navStyle = (path: string | string[]) => {
+    const arr = Array.isArray(path) ? path : [path];
+    const active = arr.some(p => location === p || location.startsWith(p + '/'));
+    return active
+      ? { backgroundColor: 'var(--theme-fill)', color: 'var(--theme-accent)' }
+      : { color: 'rgba(0,0,0,0.5)' };
+  };
 
-  const installBtnClass = `w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2 text-sm font-semibold transition-colors theme-nav-item theme-text-accent`;
+  const isHomeowner  = typedUser.role === 'homeowner';
+  const isContractor = typedUser.role === 'contractor';
+  const isAgent      = typedUser.role === 'agent';
 
   return (
-    <aside className="hidden md:flex md:flex-col w-44 bg-white border-r fixed left-0 top-14 sm:top-16 bottom-0 z-40 overflow-y-auto shadow-sm"
-      style={{ borderColor: 'var(--theme-border)' }}
+    /* Desktop sidebar — hidden on mobile + tablet, visible on lg+ */
+    <aside
+      className="hidden lg:flex lg:flex-col w-52 fixed left-0 top-14 bottom-0 z-40 overflow-y-auto"
+      style={{ background: '#ffffff', borderRight: '1px solid var(--theme-border)' }}
     >
-      <nav className="flex-1 p-3 space-y-1" aria-label="Main navigation">
+      <nav className="flex-1 p-3 space-y-0.5" aria-label="Main navigation">
         {isAdmin && (
           <Link href="/admin">
-            <button className={navItemClass('/admin')} data-testid="nav-admin">
-              <Shield className="w-5 h-5" />
-              Admin
+            <button className={nav('/admin')} style={navStyle('/admin')} data-testid="nav-admin">
+              <Shield className="w-4 h-4 flex-shrink-0" />Admin
             </button>
           </Link>
         )}
 
         {isHomeowner && (
           <>
-            <Link href="/maintenance">
-              <button className={navItemClass('/maintenance')} data-testid="nav-maintenance">
-                <Wrench className="w-5 h-5" />
-                Maintenance
-                {hasNotificationsForTab('maintenance') && (
-                  <span className="ml-auto h-2 w-2 rounded-full bg-red-500" />
-                )}
-              </button>
-            </Link>
-            <Link href="/service-records">
-              <button className={navItemClass('/service-records')} data-testid="nav-service-records">
-                <FileText className="w-5 h-5" />
-                Service Records
-              </button>
-            </Link>
-            <Link href="/documents">
-              <button className={navItemClass('/documents')} data-testid="nav-documents">
-                <FolderOpen className="w-5 h-5" />
-                Home Documents
-              </button>
-            </Link>
-            <Link href="/contractors">
-              <button className={navItemClass(['/contractors', '/find-contractors'])} data-testid="nav-contractors">
-                <Building2 className="w-5 h-5" />
-                Contractors
-              </button>
-            </Link>
-            <Link href="/products">
-              <button className={navItemClass('/products')} data-testid="nav-products">
-                <Package className="w-5 h-5" />
-                Products
-              </button>
-            </Link>
-            <Link href="/messages">
-              <button className={navItemClass('/messages')} data-testid="nav-messages">
-                <MessageCircle className="w-5 h-5" />
-                Messages
-                {hasNotificationsForTab('messages') && (
-                  <span className="ml-auto h-2 w-2 rounded-full bg-red-500" />
-                )}
-              </button>
-            </Link>
-            <Link href="/achievements">
-              <button className={navItemClass('/achievements')} data-testid="nav-achievements">
-                <Trophy className="w-5 h-5" />
-                Achievements
-              </button>
-            </Link>
-            <Link href="/homeowner-referral">
-              <button className={navItemClass('/homeowner-referral')} data-testid="nav-referral">
-                <Gift className="w-5 h-5" />
-                Referral
-              </button>
-            </Link>
-            <Link href="/account">
-              <button className={navItemClass('/account')} data-testid="nav-account">
-                <UserIcon className="w-5 h-5" />
-                Account
-              </button>
-            </Link>
-            <Link href="/support">
-              <button className={navItemClass('/support')} data-testid="nav-support">
-                <HelpCircle className="w-5 h-5" />
-                Support
-              </button>
-            </Link>
-            <a
-              href="https://gotohomebase.com/info"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full"
-              data-testid="nav-myhomebase-info"
-            >
-              <button className={installBtnClass}>
-                <Info className="w-5 h-5" />
-                MyHomeBase™ Info
+            <Link href="/"><button className={nav('/')} style={navStyle('/')} data-testid="nav-home"><Home className="w-4 h-4 flex-shrink-0" />Home</button></Link>
+            <Link href="/maintenance"><button className={nav('/maintenance')} style={navStyle('/maintenance')} data-testid="nav-maintenance"><Wrench className="w-4 h-4 flex-shrink-0" />Tasks{hasNotif('maintenance') && <span className="ml-auto h-2 w-2 rounded-full bg-red-500" />}</button></Link>
+            <Link href="/service-records"><button className={nav('/service-records')} style={navStyle('/service-records')} data-testid="nav-service-records"><FileText className="w-4 h-4 flex-shrink-0" />Service Records</button></Link>
+            <Link href="/documents"><button className={nav('/documents')} style={navStyle('/documents')} data-testid="nav-documents"><FolderOpen className="w-4 h-4 flex-shrink-0" />Documents</button></Link>
+            <Link href="/contractors"><button className={nav(['/contractors', '/find-contractors'])} style={navStyle(['/contractors', '/find-contractors'])} data-testid="nav-contractors"><Building2 className="w-4 h-4 flex-shrink-0" />Contractors</button></Link>
+            <Link href="/products"><button className={nav('/products')} style={navStyle('/products')} data-testid="nav-products"><Package className="w-4 h-4 flex-shrink-0" />Products</button></Link>
+            <Link href="/messages"><button className={nav('/messages')} style={navStyle('/messages')} data-testid="nav-messages"><MessageCircle className="w-4 h-4 flex-shrink-0" />Messages{hasNotif('messages') && <span className="ml-auto h-2 w-2 rounded-full bg-red-500" />}</button></Link>
+            <Link href="/achievements"><button className={nav('/achievements')} style={navStyle('/achievements')} data-testid="nav-achievements"><Trophy className="w-4 h-4 flex-shrink-0" />Achievements</button></Link>
+            <Link href="/homeowner-referral"><button className={nav('/homeowner-referral')} style={navStyle('/homeowner-referral')} data-testid="nav-referral"><Gift className="w-4 h-4 flex-shrink-0" />Referral</button></Link>
+            <Link href="/account"><button className={nav('/account')} style={navStyle('/account')} data-testid="nav-account"><UserIcon className="w-4 h-4 flex-shrink-0" />Account</button></Link>
+            <Link href="/support"><button className={nav('/support')} style={navStyle('/support')} data-testid="nav-support"><HelpCircle className="w-4 h-4 flex-shrink-0" />Support</button></Link>
+            <a href="https://gotohomebase.com/info" target="_blank" rel="noopener noreferrer" data-testid="nav-myhomebase-info">
+              <button className="w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-sm font-medium transition-colors hover:bg-gray-50" style={{ color: 'var(--theme-accent)' }}>
+                <Info className="w-4 h-4 flex-shrink-0" />MHB Info
               </button>
             </a>
             {isInstallable && (
-              <button
-                onClick={handleInstallClick}
-                className={installBtnClass}
-                data-testid="button-install-app-sidebar"
-              >
-                <Download className="w-4 h-4" />
-                Install App
+              <button onClick={handleInstall} className="w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-sm font-medium transition-colors hover:bg-gray-50" style={{ color: 'var(--theme-accent)' }} data-testid="button-install-app-sidebar">
+                <Download className="w-4 h-4 flex-shrink-0" />Install App
               </button>
             )}
           </>
@@ -241,115 +134,35 @@ export default function Sidebar() {
 
         {isContractor && (
           <>
-            <Link href="/contractor-dashboard">
-              <button className={navItemClass('/contractor-dashboard')} data-testid="nav-dashboard">
-                <LayoutDashboard className="w-5 h-5" />
-                Dashboard
-                {hasNotificationsForTab('dashboard') && (
-                  <span className="ml-auto h-2 w-2 rounded-full bg-red-500" />
-                )}
-              </button>
-            </Link>
-            <Link href="/manage-team">
-              <button className={navItemClass('/manage-team')} data-testid="nav-manage-team">
-                <Users className="w-5 h-5" />
-                Manage Team
-              </button>
-            </Link>
-            <Link href="/messages">
-              <button className={navItemClass('/messages')} data-testid="nav-messages">
-                <MessageCircle className="w-5 h-5" />
-                Messages
-                {hasNotificationsForTab('messages') && (
-                  <span className="ml-auto h-2 w-2 rounded-full bg-red-500" />
-                )}
-              </button>
-            </Link>
-            <Link href="/crm">
-              <button className={navItemClass('/crm')} data-testid="nav-crm">
-                <Wrench className="w-5 h-5" />
-                CRM
-              </button>
-            </Link>
-            <Link href="/contractor-referral">
-              <button className={navItemClass('/contractor-referral')} data-testid="nav-referral">
-                <Gift className="w-5 h-5" />
-                Referral
-              </button>
-            </Link>
-            <Link href="/contractor-profile">
-              <button className={navItemClass('/contractor-profile')} data-testid="nav-account">
-                <UserIcon className="w-5 h-5" />
-                Account
-              </button>
-            </Link>
-            <Link href="/support">
-              <button className={navItemClass('/support')} data-testid="nav-support">
-                <HelpCircle className="w-5 h-5" />
-                Support
-              </button>
-            </Link>
-            {isInstallable && (
-              <button
-                onClick={handleInstallClick}
-                className={installBtnClass}
-                data-testid="button-install-app-sidebar"
-              >
-                <Download className="w-4 h-4" />
-                Install App
-              </button>
-            )}
+            <Link href="/contractor-dashboard"><button className={nav('/contractor-dashboard')} style={navStyle('/contractor-dashboard')} data-testid="nav-dashboard"><LayoutDashboard className="w-4 h-4 flex-shrink-0" />Dashboard{hasNotif('dashboard') && <span className="ml-auto h-2 w-2 rounded-full bg-red-500" />}</button></Link>
+            <Link href="/manage-team"><button className={nav('/manage-team')} style={navStyle('/manage-team')} data-testid="nav-manage-team"><Users className="w-4 h-4 flex-shrink-0" />Manage Team</button></Link>
+            <Link href="/messages"><button className={nav('/messages')} style={navStyle('/messages')} data-testid="nav-messages"><MessageCircle className="w-4 h-4 flex-shrink-0" />Messages{hasNotif('messages') && <span className="ml-auto h-2 w-2 rounded-full bg-red-500" />}</button></Link>
+            <Link href="/crm"><button className={nav('/crm')} style={navStyle('/crm')} data-testid="nav-crm"><Wrench className="w-4 h-4 flex-shrink-0" />CRM</button></Link>
+            <Link href="/contractor-referral"><button className={nav('/contractor-referral')} style={navStyle('/contractor-referral')} data-testid="nav-referral"><Gift className="w-4 h-4 flex-shrink-0" />Referral</button></Link>
+            <Link href="/contractor-profile"><button className={nav('/contractor-profile')} style={navStyle('/contractor-profile')} data-testid="nav-account"><UserIcon className="w-4 h-4 flex-shrink-0" />Account</button></Link>
+            <Link href="/support"><button className={nav('/support')} style={navStyle('/support')} data-testid="nav-support"><HelpCircle className="w-4 h-4 flex-shrink-0" />Support</button></Link>
+            {isInstallable && <button onClick={handleInstall} className="w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-sm font-medium hover:bg-gray-50" style={{ color: 'var(--theme-accent)' }} data-testid="button-install-app-sidebar"><Download className="w-4 h-4 flex-shrink-0" />Install App</button>}
           </>
         )}
 
         {isAgent && (
           <>
-            <Link href="/agent-dashboard">
-              <button className={navItemClass('/agent-dashboard')} data-testid="nav-dashboard">
-                <LayoutDashboard className="w-5 h-5" />
-                Dashboard
-              </button>
-            </Link>
-            <Link href="/agent-referral">
-              <button className={navItemClass('/agent-referral')} data-testid="nav-referral">
-                <Gift className="w-5 h-5" />
-                Referral
-              </button>
-            </Link>
-            <Link href="/agent-account">
-              <button className={navItemClass('/agent-account')} data-testid="nav-account">
-                <UserIcon className="w-5 h-5" />
-                Account
-              </button>
-            </Link>
-            <Link href="/support">
-              <button className={navItemClass('/support')} data-testid="nav-support">
-                <HelpCircle className="w-5 h-5" />
-                Support
-              </button>
-            </Link>
-            {isInstallable && (
-              <button
-                onClick={handleInstallClick}
-                className={installBtnClass}
-                data-testid="button-install-app-sidebar"
-              >
-                <Download className="w-4 h-4" />
-                Install App
-              </button>
-            )}
+            <Link href="/agent-dashboard"><button className={nav('/agent-dashboard')} style={navStyle('/agent-dashboard')} data-testid="nav-dashboard"><LayoutDashboard className="w-4 h-4 flex-shrink-0" />Dashboard</button></Link>
+            <Link href="/agent-referral"><button className={nav('/agent-referral')} style={navStyle('/agent-referral')} data-testid="nav-referral"><Gift className="w-4 h-4 flex-shrink-0" />Referral</button></Link>
+            <Link href="/agent-account"><button className={nav('/agent-account')} style={navStyle('/agent-account')} data-testid="nav-account"><UserIcon className="w-4 h-4 flex-shrink-0" />Account</button></Link>
+            <Link href="/support"><button className={nav('/support')} style={navStyle('/support')} data-testid="nav-support"><HelpCircle className="w-4 h-4 flex-shrink-0" />Support</button></Link>
+            {isInstallable && <button onClick={handleInstall} className="w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-sm font-medium hover:bg-gray-50" style={{ color: 'var(--theme-accent)' }} data-testid="button-install-app-sidebar"><Download className="w-4 h-4 flex-shrink-0" />Install App</button>}
           </>
         )}
       </nav>
 
-      <div className="p-3 border-t" style={{ borderColor: 'var(--theme-border)' }}>
+      <div className="p-3" style={{ borderTop: '1px solid var(--theme-border)' }}>
         <button
           onClick={handleLogout}
-          className="w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2 text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
+          className="w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
           data-testid="button-logout-sidebar"
         >
-          <LogOut className="w-4 h-4" />
-          Sign Out
+          <LogOut className="w-4 h-4 flex-shrink-0" />Sign Out
         </button>
       </div>
     </aside>

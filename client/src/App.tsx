@@ -96,14 +96,17 @@ const SubscriptionSuccess = lazy(() => import("./pages/subscription-success"));
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
   
-  // Set data-role attribute on body for role-based theming
+  // Set data-role attribute and theme class on body for role-based theming
   useEffect(() => {
     const typedUser = user as { role?: string } | undefined;
     const role = typedUser?.role || 'homeowner';
     document.body.setAttribute('data-role', role);
+    document.body.classList.remove('theme-homeowner', 'theme-contractor', 'theme-agent');
+    document.body.classList.add(`theme-${role}`);
     
     return () => {
       document.body.removeAttribute('data-role');
+      document.body.classList.remove('theme-homeowner', 'theme-contractor', 'theme-agent');
     };
   }, [user]);
 
