@@ -320,7 +320,7 @@ export default function HomeownerAccount() {
 
       // Add referral code text
       const fontSize = codePosition.fontSize || 48;
-      ctx.font = `700 ${fontSize}px Quicksand, sans-serif`;
+      ctx.font = `700 ${fontSize}px 'Plus Jakarta Sans', sans-serif`;
       ctx.fillStyle = codePosition.color || '#ffffff';
       ctx.textAlign = 'center';
       ctx.fillText(referralCode, codePosition.x, codePosition.y);

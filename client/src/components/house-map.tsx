@@ -369,7 +369,7 @@ function ZoneCard({ zone, items, selected, onClick }: {
         minHeight: "54px",
         textAlign: "left",
         transition: "border-color 0.15s, background 0.15s",
-        fontFamily: "'Quicksand', system-ui, sans-serif",
+        fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
       }}
       onMouseEnter={e => {
         if (!selected) (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(83,74,183,0.35)";
@@ -434,7 +434,7 @@ function SystemRow({ dot, onClick }: { dot: DotItem; onClick: () => void }) {
         transition: "border-color 0.15s",
         width: "100%",
         textAlign: "left",
-        fontFamily: "'Quicksand', system-ui, sans-serif",
+        fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
       }}
       onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(83,74,183,0.25)"; }}
       onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(83,74,183,0.08)"; }}
@@ -567,11 +567,11 @@ export default function HouseMap({
     fontSize: "10px", fontWeight: 700, color: "#9b97c4",
     letterSpacing: "0.1em", textTransform: "uppercase",
     marginBottom: "8px", marginTop: "2px",
-    fontFamily: "'Quicksand', system-ui, sans-serif",
+    fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif",
   };
 
   return (
-    <div style={{ fontFamily: "'Quicksand', system-ui, sans-serif" }}>
+    <div style={{ fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
 
       {/* ── Property Card Header (full mode only) ─────────────────────── */}
       {!compact && (
@@ -606,7 +606,7 @@ export default function HouseMap({
                 style={{ transition: "stroke-dashoffset 0.5s ease" }}
               />
               <text x="26" y="31" textAnchor="middle" fontSize="12" fontWeight="700"
-                fill="#2d1f6e" fontFamily="Quicksand,system-ui">
+                fill="#2d1f6e" fontFamily="Plus Jakarta Sans,system-ui,sans-serif">
                 {rawScore}
               </text>
             </svg>
