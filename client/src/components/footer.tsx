@@ -26,7 +26,7 @@ export default function Footer() {
               </div>
             </div>
             <p className="text-gray-300 leading-relaxed text-sm sm:text-base">
-              Your trusted partner for connecting with skilled contractors, discovering quality DIY products, and maintaining your home with confidence.
+              MyHomeBase keeps your home's complete history organized, protected, and ready — so you're never caught without the records that matter.
             </p>
           </div>
 
