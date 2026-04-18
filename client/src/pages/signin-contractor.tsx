@@ -5,35 +5,37 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Eye, EyeOff } from "lucide-react";
-import logoImage from '@assets/my-homebase-logo-tm-final_1776295160061.png';
+
+const C = {
+  header: '#0c447c',
+  bg: '#eef4fc',
+  primary: '#185FA5',
+  border: 'rgba(24,95,165,0.12)',
+  cardBorder: 'rgba(24,95,165,0.1)',
+  eyebrow: '#B5D4F4',
+  inactive: '#7badd4',
+  label: '#042C53',
+};
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(1, "Password is required"),
 });
-
 const forgotPasswordSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
 });
-
 const resetPasswordSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   resetCode: z.string().min(6, "Reset code must be 6 characters"),
   newPassword: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string().min(1, "Please confirm your password"),
-}).refine((data) => data.newPassword === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
-
+}).refine((d) => d.newPassword === d.confirmPassword, { message: "Passwords don't match", path: ["confirmPassword"] });
 const registerSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
@@ -41,18 +43,25 @@ const registerSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string().min(1, "Please confirm your password"),
   zipCode: z.string().min(5, "Please enter a valid zip code").max(10, "Zip code is too long"),
-  companyName: z.string().min(1, "Company name is required"),
-  companyBio: z.string().min(1, "Company bio is required"),
-  companyPhone: z.string().min(1, "Company phone is required"),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
+  referralCode: z.string().optional(),
+}).refine((d) => d.password === d.confirmPassword, { message: "Passwords don't match", path: ["confirmPassword"] });
 
 type LoginFormData = z.infer<typeof loginSchema>;
 type RegisterFormData = z.infer<typeof registerSchema>;
 type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
+
+const inpStyle = { background: C.bg, border: `1.5px solid ${C.border}`, borderRadius: 11, padding: '11px 14px', fontSize: 13, fontWeight: 600, color: C.label, height: 'auto', boxShadow: 'none', outline: 'none' } as React.CSSProperties;
+const labelStyle = { fontSize: 11, fontWeight: 700, color: C.label, letterSpacing: '0.03em', marginBottom: 4, display: 'block' } as React.CSSProperties;
+
+const GoogleSVG = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+  </svg>
+);
 
 export default function SignInContractor() {
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
@@ -66,723 +75,297 @@ export default function SignInContractor() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  const loginForm = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
-    mode: "onBlur",
-  });
+  useEffect(() => {
+    document.body.classList.add('signin-page');
+    return () => document.body.classList.remove('signin-page');
+  }, []);
 
-  const registerForm = useForm<RegisterFormData>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: {
-      firstName: "",
-      lastName: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-      zipCode: "",
-      companyName: "",
-      companyBio: "",
-      companyPhone: "",
-    },
-    mode: "onBlur",
-  });
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const refParam = urlParams.get('ref');
+    if (refParam) registerForm.setValue('referralCode', refParam);
+  }, []);
 
-  const forgotPasswordForm = useForm<ForgotPasswordFormData>({
-    resolver: zodResolver(forgotPasswordSchema),
-    defaultValues: {
-      email: "",
-    },
-  });
+  const loginForm = useForm<LoginFormData>({ resolver: zodResolver(loginSchema), defaultValues: { email: "", password: "" }, mode: "onBlur" });
+  const registerForm = useForm<RegisterFormData>({ resolver: zodResolver(registerSchema), defaultValues: { firstName: "", lastName: "", email: "", password: "", confirmPassword: "", zipCode: "", referralCode: "" }, mode: "onBlur" });
+  const forgotPasswordForm = useForm<ForgotPasswordFormData>({ resolver: zodResolver(forgotPasswordSchema), defaultValues: { email: "" } });
+  const resetPasswordForm = useForm<ResetPasswordFormData>({ resolver: zodResolver(resetPasswordSchema), defaultValues: { email: "", resetCode: "", newPassword: "", confirmPassword: "" } });
 
-  const resetPasswordForm = useForm<ResetPasswordFormData>({
-    resolver: zodResolver(resetPasswordSchema),
-    defaultValues: {
-      email: "",
-      resetCode: "",
-      newPassword: "",
-      confirmPassword: "",
-    },
-  });
+  function resolvePostAuthRedirect(defaultPath: string): string {
+    const urlHandoffToken = new URLSearchParams(window.location.search).get('handoff_token');
+    const sessionHandoffToken = sessionStorage.getItem('pendingHandoffToken');
+    const handoffToken = urlHandoffToken || sessionHandoffToken;
+    if (handoffToken) return `/handoff/${handoffToken}`;
+    return defaultPath;
+  }
 
   const loginMutation = useMutation({
-    mutationFn: async (data: LoginFormData) => {
-      const response = await apiRequest("/api/auth/login", "POST", data);
-      return response.json();
-    },
+    mutationFn: async (data: LoginFormData) => (await apiRequest("/api/auth/login", "POST", data)).json(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
-      toast({
-        title: "Welcome back!",
-        description: "You have successfully logged in.",
-      });
-      setLocation('/contractor-dashboard');
+      toast({ title: "Welcome back!" });
+      setLocation(resolvePostAuthRedirect('/contractor-dashboard'));
     },
-    onError: (error: Error) => {
-      toast({
-        title: "Login failed",
-        description: error.message || "Invalid credentials. Please try again.",
-        variant: "destructive",
-      });
-    },
+    onError: (e: Error) => toast({ title: "Login failed", description: e.message || "Invalid credentials.", variant: "destructive" }),
   });
 
   const registerMutation = useMutation({
-    mutationFn: async (data: RegisterFormData) => {
-      const response = await apiRequest("/api/auth/register", "POST", {
-        ...data,
-        role: 'contractor',
-      });
-      return response.json();
-    },
+    mutationFn: async (data: RegisterFormData) => (await apiRequest("/api/auth/register", "POST", { ...data, role: 'contractor' })).json(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
-      toast({
-        title: "Account created!",
-        description: "Welcome to MyHomeBase™. Your account has been created successfully.",
-      });
+      toast({ title: "Account created!", description: "Welcome to MyHomeBase™." });
       setLocation('/contractor-dashboard');
     },
-    onError: (error: Error) => {
-      toast({
-        title: "Registration failed",
-        description: error.message || "Could not create account. Please try again.",
-        variant: "destructive",
-      });
-    },
+    onError: (e: Error) => toast({ title: "Registration failed", description: e.message, variant: "destructive" }),
   });
 
   const forgotPasswordMutation = useMutation({
-    mutationFn: async (data: ForgotPasswordFormData) => {
-      const response = await apiRequest("/api/auth/forgot-password", "POST", data);
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Reset code sent",
-        description: "A password reset code has been sent to your email. Please check your inbox.",
-      });
-      setResetStep('reset');
-      resetPasswordForm.setValue('email', forgotPasswordForm.getValues('email'));
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Request failed",
-        description: error.message || "Could not process your request. Please try again.",
-        variant: "destructive",
-      });
-    },
+    mutationFn: async (data: ForgotPasswordFormData) => (await apiRequest("/api/auth/forgot-password", "POST", data)).json(),
+    onSuccess: () => { toast({ title: "Reset code sent" }); setResetStep('reset'); resetPasswordForm.setValue('email', forgotPasswordForm.getValues('email')); },
+    onError: (e: Error) => toast({ title: "Request failed", description: e.message, variant: "destructive" }),
   });
 
   const resetPasswordMutation = useMutation({
-    mutationFn: async (data: ResetPasswordFormData) => {
-      const response = await apiRequest("/api/auth/reset-password", "POST", data);
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Password reset successful",
-        description: "Your password has been reset. You can now sign in with your new password.",
-      });
-      setShowForgotPassword(false);
-      setResetStep('request');
-      forgotPasswordForm.reset();
-      resetPasswordForm.reset();
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Reset failed",
-        description: error.message || "Invalid reset code. Please try again.",
-        variant: "destructive",
-      });
-    },
+    mutationFn: async (data: ResetPasswordFormData) => (await apiRequest("/api/auth/reset-password", "POST", data)).json(),
+    onSuccess: () => { toast({ title: "Password reset successful" }); setShowForgotPassword(false); setResetStep('request'); forgotPasswordForm.reset(); resetPasswordForm.reset(); },
+    onError: (e: Error) => toast({ title: "Reset failed", description: e.message, variant: "destructive" }),
   });
-
-  const handleLoginSubmit = (data: LoginFormData) => {
-    loginMutation.mutate(data);
-  };
-
-  const handleRegisterSubmit = (data: RegisterFormData) => {
-    registerMutation.mutate(data);
-  };
-
-  const handleForgotPasswordSubmit = (data: ForgotPasswordFormData) => {
-    forgotPasswordMutation.mutate(data);
-  };
-
-  const handleResetPasswordSubmit = (data: ResetPasswordFormData) => {
-    resetPasswordMutation.mutate(data);
-  };
 
   const handleContractorDemoLogin = async () => {
     try {
-      console.log('[Demo Login] Starting contractor demo login...');
-      
-      // Clear any existing session first
-      try {
-        await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-        queryClient.clear();
-      } catch (e) {
-        // Ignore logout errors - user might not be logged in
-      }
-      
-      const response = await apiRequest('/api/auth/contractor-demo-login', 'POST', {
-        email: 'demo@contractor.com',
-        name: 'Demo Contractor',
-        role: 'contractor'
-      });
-      
-      console.log('[Demo Login] Response received:', response.ok, response.status);
-      
-      if (response.ok) {
-        console.log('[Demo Login] Success! Redirecting...');
-        toast({
-          title: "Demo login successful",
-          description: "Logged in as demo contractor.",
-        });
-        // Use window.location for a full page refresh to ensure session is picked up
-        window.location.href = '/contractor-dashboard';
-      }
+      try { await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); queryClient.clear(); } catch {}
+      const response = await apiRequest('/api/auth/contractor-demo-login', 'POST', { email: 'demo@contractor.com', name: 'Demo Contractor', role: 'contractor' });
+      if (response.ok) { toast({ title: "Demo login successful" }); window.location.href = '/contractor-dashboard'; }
     } catch (error: any) {
-      console.error('[Demo Login] Error:', error?.message || error);
-      toast({
-        title: "Demo login failed",
-        description: error?.message || "Could not log in. Please try again.",
-        variant: "destructive",
-      });
+      toast({ title: "Demo login failed", description: error?.message, variant: "destructive" });
     }
   };
 
+  const referralCodeValue = registerForm.watch("referralCode");
+
+  const toggleBtn = (active: boolean) => ({
+    flex: 1, padding: '7px 0', borderRadius: 8, fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', transition: 'all 0.15s',
+    background: active ? '#fff' : 'transparent',
+    color: active ? C.label : C.inactive,
+    fontFamily: 'inherit',
+  } as React.CSSProperties);
+
+  const primaryBtn = (pending: boolean) => ({
+    width: '100%', background: C.primary, borderRadius: 12, padding: '13px 0', fontSize: 14, fontWeight: 700, color: '#fff',
+    border: 'none', cursor: pending ? 'default' : 'pointer', marginBottom: 16, opacity: pending ? 0.7 : 1, fontFamily: 'inherit',
+  } as React.CSSProperties);
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(to bottom, #e8f4f8, #f0f9fc)' }}>
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <img 
-            src={logoImage} 
-            alt="MyHomeBase™" 
-            className="h-10 w-auto mx-auto mb-4"
-            data-testid="img-logo-contractor"
-          />
-          <h1 className="text-2xl font-bold mb-2" style={{ color: '#1a1a1a' }}>Where organized homeowners become better clients.</h1>
+    <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: C.bg }}>
+
+      {/* ── Role header ── */}
+      <div style={{ background: C.header, padding: '40px 20px 24px', textAlign: 'center', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 14 }}>
+          <div style={{ width: 30, height: 30, background: 'rgba(255,255,255,0.12)', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 13l3-6 3 3 3-5" stroke="#fff" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/><circle cx="13" cy="4" r="2" stroke="#fff" strokeWidth="1.2"/></svg>
+          </div>
+          <span style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>MyHomeBase™</span>
+        </div>
+        <div style={{ fontSize: 10, fontWeight: 700, color: C.eyebrow, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>Contractor</div>
+        <div style={{ fontSize: 20, fontWeight: 700, color: '#fff', letterSpacing: '-0.3px' }}>Welcome back</div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.55)', marginTop: 4 }}>Sign in to your contractor account</div>
+      </div>
+
+      {/* ── Scrollable body ── */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+        <div style={{ background: '#fff', borderRadius: 14, border: `1px solid ${C.cardBorder}`, padding: 16 }}>
+
+          <div style={{ display: 'flex', background: C.bg, borderRadius: 10, padding: 3, marginBottom: 16 }}>
+            <button type="button" onClick={() => setActiveTab('login')} style={toggleBtn(activeTab === 'login')} data-testid="tab-login-contractor">Sign in</button>
+            <button type="button" onClick={() => setActiveTab('register')} style={toggleBtn(activeTab === 'register')} data-testid="tab-register-contractor">Register</button>
+          </div>
+
+          {activeTab === 'login' && (
+            <Form {...loginForm}>
+              <form onSubmit={loginForm.handleSubmit((d) => loginMutation.mutate(d))} data-testid="form-login-contractor">
+                <FormField control={loginForm.control} name="email" render={({ field }) => (
+                  <FormItem style={{ marginBottom: 10 }}>
+                    <label style={labelStyle}>Email address</label>
+                    <FormControl><Input type="email" placeholder="you@email.com" {...field} data-testid="input-email-contractor" style={inpStyle} className="focus-visible:ring-0 focus-visible:ring-offset-0" /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={loginForm.control} name="password" render={({ field }) => (
+                  <FormItem style={{ marginBottom: 10 }}>
+                    <label style={labelStyle}>Password</label>
+                    <FormControl>
+                      <div style={{ position: 'relative' }}>
+                        <Input type={showLoginPassword ? 'text' : 'password'} placeholder="••••••••" {...field} data-testid="input-password-contractor" style={{ ...inpStyle, paddingRight: 44 }} className="focus-visible:ring-0 focus-visible:ring-offset-0" />
+                        <button type="button" onClick={() => setShowLoginPassword(!showLoginPassword)} data-testid="button-toggle-login-password-contractor" style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: C.inactive, display: 'flex', padding: 0 }}>
+                          {showLoginPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <div style={{ textAlign: 'right', marginBottom: 14 }}>
+                  <button type="button" onClick={() => setShowForgotPassword(true)} data-testid="link-forgot-password-contractor" style={{ fontSize: 11, fontWeight: 700, color: C.primary, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Forgot password?</button>
+                </div>
+                <button type="submit" disabled={loginMutation.isPending} data-testid="button-login-contractor" style={primaryBtn(loginMutation.isPending)}>
+                  {loginMutation.isPending ? 'Signing in…' : 'Sign in'}
+                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <div style={{ flex: 1, height: 1, background: C.border }} />
+                  <span style={{ fontSize: 10, fontWeight: 700, color: C.inactive }}>or</span>
+                  <div style={{ flex: 1, height: 1, background: C.border }} />
+                </div>
+                <a href="/auth/google" data-testid="button-google-signin-contractor" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', background: '#fff', border: '1.5px solid rgba(0,0,0,0.12)', borderRadius: 12, padding: '12px 0', fontSize: 13, fontWeight: 700, color: '#1a1a1a', textDecoration: 'none', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+                  <GoogleSVG />Continue with Google
+                </a>
+              </form>
+            </Form>
+          )}
+
+          {activeTab === 'register' && (
+            <Form {...registerForm}>
+              <form onSubmit={registerForm.handleSubmit((d) => registerMutation.mutate(d))} data-testid="form-register-contractor">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <FormField control={registerForm.control} name="firstName" render={({ field }) => (
+                    <FormItem style={{ marginBottom: 10 }}><label style={labelStyle}>First name</label><FormControl><Input placeholder="First" {...field} data-testid="input-first-name-contractor" style={inpStyle} className="focus-visible:ring-0 focus-visible:ring-offset-0" /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={registerForm.control} name="lastName" render={({ field }) => (
+                    <FormItem style={{ marginBottom: 10 }}><label style={labelStyle}>Last name</label><FormControl><Input placeholder="Last" {...field} data-testid="input-last-name-contractor" style={inpStyle} className="focus-visible:ring-0 focus-visible:ring-offset-0" /></FormControl><FormMessage /></FormItem>
+                  )} />
+                </div>
+                <FormField control={registerForm.control} name="email" render={({ field }) => (
+                  <FormItem style={{ marginBottom: 10 }}><label style={labelStyle}>Email address</label><FormControl><Input type="email" placeholder="you@email.com" {...field} data-testid="input-register-email-contractor" style={inpStyle} className="focus-visible:ring-0 focus-visible:ring-offset-0" /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={registerForm.control} name="password" render={({ field }) => (
+                  <FormItem style={{ marginBottom: 10 }}>
+                    <label style={labelStyle}>Password</label>
+                    <FormControl>
+                      <div style={{ position: 'relative' }}>
+                        <Input type={showRegisterPassword ? 'text' : 'password'} placeholder="Min 6 characters" {...field} data-testid="input-password-contractor" style={{ ...inpStyle, paddingRight: 44 }} className="focus-visible:ring-0 focus-visible:ring-offset-0" />
+                        <button type="button" onClick={() => setShowRegisterPassword(!showRegisterPassword)} data-testid="button-toggle-register-password-contractor" style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: C.inactive, display: 'flex', padding: 0 }}>
+                          {showRegisterPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={registerForm.control} name="confirmPassword" render={({ field }) => (
+                  <FormItem style={{ marginBottom: 10 }}>
+                    <label style={labelStyle}>Confirm password</label>
+                    <FormControl>
+                      <div style={{ position: 'relative' }}>
+                        <Input type={showConfirmPassword ? 'text' : 'password'} placeholder="Confirm password" {...field} data-testid="input-confirm-password-contractor" style={{ ...inpStyle, paddingRight: 44 }} className="focus-visible:ring-0 focus-visible:ring-offset-0" />
+                        <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} data-testid="button-toggle-confirm-password-contractor" style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: C.inactive, display: 'flex', padding: 0 }}>
+                          {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={registerForm.control} name="zipCode" render={({ field }) => (
+                  <FormItem style={{ marginBottom: 10 }}><label style={labelStyle}>Zip code</label><FormControl><Input placeholder="Enter your zip code" {...field} data-testid="input-zip-code-contractor" style={inpStyle} className="focus-visible:ring-0 focus-visible:ring-offset-0" /></FormControl><FormMessage /></FormItem>
+                )} />
+                {referralCodeValue && (
+                  <FormField control={registerForm.control} name="referralCode" render={({ field }) => (
+                    <FormItem style={{ marginBottom: 10 }}><label style={labelStyle}>Referral code</label><FormControl><Input {...field} readOnly data-testid="input-referral-code-contractor" style={{ ...inpStyle, opacity: 0.7 }} className="focus-visible:ring-0 focus-visible:ring-offset-0" /></FormControl><FormMessage /></FormItem>
+                  )} />
+                )}
+                <button type="submit" disabled={registerMutation.isPending} data-testid="button-register-contractor" style={primaryBtn(registerMutation.isPending)}>
+                  {registerMutation.isPending ? 'Creating account…' : 'Create Account'}
+                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <div style={{ flex: 1, height: 1, background: C.border }} />
+                  <span style={{ fontSize: 10, fontWeight: 700, color: C.inactive }}>or</span>
+                  <div style={{ flex: 1, height: 1, background: C.border }} />
+                </div>
+                <a href="/auth/google" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', background: '#fff', border: '1.5px solid rgba(0,0,0,0.12)', borderRadius: 12, padding: '12px 0', fontSize: 13, fontWeight: 700, color: '#1a1a1a', textDecoration: 'none', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+                  <GoogleSVG />Continue with Google
+                </a>
+              </form>
+            </Form>
+          )}
         </div>
 
-        <Card className="border-0 shadow-xl bg-white">
-          <CardHeader className="text-center pb-6">
-            <CardTitle className="text-2xl" style={{ color: '#1a1a1a' }}>
-              Contractor Sign In
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'login' | 'register')}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login" data-testid="tab-login-contractor">Login</TabsTrigger>
-                <TabsTrigger value="register" data-testid="tab-register-contractor">Register</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="login">
-                <Form {...loginForm}>
-                  <form onSubmit={loginForm.handleSubmit(handleLoginSubmit)} className="space-y-4" data-testid="form-login-contractor">
-                    <FormField
-                      control={loginForm.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="email"
-                              placeholder="Enter your email"
-                              {...field}
-                              data-testid="input-email-contractor"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={loginForm.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Password</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Input
-                                type={showLoginPassword ? "text" : "password"}
-                                placeholder="Enter your password"
-                                {...field}
-                                data-testid="input-password-contractor"
-                                className="pr-10"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowLoginPassword(!showLoginPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                data-testid="button-toggle-login-password-contractor"
-                              >
-                                {showLoginPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                              </button>
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => setShowForgotPassword(true)}
-                        className="text-sm hover:underline"
-                        style={{ color: '#1560a2' }}
-                        data-testid="link-forgot-password-contractor"
-                      >
-                        Forgot password?
-                      </button>
-                    </div>
-
-                    <Button
-                      type="submit"
-                      className="w-full text-white"
-                      disabled={loginMutation.isPending}
-                      style={{ backgroundColor: '#1560a2' }}
-                      data-testid="button-login-contractor"
-                    >
-                      {loginMutation.isPending ? 'Signing in...' : 'Sign In'}
-                    </Button>
-                  </form>
-                </Form>
-              </TabsContent>
-
-              <TabsContent value="register">
-                <Form {...registerForm}>
-                  <form onSubmit={registerForm.handleSubmit(handleRegisterSubmit)} className="space-y-4" data-testid="form-register-contractor">
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={registerForm.control}
-                        name="firstName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>First Name</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="First name"
-                                {...field}
-                                data-testid="input-first-name-contractor"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={registerForm.control}
-                        name="lastName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Last Name</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="Last name"
-                                {...field}
-                                data-testid="input-last-name-contractor"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <FormField
-                      control={registerForm.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="email"
-                              placeholder="Enter your email"
-                              {...field}
-                              data-testid="input-register-email-contractor"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={registerForm.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Password</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Input
-                                type={showRegisterPassword ? "text" : "password"}
-                                placeholder="Create a password (min 6 characters)"
-                                {...field}
-                                data-testid="input-password-contractor"
-                                className="pr-10"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowRegisterPassword(!showRegisterPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                data-testid="button-toggle-register-password-contractor"
-                              >
-                                {showRegisterPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                              </button>
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={registerForm.control}
-                      name="confirmPassword"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Confirm Password</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Input
-                                type={showConfirmPassword ? "text" : "password"}
-                                placeholder="Confirm your password"
-                                {...field}
-                                data-testid="input-confirm-password-contractor"
-                                className="pr-10"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                data-testid="button-toggle-confirm-password-contractor"
-                              >
-                                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                              </button>
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={registerForm.control}
-                      name="zipCode"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Zip Code</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Enter your zip code"
-                              {...field}
-                              data-testid="input-zip-code-contractor"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="text-sm text-muted-foreground mb-2 bg-blue-50 p-3 rounded-md border border-blue-200">
-                      Create your company profile (team members can be added later via invite)
-                    </div>
-
-                    <FormField
-                      control={registerForm.control}
-                      name="companyName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Company Name</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="e.g., ABC Plumbing"
-                              {...field}
-                              data-testid="input-company-name-contractor"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={registerForm.control}
-                      name="companyBio"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Company Bio</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Brief description of your company"
-                              {...field}
-                              data-testid="input-company-bio-contractor"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={registerForm.control}
-                      name="companyPhone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Company Phone</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="(555) 123-4567"
-                              {...field}
-                              data-testid="input-company-phone-contractor"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <Button
-                      type="submit"
-                      className="w-full text-white"
-                      disabled={registerMutation.isPending}
-                      style={{ backgroundColor: '#1560a2' }}
-                      data-testid="button-register-contractor"
-                    >
-                      {registerMutation.isPending ? 'Creating account...' : 'Create Account'}
-                    </Button>
-                  </form>
-                </Form>
-              </TabsContent>
-            </Tabs>
-
-            {/* Google Sign-In */}
-            <div className="pt-4 border-t">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="flex-1 h-px bg-border" />
-                <span className="text-xs font-semibold text-muted-foreground">or</span>
-                <div className="flex-1 h-px bg-border" />
-              </div>
-              <a
-                href="/auth/google"
-                className="flex items-center justify-center gap-2.5 w-full bg-white border border-gray-200 rounded-xl py-3 px-4 text-sm font-bold text-gray-800 hover:bg-gray-50 active:scale-[0.985] transition-all shadow-sm no-underline"
-                data-testid="button-google-signin-contractor"
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                </svg>
-                Continue with Google
-              </a>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Dialog open={showForgotPassword} onOpenChange={(open) => {
-          setShowForgotPassword(open);
-          if (!open) {
-            setResetStep('request');
-            forgotPasswordForm.reset();
-            resetPasswordForm.reset();
+        <div style={{ textAlign: 'center', fontSize: 12, fontWeight: 600, color: C.inactive }}>
+          {activeTab === 'login'
+            ? <><span>Don't have an account? </span><button type="button" onClick={() => setActiveTab('register')} style={{ color: C.primary, fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit' }}>Register free</button></>
+            : <><span>Already have an account? </span><button type="button" onClick={() => setActiveTab('login')} style={{ color: C.primary, fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit' }}>Sign in</button></>
           }
-        }}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>
-                {resetStep === 'request' ? 'Reset Your Password' : 'Enter Reset Code'}
-              </DialogTitle>
-              <DialogDescription>
-                {resetStep === 'request' 
-                  ? 'Enter your email address and we\'ll send you a password reset code.'
-                  : 'Enter the 6-digit code sent to your email and choose a new password.'}
-              </DialogDescription>
-            </DialogHeader>
-
-            {resetStep === 'request' ? (
-              <Form {...forgotPasswordForm}>
-                <form onSubmit={forgotPasswordForm.handleSubmit(handleForgotPasswordSubmit)} className="space-y-4">
-                  <FormField
-                    control={forgotPasswordForm.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email Address</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="email"
-                            placeholder="Enter your email"
-                            {...field}
-                            data-testid="input-forgot-email-contractor"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setShowForgotPassword(false)}
-                      className="flex-1"
-                      data-testid="button-cancel-forgot-contractor"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="submit"
-                      className="flex-1 text-white"
-                      disabled={forgotPasswordMutation.isPending}
-                      style={{ backgroundColor: '#1560a2' }}
-                      data-testid="button-send-reset-code-contractor"
-                    >
-                      {forgotPasswordMutation.isPending ? 'Sending...' : 'Send Reset Code'}
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            ) : (
-              <Form {...resetPasswordForm}>
-                <form onSubmit={resetPasswordForm.handleSubmit(handleResetPasswordSubmit)} className="space-y-4">
-                  <FormField
-                    control={resetPasswordForm.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email Address</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="email"
-                            {...field}
-                            disabled
-                            data-testid="input-reset-email-contractor"
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={resetPasswordForm.control}
-                    name="resetCode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Reset Code</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Enter 6-digit code"
-                            {...field}
-                            data-testid="input-reset-code-contractor"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={resetPasswordForm.control}
-                    name="newPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>New Password</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Input
-                              type={showNewPassword ? "text" : "password"}
-                              placeholder="Enter new password"
-                              {...field}
-                              data-testid="input-new-password-contractor"
-                              className="pr-10"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setShowNewPassword(!showNewPassword)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                            >
-                              {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                            </button>
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={resetPasswordForm.control}
-                    name="confirmPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Confirm New Password</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Input
-                              type={showConfirmNewPassword ? "text" : "password"}
-                              placeholder="Confirm new password"
-                              {...field}
-                              data-testid="input-confirm-new-password-contractor"
-                              className="pr-10"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                            >
-                              {showConfirmNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                            </button>
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setResetStep('request');
-                        resetPasswordForm.reset();
-                      }}
-                      className="flex-1"
-                      data-testid="button-back-contractor"
-                    >
-                      Back
-                    </Button>
-                    <Button
-                      type="submit"
-                      className="flex-1 text-white"
-                      disabled={resetPasswordMutation.isPending}
-                      style={{ backgroundColor: '#1560a2' }}
-                      data-testid="button-reset-password-contractor"
-                    >
-                      {resetPasswordMutation.isPending ? 'Resetting...' : 'Reset Password'}
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            )}
-          </DialogContent>
-        </Dialog>
+        </div>
+        <div style={{ textAlign: 'center', paddingBottom: 24 }}>
+          <button type="button" onClick={handleContractorDemoLogin} data-testid="button-contractor-demo" style={{ fontSize: 10, fontWeight: 600, color: 'rgba(0,0,0,0.25)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}>
+            Demo login
+          </button>
+        </div>
       </div>
+
+      <Dialog open={showForgotPassword} onOpenChange={(open) => { setShowForgotPassword(open); if (!open) { setResetStep('request'); forgotPasswordForm.reset(); resetPasswordForm.reset(); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{resetStep === 'request' ? 'Reset Your Password' : 'Enter Reset Code'}</DialogTitle>
+            <DialogDescription>{resetStep === 'request' ? "Enter your email and we'll send a reset code." : "Enter the 6-digit code sent to your email."}</DialogDescription>
+          </DialogHeader>
+          {resetStep === 'request' ? (
+            <Form {...forgotPasswordForm}>
+              <form onSubmit={forgotPasswordForm.handleSubmit((d) => forgotPasswordMutation.mutate(d))} className="space-y-4">
+                <FormField control={forgotPasswordForm.control} name="email" render={({ field }) => (
+                  <FormItem><label style={labelStyle}>Email Address</label><FormControl><Input type="email" placeholder="Enter your email" {...field} data-testid="input-forgot-email-contractor" /></FormControl><FormMessage /></FormItem>
+                )} />
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" onClick={() => setShowForgotPassword(false)} className="flex-1" data-testid="button-cancel-forgot-contractor">Cancel</Button>
+                  <Button type="submit" className="flex-1 text-white" disabled={forgotPasswordMutation.isPending} style={{ backgroundColor: C.primary }} data-testid="button-send-reset-code-contractor">{forgotPasswordMutation.isPending ? 'Sending…' : 'Send Reset Code'}</Button>
+                </div>
+              </form>
+            </Form>
+          ) : (
+            <Form {...resetPasswordForm}>
+              <form onSubmit={resetPasswordForm.handleSubmit((d) => resetPasswordMutation.mutate(d))} className="space-y-4">
+                <FormField control={resetPasswordForm.control} name="email" render={({ field }) => (
+                  <FormItem><label style={labelStyle}>Email Address</label><FormControl><Input type="email" {...field} disabled data-testid="input-reset-email-contractor" /></FormControl></FormItem>
+                )} />
+                <FormField control={resetPasswordForm.control} name="resetCode" render={({ field }) => (
+                  <FormItem><label style={labelStyle}>Reset Code</label><FormControl><Input placeholder="Enter 6-digit code" {...field} data-testid="input-reset-code-contractor" /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={resetPasswordForm.control} name="newPassword" render={({ field }) => (
+                  <FormItem>
+                    <label style={labelStyle}>New Password</label>
+                    <FormControl>
+                      <div className="relative">
+                        <Input type={showNewPassword ? "text" : "password"} placeholder="Enter new password" {...field} data-testid="input-new-password-contractor" className="pr-10" />
+                        <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                          {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={resetPasswordForm.control} name="confirmPassword" render={({ field }) => (
+                  <FormItem>
+                    <label style={labelStyle}>Confirm New Password</label>
+                    <FormControl>
+                      <div className="relative">
+                        <Input type={showConfirmNewPassword ? "text" : "password"} placeholder="Confirm new password" {...field} data-testid="input-confirm-new-password-contractor" className="pr-10" />
+                        <button type="button" onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                          {showConfirmNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" onClick={() => { setResetStep('request'); resetPasswordForm.reset(); }} className="flex-1" data-testid="button-back-contractor">Back</Button>
+                  <Button type="submit" className="flex-1 text-white" disabled={resetPasswordMutation.isPending} style={{ backgroundColor: C.primary }} data-testid="button-reset-password-contractor">{resetPasswordMutation.isPending ? 'Resetting…' : 'Reset Password'}</Button>
+                </div>
+              </form>
+            </Form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
