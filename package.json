@@ -82,6 +82,7 @@
     "helmet": "^8.1.0",
     "http-proxy-middleware": "^3.0.5",
     "input-otp": "^1.4.2",
+    "lodash": "^4.18.1",
     "lucide-react": "^0.453.0",
     "memoizee": "^0.4.17",
     "memorystore": "^1.6.7",
@@ -151,7 +152,7 @@
   "overrides": {
     "@xmldom/xmldom": "0.8.12",
     "axios": "1.15.0",
-    "lodash": "4.17.21",
+    "lodash": "4.18.1",
     "replace": {
       "minimatch": "3.1.4"
     },
