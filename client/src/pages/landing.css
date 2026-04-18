@@ -116,7 +116,7 @@
   font-size: clamp(28px, 7.5vw, 40px);
   font-weight: 700;
   color: #ffffff;
-  line-height: 1.15;
+  line-height: 1;
   letter-spacing: -0.02em;
 }
 
