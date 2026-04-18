@@ -781,7 +781,7 @@ export default function Achievements() {
           <Dialog open={categoryModalOpen} onOpenChange={setCategoryModalOpen}>
             <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto" >
               <DialogHeader>
-                <DialogTitle className="text-xl sm:text-2xl" style={{ color: '#2c0f5b' }}>
+                <DialogTitle style={{ color: '#2c0f5b' }}>
                   {modalCategory === 'all' ? 'All Achievements' :
                    modalCategory === 'Seasonal' ? 'Seasonal Badges' :
                    modalCategory === 'Financial Savvy' ? 'Financial Savvy Achievements' :

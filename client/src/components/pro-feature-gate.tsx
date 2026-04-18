@@ -74,7 +74,7 @@ export function ProBenefitsDialog({ open, onOpenChange }: ProBenefitsDialogProps
               <Crown className="h-8 w-8 text-white" />
             </div>
           </div>
-          <DialogTitle className="text-2xl">Upgrade to Contractor Pro</DialogTitle>
+          <DialogTitle>Upgrade to Contractor Pro</DialogTitle>
           <DialogDescription className="text-base">
             Unlock powerful CRM tools to grow your business and save hours every week
           </DialogDescription>

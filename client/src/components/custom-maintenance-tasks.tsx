@@ -246,7 +246,7 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-bold">
+              <DialogTitle>
                 {editingTask ? 'Edit Custom Task' : 'Create Custom Task'}
               </DialogTitle>
             </DialogHeader>

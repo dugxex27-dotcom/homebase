@@ -91,7 +91,7 @@ export function HomeownerBenefitsDialog({ open, onOpenChange, trialDaysRemaining
               <Crown className="h-8 w-8 text-white" />
             </div>
           </div>
-          <DialogTitle className="text-2xl" style={{ color: '#2c0f5b' }}>Unlock Full MyHomeBase™ Access</DialogTitle>
+          <DialogTitle style={{ color: '#2c0f5b' }}>Unlock Full MyHomeBase™ Access</DialogTitle>
           <DialogDescription className="text-base">
             Get all the tools you need to keep your home in perfect condition
           </DialogDescription>

@@ -587,7 +587,7 @@ export default function ContractorDashboard() {
       }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-slate-800">
+            <DialogTitle>
               Create New Proposal
             </DialogTitle>
             <DialogDescription className="text-slate-500">
