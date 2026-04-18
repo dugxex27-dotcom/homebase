@@ -4984,7 +4984,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                   <Button 
                     type="submit" 
                     disabled={createApplianceMutation.isPending || updateApplianceMutation.isPending}
-                    style={{ backgroundColor: 'white', color: '#2c0f5b' }}
+                    style={{ backgroundColor: '#2c0f5b', color: 'white' }}
                     className="hover:opacity-90"
                   >
                     {createApplianceMutation.isPending || updateApplianceMutation.isPending ? (
