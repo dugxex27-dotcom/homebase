@@ -179,11 +179,7 @@ export default function Landing() {
                   >✕</button>
                   <div className="mhb-referral-popover-title">How it works</div>
                   <div className="mhb-referral-popover-body">
-                    Earn <strong>$1/month</strong> for every user you refer who becomes a paid subscriber.<br /><br />
-                    Refer <strong>5 homeowners</strong> or <strong>20 contractors</strong> and your MyHomeBase subscription is <strong>free for life.</strong>
-                  </div>
-                  <div className="mhb-referral-popover-footer">
-                    Your referral link is in your profile after signup.
+                    The more homeowners you bring to MyHomeBase, the less your subscription costs. Bring enough and it's free — for as long as they're a paid subscriber.
                   </div>
                 </div>
               )}
