@@ -2,10 +2,32 @@
    MyHomeBase — Welcome Screen Styles
    ============================================ */
 
-/* Hide the public header when on the landing page so the full-screen design fills viewport */
-body.mhb-landing-active > div > div > header,
-body.mhb-landing-active header:first-of-type {
-  display: none !important;
+/* On mobile & tablet: hide the public header (landing fills the viewport) */
+@media (max-width: 1023px) {
+  body.mhb-landing-active > div > div > header,
+  body.mhb-landing-active header:first-of-type {
+    display: none !important;
+  }
+}
+
+/* On desktop: show the public header and shrink the landing spacer */
+@media (min-width: 1024px) {
+  body.mhb-landing-active header:first-of-type {
+    display: flex !important;
+  }
+}
+
+/* ── Font system ── */
+.mhb-welcome,
+.mhb-welcome * {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.mhb-headline,
+.mhb-headline-accent,
+.mhb-utb-title,
+.mhb-referral-popover-title {
+  font-family: 'Quicksand', system-ui, sans-serif;
 }
 
 .mhb-welcome {
@@ -13,7 +35,6 @@ body.mhb-landing-active header:first-of-type {
   display: flex;
   flex-direction: column;
   background: linear-gradient(160deg, #130a2e 0%, #2d1f6e 55%, #3c2a90 100%);
-  font-family: 'InterNumbers', 'Quicksand', sans-serif;
   overflow: hidden;
   position: relative;
 }
@@ -32,7 +53,6 @@ body.mhb-landing-active header:first-of-type {
   gap: 18px;
 }
 
-/* Logo below badge */
 .mhb-logo {
   display: block;
   height: 32px;
@@ -42,7 +62,6 @@ body.mhb-landing-active header:first-of-type {
   object-position: left center;
 }
 
-/* Two-column hero body: copy left, stats right */
 .mhb-hero-body {
   display: flex;
   align-items: flex-start;
@@ -57,7 +76,6 @@ body.mhb-landing-active header:first-of-type {
   min-width: 0;
 }
 
-/* Stacked stats — right column */
 .mhb-stat-stack {
   display: flex;
   flex-direction: column;
@@ -106,10 +124,9 @@ body.mhb-landing-active header:first-of-type {
   color: #a89eed;
 }
 
-/* Sub headline */
 .mhb-sub {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   color: rgba(255, 255, 255, 0.65);
   line-height: 1.65;
   max-width: 340px;
@@ -117,9 +134,10 @@ body.mhb-landing-active header:first-of-type {
 
 .mhb-sub-highlight {
   color: #ffffff;
+  font-weight: 600;
 }
 
-/* Stat chips — used in .mhb-stat-stack (stacked right column) */
+/* Stat chips */
 .mhb-stat-chip {
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -130,7 +148,7 @@ body.mhb-landing-active header:first-of-type {
 
 .mhb-stat-num {
   font-size: 28px;
-  font-weight: 700;
+  font-weight: 800;
   color: #ffffff;
   line-height: 1;
   margin-bottom: 5px;
@@ -169,7 +187,7 @@ body.mhb-landing-active header:first-of-type {
 }
 
 .mhb-sheet-label {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: rgba(0, 0, 0, 0.35);
   text-transform: uppercase;
@@ -220,10 +238,7 @@ body.mhb-landing-active header:first-of-type {
   flex-shrink: 0;
 }
 
-.mhb-utb-icon svg {
-  width: 100%;
-  height: 100%;
-}
+.mhb-utb-icon svg { width: 100%; height: 100%; }
 
 .mhb-utb-text {
   flex: 1;
@@ -239,7 +254,7 @@ body.mhb-landing-active header:first-of-type {
 
 .mhb-utb-sub {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   color: rgba(255, 255, 255, 0.7);
   margin-top: 2px;
 }
@@ -255,7 +270,7 @@ body.mhb-landing-active header:first-of-type {
 .mhb-signin-row {
   text-align: center;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   color: rgba(0, 0, 0, 0.45);
   margin-top: 18px;
 }
@@ -267,11 +282,9 @@ body.mhb-landing-active header:first-of-type {
   margin-left: 4px;
 }
 
-.mhb-signin-link:hover {
-  text-decoration: underline;
-}
+.mhb-signin-link:hover { text-decoration: underline; }
 
-/* Demo links strip (hidden for now) */
+/* Demo links */
 .mhb-demo-strip {
   display: none;
 }
@@ -284,24 +297,16 @@ body.mhb-landing-active header:first-of-type {
   border: none;
   cursor: pointer;
   text-decoration: underline;
-  font-family: 'InterNumbers', 'Quicksand', sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   padding: 4px 2px;
   -webkit-tap-highlight-color: transparent;
 }
 
-.mhb-demo-link:hover {
-  color: rgba(0, 0, 0, 0.55);
-}
+.mhb-demo-link:hover { color: rgba(0, 0, 0, 0.55); }
+.mhb-demo-link:disabled { opacity: 0.5; cursor: default; }
 
-.mhb-demo-link:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-/* ── Google Sign-In section ── */
-.mhb-google-section {
-  margin-top: 4px;
-}
+/* ── Google Sign-In ── */
+.mhb-google-section { margin-top: 4px; }
 
 .mhb-or-divider {
   display: flex;
@@ -320,7 +325,7 @@ body.mhb-landing-active header:first-of-type {
   font-size: 11px;
   font-weight: 700;
   color: #9b97c4;
-  font-family: 'InterNumbers', 'Quicksand', system-ui, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
 }
 
 .mhb-google-btn {
@@ -333,9 +338,9 @@ body.mhb-landing-active header:first-of-type {
   border: 1.5px solid rgba(0, 0, 0, 0.12);
   border-radius: 13px;
   padding: 13px 16px;
-  font-family: 'InterNumbers', 'Quicksand', system-ui, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
   color: #1a1a1a;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, transform 0.1s;
@@ -344,42 +349,27 @@ body.mhb-landing-active header:first-of-type {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
-.mhb-google-btn:hover {
-  background: #f8f8f8;
-  border-color: rgba(0, 0, 0, 0.2);
-}
+.mhb-google-btn:hover { background: #f8f8f8; border-color: rgba(0, 0, 0, 0.2); }
+.mhb-google-btn:active { transform: scale(0.985); background: #f2f2f2; }
 
-.mhb-google-btn:active {
-  transform: scale(0.985);
-  background: #f2f2f2;
-}
-
-.mhb-google-logo {
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-}
+.mhb-google-logo { width: 20px; height: 20px; flex-shrink: 0; }
 
 /* ── CTA link ── */
 .mhb-cta-link {
   display: inline-flex;
   align-items: center;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   color: #a89eed;
   text-decoration: none;
   letter-spacing: 0.01em;
   transition: color 0.15s;
 }
 
-.mhb-cta-link:hover {
-  color: #ffffff;
-}
+.mhb-cta-link:hover { color: #ffffff; }
 
 /* ── Referral chip ── */
-.mhb-referral-chip {
-  position: relative;
-}
+.mhb-referral-chip { position: relative; }
 
 .mhb-referral-headline {
   font-size: 16px !important;
@@ -410,9 +400,7 @@ body.mhb-landing-active header:first-of-type {
   transition: background 0.15s;
 }
 
-.mhb-referral-trigger:hover {
-  background: rgba(255, 255, 255, 0.38);
-}
+.mhb-referral-trigger:hover { background: rgba(255, 255, 255, 0.38); }
 
 .mhb-referral-popover {
   position: absolute;
@@ -442,15 +430,12 @@ body.mhb-landing-active header:first-of-type {
 
 .mhb-referral-popover-body {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   color: #9b97c4;
   line-height: 1.6;
 }
 
-.mhb-referral-popover-body strong {
-  color: #534AB7;
-  font-weight: 700;
-}
+.mhb-referral-popover-body strong { color: #534AB7; font-weight: 700; }
 
 .mhb-referral-popover-footer {
   margin-top: 10px;
@@ -476,18 +461,18 @@ body.mhb-landing-active header:first-of-type {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'InterNumbers', 'Quicksand', system-ui;
+  font-family: 'Inter', system-ui;
   line-height: 1;
   -webkit-tap-highlight-color: transparent;
 }
 
-.mhb-referral-close:hover {
-  background: #e4e1f5;
-}
+.mhb-referral-close:hover { background: #e4e1f5; }
 
-/* ── Responsive ── */
+/* ═══════════════════════════
+   RESPONSIVE — Viewport breakpoints
+   ═══════════════════════════ */
 
-/* Extra-small: stack hero columns vertically */
+/* Extra-small phone: stack hero columns */
 @media (max-width: 420px) {
   .mhb-hero-body {
     flex-direction: column;
@@ -504,50 +489,15 @@ body.mhb-landing-active header:first-of-type {
     width: 100%;
     gap: 8px;
   }
-  .mhb-badge {
-    width: 100%;
-  }
+  .mhb-badge { width: 100%; }
   .mhb-stat-chip {
     flex: 1;
     padding: 12px 10px;
   }
-  .mhb-stat-num {
-    font-size: 40px;
-  }
+  .mhb-stat-num { font-size: 40px; }
 }
 
-/* Large screens: cap and center content so columns don't over-stretch */
-@media (min-width: 768px) {
-  .mhb-hero {
-    max-width: 780px;
-    width: 100%;
-    margin-left: auto;
-    margin-right: auto;
-    padding-left: 40px;
-    padding-right: 40px;
-  }
-  .mhb-hero-body {
-    gap: 28px;
-    align-items: center;
-  }
-  .mhb-hero-copy {
-    flex: 1;
-  }
-  .mhb-stat-stack {
-    flex: 0 0 240px;
-  }
-  .mhb-sheet {
-    max-width: 700px;
-    width: calc(100% - 80px);
-    margin-left: auto;
-    margin-right: auto;
-  }
-  .mhb-handle {
-    display: none;
-  }
-}
-
-/* Mobile: center popovers fixed on screen */
+/* Mobile popover: center on screen */
 @media (max-width: 767px) {
   .mhb-referral-popover {
     position: fixed;
@@ -560,4 +510,126 @@ body.mhb-landing-active header:first-of-type {
     max-width: 320px;
     z-index: 1000;
   }
+}
+
+/* ── TABLET (768–1023px): wider sheet, centered hero, side-by-side layout ── */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .mhb-hero {
+    max-width: 780px;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 48px 40px 28px;
+  }
+  .mhb-hero-body {
+    gap: 28px;
+    align-items: center;
+  }
+  .mhb-hero-copy { flex: 1; }
+  .mhb-stat-stack { flex: 0 0 240px; }
+  .mhb-sheet {
+    max-width: 700px;
+    width: calc(100% - 80px);
+    margin-left: auto;
+    margin-right: auto;
+    padding: 24px 36px 40px;
+  }
+  .mhb-handle { display: none; }
+  .mhb-headline { font-size: clamp(34px, 5vw, 48px); }
+  .mhb-user-types {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .mhb-utb {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+  }
+  .mhb-utb-arrow { display: none; }
+  .mhb-utb-title { font-size: 14px; }
+}
+
+/* ── DESKTOP (1024px+): two-column side-by-side layout ── */
+@media (min-width: 1024px) {
+  .mhb-welcome {
+    /* Push down past the visible header */
+    min-height: calc(100dvh - 56px);
+  }
+  .mhb-status-spacer { height: 0; }
+
+  .mhb-hero {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 80px 40px;
+    gap: 60px;
+    max-width: 1100px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  /* Hide mobile-only logo (header has the logo on desktop) */
+  .mhb-logo { display: none; }
+
+  .mhb-hero-body {
+    flex-direction: column;
+    gap: 20px;
+    flex: 1;
+    align-items: flex-start;
+  }
+
+  .mhb-hero-copy {
+    flex: unset;
+    width: 100%;
+    gap: 20px;
+  }
+
+  .mhb-stat-stack {
+    flex: unset;
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .mhb-stat-chip {
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .mhb-headline {
+    font-size: clamp(42px, 4.5vw, 60px);
+  }
+
+  .mhb-sub { max-width: 480px; font-size: 16px; }
+
+  .mhb-badge-text { font-size: 12px; }
+
+  /* Sheet becomes a tall right-column card on desktop */
+  .mhb-sheet {
+    flex: 0 0 400px;
+    margin: 0;
+    border-radius: 24px;
+    padding: 32px 32px 40px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    align-self: center;
+  }
+
+  .mhb-handle { display: none; }
+
+  .mhb-user-types {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .mhb-utb {
+    padding: 16px 18px;
+  }
+
+  .mhb-sheet-label { font-size: 12px; margin-bottom: 16px; }
 }
