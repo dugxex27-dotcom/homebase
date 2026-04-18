@@ -78,9 +78,8 @@ export default function Landing() {
           <div className="mhb-hero-copy">
             {/* Headline */}
             <div className="mhb-headline">
-              Your home's<br />
-              <span className="mhb-headline-accent">complete record.</span><br />
-              Finally.
+              <span>Your home's<br />complete record.</span><br />
+              <span className="mhb-headline-accent">Finally.</span>
             </div>
 
             {/* Sub */}
