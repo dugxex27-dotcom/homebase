@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Eye, EyeOff } from "lucide-react";
+import logoWhite from '@assets/my-homebase-logo-tm-white-final_1776534229325.png';
 
 const C = {
   header: '#0c447c',
@@ -160,11 +161,8 @@ export default function SignInContractor() {
 
       {/* ── Role header ── */}
       <div style={{ background: C.header, padding: '40px 20px 24px', textAlign: 'center', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 14 }}>
-          <div style={{ width: 30, height: 30, background: 'rgba(255,255,255,0.12)', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 13l3-6 3 3 3-5" stroke="#fff" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/><circle cx="13" cy="4" r="2" stroke="#fff" strokeWidth="1.2"/></svg>
-          </div>
-          <span style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>MyHomeBase™</span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+          <img src={logoWhite} alt="MyHomeBase™" style={{ height: 34, width: 'auto' }} />
         </div>
         <div style={{ fontSize: 10, fontWeight: 700, color: C.eyebrow, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>Contractor</div>
         <div style={{ fontSize: 20, fontWeight: 700, color: '#fff', letterSpacing: '-0.3px' }}>Welcome back</div>

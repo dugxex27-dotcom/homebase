@@ -155,7 +155,7 @@ export function Notifications({ homeownerId }: NotificationsProps) {
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="relative">
+        <Button variant="ghost" size="sm" className="relative text-white hover:bg-white/10 hover:text-white">
           <Bell className="w-5 h-5" />
           {unreadNotifications.length > 0 && (
             <Badge 
