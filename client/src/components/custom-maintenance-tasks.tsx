@@ -244,9 +244,9 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
               Add Custom Task
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" style={{ backgroundColor: '#2c0f5b' }}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle style={{ color: 'white', fontSize: '1.5rem', fontWeight: 'bold' }}>
+              <DialogTitle className="text-2xl font-bold">
                 {editingTask ? 'Edit Custom Task' : 'Create Custom Task'}
               </DialogTitle>
             </DialogHeader>
@@ -257,9 +257,9 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
                   name="title"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel style={{ color: 'white' }}>Task Name</FormLabel>
+                      <FormLabel>Task Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g., Clean pool filter" {...field} style={{ backgroundColor: 'white' }} />
+                        <Input placeholder="e.g., Clean pool filter" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -271,9 +271,9 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
                   name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel style={{ color: 'white' }}>Description</FormLabel>
+                      <FormLabel>Description</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="Detailed description of the task..." {...field} style={{ backgroundColor: 'white' }} />
+                        <Textarea placeholder="Detailed description of the task..." {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -286,10 +286,10 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
                     name="category"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel style={{ color: 'white' }}>Category</FormLabel>
+                        <FormLabel>Category</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <SelectTrigger style={{ backgroundColor: 'white' }}>
+                            <SelectTrigger>
                               <SelectValue placeholder="Select category" />
                             </SelectTrigger>
                           </FormControl>
@@ -311,10 +311,10 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
                     name="priority"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel style={{ color: 'white' }}>Priority</FormLabel>
+                        <FormLabel>Priority</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <SelectTrigger style={{ backgroundColor: 'white' }}>
+                            <SelectTrigger>
                               <SelectValue placeholder="Select priority" />
                             </SelectTrigger>
                           </FormControl>
@@ -338,9 +338,9 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
                     name="estimatedTime"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel style={{ color: 'white' }}>Estimated Time</FormLabel>
+                        <FormLabel>Estimated Time</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g., 30 minutes" {...field} value={field.value || ""} style={{ backgroundColor: 'white' }} />
+                          <Input placeholder="e.g., 30 minutes" {...field} value={field.value || ""} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -352,10 +352,10 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
                     name="difficulty"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel style={{ color: 'white' }}>Difficulty</FormLabel>
+                        <FormLabel>Difficulty</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value || ""}>
                           <FormControl>
-                            <SelectTrigger style={{ backgroundColor: 'white' }}>
+                            <SelectTrigger>
                               <SelectValue placeholder="Select difficulty" />
                             </SelectTrigger>
                           </FormControl>
@@ -378,10 +378,10 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
                   name="frequencyType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel style={{ color: 'white' }}>How Often</FormLabel>
+                      <FormLabel>How Often</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
-                          <SelectTrigger style={{ backgroundColor: 'white' }}>
+                          <SelectTrigger>
                             <SelectValue placeholder="Select frequency" />
                           </SelectTrigger>
                         </FormControl>
@@ -404,9 +404,9 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
                     name="frequencyValue"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel style={{ color: 'white' }}>Every X days</FormLabel>
+                        <FormLabel>Every X days</FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="Enter number of days" {...field} value={field.value || ""} style={{ backgroundColor: 'white' }} />
+                          <Input type="number" placeholder="Enter number of days" {...field} value={field.value || ""} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -420,7 +420,7 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
                     name="specificMonths"
                     render={() => (
                       <FormItem>
-                        <FormLabel style={{ color: 'white' }}>Specific Months (optional)</FormLabel>
+                        <FormLabel>Specific Months (optional)</FormLabel>
                         <div className="grid grid-cols-3 gap-2 mt-2">
                           {MONTH_OPTIONS.map((month) => (
                             <FormField
@@ -448,7 +448,7 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
                                         }}
                                       />
                                     </FormControl>
-                                    <FormLabel className="text-sm font-normal" style={{ color: 'white' }}>
+                                    <FormLabel className="text-sm font-normal">
                                       {month.label}
                                     </FormLabel>
                                   </FormItem>
@@ -468,9 +468,9 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
                   name="cost"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel style={{ color: 'white' }}>Estimated Cost (optional)</FormLabel>
+                      <FormLabel>Estimated Cost (optional)</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g., $25" {...field} value={field.value || ""} style={{ backgroundColor: 'white' }} />
+                        <Input placeholder="e.g., $25" {...field} value={field.value || ""} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -481,7 +481,7 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
                   <Button 
                     type="button" 
                     onClick={() => setIsDialogOpen(false)}
-                    style={{ backgroundColor: 'white', color: '#2c0f5b' }}
+                    variant="outline"
                     className="hover:opacity-90"
                     data-testid="button-cancel-custom-task"
                   >
