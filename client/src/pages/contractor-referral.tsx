@@ -16,6 +16,7 @@ import facebookTwitterImg from '@assets/homebase-contractor-contractor-facebook-
 import homeownerFacebookTwitterImg from '@assets/homebase-contractor-homeowner-facebook-twitter_1768431701172.png';
 import homeownerInstagramStoryImg from '@assets/homebase-contractor-homeowner-ig-story_1768431505778.png';
 import homeownerInstagramPostImg from '@assets/homebase-contractor-homeowner-ig-post_1768431233148.png';
+import { PageHero } from "@/components/page-hero";
 
 export default function ContractorReferral() {
   const { toast } = useToast();
@@ -112,21 +113,20 @@ export default function ContractorReferral() {
 
   if (!typedUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#1560a2' }}>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-white mb-2">Loading...</div>
-        </div>
+      <div className="min-h-screen">
+        <PageHero eyebrow="Contractor" title="Referral Program" subtitle="Loading..." />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5]">
+    <div className="min-h-screen">
+      <PageHero
+        eyebrow="Contractor"
+        title="Referral Program"
+        subtitle="Share MyHomeBase™ and earn rewards"
+      />
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        <div className="mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Referral Program</h1>
-          <p className="text-gray-600 mt-1">Share MyHomeBase™ and earn rewards</p>
-        </div>
 
         <div className="space-y-6">
           {/* Referral Stats Card */}

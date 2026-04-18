@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, apiFileUpload, queryClient } from "@/lib/queryClient";
 import { CheckCircle, Clock, XCircle, Upload, AlertCircle, FileCheck, User, Camera, Mail } from "lucide-react";
+import { PageHero } from "@/components/page-hero";
 
 const US_STATES = [
   { code: "AL", name: "Alabama" }, { code: "AK", name: "Alaska" }, { code: "AZ", name: "Arizona" },
@@ -342,23 +343,21 @@ export default function AgentAccount() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen" style={{ background: 'linear-gradient(to bottom, #059669 0%, #047857 100%)' }}>
-        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center" style={{ color: '#ffffff' }}>Loading...</div>
-        </main>
+      <div className="min-h-screen">
+        <PageHero eyebrow="Real Estate Agent" title="Account Verification" subtitle="Loading your profile..." />
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen" style={{ background: 'linear-gradient(to bottom, #059669 0%, #047857 100%)' }}>
+    <div className="min-h-screen">
+      <PageHero
+        eyebrow="Real Estate Agent"
+        title="Account Verification"
+        subtitle="Verify your license to start earning referral commissions"
+      />
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2" style={{ color: '#ffffff' }}>Agent Account Verification</h1>
-          <p className="text-lg" style={{ color: '#a7f3d0' }}>
-            Verify your real estate license to start earning referral commissions
-          </p>
-        </div>
 
         {/* Profile Settings */}
         <Card className="mb-8 bg-white dark:bg-gray-800 border-emerald-200 shadow-lg">

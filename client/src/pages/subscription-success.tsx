@@ -51,7 +51,7 @@ export default function SubscriptionSuccess() {
   }, [setLocation, dashboardPath]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#eeedf9' }}>
+    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--page-background)' }}>
       <Helmet>
         <title>Welcome to MyHomeBase™! | Subscription Confirmed</title>
       </Helmet>

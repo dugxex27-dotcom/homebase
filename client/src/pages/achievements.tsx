@@ -27,6 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { HomeownerFeatureGate, HomeownerTrialBanner, FreeUserUpgradePrompt } from "@/components/homeowner-feature-gate";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
+import { PageHero } from "@/components/page-hero";
 
 // Category descriptions for tooltips
 const categoryDescriptions: Record<string, string> = {
@@ -205,14 +206,9 @@ export default function Achievements() {
 
   if (isLoading) {
     return (
-      <>
-        <div className="min-h-screen" style={{ backgroundColor: '#f5f5f5' }}>
-          <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
-            <h1 className="text-xl sm:text-2xl lg:text-4xl font-bold mb-2 text-gray-900">Achievements</h1>
-            <p className="text-sm sm:text-base text-gray-600 mb-6 sm:mb-8">Loading your achievements...</p>
-          </div>
-        </div>
-      </>
+      <div className="min-h-screen">
+        <PageHero eyebrow="Homeowner" title="Achievements" subtitle="Loading your milestones..." />
+      </div>
     );
   }
 
@@ -261,21 +257,15 @@ export default function Achievements() {
 
   return (
     <>
-      <div className="min-h-screen" style={{ backgroundColor: '#f5f5f5' }}>
+      <div className="min-h-screen" data-tour-id="achievements">
+        <PageHero
+          eyebrow="Homeowner"
+          title="Achievements"
+          subtitle="Track your home maintenance milestones"
+        />
         <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
           {/* Trial Banner */}
           <HomeownerTrialBanner />
-          
-          {/* Page Header */}
-          <div className="mb-6 sm:mb-8" data-tour-id="achievements">
-            <h1 className="text-xl sm:text-2xl lg:text-4xl font-bold mb-2 text-gray-900 flex items-center gap-2 sm:gap-3">
-              <Trophy className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 text-yellow-400" />
-              Achievements
-            </h1>
-            <p className="text-sm sm:text-base text-gray-600">
-              Track your home maintenance milestones and accomplishments
-            </p>
-          </div>
 
           <HomeownerFeatureGate featureName="Achievements">
             {/* House Selector */}

@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { PageHero } from "@/components/page-hero";
 import {
   Sparkles, Search, Loader2, AlertCircle, MessageCircle,
   Send, RotateCcw, HardHat, Wrench, Zap, Droplets,
@@ -335,15 +336,13 @@ export default function AIContractorHelp() {
   };
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#f5f5f5' }}>
+    <div className="min-h-screen">
+      <PageHero
+        eyebrow="Homeowner"
+        title="HomeBase AI"
+        subtitle="Diagnose issues, get DIY fixes, and find the right contractor"
+      />
       <div className="container mx-auto py-8 px-4 max-w-3xl">
-        <div className="mb-8 text-center">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-600 to-blue-600 mb-4 shadow-lg">
-            <Sparkles className="w-7 h-7 text-white" />
-          </div>
-          <h1 className="text-3xl font-bold mb-2 text-gray-900">HomeBase AI</h1>
-          <p className="text-gray-500 text-sm">Your personal home expert — diagnose issues, get DIY fixes, and find the right contractor</p>
-        </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-2 mb-6 h-12">

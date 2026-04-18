@@ -59,7 +59,7 @@ export default function HomeownerPricing() {
   // Show loading state while fetching user data
   if (isLoading || subscriptionLoading) {
     return (
-      <div className="min-h-screen py-8 px-4 flex items-center justify-center" style={{ backgroundColor: '#f5f5f5' }}>
+      <div className="min-h-screen py-8 px-4 flex items-center justify-center" style={{ backgroundColor: 'var(--page-background)' }}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading pricing plans...</p>
@@ -71,7 +71,7 @@ export default function HomeownerPricing() {
   // Show error state if query fails
   if (isError || !userData) {
     return (
-      <div className="min-h-screen py-8 px-4 flex items-center justify-center" style={{ backgroundColor: '#f5f5f5' }}>
+      <div className="min-h-screen py-8 px-4 flex items-center justify-center" style={{ backgroundColor: 'var(--page-background)' }}>
         <Card className="max-w-md">
           <CardHeader>
             <CardTitle className="text-red-600">Unable to Load Pricing Plans</CardTitle>
@@ -96,7 +96,7 @@ export default function HomeownerPricing() {
     : 0; // Treat trial/expired users as having no current plan so they can subscribe
 
   return (
-    <div className="min-h-screen py-8 px-4" style={{ backgroundColor: '#f5f5f5' }}>
+    <div className="min-h-screen py-8 px-4" style={{ backgroundColor: 'var(--page-background)' }}>
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Header */}
         <div className="text-center space-y-4">

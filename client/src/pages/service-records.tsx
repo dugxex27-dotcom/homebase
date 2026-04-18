@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
+import { PageHero } from "@/components/page-hero";
 import type { House } from "@shared/schema";
 import { 
   Plus, 
@@ -430,23 +431,20 @@ export default function ServiceRecords() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: '#1560a2' }}>
-      <main className="container mx-auto py-8 px-4 max-w-7xl">
-        <div className="mb-8 p-6 rounded-lg" style={{ background: '#f2f2f2' }}>
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold mb-2" style={{ color: '#1560a2' }}>Service Records</h1>
-              <p style={{ color: '#1560a2' }}>
-                Track services performed for customers and maintain detailed records
-              </p>
-            </div>
-          
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={resetForm} style={{ backgroundColor: '#1560a2', color: 'white' }} className="hover:opacity-90">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Service Record
-                </Button>
+    <div className="min-h-screen">
+      <PageHero
+        eyebrow="Contractor"
+        title="Service Records"
+        subtitle="Track services performed for customers"
+        action={
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <button
+                onClick={resetForm}
+                style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 9, padding: '5px 10px', fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer' }}
+              >
+                + Add Record
+              </button>
               </DialogTrigger>
               <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" style={{ backgroundColor: '#f2f2f2' }}>
               <DialogHeader>
@@ -490,7 +488,7 @@ export default function ServiceRecords() {
                               type="button"
                               onClick={validateConnectionCode}
                               disabled={isValidating || connectionCode.length !== 8}
-                              style={{ backgroundColor: '#1560a2', color: 'white' }}
+                              style={{ backgroundColor: 'var(--theme-primary)', color: 'white' }}
                               className="hover:opacity-90"
                               data-testid="button-validate-code"
                             >
@@ -559,7 +557,7 @@ export default function ServiceRecords() {
                 )}
 
                 {/* Customer Information */}
-                <Card style={{ backgroundColor: '#1560a2' }}>
+                <Card style={{ backgroundColor: 'var(--theme-primary)' }}>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2" style={{ color: 'white' }}>
                       <User className="w-5 h-5" style={{ color: 'white' }} />
@@ -622,7 +620,7 @@ export default function ServiceRecords() {
                 </Card>
 
                 {/* Service Details */}
-                <Card style={{ backgroundColor: '#1560a2' }}>
+                <Card style={{ backgroundColor: 'var(--theme-primary)' }}>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2" style={{ color: 'white' }}>
                       <FileText className="w-5 h-5" style={{ color: 'white' }} />
@@ -634,7 +632,7 @@ export default function ServiceRecords() {
                       <div>
                         <Label htmlFor="serviceType" style={{ color: 'white' }}>Service Type</Label>
                         <Select value={formData.serviceType} onValueChange={(value) => handleInputChange('serviceType', value)}>
-                          <SelectTrigger style={{ backgroundColor: '#1560a2', color: 'white' }} className="hover:bg-[#afd6f9] hover:text-black transition-colors" data-testid="select-service-type">
+                          <SelectTrigger style={{ backgroundColor: 'var(--theme-primary)', color: 'white' }} className="hover:bg-[#afd6f9] hover:text-black transition-colors" data-testid="select-service-type">
                             <SelectValue placeholder="Select service type" />
                           </SelectTrigger>
                           <SelectContent>
@@ -647,7 +645,7 @@ export default function ServiceRecords() {
                       <div>
                         <Label htmlFor="status" style={{ color: 'white' }}>Status</Label>
                         <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value as any)}>
-                          <SelectTrigger style={{ backgroundColor: '#1560a2', color: 'white' }} className="hover:bg-[#afd6f9] hover:text-black transition-colors" data-testid="select-status">
+                          <SelectTrigger style={{ backgroundColor: 'var(--theme-primary)', color: 'white' }} className="hover:bg-[#afd6f9] hover:text-black transition-colors" data-testid="select-status">
                             <SelectValue placeholder="Select status" />
                           </SelectTrigger>
                           <SelectContent>
@@ -675,7 +673,7 @@ export default function ServiceRecords() {
                     <div>
                       <Label htmlFor="homeArea" style={{ color: 'white' }}>Home Area</Label>
                       <Select value={formData.homeArea} onValueChange={(value) => handleInputChange('homeArea', value)}>
-                        <SelectTrigger style={{ backgroundColor: '#1560a2', color: 'white' }} className="hover:bg-[#afd6f9] hover:text-black transition-colors" data-testid="select-home-area">
+                        <SelectTrigger style={{ backgroundColor: 'var(--theme-primary)', color: 'white' }} className="hover:bg-[#afd6f9] hover:text-black transition-colors" data-testid="select-home-area">
                           <SelectValue placeholder="Select home area" />
                         </SelectTrigger>
                         <SelectContent>
@@ -740,7 +738,7 @@ export default function ServiceRecords() {
                           onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addMaterial())}
                           style={{ backgroundColor: '#ffffff' }}
                         />
-                        <Button type="button" onClick={addMaterial} size="sm" style={{ backgroundColor: '#1560a2', color: 'white' }} className="hover:opacity-90">
+                        <Button type="button" onClick={addMaterial} size="sm" style={{ backgroundColor: 'var(--theme-primary)', color: 'white' }} className="hover:opacity-90">
                           <Plus className="w-4 h-4" />
                         </Button>
                       </div>
@@ -811,7 +809,7 @@ export default function ServiceRecords() {
                   <Button 
                     type="submit" 
                     disabled={saveRecordMutation.isPending}
-                    style={{ backgroundColor: '#1560a2', color: 'white' }}
+                    style={{ backgroundColor: 'var(--theme-primary)', color: 'white' }}
                     className="hover:opacity-90"
                   >
                     {saveRecordMutation.isPending ? 'Saving...' : (editingRecord ? 'Update Record' : 'Create Record')}
@@ -820,8 +818,9 @@ export default function ServiceRecords() {
               </form>
             </DialogContent>
           </Dialog>
-          </div>
-        </div>
+        }
+      />
+      <main className="container mx-auto py-8 px-4 max-w-7xl">
 
         {/* House Selection for Homeowners */}
         {user?.role === 'homeowner' && houses.length > 0 && (
@@ -835,7 +834,7 @@ export default function ServiceRecords() {
                   </Label>
                 </div>
                 <Select value={selectedHouseId} onValueChange={setSelectedHouseId}>
-                  <SelectTrigger className="w-80 hover:bg-[#afd6f9] hover:text-black transition-colors" style={{ backgroundColor: '#1560a2', color: 'white' }} data-testid="select-house">
+                  <SelectTrigger className="w-80 hover:bg-[#afd6f9] hover:text-black transition-colors" style={{ backgroundColor: 'var(--theme-primary)', color: 'white' }} data-testid="select-house">
                     <SelectValue placeholder="Choose a house" />
                   </SelectTrigger>
                   <SelectContent>
@@ -870,7 +869,7 @@ export default function ServiceRecords() {
               </div>
               <div className="flex gap-2">
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-40 hover:bg-[#afd6f9] hover:text-black transition-colors" style={{ backgroundColor: '#1560a2', color: 'white' }} data-testid="select-status-filter">
+                  <SelectTrigger className="w-40 hover:bg-[#afd6f9] hover:text-black transition-colors" style={{ backgroundColor: 'var(--theme-primary)', color: 'white' }} data-testid="select-status-filter">
                     <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -898,7 +897,7 @@ export default function ServiceRecords() {
                     : 'Start by creating your first service record.'}
                 </p>
                 {!searchTerm && statusFilter === 'all' && (
-                  <Button onClick={() => setIsDialogOpen(true)} style={{ backgroundColor: '#1560a2', color: 'white' }} className="hover:opacity-90">
+                  <Button onClick={() => setIsDialogOpen(true)} style={{ backgroundColor: 'var(--theme-primary)', color: 'white' }} className="hover:opacity-90">
                     <Plus className="w-4 h-4 mr-2" />
                     Add First Service Record
                   </Button>

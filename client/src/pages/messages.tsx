@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MessageCircle, Send, User, Calendar, Plus, Users, FileText, DollarSign, Clock, Star, Image as ImageIcon, X, File, Paperclip, Wifi, WifiOff, CheckCheck, Check } from "lucide-react";
+import { PageHero } from "@/components/page-hero";
 import { insertProposalSchema } from "@shared/schema";
 import { z } from "zod";
 import type { User as UserType, Conversation, Message, Contractor, Proposal, ContractorReview } from "@shared/schema";
@@ -475,31 +476,27 @@ export default function Messages() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5]">
-      {/* Header Section */}
-      <section className="py-6 sm:py-8 px-4 sm:px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex items-center justify-between mb-1">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Messages</h1>
-            <div className="flex items-center gap-1.5" data-testid="websocket-status">
-              {wsConnected ? (
-                <>
-                  <Wifi className="h-4 w-4 text-green-600" />
-                  <span className="text-xs text-green-600 font-medium">Connected</span>
-                </>
-              ) : (
-                <>
-                  <WifiOff className="h-4 w-4 text-red-500" />
-                  <span className="text-xs text-red-500 font-medium">Disconnected</span>
-                </>
-              )}
-            </div>
+    <div className="min-h-screen">
+      <PageHero
+        eyebrow={typedUser.role === 'homeowner' ? 'Homeowner' : 'Contractor'}
+        title="Messages"
+        subtitle={`Chat in real-time with ${typedUser.role === 'homeowner' ? 'contractors' : 'homeowners'}`}
+        action={
+          <div className="flex items-center gap-1.5" data-testid="websocket-status">
+            {wsConnected ? (
+              <>
+                <Wifi className="h-4 w-4" style={{ color: 'rgba(255,255,255,0.7)' }} />
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>Live</span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="h-4 w-4" style={{ color: 'rgba(255,120,120,0.9)' }} />
+                <span style={{ fontSize: 10, color: 'rgba(255,120,120,0.9)', fontWeight: 600 }}>Offline</span>
+              </>
+            )}
           </div>
-          <p className="text-gray-600">
-            Chat in real-time with {typedUser.role === 'homeowner' ? 'contractors' : 'homeowners'}
-          </p>
-        </div>
-      </section>
+        }
+      />
 
       {/* Main Content - Two-Panel Messenger Layout */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-8">

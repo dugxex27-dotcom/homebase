@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import PushNotificationManager from "@/components/push-notification-manager";
+import { PageHero } from "@/components/page-hero";
 import { HomeownerConnectionCodes } from "@/components/ConnectionCodes";
 import instagramPostImg from '@assets/ChatGPT_Image_Dec_26,_2025,_12_25_05_PM_1766769919337.png';
 import instagramStoryImg from '@assets/ChatGPT_Image_Dec_26,_2025,_12_15_06_PM_1766769329697.png';
@@ -431,13 +432,13 @@ export default function HomeownerAccount() {
   });
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#f5f5f5' }}>
+    <div className="min-h-screen">
+      <PageHero
+        eyebrow="Homeowner"
+        title="Account Settings"
+        subtitle="Manage your profile and preferences"
+      />
       <div className="container mx-auto px-4 py-8 max-w-4xl">
-        {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2 text-gray-900">Account Settings</h1>
-          <p className="text-gray-600">Manage your profile information and preferences</p>
-        </div>
 
         <div className="space-y-6 max-w-4xl mx-auto">
           {/* Basic Profile */}

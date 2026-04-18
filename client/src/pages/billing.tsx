@@ -11,6 +11,7 @@ import type { User, SubscriptionCycleEvent } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { PageHero } from "@/components/page-hero";
 
 type Plan = 'trial' | 'base' | 'premium' | 'premium_plus' | 'contractor' | 'contractor_pro' | 'grandfathered';
 
@@ -116,7 +117,12 @@ export default function Billing() {
   };
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#f5f5f5' }}>
+    <div className="min-h-screen">
+      <PageHero
+        eyebrow={isContractor ? 'Contractor' : 'Homeowner'}
+        title="Subscription & Billing"
+        subtitle={isContractor ? 'Manage your contractor subscription' : 'Choose the plan that fits your needs'}
+      />
       <div className="max-w-6xl mx-auto px-3 sm:px-4 py-6 sm:py-8">
         {/* Back button */}
         <Button
@@ -129,9 +135,9 @@ export default function Billing() {
           Back to My Home
         </Button>
 
-        {/* Page Header */}
+        {/* Page Subheader - removed since PageHero has it already */}
         <div className="text-center mb-6 sm:mb-8">
-          <h1 className="text-xl sm:text-2xl lg:text-4xl font-bold mb-2 text-gray-900">
+          <h1 className="text-xl sm:text-2xl lg:text-4xl font-bold mb-2 text-gray-900 sr-only">
             Subscription & Billing
           </h1>
           <p className="text-sm sm:text-base text-gray-600">

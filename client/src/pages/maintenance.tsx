@@ -3158,7 +3158,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
   // Authentication guards
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#eeedf9' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--page-background)' }}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 mx-auto mb-4" style={{ borderColor: '#2c0f5b' }}></div>
           <p className="text-lg" style={{ color: '#2c0f5b' }}>Loading...</p>
@@ -3169,7 +3169,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
   if (!isAuthenticated || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#eeedf9' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--page-background)' }}>
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4" style={{ color: '#2c0f5b' }}>Authentication Required</h1>
           <p className="mb-6" style={{ color: '#2c0f5b' }}>Please sign in to access maintenance features.</p>
@@ -3183,7 +3183,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
   if (!userRole || (userRole !== 'homeowner' && userRole !== 'contractor')) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#eeedf9' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--page-background)' }}>
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4" style={{ color: '#2c0f5b' }}>Access Denied</h1>
           <p className="mb-6" style={{ color: '#2c0f5b' }}>This feature is only available to homeowners and contractors.</p>
@@ -3201,7 +3201,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#f5f5f5' }}>
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--page-background)' }}>
       {/* Welcome Header */}
       <section className="py-6 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">

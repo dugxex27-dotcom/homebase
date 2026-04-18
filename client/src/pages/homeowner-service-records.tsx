@@ -15,6 +15,7 @@ import type { MaintenanceLog, House } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { FreeUserUpgradePrompt, HomeownerTrialBanner } from "@/components/homeowner-feature-gate";
+import { PageHero } from "@/components/page-hero";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
 import { 
   FileText, 
@@ -364,33 +365,23 @@ export default function HomeownerServiceRecords() {
   const filteredLogs = maintenanceLogs?.filter(log => homeAreaFilter === "all" || log.homeArea === homeAreaFilter) || [];
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#f5f5f5' }}>
+    <div className="min-h-screen">
+      <PageHero
+        eyebrow="Homeowner"
+        title="Service Records"
+        subtitle="Complete history of maintenance and repairs"
+        action={
+          <button
+            onClick={handleAddNewMaintenanceLog}
+            data-testid="button-add-service-record"
+            style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 9, padding: '5px 10px', fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer' }}
+          >
+            + Add record
+          </button>
+        }
+      />
       <div className="container mx-auto px-4 py-8">
         <HomeownerTrialBanner />
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="bg-primary/10 p-2 rounded-lg">
-              <FileText className="w-8 h-8 text-gray-900" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Service Records</h1>
-              <p className="text-gray-600">Complete history of maintenance and repairs performed on your home</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Add Service Record Button */}
-        <div className="mb-6" data-tour-id="service-records">
-          <Button 
-            onClick={handleAddNewMaintenanceLog} 
-            className="bg-white text-purple-900 hover:bg-gray-100"
-            data-testid="button-add-service-record"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Service Record
-          </Button>
-        </div>
 
         {/* Filters and Download Options */}
         <div className="mb-6 flex flex-col gap-3">

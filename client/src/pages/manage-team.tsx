@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Users, Copy, UserPlus, Trash2, Shield, CheckCircle, XCircle } from "lucide-react";
+import { PageHero } from "@/components/page-hero";
 import {
   Dialog,
   DialogContent,
@@ -160,17 +161,16 @@ export default function ManageTeam() {
 
   if (companyLoading || membersLoading) {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: '#1560a2' }}>
-        <div className="flex items-center justify-center h-96">
-          <div style={{ color: '#afd6f9' }}>Loading...</div>
-        </div>
+      <div className="min-h-screen">
+        <PageHero eyebrow="Contractor" title="Manage Team" subtitle="Loading your team..." />
       </div>
     );
   }
 
   if (!company) {
     return (
-      <div className="min-h-screen bg-[#1560a2]">
+      <div className="min-h-screen">
+        <PageHero eyebrow="Contractor" title="Manage Team" subtitle="No company found" />
         <div className="max-w-4xl mx-auto px-4 py-8">
           <Card>
             <CardHeader>
@@ -186,16 +186,13 @@ export default function ManageTeam() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#1560a2' }}>
+    <div className="min-h-screen">
+      <PageHero
+        eyebrow="Contractor"
+        title="Manage Team"
+        subtitle="Collaborate with your crew on jobs"
+      />
       <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2" style={{ color: 'white' }} data-testid="text-manage-team-title">
-            Manage Team
-          </h1>
-          <p style={{ color: '#afd6f9' }}>
-            {isOwner ? "Manage your company profile and team members" : "View your company and team"}
-          </p>
-        </div>
 
         {/* Team Members */}
         <Card className="mb-6" style={{ backgroundColor: '#f2f2f2' }}>

@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import type { User as UserType, Proposal, ContractorAppointment } from "@shared/schema";
 import { Link } from "wouter";
+import { PageHero } from "@/components/page-hero";
 
 interface ContactedHomeowner {
   id: string;
@@ -235,7 +236,12 @@ export default function ContractorDashboard() {
   const firstName = typedUser.firstName || typedUser.email?.split('@')[0] || 'Contractor';
   
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
+    <div className="min-h-screen">
+      <PageHero
+        eyebrow="Contractor"
+        title="Jobs & Proposals"
+        subtitle="Manage your work and grow your client base"
+      />
       {isInTrial && <ContractorTrialBanner />}
       <main className="max-w-7xl mx-auto px-6 py-8">
         <div className="grid grid-cols-12 gap-6">

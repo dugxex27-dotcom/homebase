@@ -73,7 +73,7 @@ export default function Products() {
 
   if (error) {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: '#f5f5f5' }}>
+      <div className="min-h-screen" style={{ backgroundColor: 'var(--page-background)' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Error Loading Products</h2>
@@ -85,7 +85,7 @@ export default function Products() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#f5f5f5' }}>
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--page-background)' }}>
       {/* Hero Section */}
       <section className="py-8 sm:py-12 lg:py-16" style={{ background: 'transparent' }}>
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">

@@ -14,6 +14,7 @@ import {
   FileText, Trash2, Edit2, Copy, ExternalLink, Package
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { PageHero } from "@/components/page-hero";
 
 interface HandoffPackage {
   id: string;
@@ -202,21 +203,34 @@ export default function AgentHandoff() {
     : null;
 
   return (
-    <div className="min-h-screen" style={{ background: "linear-gradient(to bottom, #059669 0%, #047857 100%)" }}>
+    <div className="min-h-screen">
+      <PageHero
+        eyebrow="Real Estate Agent"
+        title="Home Handoffs"
+        subtitle={
+          view === "list" ? "Create packages to hand off home data to new buyers" :
+          view === "create" ? "Create a new handoff package" :
+          "Package detail"
+        }
+        action={
+          view !== "list" ? (
+            <button
+              onClick={() => { setView("list"); setSelectedId(null); }}
+              style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 9, padding: '5px 10px', fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer' }}
+            >
+              ← Back
+            </button>
+          ) : undefined
+        }
+      />
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         {/* Header */}
         <div className="mb-6 flex items-center gap-4">
-          {view !== "list" && (
-            <Button variant="ghost" className="text-white hover:bg-white/10" onClick={() => { setView("list"); setSelectedId(null); }}>
-              <ChevronLeft className="w-4 h-4 mr-1" /> Back
-            </Button>
-          )}
           <div>
-            <h1 className="text-3xl font-bold text-white">Home Handoffs</h1>
-            <p className="text-emerald-200 mt-1">
-              {view === "list" ? "Create packages to hand off home data to new buyers" :
-               view === "create" ? "Create a new handoff package" :
+            <p className="text-gray-500 mt-1">
+              {view === "list" ? "" :
+               view === "create" ? "Fill in the details below" :
                "Package detail"}
             </p>
           </div>

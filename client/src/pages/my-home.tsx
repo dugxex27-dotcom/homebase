@@ -20,6 +20,7 @@ import { Calendar, Clock, Wrench, Home, MapPin, Edit, Trash2, Plus, Building, Th
 import { apiRequest } from "@/lib/queryClient";
 import { HomeownerFeatureGate, HomeownerTrialBanner, FreeUserUpgradePrompt } from "@/components/homeowner-feature-gate";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
+import { PageHero } from "@/components/page-hero";
 
 // Form schema for house creation/editing
 const houseFormSchema = insertHouseSchema.extend({
@@ -140,7 +141,7 @@ export default function MyHome() {
   // Show loading while checking auth
   if (authLoading) {
     return (
-      <div className="min-h-screen" style={{ background: '#2c0f5b' }}>
+      <div className="min-h-screen" style={{ background: 'var(--theme-primary)' }}>
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
             <div className="text-2xl font-bold text-white mb-2">Loading...</div>
@@ -534,7 +535,7 @@ export default function MyHome() {
 
   if (housesLoading) {
     return (
-      <div className="min-h-screen" style={{ background: '#2c0f5b' }}>
+      <div className="min-h-screen" style={{ background: 'var(--theme-primary)' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center">
             <div className="text-2xl font-bold text-white mb-2">Loading...</div>
@@ -545,37 +546,33 @@ export default function MyHome() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: '#2c0f5b' }}>
+    <div className="min-h-screen">
+      <PageHero
+        eyebrow="Homeowner"
+        title="My Home"
+        subtitle="Manage your property and track maintenance tasks"
+      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Trial Banner */}
         <HomeownerTrialBanner />
-        
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-4" data-testid="text-page-title">
-            My Home
-          </h1>
-          <p className="text-xl" style={{ color: '#2c0f5b' }}>
-            Manage your personal property and track maintenance tasks
-          </p>
-        </div>
 
         <HomeownerFeatureGate featureName="My Home">
         {houses.length === 0 ? (
           // No houses - show create form
           <Card className="border-gray-300 shadow-lg" style={{ background: '#f2f2f2' }}>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2" style={{ color: '#2c0f5b' }}>
+              <CardTitle className="flex items-center gap-2" style={{ color: 'var(--theme-primary)' }}>
                 <Home className="h-6 w-6" />
                 Add Your First Home
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="mb-6" style={{ color: '#2c0f5b' }}>
+              <p className="mb-6" style={{ color: 'var(--theme-primary)' }}>
                 Let's get started by adding your home information. This will help us provide personalized maintenance recommendations.
               </p>
               <Button 
                 onClick={() => setShowCreateDialog(true)}
-                style={{ backgroundColor: '#2c0f5b', color: 'white' }}
+                style={{ backgroundColor: 'var(--theme-primary)', color: 'white' }}
                 className="hover:opacity-90"
                 data-testid="button-add-home"
               >
@@ -660,7 +657,7 @@ export default function MyHome() {
 
             <Card className="border-gray-300 shadow-lg" style={{ background: '#f2f2f2' }}>
               <CardHeader>
-                <CardTitle className="flex items-center justify-between" style={{ color: '#2c0f5b' }}>
+                <CardTitle className="flex items-center justify-between" style={{ color: 'var(--theme-primary)' }}>
                   <div className="flex items-center gap-2">
                     <Building className="h-6 w-6" />
                     Your Properties
@@ -684,7 +681,7 @@ export default function MyHome() {
                         });
                         setShowCreateDialog(true);
                       }}
-                      style={{ backgroundColor: '#2c0f5b', color: 'white' }}
+                      style={{ backgroundColor: 'var(--theme-primary)', color: 'white' }}
                       className="hover:opacity-90"
                       data-testid="button-add-property"
                     >
@@ -694,7 +691,7 @@ export default function MyHome() {
                   ) : (
                     <Button
                       onClick={() => setShowUpgradeDialog(true)}
-                      style={{ backgroundColor: '#b6a6f4', color: '#2c0f5b', borderColor: '#2c0f5b' }}
+                      style={{ backgroundColor: '#b6a6f4', color: 'var(--theme-primary)', borderColor: 'var(--theme-primary)' }}
                       className="hover:opacity-90 border-2"
                       data-testid="button-upgrade-required"
                     >
@@ -731,19 +728,19 @@ export default function MyHome() {
                               onClick={(e) => e.stopPropagation()}
                             />
                           )}
-                          <Home className="h-5 w-5 flex-shrink-0" style={{ color: '#2c0f5b' }} />
+                          <Home className="h-5 w-5 flex-shrink-0" style={{ color: 'var(--theme-primary)' }} />
                           <div className="min-w-0 flex-1">
-                            <h3 className="font-semibold" style={{ color: '#2c0f5b' }}>
+                            <h3 className="font-semibold" style={{ color: 'var(--theme-primary)' }}>
                               {house.name}
                               {house.isDefault && (
                                 <Badge variant="secondary" className="ml-2">Default</Badge>
                               )}
                             </h3>
-                            <p className="text-sm flex items-start gap-1" style={{ color: '#2c0f5b' }}>
+                            <p className="text-sm flex items-start gap-1" style={{ color: 'var(--theme-primary)' }}>
                               <MapPin className="h-3 w-3 flex-shrink-0 mt-0.5" />
                               <span className="break-all overflow-wrap-anywhere">{house.address}</span>
                             </p>
-                            <p className="text-sm" style={{ color: '#2c0f5b' }}>
+                            <p className="text-sm" style={{ color: 'var(--theme-primary)' }}>
                               Climate Zone: {house.climateZone}
                             </p>
                           </div>
@@ -774,7 +771,7 @@ export default function MyHome() {
                             </Button>
                           )}
                           {selectedHouse?.id === house.id && (
-                            <ChevronRight className="h-4 w-4" style={{ color: '#2c0f5b' }} />
+                            <ChevronRight className="h-4 w-4" style={{ color: 'var(--theme-primary)' }} />
                           )}
                         </div>
                       </div>
@@ -788,12 +785,12 @@ export default function MyHome() {
             {selectedHouse && (
               <Card className="border-gray-300 shadow-lg" style={{ background: '#f2f2f2' }}>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2" style={{ color: '#2c0f5b' }}>
+                  <CardTitle className="flex items-center gap-2" style={{ color: 'var(--theme-primary)' }}>
                     <Wrench className="h-6 w-6" />
                     {maintenanceTasks?.currentMonth} Maintenance Tasks - {selectedHouse.name}
                   </CardTitle>
                   {maintenanceTasks && (
-                    <div className="flex items-center gap-2 text-sm" style={{ color: '#2c0f5b' }}>
+                    <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--theme-primary)' }}>
                       <Thermometer className="h-4 w-4" />
                       <span>Region: {maintenanceTasks.region}</span>
                       <Badge 
@@ -808,14 +805,14 @@ export default function MyHome() {
                 <CardContent>
                   {tasksLoading ? (
                     <div className="text-center py-8">
-                      <div className="text-lg" style={{ color: '#2c0f5b' }}>Loading maintenance tasks...</div>
+                      <div className="text-lg" style={{ color: 'var(--theme-primary)' }}>Loading maintenance tasks...</div>
                     </div>
                   ) : maintenanceTasks ? (
                     <div className="space-y-6">
                       {/* Seasonal Tasks */}
                       {maintenanceTasks.tasks.seasonal.length > 0 && (
                         <div>
-                          <h3 className="font-semibold mb-3 flex items-center gap-2" style={{ color: '#2c0f5b' }}>
+                          <h3 className="font-semibold mb-3 flex items-center gap-2" style={{ color: 'var(--theme-primary)' }}>
                             <Calendar className="h-4 w-4" />
                             Seasonal Tasks
                           </h3>
@@ -827,8 +824,8 @@ export default function MyHome() {
                                 data-testid={`task-seasonal-${index}`}
                               >
                                 <div className="flex items-center gap-2">
-                                  <Clock className="h-4 w-4" style={{ color: '#2c0f5b' }} />
-                                  <span style={{ color: '#2c0f5b' }}>{task}</span>
+                                  <Clock className="h-4 w-4" style={{ color: 'var(--theme-primary)' }} />
+                                  <span style={{ color: 'var(--theme-primary)' }}>{task}</span>
                                 </div>
                               </div>
                             ))}
@@ -839,7 +836,7 @@ export default function MyHome() {
                       {/* Weather-Specific Tasks */}
                       {maintenanceTasks.tasks.weatherSpecific.length > 0 && (
                         <div>
-                          <h3 className="font-semibold mb-3 flex items-center gap-2" style={{ color: '#2c0f5b' }}>
+                          <h3 className="font-semibold mb-3 flex items-center gap-2" style={{ color: 'var(--theme-primary)' }}>
                             <AlertTriangle className="h-4 w-4" />
                             Weather-Specific Tasks
                           </h3>
@@ -851,8 +848,8 @@ export default function MyHome() {
                                 data-testid={`task-weather-${index}`}
                               >
                                 <div className="flex items-center gap-2">
-                                  <Clock className="h-4 w-4" style={{ color: '#2c0f5b' }} />
-                                  <span style={{ color: '#2c0f5b' }}>{task}</span>
+                                  <Clock className="h-4 w-4" style={{ color: 'var(--theme-primary)' }} />
+                                  <span style={{ color: 'var(--theme-primary)' }}>{task}</span>
                                 </div>
                               </div>
                             ))}
@@ -862,10 +859,10 @@ export default function MyHome() {
 
                       {maintenanceTasks.tasks.seasonal.length === 0 && maintenanceTasks.tasks.weatherSpecific.length === 0 && (
                         <div className="text-center py-8">
-                          <div className="text-lg" style={{ color: '#2c0f5b' }}>
+                          <div className="text-lg" style={{ color: 'var(--theme-primary)' }}>
                             No specific maintenance tasks for this month.
                           </div>
-                          <p className="text-sm mt-2" style={{ color: '#2c0f5b' }}>
+                          <p className="text-sm mt-2" style={{ color: 'var(--theme-primary)' }}>
                             Check back next month for updated recommendations.
                           </p>
                         </div>
@@ -873,7 +870,7 @@ export default function MyHome() {
                     </div>
                   ) : (
                     <div className="text-center py-8">
-                      <div className="text-lg" style={{ color: '#2c0f5b' }}>
+                      <div className="text-lg" style={{ color: 'var(--theme-primary)' }}>
                         Select a house to view maintenance tasks
                       </div>
                     </div>
@@ -1052,7 +1049,7 @@ export default function MyHome() {
                   <Button 
                     type="submit" 
                     disabled={createHouseMutation.isPending || updateHouseMutation.isPending}
-                    style={{ backgroundColor: '#2c0f5b', color: 'white' }}
+                    style={{ backgroundColor: 'var(--theme-primary)', color: 'white' }}
                     className="hover:opacity-90"
                     data-testid="button-save-house"
                   >
@@ -1165,7 +1162,7 @@ export default function MyHome() {
                     setShowUpgradeDialog(false);
                     window.location.href = '/billing';
                   }}
-                  style={{ backgroundColor: '#2c0f5b', color: 'white' }}
+                  style={{ backgroundColor: 'var(--theme-primary)', color: 'white' }}
                   className="hover:opacity-90 flex-1"
                   data-testid="button-upgrade-now"
                 >

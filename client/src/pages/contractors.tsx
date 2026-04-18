@@ -10,6 +10,7 @@ import { ChevronLeft, ChevronRight, Search, ChevronDown, X, Home } from "lucide-
 import type { Contractor, House } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
 import { getDistanceOptions, getDistanceUnit, extractCountryFromAddress, convertDistanceForStorage } from '@shared/distance-utils';
+import { PageHero } from "@/components/page-hero";
 
 export default function Contractors() {
   const [location] = useLocation();
@@ -338,7 +339,7 @@ export default function Contractors() {
 
   if (error) {
     return (
-      <div className="min-h-screen" style={{ backgroundColor: '#f5f5f5' }}>
+      <div className="min-h-screen" style={{ backgroundColor: 'var(--page-background)' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Error Loading Contractors</h2>
@@ -350,20 +351,12 @@ export default function Contractors() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#f5f5f5' }}>
-      {/* Hero Section */}
-      <section className="py-8 sm:py-12 lg:py-16" style={{ background: 'transparent' }}>
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
-          <div className="text-center">
-            <h1 className="text-xl sm:text-2xl lg:text-4xl font-bold mb-4 sm:mb-6 text-gray-900">
-              Find Trusted Contractors
-            </h1>
-            <p className="text-sm sm:text-base lg:text-lg max-w-3xl mx-auto text-gray-600">
-              Connect with verified professionals specializing in niche home services
-            </p>
-          </div>
-        </div>
-      </section>
+    <div className="min-h-screen">
+      <PageHero
+        eyebrow="Homeowner"
+        title="Find Trusted Contractors"
+        subtitle="Connect with verified professionals for your home"
+      />
       <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-6 sm:py-8">
         {/* Find Contractor Section */}
         <div className="mb-6 sm:mb-8">

@@ -18,6 +18,7 @@ import {
   FileText, Upload, Download, Trash2, FolderOpen, Shield, AlertTriangle,
   CheckCircle, Clock, Info, Eye, Home, Pencil, X, Star, AlertCircle, Search
 } from "lucide-react";
+import { PageHero } from "@/components/page-hero";
 import type { House, HomeDocument } from "@shared/schema";
 
 const CATEGORIES = [
@@ -224,32 +225,29 @@ export default function Documents() {
   const monitorCount = deficiencies.filter(d => d.severity === "monitor").length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white dark:from-gray-900 dark:to-gray-800 pb-20 lg:pb-0">
-      <div className="max-w-6xl mx-auto px-4 py-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Home Documents</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Securely store and organize all your home-related documents</p>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              className="border-purple-200 text-purple-700 hover:bg-purple-50"
+    <div className="min-h-screen pb-20 lg:pb-0">
+      <PageHero
+        eyebrow="Secure storage"
+        title="Home Documents"
+        subtitle="All your home records in one place"
+        action={
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
               onClick={() => setInspectionDialogOpen(true)}
+              style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 9, padding: '5px 10px', fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer' }}
             >
-              <Search className="w-4 h-4 mr-2" />
-              Upload Inspection Report
-            </Button>
-            <Button
-              className="bg-purple-600 hover:bg-purple-700 text-white"
+              + Inspection
+            </button>
+            <button
               onClick={() => setUploadDialogOpen(true)}
+              style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 9, padding: '5px 10px', fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer' }}
             >
-              <Upload className="w-4 h-4 mr-2" />
-              Upload Document
-            </Button>
+              + Upload
+            </button>
           </div>
-        </div>
+        }
+      />
+      <div className="max-w-6xl mx-auto px-4 py-6">
 
         {/* Category Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">

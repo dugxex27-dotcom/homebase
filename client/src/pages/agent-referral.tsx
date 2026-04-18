@@ -14,6 +14,7 @@ import facebookTwitterImg from '@assets/homebase-rea-rea-facebook-twitter_176843
 import homeownerFacebookTwitterImg from '@assets/homebase-rea-homeowner-facebook-twitter_1768432226209.png';
 import homeownerInstagramStoryImg from '@assets/homebase-rea-homeowner-ig-story_1768432753751.png';
 import homeownerInstagramPostImg from '@assets/homebase-rea-homeowner-ig-post_1768431892928.png';
+import { PageHero } from "@/components/page-hero";
 
 export default function AgentReferral() {
   const { toast } = useToast();
@@ -108,21 +109,20 @@ export default function AgentReferral() {
 
   if (!typedUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-600 to-emerald-500">
-        <div className="text-center">
-          <div className="text-2xl font-bold text-white mb-2">Loading...</div>
-        </div>
+      <div className="min-h-screen">
+        <PageHero eyebrow="Real Estate Agent" title="Referral Program" subtitle="Loading..." />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-600 to-emerald-500">
+    <div className="min-h-screen">
+      <PageHero
+        eyebrow="Real Estate Agent"
+        title="Referral Program"
+        subtitle="Share MyHomeBase™ and earn commissions"
+      />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8 bg-white rounded-lg shadow-lg p-6">
-          <h1 className="text-3xl font-bold mb-2 text-green-600">Referral Program</h1>
-          <p className="text-lg text-gray-700">Share MyHomeBase™ and earn commissions</p>
-        </div>
 
         <div className="space-y-8">
           {/* Referral Rewards Card */}

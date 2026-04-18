@@ -4,6 +4,7 @@ import { Link, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { PageHero } from "@/components/page-hero";
 import { useAuth } from "@/hooks/useAuth";
 import { Users, DollarSign, TrendingUp, Copy, Share2, CheckCircle, Clock, XCircle, AlertCircle, ArrowRight, CreditCard, ExternalLink, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -219,12 +220,13 @@ export default function AgentDashboard() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: 'linear-gradient(to bottom, #059669 0%, #047857 100%)' }}>
+    <div className="min-h-screen">
+      <PageHero
+        eyebrow="Real Estate Agent"
+        title="Agent Dashboard"
+        subtitle="Track your referrals and earnings"
+      />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2" style={{ color: '#ffffff' }}>Agent Dashboard</h1>
-          <p className="text-lg" style={{ color: '#a7f3d0' }}>Track your referrals and earnings</p>
-        </div>
 
         {/* Verification Status Banner */}
         {verificationStatus?.verificationStatus !== 'approved' && (

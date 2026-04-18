@@ -46,6 +46,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
 import { StripeConnectOnboarding } from "@/components/stripe-connect-onboarding";
+import { PageHero } from "@/components/page-hero";
 
 const AVAILABLE_SERVICES = [
   "Appliance Installation",
@@ -1156,14 +1157,13 @@ export default function ContractorProfile() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#1560a2' }}>
+    <div className="min-h-screen">
+      <PageHero
+        eyebrow="Contractor"
+        title="My Profile"
+        subtitle="Manage your business information and professional credentials"
+      />
       <div className="container mx-auto py-8 px-4 max-w-4xl">
-      <div className="mb-8" style={{ backgroundColor: '#f2f2f2', borderRadius: '8px', padding: '24px' }}>
-        <h1 className="text-3xl font-bold mb-2" style={{ color: '#1560a2' }}>My Profile</h1>
-        <p style={{ color: 'black' }}>
-          Manage your business information and professional credentials
-        </p>
-      </div>
 
       {/* Subscription & Billing Card */}
       <Card style={{ backgroundColor: '#f2f2f2' }} className="mb-8">

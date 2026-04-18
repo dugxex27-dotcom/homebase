@@ -14,6 +14,7 @@ import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
 import instagramPostImg from '@assets/homebase-homeowner-homeowner-ig-post_1768410840843.png';
 import instagramStoryImg from '@assets/homebase-homeowner-homeowner-ig-story_1768411215294.png';
 import facebookTwitterImg from '@assets/homebase-homeowner-referral_(3)_1768267382477.png';
+import { PageHero } from "@/components/page-hero";
 
 export default function HomeownerReferral() {
   const { toast } = useToast();
@@ -86,7 +87,7 @@ export default function HomeownerReferral() {
 
   if (!typedUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#f5f5f5' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--page-background)' }}>
         <div className="text-center">
           <div className="text-2xl font-bold text-gray-900 mb-2">Loading...</div>
         </div>
@@ -95,12 +96,13 @@ export default function HomeownerReferral() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#f5f5f5' }}>
+    <div className="min-h-screen">
+      <PageHero
+        eyebrow="Homeowner"
+        title="Referral Program"
+        subtitle="Share MyHomeBase™ and earn free months"
+      />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Referral Program</h1>
-          <p className="text-gray-600">Share MyHomeBase™ and earn free months</p>
-        </div>
 
         <PaidSubscriberGate featureName="Referral Rewards">
           <div className="space-y-8">
