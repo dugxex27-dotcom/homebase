@@ -11,10 +11,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Eye, EyeOff } from "lucide-react";
-import logoWhite from '@assets/my-homebase-logo-tm-white-final_1776534229325.png';
+import logoContractor from '@assets/my-homebase-logo-tm-contractor-white-final_1776538414391.png';
 
 const C = {
-  header: '#0c447c',
+  header: '#042C53',
   bg: '#eef4fc',
   primary: '#185FA5',
   border: 'rgba(24,95,165,0.12)',
@@ -52,7 +52,7 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
 
-const inpStyle = { background: C.bg, border: `1.5px solid ${C.border}`, borderRadius: 11, padding: '11px 14px', fontSize: 13, fontWeight: 600, color: C.label, height: 'auto', boxShadow: 'none', outline: 'none' } as React.CSSProperties;
+const inpStyle = { background: '#fff', border: `1.5px solid ${C.border}`, borderRadius: 12, padding: '12px 14px', fontSize: 13, fontWeight: 500, color: C.label, height: 'auto', boxShadow: 'none', outline: 'none' } as React.CSSProperties;
 const labelStyle = { fontSize: 11, fontWeight: 700, color: C.label, letterSpacing: '0.03em', marginBottom: 4, display: 'block' } as React.CSSProperties;
 
 const GoogleSVG = () => (
@@ -152,29 +152,33 @@ export default function SignInContractor() {
   } as React.CSSProperties);
 
   const primaryBtn = (pending: boolean) => ({
-    width: '100%', background: C.primary, borderRadius: 12, padding: '13px 0', fontSize: 14, fontWeight: 700, color: '#fff',
-    border: 'none', cursor: pending ? 'default' : 'pointer', marginBottom: 16, opacity: pending ? 0.7 : 1, fontFamily: 'inherit',
+    width: '100%', background: C.primary, borderRadius: 13, padding: '14px 0', fontSize: 15, fontWeight: 700, color: '#fff',
+    border: 'none', cursor: pending ? 'default' : 'pointer', marginBottom: 14, opacity: pending ? 0.7 : 1, fontFamily: 'inherit',
   } as React.CSSProperties);
 
   return (
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: C.bg }}>
 
       {/* ── Role header ── */}
-      <div style={{ background: C.header, padding: '40px 20px 24px', textAlign: 'center', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
-          <img src={logoWhite} alt="MyHomeBase™" style={{ height: 34, width: 'auto' }} />
+      <div style={{ background: C.header, padding: '40px 24px 44px', textAlign: 'center', flexShrink: 0, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ width: 120, height: 120, borderRadius: '50%', background: '#378ADD', opacity: 0.1, position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)' }} />
+        <div style={{ marginBottom: 18, position: 'relative', zIndex: 2, display: 'flex', justifyContent: 'center' }}>
+          <img src={logoContractor} alt="MyHomeBase™" style={{ width: 200, height: 'auto' }} />
         </div>
-        <div style={{ fontSize: 10, fontWeight: 700, color: C.eyebrow, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>Contractor</div>
-        <div style={{ fontSize: 20, fontWeight: 700, color: '#fff', letterSpacing: '-0.3px' }}>Welcome back</div>
-        <div style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.55)', marginTop: 4 }}>Sign in to your contractor account</div>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 20, padding: '4px 12px', marginBottom: 14, position: 'relative', zIndex: 2, background: 'rgba(255,255,255,0.1)' }}>
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#B5D4F4' }} />
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#B5D4F4', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Contractor</span>
+        </div>
+        <div style={{ fontSize: 26, fontWeight: 800, color: '#fff', letterSpacing: '-0.5px', lineHeight: 1.15, position: 'relative', zIndex: 2, marginBottom: 8 }}>Welcome back</div>
+        <div style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', position: 'relative', zIndex: 2, lineHeight: 1.5 }}>Sign in to your contractor account</div>
+        <div style={{ position: 'absolute', bottom: -1, left: 0, right: 0, height: 28, borderRadius: '28px 28px 0 0', background: C.bg, zIndex: 1 }} />
       </div>
 
       {/* ── Scrollable body ── */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ padding: '28px 20px 24px', display: 'flex', flexDirection: 'column' }}>
 
-        <div style={{ background: '#fff', borderRadius: 14, border: `1px solid ${C.cardBorder}`, padding: 16 }}>
-
-          <div style={{ display: 'flex', background: C.bg, borderRadius: 10, padding: 3, marginBottom: 16 }}>
+          <div style={{ display: 'flex', background: 'rgba(24,95,165,0.1)', borderRadius: 12, padding: 3, marginBottom: 18 }}>
             <button type="button" onClick={() => setActiveTab('login')} style={toggleBtn(activeTab === 'login')} data-testid="tab-login-contractor">Sign in</button>
             <button type="button" onClick={() => setActiveTab('register')} style={toggleBtn(activeTab === 'register')} data-testid="tab-register-contractor">Register</button>
           </div>
