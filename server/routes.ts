@@ -11153,8 +11153,8 @@ Return ONLY a JSON object with these fields (use null for any field you cannot c
       const disclosure = await storage.upsertHouseDisclosure({
         houseId,
         homeownerId: userId,
-        formType: formType ?? "ny-pcds",
-        stateCode: stateCode ?? "NY",
+        formType: formType ?? "pcds",
+        stateCode: stateCode ?? "UNKNOWN",
         answers: answers ?? {},
       });
       res.json(disclosure);

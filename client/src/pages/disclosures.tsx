@@ -80,7 +80,8 @@ function QuestionWidget({
   prefilled: boolean;
 }) {
   const displayVal = value === null || value === undefined ? "" : String(value);
-  const needsDetail = (question.type === "yes_no_unknown" || question.type === "yes_no") && displayVal === "Yes";
+  const hasFollowUp = !!question.followUp;
+  const needsDetail = hasFollowUp;
   const detailPrompt = question.followUp ?? "Please provide additional details.";
 
   return (
@@ -262,7 +263,13 @@ export default function Disclosures() {
     mutationFn: async (data: DisclosureAnswers) => {
       const id = houseIdRef.current;
       if (!id) throw new Error("No house selected");
-      const res = await apiRequest(`/api/houses/${id}/disclosure`, "PUT", { answers: data });
+      const detectedState = detectStateCode(currentHouse?.address ?? "");
+      const detectedFormType = detectedState === "NY" ? "ny-pcds" : "pcds";
+      const res = await apiRequest(`/api/houses/${id}/disclosure`, "PUT", {
+        answers: data,
+        stateCode: detectedState,
+        formType: detectedFormType,
+      });
       return res.json();
     },
     onSuccess: () => {
@@ -530,7 +537,10 @@ export default function Disclosures() {
               return (
                 <div key={question.id} className="space-y-2">
                   <div>
-                    <p className="text-sm font-medium text-gray-800 leading-snug">{question.text}</p>
+                    <p className="text-sm font-medium text-gray-800 leading-snug">
+                      <span className="font-bold text-purple-700 mr-1">Q{question.questionNumber}.</span>
+                      {question.text}
+                    </p>
                     {question.hint && isPrefilled && (
                       <span className="inline-flex items-center gap-1 text-xs text-purple-600 mt-0.5">
                         <Info className="w-3 h-3" />{question.hint}
