@@ -37,21 +37,17 @@ import {
   generateGenericSummaryText,
 } from "@/lib/disclosure-forms/generic-pcds";
 
-function detectStateCode(address?: string | null, stateField?: string | null): string {
-  // Prefer the explicit state field if it looks like a two-letter US state code
-  if (stateField) {
-    const s = stateField.trim().toUpperCase();
-    if (/^[A-Z]{2}$/.test(s)) return s;
-  }
-  // Fall back to parsing the address string
+function detectStateCode(address?: string | null): string {
   if (!address) return "UNKNOWN";
-  const m = address.match(/\b([A-Z]{2})\b(?:\s+\d{5})?/g);
-  if (m) {
-    for (const found of m) {
-      const code = found.trim().replace(/\s+\d{5}/, "");
-      if (code.length === 2 && /^[A-Z]+$/.test(code)) return code;
-    }
-  }
+  // Highest-confidence: ", ST 12345" pattern (city, state zip)
+  const cityStateZip = address.match(/,\s+([A-Z]{2})\s+\d{5}/);
+  if (cityStateZip) return cityStateZip[1];
+  // Second: state code immediately before a zip code anywhere in string
+  const stateBeforeZip = address.match(/\b([A-Z]{2})\s+\d{5}/);
+  if (stateBeforeZip) return stateBeforeZip[1];
+  // Fallback: last 2-letter uppercase word in the address
+  const tokens = address.split(/[\s,]+/).filter(t => /^[A-Z]{2}$/.test(t));
+  if (tokens.length > 0) return tokens[tokens.length - 1];
   return "UNKNOWN";
 }
 
@@ -86,9 +82,8 @@ function QuestionWidget({
   prefilled: boolean;
 }) {
   const displayVal = value === null || value === undefined ? "" : String(value);
-  const hasFollowUp = !!question.followUp;
-  const needsDetail = hasFollowUp;
-  const detailPrompt = question.followUp ?? "Please provide additional details.";
+  const needsDetail = true;
+  const detailPrompt = question.followUp ?? "Additional notes (optional).";
 
   return (
     <div className="space-y-2">
@@ -238,7 +233,7 @@ export default function Disclosures() {
     enabled: !!houseId,
   });
 
-  const stateCode = detectStateCode(currentHouse?.address, (currentHouse as any)?.state);
+  const stateCode = detectStateCode(currentHouse?.address);
   const { sections: activeSections, formTitle, isNY } = getFormConfig(stateCode);
 
   useEffect(() => {
@@ -269,7 +264,7 @@ export default function Disclosures() {
     mutationFn: async (data: DisclosureAnswers) => {
       const id = houseIdRef.current;
       if (!id) throw new Error("No house selected");
-      const detectedState = detectStateCode(currentHouse?.address ?? "", (currentHouse as any)?.state);
+      const detectedState = detectStateCode(currentHouse?.address ?? "");
       const detectedFormType = detectedState === "NY" ? "ny-pcds" : "pcds";
       const res = await apiRequest(`/api/houses/${id}/disclosure`, "PUT", {
         answers: data,
