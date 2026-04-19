@@ -37,17 +37,24 @@ import {
   generateGenericSummaryText,
 } from "@/lib/disclosure-forms/generic-pcds";
 
+const US_STATE_CODES = new Set([
+  "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA",
+  "KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ",
+  "NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT",
+  "VA","WA","WV","WI","WY","DC",
+]);
+
 function detectStateCode(address?: string | null): string {
   if (!address) return "UNKNOWN";
   const normalized = address.toUpperCase();
   // Highest-confidence: ", NY 12345" pattern (city, state zip)
   const cityStateZip = normalized.match(/,\s+([A-Z]{2})\s+\d{5}/);
-  if (cityStateZip) return cityStateZip[1];
+  if (cityStateZip && US_STATE_CODES.has(cityStateZip[1])) return cityStateZip[1];
   // Second: state code immediately before a zip code anywhere in string
   const stateBeforeZip = normalized.match(/\b([A-Z]{2})\s+\d{5}/);
-  if (stateBeforeZip) return stateBeforeZip[1];
-  // Fallback: last 2-letter uppercase word in the address
-  const tokens = normalized.split(/[\s,]+/).filter(t => /^[A-Z]{2}$/.test(t));
+  if (stateBeforeZip && US_STATE_CODES.has(stateBeforeZip[1])) return stateBeforeZip[1];
+  // Fallback: last 2-letter token that is a valid US state abbreviation
+  const tokens = normalized.split(/[\s,]+/).filter(t => /^[A-Z]{2}$/.test(t) && US_STATE_CODES.has(t));
   if (tokens.length > 0) return tokens[tokens.length - 1];
   return "UNKNOWN";
 }
