@@ -2198,7 +2198,7 @@ export const houseDisclosures = pgTable("house_disclosures", {
   houseId: varchar("house_id").notNull().references(() => houses.id, { onDelete: "cascade" }),
   homeownerId: varchar("homeowner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   formType: text("form_type").notNull().default("pcds"), // "pcds" | "ny-pcds"
-  stateCode: text("state_code"), // "NY", "NJ", "CT", etc.
+  stateCode: text("state_code").notNull().default("UNKNOWN"), // "NY", "NJ", "CT", etc.
   answers: jsonb("answers").default({}), // { [questionId]: { answer: string; details?: string; isPrefilled: boolean } }
   updatedAt: timestamp("updated_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
