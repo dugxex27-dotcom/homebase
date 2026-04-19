@@ -179,7 +179,7 @@ export default function SignInContractor() {
 
       {/* ── Scrollable body ── */}
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ padding: '28px 20px 24px', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ padding: '28px 20px 24px', display: 'flex', flexDirection: 'column', maxWidth: 480, width: '100%', margin: '0 auto' }}>
 
           <div style={{ display: 'flex', background: 'rgba(24,95,165,0.1)', borderRadius: 12, padding: 3, marginBottom: 18 }}>
             <button type="button" onClick={() => setActiveTab('login')} style={toggleBtn(activeTab === 'login')} data-testid="tab-login-contractor">Sign in</button>

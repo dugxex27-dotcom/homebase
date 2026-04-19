@@ -181,7 +181,7 @@ export default function SignInHomeowner() {
 
       {/* ── Scrollable body ── */}
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ padding: '28px 20px 24px', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ padding: '28px 20px 24px', display: 'flex', flexDirection: 'column', maxWidth: 480, width: '100%', margin: '0 auto' }}>
 
           {/* Pill toggle */}
           <div style={{ display: 'flex', background: 'rgba(83,74,183,0.1)', borderRadius: 12, padding: 3, marginBottom: 18 }}>
