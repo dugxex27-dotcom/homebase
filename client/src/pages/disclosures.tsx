@@ -39,14 +39,15 @@ import {
 
 function detectStateCode(address?: string | null): string {
   if (!address) return "UNKNOWN";
-  // Highest-confidence: ", ST 12345" pattern (city, state zip)
-  const cityStateZip = address.match(/,\s+([A-Z]{2})\s+\d{5}/);
+  const normalized = address.toUpperCase();
+  // Highest-confidence: ", NY 12345" pattern (city, state zip)
+  const cityStateZip = normalized.match(/,\s+([A-Z]{2})\s+\d{5}/);
   if (cityStateZip) return cityStateZip[1];
   // Second: state code immediately before a zip code anywhere in string
-  const stateBeforeZip = address.match(/\b([A-Z]{2})\s+\d{5}/);
+  const stateBeforeZip = normalized.match(/\b([A-Z]{2})\s+\d{5}/);
   if (stateBeforeZip) return stateBeforeZip[1];
   // Fallback: last 2-letter uppercase word in the address
-  const tokens = address.split(/[\s,]+/).filter(t => /^[A-Z]{2}$/.test(t));
+  const tokens = normalized.split(/[\s,]+/).filter(t => /^[A-Z]{2}$/.test(t));
   if (tokens.length > 0) return tokens[tokens.length - 1];
   return "UNKNOWN";
 }
