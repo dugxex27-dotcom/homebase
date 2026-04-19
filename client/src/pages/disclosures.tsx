@@ -35,6 +35,27 @@ import {
   GENERIC_PCDS_SECTIONS,
   generateGenericSummaryText,
 } from "@/lib/disclosure-forms/generic-pcds";
+import { CA_TDS_SECTIONS, generateCASummaryText } from "@/lib/disclosure-forms/ca-pcds";
+import { TX_PCDS_SECTIONS, generateTXSummaryText } from "@/lib/disclosure-forms/tx-pcds";
+import { FL_PCDS_SECTIONS, generateFLSummaryText } from "@/lib/disclosure-forms/fl-pcds";
+import { NJ_PCDS_SECTIONS, generateNJSummaryText } from "@/lib/disclosure-forms/nj-pcds";
+import { CT_PCDS_SECTIONS, generateCTSummaryText } from "@/lib/disclosure-forms/ct-pcds";
+import { PA_PCDS_SECTIONS, generatePASummaryText } from "@/lib/disclosure-forms/pa-pcds";
+import { VA_PCDS_SECTIONS, generateVASummaryText } from "@/lib/disclosure-forms/va-pcds";
+import { NC_PCDS_SECTIONS, generateNCSummaryText } from "@/lib/disclosure-forms/nc-pcds";
+import { OH_PCDS_SECTIONS, generateOHSummaryText } from "@/lib/disclosure-forms/oh-pcds";
+import { MI_PCDS_SECTIONS, generateMISummaryText } from "@/lib/disclosure-forms/mi-pcds";
+import { IL_PCDS_SECTIONS, generateILSummaryText } from "@/lib/disclosure-forms/il-pcds";
+import { MD_PCDS_SECTIONS, generateMDSummaryText } from "@/lib/disclosure-forms/md-pcds";
+import { WA_PCDS_SECTIONS, generateWASummaryText } from "@/lib/disclosure-forms/wa-pcds";
+import { CO_PCDS_SECTIONS, generateCOSummaryText } from "@/lib/disclosure-forms/co-pcds";
+import { AZ_PCDS_SECTIONS, generateAZSummaryText } from "@/lib/disclosure-forms/az-pcds";
+import { OR_PCDS_SECTIONS, generateORSummaryText } from "@/lib/disclosure-forms/or-pcds";
+import { GA_PCDS_SECTIONS, generateGASummaryText } from "@/lib/disclosure-forms/ga-pcds";
+import { WI_PCDS_SECTIONS, generateWISummaryText } from "@/lib/disclosure-forms/wi-pcds";
+import { MN_PCDS_SECTIONS, generateMNSummaryText } from "@/lib/disclosure-forms/mn-pcds";
+import { MO_PCDS_SECTIONS, generateMOSummaryText } from "@/lib/disclosure-forms/mo-pcds";
+import { SC_PCDS_SECTIONS, generateSCSummaryText } from "@/lib/disclosure-forms/sc-pcds";
 
 const US_STATE_CODES = new Set([
   "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA",
@@ -76,16 +97,48 @@ function detectStateCode(address?: string | null): string {
   return "UNKNOWN";
 }
 
+type SummaryGenerator = (answers: DisclosureAnswers, address?: string) => string;
+
+const STATE_FORM_REGISTRY: Record<string, { sections: DisclosureSection[]; title: string; generateSummary: SummaryGenerator }> = {
+  NY: { sections: NY_PCDS_SECTIONS, title: "New York State Property Condition Disclosure Statement", generateSummary: generateSummaryText },
+  CA: { sections: CA_TDS_SECTIONS, title: "California Transfer Disclosure Statement (TDS)", generateSummary: generateCASummaryText },
+  TX: { sections: TX_PCDS_SECTIONS, title: "Texas Seller's Disclosure Notice", generateSummary: generateTXSummaryText },
+  FL: { sections: FL_PCDS_SECTIONS, title: "Florida Seller's Property Disclosure Statement", generateSummary: generateFLSummaryText },
+  NJ: { sections: NJ_PCDS_SECTIONS, title: "New Jersey Seller's Property Condition Disclosure Statement", generateSummary: generateNJSummaryText },
+  CT: { sections: CT_PCDS_SECTIONS, title: "Connecticut Property Condition Disclosure Report", generateSummary: generateCTSummaryText },
+  PA: { sections: PA_PCDS_SECTIONS, title: "Pennsylvania Seller's Property Disclosure Statement", generateSummary: generatePASummaryText },
+  VA: { sections: VA_PCDS_SECTIONS, title: "Virginia Residential Property Disclosure Statement", generateSummary: generateVASummaryText },
+  NC: { sections: NC_PCDS_SECTIONS, title: "North Carolina Residential Property and Owners' Association Disclosure Statement", generateSummary: generateNCSummaryText },
+  OH: { sections: OH_PCDS_SECTIONS, title: "Ohio Residential Property Disclosure Form", generateSummary: generateOHSummaryText },
+  MI: { sections: MI_PCDS_SECTIONS, title: "Michigan Seller's Disclosure Statement", generateSummary: generateMISummaryText },
+  IL: { sections: IL_PCDS_SECTIONS, title: "Illinois Residential Real Property Disclosure Report", generateSummary: generateILSummaryText },
+  MD: { sections: MD_PCDS_SECTIONS, title: "Maryland Property Disclosure and Disclaimer Statement", generateSummary: generateMDSummaryText },
+  WA: { sections: WA_PCDS_SECTIONS, title: "Washington State Seller Disclosure Statement", generateSummary: generateWASummaryText },
+  CO: { sections: CO_PCDS_SECTIONS, title: "Colorado Seller's Property Disclosure", generateSummary: generateCOSummaryText },
+  AZ: { sections: AZ_PCDS_SECTIONS, title: "Arizona Residential Seller's Property Disclosure Statement", generateSummary: generateAZSummaryText },
+  OR: { sections: OR_PCDS_SECTIONS, title: "Oregon Seller's Property Disclosure Statement", generateSummary: generateORSummaryText },
+  GA: { sections: GA_PCDS_SECTIONS, title: "Georgia Seller's Property Disclosure Statement", generateSummary: generateGASummaryText },
+  WI: { sections: WI_PCDS_SECTIONS, title: "Wisconsin Real Estate Condition Report", generateSummary: generateWISummaryText },
+  MN: { sections: MN_PCDS_SECTIONS, title: "Minnesota Seller's Property Disclosure Statement", generateSummary: generateMNSummaryText },
+  MO: { sections: MO_PCDS_SECTIONS, title: "Missouri Seller's Disclosure Statement", generateSummary: generateMOSummaryText },
+  SC: { sections: SC_PCDS_SECTIONS, title: "South Carolina Residential Property Condition Disclosure Statement", generateSummary: generateSCSummaryText },
+};
+
 function getFormConfig(stateCode: string): {
   sections: DisclosureSection[];
   formTitle: string;
-  isNY: boolean;
+  generateSummary: SummaryGenerator;
 } {
-  if (stateCode === "NY") {
-    return { sections: NY_PCDS_SECTIONS, formTitle: "New York State Property Condition Disclosure Statement", isNY: true };
+  const entry = STATE_FORM_REGISTRY[stateCode];
+  if (entry) {
+    return { sections: entry.sections, formTitle: entry.title, generateSummary: entry.generateSummary };
   }
   const label = stateCode !== "UNKNOWN" ? `${stateCode} Property Condition Disclosure Statement` : "Property Condition Disclosure Statement";
-  return { sections: GENERIC_PCDS_SECTIONS, formTitle: label, isNY: false };
+  return {
+    sections: GENERIC_PCDS_SECTIONS,
+    formTitle: label,
+    generateSummary: (answers, address) => generateGenericSummaryText(answers, stateCode, address),
+  };
 }
 
 const YES_NO_OPTIONS = ["Yes", "No", "Unknown"];
@@ -264,7 +317,7 @@ export default function Disclosures() {
   });
 
   const stateCode = detectStateCode(currentHouse?.address);
-  const { sections: activeSections, formTitle, isNY } = getFormConfig(stateCode);
+  const { sections: activeSections, formTitle, generateSummary } = getFormConfig(stateCode);
 
   useEffect(() => {
     if (!houseId) return;
@@ -379,9 +432,7 @@ export default function Disclosures() {
 
   const handleCopy = async () => {
     const address = currentHouse?.address ?? undefined;
-    const text = isNY
-      ? generateSummaryText(answers, address)
-      : generateGenericSummaryText(answers, stateCode, address);
+    const text = generateSummary(answers, address);
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -436,9 +487,7 @@ export default function Disclosures() {
 
   if (showSummary) {
     const address = currentHouse?.address ?? undefined;
-    const summaryText = isNY
-      ? generateSummaryText(answers, address)
-      : generateGenericSummaryText(answers, stateCode, address);
+    const summaryText = generateSummary(answers, address);
 
     const copySectionById = async (sectionId: string) => {
       const sec = activeSections.find(s => s.id === sectionId);
@@ -554,7 +603,7 @@ export default function Disclosures() {
             <FileText className="w-5 h-5 text-purple-700" />
             <h1 className="text-xl font-bold text-gray-900">Property Disclosure Wizard</h1>
             <Badge variant="secondary" className="text-xs">
-              {isNY ? "NY PCDS" : stateCode !== "UNKNOWN" ? `${stateCode} Form` : "Generic Form"}
+              {stateCode !== "UNKNOWN" ? `${stateCode} Form` : "Generic Form"}
             </Badge>
           </div>
           <p className="text-sm text-gray-500">
