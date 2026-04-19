@@ -177,9 +177,14 @@ export function buildPrefillFromLogs(logs: MaintenanceLogLike[]): DisclosureAnsw
         if (!answers["roofAge"]) answers["roofAge"] = year;
       }
     }
-    if (desc.includes("flood") || desc.includes("water damage") || desc.includes("water intrusion")) {
+
+    const isFlood = desc.includes("flood") || desc.includes("water damage") || desc.includes("water intrusion");
+    if (isFlood) {
       if (!answers["floodDamage"]) answers["floodDamage"] = "Yes";
+      if (!answers["previousFlood"]) answers["previousFlood"] = "Yes";
+      if (!answers["waterIntrusion"]) answers["waterIntrusion"] = "Yes";
     }
+
     if (desc.includes("mold") || desc.includes("mould")) {
       if (!answers["mold"]) answers["mold"] = "Yes";
     }
@@ -197,6 +202,20 @@ export function buildPrefillFromLogs(logs: MaintenanceLogLike[]): DisclosureAnsw
     }
     if ((area.includes("basement") || area.includes("crawl")) && (desc.includes("leak") || desc.includes("water"))) {
       if (!answers["basementWater"]) answers["basementWater"] = "Yes";
+      if (!answers["waterIntrusion"]) answers["waterIntrusion"] = "Yes";
+    }
+    if (desc.includes("termite") || desc.includes("wdo") || desc.includes("wood destroying") || type.includes("pest")) {
+      if (!answers["termiteWDO"]) answers["termiteWDO"] = "Yes";
+      if (!answers["pestInfestation"]) answers["pestInfestation"] = "Yes";
+    }
+    if (desc.includes("fire") || type.includes("fire")) {
+      if (!answers["fireDamage"]) answers["fireDamage"] = "Yes";
+    }
+    if (desc.includes("chinese drywall") || desc.includes("problem drywall")) {
+      if (!answers["chineseDrywall"]) answers["chineseDrywall"] = "Yes";
+    }
+    if (desc.includes("sinkhole")) {
+      if (!answers["sinkhole"]) answers["sinkhole"] = "Yes";
     }
   }
   return answers;
@@ -204,59 +223,106 @@ export function buildPrefillFromLogs(logs: MaintenanceLogLike[]): DisclosureAnsw
 
 export function buildPrefillAnswers(house: Record<string, unknown>): DisclosureAnswers {
   const answers: DisclosureAnswers = {};
-  const prefillMap: Record<string, string> = {
-    yearBuilt: "yearBuilt",
-    foundationType: "foundationType",
-    roofType: "roofType",
-    roofInstalledYear: "roofAge",
-    hvacType: "heatingType",
-    primaryHeatingFuel: "heatingFuel",
-    plumbingType: "plumbingType",
-    waterHeaterType: "waterHeaterType",
-    garageType: "garageType",
-  };
 
-  for (const [houseField, questionId] of Object.entries(prefillMap)) {
-    const val = house[houseField];
-    if (val !== null && val !== undefined && val !== "") {
-      if (questionId === "foundationType") {
-        const map: Record<string, string> = {
-          basement: "Basement",
-          crawl_space: "Crawl Space",
-          slab: "Slab",
-          pier_beam: "Pier & Beam",
-        };
-        answers[questionId] = map[String(val)] ?? String(val);
-      } else if (questionId === "heatingType") {
-        const map: Record<string, string> = {
-          forced_air: "Forced Air Furnace",
-          boiler: "Boiler / Radiator",
-          heat_pump: "Heat Pump",
-          electric_baseboard: "Electric Baseboard",
-          radiant: "Radiant Floor",
-        };
-        answers[questionId] = map[String(val)] ?? String(val);
-      } else if (questionId === "heatingFuel") {
-        const map: Record<string, string> = {
-          natural_gas: "Natural Gas",
-          oil: "Oil",
-          electric: "Electric",
-          propane: "Propane",
-        };
-        answers[questionId] = map[String(val)] ?? String(val);
-      } else if (questionId === "garageType") {
-        const map: Record<string, string> = {
-          none: "None",
-          attached: "Attached",
-          detached: "Detached",
-          built_in: "Built-in",
-          carport: "Carport",
-        };
-        answers[questionId] = map[String(val)] ?? String(val);
-      } else {
-        answers[questionId] = val as AnswerValue;
-      }
-    }
+  // yearBuilt
+  if (house.yearBuilt !== null && house.yearBuilt !== undefined && house.yearBuilt !== "") {
+    answers["yearBuilt"] = house.yearBuilt as AnswerValue;
+  }
+
+  // waterHeaterInstalledYear → waterHeaterInstallYear question ID
+  if (house.waterHeaterInstalledYear !== null && house.waterHeaterInstalledYear !== undefined && house.waterHeaterInstalledYear !== "") {
+    answers["waterHeaterInstallYear"] = house.waterHeaterInstalledYear as AnswerValue;
+  }
+
+  // foundationType
+  if (house.foundationType !== null && house.foundationType !== undefined && house.foundationType !== "") {
+    const map: Record<string, string> = {
+      basement: "Basement",
+      crawl_space: "Crawl Space",
+      slab: "Slab",
+      pier_beam: "Pier & Beam",
+      pier_and_beam: "Pier & Beam",
+    };
+    answers["foundationType"] = map[String(house.foundationType)] ?? String(house.foundationType);
+  }
+
+  // roofType
+  if (house.roofType !== null && house.roofType !== undefined && house.roofType !== "") {
+    const map: Record<string, string> = {
+      asphalt_shingle: "Asphalt Shingles",
+      metal: "Metal",
+      tile: "Tile",
+      flat: "Flat / Built-up",
+      slate: "Slate",
+      wood: "Wood Shakes",
+      cedar_shake: "Wood Shakes",
+    };
+    answers["roofType"] = map[String(house.roofType)] ?? String(house.roofType);
+  }
+
+  // hvacType → heatingType
+  if (house.hvacType !== null && house.hvacType !== undefined && house.hvacType !== "") {
+    const map: Record<string, string> = {
+      forced_air: "Forced Air Furnace",
+      furnace: "Forced Air Furnace",
+      central_air: "Forced Air Furnace",
+      boiler: "Boiler / Radiator",
+      heat_pump: "Heat Pump",
+      electric_baseboard: "Electric Baseboard",
+      radiant: "Radiant Floor",
+      ductless: "Ductless Mini-Split",
+      window_unit: "Other / Unknown",
+    };
+    answers["heatingType"] = map[String(house.hvacType)] ?? String(house.hvacType);
+  }
+
+  // primaryHeatingFuel → heatingFuel
+  if (house.primaryHeatingFuel !== null && house.primaryHeatingFuel !== undefined && house.primaryHeatingFuel !== "") {
+    const map: Record<string, string> = {
+      natural_gas: "Natural Gas",
+      oil: "Oil",
+      electric: "Electric",
+      propane: "Propane",
+      wood: "Wood",
+      other: "Other / Unknown",
+    };
+    answers["heatingFuel"] = map[String(house.primaryHeatingFuel)] ?? String(house.primaryHeatingFuel);
+  }
+
+  // plumbingType
+  if (house.plumbingType !== null && house.plumbingType !== undefined && house.plumbingType !== "") {
+    const map: Record<string, string> = {
+      copper: "Copper",
+      pex: "PEX",
+      cpvc: "PVC",
+      pvc: "PVC",
+      galvanized: "Galvanized Steel",
+      cast_iron: "Cast Iron",
+      mixed: "Other / Unknown",
+    };
+    answers["plumbingType"] = map[String(house.plumbingType)] ?? String(house.plumbingType);
+  }
+
+  // waterHeaterType
+  if (house.waterHeaterType !== null && house.waterHeaterType !== undefined && house.waterHeaterType !== "") {
+    const map: Record<string, string> = {
+      tank: "Tank (Gas)",
+      tankless: "Tankless (Gas)",
+      hybrid: "Heat Pump Water Heater",
+    };
+    answers["waterHeaterType"] = map[String(house.waterHeaterType)] ?? String(house.waterHeaterType);
+  }
+
+  // garageType
+  if (house.garageType !== null && house.garageType !== undefined && house.garageType !== "") {
+    const map: Record<string, string> = {
+      none: "None",
+      attached: "Attached",
+      detached: "Detached",
+      built_in: "Built-in",
+      carport: "Carport",
+    };
+    answers["garageType"] = map[String(house.garageType)] ?? String(house.garageType);
   }
 
   return answers;
