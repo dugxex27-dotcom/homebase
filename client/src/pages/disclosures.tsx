@@ -265,21 +265,32 @@ export default function Disclosures() {
   const houseIdRef = useRef(houseId);
   useEffect(() => { houseIdRef.current = houseId; }, [houseId]);
 
+  // Cancel any pending autosave when the selected house changes to prevent cross-property writes
+  useEffect(() => {
+    if (autosaveTimer.current) {
+      clearTimeout(autosaveTimer.current);
+      autosaveTimer.current = null;
+      setAutosaving(false);
+    }
+  }, [houseId]);
+
   const saveMutation = useMutation({
-    mutationFn: async (data: DisclosureAnswers) => {
-      const id = houseIdRef.current;
-      if (!id) throw new Error("No house selected");
-      const detectedState = detectStateCode(currentHouse?.address ?? "");
+    mutationFn: async (data: { houseId: string; answers: DisclosureAnswers }) => {
+      const { houseId: targetHouseId, answers: answersToSave } = data;
+      if (!targetHouseId) throw new Error("No house selected");
+      // Re-resolve address/state from the house we are saving TO (not current house)
+      const targetHouse = houseList.find(h => h.id === targetHouseId);
+      const detectedState = detectStateCode(targetHouse?.address ?? "");
       const detectedFormType = detectedState === "NY" ? "ny-pcds" : "pcds";
-      const res = await apiRequest(`/api/houses/${id}/disclosure`, "PUT", {
-        answers: data,
+      const res = await apiRequest(`/api/houses/${targetHouseId}/disclosure`, "PUT", {
+        answers: answersToSave,
         stateCode: detectedState,
         formType: detectedFormType,
       });
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/houses", houseIdRef.current, "disclosure"] });
+    onSuccess: (_result, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/houses", variables.houseId, "disclosure"] });
       setLastSaved(new Date());
       setAutosaving(false);
     },
@@ -293,11 +304,12 @@ export default function Disclosures() {
   useEffect(() => { saveMutationRef.current = saveMutation; }, [saveMutation]);
 
   const scheduleAutosave = useCallback((newAnswers: DisclosureAnswers) => {
-    if (!houseIdRef.current) return;
+    const capturedHouseId = houseIdRef.current;
+    if (!capturedHouseId) return;
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     setAutosaving(true);
     autosaveTimer.current = setTimeout(() => {
-      saveMutationRef.current.mutate(newAnswers);
+      saveMutationRef.current.mutate({ houseId: capturedHouseId, answers: newAnswers });
     }, 1200);
   }, []);
 
@@ -318,10 +330,11 @@ export default function Disclosures() {
   }, [scheduleAutosave]);
 
   const handleManualSave = () => {
-    if (!houseIdRef.current) return;
+    const currentId = houseIdRef.current;
+    if (!currentId) return;
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     setAutosaving(false);
-    saveMutation.mutate(answers);
+    saveMutation.mutate({ houseId: currentId, answers });
   };
 
   const handleCopy = async () => {
