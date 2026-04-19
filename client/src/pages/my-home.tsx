@@ -812,8 +812,8 @@ export default function MyHome() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-purple-900">Property Disclosure Wizard</p>
                       <p className="text-xs text-purple-700 mt-0.5">
-                        {disclosureData?.answers && Object.keys(disclosureData.answers).length > 0
-                          ? `In progress — ${Object.keys(disclosureData.answers).length} answers saved`
+                        {disclosureData?.answers && Object.keys(disclosureData.answers).filter(k => !k.endsWith('_details')).length > 0
+                          ? `In progress — ${Object.keys(disclosureData.answers).filter(k => !k.endsWith('_details')).length} answers saved`
                           : 'Prepare your NY PCDS before selling'}
                       </p>
                     </div>

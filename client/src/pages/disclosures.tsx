@@ -183,6 +183,7 @@ export default function Disclosures() {
   const [answers, setAnswers] = useState<DisclosureAnswers>({});
   const [prefillKeys, setPrefillKeys] = useState<Set<string>>(new Set());
   const [showSummary, setShowSummary] = useState(false);
+  const [copiedSectionId, setCopiedSectionId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [sectionCopied, setSectionCopied] = useState(false);
   const [selectedHouseId, setSelectedHouseId] = useState<string | null>(null);
@@ -246,19 +247,31 @@ export default function Disclosures() {
     if (disclosureLoading || systemsLoading || logsLoading) return;
     if (initializedForHouse.current === houseId) return;
     initializedForHouse.current = houseId;
-    if (existingDisclosure?.answers && Object.keys(existingDisclosure.answers).length > 0) {
-      setAnswers(existingDisclosure.answers as DisclosureAnswers);
-      return;
-    }
+    const existing = (existingDisclosure?.answers ?? {}) as DisclosureAnswers;
+    const hasSaved = Object.keys(existing).length > 0;
+
     if (currentHouse) {
       const housePrefill = buildPrefillAnswers(currentHouse as unknown as Record<string, unknown>);
       const systemsPrefill = buildPrefillFromSystems(homeSystems as HomeSystem[]);
       const logsPrefill = buildPrefillFromLogs(maintenanceLogs);
       const combined = { ...logsPrefill, ...systemsPrefill, ...housePrefill };
-      if (Object.keys(combined).length > 0) {
+      if (hasSaved) {
+        // Returning user: preserve all existing answers; only backfill prefill for blank questions
+        const backfill = Object.fromEntries(
+          Object.entries(combined).filter(([k]) => {
+            const v = existing[k];
+            return v === null || v === undefined || v === "";
+          })
+        );
+        setAnswers({ ...backfill, ...existing });
+        setPrefillKeys(new Set(Object.keys(backfill)));
+      } else {
+        // First visit: apply full prefill
         setAnswers(combined);
         setPrefillKeys(new Set(Object.keys(combined)));
       }
+    } else if (hasSaved) {
+      setAnswers(existing);
     }
   }, [houseId, disclosureLoading, systemsLoading, logsLoading, existingDisclosure, currentHouse, homeSystems, maintenanceLogs]);
 
@@ -401,10 +414,25 @@ export default function Disclosures() {
     const summaryText = isNY
       ? generateSummaryText(answers, address)
       : generateGenericSummaryText(answers, stateCode, address);
+
+    const copySectionById = async (sectionId: string) => {
+      const sec = activeSections.find(s => s.id === sectionId);
+      if (!sec) return;
+      const text = generateSectionSummaryText(sec, answers);
+      try {
+        await navigator.clipboard.writeText(text);
+        setCopiedSectionId(sectionId);
+        setTimeout(() => setCopiedSectionId(null), 2500);
+        toast({ title: "Section copied!", description: `${sec.title} answers copied to clipboard.` });
+      } catch {
+        toast({ title: "Copy failed", variant: "destructive" });
+      }
+    };
+
     return (
       <div className="disclosure-print-root min-h-screen" style={{ background: "var(--theme-primary, #f8f5ff)" }}>
         <div className="max-w-3xl mx-auto px-4 py-6">
-          <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-center gap-3 mb-6 print:hidden">
             <button
               onClick={() => setShowSummary(false)}
               className="text-purple-700 hover:underline text-sm font-medium flex items-center gap-1"
@@ -412,30 +440,78 @@ export default function Disclosures() {
               <ChevronLeft className="w-4 h-4" /> Back to wizard
             </button>
           </div>
-          <Card>
+
+          {/* Summary header card */}
+          <Card className="mb-4">
             <CardHeader>
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
                   <CardTitle className="text-lg">{formTitle} — Summary</CardTitle>
-                  <CardDescription>Review all your answers below. Copy or print for your records.</CardDescription>
+                  <CardDescription>Review all your answers below. Copy sections or print for your records.</CardDescription>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={handleCopy} className="print:hidden">
+                <div className="flex gap-2 print:hidden">
+                  <Button variant="outline" size="sm" onClick={handleCopy}>
                     {copied ? <CheckCircle className="w-4 h-4 mr-1 text-green-600" /> : <ClipboardCopy className="w-4 h-4 mr-1" />}
                     {copied ? "Copied!" : "Copy All"}
                   </Button>
-                  <Button variant="outline" size="sm" onClick={handlePrint} className="print:hidden">
+                  <Button variant="outline" size="sm" onClick={handlePrint}>
                     <Printer className="w-4 h-4 mr-1" />Print
                   </Button>
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
-              <pre className="whitespace-pre-wrap text-xs font-mono bg-gray-50 rounded-lg p-4 overflow-auto max-h-[60vh] print:max-h-none print:overflow-visible">
-                {summaryText}
-              </pre>
-            </CardContent>
           </Card>
+
+          {/* Per-section cards with copy buttons (screen view) */}
+          <div className="space-y-3 print:hidden">
+            {activeSections.map(section => {
+              const pct = getSectionProgress(section.id, answers, activeSections);
+              const isCopied = copiedSectionId === section.id;
+              return (
+                <Card key={section.id}>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="text-sm font-semibold">{section.title}</CardTitle>
+                        <Badge variant={pct === 100 ? "default" : "secondary"} className="text-xs">
+                          {pct}% done
+                        </Badge>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => copySectionById(section.id)} className="h-7 px-2 text-xs">
+                        {isCopied ? <CheckCircle className="w-3.5 h-3.5 mr-1 text-green-600" /> : <ClipboardCopy className="w-3.5 h-3.5 mr-1" />}
+                        {isCopied ? "Copied!" : "Copy section"}
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="space-y-2">
+                      {section.questions.map(q => {
+                        const ans = answers[q.id];
+                        const det = answers[`${q.id}_details`];
+                        const isEmpty = ans === null || ans === undefined || ans === "";
+                        return (
+                          <div key={q.id} className="text-xs border-b border-gray-100 pb-2 last:border-0">
+                            <span className="text-gray-500 font-mono mr-1">Q{q.questionNumber}.</span>
+                            <span className="text-gray-700">{q.text}</span>
+                            <div className={`mt-0.5 font-medium ${isEmpty ? "text-gray-400 italic" : "text-gray-900"}`}>
+                              {isEmpty ? "Not answered" : String(ans)}
+                            </div>
+                            {det && <div className="text-gray-500 mt-0.5">Notes: {String(det)}</div>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Hidden pre block used only for print */}
+          <pre className="hidden print:block whitespace-pre-wrap text-xs font-mono">
+            {summaryText}
+          </pre>
+
           <p className="text-xs text-gray-500 mt-4 text-center print:hidden">
             This is a draft for informational purposes only. Consult your attorney or real estate agent before submitting any legal disclosure.
           </p>
