@@ -11141,7 +11141,8 @@ Return ONLY a JSON object with these fields (use null for any field you cannot c
     }
   });
 
-  app.put("/api/disclosures/:houseId", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  // Shared handler for PUT disclosure — used by both alias routes below
+  const handleDisclosurePut = async (req: any, res: any) => {
     try {
       const { houseId } = req.params;
       const userId = req.session.user.id;
@@ -11161,9 +11162,11 @@ Return ONLY a JSON object with these fields (use null for any field you cannot c
     } catch (e: any) {
       res.status(500).json({ message: e.message });
     }
-  });
+  };
 
-  // Canonical disclosure alias routes: /api/houses/:houseId/disclosure
+  app.put("/api/disclosures/:houseId", isAuthenticated, requirePropertyOwner, handleDisclosurePut);
+
+  // Canonical disclosure routes: /api/houses/:houseId/disclosure
   app.get("/api/houses/:houseId/disclosure", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
     try {
       const { houseId } = req.params;
@@ -11179,27 +11182,7 @@ Return ONLY a JSON object with these fields (use null for any field you cannot c
     }
   });
 
-  app.put("/api/houses/:houseId/disclosure", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
-    try {
-      const { houseId } = req.params;
-      const userId = req.session.user.id;
-      const house = await storage.getHouse(houseId);
-      if (!house || house.homeownerId !== userId) {
-        return res.status(403).json({ message: "Access denied to this property" });
-      }
-      const { answers, formType, stateCode } = req.body;
-      const disclosure = await storage.upsertHouseDisclosure({
-        houseId,
-        homeownerId: userId,
-        formType: formType ?? "pcds",
-        stateCode: stateCode ?? "UNKNOWN",
-        answers: answers ?? {},
-      });
-      res.json(disclosure);
-    } catch (e: any) {
-      res.status(500).json({ message: e.message });
-    }
-  });
+  app.put("/api/houses/:houseId/disclosure", isAuthenticated, requirePropertyOwner, handleDisclosurePut);
 
   // Contractor subscription endpoint
   app.get('/api/contractor/subscription', async (req: any, res) => {

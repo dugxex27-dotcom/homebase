@@ -183,9 +183,13 @@ export default function MyHome() {
     queryKey: ['/api/houses', selectedHouse?.id, 'disclosure'],
     queryFn: async () => {
       if (!selectedHouse) return null;
-      const response = await apiRequest(`/api/houses/${selectedHouse.id}/disclosure`, "GET");
-      if (!response.ok) return null;
-      return response.json();
+      try {
+        const response = await apiRequest(`/api/houses/${selectedHouse.id}/disclosure`, "GET");
+        return response.json();
+      } catch (e: any) {
+        if (typeof e?.message === "string" && e.message.startsWith("404")) return null;
+        throw e;
+      }
     },
     enabled: !!selectedHouse,
   });

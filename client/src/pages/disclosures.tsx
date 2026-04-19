@@ -227,9 +227,13 @@ export default function Disclosures() {
     queryKey: ["/api/houses", houseId, "disclosure"],
     queryFn: async () => {
       if (!houseId) return null;
-      const res = await apiRequest(`/api/houses/${houseId}/disclosure`, "GET");
-      if (res.status === 404) return null;
-      return res.json();
+      try {
+        const res = await apiRequest(`/api/houses/${houseId}/disclosure`, "GET");
+        return res.json();
+      } catch (e: any) {
+        if (typeof e?.message === "string" && e.message.startsWith("404")) return null;
+        throw e;
+      }
     },
     enabled: !!houseId,
   });
