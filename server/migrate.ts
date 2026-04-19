@@ -33,8 +33,8 @@ export async function runMigrations() {
         "id" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
         "house_id" varchar NOT NULL,
         "homeowner_id" varchar NOT NULL,
-        "form_type" text NOT NULL DEFAULT 'ny_pcds',
-        "state_code" text,
+        "form_type" text NOT NULL DEFAULT 'pcds',
+        "state_code" text NOT NULL DEFAULT 'UNKNOWN',
         "answers" jsonb DEFAULT '{}',
         "updated_at" timestamp DEFAULT now(),
         "created_at" timestamp DEFAULT now()
@@ -44,6 +44,15 @@ export async function runMigrations() {
     `);
   } catch (err: any) {
     console.warn('[MIGRATE] house_disclosures table setup warning (non-fatal):', err?.message ?? err);
+  }
+  // Add unique constraint on house_id so only one disclosure exists per property
+  try {
+    await pool.query(`
+      CREATE UNIQUE INDEX IF NOT EXISTS "UDX_house_disclosures_house_id"
+        ON "house_disclosures"("house_id");
+    `);
+  } catch (err: any) {
+    console.warn('[MIGRATE] house_disclosures unique index warning (non-fatal):', err?.message ?? err);
   }
 
   await pool.end();
