@@ -26,9 +26,38 @@ import {
   generateSummaryText,
   generateSectionSummaryText,
   type DisclosureAnswers,
+  type DisclosureSection,
   type DisclosureQuestion,
   type AnswerValue,
 } from "@/lib/disclosure-forms/ny-pcds";
+import {
+  GENERIC_PCDS_SECTIONS,
+  generateGenericSummaryText,
+} from "@/lib/disclosure-forms/generic-pcds";
+
+function detectStateCode(address?: string | null): string {
+  if (!address) return "UNKNOWN";
+  const m = address.match(/\b([A-Z]{2})\b(?:\s+\d{5})?/g);
+  if (m) {
+    for (const found of m) {
+      const code = found.trim().replace(/\s+\d{5}/, "");
+      if (code.length === 2 && /^[A-Z]+$/.test(code)) return code;
+    }
+  }
+  return "UNKNOWN";
+}
+
+function getFormConfig(stateCode: string): {
+  sections: DisclosureSection[];
+  formTitle: string;
+  isNY: boolean;
+} {
+  if (stateCode === "NY") {
+    return { sections: NY_PCDS_SECTIONS, formTitle: "New York State Property Condition Disclosure Statement", isNY: true };
+  }
+  const label = stateCode !== "UNKNOWN" ? `${stateCode} Property Condition Disclosure Statement` : "Property Condition Disclosure Statement";
+  return { sections: GENERIC_PCDS_SECTIONS, formTitle: label, isNY: false };
+}
 
 const YES_NO_OPTIONS = ["Yes", "No", "Unknown"];
 const YES_NO_ONLY = ["Yes", "No"];
@@ -169,18 +198,22 @@ export default function Disclosures() {
   });
 
   const { data: existingDisclosure, isLoading: disclosureLoading } = useQuery({
-    queryKey: ["/api/disclosures", houseId],
+    queryKey: ["/api/houses", houseId, "disclosure"],
     queryFn: async () => {
       if (!houseId) return null;
-      const res = await apiRequest(`/api/disclosures/${houseId}`, "GET");
+      const res = await apiRequest(`/api/houses/${houseId}/disclosure`, "GET");
       if (res.status === 404) return null;
       return res.json();
     },
     enabled: !!houseId,
   });
 
+  const stateCode = detectStateCode(currentHouse?.address);
+  const { sections: activeSections, formTitle, isNY } = getFormConfig(stateCode);
+
   useEffect(() => {
     if (!houseId) return;
+    if (disclosureLoading) return;
     if (initializedForHouse.current === houseId) return;
     initializedForHouse.current = houseId;
     if (existingDisclosure?.answers && Object.keys(existingDisclosure.answers).length > 0) {
@@ -196,7 +229,7 @@ export default function Disclosures() {
         setPrefillKeys(new Set(Object.keys(combined)));
       }
     }
-  }, [houseId, existingDisclosure, currentHouse, homeSystems]);
+  }, [houseId, disclosureLoading, existingDisclosure, currentHouse, homeSystems]);
 
   const houseIdRef = useRef(houseId);
   useEffect(() => { houseIdRef.current = houseId; }, [houseId]);
@@ -205,11 +238,11 @@ export default function Disclosures() {
     mutationFn: async (data: DisclosureAnswers) => {
       const id = houseIdRef.current;
       if (!id) throw new Error("No house selected");
-      const res = await apiRequest(`/api/disclosures/${id}`, "PUT", { answers: data });
+      const res = await apiRequest(`/api/houses/${id}/disclosure`, "PUT", { answers: data });
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/disclosures", houseIdRef.current] });
+      queryClient.invalidateQueries({ queryKey: ["/api/houses", houseIdRef.current, "disclosure"] });
       setLastSaved(new Date());
       setAutosaving(false);
     },
@@ -255,7 +288,9 @@ export default function Disclosures() {
   };
 
   const handleCopy = async () => {
-    const text = generateSummaryText(answers);
+    const text = isNY
+      ? generateSummaryText(answers)
+      : generateGenericSummaryText(answers, stateCode);
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -267,7 +302,7 @@ export default function Disclosures() {
   };
 
   const handleSectionCopy = async () => {
-    const section = NY_PCDS_SECTIONS[sectionIdx];
+    const section = activeSections[sectionIdx];
     const text = generateSectionSummaryText(section, answers);
     try {
       await navigator.clipboard.writeText(text);
@@ -281,8 +316,8 @@ export default function Disclosures() {
 
   const handlePrint = () => window.print();
 
-  const currentSection = NY_PCDS_SECTIONS[sectionIdx];
-  const totalProgress = getTotalProgress(answers);
+  const currentSection = activeSections[sectionIdx];
+  const totalProgress = getTotalProgress(answers, activeSections);
 
   if (!houseId && !disclosureLoading && houseList.length === 0) {
     return (
@@ -307,7 +342,9 @@ export default function Disclosures() {
   }
 
   if (showSummary) {
-    const summaryText = generateSummaryText(answers);
+    const summaryText = isNY
+      ? generateSummaryText(answers)
+      : generateGenericSummaryText(answers, stateCode);
     return (
       <div className="min-h-screen" style={{ background: "var(--theme-primary, #f8f5ff)" }}>
         <div className="max-w-3xl mx-auto px-4 py-6">
@@ -323,7 +360,7 @@ export default function Disclosures() {
             <CardHeader>
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
-                  <CardTitle className="text-lg">NY PCDS Summary</CardTitle>
+                  <CardTitle className="text-lg">{formTitle} — Summary</CardTitle>
                   <CardDescription>Review all your answers below. Copy or print for your records.</CardDescription>
                 </div>
                 <div className="flex gap-2">
@@ -359,10 +396,12 @@ export default function Disclosures() {
           <div className="flex items-center gap-2 mb-1">
             <FileText className="w-5 h-5 text-purple-700" />
             <h1 className="text-xl font-bold text-gray-900">Property Disclosure Wizard</h1>
-            <Badge variant="secondary" className="text-xs">NY PCDS</Badge>
+            <Badge variant="secondary" className="text-xs">
+              {isNY ? "NY PCDS" : stateCode !== "UNKNOWN" ? `${stateCode} Form` : "Generic Form"}
+            </Badge>
           </div>
           <p className="text-sm text-gray-500">
-            New York State Property Condition Disclosure Statement — guided walkthrough
+            {formTitle} — guided walkthrough
           </p>
         </div>
 
@@ -408,8 +447,8 @@ export default function Disclosures() {
 
         {/* Section tabs */}
         <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
-          {NY_PCDS_SECTIONS.map((section, idx) => {
-            const pct = getSectionProgress(section.id, answers);
+          {activeSections.map((section, idx) => {
+            const pct = getSectionProgress(section.id, answers, activeSections);
             const active = idx === sectionIdx;
             return (
               <button
@@ -519,10 +558,10 @@ export default function Disclosures() {
             </Button>
           </div>
 
-          {sectionIdx < NY_PCDS_SECTIONS.length - 1 ? (
+          {sectionIdx < activeSections.length - 1 ? (
             <Button
               size="sm"
-              onClick={() => setSectionIdx(prev => Math.min(NY_PCDS_SECTIONS.length - 1, prev + 1))}
+              onClick={() => setSectionIdx(prev => Math.min(activeSections.length - 1, prev + 1))}
               style={{ backgroundColor: "var(--theme-accent, #7c3aed)", color: "white" }}
             >
               Next<ChevronRight className="w-4 h-4 ml-1" />

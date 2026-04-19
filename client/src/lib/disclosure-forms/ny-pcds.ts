@@ -2,6 +2,7 @@ export type QuestionType = "yes_no_unknown" | "yes_no" | "text" | "select" | "nu
 
 export interface DisclosureQuestion {
   id: string;
+  questionNumber: number;
   text: string;
   type: QuestionType;
   options?: string[];
@@ -23,30 +24,10 @@ export const NY_PCDS_SECTIONS: DisclosureSection[] = [
     title: "General Information",
     description: "Basic property facts.",
     questions: [
-      {
-        id: "yearBuilt",
-        text: "What year was the property built (to the best of your knowledge)?",
-        type: "number",
-        prefillKey: "yearBuilt",
-        hint: "From your home profile",
-      },
-      {
-        id: "ownershipYears",
-        text: "How long have you owned this property?",
-        type: "text",
-        hint: "e.g. '5 years'",
-      },
-      {
-        id: "occupancy",
-        text: "Is the property currently occupied?",
-        type: "yes_no",
-      },
-      {
-        id: "condoCoopHoa",
-        text: "Is there a homeowners association (HOA), co-op board, or condo fee?",
-        type: "yes_no_unknown",
-        followUp: "If yes, provide amount and frequency.",
-      },
+      { id: "yearBuilt", questionNumber: 1, text: "What year was the property built (to the best of your knowledge)?", type: "number", prefillKey: "yearBuilt", hint: "From your home profile" },
+      { id: "ownershipYears", questionNumber: 2, text: "How long have you owned this property?", type: "text", hint: "e.g. '5 years'" },
+      { id: "occupancy", questionNumber: 3, text: "Is the property currently occupied?", type: "yes_no" },
+      { id: "condoCoopHoa", questionNumber: 4, text: "Is there a homeowners association (HOA), co-op board, or condo fee?", type: "yes_no_unknown", followUp: "If yes, provide amount and frequency." },
     ],
   },
   {
@@ -54,38 +35,12 @@ export const NY_PCDS_SECTIONS: DisclosureSection[] = [
     title: "Environmental Conditions",
     description: "Hazardous materials and environmental concerns.",
     questions: [
-      {
-        id: "leadPaint",
-        text: "Has the property ever tested positive for lead paint?",
-        type: "yes_no_unknown",
-      },
-      {
-        id: "asbestos",
-        text: "Do you know of any asbestos-containing materials on the property?",
-        type: "yes_no_unknown",
-      },
-      {
-        id: "radon",
-        text: "Has radon been detected or tested on the property?",
-        type: "yes_no_unknown",
-        followUp: "If yes, were mitigation steps taken?",
-      },
-      {
-        id: "mold",
-        text: "Do you know of any mold or mildew on the property?",
-        type: "yes_no_unknown",
-      },
-      {
-        id: "undergroundTank",
-        text: "Is there a buried or underground storage tank on the property?",
-        type: "yes_no_unknown",
-      },
-      {
-        id: "hazardousMaterials",
-        text: "Do you know of any other hazardous materials on the property?",
-        type: "yes_no_unknown",
-        followUp: "If yes, please describe.",
-      },
+      { id: "leadPaint", questionNumber: 5, text: "Has the property ever tested positive for lead paint?", type: "yes_no_unknown", followUp: "If yes, describe and indicate whether remediated." },
+      { id: "asbestos", questionNumber: 6, text: "Do you know of any asbestos-containing materials on the property?", type: "yes_no_unknown", followUp: "If yes, describe location and current condition." },
+      { id: "radon", questionNumber: 7, text: "Has radon been detected or tested on the property?", type: "yes_no_unknown", followUp: "If yes, were mitigation steps taken?" },
+      { id: "mold", questionNumber: 8, text: "Do you know of any mold or mildew on the property?", type: "yes_no_unknown", followUp: "If yes, describe and state whether treated." },
+      { id: "undergroundTank", questionNumber: 9, text: "Is there a buried or underground storage tank on the property?", type: "yes_no_unknown", followUp: "If yes, describe type and current status." },
+      { id: "hazardousMaterials", questionNumber: 10, text: "Do you know of any other hazardous materials on the property?", type: "yes_no_unknown", followUp: "If yes, please describe." },
     ],
   },
   {
@@ -93,47 +48,12 @@ export const NY_PCDS_SECTIONS: DisclosureSection[] = [
     title: "Structural Conditions",
     description: "Foundation, roof, walls, and structural integrity.",
     questions: [
-      {
-        id: "foundationType",
-        text: "What type of foundation does the property have?",
-        type: "select",
-        options: ["Basement", "Crawl Space", "Slab", "Pier & Beam", "Other / Unknown"],
-        prefillKey: "foundationType",
-        hint: "From your home profile",
-      },
-      {
-        id: "foundationProblems",
-        text: "Do you know of any foundation defects or problems?",
-        type: "yes_no_unknown",
-        followUp: "If yes, describe the problem and any repairs made.",
-      },
-      {
-        id: "roofType",
-        text: "What is the roof material type?",
-        type: "select",
-        options: ["Asphalt Shingles", "Metal", "Tile", "Slate", "Wood Shakes", "Flat / Built-up", "Other / Unknown"],
-        prefillKey: "roofType",
-        hint: "From your home profile",
-      },
-      {
-        id: "roofAge",
-        text: "Approximately what year was the current roof installed?",
-        type: "number",
-        prefillKey: "roofInstalledYear",
-        hint: "From your home profile",
-      },
-      {
-        id: "roofLeaks",
-        text: "Do you know of any roof leaks or damage?",
-        type: "yes_no_unknown",
-        followUp: "If yes, describe and state whether repaired.",
-      },
-      {
-        id: "basementWater",
-        text: "Do you know of any water infiltration, flooding, or dampness in a basement or crawl space?",
-        type: "yes_no_unknown",
-        followUp: "If yes, how often and were repairs made?",
-      },
+      { id: "foundationType", questionNumber: 11, text: "What type of foundation does the property have?", type: "select", options: ["Basement", "Crawl Space", "Slab", "Pier & Beam", "Other / Unknown"], prefillKey: "foundationType", hint: "From your home profile" },
+      { id: "foundationProblems", questionNumber: 12, text: "Do you know of any foundation defects or problems?", type: "yes_no_unknown", followUp: "If yes, describe the problem and any repairs made." },
+      { id: "roofType", questionNumber: 13, text: "What is the roof material type?", type: "select", options: ["Asphalt Shingles", "Metal", "Tile", "Slate", "Wood Shakes", "Flat / Built-up", "Other / Unknown"], prefillKey: "roofType", hint: "From your home profile" },
+      { id: "roofAge", questionNumber: 14, text: "Approximately what year was the current roof installed?", type: "number", prefillKey: "roofInstalledYear", hint: "From your home profile" },
+      { id: "roofLeaks", questionNumber: 15, text: "Do you know of any roof leaks or damage?", type: "yes_no_unknown", followUp: "If yes, describe and state whether repaired." },
+      { id: "basementWater", questionNumber: 16, text: "Do you know of any water infiltration, flooding, or dampness in a basement or crawl space?", type: "yes_no_unknown", followUp: "If yes, how often and were repairs made?" },
     ],
   },
   {
@@ -141,81 +61,18 @@ export const NY_PCDS_SECTIONS: DisclosureSection[] = [
     title: "Mechanical Systems",
     description: "Heating, cooling, plumbing, electrical, and other systems.",
     questions: [
-      {
-        id: "heatingType",
-        text: "What is the primary heating system type?",
-        type: "select",
-        options: ["Forced Air Furnace", "Boiler / Radiator", "Heat Pump", "Electric Baseboard", "Radiant Floor", "Other / Unknown"],
-        prefillKey: "hvacType",
-        hint: "From your home profile",
-      },
-      {
-        id: "heatingFuel",
-        text: "What is the primary heating fuel?",
-        type: "select",
-        options: ["Natural Gas", "Oil", "Electric", "Propane", "Wood", "Solar", "Other / Unknown"],
-        prefillKey: "primaryHeatingFuel",
-        hint: "From your home profile",
-      },
-      {
-        id: "heatingDefects",
-        text: "Do you know of any defects in the heating system?",
-        type: "yes_no_unknown",
-      },
-      {
-        id: "coolingType",
-        text: "Is there central air conditioning?",
-        type: "yes_no_unknown",
-      },
-      {
-        id: "coolingDefects",
-        text: "Do you know of any defects in the cooling system?",
-        type: "yes_no_unknown",
-      },
-      {
-        id: "plumbingType",
-        text: "What is the primary plumbing material?",
-        type: "select",
-        options: ["Copper", "PEX", "PVC", "Galvanized Steel", "Cast Iron", "Lead", "Other / Unknown"],
-        prefillKey: "plumbingType",
-        hint: "From your home profile",
-      },
-      {
-        id: "plumbingDefects",
-        text: "Do you know of any defects in the plumbing system?",
-        type: "yes_no_unknown",
-      },
-      {
-        id: "waterHeaterType",
-        text: "What type of water heater is installed?",
-        type: "select",
-        options: ["Tank (Gas)", "Tank (Electric)", "Tankless (Gas)", "Tankless (Electric)", "Heat Pump Water Heater", "Solar", "Other / Unknown"],
-        prefillKey: "waterHeaterType",
-        hint: "From your home profile",
-      },
-      {
-        id: "electricalAmps",
-        text: "What is the electrical service capacity (amps)?",
-        type: "select",
-        options: ["60 A", "100 A", "150 A", "200 A", "400 A", "Unknown"],
-      },
-      {
-        id: "electricalDefects",
-        text: "Do you know of any defects in the electrical system?",
-        type: "yes_no_unknown",
-      },
-      {
-        id: "sewerType",
-        text: "How is sewage disposed of?",
-        type: "select",
-        options: ["Municipal Sewer", "Septic System", "Cesspool", "Unknown"],
-      },
-      {
-        id: "waterSource",
-        text: "What is the source of potable water?",
-        type: "select",
-        options: ["Municipal / Public Water", "Well", "Other / Unknown"],
-      },
+      { id: "heatingType", questionNumber: 17, text: "What is the primary heating system type?", type: "select", options: ["Forced Air Furnace", "Boiler / Radiator", "Heat Pump", "Electric Baseboard", "Radiant Floor", "Other / Unknown"], prefillKey: "hvacType", hint: "From your home profile" },
+      { id: "heatingFuel", questionNumber: 18, text: "What is the primary heating fuel?", type: "select", options: ["Natural Gas", "Oil", "Electric", "Propane", "Wood", "Solar", "Other / Unknown"], prefillKey: "primaryHeatingFuel", hint: "From your home profile" },
+      { id: "heatingDefects", questionNumber: 19, text: "Do you know of any defects in the heating system?", type: "yes_no_unknown", followUp: "If yes, describe." },
+      { id: "coolingType", questionNumber: 20, text: "Is there central air conditioning?", type: "yes_no_unknown" },
+      { id: "coolingDefects", questionNumber: 21, text: "Do you know of any defects in the cooling system?", type: "yes_no_unknown", followUp: "If yes, describe." },
+      { id: "plumbingType", questionNumber: 22, text: "What is the primary plumbing material?", type: "select", options: ["Copper", "PEX", "PVC", "Galvanized Steel", "Cast Iron", "Lead", "Other / Unknown"], prefillKey: "plumbingType", hint: "From your home profile" },
+      { id: "plumbingDefects", questionNumber: 23, text: "Do you know of any defects in the plumbing system?", type: "yes_no_unknown", followUp: "If yes, describe." },
+      { id: "waterHeaterType", questionNumber: 24, text: "What type of water heater is installed?", type: "select", options: ["Tank (Gas)", "Tank (Electric)", "Tankless (Gas)", "Tankless (Electric)", "Heat Pump Water Heater", "Solar", "Other / Unknown"], prefillKey: "waterHeaterType", hint: "From your home profile" },
+      { id: "electricalAmps", questionNumber: 25, text: "What is the electrical service capacity (amps)?", type: "select", options: ["60 A", "100 A", "150 A", "200 A", "400 A", "Unknown"] },
+      { id: "electricalDefects", questionNumber: 26, text: "Do you know of any defects in the electrical system?", type: "yes_no_unknown", followUp: "If yes, describe." },
+      { id: "sewerType", questionNumber: 27, text: "How is sewage disposed of?", type: "select", options: ["Municipal Sewer", "Septic System", "Cesspool", "Unknown"] },
+      { id: "waterSource", questionNumber: 28, text: "What is the source of potable water?", type: "select", options: ["Municipal / Public Water", "Well", "Other / Unknown"] },
     ],
   },
   {
@@ -223,30 +80,10 @@ export const NY_PCDS_SECTIONS: DisclosureSection[] = [
     title: "Additions, Alterations & Permits",
     description: "Improvements and compliance.",
     questions: [
-      {
-        id: "additionsAlterations",
-        text: "Have there been any additions or structural alterations to the property since it was built?",
-        type: "yes_no_unknown",
-        followUp: "If yes, describe.",
-      },
-      {
-        id: "permitsObtained",
-        text: "Were all required building permits obtained for any additions or alterations?",
-        type: "yes_no_unknown",
-      },
-      {
-        id: "certificateOfOccupancy",
-        text: "Is there a valid Certificate of Occupancy (CO) for the property?",
-        type: "yes_no_unknown",
-      },
-      {
-        id: "garageType",
-        text: "What type of garage does the property have?",
-        type: "select",
-        options: ["None", "Attached", "Detached", "Built-in", "Carport"],
-        prefillKey: "garageType",
-        hint: "From your home profile",
-      },
+      { id: "additionsAlterations", questionNumber: 29, text: "Have there been any additions or structural alterations to the property since it was built?", type: "yes_no_unknown", followUp: "If yes, describe." },
+      { id: "permitsObtained", questionNumber: 30, text: "Were all required building permits obtained for any additions or alterations?", type: "yes_no_unknown" },
+      { id: "certificateOfOccupancy", questionNumber: 31, text: "Is there a valid Certificate of Occupancy (CO) for the property?", type: "yes_no_unknown" },
+      { id: "garageType", questionNumber: 32, text: "What type of garage does the property have?", type: "select", options: ["None", "Attached", "Detached", "Built-in", "Carport"], prefillKey: "garageType", hint: "From your home profile" },
     ],
   },
   {
@@ -254,41 +91,12 @@ export const NY_PCDS_SECTIONS: DisclosureSection[] = [
     title: "Legal & Other Disclosures",
     description: "Legal matters, disputes, and encumbrances.",
     questions: [
-      {
-        id: "legalProceedings",
-        text: "Are you aware of any pending legal actions, lawsuits, or judgments affecting the property?",
-        type: "yes_no_unknown",
-        followUp: "If yes, describe.",
-      },
-      {
-        id: "easements",
-        text: "Are there any easements, rights-of-way, or encroachments on the property?",
-        type: "yes_no_unknown",
-        followUp: "If yes, describe.",
-      },
-      {
-        id: "floodZone",
-        text: "Is the property located in a FEMA flood zone?",
-        type: "yes_no_unknown",
-      },
-      {
-        id: "floodDamage",
-        text: "Has the property sustained flood damage?",
-        type: "yes_no_unknown",
-        followUp: "If yes, describe and state whether repaired.",
-      },
-      {
-        id: "insuranceClaims",
-        text: "Have any insurance claims been filed on the property in the last 5 years?",
-        type: "yes_no_unknown",
-        followUp: "If yes, describe.",
-      },
-      {
-        id: "otherDefects",
-        text: "Are you aware of any other material defects or conditions not previously disclosed?",
-        type: "yes_no_unknown",
-        followUp: "If yes, describe.",
-      },
+      { id: "legalProceedings", questionNumber: 33, text: "Are you aware of any pending legal actions, lawsuits, or judgments affecting the property?", type: "yes_no_unknown", followUp: "If yes, describe." },
+      { id: "easements", questionNumber: 34, text: "Are there any easements, rights-of-way, or encroachments on the property?", type: "yes_no_unknown", followUp: "If yes, describe." },
+      { id: "floodZone", questionNumber: 35, text: "Is the property located in a FEMA flood zone?", type: "yes_no_unknown" },
+      { id: "floodDamage", questionNumber: 36, text: "Has the property sustained flood damage?", type: "yes_no_unknown", followUp: "If yes, describe and state whether repaired." },
+      { id: "insuranceClaims", questionNumber: 37, text: "Have any insurance claims been filed on the property in the last 5 years?", type: "yes_no_unknown", followUp: "If yes, describe." },
+      { id: "otherDefects", questionNumber: 38, text: "Are you aware of any other material defects or conditions not previously disclosed?", type: "yes_no_unknown", followUp: "If yes, describe." },
     ],
   },
 ];
@@ -386,8 +194,8 @@ export function buildPrefillAnswers(house: Record<string, unknown>): DisclosureA
   return answers;
 }
 
-export function getSectionProgress(sectionId: string, answers: DisclosureAnswers): number {
-  const section = NY_PCDS_SECTIONS.find(s => s.id === sectionId);
+export function getSectionProgress(sectionId: string, answers: DisclosureAnswers, sections: DisclosureSection[] = NY_PCDS_SECTIONS): number {
+  const section = sections.find(s => s.id === sectionId);
   if (!section) return 0;
   const answered = section.questions.filter(q => {
     const v = answers[q.id];
@@ -396,9 +204,9 @@ export function getSectionProgress(sectionId: string, answers: DisclosureAnswers
   return Math.round((answered / section.questions.length) * 100);
 }
 
-export function getTotalProgress(answers: DisclosureAnswers): number {
-  const total = NY_PCDS_SECTIONS.reduce((sum, s) => sum + s.questions.length, 0);
-  const answered = NY_PCDS_SECTIONS.flatMap(s => s.questions).filter(q => {
+export function getTotalProgress(answers: DisclosureAnswers, sections: DisclosureSection[] = NY_PCDS_SECTIONS): number {
+  const total = sections.reduce((sum, s) => sum + s.questions.length, 0);
+  const answered = sections.flatMap(s => s.questions).filter(q => {
     const v = answers[q.id];
     return v !== null && v !== undefined && v !== "";
   }).length;
@@ -418,7 +226,7 @@ export function generateSectionSummaryText(section: DisclosureSection, answers: 
     const answer = answers[question.id];
     const detailAnswer = answers[`${question.id}_details`];
     const displayAnswer = formatAnswerForSummary(question, answer ?? null);
-    lines.push(`${question.text}`);
+    lines.push(`Q${question.questionNumber}. ${question.text}`);
     lines.push(`  Answer: ${displayAnswer}`);
     if (detailAnswer) {
       lines.push(`  Details: ${detailAnswer}`);
@@ -441,7 +249,7 @@ export function generateSummaryText(answers: DisclosureAnswers): string {
       const answer = answers[question.id];
       const detailAnswer = answers[`${question.id}_details`];
       const displayAnswer = formatAnswerForSummary(question, answer ?? null);
-      lines.push(`${question.text}`);
+      lines.push(`Q${question.questionNumber}. ${question.text}`);
       lines.push(`  Answer: ${displayAnswer}`);
       if (detailAnswer) {
         lines.push(`  Details: ${detailAnswer}`);

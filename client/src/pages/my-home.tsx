@@ -180,10 +180,10 @@ export default function MyHome() {
 
   // Fetch disclosure status for disclosure CTA card
   const { data: disclosureData } = useQuery<{ answers?: Record<string, unknown> } | null>({
-    queryKey: ['/api/disclosures', selectedHouse?.id],
+    queryKey: ['/api/houses', selectedHouse?.id, 'disclosure'],
     queryFn: async () => {
       if (!selectedHouse) return null;
-      const response = await fetch(`/api/disclosures/${selectedHouse.id}`, { credentials: 'include' });
+      const response = await fetch(`/api/houses/${selectedHouse.id}/disclosure`, { credentials: 'include' });
       if (!response.ok) return null;
       return response.json();
     },

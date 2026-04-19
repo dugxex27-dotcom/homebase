@@ -11154,6 +11154,35 @@ Return ONLY a JSON object with these fields (use null for any field you cannot c
     }
   });
 
+  // Canonical disclosure alias routes: /api/houses/:houseId/disclosure
+  app.get("/api/houses/:houseId/disclosure", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+    try {
+      const { houseId } = req.params;
+      const disclosure = await storage.getHouseDisclosure(houseId);
+      res.json(disclosure ?? null);
+    } catch (e: any) {
+      res.status(500).json({ message: e.message });
+    }
+  });
+
+  app.put("/api/houses/:houseId/disclosure", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+    try {
+      const { houseId } = req.params;
+      const userId = req.session.user.id;
+      const { answers, formType, stateCode } = req.body;
+      const disclosure = await storage.upsertHouseDisclosure({
+        houseId,
+        homeownerId: userId,
+        formType: formType ?? "pcds",
+        stateCode: stateCode ?? "UNKNOWN",
+        answers: answers ?? {},
+      });
+      res.json(disclosure);
+    } catch (e: any) {
+      res.status(500).json({ message: e.message });
+    }
+  });
+
   // Contractor subscription endpoint
   app.get('/api/contractor/subscription', async (req: any, res) => {
     try {
