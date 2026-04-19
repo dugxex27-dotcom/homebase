@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard/
+Disallow: /account/
+Disallow: /api/
+Sitemap: https://www.gotohomebase.com/sitemap.xml

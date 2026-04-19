@@ -69,7 +69,7 @@ export default function Landing() {
         {/* Logo */}
         <img
           src={logoWhite}
-          alt="MyHomeBase"
+          alt="MyHomeBase — Home Wellness Score and Home Record App"
           className="mhb-logo"
         />
 
@@ -77,10 +77,10 @@ export default function Landing() {
         <div className="mhb-hero-body">
           <div className="mhb-hero-copy">
             {/* Headline */}
-            <div className="mhb-headline">
+            <h1 className="mhb-headline">
               <span style={{ display: 'block', marginBottom: '3.5px' }}>Your home's<br />complete record.</span>
               <span className="mhb-headline-accent">Finally.</span>
-            </div>
+            </h1>
 
             {/* Sub */}
             <div className="mhb-sub">
@@ -112,7 +112,7 @@ export default function Landing() {
               className="mhb-stat-chip mhb-referral-chip mhb-claims-chip"
               onMouseLeave={() => setClaimsOpen(false)}
             >
-              <div className="mhb-stat-num">42<span>%</span></div>
+              <div className="mhb-stat-num"><strong>42</strong><span>%</span></div>
               <div className="mhb-referral-footer">
                 <div className="mhb-stat-label">Claims denied</div>
                 <button
@@ -147,7 +147,7 @@ export default function Landing() {
               )}
             </div>
             <div className="mhb-stat-chip">
-              <div className="mhb-stat-num">$5<span>/mo</span></div>
+              <div className="mhb-stat-num"><strong>$5</strong><span>/mo</span></div>
               <div className="mhb-stat-label">Full protection</div>
             </div>
             <div
@@ -198,6 +198,7 @@ export default function Landing() {
             className="mhb-utb mhb-utb-purple"
             onClick={() => handleRoleSelection('homeowner')}
             data-testid="button-homeowner-signup"
+            aria-label="Sign up as a Homeowner"
           >
             <div className="mhb-utb-icon">
               <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -216,6 +217,7 @@ export default function Landing() {
             className="mhb-utb mhb-utb-blue"
             onClick={() => handleRoleSelection('contractor')}
             data-testid="button-contractor-signup"
+            aria-label="Sign up as a Contractor"
           >
             <div className="mhb-utb-icon">
               <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -235,6 +237,7 @@ export default function Landing() {
             className="mhb-utb mhb-utb-green"
             onClick={() => handleRoleSelection('agent')}
             data-testid="button-agent-signup"
+            aria-label="Sign up as a Real Estate Agent"
           >
             <div className="mhb-utb-icon">
               <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">

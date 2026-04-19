@@ -19,7 +19,7 @@ export default function Footer() {
                 <Link href="/" data-testid="footer-logo-home-link">
                   <img 
                     src={whiteLogoIcon} 
-                    alt="MyHomeBase™" 
+                    alt="MyHomeBase — Home Wellness Score and Home Record App" 
                     className="w-full h-auto object-contain cursor-pointer"
                   />
                 </Link>
