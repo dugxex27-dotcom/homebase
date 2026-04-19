@@ -670,6 +670,7 @@ export const homeSystems = pgTable("home_systems", {
   lastServiceYear: integer("last_service_year"), // Year of last major service
   brand: text("brand"), // Brand/manufacturer
   model: text("model"), // Model number
+  serialNumber: text("serial_number"), // Serial number of the system/fixture
   notes: text("notes"), // Additional notes about the system
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

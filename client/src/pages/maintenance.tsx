@@ -113,6 +113,7 @@ const applianceManualFormSchema = insertHomeApplianceManualSchema.extend({
 const homeSystemFormSchema = insertHomeSystemSchema.extend({
   homeownerId: z.string().min(1, "Homeowner ID is required"),
   specificMonths: z.array(z.string()).optional(),
+  serialNumber: z.string().optional(),
 });
 
 type MaintenanceLogFormData = z.infer<typeof maintenanceLogFormSchema>;
@@ -2096,6 +2097,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       lastServiceYear: undefined,
       brand: "",
       model: "",
+      serialNumber: "",
       notes: "",
     },
   });
@@ -2467,6 +2469,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       lastServiceYear: undefined,
       brand: "",
       model: "",
+      serialNumber: "",
       notes: "",
     });
     setIsHomeSystemDialogOpen(true);
@@ -2484,9 +2487,42 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       lastServiceYear: system.lastServiceYear,
       brand: system.brand || "",
       model: system.model || "",
+      serialNumber: (system as any).serialNumber || "",
       notes: system.notes || "",
     });
     setIsHomeSystemDialogOpen(true);
+  };
+
+  // PDF extraction state for home system dialog
+  const [systemPdfLoading, setSystemPdfLoading] = useState(false);
+
+  const handleSystemDocumentUpload = async (file: File) => {
+    setSystemPdfLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/home-systems/extract-pdf", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: "Upload failed" }));
+        toast({ title: "Could not read document", description: err.message, variant: "destructive" });
+        return;
+      }
+      const data = await res.json();
+      if (data.systemType) homeSystemForm.setValue("systemType", data.systemType);
+      if (data.brand) homeSystemForm.setValue("brand", data.brand);
+      if (data.model) homeSystemForm.setValue("model", data.model);
+      if (data.serialNumber) homeSystemForm.setValue("serialNumber", data.serialNumber);
+      if (data.installationYear) homeSystemForm.setValue("installationYear", data.installationYear);
+      toast({ title: "Document scanned", description: "Fields filled from your document — review and save." });
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to process document", variant: "destructive" });
+    } finally {
+      setSystemPdfLoading(false);
+    }
   };
 
   // Get existing system data for a specific system type
@@ -4558,6 +4594,35 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                 {editingHomeSystem ? `Edit ${selectedSystemType}` : `Add ${selectedSystemType}`}
               </DialogTitle>
             </DialogHeader>
+
+            {/* Scan Document */}
+            <div className="rounded-lg border-2 border-dashed p-3 text-center" style={{ borderColor: '#b6a6f4' }}>
+              <p className="text-xs text-gray-500 mb-2">Upload a manual, label, or warranty card and AI will fill in the fields</p>
+              <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold text-white" style={{ backgroundColor: systemPdfLoading ? '#888' : '#2c0f5b' }}>
+                {systemPdfLoading ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                    Scanning…
+                  </>
+                ) : (
+                  <>📄 Scan Document</>
+                )}
+                <input
+                  type="file"
+                  accept="application/pdf,image/*"
+                  className="sr-only"
+                  disabled={systemPdfLoading}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleSystemDocumentUpload(file);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            </div>
             
             <Form {...homeSystemForm}>
               <form onSubmit={homeSystemForm.handleSubmit(onSubmitHomeSystem)} className="space-y-4">
@@ -4630,6 +4695,20 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     )}
                   />
                 </div>
+
+                <FormField
+                  control={homeSystemForm.control}
+                  name="serialNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Serial Number (Optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., SN-4829210A" {...field} value={field.value || ""} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <FormField
                   control={homeSystemForm.control}

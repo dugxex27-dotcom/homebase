@@ -11031,6 +11031,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/home-systems/extract-pdf — AI reads a PDF/image and extracts home system fields
+  app.post("/api/home-systems/extract-pdf", isAuthenticated, requirePropertyOwner, upload.single("file"), async (req: any, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+
+      let documentText = "";
+
+      if (req.file.mimetype === "application/pdf") {
+        try {
+          const { PDFParse, VerbosityLevel } = await import("pdf-parse");
+          const parser = new PDFParse({ data: req.file.buffer, verbosity: VerbosityLevel.ERRORS });
+          const result = await parser.getText();
+          documentText = result.text ?? "";
+        } catch (pdfErr) {
+          console.warn("[SYSTEM-PDF] PDF parse error:", pdfErr);
+          return res.status(422).json({ message: "Could not read PDF — try a clearer scan or a different file." });
+        }
+      } else if (req.file.mimetype.startsWith("image/")) {
+        // For images, use OpenAI vision
+        const base64 = req.file.buffer.toString("base64");
+        const { openai } = await import("./openai");
+        const visionRes = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [{
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: `You are extracting home fixture/appliance details from an image of a label, manual, receipt, or warranty card.
+Return ONLY a JSON object with these fields (use null for any field you cannot find):
+{
+  "systemType": "type of fixture or system (e.g. Water Heater, HVAC, Furnace, Boiler, Electrical Panel, etc.)",
+  "brand": "manufacturer/brand name",
+  "model": "model number or name",
+  "serialNumber": "serial number",
+  "installationYear": integer year or null
+}`,
+              },
+              {
+                type: "image_url",
+                image_url: { url: `data:${req.file.mimetype};base64,${base64}` },
+              },
+            ],
+          }],
+          max_tokens: 300,
+          response_format: { type: "json_object" },
+        });
+        const raw = visionRes.choices[0]?.message?.content ?? "{}";
+        return res.json(JSON.parse(raw));
+      } else {
+        return res.status(400).json({ message: "Only PDF or image files are supported" });
+      }
+
+      if (!documentText.trim()) {
+        return res.status(422).json({ message: "The document appears to be empty or image-based. Try uploading an image instead." });
+      }
+
+      // Truncate to ~4000 tokens worth of text
+      const truncated = documentText.slice(0, 12000);
+
+      const { openai } = await import("./openai");
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `You are extracting home fixture or mechanical system details from a document (manual, warranty card, installation receipt, spec sheet, or label).
+Return ONLY a JSON object with these fields (use null for any field you cannot confidently determine):
+{
+  "systemType": "type of fixture or system (e.g. Water Heater, HVAC, Furnace, Boiler, Electrical Panel, Roof, Plumbing, etc.)",
+  "brand": "manufacturer/brand name",
+  "model": "model number or name",
+  "serialNumber": "serial number",
+  "installationYear": integer year only (e.g. 2019) or null
+}`,
+          },
+          {
+            role: "user",
+            content: truncated,
+          },
+        ],
+        max_tokens: 300,
+        response_format: { type: "json_object" },
+      });
+
+      const raw = completion.choices[0]?.message?.content ?? "{}";
+      const extracted = JSON.parse(raw);
+      res.json(extracted);
+    } catch (err) {
+      console.error("[SYSTEM-PDF] Extraction error:", err);
+      res.status(500).json({ message: "Failed to extract data from document" });
+    }
+  });
+
   // Contractor subscription endpoint
   app.get('/api/contractor/subscription', async (req: any, res) => {
     try {
