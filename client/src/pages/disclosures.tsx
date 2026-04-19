@@ -19,9 +19,7 @@ import {
 import type { House, HomeSystem } from "@shared/schema";
 import {
   NY_PCDS_SECTIONS,
-  buildPrefillAnswers,
-  buildPrefillFromSystems,
-  buildPrefillFromLogs,
+  buildAllPrefillAnswers,
   getSectionProgress,
   getTotalProgress,
   generateSummaryText,
@@ -31,6 +29,7 @@ import {
   type DisclosureQuestion,
   type AnswerValue,
   type MaintenanceLogLike,
+  type HomeSystemLike,
 } from "@/lib/disclosure-forms/ny-pcds";
 import {
   GENERIC_PCDS_SECTIONS,
@@ -276,10 +275,11 @@ export default function Disclosures() {
     const hasSaved = Object.keys(existing).length > 0;
 
     if (currentHouse) {
-      const housePrefill = buildPrefillAnswers(currentHouse as unknown as Record<string, unknown>);
-      const systemsPrefill = buildPrefillFromSystems(homeSystems as HomeSystem[]);
-      const logsPrefill = buildPrefillFromLogs(maintenanceLogs);
-      const combined = { ...logsPrefill, ...systemsPrefill, ...housePrefill };
+      const combined = buildAllPrefillAnswers(
+        currentHouse as unknown as Record<string, unknown>,
+        (homeSystems ?? []) as HomeSystemLike[],
+        (maintenanceLogs ?? []) as MaintenanceLogLike[],
+      );
       if (hasSaved) {
         // Returning user: preserve all existing answers; only backfill prefill for blank questions
         const backfill = Object.fromEntries(

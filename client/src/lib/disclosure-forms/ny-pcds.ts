@@ -334,3 +334,19 @@ export function generateSummaryText(answers: DisclosureAnswers, propertyAddress?
   lines.push("Consult your attorney and/or real estate professional before completing any legal disclosure form.");
   return lines.join("\n");
 }
+
+/**
+ * Single orchestration helper that combines all prefill sources.
+ * Merge priority (highest wins): house fields > home systems > maintenance logs.
+ * Returns a flat DisclosureAnswers map with all pre-populated values.
+ */
+export function buildAllPrefillAnswers(
+  house: Record<string, unknown>,
+  systems: HomeSystemLike[],
+  logs: MaintenanceLogLike[],
+): DisclosureAnswers {
+  const logsPrefill = buildPrefillFromLogs(logs);
+  const systemsPrefill = buildPrefillFromSystems(systems);
+  const housePrefill = buildPrefillAnswers(house);
+  return { ...logsPrefill, ...systemsPrefill, ...housePrefill };
+}
