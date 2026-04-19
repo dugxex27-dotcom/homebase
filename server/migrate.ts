@@ -39,7 +39,6 @@ export async function runMigrations() {
         "updated_at" timestamp DEFAULT now(),
         "created_at" timestamp DEFAULT now()
       );
-      CREATE INDEX IF NOT EXISTS "IDX_house_disclosures_house_id" ON "house_disclosures"("house_id");
       CREATE INDEX IF NOT EXISTS "IDX_house_disclosures_homeowner_id" ON "house_disclosures"("homeowner_id");
     `);
   } catch (err: any) {
