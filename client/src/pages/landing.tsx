@@ -73,9 +73,8 @@ export default function Landing() {
             alt="MyHomeBase — Home Wellness Score and Home Record App"
             className="mhb-logo"
           />
-          <a href="/signin/homeowner" className="mhb-hero-signin">
-            <UserCircle size={22} strokeWidth={1.75} />
-            <span>Homeowner<br />Sign In/Register</span>
+          <a href="/signin/homeowner" className="mhb-hero-signin" aria-label="Homeowner Sign In / Register">
+            <UserCircle size={26} strokeWidth={1.75} />
           </a>
         </div>
 
