@@ -613,7 +613,7 @@ export default function Disclosures() {
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-xs">
-                  {getSectionProgress(currentSection.id, answers)}% done
+                  {getSectionProgress(currentSection.id, answers, activeSections)}% done
                 </Badge>
                 <Button
                   variant="ghost"
