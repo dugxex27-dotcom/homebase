@@ -37,7 +37,13 @@ import {
   generateGenericSummaryText,
 } from "@/lib/disclosure-forms/generic-pcds";
 
-function detectStateCode(address?: string | null): string {
+function detectStateCode(address?: string | null, stateField?: string | null): string {
+  // Prefer the explicit state field if it looks like a two-letter US state code
+  if (stateField) {
+    const s = stateField.trim().toUpperCase();
+    if (/^[A-Z]{2}$/.test(s)) return s;
+  }
+  // Fall back to parsing the address string
   if (!address) return "UNKNOWN";
   const m = address.match(/\b([A-Z]{2})\b(?:\s+\d{5})?/g);
   if (m) {
@@ -232,7 +238,7 @@ export default function Disclosures() {
     enabled: !!houseId,
   });
 
-  const stateCode = detectStateCode(currentHouse?.address);
+  const stateCode = detectStateCode(currentHouse?.address, (currentHouse as any)?.state);
   const { sections: activeSections, formTitle, isNY } = getFormConfig(stateCode);
 
   useEffect(() => {
@@ -263,7 +269,7 @@ export default function Disclosures() {
     mutationFn: async (data: DisclosureAnswers) => {
       const id = houseIdRef.current;
       if (!id) throw new Error("No house selected");
-      const detectedState = detectStateCode(currentHouse?.address ?? "");
+      const detectedState = detectStateCode(currentHouse?.address ?? "", (currentHouse as any)?.state);
       const detectedFormType = detectedState === "NY" ? "ny-pcds" : "pcds";
       const res = await apiRequest(`/api/houses/${id}/disclosure`, "PUT", {
         answers: data,
