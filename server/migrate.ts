@@ -53,6 +53,30 @@ export async function runMigrations() {
   } catch (err: any) {
     console.warn('[MIGRATE] house_disclosures unique index warning (non-fatal):', err?.message ?? err);
   }
+  // Add FK constraints to match Drizzle schema declarations (idempotent via DO block)
+  try {
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'house_disclosures_house_id_fkey'
+        ) THEN
+          ALTER TABLE "house_disclosures"
+            ADD CONSTRAINT "house_disclosures_house_id_fkey"
+            FOREIGN KEY ("house_id") REFERENCES "houses"("id") ON DELETE CASCADE;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'house_disclosures_homeowner_id_fkey'
+        ) THEN
+          ALTER TABLE "house_disclosures"
+            ADD CONSTRAINT "house_disclosures_homeowner_id_fkey"
+            FOREIGN KEY ("homeowner_id") REFERENCES "users"("id") ON DELETE CASCADE;
+        END IF;
+      END $$;
+    `);
+  } catch (err: any) {
+    console.warn('[MIGRATE] house_disclosures FK constraints warning (non-fatal):', err?.message ?? err);
+  }
 
   await pool.end();
 }
