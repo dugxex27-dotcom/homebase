@@ -128,7 +128,7 @@ export default function HomeHealthScore({ houseId, houseName, compact = false }:
 
           <div className="flex items-center justify-center gap-1 text-xs text-gray-600 mb-1">
             <CheckCircle className="w-3 h-3 text-green-500" />
-            <span>{completedTasks} tasks × {POINTS_PER_TASK} pts</span>
+            <span>{completedTasks} Tasks Completed</span>
           </div>
           {missedTasks > 0 && (
             <div className="flex items-center justify-center gap-1 text-xs mt-1 text-red-500">
@@ -203,15 +203,9 @@ export default function HomeHealthScore({ houseId, houseName, compact = false }:
           </div>
 
           <div className="flex-1 space-y-2">
-            <div className="text-xs text-gray-400 font-medium uppercase tracking-wide">How it's calculated</div>
-            <div className="flex items-baseline gap-1 text-sm">
-              <span className="font-semibold text-gray-800">{completedTasks}</span>
-              <span className="text-gray-500">tasks</span>
-              <span className="text-gray-400 mx-0.5">×</span>
-              <span className="font-semibold text-gray-800">{POINTS_PER_TASK}</span>
-              <span className="text-gray-500">pts</span>
-              <span className="text-gray-400 mx-0.5">=</span>
-              <span className="font-bold" style={{ color: scoreColor }}>{score} pts</span>
+            <div className="flex items-center gap-2 text-sm">
+              <CheckCircle className="w-4 h-4 text-green-500" />
+              <span className="text-gray-700">{completedTasks} Tasks Completed</span>
             </div>
             {missedTasks > 0 && (
               <div className="flex items-center gap-2 text-sm text-red-500">
