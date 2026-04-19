@@ -2203,7 +2203,7 @@ export const houseDisclosures = pgTable("house_disclosures", {
   updatedAt: timestamp("updated_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
-  index("IDX_house_disclosures_house_id").on(table.houseId),
+  uniqueIndex("UDX_house_disclosures_house_id").on(table.houseId),
   index("IDX_house_disclosures_homeowner_id").on(table.homeownerId),
 ]);
 
