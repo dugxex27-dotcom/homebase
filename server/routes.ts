@@ -11135,7 +11135,8 @@ Return ONLY a JSON object with these fields (use null for any field you cannot c
         return res.status(403).json({ message: "Access denied to this property" });
       }
       const disclosure = await storage.getHouseDisclosure(houseId);
-      res.json(disclosure ?? null);
+      if (!disclosure) return res.status(404).json({ message: "No disclosure found for this property" });
+      res.json(disclosure);
     } catch (e: any) {
       res.status(500).json({ message: e.message });
     }
