@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle, Circle } from "lucide-react";
+import { CheckCircle, Circle, TrendingUp, ClipboardList, Wrench, Star, ChevronDown, ChevronUp } from "lucide-react";
+import { useState } from "react";
 
 interface HomeHealthScoreProps {
   houseId: string;
@@ -15,7 +16,35 @@ interface HealthScoreData {
   totalExpectedTasks: number;
 }
 
+const POINTS_PER_TASK = 4;
+
+const IMPROVEMENT_TIPS = [
+  {
+    icon: ClipboardList,
+    label: "Complete seasonal maintenance tasks",
+    detail: `Every task you mark done adds +${POINTS_PER_TASK} pts to your score`,
+    color: "text-purple-600",
+    bg: "bg-purple-50",
+  },
+  {
+    icon: Wrench,
+    label: "Log contractor or DIY work",
+    detail: "Logging service records counts as completed tasks",
+    color: "text-blue-600",
+    bg: "bg-blue-50",
+  },
+  {
+    icon: Star,
+    label: "Stay consistent year over year",
+    detail: "Your score is cumulative — it never resets and keeps growing",
+    color: "text-amber-600",
+    bg: "bg-amber-50",
+  },
+];
+
 export default function HomeHealthScore({ houseId, houseName, compact = false }: HomeHealthScoreProps) {
+  const [showTips, setShowTips] = useState(false);
+
   const { data: scoreData, isLoading } = useQuery<HealthScoreData>({
     queryKey: ['/api/houses', houseId, 'health-score'],
     enabled: !!houseId,
@@ -36,25 +65,29 @@ export default function HomeHealthScore({ houseId, houseName, compact = false }:
 
   if (!scoreData) return null;
 
-  const { score: rawScore, completedTasks, missedTasks, totalExpectedTasks } = scoreData;
+  const { score: rawScore, completedTasks, missedTasks } = scoreData;
   const score = Math.max(0, rawScore);
-  
-  const percentage = totalExpectedTasks > 0 
-    ? Math.round((completedTasks / totalExpectedTasks) * 100) 
-    : 0;
+
+  const nextMilestone = Math.ceil((score + 1) / 50) * 50;
+  const tasksToNextMilestone = Math.ceil((nextMilestone - score) / POINTS_PER_TASK);
+
+  const percentage = completedTasks > 0 ? Math.min(100, Math.round((score / Math.max(score, 200)) * 100)) : 0;
 
   let scoreColor = "#4a9e2f";
   let status = "Excellent";
 
-  if (score === 0 && missedTasks > 0) {
-    scoreColor = "#e03e3e";
-    status = "Needs Attention";
-  } else if (percentage < 50) {
+  if (score === 0) {
+    scoreColor = "#9ca3af";
+    status = "Getting Started";
+  } else if (score < 50) {
     scoreColor = "#e8a020";
     status = "Good";
-  } else if (percentage < 80) {
+  } else if (score < 100) {
     scoreColor = "#4a9e2f";
     status = "Great";
+  } else {
+    scoreColor = "#2c0f5b";
+    status = "Excellent";
   }
 
   const circumference = 2 * Math.PI * 36;
@@ -70,25 +103,14 @@ export default function HomeHealthScore({ houseId, houseName, compact = false }:
             </h3>
             <p className="text-xs text-gray-500">Home Wellness Score™</p>
           </div>
-          
+
           <div className="flex justify-center mb-3">
             <div className="relative w-20 h-20">
               <svg className="w-20 h-20 transform -rotate-90">
+                <circle cx="40" cy="40" r="36" stroke="#EEEDFE" strokeWidth="6" fill="none" />
                 <circle
-                  cx="40"
-                  cy="40"
-                  r="36"
-                  stroke="#EEEDFE"
-                  strokeWidth="6"
-                  fill="none"
-                />
-                <circle
-                  cx="40"
-                  cy="40"
-                  r="36"
-                  stroke={scoreColor}
-                  strokeWidth="6"
-                  fill="none"
+                  cx="40" cy="40" r="36"
+                  stroke={scoreColor} strokeWidth="6" fill="none"
                   strokeLinecap="round"
                   strokeDasharray={circumference}
                   strokeDashoffset={strokeDashoffset}
@@ -103,20 +125,45 @@ export default function HomeHealthScore({ houseId, houseName, compact = false }:
               </div>
             </div>
           </div>
-          
-          <div className="text-center text-xs text-gray-500 mb-2">Tasks Completed</div>
-          <div className="flex items-center justify-center gap-2 text-xs">
-            <div className="flex items-center gap-1">
-              <CheckCircle className="w-3 h-3 text-green-500" />
-              <span>{completedTasks} Tasks Completed</span>
-            </div>
+
+          <div className="flex items-center justify-center gap-1 text-xs text-gray-600 mb-1">
+            <CheckCircle className="w-3 h-3 text-green-500" />
+            <span>{completedTasks} tasks × {POINTS_PER_TASK} pts</span>
           </div>
           {missedTasks > 0 && (
             <div className="flex items-center justify-center gap-1 text-xs mt-1 text-red-500">
               <Circle className="w-3 h-3" />
-              <span>{missedTasks} Tasks Completed</span>
+              <span>{missedTasks} Tasks Missed</span>
             </div>
           )}
+
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <button
+              onClick={() => setShowTips(v => !v)}
+              className="w-full flex items-center justify-center gap-1 text-xs font-medium transition-colors"
+              style={{ color: '#2c0f5b' }}
+            >
+              <TrendingUp className="w-3 h-3" />
+              How to improve
+              {showTips ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </button>
+
+            {showTips && (
+              <div className="mt-2 space-y-1.5">
+                {score > 0 && (
+                  <p className="text-[10px] text-gray-500 text-center">
+                    {tasksToNextMilestone} more task{tasksToNextMilestone !== 1 ? "s" : ""} to reach {nextMilestone} pts
+                  </p>
+                )}
+                {IMPROVEMENT_TIPS.map((tip) => (
+                  <div key={tip.label} className={`flex items-start gap-1.5 rounded-lg p-1.5 ${tip.bg}`}>
+                    <tip.icon className={`w-3 h-3 mt-0.5 flex-shrink-0 ${tip.color}`} />
+                    <span className="text-[10px] text-gray-700 leading-snug">{tip.label}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
     );
@@ -133,25 +180,14 @@ export default function HomeHealthScore({ houseId, houseName, compact = false }:
             <p className="text-sm text-gray-500">Home Wellness Score™</p>
           </div>
         </div>
-        
-        <div className="flex items-center gap-6">
+
+        <div className="flex items-center gap-6 mb-5">
           <div className="relative w-24 h-24 flex-shrink-0">
             <svg className="w-24 h-24 transform -rotate-90">
+              <circle cx="48" cy="48" r="42" stroke="#EEEDFE" strokeWidth="8" fill="none" />
               <circle
-                cx="48"
-                cy="48"
-                r="42"
-                stroke="#EEEDFE"
-                strokeWidth="8"
-                fill="none"
-              />
-              <circle
-                cx="48"
-                cy="48"
-                r="42"
-                stroke={scoreColor}
-                strokeWidth="8"
-                fill="none"
+                cx="48" cy="48" r="42"
+                stroke={scoreColor} strokeWidth="8" fill="none"
                 strokeLinecap="round"
                 strokeDasharray={2 * Math.PI * 42}
                 strokeDashoffset={(2 * Math.PI * 42) - (percentage / 100) * (2 * Math.PI * 42)}
@@ -165,12 +201,17 @@ export default function HomeHealthScore({ houseId, houseName, compact = false }:
               <span className="text-xs text-gray-500">{status}</span>
             </div>
           </div>
-          
+
           <div className="flex-1 space-y-2">
-            <div className="text-sm text-gray-500">Tasks Completed</div>
-            <div className="flex items-center gap-2 text-sm">
-              <CheckCircle className="w-4 h-4 text-green-500" />
-              <span className="text-gray-700">{completedTasks} Tasks Completed</span>
+            <div className="text-xs text-gray-400 font-medium uppercase tracking-wide">How it's calculated</div>
+            <div className="flex items-baseline gap-1 text-sm">
+              <span className="font-semibold text-gray-800">{completedTasks}</span>
+              <span className="text-gray-500">tasks</span>
+              <span className="text-gray-400 mx-0.5">×</span>
+              <span className="font-semibold text-gray-800">{POINTS_PER_TASK}</span>
+              <span className="text-gray-500">pts</span>
+              <span className="text-gray-400 mx-0.5">=</span>
+              <span className="font-bold" style={{ color: scoreColor }}>{score} pts</span>
             </div>
             {missedTasks > 0 && (
               <div className="flex items-center gap-2 text-sm text-red-500">
@@ -178,6 +219,30 @@ export default function HomeHealthScore({ houseId, houseName, compact = false }:
                 <span>{missedTasks} Tasks Missed</span>
               </div>
             )}
+            {score > 0 && (
+              <div className="text-xs text-gray-500 flex items-center gap-1">
+                <TrendingUp className="w-3 h-3 text-green-500" />
+                {tasksToNextMilestone} more task{tasksToNextMilestone !== 1 ? "s" : ""} to reach {nextMilestone} pts
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="border-t border-gray-100 pt-4">
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingUp className="w-4 h-4" style={{ color: '#2c0f5b' }} />
+            <span className="text-sm font-semibold text-gray-800">Ways to improve your score</span>
+          </div>
+          <div className="space-y-2">
+            {IMPROVEMENT_TIPS.map((tip) => (
+              <div key={tip.label} className={`flex items-start gap-3 rounded-xl p-3 ${tip.bg}`}>
+                <tip.icon className={`w-4 h-4 mt-0.5 flex-shrink-0 ${tip.color}`} />
+                <div>
+                  <p className="text-sm font-medium text-gray-800">{tip.label}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{tip.detail}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </CardContent>
