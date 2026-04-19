@@ -11126,6 +11126,9 @@ Return ONLY a JSON object with these fields (use null for any field you cannot c
   });
 
   // House Disclosure routes
+  // Alias for the canonical /api/houses/:houseId/disclosure GET route below.
+  // Kept for compatibility with My Home CTA query cache key (/api/houses/:id/disclosure).
+  // Canonical routes are /api/houses/:houseId/disclosure (GET/PUT).
   app.get("/api/disclosures/:houseId", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
     try {
       const { houseId } = req.params;

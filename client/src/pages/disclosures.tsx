@@ -44,16 +44,34 @@ const US_STATE_CODES = new Set([
   "VA","WA","WV","WI","WY","DC",
 ]);
 
+const FULL_STATE_NAME_TO_CODE: Record<string, string> = {
+  "ALABAMA":"AL","ALASKA":"AK","ARIZONA":"AZ","ARKANSAS":"AR","CALIFORNIA":"CA",
+  "COLORADO":"CO","CONNECTICUT":"CT","DELAWARE":"DE","FLORIDA":"FL","GEORGIA":"GA",
+  "HAWAII":"HI","IDAHO":"ID","ILLINOIS":"IL","INDIANA":"IN","IOWA":"IA","KANSAS":"KS",
+  "KENTUCKY":"KY","LOUISIANA":"LA","MAINE":"ME","MARYLAND":"MD","MASSACHUSETTS":"MA",
+  "MICHIGAN":"MI","MINNESOTA":"MN","MISSISSIPPI":"MS","MISSOURI":"MO","MONTANA":"MT",
+  "NEBRASKA":"NE","NEVADA":"NV","NEW HAMPSHIRE":"NH","NEW JERSEY":"NJ","NEW MEXICO":"NM",
+  "NEW YORK":"NY","NORTH CAROLINA":"NC","NORTH DAKOTA":"ND","OHIO":"OH","OKLAHOMA":"OK",
+  "OREGON":"OR","PENNSYLVANIA":"PA","RHODE ISLAND":"RI","SOUTH CAROLINA":"SC",
+  "SOUTH DAKOTA":"SD","TENNESSEE":"TN","TEXAS":"TX","UTAH":"UT","VERMONT":"VT",
+  "VIRGINIA":"VA","WASHINGTON":"WA","WEST VIRGINIA":"WV","WISCONSIN":"WI","WYOMING":"WY",
+  "DISTRICT OF COLUMBIA":"DC",
+};
+
 function detectStateCode(address?: string | null): string {
   if (!address) return "UNKNOWN";
   const normalized = address.toUpperCase();
-  // Highest-confidence: ", NY 12345" pattern (city, state zip)
+  // Tier 1 (highest confidence): ", NY 12345" pattern (city, state abbreviation, zip)
   const cityStateZip = normalized.match(/,\s+([A-Z]{2})\s+\d{5}/);
   if (cityStateZip && US_STATE_CODES.has(cityStateZip[1])) return cityStateZip[1];
-  // Second: state code immediately before a zip code anywhere in string
+  // Tier 2: state abbreviation immediately before a zip code
   const stateBeforeZip = normalized.match(/\b([A-Z]{2})\s+\d{5}/);
   if (stateBeforeZip && US_STATE_CODES.has(stateBeforeZip[1])) return stateBeforeZip[1];
-  // Fallback: last 2-letter token that is a valid US state abbreviation
+  // Tier 3: full state name (e.g. "New York", "New Jersey") — supports non-abbreviated addresses
+  for (const [name, code] of Object.entries(FULL_STATE_NAME_TO_CODE)) {
+    if (normalized.includes(name)) return code;
+  }
+  // Tier 4 (fallback): last 2-letter token that is a valid US state abbreviation
   const tokens = normalized.split(/[\s,]+/).filter(t => /^[A-Z]{2}$/.test(t) && US_STATE_CODES.has(t));
   if (tokens.length > 0) return tokens[tokens.length - 1];
   return "UNKNOWN";
