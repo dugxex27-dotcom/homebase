@@ -266,12 +266,14 @@ export default function Disclosures() {
   useEffect(() => { houseIdRef.current = houseId; }, [houseId]);
 
   // Cancel any pending autosave when the selected house changes to prevent cross-property writes
+  // Also reset section index so we never render an out-of-bounds section (NY has 6, generic has 5)
   useEffect(() => {
     if (autosaveTimer.current) {
       clearTimeout(autosaveTimer.current);
       autosaveTimer.current = null;
       setAutosaving(false);
     }
+    setSectionIdx(0);
   }, [houseId]);
 
   const saveMutation = useMutation({
@@ -353,7 +355,8 @@ export default function Disclosures() {
   };
 
   const handleSectionCopy = async () => {
-    const section = activeSections[sectionIdx];
+    const section = activeSections[Math.min(sectionIdx, activeSections.length - 1)];
+    if (!section) return;
     const text = generateSectionSummaryText(section, answers);
     try {
       await navigator.clipboard.writeText(text);
@@ -367,7 +370,8 @@ export default function Disclosures() {
 
   const handlePrint = () => window.print();
 
-  const currentSection = activeSections[sectionIdx];
+  const clampedIdx = Math.min(sectionIdx, activeSections.length - 1);
+  const currentSection = activeSections[clampedIdx];
   const totalProgress = getTotalProgress(answers, activeSections);
 
   if (!houseId && !disclosureLoading && houseList.length === 0) {
@@ -501,7 +505,7 @@ export default function Disclosures() {
         <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
           {activeSections.map((section, idx) => {
             const pct = getSectionProgress(section.id, answers, activeSections);
-            const active = idx === sectionIdx;
+            const active = idx === clampedIdx;
             return (
               <button
                 key={section.id}
@@ -586,7 +590,7 @@ export default function Disclosures() {
             variant="outline"
             size="sm"
             onClick={() => setSectionIdx(prev => Math.max(0, prev - 1))}
-            disabled={sectionIdx === 0}
+            disabled={clampedIdx === 0}
           >
             <ChevronLeft className="w-4 h-4 mr-1" />Previous
           </Button>
@@ -613,7 +617,7 @@ export default function Disclosures() {
             </Button>
           </div>
 
-          {sectionIdx < activeSections.length - 1 ? (
+          {clampedIdx < activeSections.length - 1 ? (
             <Button
               size="sm"
               onClick={() => setSectionIdx(prev => Math.min(activeSections.length - 1, prev + 1))}
