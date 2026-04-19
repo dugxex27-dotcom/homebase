@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Info } from "lucide-react";
+import { Info, UserCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import logoWhite from "@assets/my-homebase-logo-tm-white-final_1776357152257.png";
@@ -66,12 +66,18 @@ export default function Landing() {
 
       {/* Hero */}
       <div className="mhb-hero">
-        {/* Logo */}
-        <img
-          src={logoWhite}
-          alt="MyHomeBase — Home Wellness Score and Home Record App"
-          className="mhb-logo"
-        />
+        {/* Top bar: logo left, sign-in right */}
+        <div className="mhb-hero-topbar">
+          <img
+            src={logoWhite}
+            alt="MyHomeBase — Home Wellness Score and Home Record App"
+            className="mhb-logo"
+          />
+          <a href="/signin/homeowner" className="mhb-hero-signin">
+            <UserCircle size={22} strokeWidth={1.75} />
+            <span>Homeowner<br />Sign In/Register</span>
+          </a>
+        </div>
 
         {/* Two-column layout: copy left, stats right */}
         <div className="mhb-hero-body">
