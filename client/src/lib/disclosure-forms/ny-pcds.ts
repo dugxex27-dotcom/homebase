@@ -296,6 +296,36 @@ export const NY_PCDS_SECTIONS: DisclosureSection[] = [
 export type AnswerValue = string | number | null;
 export type DisclosureAnswers = Record<string, AnswerValue>;
 
+export interface HomeSystemLike {
+  systemType: string;
+  installationYear?: number | null;
+  brand?: string | null;
+  model?: string | null;
+}
+
+export function buildPrefillFromSystems(systems: HomeSystemLike[]): DisclosureAnswers {
+  const answers: DisclosureAnswers = {};
+  for (const sys of systems) {
+    const type = (sys.systemType ?? "").toLowerCase();
+    if (type.includes("hvac") || type.includes("furnace") || type.includes("heat") || type.includes("air handler")) {
+      if (!answers["heatingType"]) {
+        if (type.includes("heat pump")) answers["heatingType"] = "Heat Pump";
+        else if (type.includes("boiler")) answers["heatingType"] = "Boiler / Radiator";
+        else if (type.includes("furnace") || type.includes("forced air")) answers["heatingType"] = "Forced Air Furnace";
+        else if (type.includes("baseboard")) answers["heatingType"] = "Electric Baseboard";
+      }
+    }
+    if (type.includes("water heater")) {
+      if (!answers["waterHeaterType"]) {
+        if (type.includes("tankless")) answers["waterHeaterType"] = "Tankless (Gas)";
+        else if (type.includes("heat pump")) answers["waterHeaterType"] = "Heat Pump Water Heater";
+        else answers["waterHeaterType"] = "Tank (Gas)";
+      }
+    }
+  }
+  return answers;
+}
+
 export function buildPrefillAnswers(house: Record<string, unknown>): DisclosureAnswers {
   const answers: DisclosureAnswers = {};
   const prefillMap: Record<string, string> = {
@@ -380,6 +410,24 @@ export function formatAnswerForSummary(question: DisclosureQuestion, answer: Ans
   return String(answer);
 }
 
+export function generateSectionSummaryText(section: DisclosureSection, answers: DisclosureAnswers): string {
+  const lines: string[] = [];
+  lines.push(section.title.toUpperCase());
+  lines.push("-".repeat(section.title.length));
+  for (const question of section.questions) {
+    const answer = answers[question.id];
+    const detailAnswer = answers[`${question.id}_details`];
+    const displayAnswer = formatAnswerForSummary(question, answer ?? null);
+    lines.push(`${question.text}`);
+    lines.push(`  Answer: ${displayAnswer}`);
+    if (detailAnswer) {
+      lines.push(`  Details: ${detailAnswer}`);
+    }
+    lines.push("");
+  }
+  return lines.join("\n");
+}
+
 export function generateSummaryText(answers: DisclosureAnswers): string {
   const lines: string[] = [];
   lines.push("NEW YORK STATE PROPERTY CONDITION DISCLOSURE STATEMENT");
@@ -391,9 +439,13 @@ export function generateSummaryText(answers: DisclosureAnswers): string {
     lines.push("-".repeat(section.title.length));
     for (const question of section.questions) {
       const answer = answers[question.id];
+      const detailAnswer = answers[`${question.id}_details`];
       const displayAnswer = formatAnswerForSummary(question, answer ?? null);
       lines.push(`${question.text}`);
       lines.push(`  Answer: ${displayAnswer}`);
+      if (detailAnswer) {
+        lines.push(`  Details: ${detailAnswer}`);
+      }
       lines.push("");
     }
     lines.push("");

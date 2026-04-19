@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +16,7 @@ import { z } from "zod";
 import { insertHouseSchema } from "@shared/schema";
 import type { House } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
-import { Calendar, Clock, Wrench, Home, MapPin, Edit, Trash2, Plus, Building, Thermometer, AlertTriangle, ChevronRight, Crown, BarChart3, Copy, Settings } from "lucide-react";
+import { Calendar, Clock, Wrench, Home, MapPin, Edit, Trash2, Plus, Building, Thermometer, AlertTriangle, ChevronRight, Crown, BarChart3, Copy, Settings, ClipboardList } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { HomeownerFeatureGate, HomeownerTrialBanner, FreeUserUpgradePrompt } from "@/components/homeowner-feature-gate";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
@@ -173,6 +173,18 @@ export default function MyHome() {
       if (!selectedHouse) return null;
       const response = await fetch(`/api/houses/${selectedHouse.id}/maintenance-tasks`);
       if (!response.ok) throw new Error('Failed to fetch maintenance tasks');
+      return response.json();
+    },
+    enabled: !!selectedHouse,
+  });
+
+  // Fetch disclosure status for disclosure CTA card
+  const { data: disclosureData } = useQuery<{ answers?: Record<string, unknown> } | null>({
+    queryKey: ['/api/disclosures', selectedHouse?.id],
+    queryFn: async () => {
+      if (!selectedHouse) return null;
+      const response = await fetch(`/api/disclosures/${selectedHouse.id}`, { credentials: 'include' });
+      if (!response.ok) return null;
       return response.json();
     },
     enabled: !!selectedHouse,
@@ -780,6 +792,32 @@ export default function MyHome() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Property Disclosure CTA Card */}
+            {selectedHouse && (
+              <Link href="/disclosures">
+                <Card
+                  className="border-purple-200 shadow cursor-pointer hover:shadow-md hover:border-purple-400 transition-all"
+                  style={{ background: 'linear-gradient(135deg, #f5f0ff 0%, #ede9fe 100%)' }}
+                  data-testid="card-disclosure-cta"
+                >
+                  <CardContent className="p-4 flex items-center gap-4">
+                    <div className="flex-shrink-0 p-2.5 rounded-xl bg-purple-100">
+                      <ClipboardList className="h-5 w-5 text-purple-700" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-purple-900">Property Disclosure Wizard</p>
+                      <p className="text-xs text-purple-700 mt-0.5">
+                        {disclosureData?.answers && Object.keys(disclosureData.answers).length > 0
+                          ? `In progress — ${Object.keys(disclosureData.answers).length} answers saved`
+                          : 'Prepare your NY PCDS before selling'}
+                      </p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                  </CardContent>
+                </Card>
+              </Link>
+            )}
 
             {/* Maintenance Tasks for Selected House */}
             {selectedHouse && (

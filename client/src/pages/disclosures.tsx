@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,13 +16,15 @@ import {
   ClipboardCopy, CheckCircle, ChevronRight, ChevronLeft,
   FileText, Printer, Loader2, Sparkles, AlertCircle, Info,
 } from "lucide-react";
-import type { House } from "@shared/schema";
+import type { House, HomeSystem } from "@shared/schema";
 import {
   NY_PCDS_SECTIONS,
   buildPrefillAnswers,
+  buildPrefillFromSystems,
   getSectionProgress,
   getTotalProgress,
   generateSummaryText,
+  generateSectionSummaryText,
   type DisclosureAnswers,
   type DisclosureQuestion,
   type AnswerValue,
@@ -34,93 +36,109 @@ const YES_NO_ONLY = ["Yes", "No"];
 function QuestionWidget({
   question,
   value,
+  detailValue,
   onChange,
+  onDetailChange,
   prefilled,
 }: {
   question: DisclosureQuestion;
   value: AnswerValue;
+  detailValue: string;
   onChange: (v: AnswerValue) => void;
+  onDetailChange: (v: string) => void;
   prefilled: boolean;
 }) {
   const displayVal = value === null || value === undefined ? "" : String(value);
-
-  if (question.type === "yes_no_unknown") {
-    return (
-      <div className="flex flex-wrap gap-2">
-        {YES_NO_OPTIONS.map(opt => (
-          <button
-            key={opt}
-            type="button"
-            onClick={() => onChange(opt)}
-            className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-              displayVal === opt
-                ? "border-purple-600 bg-purple-50 text-purple-700"
-                : "border-gray-200 hover:border-purple-300 hover:bg-gray-50"
-            }`}
-          >
-            {opt}
-          </button>
-        ))}
-      </div>
-    );
-  }
-
-  if (question.type === "yes_no") {
-    return (
-      <div className="flex flex-wrap gap-2">
-        {YES_NO_ONLY.map(opt => (
-          <button
-            key={opt}
-            type="button"
-            onClick={() => onChange(opt)}
-            className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-              displayVal === opt
-                ? "border-purple-600 bg-purple-50 text-purple-700"
-                : "border-gray-200 hover:border-purple-300 hover:bg-gray-50"
-            }`}
-          >
-            {opt}
-          </button>
-        ))}
-      </div>
-    );
-  }
-
-  if (question.type === "select" && question.options) {
-    return (
-      <Select value={displayVal} onValueChange={v => onChange(v)}>
-        <SelectTrigger className={`w-full max-w-xs ${prefilled ? "border-purple-300 bg-purple-50" : ""}`}>
-          <SelectValue placeholder="Select an option…" />
-        </SelectTrigger>
-        <SelectContent>
-          {question.options.map(opt => (
-            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    );
-  }
-
-  if (question.type === "number") {
-    return (
-      <Input
-        type="number"
-        className={`w-40 ${prefilled ? "border-purple-300 bg-purple-50" : ""}`}
-        value={displayVal}
-        onChange={e => onChange(e.target.value === "" ? null : Number(e.target.value))}
-        placeholder="e.g. 2005"
-      />
-    );
-  }
+  const needsDetail = (question.type === "yes_no_unknown" || question.type === "yes_no") && displayVal === "Yes";
+  const detailPrompt = question.followUp ?? "Please provide additional details.";
 
   return (
-    <Textarea
-      className="w-full max-w-lg"
-      value={displayVal}
-      onChange={e => onChange(e.target.value)}
-      rows={2}
-      placeholder="Type your answer here…"
-    />
+    <div className="space-y-2">
+      {question.type === "yes_no_unknown" && (
+        <div className="flex flex-wrap gap-2">
+          {YES_NO_OPTIONS.map(opt => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => onChange(opt)}
+              className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                displayVal === opt
+                  ? "border-purple-600 bg-purple-50 text-purple-700"
+                  : "border-gray-200 hover:border-purple-300 hover:bg-gray-50"
+              }`}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {question.type === "yes_no" && (
+        <div className="flex flex-wrap gap-2">
+          {YES_NO_ONLY.map(opt => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => onChange(opt)}
+              className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                displayVal === opt
+                  ? "border-purple-600 bg-purple-50 text-purple-700"
+                  : "border-gray-200 hover:border-purple-300 hover:bg-gray-50"
+              }`}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {question.type === "select" && question.options && (
+        <Select value={displayVal} onValueChange={v => onChange(v)}>
+          <SelectTrigger className={`w-full max-w-xs ${prefilled ? "border-purple-300 bg-purple-50" : ""}`}>
+            <SelectValue placeholder="Select an option…" />
+          </SelectTrigger>
+          <SelectContent>
+            {question.options.map(opt => (
+              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+
+      {question.type === "number" && (
+        <Input
+          type="number"
+          className={`w-40 ${prefilled ? "border-purple-300 bg-purple-50" : ""}`}
+          value={displayVal}
+          onChange={e => onChange(e.target.value === "" ? null : Number(e.target.value))}
+          placeholder="e.g. 2005"
+        />
+      )}
+
+      {question.type === "text" && (
+        <Textarea
+          className="w-full max-w-lg"
+          value={displayVal}
+          onChange={e => onChange(e.target.value)}
+          rows={2}
+          placeholder="Type your answer here…"
+        />
+      )}
+
+      {/* Detail text area shown when Yes is selected for yes_no or yes_no_unknown */}
+      {needsDetail && (
+        <div className="mt-1">
+          <p className="text-xs text-gray-500 mb-1 italic">{detailPrompt}</p>
+          <Textarea
+            className="w-full max-w-lg text-sm"
+            value={detailValue}
+            onChange={e => onDetailChange(e.target.value)}
+            rows={2}
+            placeholder="Please describe…"
+          />
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -132,55 +150,107 @@ export default function Disclosures() {
   const [prefillKeys, setPrefillKeys] = useState<Set<string>>(new Set());
   const [showSummary, setShowSummary] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [sectionCopied, setSectionCopied] = useState(false);
+  const [selectedHouseId, setSelectedHouseId] = useState<string | null>(null);
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [autosaving, setAutosaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const initializedForHouse = useRef<string | null>(null);
 
   const { data: houses = [] } = useQuery<House[]>({ queryKey: ["/api/houses"] });
-  const defaultHouse = (houses as House[]).find(h => h.isDefault) || (houses as House[])[0];
-  const houseId = defaultHouse?.id;
+  const houseList = houses as House[];
+  const defaultHouse = houseList.find(h => h.isDefault) || houseList[0];
+  const houseId = selectedHouseId ?? defaultHouse?.id;
+  const currentHouse = houseList.find(h => h.id === houseId) ?? defaultHouse;
+
+  const { data: homeSystems = [] } = useQuery<HomeSystem[]>({
+    queryKey: ["/api/home-systems"],
+    enabled: !!houseId,
+  });
 
   const { data: existingDisclosure, isLoading: disclosureLoading } = useQuery({
     queryKey: ["/api/disclosures", houseId],
     queryFn: async () => {
       if (!houseId) return null;
-      return apiRequest(`/api/disclosures/${houseId}`, "GET");
+      const res = await apiRequest(`/api/disclosures/${houseId}`, "GET");
+      if (res.status === 404) return null;
+      return res.json();
     },
     enabled: !!houseId,
   });
 
   useEffect(() => {
+    if (!houseId) return;
+    if (initializedForHouse.current === houseId) return;
+    initializedForHouse.current = houseId;
     if (existingDisclosure?.answers && Object.keys(existingDisclosure.answers).length > 0) {
       setAnswers(existingDisclosure.answers as DisclosureAnswers);
       return;
     }
-    if (defaultHouse) {
-      const prefilled = buildPrefillAnswers(defaultHouse as unknown as Record<string, unknown>);
-      if (Object.keys(prefilled).length > 0) {
-        setAnswers(prev => ({ ...prefilled, ...prev }));
-        setPrefillKeys(new Set(Object.keys(prefilled)));
+    if (currentHouse) {
+      const housePrefill = buildPrefillAnswers(currentHouse as unknown as Record<string, unknown>);
+      const systemsPrefill = buildPrefillFromSystems(homeSystems as HomeSystem[]);
+      const combined = { ...housePrefill, ...systemsPrefill };
+      if (Object.keys(combined).length > 0) {
+        setAnswers(combined);
+        setPrefillKeys(new Set(Object.keys(combined)));
       }
     }
-  }, [defaultHouse, existingDisclosure]);
+  }, [houseId, existingDisclosure, currentHouse, homeSystems]);
+
+  const houseIdRef = useRef(houseId);
+  useEffect(() => { houseIdRef.current = houseId; }, [houseId]);
 
   const saveMutation = useMutation({
     mutationFn: async (data: DisclosureAnswers) => {
-      return apiRequest(`/api/disclosures/${houseId}`, "PUT", { answers: data });
+      const id = houseIdRef.current;
+      if (!id) throw new Error("No house selected");
+      const res = await apiRequest(`/api/disclosures/${id}`, "PUT", { answers: data });
+      return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/disclosures", houseId] });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
+      queryClient.invalidateQueries({ queryKey: ["/api/disclosures", houseIdRef.current] });
+      setLastSaved(new Date());
+      setAutosaving(false);
     },
     onError: () => {
+      setAutosaving(false);
       toast({ title: "Save failed", description: "Unable to save your disclosure answers.", variant: "destructive" });
     },
   });
 
-  const setAnswer = useCallback((id: string, val: AnswerValue) => {
-    setAnswers(prev => ({ ...prev, [id]: val }));
+  const saveMutationRef = useRef(saveMutation);
+  useEffect(() => { saveMutationRef.current = saveMutation; }, [saveMutation]);
+
+  const scheduleAutosave = useCallback((newAnswers: DisclosureAnswers) => {
+    if (!houseIdRef.current) return;
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    setAutosaving(true);
+    autosaveTimer.current = setTimeout(() => {
+      saveMutationRef.current.mutate(newAnswers);
+    }, 1200);
   }, []);
 
-  const handleSave = () => {
-    if (!houseId) return;
+  const setAnswer = useCallback((id: string, val: AnswerValue) => {
+    setAnswers(prev => {
+      const updated = { ...prev, [id]: val };
+      scheduleAutosave(updated);
+      return updated;
+    });
+  }, [scheduleAutosave]);
+
+  const setDetail = useCallback((id: string, val: string) => {
+    setAnswers(prev => {
+      const updated = { ...prev, [`${id}_details`]: val };
+      scheduleAutosave(updated);
+      return updated;
+    });
+  }, [scheduleAutosave]);
+
+  const handleManualSave = () => {
+    if (!houseIdRef.current) return;
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    setAutosaving(false);
     saveMutation.mutate(answers);
   };
 
@@ -196,21 +266,32 @@ export default function Disclosures() {
     }
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handleSectionCopy = async () => {
+    const section = NY_PCDS_SECTIONS[sectionIdx];
+    const text = generateSectionSummaryText(section, answers);
+    try {
+      await navigator.clipboard.writeText(text);
+      setSectionCopied(true);
+      setTimeout(() => setSectionCopied(false), 2500);
+      toast({ title: "Section copied!", description: `${section.title} answers copied to clipboard.` });
+    } catch {
+      toast({ title: "Copy failed", variant: "destructive" });
+    }
   };
+
+  const handlePrint = () => window.print();
 
   const currentSection = NY_PCDS_SECTIONS[sectionIdx];
   const totalProgress = getTotalProgress(answers);
 
-  if (!houseId) {
+  if (!houseId && !disclosureLoading && houseList.length === 0) {
     return (
       <div className="min-h-screen p-6 flex items-center justify-center">
         <Card className="max-w-md w-full">
           <CardContent className="pt-6 text-center">
             <AlertCircle className="w-12 h-12 mx-auto mb-4 text-yellow-500" />
             <h2 className="text-xl font-semibold mb-2">No Home Found</h2>
-            <p className="text-gray-600">Please add a home in your profile before completing a disclosure form.</p>
+            <p className="text-gray-600">Please add a home in My Home before completing a disclosure form.</p>
           </CardContent>
         </Card>
       </div>
@@ -248,7 +329,7 @@ export default function Disclosures() {
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={handleCopy} className="print:hidden">
                     {copied ? <CheckCircle className="w-4 h-4 mr-1 text-green-600" /> : <ClipboardCopy className="w-4 h-4 mr-1" />}
-                    {copied ? "Copied!" : "Copy"}
+                    {copied ? "Copied!" : "Copy All"}
                   </Button>
                   <Button variant="outline" size="sm" onClick={handlePrint} className="print:hidden">
                     <Printer className="w-4 h-4 mr-1" />Print
@@ -274,7 +355,7 @@ export default function Disclosures() {
     <div className="min-h-screen" style={{ background: "var(--theme-primary, #f8f5ff)" }}>
       <div className="max-w-3xl mx-auto px-4 py-6">
         {/* Header */}
-        <div className="mb-6">
+        <div className="mb-4">
           <div className="flex items-center gap-2 mb-1">
             <FileText className="w-5 h-5 text-purple-700" />
             <h1 className="text-xl font-bold text-gray-900">Property Disclosure Wizard</h1>
@@ -283,15 +364,38 @@ export default function Disclosures() {
           <p className="text-sm text-gray-500">
             New York State Property Condition Disclosure Statement — guided walkthrough
           </p>
-          {prefillKeys.size > 0 && (
-            <div className="mt-2 flex items-start gap-2 text-xs text-purple-700 bg-purple-50 rounded-lg px-3 py-2">
-              <Sparkles className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-              <span>
-                <strong>{prefillKeys.size} answers</strong> were pre-filled from your home profile. Review and adjust as needed.
-              </span>
-            </div>
-          )}
         </div>
+
+        {/* Property selector when multiple homes */}
+        {houseList.length > 1 && (
+          <div className="mb-4">
+            <label className="block text-xs font-medium text-gray-600 mb-1">Property</label>
+            <Select value={houseId ?? ""} onValueChange={v => {
+              setSelectedHouseId(v);
+              setAnswers({});
+              setPrefillKeys(new Set());
+            }}>
+              <SelectTrigger className="w-full max-w-xs bg-white">
+                <SelectValue placeholder="Select a property…" />
+              </SelectTrigger>
+              <SelectContent>
+                {houseList.map(h => (
+                  <SelectItem key={h.id} value={h.id}>{h.name} — {h.address}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {/* Pre-fill banner */}
+        {prefillKeys.size > 0 && (
+          <div className="mb-4 flex items-start gap-2 text-xs text-purple-700 bg-purple-50 rounded-lg px-3 py-2">
+            <Sparkles className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+            <span>
+              <strong>{prefillKeys.size} answers</strong> were pre-filled from your home profile and home systems. Review and adjust as needed.
+            </span>
+          </div>
+        )}
 
         {/* Overall Progress */}
         <div className="mb-4">
@@ -329,22 +433,35 @@ export default function Disclosures() {
         {/* Section card */}
         <Card>
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
                 <CardTitle className="text-base">{currentSection.title}</CardTitle>
                 {currentSection.description && (
                   <CardDescription className="text-xs mt-0.5">{currentSection.description}</CardDescription>
                 )}
               </div>
-              <Badge variant="outline" className="text-xs ml-2 flex-shrink-0">
-                {getSectionProgress(currentSection.id, answers)}% done
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs">
+                  {getSectionProgress(currentSection.id, answers)}% done
+                </Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleSectionCopy}
+                  className="text-xs h-7 px-2"
+                  title="Copy this section's answers"
+                >
+                  {sectionCopied ? <CheckCircle className="w-3.5 h-3.5 text-green-600" /> : <ClipboardCopy className="w-3.5 h-3.5" />}
+                  <span className="ml-1 hidden sm:inline">{sectionCopied ? "Copied!" : "Copy section"}</span>
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
             {currentSection.questions.map(question => {
               const isPrefilled = prefillKeys.has(question.id);
               const val = answers[question.id] ?? null;
+              const detailVal = String(answers[`${question.id}_details`] ?? "");
               return (
                 <div key={question.id} className="space-y-2">
                   <div>
@@ -354,14 +471,13 @@ export default function Disclosures() {
                         <Info className="w-3 h-3" />{question.hint}
                       </span>
                     )}
-                    {question.followUp && (
-                      <p className="text-xs text-gray-500 mt-0.5 italic">{question.followUp}</p>
-                    )}
                   </div>
                   <QuestionWidget
                     question={question}
                     value={val}
+                    detailValue={detailVal}
                     onChange={v => setAnswer(question.id, v)}
+                    onDetailChange={v => setDetail(question.id, v)}
                     prefilled={isPrefilled}
                   />
                 </div>
@@ -382,19 +498,24 @@ export default function Disclosures() {
           </Button>
 
           <div className="flex items-center gap-2">
-            {saved && (
+            {/* Autosave status */}
+            {autosaving && (
+              <span className="text-xs text-gray-400 flex items-center gap-1">
+                <Loader2 className="w-3 h-3 animate-spin" />Saving…
+              </span>
+            )}
+            {!autosaving && lastSaved && (
               <span className="text-xs text-green-600 flex items-center gap-1">
-                <CheckCircle className="w-3.5 h-3.5" />Saved
+                <CheckCircle className="w-3 h-3" />Saved
               </span>
             )}
             <Button
               variant="outline"
               size="sm"
-              onClick={handleSave}
-              disabled={saveMutation.isPending}
+              onClick={handleManualSave}
+              disabled={saveMutation.isPending || autosaving}
             >
-              {saveMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
-              Save progress
+              Save
             </Button>
           </div>
 
@@ -410,7 +531,7 @@ export default function Disclosures() {
             <Button
               size="sm"
               onClick={() => {
-                handleSave();
+                handleManualSave();
                 setShowSummary(true);
               }}
               style={{ backgroundColor: "var(--theme-accent, #7c3aed)", color: "white" }}
@@ -421,7 +542,7 @@ export default function Disclosures() {
         </div>
 
         <p className="text-xs text-gray-400 text-center mt-4">
-          This tool generates a draft for review only — not a legally binding document. Consult your attorney or agent.
+          Draft only — not a legally binding document. Consult your attorney or agent.
         </p>
       </div>
     </div>
