@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Menu, Home, Wrench, Building2, HelpCircle, Mail, X } from "lucide-react";
+import { Menu, Home, Wrench, Building2, HelpCircle, Mail, X, UserCircle } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import logoColor from '@assets/my-homebase-logo-tm-final_1776295160061.png';
 
@@ -122,12 +122,16 @@ export default function PublicHeader() {
 
         {/* Right: Sign in buttons (desktop) / Sign in link (mobile/tablet) */}
         <div className="flex items-center gap-2">
-          {/* Mobile/tablet: simple sign in link */}
+          {/* Mobile/tablet: avatar + homeowner sign in */}
           <a
-            href="/signin"
-            className="lg:hidden text-sm font-semibold text-gray-600 hover:text-gray-900 px-3 py-1.5"
+            href="/signin/homeowner"
+            className="lg:hidden flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-purple-50 transition-colors"
+            style={{ color: '#2c0f5b' }}
           >
-            Sign in
+            <UserCircle className="h-6 w-6 flex-shrink-0" />
+            <span className="text-xs font-semibold leading-tight text-right">
+              Homeowner<br />Sign In/Register
+            </span>
           </a>
 
           {/* Desktop: role-specific sign in buttons */}
