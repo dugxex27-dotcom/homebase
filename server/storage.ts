@@ -8624,12 +8624,8 @@ class DbStorage implements IStorage {
 
   // House disclosure operations - DATABASE BACKED
   async getHouseDisclosure(houseId: string): Promise<HouseDisclosure | undefined> {
-    try {
-      const result = await db.select().from(houseDisclosures).where(eq(houseDisclosures.houseId, houseId)).limit(1);
-      return result[0];
-    } catch (e) {
-      return undefined;
-    }
+    const result = await db.select().from(houseDisclosures).where(eq(houseDisclosures.houseId, houseId)).limit(1);
+    return result[0];
   }
 
   async upsertHouseDisclosure(data: InsertHouseDisclosure): Promise<HouseDisclosure> {
