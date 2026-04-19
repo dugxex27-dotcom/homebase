@@ -21,6 +21,7 @@ import {
   NY_PCDS_SECTIONS,
   buildPrefillAnswers,
   buildPrefillFromSystems,
+  buildPrefillFromLogs,
   getSectionProgress,
   getTotalProgress,
   generateSummaryText,
@@ -29,6 +30,7 @@ import {
   type DisclosureSection,
   type DisclosureQuestion,
   type AnswerValue,
+  type MaintenanceLogLike,
 } from "@/lib/disclosure-forms/ny-pcds";
 import {
   GENERIC_PCDS_SECTIONS,
@@ -192,8 +194,29 @@ export default function Disclosures() {
   const houseId = selectedHouseId ?? defaultHouse?.id;
   const currentHouse = houseList.find(h => h.id === houseId) ?? defaultHouse;
 
-  const { data: homeSystems = [] } = useQuery<HomeSystem[]>({
-    queryKey: ["/api/home-systems"],
+  const { data: homeSystems = [], isLoading: systemsLoading } = useQuery<HomeSystem[]>({
+    queryKey: ["/api/home-systems", houseId],
+    queryFn: async () => {
+      if (!houseId) return [];
+      const res = await apiRequest(`/api/home-systems?houseId=${houseId}`, "GET");
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!houseId,
+  });
+
+  const { data: maintenanceLogs = [], isLoading: logsLoading } = useQuery<MaintenanceLogLike[]>({
+    queryKey: ["/api/maintenance-logs", houseId],
+    queryFn: async () => {
+      if (!houseId) return [];
+      try {
+        const res = await apiRequest(`/api/maintenance-logs?houseId=${houseId}`, "GET");
+        if (!res.ok) return [];
+        return res.json();
+      } catch {
+        return [];
+      }
+    },
     enabled: !!houseId,
   });
 
@@ -213,7 +236,7 @@ export default function Disclosures() {
 
   useEffect(() => {
     if (!houseId) return;
-    if (disclosureLoading) return;
+    if (disclosureLoading || systemsLoading || logsLoading) return;
     if (initializedForHouse.current === houseId) return;
     initializedForHouse.current = houseId;
     if (existingDisclosure?.answers && Object.keys(existingDisclosure.answers).length > 0) {
@@ -223,13 +246,14 @@ export default function Disclosures() {
     if (currentHouse) {
       const housePrefill = buildPrefillAnswers(currentHouse as unknown as Record<string, unknown>);
       const systemsPrefill = buildPrefillFromSystems(homeSystems as HomeSystem[]);
-      const combined = { ...housePrefill, ...systemsPrefill };
+      const logsPrefill = buildPrefillFromLogs(maintenanceLogs);
+      const combined = { ...logsPrefill, ...systemsPrefill, ...housePrefill };
       if (Object.keys(combined).length > 0) {
         setAnswers(combined);
         setPrefillKeys(new Set(Object.keys(combined)));
       }
     }
-  }, [houseId, disclosureLoading, existingDisclosure, currentHouse, homeSystems]);
+  }, [houseId, disclosureLoading, systemsLoading, logsLoading, existingDisclosure, currentHouse, homeSystems, maintenanceLogs]);
 
   const houseIdRef = useRef(houseId);
   useEffect(() => { houseIdRef.current = houseId; }, [houseId]);

@@ -11129,6 +11129,11 @@ Return ONLY a JSON object with these fields (use null for any field you cannot c
   app.get("/api/disclosures/:houseId", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
     try {
       const { houseId } = req.params;
+      const userId = req.session.user.id;
+      const house = await storage.getHouse(houseId);
+      if (!house || house.homeownerId !== userId) {
+        return res.status(403).json({ message: "Access denied to this property" });
+      }
       const disclosure = await storage.getHouseDisclosure(houseId);
       res.json(disclosure ?? null);
     } catch (e: any) {
@@ -11140,6 +11145,10 @@ Return ONLY a JSON object with these fields (use null for any field you cannot c
     try {
       const { houseId } = req.params;
       const userId = req.session.user.id;
+      const house = await storage.getHouse(houseId);
+      if (!house || house.homeownerId !== userId) {
+        return res.status(403).json({ message: "Access denied to this property" });
+      }
       const { answers, formType, stateCode } = req.body;
       const disclosure = await storage.upsertHouseDisclosure({
         houseId,
@@ -11158,6 +11167,11 @@ Return ONLY a JSON object with these fields (use null for any field you cannot c
   app.get("/api/houses/:houseId/disclosure", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
     try {
       const { houseId } = req.params;
+      const userId = req.session.user.id;
+      const house = await storage.getHouse(houseId);
+      if (!house || house.homeownerId !== userId) {
+        return res.status(403).json({ message: "Access denied to this property" });
+      }
       const disclosure = await storage.getHouseDisclosure(houseId);
       res.json(disclosure ?? null);
     } catch (e: any) {
@@ -11169,6 +11183,10 @@ Return ONLY a JSON object with these fields (use null for any field you cannot c
     try {
       const { houseId } = req.params;
       const userId = req.session.user.id;
+      const house = await storage.getHouse(houseId);
+      if (!house || house.homeownerId !== userId) {
+        return res.status(403).json({ message: "Access denied to this property" });
+      }
       const { answers, formType, stateCode } = req.body;
       const disclosure = await storage.upsertHouseDisclosure({
         houseId,

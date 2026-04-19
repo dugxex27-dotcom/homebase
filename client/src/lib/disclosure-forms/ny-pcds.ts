@@ -134,6 +134,52 @@ export function buildPrefillFromSystems(systems: HomeSystemLike[]): DisclosureAn
   return answers;
 }
 
+export interface MaintenanceLogLike {
+  serviceDate?: string | null;
+  serviceType?: string | null;
+  homeArea?: string | null;
+  serviceDescription?: string | null;
+  notes?: string | null;
+}
+
+export function buildPrefillFromLogs(logs: MaintenanceLogLike[]): DisclosureAnswers {
+  const answers: DisclosureAnswers = {};
+  for (const log of logs) {
+    const area = (log.homeArea ?? "").toLowerCase();
+    const type = (log.serviceType ?? "").toLowerCase();
+    const desc = ((log.serviceDescription ?? "") + " " + (log.notes ?? "")).toLowerCase();
+
+    if (area.includes("roof") || type.includes("roof")) {
+      const year = log.serviceDate ? parseInt(log.serviceDate.slice(0, 4), 10) : NaN;
+      if (!isNaN(year) && year > 1950 && year <= new Date().getFullYear()) {
+        if (!answers["roofAge"]) answers["roofAge"] = year;
+      }
+    }
+    if (desc.includes("flood") || desc.includes("water damage") || desc.includes("water intrusion")) {
+      if (!answers["floodDamage"]) answers["floodDamage"] = "Yes";
+    }
+    if (desc.includes("mold") || desc.includes("mould")) {
+      if (!answers["mold"]) answers["mold"] = "Yes";
+    }
+    if (desc.includes("insurance claim") || type.includes("insurance")) {
+      if (!answers["insuranceClaims"]) answers["insuranceClaims"] = "Yes";
+    }
+    if (desc.includes("asbestos") || type.includes("asbestos")) {
+      if (!answers["asbestos"]) answers["asbestos"] = "Yes";
+    }
+    if (desc.includes("lead paint") || type.includes("lead paint")) {
+      if (!answers["leadPaint"]) answers["leadPaint"] = "Yes";
+    }
+    if (desc.includes("radon")) {
+      if (!answers["radon"]) answers["radon"] = "Yes";
+    }
+    if ((area.includes("basement") || area.includes("crawl")) && (desc.includes("leak") || desc.includes("water"))) {
+      if (!answers["basementWater"]) answers["basementWater"] = "Yes";
+    }
+  }
+  return answers;
+}
+
 export function buildPrefillAnswers(house: Record<string, unknown>): DisclosureAnswers {
   const answers: DisclosureAnswers = {};
   const prefillMap: Record<string, string> = {
