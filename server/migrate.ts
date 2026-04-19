@@ -24,8 +24,28 @@ export async function runMigrations() {
     // This can happen when some tables were created via db push before the
     // migration system was introduced, leaving the journal out of sync.
     console.warn('Migration warning (non-fatal):', error?.message || error);
-  } finally {
-    await pool.end();
   }
+
+  // Ensure house_disclosures table exists (created via raw SQL to avoid drizzle-kit push issues)
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS "house_disclosures" (
+        "id" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+        "house_id" varchar NOT NULL,
+        "homeowner_id" varchar NOT NULL,
+        "form_type" text NOT NULL DEFAULT 'ny_pcds',
+        "state_code" text,
+        "answers" jsonb DEFAULT '{}',
+        "updated_at" timestamp DEFAULT now(),
+        "created_at" timestamp DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS "IDX_house_disclosures_house_id" ON "house_disclosures"("house_id");
+      CREATE INDEX IF NOT EXISTS "IDX_house_disclosures_homeowner_id" ON "house_disclosures"("homeowner_id");
+    `);
+  } catch (err: any) {
+    console.warn('[MIGRATE] house_disclosures table setup warning (non-fatal):', err?.message ?? err);
+  }
+
+  await pool.end();
 }
 

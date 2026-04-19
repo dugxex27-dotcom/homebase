@@ -63,16 +63,20 @@ export const NY_PCDS_SECTIONS: DisclosureSection[] = [
     questions: [
       { id: "heatingType", questionNumber: 17, text: "What is the primary heating system type?", type: "select", options: ["Forced Air Furnace", "Boiler / Radiator", "Heat Pump", "Electric Baseboard", "Radiant Floor", "Other / Unknown"], prefillKey: "hvacType", hint: "From your home profile" },
       { id: "heatingFuel", questionNumber: 18, text: "What is the primary heating fuel?", type: "select", options: ["Natural Gas", "Oil", "Electric", "Propane", "Wood", "Solar", "Other / Unknown"], prefillKey: "primaryHeatingFuel", hint: "From your home profile" },
-      { id: "heatingDefects", questionNumber: 19, text: "Do you know of any defects in the heating system?", type: "yes_no_unknown", followUp: "If yes, describe." },
-      { id: "coolingType", questionNumber: 20, text: "Is there central air conditioning?", type: "yes_no_unknown" },
-      { id: "coolingDefects", questionNumber: 21, text: "Do you know of any defects in the cooling system?", type: "yes_no_unknown", followUp: "If yes, describe." },
-      { id: "plumbingType", questionNumber: 22, text: "What is the primary plumbing material?", type: "select", options: ["Copper", "PEX", "PVC", "Galvanized Steel", "Cast Iron", "Lead", "Other / Unknown"], prefillKey: "plumbingType", hint: "From your home profile" },
-      { id: "plumbingDefects", questionNumber: 23, text: "Do you know of any defects in the plumbing system?", type: "yes_no_unknown", followUp: "If yes, describe." },
-      { id: "waterHeaterType", questionNumber: 24, text: "What type of water heater is installed?", type: "select", options: ["Tank (Gas)", "Tank (Electric)", "Tankless (Gas)", "Tankless (Electric)", "Heat Pump Water Heater", "Solar", "Other / Unknown"], prefillKey: "waterHeaterType", hint: "From your home profile" },
-      { id: "electricalAmps", questionNumber: 25, text: "What is the electrical service capacity (amps)?", type: "select", options: ["60 A", "100 A", "150 A", "200 A", "400 A", "Unknown"] },
-      { id: "electricalDefects", questionNumber: 26, text: "Do you know of any defects in the electrical system?", type: "yes_no_unknown", followUp: "If yes, describe." },
-      { id: "sewerType", questionNumber: 27, text: "How is sewage disposed of?", type: "select", options: ["Municipal Sewer", "Septic System", "Cesspool", "Unknown"] },
-      { id: "waterSource", questionNumber: 28, text: "What is the source of potable water?", type: "select", options: ["Municipal / Public Water", "Well", "Other / Unknown"] },
+      { id: "hvacInstallYear", questionNumber: 19, text: "Approximately what year was the current heating/cooling system installed?", type: "number", prefillKey: "hvacInstallYear", hint: "From your home systems" },
+      { id: "hvacBrandModel", questionNumber: 20, text: "HVAC system brand and model (if known)", type: "text", prefillKey: "hvacBrandModel", hint: "From your home systems" },
+      { id: "heatingDefects", questionNumber: 21, text: "Do you know of any defects in the heating system?", type: "yes_no_unknown", followUp: "If yes, describe." },
+      { id: "coolingType", questionNumber: 22, text: "Is there central air conditioning?", type: "yes_no_unknown" },
+      { id: "coolingDefects", questionNumber: 23, text: "Do you know of any defects in the cooling system?", type: "yes_no_unknown", followUp: "If yes, describe." },
+      { id: "plumbingType", questionNumber: 24, text: "What is the primary plumbing material?", type: "select", options: ["Copper", "PEX", "PVC", "Galvanized Steel", "Cast Iron", "Lead", "Other / Unknown"], prefillKey: "plumbingType", hint: "From your home profile" },
+      { id: "plumbingDefects", questionNumber: 25, text: "Do you know of any defects in the plumbing system?", type: "yes_no_unknown", followUp: "If yes, describe." },
+      { id: "waterHeaterType", questionNumber: 26, text: "What type of water heater is installed?", type: "select", options: ["Tank (Gas)", "Tank (Electric)", "Tankless (Gas)", "Tankless (Electric)", "Heat Pump Water Heater", "Solar", "Other / Unknown"], prefillKey: "waterHeaterType", hint: "From your home profile" },
+      { id: "waterHeaterInstallYear", questionNumber: 27, text: "Approximately what year was the water heater installed?", type: "number", prefillKey: "waterHeaterInstallYear", hint: "From your home systems" },
+      { id: "waterHeaterBrandModel", questionNumber: 28, text: "Water heater brand and model (if known)", type: "text", prefillKey: "waterHeaterBrandModel", hint: "From your home systems" },
+      { id: "electricalAmps", questionNumber: 29, text: "What is the electrical service capacity (amps)?", type: "select", options: ["60 A", "100 A", "150 A", "200 A", "400 A", "Unknown"] },
+      { id: "electricalDefects", questionNumber: 30, text: "Do you know of any defects in the electrical system?", type: "yes_no_unknown", followUp: "If yes, describe." },
+      { id: "sewerType", questionNumber: 31, text: "How is sewage disposed of?", type: "select", options: ["Municipal Sewer", "Septic System", "Cesspool", "Unknown"] },
+      { id: "waterSource", questionNumber: 32, text: "What is the source of potable water?", type: "select", options: ["Municipal / Public Water", "Well", "Other / Unknown"] },
     ],
   },
   {
@@ -80,10 +84,10 @@ export const NY_PCDS_SECTIONS: DisclosureSection[] = [
     title: "Additions, Alterations & Permits",
     description: "Improvements and compliance.",
     questions: [
-      { id: "additionsAlterations", questionNumber: 29, text: "Have there been any additions or structural alterations to the property since it was built?", type: "yes_no_unknown", followUp: "If yes, describe." },
-      { id: "permitsObtained", questionNumber: 30, text: "Were all required building permits obtained for any additions or alterations?", type: "yes_no_unknown" },
-      { id: "certificateOfOccupancy", questionNumber: 31, text: "Is there a valid Certificate of Occupancy (CO) for the property?", type: "yes_no_unknown" },
-      { id: "garageType", questionNumber: 32, text: "What type of garage does the property have?", type: "select", options: ["None", "Attached", "Detached", "Built-in", "Carport"], prefillKey: "garageType", hint: "From your home profile" },
+      { id: "additionsAlterations", questionNumber: 33, text: "Have there been any additions or structural alterations to the property since it was built?", type: "yes_no_unknown", followUp: "If yes, describe." },
+      { id: "permitsObtained", questionNumber: 34, text: "Were all required building permits obtained for any additions or alterations?", type: "yes_no_unknown" },
+      { id: "certificateOfOccupancy", questionNumber: 35, text: "Is there a valid Certificate of Occupancy (CO) for the property?", type: "yes_no_unknown" },
+      { id: "garageType", questionNumber: 36, text: "What type of garage does the property have?", type: "select", options: ["None", "Attached", "Detached", "Built-in", "Carport"], prefillKey: "garageType", hint: "From your home profile" },
     ],
   },
   {
@@ -91,12 +95,12 @@ export const NY_PCDS_SECTIONS: DisclosureSection[] = [
     title: "Legal & Other Disclosures",
     description: "Legal matters, disputes, and encumbrances.",
     questions: [
-      { id: "legalProceedings", questionNumber: 33, text: "Are you aware of any pending legal actions, lawsuits, or judgments affecting the property?", type: "yes_no_unknown", followUp: "If yes, describe." },
-      { id: "easements", questionNumber: 34, text: "Are there any easements, rights-of-way, or encroachments on the property?", type: "yes_no_unknown", followUp: "If yes, describe." },
-      { id: "floodZone", questionNumber: 35, text: "Is the property located in a FEMA flood zone?", type: "yes_no_unknown" },
-      { id: "floodDamage", questionNumber: 36, text: "Has the property sustained flood damage?", type: "yes_no_unknown", followUp: "If yes, describe and state whether repaired." },
-      { id: "insuranceClaims", questionNumber: 37, text: "Have any insurance claims been filed on the property in the last 5 years?", type: "yes_no_unknown", followUp: "If yes, describe." },
-      { id: "otherDefects", questionNumber: 38, text: "Are you aware of any other material defects or conditions not previously disclosed?", type: "yes_no_unknown", followUp: "If yes, describe." },
+      { id: "legalProceedings", questionNumber: 37, text: "Are you aware of any pending legal actions, lawsuits, or judgments affecting the property?", type: "yes_no_unknown", followUp: "If yes, describe." },
+      { id: "easements", questionNumber: 38, text: "Are there any easements, rights-of-way, or encroachments on the property?", type: "yes_no_unknown", followUp: "If yes, describe." },
+      { id: "floodZone", questionNumber: 39, text: "Is the property located in a FEMA flood zone?", type: "yes_no_unknown" },
+      { id: "floodDamage", questionNumber: 40, text: "Has the property sustained flood damage?", type: "yes_no_unknown", followUp: "If yes, describe and state whether repaired." },
+      { id: "insuranceClaims", questionNumber: 41, text: "Have any insurance claims been filed on the property in the last 5 years?", type: "yes_no_unknown", followUp: "If yes, describe." },
+      { id: "otherDefects", questionNumber: 42, text: "Are you aware of any other material defects or conditions not previously disclosed?", type: "yes_no_unknown", followUp: "If yes, describe." },
     ],
   },
 ];
@@ -109,25 +113,43 @@ export interface HomeSystemLike {
   installationYear?: number | null;
   brand?: string | null;
   model?: string | null;
+  serialNumber?: string | null;
 }
 
 export function buildPrefillFromSystems(systems: HomeSystemLike[]): DisclosureAnswers {
   const answers: DisclosureAnswers = {};
   for (const sys of systems) {
     const type = (sys.systemType ?? "").toLowerCase();
-    if (type.includes("hvac") || type.includes("furnace") || type.includes("heat") || type.includes("air handler")) {
+    const isHvac = type.includes("hvac") || type.includes("furnace") || type.includes("heat") || type.includes("air handler") || type.includes("air conditioning");
+    const isWaterHeater = type.includes("water heater");
+
+    if (isHvac) {
       if (!answers["heatingType"]) {
         if (type.includes("heat pump")) answers["heatingType"] = "Heat Pump";
         else if (type.includes("boiler")) answers["heatingType"] = "Boiler / Radiator";
         else if (type.includes("furnace") || type.includes("forced air")) answers["heatingType"] = "Forced Air Furnace";
         else if (type.includes("baseboard")) answers["heatingType"] = "Electric Baseboard";
       }
+      if (!answers["hvacInstallYear"] && sys.installationYear) {
+        answers["hvacInstallYear"] = sys.installationYear;
+      }
+      if (!answers["hvacBrandModel"]) {
+        const parts = [sys.brand, sys.model].filter(Boolean).join(" ");
+        if (parts) answers["hvacBrandModel"] = parts;
+      }
     }
-    if (type.includes("water heater")) {
+    if (isWaterHeater) {
       if (!answers["waterHeaterType"]) {
         if (type.includes("tankless")) answers["waterHeaterType"] = "Tankless (Gas)";
         else if (type.includes("heat pump")) answers["waterHeaterType"] = "Heat Pump Water Heater";
         else answers["waterHeaterType"] = "Tank (Gas)";
+      }
+      if (!answers["waterHeaterInstallYear"] && sys.installationYear) {
+        answers["waterHeaterInstallYear"] = sys.installationYear;
+      }
+      if (!answers["waterHeaterBrandModel"]) {
+        const parts = [sys.brand, sys.model].filter(Boolean).join(" ");
+        if (parts) answers["waterHeaterBrandModel"] = parts;
       }
     }
   }
@@ -282,10 +304,13 @@ export function generateSectionSummaryText(section: DisclosureSection, answers: 
   return lines.join("\n");
 }
 
-export function generateSummaryText(answers: DisclosureAnswers): string {
+export function generateSummaryText(answers: DisclosureAnswers, propertyAddress?: string): string {
   const lines: string[] = [];
   lines.push("NEW YORK STATE PROPERTY CONDITION DISCLOSURE STATEMENT");
   lines.push("=".repeat(55));
+  if (propertyAddress) {
+    lines.push(`Property Address: ${propertyAddress}`);
+  }
   lines.push("");
 
   for (const section of NY_PCDS_SECTIONS) {

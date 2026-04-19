@@ -163,11 +163,14 @@ export const GENERIC_PCDS_SECTIONS: DisclosureSection[] = [
   },
 ];
 
-export function generateGenericSummaryText(answers: DisclosureAnswers, stateCode: string): string {
+export function generateGenericSummaryText(answers: DisclosureAnswers, stateCode: string, propertyAddress?: string): string {
   const lines: string[] = [];
   lines.push(`PROPERTY CONDITION DISCLOSURE STATEMENT`);
   lines.push(`State: ${stateCode} (Generic Form)`);
   lines.push("=".repeat(55));
+  if (propertyAddress) {
+    lines.push(`Property Address: ${propertyAddress}`);
+  }
   lines.push("");
   for (const section of GENERIC_PCDS_SECTIONS) {
     lines.push(section.title.toUpperCase());

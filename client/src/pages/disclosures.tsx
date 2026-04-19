@@ -312,9 +312,10 @@ export default function Disclosures() {
   };
 
   const handleCopy = async () => {
+    const address = currentHouse?.address ?? undefined;
     const text = isNY
-      ? generateSummaryText(answers)
-      : generateGenericSummaryText(answers, stateCode);
+      ? generateSummaryText(answers, address)
+      : generateGenericSummaryText(answers, stateCode, address);
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -366,11 +367,12 @@ export default function Disclosures() {
   }
 
   if (showSummary) {
+    const address = currentHouse?.address ?? undefined;
     const summaryText = isNY
-      ? generateSummaryText(answers)
-      : generateGenericSummaryText(answers, stateCode);
+      ? generateSummaryText(answers, address)
+      : generateGenericSummaryText(answers, stateCode, address);
     return (
-      <div className="min-h-screen" style={{ background: "var(--theme-primary, #f8f5ff)" }}>
+      <div className="disclosure-print-root min-h-screen" style={{ background: "var(--theme-primary, #f8f5ff)" }}>
         <div className="max-w-3xl mx-auto px-4 py-6">
           <div className="flex items-center gap-3 mb-6">
             <button
@@ -413,7 +415,7 @@ export default function Disclosures() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: "var(--theme-primary, #f8f5ff)" }}>
+    <div className="disclosure-print-root min-h-screen" style={{ background: "var(--theme-primary, #f8f5ff)" }}>
       <div className="max-w-3xl mx-auto px-4 py-6">
         {/* Header */}
         <div className="mb-4">

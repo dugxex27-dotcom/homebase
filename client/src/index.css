@@ -904,3 +904,34 @@ body.signin-page > div > div > footer,
 body.signin-page footer:last-of-type {
   display: none !important;
 }
+
+/* ── Print styles: disclosure form only ── */
+@media print {
+  /* Hide app chrome: sidebar, bottom nav, top header */
+  aside,
+  [data-testid="bottom-nav"],
+  header,
+  nav[aria-label="Main navigation"],
+  .print\\:hidden {
+    display: none !important;
+  }
+  /* Remove app container offset introduced by sidebar */
+  body,
+  #root,
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  /* Ensure disclosure content fills the page */
+  .disclosure-print-root {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 1cm !important;
+  }
+  /* Prevent page breaks inside question cards */
+  .card,
+  [data-print-card] {
+    break-inside: avoid;
+  }
+}
