@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { X, Thermometer, Zap, Droplets, Shield, Sun, Home, Wrench, Wind, Flame, Snowflake, Waves } from "lucide-react";
+import { X, Thermometer, Zap, Droplets, Shield, Sun, Home, Wrench, Wind, Flame, Snowflake, Waves, Info, ClipboardList, Star, TrendingUp } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -557,6 +557,8 @@ export default function HouseMap({
 
   const openDot = dots.find(d => d.id === openId);
 
+  const [showHwsInfo, setShowHwsInfo] = useState(false);
+
   // Score ring
   const rawScore = scoreData ? Math.max(0, scoreData.score) : 0;
   const scoreColor = rawScore > 750 ? "#4a9e2f" : rawScore > 500 ? "#e8a020" : "#e03e3e";
@@ -593,7 +595,7 @@ export default function HouseMap({
           </div>
 
           {/* HWS Score Ring */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", position: "relative" }}>
             <svg width="52" height="52" viewBox="0 0 52 52">
               <circle cx="26" cy="26" r="22" fill="none" stroke="#EEEDFE" strokeWidth="4" />
               <circle
@@ -610,12 +612,59 @@ export default function HouseMap({
                 {rawScore}
               </text>
             </svg>
-            <div style={{
-              fontSize: "9px", color: "#9b97c4", marginTop: "3px",
-              letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700,
-            }}>
-              HWS
-            </div>
+            <button
+              onClick={() => setShowHwsInfo(v => !v)}
+              style={{
+                display: "flex", alignItems: "center", gap: "3px",
+                background: "none", border: "none", cursor: "pointer",
+                padding: "2px 4px", marginTop: "2px",
+              }}
+              title="How to improve your score"
+            >
+              <span style={{
+                fontSize: "9px", color: "#9b97c4",
+                letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 700,
+              }}>HWS</span>
+              <Info size={10} color="#b6a6f4" />
+            </button>
+
+            {/* Info popover */}
+            {showHwsInfo && (
+              <div
+                style={{
+                  position: "absolute", top: "64px", right: 0, zIndex: 200,
+                  background: "#fff", borderRadius: "12px",
+                  boxShadow: "0 8px 32px rgba(45,31,110,0.18)",
+                  border: "1px solid rgba(83,74,183,0.12)",
+                  padding: "14px", width: "220px",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                  <span style={{ fontSize: "11px", fontWeight: 700, color: "#2d1f6e", letterSpacing: "0.04em" }}>
+                    Improve Your Score
+                  </span>
+                  <button
+                    onClick={() => setShowHwsInfo(false)}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "#9b97c4", padding: 0 }}
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {[
+                    { Icon: ClipboardList, color: "#7c3aed", bg: "#f5f3ff", text: "Complete seasonal maintenance tasks" },
+                    { Icon: Wrench, color: "#2563eb", bg: "#eff6ff", text: "Log contractor or DIY work" },
+                    { Icon: Star, color: "#d97706", bg: "#fffbeb", text: "Stay consistent — score is cumulative" },
+                    { Icon: TrendingUp, color: "#059669", bg: "#ecfdf5", text: "Fix aging or unknown systems" },
+                  ].map(({ Icon, color, bg, text }) => (
+                    <div key={text} style={{ display: "flex", alignItems: "center", gap: "8px", background: bg, borderRadius: "8px", padding: "7px 9px" }}>
+                      <Icon size={13} color={color} style={{ flexShrink: 0 }} />
+                      <span style={{ fontSize: "11px", color: "#374151", fontWeight: 500, lineHeight: "1.4" }}>{text}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
