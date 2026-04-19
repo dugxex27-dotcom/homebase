@@ -2188,3 +2188,25 @@ export const homeDocuments = pgTable("home_documents", {
 export const insertHomeDocumentSchema = createInsertSchema(homeDocuments).omit({ id: true, createdAt: true });
 export type InsertHomeDocument = z.infer<typeof insertHomeDocumentSchema>;
 export type HomeDocument = typeof homeDocuments.$inferSelect;
+
+// ─── Property Condition Disclosure Statements ────────────────────────────────
+// Guided wizard that pre-fills from existing home data and saves homeowner
+// answers for NY PCDS and other state disclosure forms.
+
+export const houseDisclosures = pgTable("house_disclosures", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  houseId: varchar("house_id").notNull().references(() => houses.id, { onDelete: "cascade" }),
+  homeownerId: varchar("homeowner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  formType: text("form_type").notNull().default("ny_pcds"), // "ny_pcds" | "generic"
+  stateCode: text("state_code"), // "NY", "NJ", "CT", etc.
+  answers: jsonb("answers").default({}), // { [questionId]: { answer: string; details?: string; isPrefilled: boolean } }
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_house_disclosures_house_id").on(table.houseId),
+  index("IDX_house_disclosures_homeowner_id").on(table.homeownerId),
+]);
+
+export const insertHouseDisclosureSchema = createInsertSchema(houseDisclosures).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertHouseDisclosure = z.infer<typeof insertHouseDisclosureSchema>;
+export type HouseDisclosure = typeof houseDisclosures.$inferSelect;

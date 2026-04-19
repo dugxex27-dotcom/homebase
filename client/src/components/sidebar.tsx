@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import {
   Wrench, Building2, FileText, Package, MessageCircle, Trophy, Gift,
   User as UserIcon, HelpCircle, LogOut, Download, Shield, LayoutDashboard,
-  Users, Info, FolderOpen, Home
+  Users, Info, FolderOpen, Home, ClipboardList
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient } from "@/lib/queryClient";
@@ -112,6 +112,7 @@ export default function Sidebar() {
             <Link href="/maintenance"><button className={nav('/maintenance')} style={navStyle('/maintenance')} data-testid="nav-maintenance"><Wrench className="w-4 h-4 flex-shrink-0" />Tasks{hasNotif('maintenance') && <span className="ml-auto h-2 w-2 rounded-full bg-red-500" />}</button></Link>
             <Link href="/service-records"><button className={nav('/service-records')} style={navStyle('/service-records')} data-testid="nav-service-records"><FileText className="w-4 h-4 flex-shrink-0" />Service Records</button></Link>
             <Link href="/documents"><button className={nav('/documents')} style={navStyle('/documents')} data-testid="nav-documents"><FolderOpen className="w-4 h-4 flex-shrink-0" />Documents</button></Link>
+            <Link href="/disclosures"><button className={nav('/disclosures')} style={navStyle('/disclosures')} data-testid="nav-disclosures"><ClipboardList className="w-4 h-4 flex-shrink-0" />Disclosures</button></Link>
             <Link href="/contractors"><button className={nav(['/contractors', '/find-contractors'])} style={navStyle(['/contractors', '/find-contractors'])} data-testid="nav-contractors"><Building2 className="w-4 h-4 flex-shrink-0" />Contractors</button></Link>
             <Link href="/products"><button className={nav('/products')} style={navStyle('/products')} data-testid="nav-products"><Package className="w-4 h-4 flex-shrink-0" />Products</button></Link>
             <Link href="/messages"><button className={nav('/messages')} style={navStyle('/messages')} data-testid="nav-messages"><MessageCircle className="w-4 h-4 flex-shrink-0" />Messages{hasNotif('messages') && <span className="ml-auto h-2 w-2 rounded-full bg-red-500" />}</button></Link>

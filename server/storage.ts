@@ -1,4 +1,5 @@
 import { type Contractor, type InsertContractor, type Company, type InsertCompany, type CompanyInviteCode, type InsertCompanyInviteCode, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type HomeApplianceManual, type InsertHomeApplianceManual, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type HomeownerConnectionCode, type InsertHomeownerConnectionCode, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type PushToken, type InsertPushToken, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics, type TaskOverride, type InsertTaskOverride, type Country, type InsertCountry, type Region, type InsertRegion, type ClimateZone, type InsertClimateZone, type RegulatoryBody, type InsertRegulatoryBody, type RegionalMaintenanceTask, type InsertRegionalMaintenanceTask, type TaskCompletion, type InsertTaskCompletion, type Achievement, type InsertAchievement, type AchievementDefinition, type InsertAchievementDefinition, type UserAchievement, type InsertUserAchievement, type SearchAnalytics, type InsertSearchAnalytics, type InviteCode, type InsertInviteCode, type AgentProfile, type InsertAgentProfile, type AffiliateReferral, type InsertAffiliateReferral, type SubscriptionCycleEvent, type InsertSubscriptionCycleEvent, type AffiliatePayout, type InsertAffiliatePayout, type AgentVerificationAudit, type InsertAgentVerificationAudit, type SupportTicket, type InsertSupportTicket, type TicketReply, type InsertTicketReply, type SubscriptionPlan, users, contractors, companies, contractorLicenses, countries, regions, climateZones, regulatoryBodies, regionalMaintenanceTasks, taskCompletions, achievements, achievementDefinitions, userAchievements, maintenanceLogs, searchAnalytics, inviteCodes, agentProfiles, affiliateReferrals, subscriptionCycleEvents, affiliatePayouts, agentVerificationAudits, supportTickets, ticketReplies, houses, homeSystems, customMaintenanceTasks, taskOverrides, serviceRecords, homeownerConnectionCodes, conversations, messages, proposals, houseTransfers, subscriptionPlans, pushTokens, type CrmLead, type InsertCrmLead, type CrmNote, type InsertCrmNote, type ErrorLog, type InsertErrorLog, type ErrorBreadcrumb, type InsertErrorBreadcrumb, type CrmIntegration, type InsertCrmIntegration, type WebhookLog, type InsertWebhookLog, crmLeads, crmNotes, errorLogs, errorBreadcrumbs, crmIntegrations, webhookLogs, type CrmClient, type InsertCrmClient, type CrmJob, type InsertCrmJob, type CrmQuote, type InsertCrmQuote, type CrmInvoice, type InsertCrmInvoice, crmClients, crmJobs, crmQuotes, crmInvoices, referralCredits } from "@shared/schema";
+import { houseDisclosures, type HouseDisclosure, type InsertHouseDisclosure, homeDocuments, type HomeDocument, type InsertHomeDocument } from "@shared/schema";
 import { randomUUID, randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
@@ -604,6 +605,10 @@ export interface IStorage {
     error: ErrorLog;
     breadcrumbs: ErrorBreadcrumb[];
   } | undefined>;
+
+  // House disclosure operations
+  getHouseDisclosure(houseId: string): Promise<HouseDisclosure | undefined>;
+  upsertHouseDisclosure(data: InsertHouseDisclosure): Promise<HouseDisclosure>;
 }
 
 export class MemStorage implements IStorage {
@@ -649,6 +654,8 @@ export class MemStorage implements IStorage {
   private crmLeads: Map<string, CrmLead>;
   private crmNotes: Map<string, CrmNote>;
   private crmIntegrations: Map<string, CrmIntegration>;
+  // Disclosure Maps
+  private houseDisclosuresMap: Map<string, HouseDisclosure>;
   private webhookLogs: Map<string, WebhookLog>;
   // CRM Pro tier Maps
   private crmClientsMap: Map<string, CrmClient>;
@@ -695,6 +702,8 @@ export class MemStorage implements IStorage {
     // Initialize support ticket Maps
     this.supportTickets = new Map();
     this.ticketReplies = new Map();
+    // Initialize Disclosure Maps
+    this.houseDisclosuresMap = new Map();
     // Initialize CRM Maps
     this.crmLeads = new Map();
     this.crmNotes = new Map();
@@ -6550,6 +6559,24 @@ export class MemStorage implements IStorage {
       conversionRate,
     };
   }
+
+  // House disclosure operations (in-memory fallback)
+  async getHouseDisclosure(houseId: string): Promise<HouseDisclosure | undefined> {
+    return Array.from(this.houseDisclosuresMap.values()).find(d => d.houseId === houseId);
+  }
+
+  async upsertHouseDisclosure(data: InsertHouseDisclosure): Promise<HouseDisclosure> {
+    const existing = await this.getHouseDisclosure(data.houseId);
+    if (existing) {
+      const updated: HouseDisclosure = { ...existing, ...data, updatedAt: new Date() };
+      this.houseDisclosuresMap.set(existing.id, updated);
+      return updated;
+    }
+    const id = randomUUID();
+    const newDisclosure: HouseDisclosure = { ...data, id, createdAt: new Date(), updatedAt: new Date() };
+    this.houseDisclosuresMap.set(id, newDisclosure);
+    return newDisclosure;
+  }
 }
 
 // Database-backed storage for users (OAuth persistence)
@@ -8593,6 +8620,29 @@ class DbStorage implements IStorage {
         signupsByZip: [],
       };
     }
+  }
+
+  // House disclosure operations - DATABASE BACKED
+  async getHouseDisclosure(houseId: string): Promise<HouseDisclosure | undefined> {
+    try {
+      const result = await db.select().from(houseDisclosures).where(eq(houseDisclosures.houseId, houseId)).limit(1);
+      return result[0];
+    } catch (e) {
+      return undefined;
+    }
+  }
+
+  async upsertHouseDisclosure(data: InsertHouseDisclosure): Promise<HouseDisclosure> {
+    const existing = await this.getHouseDisclosure(data.houseId);
+    if (existing) {
+      const updated = await db.update(houseDisclosures)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(houseDisclosures.id, existing.id))
+        .returning();
+      return updated[0];
+    }
+    const inserted = await db.insert(houseDisclosures).values({ ...data, id: randomUUID() }).returning();
+    return inserted[0];
   }
 
   // Methods delegated to MemStorage (bound in constructor)
