@@ -159,7 +159,7 @@ function QuestionWidget({
         />
       )}
 
-      {/* Detail text area shown when Yes is selected for yes_no or yes_no_unknown */}
+      {/* Optional notes textarea — always visible so users can add context to any answer */}
       {needsDetail && (
         <div className="mt-1">
           <p className="text-xs text-gray-500 mb-1 italic">{detailPrompt}</p>

@@ -11151,11 +11151,20 @@ Return ONLY a JSON object with these fields (use null for any field you cannot c
         return res.status(403).json({ message: "Access denied to this property" });
       }
       const { answers, formType, stateCode } = req.body;
+      if (answers !== undefined && (typeof answers !== "object" || Array.isArray(answers))) {
+        return res.status(400).json({ message: "answers must be a JSON object" });
+      }
+      if (formType !== undefined && typeof formType !== "string") {
+        return res.status(400).json({ message: "formType must be a string" });
+      }
+      if (stateCode !== undefined && typeof stateCode !== "string") {
+        return res.status(400).json({ message: "stateCode must be a string" });
+      }
       const disclosure = await storage.upsertHouseDisclosure({
         houseId,
         homeownerId: userId,
-        formType: formType ?? "pcds",
-        stateCode: stateCode ?? "UNKNOWN",
+        formType: (typeof formType === "string" ? formType : null) ?? "pcds",
+        stateCode: (typeof stateCode === "string" ? stateCode : null) ?? "UNKNOWN",
         answers: answers ?? {},
       });
       res.json(disclosure);
