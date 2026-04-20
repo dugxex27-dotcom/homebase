@@ -501,6 +501,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Set up Replit Auth (handles Google OAuth via Replit)
   await setupAuth(app);
 
+  // Set up direct Google OAuth (for "Continue with Google" on sign-in pages)
+  await setupGoogleAuth(app);
+
   // Secure logo upload endpoint with authentication (MUST be after setupAuth for session access)
   console.error('[STARTUP] Registering /api/upload-logo-raw endpoint');
   app.post('/api/upload-logo-raw', uploadLimiter, async (req: any, res) => {
