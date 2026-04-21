@@ -113,7 +113,7 @@ export default function Sidebar() {
             <Link href="/service-records"><button className={nav('/service-records')} style={navStyle('/service-records')} data-testid="nav-service-records"><FileText className="w-4 h-4 flex-shrink-0" />Service Records</button></Link>
             <Link href="/documents"><button className={nav(['/documents', '/disclosures'])} style={navStyle(['/documents', '/disclosures'])} data-testid="nav-documents"><FolderOpen className="w-4 h-4 flex-shrink-0" />Documents/Disclosures</button></Link>
             <Link href="/contractors"><button className={nav(['/contractors', '/find-contractors'])} style={navStyle(['/contractors', '/find-contractors'])} data-testid="nav-contractors"><Building2 className="w-4 h-4 flex-shrink-0" />Contractors</button></Link>
-            <Link href="/products"><button className={nav('/products')} style={navStyle('/products')} data-testid="nav-products"><Package className="w-4 h-4 flex-shrink-0" />Products</button></Link>
+
             <Link href="/messages"><button className={nav('/messages')} style={navStyle('/messages')} data-testid="nav-messages"><MessageCircle className="w-4 h-4 flex-shrink-0" />Messages{hasNotif('messages') && <span className="ml-auto h-2 w-2 rounded-full bg-red-500" />}</button></Link>
             <Link href="/achievements"><button className={nav('/achievements')} style={navStyle('/achievements')} data-testid="nav-achievements"><Trophy className="w-4 h-4 flex-shrink-0" />Achievements</button></Link>
             <Link href="/homeowner-referral"><button className={nav('/homeowner-referral')} style={navStyle('/homeowner-referral')} data-testid="nav-referral"><Gift className="w-4 h-4 flex-shrink-0" />Referral</button></Link>
