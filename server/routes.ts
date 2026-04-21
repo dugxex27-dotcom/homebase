@@ -11,7 +11,7 @@ import rateLimit from "express-rate-limit";
 import { eq, and, or, lte, gte, sql as drizzleSql, isNull, isNotNull, desc, count } from "drizzle-orm";
 import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, maintenanceTasks, customMaintenanceTasks, insertSupportTicketSchema, insertSubscriptionCycleEventSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, crmClients, crmJobs, crmQuotes, crmInvoices, securitySessions, referralCredits, referralFreeMonths, agentProfiles, users, siteContent, insertSiteContentSchema, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, homeDocuments, insertHomeDocumentSchema, type House } from "@shared/schema";
 import { calculateDIYSavingsAmount } from "@shared/cost-helpers";
-import { extractInvoiceData, verifyDIYPhotos } from "./invoice-analysis-service";
+import { extractInvoiceData, verifyDIYPhotos, type InvoiceExtraction } from "./invoice-analysis-service";
 import { invoiceAnalyses } from "@shared/schema";
 import pushRoutes from "./push-routes";
 import { pushService } from "./push-service";
@@ -15014,16 +15014,18 @@ Severity levels:
       };
 
       // Run AI extraction BEFORE uploading files to avoid orphaned storage objects on 422
-      let extraction = {
-        serviceDescription: null as string | null,
-        serviceDate: null as string | null,
-        totalAmount: null as number | null,
-        contractorName: null as string | null,
-        contractorCompany: null as string | null,
-        homeArea: null as string | null,
-        serviceType: null as string | null,
-        aiConfidence: "low" as "high" | "medium" | "low",
-        aiNotes: null as string | null,
+      let extraction: InvoiceExtraction = {
+        isValidInvoice: true,
+        invalidReason: null,
+        serviceDescription: null,
+        serviceDate: null,
+        totalAmount: null,
+        contractorName: null,
+        contractorCompany: null,
+        homeArea: null,
+        serviceType: null,
+        aiConfidence: "low",
+        aiNotes: null,
       };
 
       const primaryImageFile = invoiceFiles[0] || receiptFiles[0];
