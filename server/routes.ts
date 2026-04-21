@@ -11972,7 +11972,22 @@ Respond ONLY with valid JSON (no markdown, no code fences):
         ? parsed.claimMemo
         : "Please review the evidence timeline and documents list below.";
 
+      // Save the generated package to the database
+      const savedPackage = await storage.saveInsuranceClaimPackage({
+        houseId,
+        homeownerId,
+        claimArea,
+        incidentDescription: incidentDescription ?? null,
+        incidentDate: incidentDate ?? null,
+        summary,
+        evidenceTimeline,
+        documentsToGather,
+        claimMemo,
+        totalRecords: events.length,
+      });
+
       res.json({
+        id: savedPackage.id,
         claimArea,
         summary,
         evidenceTimeline,
@@ -12121,6 +12136,33 @@ ${esc(claimMemo)}
     } catch (error) {
       console.error("[INSURANCE PREP EMAIL] Error:", error);
       res.status(500).json({ message: "Failed to send email" });
+    }
+  });
+
+  // List past insurance claim packages for a house
+  app.get("/api/houses/:houseId/insurance-claim-packages", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+    try {
+      const { houseId } = req.params;
+      const homeownerId = req.session.user.id;
+      const packages = await storage.getInsuranceClaimPackages(houseId, homeownerId);
+      res.json(packages);
+    } catch (error) {
+      console.error("[INSURANCE CLAIM PACKAGES] Error:", error);
+      res.status(500).json({ message: "Failed to fetch claim packages" });
+    }
+  });
+
+  // Fetch a specific past insurance claim package
+  app.get("/api/houses/:houseId/insurance-claim-packages/:packageId", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+    try {
+      const { packageId } = req.params;
+      const homeownerId = req.session.user.id;
+      const pkg = await storage.getInsuranceClaimPackage(packageId, homeownerId);
+      if (!pkg) return res.status(404).json({ message: "Claim package not found" });
+      res.json(pkg);
+    } catch (error) {
+      console.error("[INSURANCE CLAIM PACKAGE] Error:", error);
+      res.status(500).json({ message: "Failed to fetch claim package" });
     }
   });
 

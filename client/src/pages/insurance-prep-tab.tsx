@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,7 +16,8 @@ import {
 } from "@/components/ui/dialog";
 import {
   Shield, Loader2, AlertTriangle, RefreshCw, Copy, Printer,
-  CheckSquare, FileText, Clock, Sparkles, ChevronDown, ChevronUp, Info, Mail
+  CheckSquare, FileText, Clock, Sparkles, ChevronDown, ChevronUp, Info, Mail,
+  History, Plus, ArrowLeft
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -42,6 +43,7 @@ interface TimelineItem {
 }
 
 interface InsurancePrepResult {
+  id?: string;
   claimArea: string;
   summary: string;
   evidenceTimeline: TimelineItem[];
@@ -54,12 +56,26 @@ interface InsurancePrepResult {
   };
 }
 
+interface PastPackage {
+  id: string;
+  claimArea: string;
+  incidentDescription: string | null;
+  incidentDate: string | null;
+  summary: string;
+  evidenceTimeline: TimelineItem[];
+  documentsToGather: string[];
+  claimMemo: string;
+  totalRecords: number;
+  createdAt: string | null;
+}
+
 interface Props {
   houses: House[];
 }
 
 export function InsurancePrepTab({ houses }: Props) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [selectedHouseId, setSelectedHouseId] = useState<string>(houses[0]?.id ?? "");
   const [claimArea, setClaimArea] = useState<string>("");
 
@@ -105,9 +121,23 @@ export function InsurancePrepTab({ houses }: Props) {
     },
   });
 
+  const [view, setView] = useState<"form" | "result" | "past">("form");
+  const [viewingPastId, setViewingPastId] = useState<string | null>(null);
+
+  // Fetch past packages
+  const { data: pastPackages = [], isLoading: pastLoading } = useQuery<PastPackage[]>({
+    queryKey: ["/api/houses", selectedHouseId, "insurance-claim-packages"],
+    queryFn: async () => {
+      if (!selectedHouseId) return [];
+      const res = await apiRequest(`/api/houses/${selectedHouseId}/insurance-claim-packages`);
+      return res.json();
+    },
+    enabled: !!selectedHouseId,
+  });
+
   const generateMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", `/api/houses/${selectedHouseId}/insurance-prep`, {
+      const res = await apiRequest(`/api/houses/${selectedHouseId}/insurance-prep`, "POST", {
         claimArea,
         incidentDescription: incidentDescription.trim() || undefined,
         incidentDate: incidentDate || undefined,
@@ -118,6 +148,9 @@ export function InsurancePrepTab({ houses }: Props) {
       setResult(data);
       setCheckedDocs(new Set());
       setMemoExpanded(true);
+      setView("result");
+      setViewingPastId(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/houses", selectedHouseId, "insurance-claim-packages"] });
     },
   });
 
@@ -125,6 +158,27 @@ export function InsurancePrepTab({ houses }: Props) {
     if (!selectedHouseId || !claimArea) return;
     setResult(null);
     generateMutation.mutate();
+  };
+
+  const handleOpenPast = (pkg: PastPackage) => {
+    const syntheticResult: InsurancePrepResult = {
+      id: pkg.id,
+      claimArea: pkg.claimArea,
+      summary: pkg.summary,
+      evidenceTimeline: pkg.evidenceTimeline,
+      documentsToGather: pkg.documentsToGather,
+      claimMemo: pkg.claimMemo,
+      meta: {
+        totalRecords: pkg.totalRecords,
+        houseAddress: selectedHouse?.address ?? null,
+        houseAge: null,
+      },
+    };
+    setResult(syntheticResult);
+    setCheckedDocs(new Set());
+    setMemoExpanded(true);
+    setViewingPastId(pkg.id);
+    setView("result");
   };
 
   const handleCopy = async () => {
@@ -169,6 +223,15 @@ export function InsurancePrepTab({ houses }: Props) {
 
   const selectedHouse = houses.find(h => h.id === selectedHouseId);
 
+  const handleNewClaim = () => {
+    setResult(null);
+    setViewingPastId(null);
+    setClaimArea("");
+    setIncidentDescription("");
+    setIncidentDate("");
+    setView("form");
+  };
+
   return (
     <div className="space-y-6">
       {/* Intro banner */}
@@ -182,124 +245,265 @@ export function InsurancePrepTab({ houses }: Props) {
         </div>
       </div>
 
-      {/* Form card */}
-      <Card className="border border-gray-200 shadow-sm">
-        <CardContent className="p-5 space-y-4">
-          {/* House selector — only shown if multiple houses */}
-          {houses.length > 1 && (
-            <div className="space-y-1.5">
-              <Label htmlFor="house-select" className="text-sm font-medium text-gray-700">Property</Label>
-              <Select value={selectedHouseId} onValueChange={setSelectedHouseId}>
-                <SelectTrigger id="house-select" className="w-full">
-                  <SelectValue placeholder="Select property" />
-                </SelectTrigger>
-                <SelectContent>
-                  {houses.map(h => (
-                    <SelectItem key={h.id} value={h.id}>
-                      {h.name || h.address || `House ${h.id.slice(0, 8)}`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+      {/* Top action row when viewing result */}
+      {view === "result" && (
+        <div className="flex items-center gap-3 print:hidden">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setView("form")}
+            className="text-gray-600 hover:text-gray-900"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1.5" />
+            Back to Form
+          </Button>
+          {pastPackages.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setView("past")}
+              className="text-gray-600 hover:text-gray-900"
+            >
+              <History className="w-4 h-4 mr-1.5" />
+              Past Reports ({pastPackages.length})
+            </Button>
+          )}
+          <div className="ml-auto">
+            <Button
+              size="sm"
+              onClick={handleNewClaim}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              data-testid="button-new-claim"
+            >
+              <Plus className="w-4 h-4 mr-1.5" />
+              New Claim
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Form view */}
+      {view === "form" && (
+        <>
+          {/* Header row with Past Reports button */}
+          {pastPackages.length > 0 && (
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-500">{pastPackages.length} previously saved report{pastPackages.length !== 1 ? "s" : ""}</p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setView("past")}
+                className="border-gray-200 text-gray-700 hover:bg-gray-50"
+                data-testid="button-past-reports"
+              >
+                <History className="w-4 h-4 mr-1.5" />
+                Past Reports
+              </Button>
             </div>
           )}
 
-          {/* Claim area */}
-          <div className="space-y-1.5">
-            <Label htmlFor="claim-area" className="text-sm font-medium text-gray-700">
-              Area of Home <span className="text-red-500">*</span>
-            </Label>
-            <Select value={claimArea} onValueChange={setClaimArea}>
-              <SelectTrigger id="claim-area" className="w-full">
-                <SelectValue placeholder="Select the area you're claiming for…" />
-              </SelectTrigger>
-              <SelectContent>
-                {CLAIM_AREAS.map(a => (
-                  <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Form card */}
+          <Card className="border border-gray-200 shadow-sm">
+            <CardContent className="p-5 space-y-4">
+              {/* House selector — only shown if multiple houses */}
+              {houses.length > 1 && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="house-select" className="text-sm font-medium text-gray-700">Property</Label>
+                  <Select value={selectedHouseId} onValueChange={setSelectedHouseId}>
+                    <SelectTrigger id="house-select" className="w-full">
+                      <SelectValue placeholder="Select property" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {houses.map(h => (
+                        <SelectItem key={h.id} value={h.id}>
+                          {h.name || h.address || `House ${h.id.slice(0, 8)}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
-          {/* Incident description */}
-          <div className="space-y-1.5">
-            <Label htmlFor="incident-desc" className="text-sm font-medium text-gray-700">
-              Describe the Incident <span className="text-gray-400 font-normal">(optional)</span>
-            </Label>
-            <Textarea
-              id="incident-desc"
-              placeholder="e.g. Storm caused shingle damage on the north-facing slope. There is now a visible water stain on the upstairs ceiling…"
-              value={incidentDescription}
-              onChange={e => setIncidentDescription(e.target.value)}
-              rows={3}
-              className="text-sm resize-none"
-            />
-          </div>
+              {/* Claim area */}
+              <div className="space-y-1.5">
+                <Label htmlFor="claim-area" className="text-sm font-medium text-gray-700">
+                  Area of Home <span className="text-red-500">*</span>
+                </Label>
+                <Select value={claimArea} onValueChange={setClaimArea}>
+                  <SelectTrigger id="claim-area" className="w-full">
+                    <SelectValue placeholder="Select the area you're claiming for…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CLAIM_AREAS.map(a => (
+                      <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-          {/* Incident date */}
-          <div className="space-y-1.5">
-            <Label htmlFor="incident-date" className="text-sm font-medium text-gray-700">
-              Approximate Date of Incident <span className="text-gray-400 font-normal">(optional)</span>
-            </Label>
-            <Input
-              id="incident-date"
-              type="date"
-              value={incidentDate}
-              onChange={e => setIncidentDate(e.target.value)}
-              className="w-full sm:w-52 text-sm"
-            />
-          </div>
+              {/* Incident description */}
+              <div className="space-y-1.5">
+                <Label htmlFor="incident-desc" className="text-sm font-medium text-gray-700">
+                  Describe the Incident <span className="text-gray-400 font-normal">(optional)</span>
+                </Label>
+                <Textarea
+                  id="incident-desc"
+                  placeholder="e.g. Storm caused shingle damage on the north-facing slope. There is now a visible water stain on the upstairs ceiling…"
+                  value={incidentDescription}
+                  onChange={e => setIncidentDescription(e.target.value)}
+                  rows={3}
+                  className="text-sm resize-none"
+                />
+              </div>
 
-          {/* Submit */}
-          <Button
-            onClick={handleSubmit}
-            disabled={!selectedHouseId || !claimArea || generateMutation.isPending}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-5"
-            data-testid="button-prepare-claim"
-          >
-            {generateMutation.isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Compiling your claim package…
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4 mr-2" />
-                Prepare My Claim Package
-              </>
-            )}
-          </Button>
-        </CardContent>
-      </Card>
+              {/* Incident date */}
+              <div className="space-y-1.5">
+                <Label htmlFor="incident-date" className="text-sm font-medium text-gray-700">
+                  Approximate Date of Incident <span className="text-gray-400 font-normal">(optional)</span>
+                </Label>
+                <Input
+                  id="incident-date"
+                  type="date"
+                  value={incidentDate}
+                  onChange={e => setIncidentDate(e.target.value)}
+                  className="w-full sm:w-52 text-sm"
+                />
+              </div>
 
-      {/* Loading */}
-      {generateMutation.isPending && (
-        <Card className="border border-blue-200 shadow-sm">
-          <CardContent className="p-10 text-center">
-            <Loader2 className="w-10 h-10 animate-spin text-blue-500 mx-auto mb-4" />
-            <p className="text-base font-semibold text-gray-700 mb-1">Reviewing your home records…</p>
-            <p className="text-sm text-gray-500">Compiling maintenance logs, service records, and building your claim package. Takes 5–10 seconds.</p>
-          </CardContent>
-        </Card>
+              {/* Submit */}
+              <Button
+                onClick={handleSubmit}
+                disabled={!selectedHouseId || !claimArea || generateMutation.isPending}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-5"
+                data-testid="button-prepare-claim"
+              >
+                {generateMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Compiling your claim package…
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Prepare My Claim Package
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Loading */}
+          {generateMutation.isPending && (
+            <Card className="border border-blue-200 shadow-sm">
+              <CardContent className="p-10 text-center">
+                <Loader2 className="w-10 h-10 animate-spin text-blue-500 mx-auto mb-4" />
+                <p className="text-base font-semibold text-gray-700 mb-1">Reviewing your home records…</p>
+                <p className="text-sm text-gray-500">Compiling maintenance logs, service records, and building your claim package. Takes 5–10 seconds.</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Error */}
+          {generateMutation.isError && (
+            <Card className="border border-red-200 bg-red-50 shadow-sm">
+              <CardContent className="p-8 text-center">
+                <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
+                <p className="text-base font-semibold text-red-700 mb-2">Could not generate claim package</p>
+                <p className="text-sm text-red-600 mb-4">Something went wrong. Please try again.</p>
+                <Button onClick={handleSubmit} className="bg-red-600 hover:bg-red-700 text-white">
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Try Again
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
 
-      {/* Error */}
-      {generateMutation.isError && (
-        <Card className="border border-red-200 bg-red-50 shadow-sm">
-          <CardContent className="p-8 text-center">
-            <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-3" />
-            <p className="text-base font-semibold text-red-700 mb-2">Could not generate claim package</p>
-            <p className="text-sm text-red-600 mb-4">Something went wrong. Please try again.</p>
-            <Button onClick={handleSubmit} className="bg-red-600 hover:bg-red-700 text-white">
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Try Again
+      {/* Past Reports view */}
+      {view === "past" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setView("form")}
+              className="text-gray-600 hover:text-gray-900"
+            >
+              <ArrowLeft className="w-4 h-4 mr-1.5" />
+              Back
             </Button>
-          </CardContent>
-        </Card>
+            <Button
+              size="sm"
+              onClick={handleNewClaim}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <Plus className="w-4 h-4 mr-1.5" />
+              New Claim
+            </Button>
+          </div>
+
+          <h2 className="text-base font-bold text-gray-800 flex items-center gap-2">
+            <History className="w-5 h-5 text-blue-600" />
+            Past Reports
+          </h2>
+
+          {pastLoading ? (
+            <div className="flex items-center gap-2 text-sm text-gray-500 py-6">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Loading past reports…
+            </div>
+          ) : pastPackages.length === 0 ? (
+            <Card className="border border-gray-200">
+              <CardContent className="p-8 text-center text-gray-500 text-sm">
+                No saved reports yet. Generate your first claim package above.
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3" data-testid="past-reports-list">
+              {pastPackages.map(pkg => (
+                <Card
+                  key={pkg.id}
+                  className="border border-gray-200 shadow-sm hover:border-blue-300 hover:shadow transition-all cursor-pointer"
+                  onClick={() => handleOpenPast(pkg)}
+                  data-testid="past-report-item"
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-semibold text-gray-800">{pkg.claimArea} Claim</span>
+                          {pkg.incidentDate && (
+                            <span className="text-xs text-gray-400 font-mono">Incident: {pkg.incidentDate}</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{pkg.summary}</p>
+                        <div className="flex items-center gap-3 mt-2">
+                          <span className="text-xs text-gray-400">
+                            {pkg.evidenceTimeline.length} timeline item{pkg.evidenceTimeline.length !== 1 ? "s" : ""}
+                          </span>
+                          <span className="text-xs text-gray-400">
+                            {pkg.documentsToGather.length} document{pkg.documentsToGather.length !== 1 ? "s" : ""} to gather
+                          </span>
+                          {pkg.createdAt && (
+                            <span className="text-xs text-gray-400 ml-auto">
+                              {new Date(pkg.createdAt).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0 rotate-[-90deg]" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
-      {/* Results */}
-      {result && !generateMutation.isPending && (
+      {/* Results view */}
+      {view === "result" && result && !generateMutation.isPending && (
         <div className="space-y-5 print:space-y-4" data-testid="insurance-prep-result">
           {/* Header + action buttons */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 print:hidden">
@@ -307,9 +511,14 @@ export function InsurancePrepTab({ houses }: Props) {
               <h2 className="text-lg font-bold text-gray-900">
                 {result.claimArea} Claim Package
               </h2>
-              {selectedHouse && (
-                <p className="text-sm text-gray-500">{selectedHouse.address || selectedHouse.name}</p>
-              )}
+              <div className="flex items-center gap-2">
+                {selectedHouse && (
+                  <p className="text-sm text-gray-500">{selectedHouse.address || selectedHouse.name}</p>
+                )}
+                {viewingPastId && (
+                  <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Saved report</span>
+                )}
+              </div>
             </div>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={handleCopy} className="border-gray-200 text-gray-700 hover:bg-gray-50" data-testid="button-copy-claim">
@@ -320,26 +529,30 @@ export function InsurancePrepTab({ houses }: Props) {
                 <Printer className="w-4 h-4 mr-1.5" />
                 Print / PDF
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setEmailDialogOpen(true)}
-                className="border-blue-200 text-blue-700 hover:bg-blue-50"
-                data-testid="button-email-adjuster"
-              >
-                <Mail className="w-4 h-4 mr-1.5" />
-                Email to Adjuster
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSubmit}
-                className="border-blue-200 text-blue-700 hover:bg-blue-50"
-                data-testid="button-regenerate-claim"
-              >
-                <RefreshCw className="w-4 h-4 mr-1.5" />
-                Regenerate
-              </Button>
+              {!viewingPastId && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEmailDialogOpen(true)}
+                  className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                  data-testid="button-email-adjuster"
+                >
+                  <Mail className="w-4 h-4 mr-1.5" />
+                  Email to Adjuster
+                </Button>
+              )}
+              {!viewingPastId && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSubmit}
+                  className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                  data-testid="button-regenerate-claim"
+                >
+                  <RefreshCw className="w-4 h-4 mr-1.5" />
+                  Regenerate
+                </Button>
+              )}
             </div>
           </div>
 

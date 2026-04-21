@@ -46,6 +46,7 @@ Preferred communication style: Simple, everyday language.
     - Comprehensive house transfer system.
     - Displays previously used contractors per property.
     - Age-based system maintenance recommendations for 24 home system types.
+    - **Insurance Claim Prep Assistant**: AI-generated claim packages (memo, evidence timeline, document checklist) saved to `insurance_claim_packages` table; homeowners can revisit past reports from the Documents > Insurance Prep tab.
 - **Marketplace**: Functionality for listing and browsing DIY products.
 - **Maintenance Guidance**: Seasonal, location-based, and prioritized home maintenance schedules.
 - **Notifications**: Bi-directional real-time notifications, including Twilio SMS for reminders and messages.

@@ -1,5 +1,5 @@
 import { type Contractor, type InsertContractor, type Company, type InsertCompany, type CompanyInviteCode, type InsertCompanyInviteCode, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type HomeApplianceManual, type InsertHomeApplianceManual, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type HomeownerConnectionCode, type InsertHomeownerConnectionCode, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type PushToken, type InsertPushToken, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics, type TaskOverride, type InsertTaskOverride, type Country, type InsertCountry, type Region, type InsertRegion, type ClimateZone, type InsertClimateZone, type RegulatoryBody, type InsertRegulatoryBody, type RegionalMaintenanceTask, type InsertRegionalMaintenanceTask, type TaskCompletion, type InsertTaskCompletion, type Achievement, type InsertAchievement, type AchievementDefinition, type InsertAchievementDefinition, type UserAchievement, type InsertUserAchievement, type SearchAnalytics, type InsertSearchAnalytics, type InviteCode, type InsertInviteCode, type AgentProfile, type InsertAgentProfile, type AffiliateReferral, type InsertAffiliateReferral, type SubscriptionCycleEvent, type InsertSubscriptionCycleEvent, type AffiliatePayout, type InsertAffiliatePayout, type AgentVerificationAudit, type InsertAgentVerificationAudit, type SupportTicket, type InsertSupportTicket, type TicketReply, type InsertTicketReply, type SubscriptionPlan, users, contractors, companies, contractorLicenses, countries, regions, climateZones, regulatoryBodies, regionalMaintenanceTasks, taskCompletions, achievements, achievementDefinitions, userAchievements, maintenanceLogs, searchAnalytics, inviteCodes, agentProfiles, affiliateReferrals, subscriptionCycleEvents, affiliatePayouts, agentVerificationAudits, supportTickets, ticketReplies, houses, homeSystems, customMaintenanceTasks, taskOverrides, serviceRecords, homeownerConnectionCodes, conversations, messages, proposals, houseTransfers, subscriptionPlans, pushTokens, type CrmLead, type InsertCrmLead, type CrmNote, type InsertCrmNote, type ErrorLog, type InsertErrorLog, type ErrorBreadcrumb, type InsertErrorBreadcrumb, type CrmIntegration, type InsertCrmIntegration, type WebhookLog, type InsertWebhookLog, crmLeads, crmNotes, errorLogs, errorBreadcrumbs, crmIntegrations, webhookLogs, type CrmClient, type InsertCrmClient, type CrmJob, type InsertCrmJob, type CrmQuote, type InsertCrmQuote, type CrmInvoice, type InsertCrmInvoice, crmClients, crmJobs, crmQuotes, crmInvoices, referralCredits } from "@shared/schema";
-import { houseDisclosures, type HouseDisclosure, type InsertHouseDisclosure, homeDocuments, type HomeDocument, type InsertHomeDocument } from "@shared/schema";
+import { houseDisclosures, type HouseDisclosure, type InsertHouseDisclosure, homeDocuments, type HomeDocument, type InsertHomeDocument, insuranceClaimPackages, type InsuranceClaimPackage, type InsertInsuranceClaimPackage } from "@shared/schema";
 import { randomUUID, randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
@@ -609,6 +609,11 @@ export interface IStorage {
   // House disclosure operations
   getHouseDisclosure(houseId: string): Promise<HouseDisclosure | undefined>;
   upsertHouseDisclosure(data: InsertHouseDisclosure): Promise<HouseDisclosure>;
+
+  // Insurance claim package operations
+  saveInsuranceClaimPackage(data: InsertInsuranceClaimPackage): Promise<InsuranceClaimPackage>;
+  getInsuranceClaimPackages(houseId: string, homeownerId: string): Promise<InsuranceClaimPackage[]>;
+  getInsuranceClaimPackage(id: string, homeownerId: string): Promise<InsuranceClaimPackage | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -656,6 +661,7 @@ export class MemStorage implements IStorage {
   private crmIntegrations: Map<string, CrmIntegration>;
   // Disclosure Maps
   private houseDisclosuresMap: Map<string, HouseDisclosure>;
+  private insuranceClaimPackagesMap: Map<string, InsuranceClaimPackage>;
   private webhookLogs: Map<string, WebhookLog>;
   // CRM Pro tier Maps
   private crmClientsMap: Map<string, CrmClient>;
@@ -704,6 +710,7 @@ export class MemStorage implements IStorage {
     this.ticketReplies = new Map();
     // Initialize Disclosure Maps
     this.houseDisclosuresMap = new Map();
+    this.insuranceClaimPackagesMap = new Map();
     // Initialize CRM Maps
     this.crmLeads = new Map();
     this.crmNotes = new Map();
@@ -6577,6 +6584,26 @@ export class MemStorage implements IStorage {
     this.houseDisclosuresMap.set(id, newDisclosure);
     return newDisclosure;
   }
+
+  // Insurance claim package operations (in-memory fallback)
+  async saveInsuranceClaimPackage(data: InsertInsuranceClaimPackage): Promise<InsuranceClaimPackage> {
+    const id = randomUUID();
+    const pkg: InsuranceClaimPackage = { ...data, id, createdAt: new Date() };
+    this.insuranceClaimPackagesMap.set(id, pkg);
+    return pkg;
+  }
+
+  async getInsuranceClaimPackages(houseId: string, homeownerId: string): Promise<InsuranceClaimPackage[]> {
+    return Array.from(this.insuranceClaimPackagesMap.values())
+      .filter(p => p.houseId === houseId && p.homeownerId === homeownerId)
+      .sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
+  }
+
+  async getInsuranceClaimPackage(id: string, homeownerId: string): Promise<InsuranceClaimPackage | undefined> {
+    const pkg = this.insuranceClaimPackagesMap.get(id);
+    if (!pkg || pkg.homeownerId !== homeownerId) return undefined;
+    return pkg;
+  }
 }
 
 // Database-backed storage for users (OAuth persistence)
@@ -8639,6 +8666,25 @@ class DbStorage implements IStorage {
     }
     const inserted = await db.insert(houseDisclosures).values({ ...data, id: randomUUID() }).returning();
     return inserted[0];
+  }
+
+  // Insurance claim package operations - DATABASE BACKED
+  async saveInsuranceClaimPackage(data: InsertInsuranceClaimPackage): Promise<InsuranceClaimPackage> {
+    const inserted = await db.insert(insuranceClaimPackages).values({ ...data, id: randomUUID() }).returning();
+    return inserted[0];
+  }
+
+  async getInsuranceClaimPackages(houseId: string, homeownerId: string): Promise<InsuranceClaimPackage[]> {
+    return db.select().from(insuranceClaimPackages)
+      .where(and(eq(insuranceClaimPackages.houseId, houseId), eq(insuranceClaimPackages.homeownerId, homeownerId)))
+      .orderBy(desc(insuranceClaimPackages.createdAt));
+  }
+
+  async getInsuranceClaimPackage(id: string, homeownerId: string): Promise<InsuranceClaimPackage | undefined> {
+    const result = await db.select().from(insuranceClaimPackages)
+      .where(and(eq(insuranceClaimPackages.id, id), eq(insuranceClaimPackages.homeownerId, homeownerId)))
+      .limit(1);
+    return result[0];
   }
 
   // Methods delegated to MemStorage (bound in constructor)

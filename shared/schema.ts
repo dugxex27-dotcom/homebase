@@ -2264,3 +2264,28 @@ export const houseDisclosures = pgTable("house_disclosures", {
 export const insertHouseDisclosureSchema = createInsertSchema(houseDisclosures).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertHouseDisclosure = z.infer<typeof insertHouseDisclosureSchema>;
 export type HouseDisclosure = typeof houseDisclosures.$inferSelect;
+
+// ─── Insurance Claim Packages ─────────────────────────────────────────────────
+// Persists AI-generated claim packages so homeowners can revisit them later.
+
+export const insuranceClaimPackages = pgTable("insurance_claim_packages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  houseId: varchar("house_id").notNull().references(() => houses.id, { onDelete: "cascade" }),
+  homeownerId: varchar("homeowner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  claimArea: text("claim_area").notNull(),
+  incidentDescription: text("incident_description"),
+  incidentDate: text("incident_date"),
+  summary: text("summary").notNull(),
+  evidenceTimeline: jsonb("evidence_timeline").notNull().default([]),
+  documentsToGather: jsonb("documents_to_gather").notNull().default([]),
+  claimMemo: text("claim_memo").notNull(),
+  totalRecords: integer("total_records").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_insurance_claim_packages_house_id").on(table.houseId),
+  index("IDX_insurance_claim_packages_homeowner_id").on(table.homeownerId),
+]);
+
+export const insertInsuranceClaimPackageSchema = createInsertSchema(insuranceClaimPackages).omit({ id: true, createdAt: true });
+export type InsertInsuranceClaimPackage = z.infer<typeof insertInsuranceClaimPackageSchema>;
+export type InsuranceClaimPackage = typeof insuranceClaimPackages.$inferSelect;
