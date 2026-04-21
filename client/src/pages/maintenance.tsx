@@ -2767,8 +2767,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       };
       const res = await apiRequest("POST", "/api/invoice-analyses/analyze", payload);
       if (!res.ok) throw new Error("Analysis failed");
-      const data = await res.json();
-      const a: InvoiceAnalysis = data.analysis;
+      const a: InvoiceAnalysis = await res.json();
       setAiAnalysis(a);
       setAiEditDescription(a.serviceDescription || "");
       setAiEditDate(a.serviceDate || new Date().toISOString().split("T")[0]);
@@ -4329,7 +4328,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             {aiStep === "review" && aiAnalysis && (
               <div className="space-y-4">
                 <div className="p-3 rounded-lg border" style={{ backgroundColor: '#f3e8ff', borderColor: '#b6a6f4' }}>
-                  <p className="text-xs font-medium mb-1" style={{ color: '#7c3aed' }}>AI Confidence: {Math.round((parseFloat(aiAnalysis.confidence || "0")) * 100)}%</p>
+                  <p className="text-xs font-medium mb-1" style={{ color: '#7c3aed' }}>AI Confidence: {Math.round((parseFloat(aiAnalysis.aiConfidence || "0")) * 100)}%</p>
                   {aiAnalysis.aiNotes && <p className="text-xs" style={{ color: '#2c0f5b' }}>{aiAnalysis.aiNotes}</p>}
                 </div>
                 <div className="space-y-3">

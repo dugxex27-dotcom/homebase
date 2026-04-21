@@ -15079,7 +15079,7 @@ Severity levels:
         serviceType: extraction.serviceType,
         aiConfidence: extraction.aiConfidence,
         aiNotes: extraction.aiNotes || (diyVerificationNotes ?? null),
-        rawExtraction: extraction as any,
+        rawExtraction: JSON.parse(JSON.stringify(extraction)) as Record<string, unknown>,
         diyVerified,
         maintenanceLogId: null,
         taskCompletionId: null,
