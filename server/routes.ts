@@ -15007,15 +15007,7 @@ Severity levels:
         return urls;
       };
 
-      // Upload all file sets in parallel
-      const [storedInvoiceUrls, storedBeforeUrls, storedAfterUrls, storedReceiptUrls] = await Promise.all([
-        uploadFileSet(invoiceFiles),
-        uploadFileSet(beforePhotoFiles),
-        uploadFileSet(afterPhotoFiles),
-        uploadFileSet(receiptFiles),
-      ]);
-
-      // Run AI extraction on the first invoice image (or receipt if no invoice)
+      // Run AI extraction BEFORE uploading files to avoid orphaned storage objects on 422
       let extraction = {
         serviceDescription: null as string | null,
         serviceDate: null as string | null,
@@ -15036,7 +15028,7 @@ Severity levels:
         const mimeType = primaryImageFile.fileType || "image/jpeg";
         try {
           extraction = await extractInvoiceData(base64Data, mimeType);
-          // If the image is not a valid invoice/receipt, return a structured error
+          // If the image is not a valid invoice/receipt, return 422 immediately (no files uploaded)
           if (!extraction.isValidInvoice) {
             return res.status(422).json({
               code: "INVALID_INVOICE",
@@ -15048,6 +15040,14 @@ Severity levels:
           extraction.aiNotes = "AI extraction failed — please fill in details manually.";
         }
       }
+
+      // Validation passed — now upload all file sets in parallel
+      const [storedInvoiceUrls, storedBeforeUrls, storedAfterUrls, storedReceiptUrls] = await Promise.all([
+        uploadFileSet(invoiceFiles),
+        uploadFileSet(beforePhotoFiles),
+        uploadFileSet(afterPhotoFiles),
+        uploadFileSet(receiptFiles),
+      ]);
 
       // For DIY: run verification only if before/after photos are included during analyze
       // (separate /diy-verify endpoint handles explicit post-review verification)
