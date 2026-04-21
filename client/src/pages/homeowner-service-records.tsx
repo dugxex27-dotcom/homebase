@@ -330,8 +330,7 @@ export default function HomeownerServiceRecords() {
         receiptFiles: await toFilesPayload(aiReceiptFiles),
       };
 
-      const res = await apiRequest("POST", "/api/invoice-analyses/analyze", payload);
-      if (!res.ok) throw new Error("Analysis failed");
+      const res = await apiRequest("/api/invoice-analyses/analyze", "POST", payload);
       const analysis: InvoiceAnalysis = await res.json();
       setAiAnalysis(analysis);
       setAiEditDescription(analysis.serviceDescription || "");
@@ -354,7 +353,7 @@ export default function HomeownerServiceRecords() {
     if (!aiAnalysis) return;
     setAiConfirming(true);
     try {
-      const res = await apiRequest("PATCH", `/api/invoice-analyses/${aiAnalysis.id}/confirm`, {
+      const res = await apiRequest(`/api/invoice-analyses/${aiAnalysis.id}/confirm`, "PATCH", {
         serviceDescription: aiEditDescription,
         serviceDate: aiEditDate,
         totalAmount: aiEditAmount ? parseFloat(aiEditAmount) : null,
@@ -363,7 +362,6 @@ export default function HomeownerServiceRecords() {
         homeArea: aiEditHomeArea,
         serviceType: aiEditServiceType,
       });
-      if (!res.ok) throw new Error("Confirm failed");
       const data = await res.json();
       queryClient.invalidateQueries({ queryKey: ["/api/maintenance-logs"] });
       queryClient.invalidateQueries({ queryKey: ["/api/invoice-analyses"] });

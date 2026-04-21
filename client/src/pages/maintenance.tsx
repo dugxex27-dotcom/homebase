@@ -2765,8 +2765,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
         beforePhotoFiles: await toPayloadFiles(aiBeforeFiles),
         afterPhotoFiles: await toPayloadFiles(aiAfterFiles),
       };
-      const res = await apiRequest("POST", "/api/invoice-analyses/analyze", payload);
-      if (!res.ok) throw new Error("Analysis failed");
+      const res = await apiRequest("/api/invoice-analyses/analyze", "POST", payload);
       const a: InvoiceAnalysis = await res.json();
       setAiAnalysis(a);
       setAiEditDescription(a.serviceDescription || "");
@@ -2788,7 +2787,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     if (!aiAnalysis) return;
     setAiConfirming(true);
     try {
-      const res = await apiRequest("PATCH", `/api/invoice-analyses/${aiAnalysis.id}/confirm`, {
+      const res = await apiRequest(`/api/invoice-analyses/${aiAnalysis.id}/confirm`, "PATCH", {
         serviceDescription: aiEditDescription,
         serviceDate: aiEditDate,
         totalAmount: aiEditAmount ? parseFloat(aiEditAmount) : null,
@@ -2797,7 +2796,6 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
         homeArea: aiEditHomeArea,
         serviceType: aiEditServiceType,
       });
-      if (!res.ok) throw new Error("Confirm failed");
       const data = await res.json();
       queryClient.invalidateQueries({ queryKey: ["/api/maintenance-logs"] });
       queryClient.invalidateQueries({ queryKey: ["/api/invoice-analyses"] });
@@ -4328,7 +4326,15 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             {aiStep === "review" && aiAnalysis && (
               <div className="space-y-4">
                 <div className="p-3 rounded-lg border" style={{ backgroundColor: '#f3e8ff', borderColor: '#b6a6f4' }}>
-                  <p className="text-xs font-medium mb-1" style={{ color: '#7c3aed' }}>AI Confidence: {Math.round((parseFloat(aiAnalysis.aiConfidence || "0")) * 100)}%</p>
+                  <div className="flex items-center gap-1 mb-1">
+                    {aiAnalysis.aiConfidence === "high" ? (
+                      <span className="text-xs font-medium flex items-center gap-1 text-green-700"><CheckCircle2 className="w-3 h-3" /> High confidence</span>
+                    ) : aiAnalysis.aiConfidence === "medium" ? (
+                      <span className="text-xs font-medium flex items-center gap-1 text-amber-700"><AlertCircle className="w-3 h-3" /> Medium confidence — review carefully</span>
+                    ) : (
+                      <span className="text-xs font-medium flex items-center gap-1 text-red-700"><AlertCircle className="w-3 h-3" /> Low confidence — please fill in manually</span>
+                    )}
+                  </div>
                   {aiAnalysis.aiNotes && <p className="text-xs" style={{ color: '#2c0f5b' }}>{aiAnalysis.aiNotes}</p>}
                 </div>
                 <div className="space-y-3">
