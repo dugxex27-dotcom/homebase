@@ -11760,6 +11760,212 @@ Respond ONLY with valid JSON (no markdown, no code fences):
     }
   });
 
+  // ===== AI INSURANCE PREP ASSISTANT =====
+  app.post("/api/houses/:houseId/insurance-prep", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res) => {
+    try {
+      const { houseId } = req.params;
+      const homeownerId = req.session.user.id;
+
+      const bodySchema = z.object({
+        claimArea: z.string().min(1).max(100),
+        incidentDescription: z.string().max(1000).optional(),
+        incidentDate: z.string().max(20).optional(),
+      });
+
+      let body: z.infer<typeof bodySchema>;
+      try {
+        body = bodySchema.parse(req.body);
+      } catch {
+        return res.status(400).json({ message: "Invalid request body" });
+      }
+
+      const { claimArea, incidentDescription, incidentDate } = body;
+
+      const house = await storage.getHouse(houseId);
+      if (!house || house.homeownerId !== homeownerId) {
+        return res.status(404).json({ message: "House not found" });
+      }
+
+      const fiveYearsAgo = new Date();
+      fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
+      const fiveYearsAgoStr = fiveYearsAgo.toISOString().slice(0, 10);
+
+      // Fetch all needed data in parallel — avoid home_area column (not in DB)
+      const [allMaintenanceLogs, allHomeSystems, houseServiceRecords] = await Promise.all([
+        storage.getMaintenanceLogs(homeownerId, houseId),
+        storage.getHomeSystems(homeownerId, houseId),
+        db.select({
+          serviceType: serviceRecords.serviceType,
+          serviceDescription: serviceRecords.serviceDescription,
+          serviceDate: serviceRecords.serviceDate,
+          cost: serviceRecords.cost,
+          status: serviceRecords.status,
+          warrantyPeriod: serviceRecords.warrantyPeriod,
+        }).from(serviceRecords).where(
+          and(
+            eq(serviceRecords.houseId, houseId),
+            eq(serviceRecords.isVisibleToHomeowner, true)
+          )
+        ),
+      ]);
+
+      // Filter maintenance logs to last 5 years
+      const recentLogs = allMaintenanceLogs.filter(log => log.serviceDate >= fiveYearsAgoStr);
+
+      // Build a chronological event list from maintenance logs and service records
+      interface EventEntry {
+        date: string;
+        description: string;
+        source: "maintenance_log" | "service_record";
+        area?: string;
+        cost?: string;
+      }
+      const events: EventEntry[] = [];
+
+      for (const log of recentLogs) {
+        events.push({
+          date: log.serviceDate,
+          description: [log.serviceType, log.serviceDescription].filter(Boolean).join(" — "),
+          source: "maintenance_log",
+          area: log.homeArea ?? undefined,
+          cost: log.cost ? `$${log.cost}` : undefined,
+        });
+      }
+
+      for (const sr of houseServiceRecords) {
+        if (sr.serviceDate >= fiveYearsAgoStr) {
+          events.push({
+            date: sr.serviceDate,
+            description: [sr.serviceType, sr.serviceDescription].filter(Boolean).join(" — "),
+            source: "service_record",
+            cost: sr.cost && Number(sr.cost) > 0 ? `$${sr.cost}` : undefined,
+          });
+        }
+      }
+
+      // Sort chronologically
+      events.sort((a, b) => a.date.localeCompare(b.date));
+
+      const currentYear = new Date().getFullYear();
+      const houseAge = house.yearBuilt ? currentYear - house.yearBuilt : null;
+      const houseAgeStr = houseAge !== null ? `${houseAge} years old (built ${house.yearBuilt})` : "age unknown";
+
+      // Home systems relevant to this claim area (show all — AI will filter)
+      const systemSummary = allHomeSystems.slice(0, 12).map(sys => {
+        const parts = [sys.systemType];
+        if (sys.installationYear) parts.push(`installed ${sys.installationYear}`);
+        if (sys.brand) parts.push(sys.brand);
+        return parts.join(", ");
+      }).join("; ");
+
+      // Format event list for the prompt
+      const eventLines = events.slice(0, 40).map(e => {
+        const parts = [`[${e.date}]`, e.source === "service_record" ? "(Contractor)" : "(Owner)", e.description];
+        if (e.area) parts.push(`— Area: ${e.area}`);
+        if (e.cost) parts.push(`— Cost: ${e.cost}`);
+        return parts.join(" ");
+      });
+
+      const contextBlock = [
+        `Property: ${house.address ?? "address not recorded"} — ${houseAgeStr}`,
+        house.climateZone ? `Climate zone: ${house.climateZone}` : null,
+        `Documented home systems: ${systemSummary || "none on file"}`,
+        `Claim area: ${claimArea}`,
+        incidentDescription ? `Incident description: ${incidentDescription}` : null,
+        incidentDate ? `Approximate incident date: ${incidentDate}` : null,
+        ``,
+        `Full maintenance & service history (last 5 years, ${events.length} total records):`,
+        eventLines.length > 0 ? eventLines.join("\n") : "No maintenance records on file.",
+      ].filter(s => s !== null).join("\n");
+
+      const prompt = `You are an expert insurance claim preparation advisor helping a homeowner document their case.
+
+Property context:
+${contextBlock}
+
+The homeowner is preparing an insurance claim related to: ${claimArea}
+
+Your job:
+1. From the maintenance history, identify ALL records that are relevant evidence for a ${claimArea} claim. Include records that show: the area was maintained, prior condition, contractor work, costs paid, and any warranties.
+2. Suggest 5–8 specific types of documents the homeowner should gather for this claim.
+3. Write a concise, professional claim preparation memo (3–5 paragraphs) the homeowner can share with their insurance adjuster or attorney. It should summarize the property, the maintenance history relevant to the ${claimArea}, and why the records support the claim. Write in plain, confident language. Reference the evidence timeline.
+
+Respond ONLY with valid JSON (no markdown, no code fences):
+{
+  "summary": "One sentence summary of claim readiness",
+  "evidenceTimeline": [
+    { "date": "YYYY-MM-DD", "description": "...", "source": "maintenance_log or service_record" }
+  ],
+  "documentsToGather": ["...", "..."],
+  "claimMemo": "Full memo text here..."
+}`;
+
+      const openai = new OpenAI({
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+      });
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.3,
+        max_tokens: 1500,
+        response_format: { type: "json_object" },
+      });
+
+      const raw = completion.choices[0]?.message?.content ?? "{}";
+
+      let parsed: {
+        summary?: string;
+        evidenceTimeline?: unknown;
+        documentsToGather?: unknown;
+        claimMemo?: string;
+      };
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        return res.status(500).json({ message: "Failed to parse AI response" });
+      }
+
+      interface TimelineItem { date: string; description: string; source: string }
+      const evidenceTimeline: TimelineItem[] = Array.isArray(parsed.evidenceTimeline)
+        ? (parsed.evidenceTimeline as unknown[]).filter((item): item is TimelineItem =>
+            typeof item === "object" && item !== null &&
+            typeof (item as Record<string, unknown>).date === "string" &&
+            typeof (item as Record<string, unknown>).description === "string"
+          ).slice(0, 20)
+        : [];
+
+      const documentsToGather: string[] = Array.isArray(parsed.documentsToGather)
+        ? (parsed.documentsToGather as unknown[]).filter((s): s is string => typeof s === "string").slice(0, 10)
+        : [];
+
+      const summary = typeof parsed.summary === "string" && parsed.summary.length > 0
+        ? parsed.summary
+        : `Claim preparation package for ${claimArea} issue.`;
+
+      const claimMemo = typeof parsed.claimMemo === "string" && parsed.claimMemo.length > 0
+        ? parsed.claimMemo
+        : "Please review the evidence timeline and documents list below.";
+
+      res.json({
+        claimArea,
+        summary,
+        evidenceTimeline,
+        documentsToGather,
+        claimMemo,
+        meta: {
+          totalRecords: events.length,
+          houseAddress: house.address ?? null,
+          houseAge: houseAge ?? null,
+        },
+      });
+    } catch (error) {
+      console.error("[AI INSURANCE PREP] Error:", error);
+      res.status(500).json({ message: "Failed to generate insurance prep report" });
+    }
+  });
+
   // ===== AI CONTRACTOR MESSAGE DRAFTING =====
   app.post("/api/ai/draft-contractor-message", isAuthenticated, requireHomeownerSubscription, async (req: any, res) => {
     try {
