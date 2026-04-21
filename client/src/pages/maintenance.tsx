@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import HomeHealthScore from "@/components/home-health-score";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -24,7 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { HomeownerFeatureGate, HomeownerTrialBanner, FreeUserUpgradePrompt } from "@/components/homeowner-feature-gate";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
-import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, ChevronUp, Settings, Plus, Edit, Trash2, Home, FileText, Building2, User, Building, Phone, MessageSquare, AlertTriangle, Thermometer, Cloud, Monitor, Book, ExternalLink, Upload, Trophy, Mail, Handshake, Globe, TrendingDown, PiggyBank, Truck, CheckCircle2, Circle, Download, X, Search, Loader2, Scan, AlertCircle } from "lucide-react";
+import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, ChevronUp, Settings, Plus, Edit, Trash2, Home, FileText, Building2, User, Building, Phone, MessageSquare, AlertTriangle, Thermometer, Cloud, Monitor, Book, ExternalLink, Upload, Trophy, Mail, Handshake, Globe, TrendingDown, PiggyBank, Truck, CheckCircle2, Circle, Download, X, Search, Loader2, Scan, AlertCircle, Sparkles, RefreshCw, ChevronRight } from "lucide-react";
 import { AppointmentScheduler } from "@/components/appointment-scheduler";
 import { CustomMaintenanceTasks } from "@/components/custom-maintenance-tasks";
 import HouseMap from "@/components/house-map";
@@ -1589,6 +1589,13 @@ export default function Maintenance() {
   const [aiDiyVerifying, setAiDiyVerifying] = useState(false);
   const [aiDiyVerifyResult, setAiDiyVerifyResult] = useState<{ diyVerified: boolean; verificationNotes: string | null } | null>(null);
 
+  // AI Maintenance Coach state
+  const [coachOpen, setCoachOpen] = useState(false);
+  const [coachResult, setCoachResult] = useState<{ briefing: string; topTasks: { title: string; reason: string }[] } | null>(null);
+  const [highlightedTask, setHighlightedTask] = useState<string | null>(null);
+  const selectedHouseIdRef = useRef(selectedHouseId);
+  useEffect(() => { selectedHouseIdRef.current = selectedHouseId; }, [selectedHouseId]);
+
   // Delete confirmation dialog states
   const [deleteApplianceConfirmOpen, setDeleteApplianceConfirmOpen] = useState(false);
   const [applianceToDelete, setApplianceToDelete] = useState<HomeAppliance | null>(null);
@@ -2352,6 +2359,12 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       setIsHomeSystemDialogOpen(false);
     }
   };
+
+  // Clear coach result when house changes so stale advice doesn't appear on a different property
+  useEffect(() => {
+    setCoachResult(null);
+    setHighlightedTask(null);
+  }, [selectedHouseId]);
 
   // Load completed tasks for the selected house from localStorage
   useEffect(() => {
@@ -3323,6 +3336,33 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     }
   }, [selectedMonth, filteredTasks.length]);
 
+  // AI Maintenance Coach mutation
+  const coachMutation = useMutation({
+    mutationFn: async (requestedHouseId: string) => {
+      const payload = {
+        tasks: filteredTasks.map(t => ({
+          title: t.title,
+          priority: t.priority,
+          description: t.description,
+          estimatedTime: t.estimatedTime,
+          cost: t.cost ?? undefined,
+        })),
+        month: selectedMonth,
+        zone: selectedZone,
+      };
+      const res = await apiRequest(`/api/houses/${requestedHouseId}/maintenance-coach`, "POST", payload);
+      const data = await res.json() as { briefing: string; topTasks: { title: string; reason: string }[] };
+      return { ...data, requestedHouseId };
+    },
+    onSuccess: (data, requestedHouseId) => {
+      if (requestedHouseId !== selectedHouseIdRef.current) return;
+      setCoachResult({ briefing: data.briefing, topTasks: data.topTasks });
+    },
+    onError: () => {
+      toast({ title: "Coach unavailable", description: "Unable to generate advice right now. Please try again.", variant: "destructive" });
+    },
+  });
+
   const completedCount = filteredTasks.filter(task => isTaskCompleted(task.id)).length;
   const totalTasks = filteredTasks.length;
 
@@ -4031,6 +4071,135 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
               );
             })()}
 
+            {/* AI Maintenance Coach Card */}
+            {selectedHouseId && (
+              <div className="mb-6">
+                <div className="rounded-xl border border-purple-200 bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/30 dark:to-background dark:border-purple-800 overflow-hidden">
+                  {/* Header — always visible */}
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between px-5 py-4 text-left group"
+                    onClick={() => setCoachOpen(o => !o)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/50">
+                        <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm text-purple-900 dark:text-purple-100">AI Maintenance Coach</p>
+                        <p className="text-xs text-purple-600 dark:text-purple-400">
+                          {coachResult ? "Personalized plan ready" : "Get a personalized maintenance plan for this month"}
+                        </p>
+                      </div>
+                    </div>
+                    {coachOpen ? (
+                      <ChevronDown className="w-4 h-4 text-purple-500 transition-transform" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4 text-purple-500 transition-transform" />
+                    )}
+                  </button>
+
+                  {/* Collapsible body */}
+                  {coachOpen && (
+                    <div className="px-5 pb-5 space-y-4 border-t border-purple-100 dark:border-purple-800 pt-4">
+                      {/* Loading skeleton */}
+                      {coachMutation.isPending && (
+                        <div className="space-y-3 animate-pulse">
+                          <div className="h-3 bg-purple-100 dark:bg-purple-900/40 rounded w-full" />
+                          <div className="h-3 bg-purple-100 dark:bg-purple-900/40 rounded w-4/5" />
+                          <div className="h-3 bg-purple-100 dark:bg-purple-900/40 rounded w-3/5" />
+                          <div className="mt-4 space-y-2">
+                            {[1,2,3].map(i => (
+                              <div key={i} className="h-14 bg-purple-50 dark:bg-purple-900/20 rounded-lg" />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Initial CTA — no result yet and not loading */}
+                      {!coachMutation.isPending && !coachResult && (
+                        <div className="flex flex-col items-center gap-3 py-4 text-center">
+                          <p className="text-sm text-muted-foreground max-w-sm">
+                            Your AI coach analyzes your {MONTHS[selectedMonth - 1]} tasks, climate zone, and home wellness score to recommend what to tackle first.
+                          </p>
+                          <Button
+                            size="sm"
+                            className="bg-purple-600 hover:bg-purple-700 text-white"
+                            onClick={() => { if (selectedHouseId) coachMutation.mutate(selectedHouseId); }}
+                            disabled={coachMutation.isPending}
+                          >
+                            <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                            Get My AI Plan
+                          </Button>
+                        </div>
+                      )}
+
+                      {/* Error state */}
+                      {coachMutation.isError && !coachResult && (
+                        <div className="text-center py-3">
+                          <p className="text-sm text-destructive mb-2">Could not generate advice. Please try again.</p>
+                          <Button size="sm" variant="outline" onClick={() => { if (selectedHouseId) coachMutation.mutate(selectedHouseId); }}>
+                            <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                            Retry
+                          </Button>
+                        </div>
+                      )}
+
+                      {/* Results */}
+                      {coachResult && !coachMutation.isPending && (
+                        <div className="space-y-4">
+                          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{coachResult.briefing}</p>
+
+                          {coachResult.topTasks.length > 0 && (
+                            <div className="space-y-2">
+                              <p className="text-xs font-semibold text-purple-700 dark:text-purple-300 uppercase tracking-wide">Focus on these first</p>
+                              {coachResult.topTasks.map((t, i) => (
+                                <button
+                                  key={t.title}
+                                  type="button"
+                                  onClick={() => {
+                                    const el = document.querySelector<HTMLElement>(`[data-task-title="${CSS.escape(t.title)}"]`);
+                                    if (el) {
+                                      el.scrollIntoView({ behavior: "smooth", block: "center" });
+                                      setHighlightedTask(t.title);
+                                      setTimeout(() => setHighlightedTask(null), 2500);
+                                    }
+                                  }}
+                                  className="w-full text-left flex items-start gap-3 p-3 rounded-lg bg-white dark:bg-purple-950/30 border border-purple-100 dark:border-purple-800 hover:border-purple-300 dark:hover:border-purple-600 transition-colors group/task"
+                                >
+                                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-xs font-bold flex items-center justify-center mt-0.5">
+                                    {i + 1}
+                                  </span>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 group-hover/task:text-purple-700 dark:group-hover/task:text-purple-300 transition-colors">{t.title}</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">{t.reason}</p>
+                                  </div>
+                                  <ChevronRight className="w-4 h-4 text-purple-400 flex-shrink-0 mt-1 opacity-0 group-hover/task:opacity-100 transition-opacity" />
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
+                          <div className="flex justify-end pt-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/30 h-7 px-2"
+                              onClick={() => { if (selectedHouseId) coachMutation.mutate(selectedHouseId); }}
+                              disabled={coachMutation.isPending}
+                            >
+                              <RefreshCw className="w-3 h-3 mr-1" />
+                              Ask Again
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Tasks Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" data-tour-id="task-list">
               {filteredTasks.map((task, taskIdx) => {
@@ -4039,7 +4208,12 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                 const displayDescription = taskOverride?.customDescription || task.description;
                 
                 return (
-                  <div key={task.id} {...(taskIdx === 0 ? { 'data-tour-id': 'task-complete' } : {})}>
+                  <div
+                    key={task.id}
+                    data-task-title={task.title}
+                    {...(taskIdx === 0 ? { 'data-tour-id': 'task-complete' } : {})}
+                    className={highlightedTask === task.title ? "ring-2 ring-purple-400 ring-offset-2 rounded-xl transition-all duration-300" : undefined}
+                  >
                     <TaskCard
                       task={task}
                       completed={completed}

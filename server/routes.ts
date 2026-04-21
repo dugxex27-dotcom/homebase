@@ -11342,6 +11342,132 @@ ${JSON.stringify(questions.map(q => ({ id: q.id, text: q.text, type: q.type, ...
     }
   });
 
+  // ===== AI MAINTENANCE PRIORITY COACH =====
+  app.post("/api/houses/:houseId/maintenance-coach", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res) => {
+    try {
+      const { houseId } = req.params;
+      const homeownerId = req.session.user.id;
+
+      const house = await storage.getHouse(houseId);
+      if (!house || house.homeownerId !== homeownerId) {
+        return res.status(404).json({ message: "House not found" });
+      }
+
+      const taskSchema = z.object({
+        title: z.string(),
+        priority: z.string(),
+        description: z.string().optional(),
+        estimatedTime: z.string().optional(),
+        cost: z.string().optional(),
+      });
+      const bodySchema = z.object({
+        tasks: z.array(taskSchema).max(40),
+        month: z.number().int().min(1).max(12),
+        zone: z.string(),
+      });
+
+      const { tasks, month, zone } = bodySchema.parse(req.body);
+
+      // Calculate wellness score
+      const completedTaskRows = await db.select()
+        .from(taskCompletions)
+        .where(eq(taskCompletions.houseId, houseId));
+      const wellnessScore = completedTaskRows.length * 4;
+
+      const monthName = ["January","February","March","April","May","June","July","August","September","October","November","December"][month - 1];
+      const currentYear = new Date().getFullYear();
+      const season = month >= 3 && month <= 5 ? "Spring" : month >= 6 && month <= 8 ? "Summer" : month >= 9 && month <= 11 ? "Fall" : "Winter";
+
+      const contextLines: string[] = [
+        `Date: ${monthName} ${currentYear}`,
+        `Season: ${season}`,
+        `Climate zone: ${zone}`,
+        `Home health (wellness) score: ${wellnessScore} (higher is better; each completed task adds 4 points)`,
+        `Pending tasks for ${monthName} (${tasks.length} total):`,
+      ];
+
+      if (tasks.length === 0) {
+        contextLines.push("  (no pending tasks this month)");
+      } else {
+        tasks.forEach((t, i) => {
+          const parts = [`  ${i + 1}. [${t.priority.toUpperCase()}] ${t.title}`];
+          if (t.estimatedTime) parts.push(`(${t.estimatedTime})`);
+          if (t.cost) parts.push(`est. cost: ${t.cost}`);
+          contextLines.push(parts.join(" "));
+        });
+      }
+
+      const context = contextLines.join("\n");
+
+      const prompt = `You are an expert home maintenance advisor helping a homeowner prioritize their tasks.
+
+${context}
+
+${tasks.length === 0
+  ? 'The homeowner has no pending tasks this month. Acknowledge this warmly and offer a brief positive message about staying on top of their home.'
+  : `Based on the homeowner's climate zone, season, current month, and wellness score, provide a personalized maintenance briefing.
+
+Ranking rules:
+1. High-priority tasks come first.
+2. Among equal priority, prefer tasks that are especially important in ${season} in a ${zone} climate.
+3. Prefer tasks with higher urgency for the current month.
+
+Respond with ONLY valid JSON (no markdown, no extra text) in this format:
+{
+  "briefing": "2-4 sentence personalized advice for this month",
+  "topTasks": [
+    { "title": "<exact task title from the list>", "reason": "<1 short sentence why this task is a priority now>" },
+    { "title": "...", "reason": "..." },
+    { "title": "...", "reason": "..." }
+  ]
+}
+Include up to 3 tasks in topTasks (fewer if there are fewer than 3 pending tasks). Use exact task titles from the list.`}`;
+
+      const openai = new OpenAI({
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+      });
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.4,
+        max_tokens: 600,
+      });
+
+      const raw = completion.choices[0]?.message?.content ?? "";
+
+      if (tasks.length === 0) {
+        // For no-tasks case, AI may return plain text; wrap it
+        let briefing = raw.trim();
+        try {
+          const parsed = JSON.parse(raw);
+          briefing = parsed.briefing ?? briefing;
+        } catch { /* use raw text */ }
+        return res.json({ briefing, topTasks: [] });
+      }
+
+      let result: { briefing: string; topTasks: { title: string; reason: string }[] };
+      try {
+        result = JSON.parse(raw);
+      } catch {
+        // Fallback if JSON parse fails
+        return res.json({ briefing: "Your home is in good shape! Stay consistent with your maintenance plan.", topTasks: [] });
+      }
+
+      // Validate topTasks titles are from the provided task list
+      const validTitles = new Set(tasks.map(t => t.title));
+      const validatedTopTasks = (result.topTasks ?? [])
+        .filter(t => t && typeof t.title === "string" && typeof t.reason === "string" && validTitles.has(t.title))
+        .slice(0, 3);
+
+      res.json({ briefing: result.briefing ?? "", topTasks: validatedTopTasks });
+    } catch (error) {
+      console.error("[AI MAINTENANCE COACH] Error:", error);
+      res.status(500).json({ message: "Failed to generate maintenance coaching advice" });
+    }
+  });
+
   // Contractor subscription endpoint
   app.get('/api/contractor/subscription', async (req: any, res) => {
     try {
