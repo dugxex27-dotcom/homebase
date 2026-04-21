@@ -13,7 +13,7 @@ const toolsItems = [
   { href: "/achievements",  icon: Trophy,          label: "Explore Achievements", description: "Earn badges & rewards" },
   { href: "/products",      icon: ShoppingBag,     label: "Shop Products",       description: "Browse home products" },
   { href: "/ai-help",       icon: Sparkles,        label: "Ask AI",              description: "Get instant home advice" },
-  { href: "/disclosures",   icon: ClipboardList,   label: "Disclosures",         description: "Property disclosure wizard" },
+  { href: "/documents",     icon: ClipboardList,   label: "Documents",           description: "Documents & disclosure wizard" },
 ];
 
 export default function BottomNav() {

@@ -253,7 +253,7 @@ function QuestionWidget({
   );
 }
 
-export default function Disclosures() {
+export default function Disclosures({ embedded = false }: { embedded?: boolean } = {}) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [sectionIdx, setSectionIdx] = useState(0);
@@ -649,9 +649,8 @@ export default function Disclosures() {
     );
   }
 
-  return (
-    <div className="disclosure-print-root min-h-screen" style={{ background: "var(--theme-primary, #f8f5ff)" }}>
-      <div className="max-w-3xl mx-auto px-4 py-6">
+  const inner = (
+    <div className="max-w-3xl mx-auto px-4 py-6">
         {/* Header */}
         <div className="mb-4">
           <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
@@ -886,6 +885,13 @@ export default function Disclosures() {
           Draft only — not a legally binding document. Consult your attorney or agent.
         </p>
       </div>
+  );
+
+  if (embedded) return inner;
+
+  return (
+    <div className="disclosure-print-root min-h-screen" style={{ background: "var(--theme-primary, #f8f5ff)" }}>
+      {inner}
     </div>
   );
 }

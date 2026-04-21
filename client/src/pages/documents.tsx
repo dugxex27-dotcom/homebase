@@ -1,4 +1,5 @@
-import { useState, useRef } from "react";
+import { useState, useRef, lazy, Suspense } from "react";
+const DisclosuresContent = lazy(() => import("./disclosures"));
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
@@ -82,6 +83,7 @@ export default function Documents() {
   const [pendingDocId, setPendingDocId] = useState<string | null>(null);
   const [editDoc, setEditDoc] = useState<{ fileName: string; notes: string; category: string } | null>(null);
   const [editingHouseId, setEditingHouseId] = useState<string | null>(null);
+  const [topSection, setTopSection] = useState<"documents" | "disclosures">("documents");
 
   const { data: documents = [], isLoading } = useQuery<HomeDocument[]>({
     queryKey: ["/api/home-documents"],
@@ -228,9 +230,9 @@ export default function Documents() {
     <div className="min-h-screen pb-20 lg:pb-0">
       <PageHero
         eyebrow="Secure storage"
-        title="Home Documents"
-        subtitle="All your home records in one place"
-        action={
+        title="Documents & Disclosures"
+        subtitle="All your home records and disclosure forms in one place"
+        action={topSection === "documents" ? (
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               onClick={() => setInspectionDialogOpen(true)}
@@ -245,9 +247,33 @@ export default function Documents() {
               + Upload
             </button>
           </div>
-        }
+        ) : undefined}
       />
-      <div className="max-w-6xl mx-auto px-4 py-6">
+      <div className="max-w-6xl mx-auto px-4 pt-4 pb-6">
+        {/* Top-level section switcher */}
+        <div className="flex gap-1 mb-6 border-b border-gray-200">
+          <button
+            onClick={() => setTopSection("documents")}
+            className={`px-5 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px ${topSection === "documents" ? "border-purple-600 text-purple-700" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+            data-testid="tab-documents"
+          >
+            Documents
+          </button>
+          <button
+            onClick={() => setTopSection("disclosures")}
+            className={`px-5 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px ${topSection === "disclosures" ? "border-purple-600 text-purple-700" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+            data-testid="tab-disclosures"
+          >
+            Disclosures
+          </button>
+        </div>
+
+        {topSection === "disclosures" ? (
+          <Suspense fallback={<div className="py-12 text-center text-gray-400">Loading disclosures…</div>}>
+            <DisclosuresContent embedded />
+          </Suspense>
+        ) : (
+        <>
 
         {/* Category Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
@@ -355,6 +381,8 @@ export default function Documents() {
             )}
           </TabsContent>
         </Tabs>
+        </>
+        )}
       </div>
 
       {/* Upload General Document Dialog */}
