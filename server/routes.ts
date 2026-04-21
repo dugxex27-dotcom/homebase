@@ -11990,6 +11990,140 @@ Respond ONLY with valid JSON (no markdown, no code fences):
     }
   });
 
+  // ===== INSURANCE PREP — EMAIL TO ADJUSTER =====
+  app.post("/api/insurance-prep/send-email", isAuthenticated, requireHomeownerSubscription, async (req: any, res) => {
+    try {
+      const bodySchema = z.object({
+        adjusterEmail: z.string().email(),
+        claimArea: z.string().min(1).max(100),
+        claimMemo: z.string().min(1).max(20000),
+        evidenceTimeline: z.array(z.object({
+          date: z.string(),
+          description: z.string(),
+          source: z.string(),
+        })).max(50),
+        documentsToGather: z.array(z.string().max(300)).max(20),
+        houseAddress: z.string().nullable().optional(),
+      });
+
+      let body: z.infer<typeof bodySchema>;
+      try {
+        body = bodySchema.parse(req.body);
+      } catch {
+        return res.status(400).json({ message: "Invalid request body" });
+      }
+
+      const { adjusterEmail, claimArea, claimMemo, evidenceTimeline, documentsToGather, houseAddress } = body;
+
+      const esc = (s: string) => s
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+
+      const timelineRows = evidenceTimeline.map(e => {
+        const sourceLabel = e.source === "service_record" ? "Contractor" : "Owner";
+        return `<tr>
+          <td style="padding:6px 10px; border-bottom:1px solid #e5e7eb; font-family:monospace; white-space:nowrap; color:#6b7280; font-size:13px;">${esc(e.date)}</td>
+          <td style="padding:6px 10px; border-bottom:1px solid #e5e7eb; font-size:12px;">
+            <span style="background:${e.source === "service_record" ? "#dbeafe" : "#ede9fe"}; color:${e.source === "service_record" ? "#1d4ed8" : "#7c3aed"}; padding:2px 6px; border-radius:4px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; font-size:10px;">${esc(sourceLabel)}</span>
+          </td>
+          <td style="padding:6px 10px; border-bottom:1px solid #e5e7eb; font-size:13px; color:#374151;">${esc(e.description)}</td>
+        </tr>`;
+      }).join("");
+
+      const docsListHtml = documentsToGather.map((doc, i) =>
+        `<li style="margin-bottom:6px; font-size:13px; color:#374151;">${i + 1}. ${esc(doc)}</li>`
+      ).join("");
+
+      const generatedDate = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+
+      const htmlBody = `
+        <div style="font-family:Arial,sans-serif; max-width:640px; margin:0 auto; color:#111827;">
+          <div style="background:#1e40af; padding:28px 30px; border-radius:8px 8px 0 0;">
+            <p style="margin:0; color:#bfdbfe; font-size:12px; letter-spacing:0.08em; text-transform:uppercase; font-weight:600;">MyHomeBase™ Insurance Claim Prep</p>
+            <h1 style="margin:8px 0 4px; color:#ffffff; font-size:22px; font-weight:700;">${esc(claimArea)} Claim Package</h1>
+            ${houseAddress ? `<p style="margin:4px 0 0; color:#bfdbfe; font-size:13px;">Property: ${esc(houseAddress)}</p>` : ""}
+            <p style="margin:6px 0 0; color:#bfdbfe; font-size:12px;">Generated ${esc(generatedDate)}</p>
+          </div>
+
+          <div style="background:#f9fafb; padding:24px 30px; border-left:1px solid #e5e7eb; border-right:1px solid #e5e7eb;">
+
+            <!-- Claim Memo -->
+            <h2 style="margin:0 0 12px; font-size:15px; font-weight:700; color:#1e40af; border-bottom:2px solid #dbeafe; padding-bottom:8px;">Claim Preparation Memo</h2>
+            <div style="background:#ffffff; border:1px solid #e5e7eb; border-radius:6px; padding:16px; white-space:pre-wrap; font-size:13px; line-height:1.65; color:#374151;">
+${esc(claimMemo)}
+            </div>
+
+            ${evidenceTimeline.length > 0 ? `
+            <!-- Evidence Timeline -->
+            <h2 style="margin:24px 0 12px; font-size:15px; font-weight:700; color:#1e40af; border-bottom:2px solid #dbeafe; padding-bottom:8px;">Evidence Timeline</h2>
+            <table style="width:100%; border-collapse:collapse; background:#ffffff; border:1px solid #e5e7eb; border-radius:6px; overflow:hidden;">
+              <thead>
+                <tr style="background:#eff6ff;">
+                  <th style="padding:8px 10px; text-align:left; font-size:11px; font-weight:700; color:#1e40af; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid #dbeafe;">Date</th>
+                  <th style="padding:8px 10px; text-align:left; font-size:11px; font-weight:700; color:#1e40af; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid #dbeafe;">Source</th>
+                  <th style="padding:8px 10px; text-align:left; font-size:11px; font-weight:700; color:#1e40af; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid #dbeafe;">Description</th>
+                </tr>
+              </thead>
+              <tbody>${timelineRows}</tbody>
+            </table>` : ""}
+
+            ${documentsToGather.length > 0 ? `
+            <!-- Documents to Gather -->
+            <h2 style="margin:24px 0 12px; font-size:15px; font-weight:700; color:#92400e; border-bottom:2px solid #fde68a; padding-bottom:8px;">Documents to Gather</h2>
+            <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:6px; padding:16px;">
+              <ul style="margin:0; padding-left:0; list-style:none;">${docsListHtml}</ul>
+            </div>` : ""}
+
+          </div>
+
+          <div style="background:#1a1a2e; padding:20px 30px; border-radius:0 0 8px 8px; text-align:center;">
+            <p style="color:#a78bfa; margin:0; font-size:12px;">Prepared by MyHomeBase™ · For informational purposes only. Consult your insurance policy and licensed adjuster.</p>
+          </div>
+        </div>
+      `;
+
+      const textBody = [
+        `INSURANCE CLAIM PREP — ${claimArea}`,
+        houseAddress ? `Property: ${houseAddress}` : "",
+        `Generated by MyHomeBase™ · ${generatedDate}`,
+        "",
+        "CLAIM MEMO",
+        "─".repeat(40),
+        claimMemo,
+        "",
+        evidenceTimeline.length > 0 ? "EVIDENCE TIMELINE\n" + "─".repeat(40) : "",
+        ...evidenceTimeline.map(e =>
+          `${e.date}  [${e.source === "service_record" ? "Contractor" : "Owner"}]  ${e.description}`
+        ),
+        "",
+        documentsToGather.length > 0 ? "DOCUMENTS TO GATHER\n" + "─".repeat(40) : "",
+        ...documentsToGather.map((d, i) => `${i + 1}. ${d}`),
+        "",
+        "─".repeat(40),
+        "Prepared by MyHomeBase™. For informational purposes only.",
+      ].filter(s => s !== null && s !== undefined).join("\n");
+
+      const sent = await sendEmail({
+        to: adjusterEmail,
+        subject: `Insurance Claim Package — ${claimArea}${houseAddress ? ` · ${houseAddress}` : ""}`,
+        text: textBody,
+        html: htmlBody,
+      });
+
+      if (!sent) {
+        return res.status(503).json({ message: "Email service is not available. Please use Copy All or Print instead." });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[INSURANCE PREP EMAIL] Error:", error);
+      res.status(500).json({ message: "Failed to send email" });
+    }
+  });
+
   // ===== AI CONTRACTOR MESSAGE DRAFTING =====
   app.post("/api/ai/draft-contractor-message", isAuthenticated, requireHomeownerSubscription, async (req: any, res) => {
     try {

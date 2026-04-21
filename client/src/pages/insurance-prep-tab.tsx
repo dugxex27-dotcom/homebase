@@ -7,8 +7,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   Shield, Loader2, AlertTriangle, RefreshCw, Copy, Printer,
-  CheckSquare, FileText, Clock, Sparkles, ChevronDown, ChevronUp, Info
+  CheckSquare, FileText, Clock, Sparkles, ChevronDown, ChevronUp, Info, Mail
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -67,6 +75,35 @@ export function InsurancePrepTab({ houses }: Props) {
   const [result, setResult] = useState<InsurancePrepResult | null>(null);
   const [checkedDocs, setCheckedDocs] = useState<Set<number>>(new Set());
   const [memoExpanded, setMemoExpanded] = useState(true);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [adjusterEmail, setAdjusterEmail] = useState("");
+
+  const emailMutation = useMutation({
+    mutationFn: async () => {
+      if (!result) throw new Error("No result");
+      const res = await apiRequest("/api/insurance-prep/send-email", "POST", {
+        adjusterEmail: adjusterEmail.trim(),
+        claimArea: result.claimArea,
+        claimMemo: result.claimMemo,
+        evidenceTimeline: result.evidenceTimeline,
+        documentsToGather: result.documentsToGather,
+        houseAddress: result.meta.houseAddress ?? null,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      setEmailDialogOpen(false);
+      setAdjusterEmail("");
+      toast({ title: "Email sent", description: `Claim package sent to ${adjusterEmail}.` });
+    },
+    onError: (err: unknown) => {
+      toast({
+        title: "Failed to send email",
+        description: err instanceof Error ? err.message : "Please try again or use Copy All instead.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const generateMutation = useMutation({
     mutationFn: async () => {
@@ -274,7 +311,7 @@ export function InsurancePrepTab({ houses }: Props) {
                 <p className="text-sm text-gray-500">{selectedHouse.address || selectedHouse.name}</p>
               )}
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={handleCopy} className="border-gray-200 text-gray-700 hover:bg-gray-50" data-testid="button-copy-claim">
                 <Copy className="w-4 h-4 mr-1.5" />
                 Copy All
@@ -282,6 +319,16 @@ export function InsurancePrepTab({ houses }: Props) {
               <Button variant="outline" size="sm" onClick={handlePrint} className="border-gray-200 text-gray-700 hover:bg-gray-50">
                 <Printer className="w-4 h-4 mr-1.5" />
                 Print / PDF
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setEmailDialogOpen(true)}
+                className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                data-testid="button-email-adjuster"
+              >
+                <Mail className="w-4 h-4 mr-1.5" />
+                Email to Adjuster
               </Button>
               <Button
                 variant="outline"
@@ -423,6 +470,69 @@ export function InsurancePrepTab({ houses }: Props) {
           </div>
         </div>
       )}
+
+      {/* Email to Adjuster Dialog */}
+      <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="w-5 h-5 text-blue-600" />
+              Email Claim Package to Adjuster
+            </DialogTitle>
+            <DialogDescription>
+              Enter your adjuster's email address. We'll send them the full claim memo, evidence timeline, and documents checklist.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="adjuster-email" className="text-sm font-medium text-gray-700">
+                Adjuster's Email Address
+              </Label>
+              <Input
+                id="adjuster-email"
+                type="email"
+                placeholder="adjuster@insuranceco.com"
+                value={adjusterEmail}
+                onChange={e => setAdjusterEmail(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter" && adjusterEmail.trim() && !emailMutation.isPending) {
+                    emailMutation.mutate();
+                  }
+                }}
+                className="text-sm"
+                data-testid="input-adjuster-email"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => { setEmailDialogOpen(false); setAdjusterEmail(""); }}
+              disabled={emailMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => emailMutation.mutate()}
+              disabled={!adjusterEmail.trim() || emailMutation.isPending}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              data-testid="button-send-email"
+            >
+              {emailMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Sending…
+                </>
+              ) : (
+                <>
+                  <Mail className="w-4 h-4 mr-2" />
+                  Send Email
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
