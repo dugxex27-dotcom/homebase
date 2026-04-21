@@ -152,7 +152,6 @@
   "overrides": {
     "@xmldom/xmldom": "0.8.12",
     "axios": "1.15.0",
-    "lodash": "4.18.1",
     "replace": {
       "minimatch": "3.1.4"
     },
