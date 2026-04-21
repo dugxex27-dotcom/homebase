@@ -1291,6 +1291,87 @@ export async function sendWeatherAlertEmail(
   });
 }
 
+export async function sendWeatherForecastReminderEmail(
+  userId: string,
+  houseName: string,
+  houseAddress: string,
+  triggerResult: { trigger: string; description: string; expectedDate: string },
+  tasks: Array<{ title: string; category: string; priority: string }>
+): Promise<boolean> {
+  const user = await storage.getUser(userId);
+  if (!user?.email) return false;
+
+  const canSend = await canSendEmail(userId, 'weather_forecast_reminders');
+  if (!canSend) return false;
+
+  const triggerEmojis: Record<string, string> = {
+    hard_freeze: '🧊',
+    heavy_rain: '🌧️',
+    high_winds: '💨',
+    extreme_heat: '🌡️',
+    snow_storm: '❄️',
+  };
+  const triggerLabels: Record<string, string> = {
+    hard_freeze: 'Hard Freeze',
+    heavy_rain: 'Heavy Rain',
+    high_winds: 'High Winds',
+    extreme_heat: 'Extreme Heat',
+    snow_storm: 'Snow / Ice Storm',
+  };
+  const emoji = triggerEmojis[triggerResult.trigger] || '🌩️';
+  const label = triggerLabels[triggerResult.trigger] || 'Weather Event';
+
+  const priorityColors: Record<string, string> = { high: '#dc2626', medium: '#f59e0b', low: '#16a34a' };
+
+  const tasksHtml = tasks.map(task => `
+    <div style="display: flex; align-items: flex-start; gap: 12px; padding: 12px; background: white; border-radius: 8px; margin-bottom: 8px; border-left: 4px solid ${priorityColors[task.priority] || '#6B46C1'};">
+      <div>
+        <p style="margin: 0; font-weight: 600; color: #1f2937;">${task.title}</p>
+        <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280; text-transform: capitalize;">${task.category} · ${task.priority} priority</p>
+      </div>
+    </div>
+  `).join('');
+
+  const html = wrapEmailContent(
+    getEmailHeader(),
+    `
+      <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 20px; margin-bottom: 24px; text-align: center;">
+        <p style="font-size: 40px; margin: 0 0 8px 0;">${emoji}</p>
+        <h2 style="margin: 0; color: #1e40af; font-size: 20px;">${label} Forecast for ${houseName}</h2>
+        <p style="margin: 8px 0 0 0; color: #3b82f6;">${triggerResult.description}</p>
+        <p style="margin: 4px 0 0 0; color: #64748b; font-size: 14px;">Expected: <strong>${triggerResult.expectedDate}</strong></p>
+      </div>
+
+      <p style="color: #374151;">Hi ${user.firstName || 'there'},</p>
+      <p style="color: #374151;">Heads up — <strong>${label.toLowerCase()}</strong> is in the forecast for <strong>${houseName}</strong>. Based on your maintenance history, the following tasks are due and should be completed before this weather arrives:</p>
+
+      <div style="margin: 20px 0;">
+        ${tasksHtml}
+      </div>
+
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="https://gotohomebase.com/maintenance" style="background: #6B46C1; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px;">View My Maintenance Tasks</a>
+      </div>
+
+      <div style="background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px; padding: 16px; margin: 20px 0;">
+        <p style="margin: 0; color: #92400e; font-size: 13px;">💡 Completing these tasks now can prevent costly damage. Need a contractor? <a href="https://gotohomebase.com/contractors" style="color: #7c3aed;">Find one on MyHomeBase™</a>.</p>
+      </div>
+
+      <p style="color: #9ca3af; font-size: 12px;">You're receiving this because you have weather forecast maintenance reminders enabled for ${houseName}. Manage preferences in your <a href="https://gotohomebase.com/account" style="color: #7c3aed;">account settings</a>.</p>
+    `
+  );
+
+  const taskTitles = tasks.map(t => t.title).join(', ');
+  const text = `MyHomeBase™ Alert: ${label} expected for ${houseName} (${triggerResult.expectedDate}). ${triggerResult.description}. ${tasks.length} maintenance task${tasks.length > 1 ? 's' : ''} due before this weather: ${taskTitles}. Visit gotohomebase.com/maintenance to complete them.`;
+
+  return sendEmail({
+    to: user.email,
+    subject: `${emoji} ${label} Coming — ${tasks.length} Maintenance Task${tasks.length > 1 ? 's' : ''} Due for ${houseName}`,
+    text,
+    html,
+  });
+}
+
 export const emailService = {
   sendEmail,
   sendWelcomeEmail,

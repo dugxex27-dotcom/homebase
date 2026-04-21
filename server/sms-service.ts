@@ -261,6 +261,33 @@ export async function sendWeatherAlertSMS(
   return sendSMS({ to: user.phone, body });
 }
 
+export async function sendWeatherForecastReminderSMS(
+  userId: string,
+  houseName: string,
+  triggerResult: { trigger: string; description: string; expectedDate: string },
+  tasks: Array<{ title: string }>
+): Promise<boolean> {
+  const user = await storage.getUser(userId);
+  if (!user?.phone) return false;
+
+  const triggerEmojis: Record<string, string> = {
+    hard_freeze: '🧊', heavy_rain: '🌧️', high_winds: '💨', extreme_heat: '🌡️', snow_storm: '❄️',
+  };
+  const triggerLabels: Record<string, string> = {
+    hard_freeze: 'Hard Freeze', heavy_rain: 'Heavy Rain', high_winds: 'High Winds',
+    extreme_heat: 'Extreme Heat', snow_storm: 'Snow/Ice Storm',
+  };
+  const emoji = triggerEmojis[triggerResult.trigger] || '🌩️';
+  const label = triggerLabels[triggerResult.trigger] || 'Weather Event';
+  const taskList = tasks.slice(0, 3).map(t => t.title).join(', ');
+  const more = tasks.length > 3 ? ` +${tasks.length - 3} more` : '';
+
+  return sendSMS({
+    to: user.phone,
+    body: `${emoji} MyHomeBase™: ${label} forecast for ${houseName} (${triggerResult.expectedDate}). Complete before it hits: ${taskList}${more}. gotohomebase.com/maintenance`,
+  });
+}
+
 export const smsService = {
   sendSMS,
   sendMaintenanceReminder,
@@ -273,4 +300,5 @@ export const smsService = {
   sendJobNotificationSMS,
   sendInvoiceSMS,
   sendWeatherAlertSMS,
+  sendWeatherForecastReminderSMS,
 };

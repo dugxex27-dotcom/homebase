@@ -14,6 +14,7 @@ import { weeklyTaskReminderScheduler } from "./weekly-task-reminder-scheduler";
 import { expiredTrialReengagementScheduler } from "./expired-trial-reengagement-scheduler";
 import { referralReminderScheduler } from "./referral-reminder-scheduler";
 import { weatherAlertScheduler } from "./weather-alert-scheduler";
+import { weatherForecastReminderScheduler } from "./weather-forecast-reminder-scheduler";
 
 const app = express();
 
@@ -297,5 +298,6 @@ app.use((req, res, next) => {
     expiredTrialReengagementScheduler.start();
     referralReminderScheduler.start();
     weatherAlertScheduler.start();
+    weatherForecastReminderScheduler.start();
   });
 })();

@@ -2112,6 +2112,21 @@ export const insertWeatherAlertSentSchema = createInsertSchema(weatherAlertsSent
 export type InsertWeatherAlertSent = z.infer<typeof insertWeatherAlertSentSchema>;
 export type WeatherAlertSent = typeof weatherAlertsSent.$inferSelect;
 
+export const weatherForecastRemindersSent = pgTable("weather_forecast_reminders_sent", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: text("user_id").notNull(),
+  houseId: text("house_id").notNull(),
+  triggerType: text("trigger_type").notNull(),
+  sentAt: timestamp("sent_at").defaultNow().notNull(),
+}, (table) => [
+  index("IDX_wfr_user").on(table.userId),
+  index("IDX_wfr_sent_at").on(table.sentAt),
+]);
+
+export const insertWeatherForecastReminderSentSchema = createInsertSchema(weatherForecastRemindersSent).omit({ id: true, sentAt: true });
+export type InsertWeatherForecastReminderSent = z.infer<typeof insertWeatherForecastReminderSentSchema>;
+export type WeatherForecastReminderSent = typeof weatherForecastRemindersSent.$inferSelect;
+
 // ─── Home Handoff Packages ───────────────────────────────────────────────────
 // Agents upload closing/disclosure documents, AI extracts home info,
 // and the agent sends a magic link to the new homeowner to claim their record.

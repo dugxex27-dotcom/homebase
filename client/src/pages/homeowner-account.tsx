@@ -89,6 +89,7 @@ export default function HomeownerAccount() {
     weeklyDigest: false,
     weatherAlerts: true,
     weatherAlertTypes: [] as string[], // empty = all enabled
+    weatherForecastReminders: true,
   });
 
   // Load notification preferences from server
@@ -831,6 +832,18 @@ export default function HomeownerAccount() {
                         ))}
                       </div>
                     )}
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium" style={{ color: '#2c0f5b' }}>Weather Forecast Task Reminders</p>
+                      <p className="text-sm text-gray-600">Get reminded to complete overdue maintenance tasks before approaching weather events (freezes, heavy rain, high winds, etc.)</p>
+                    </div>
+                    <Switch
+                      data-testid="switch-weather-forecast-reminders"
+                      checked={notificationPrefs.weatherForecastReminders}
+                      onCheckedChange={(value) => handleNotificationChange('weatherForecastReminders', value)}
+                    />
                   </div>
                 </div>
               </CardContent>

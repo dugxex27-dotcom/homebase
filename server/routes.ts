@@ -7475,6 +7475,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         weeklyDigest: getEnabled('weeklyDigest', false),
         weatherAlerts: getEnabled('weather', true),
         weatherAlertTypes,
+        weatherForecastReminders: getEnabled('weather_forecast_reminders', true),
       });
     } catch (error) {
       console.error("Error fetching homeowner notification preferences:", error);
@@ -7498,6 +7499,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         weeklyDigest,
         weatherAlerts,
         weatherAlertTypes,
+        weatherForecastReminders,
       } = req.body;
 
       const { notificationPreferences: notifPrefsTable } = await import('@shared/schema');
@@ -7550,6 +7552,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ['messages', contractorMessages],
         ['weeklyDigest', weeklyDigest],
         ['weather', weatherAlerts, ['email', 'push']],
+        ['weather_forecast_reminders', weatherForecastReminders, ['email', 'push']],
       ];
 
       for (const [type, val, channels] of updates) {
