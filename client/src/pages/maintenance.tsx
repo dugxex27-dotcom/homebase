@@ -3340,13 +3340,6 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
   const coachMutation = useMutation({
     mutationFn: async (requestedHouseId: string) => {
       const payload = {
-        tasks: filteredTasks.map(t => ({
-          title: t.title,
-          priority: t.priority,
-          description: t.description,
-          estimatedTime: t.estimatedTime,
-          cost: t.cost ?? undefined,
-        })),
         month: selectedMonth,
         zone: selectedZone,
       };
