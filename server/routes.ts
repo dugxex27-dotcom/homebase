@@ -11321,13 +11321,17 @@ ${JSON.stringify(questions.map(q => ({ id: q.id, text: q.text, type: q.type, ...
         suggestions = {};
       }
 
-      // Validate: only keep keys that match the requested question IDs and have non-null values
-      const validIds = new Set(questions.map(q => q.id));
+      // Validate: enforce question ID membership and per-type value constraints
+      const questionById = new Map(questions.map(q => [q.id, q]));
       const validated: Record<string, unknown> = {};
       for (const [key, val] of Object.entries(suggestions)) {
-        if (validIds.has(key) && val !== null && val !== undefined && val !== "") {
-          validated[key] = val;
-        }
+        const q = questionById.get(key);
+        if (!q || val === null || val === undefined || val === "") continue;
+        if (q.type === "yes_no_unknown" && !["Yes", "No", "Unknown"].includes(String(val))) continue;
+        if (q.type === "yes_no" && !["Yes", "No"].includes(String(val))) continue;
+        if (q.type === "select" && q.options && !q.options.includes(String(val))) continue;
+        if (q.type === "number" && typeof val !== "number" && isNaN(Number(val))) continue;
+        validated[key] = val;
       }
 
       res.json({ suggestions: validated });

@@ -760,7 +760,7 @@ export default function Disclosures() {
                   onClick={() => aiSuggestMutation.mutate()}
                   disabled={aiSuggestMutation.isPending || !houseId}
                   className="text-xs h-7 px-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                  title="Fill blank answers in this section using AI"
+                  title="Suggest answers for all blank fields in the form using AI"
                 >
                   {aiSuggestMutation.isPending ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
