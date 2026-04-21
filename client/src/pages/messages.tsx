@@ -245,11 +245,16 @@ export default function Messages() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const taskTitle = params.get("taskTitle") ?? "";
+    const taskDescription = params.get("taskDescription") ?? "";
     const houseId = params.get("houseId") ?? "";
     if (taskTitle) {
-      setUrlTaskContext(taskTitle);
-      setAiDraftIssue(taskTitle);
-      setAiComposeIssue(taskTitle);
+      // Combine title + description for richer context; cap at 400 chars to stay prompt-friendly
+      const combined = taskDescription
+        ? `${taskTitle}: ${taskDescription}`.slice(0, 400).trim()
+        : taskTitle.slice(0, 400).trim();
+      setUrlTaskContext(combined);
+      setAiDraftIssue(combined);
+      setAiComposeIssue(combined);
     }
     if (houseId) setUrlHouseId(houseId);
   }, []);
