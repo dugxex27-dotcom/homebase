@@ -11559,12 +11559,19 @@ Include up to 3 tasks (fewer if fewer than 3 are pending). Do not include null e
       const threeYearsAgoStr = threeYearsAgo.toISOString().slice(0, 10);
 
       // Fetch all needed data in parallel
-      const [completedTaskRows, allMaintenanceLogs, allHomeSystems] = await Promise.all([
+      const [completedTaskRows, allMaintenanceLogs, allHomeSystems, houseServiceRecords] = await Promise.all([
         db.select().from(taskCompletions).where(eq(taskCompletions.houseId, houseId)),
         storage.getMaintenanceLogs(homeownerId, houseId),
         storage.getHomeSystems(homeownerId, houseId),
+        db.select().from(serviceRecords).where(
+          and(
+            eq(serviceRecords.houseId, houseId),
+            eq(serviceRecords.isVisibleToHomeowner, true)
+          )
+        ),
       ]);
 
+      // Canonical wellness score — +4 per completed task (matches /api/houses/:id/health-score)
       const wellnessScore = completedTaskRows.length * 4;
 
       // Maintenance logs from last 3 years
@@ -11602,14 +11609,72 @@ Include up to 3 tasks (fewer if fewer than 3 are pending). Do not include null e
         ? systemSummary.join(", ")
         : "No home systems on file";
 
+      // Service records (from contractors via MyHomeBase platform)
+      const svcByType: Record<string, number> = {};
+      for (const sr of houseServiceRecords) {
+        const t = sr.serviceType ?? "other";
+        svcByType[t] = (svcByType[t] ?? 0) + 1;
+      }
+      const svcSummaryLines = Object.entries(svcByType)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 6)
+        .map(([t, c]) => `  - ${t}: ${c} record${c > 1 ? "s" : ""}`);
+
+      // Outstanding/incomplete tasks for current season (from US_MAINTENANCE_DATA)
+      const zoneToRegion: Record<string, string> = {
+        "northeast": "Northeast", "southeast": "Southeast", "midwest": "Midwest",
+        "southwest": "Southwest", "mountain-west": "Mountain West",
+        "california": "West Coast", "pacific-northwest": "Pacific Northwest",
+        "great-plains": "Midwest",
+      };
+      const currentMonthNum = new Date().getMonth() + 1;
+      const { US_MAINTENANCE_DATA } = await import("../shared/location-maintenance-data");
+      const climateKey = (house.climateZone ?? "midwest").toLowerCase().replace(/\s+/g, "-");
+      const regionName = zoneToRegion[climateKey] ?? "Midwest";
+      const regionData = US_MAINTENANCE_DATA[regionName];
+
+      const completedTitlesThisYear = new Set(
+        completedTaskRows.filter(r => r.year === currentYear).map(r => r.taskTitle)
+      );
+
+      interface OutstandingTask { title: string; priority: string; month: number }
+      const outstandingTasks: OutstandingTask[] = [];
+      if (regionData) {
+        for (const offset of [-2, -1, 0]) {
+          let m = currentMonthNum + offset;
+          if (m < 1) m += 12;
+          const monthData = regionData.monthlyTasks[m];
+          if (!monthData) continue;
+          const items = [...(monthData.seasonal ?? []), ...(monthData.weatherSpecific ?? [])];
+          for (const t of items) {
+            if (!completedTitlesThisYear.has(t.title)) {
+              outstandingTasks.push({ title: t.title, priority: t.priority ?? monthData.priority ?? "medium", month: m });
+            }
+          }
+        }
+      }
+      const highOutstanding = outstandingTasks.filter(t => t.priority === "high").slice(0, 4);
+      const otherOutstanding = outstandingTasks.filter(t => t.priority !== "high").slice(0, 3);
+      const outstandingLines = [...highOutstanding, ...otherOutstanding]
+        .map(t => {
+          const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+          return `  - [${t.priority.toUpperCase()}] ${t.title} (due ${monthNames[t.month - 1]})`;
+        });
+
       const contextBlock = [
         `Property: ${house.address ?? "address not recorded"} — ${houseAgeStr}`,
-        `Home Wellness Score: ${wellnessScore} points (${completedTaskRows.length} total tasks completed across all time)`,
+        `Home Wellness Score: ${wellnessScore} points (${completedTaskRows.length} total tasks completed — canonical formula: +4 per task)`,
         `Tasks completed this year (${currentYear}): ${completedThisYear}`,
         `Total maintenance log entries in last 3 years: ${recentLogs.length}`,
-        recentLogs.length > 0 ? `Service history breakdown:\n${logSummaryLines.join("\n")}` : "No service records in last 3 years.",
+        recentLogs.length > 0 ? `Homeowner-logged service history:\n${logSummaryLines.join("\n")}` : "No homeowner maintenance log entries in last 3 years.",
+        houseServiceRecords.length > 0
+          ? `Contractor service records on file (${houseServiceRecords.length} total):\n${svcSummaryLines.join("\n")}`
+          : "No contractor service records on file.",
         `Documented home systems (${allHomeSystems.length}): ${homeSysStr}`,
-        house.climateZone ? `Climate zone: ${house.climateZone}` : null,
+        outstandingTasks.length > 0
+          ? `Outstanding/incomplete maintenance tasks (${outstandingTasks.length} overdue or current, highest priority listed):\n${outstandingLines.join("\n")}`
+          : "No outstanding maintenance tasks detected for current period.",
+        house.climateZone ? `Climate zone: ${house.climateZone} (${regionName} region)` : null,
       ].filter(Boolean).join("\n");
 
       const prompt = `You are a seasoned home sale consultant reviewing a property's documented maintenance record to prepare a Resale Readiness Report for the homeowner.
@@ -11682,6 +11747,8 @@ Respond ONLY with valid JSON (no markdown, no code fences):
         meta: {
           wellnessScore,
           maintenanceLogCount: recentLogs.length,
+          serviceRecordCount: houseServiceRecords.length,
+          outstandingTaskCount: outstandingTasks.length,
           systemCount: allHomeSystems.length,
           houseAddress: house.address ?? null,
           houseAge: houseAge ?? null,
