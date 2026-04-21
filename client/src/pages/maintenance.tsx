@@ -18,12 +18,13 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { insertMaintenanceLogSchema, insertCustomMaintenanceTaskSchema, insertHomeSystemSchema, insertTaskOverrideSchema, insertHomeApplianceSchema, insertHomeApplianceManualSchema } from "@shared/schema";
-import type { MaintenanceLog, House, CustomMaintenanceTask, HomeSystem, TaskOverride, HomeAppliance, HomeApplianceManual } from "@shared/schema";
+import type { MaintenanceLog, House, CustomMaintenanceTask, HomeSystem, TaskOverride, HomeAppliance, HomeApplianceManual, InvoiceAnalysis } from "@shared/schema";
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { HomeownerFeatureGate, HomeownerTrialBanner, FreeUserUpgradePrompt } from "@/components/homeowner-feature-gate";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
-import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, ChevronUp, Settings, Plus, Edit, Trash2, Home, FileText, Building2, User, Building, Phone, MessageSquare, AlertTriangle, Thermometer, Cloud, Monitor, Book, ExternalLink, Upload, Trophy, Mail, Handshake, Globe, TrendingDown, PiggyBank, Truck, CheckCircle2, Circle, Download, X, Search, Loader2 } from "lucide-react";
+import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, ChevronUp, Settings, Plus, Edit, Trash2, Home, FileText, Building2, User, Building, Phone, MessageSquare, AlertTriangle, Thermometer, Cloud, Monitor, Book, ExternalLink, Upload, Trophy, Mail, Handshake, Globe, TrendingDown, PiggyBank, Truck, CheckCircle2, Circle, Download, X, Search, Loader2, Scan, AlertCircle } from "lucide-react";
 import { AppointmentScheduler } from "@/components/appointment-scheduler";
 import { CustomMaintenanceTasks } from "@/components/custom-maintenance-tasks";
 import HouseMap from "@/components/house-map";
@@ -1568,6 +1569,25 @@ export default function Maintenance() {
   const [isServiceRecordsExpanded, setIsServiceRecordsExpanded] = useState<boolean>(true);
   const [showAllRecords, setShowAllRecords] = useState<boolean>(false);
 
+  // AI Invoice Scan dialog state
+  const [aiInvoiceOpen, setAiInvoiceOpen] = useState(false);
+  const [aiStep, setAiStep] = useState<"upload" | "review" | "done">("upload");
+  const [aiCompletionMethod, setAiCompletionMethod] = useState<"contractor" | "diy">("contractor");
+  const [aiInvoiceFiles, setAiInvoiceFiles] = useState<File[]>([]);
+  const [aiBeforeFiles, setAiBeforeFiles] = useState<File[]>([]);
+  const [aiAfterFiles, setAiAfterFiles] = useState<File[]>([]);
+  const [aiReceiptFiles, setAiReceiptFiles] = useState<File[]>([]);
+  const [aiAnalysis, setAiAnalysis] = useState<InvoiceAnalysis | null>(null);
+  const [aiAnalyzing, setAiAnalyzing] = useState(false);
+  const [aiConfirming, setAiConfirming] = useState(false);
+  const [aiEditDescription, setAiEditDescription] = useState("");
+  const [aiEditDate, setAiEditDate] = useState("");
+  const [aiEditAmount, setAiEditAmount] = useState("");
+  const [aiEditContractorName, setAiEditContractorName] = useState("");
+  const [aiEditContractorCompany, setAiEditContractorCompany] = useState("");
+  const [aiEditHomeArea, setAiEditHomeArea] = useState("");
+  const [aiEditServiceType, setAiEditServiceType] = useState("");
+
   // Delete confirmation dialog states
   const [deleteApplianceConfirmOpen, setDeleteApplianceConfirmOpen] = useState(false);
   const [applianceToDelete, setApplianceToDelete] = useState<HomeAppliance | null>(null);
@@ -2703,6 +2723,98 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
 
 
+  // AI Invoice Scan helpers for maintenance page
+  const fileToBase64Ai = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+    });
+
+  const openAiInvoiceDialog = () => {
+    setAiStep("upload");
+    setAiCompletionMethod("contractor");
+    setAiInvoiceFiles([]);
+    setAiBeforeFiles([]);
+    setAiAfterFiles([]);
+    setAiReceiptFiles([]);
+    setAiAnalysis(null);
+    setAiInvoiceOpen(true);
+  };
+
+  const runAiAnalysis = async () => {
+    if (!selectedHouseId) {
+      toast({ title: "Error", description: "Please select a house first.", variant: "destructive" });
+      return;
+    }
+    const allFiles = [...aiInvoiceFiles, ...aiReceiptFiles, ...aiBeforeFiles, ...aiAfterFiles];
+    if (allFiles.length === 0) {
+      toast({ title: "Error", description: "Please upload at least one invoice or photo.", variant: "destructive" });
+      return;
+    }
+    setAiAnalyzing(true);
+    try {
+      const toPayloadFiles = async (files: File[]) =>
+        Promise.all(files.map(async (f) => ({ fileData: await fileToBase64Ai(f), fileName: f.name, fileType: f.type })));
+      const payload = {
+        houseId: selectedHouseId,
+        completionMethod: aiCompletionMethod,
+        invoiceFiles: await toPayloadFiles(aiInvoiceFiles),
+        receiptFiles: await toPayloadFiles(aiReceiptFiles),
+        beforePhotoFiles: await toPayloadFiles(aiBeforeFiles),
+        afterPhotoFiles: await toPayloadFiles(aiAfterFiles),
+      };
+      const res = await apiRequest("POST", "/api/invoice-analyses/analyze", payload);
+      if (!res.ok) throw new Error("Analysis failed");
+      const data = await res.json();
+      const a: InvoiceAnalysis = data.analysis;
+      setAiAnalysis(a);
+      setAiEditDescription(a.serviceDescription || "");
+      setAiEditDate(a.serviceDate || new Date().toISOString().split("T")[0]);
+      setAiEditAmount(a.totalAmount || "");
+      setAiEditContractorName(a.contractorName || "");
+      setAiEditContractorCompany(a.contractorCompany || "");
+      setAiEditHomeArea(a.homeArea || "");
+      setAiEditServiceType(a.serviceType || "maintenance");
+      setAiStep("review");
+    } catch {
+      toast({ title: "Analysis failed", description: "Could not analyze your invoice. Please try again.", variant: "destructive" });
+    } finally {
+      setAiAnalyzing(false);
+    }
+  };
+
+  const confirmAiAnalysis = async () => {
+    if (!aiAnalysis) return;
+    setAiConfirming(true);
+    try {
+      const res = await apiRequest("PATCH", `/api/invoice-analyses/${aiAnalysis.id}/confirm`, {
+        serviceDescription: aiEditDescription,
+        serviceDate: aiEditDate,
+        totalAmount: aiEditAmount ? parseFloat(aiEditAmount) : null,
+        contractorName: aiEditContractorName || null,
+        contractorCompany: aiEditContractorCompany || null,
+        homeArea: aiEditHomeArea,
+        serviceType: aiEditServiceType,
+      });
+      if (!res.ok) throw new Error("Confirm failed");
+      const data = await res.json();
+      queryClient.invalidateQueries({ queryKey: ["/api/maintenance-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoice-analyses"] });
+      if (data.newAchievements?.length > 0) {
+        toast({ title: "Achievement Unlocked!", description: data.newAchievements[0]?.title || "New achievement earned!" });
+      }
+      toast({ title: "Record created", description: "Service record added and health score updated." });
+      setAiStep("done");
+      setTimeout(() => setAiInvoiceOpen(false), 1500);
+    } catch {
+      toast({ title: "Error", description: "Failed to save record. Please try again.", variant: "destructive" });
+    } finally {
+      setAiConfirming(false);
+    }
+  };
+
   const handleAddNewMaintenanceLog = () => {
     setEditingMaintenanceLog(null);
     maintenanceLogForm.reset({
@@ -3516,7 +3628,20 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                   </div>
                 )}
                 
-                <div className="flex gap-2 ml-auto">
+                <div className="flex gap-2 ml-auto flex-wrap">
+                  {selectedHouseId && userRole === 'homeowner' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={openAiInvoiceDialog}
+                      className="text-white"
+                      style={{ backgroundColor: '#7c3aed', borderColor: '#7c3aed' }}
+                      data-testid="button-ai-scan-invoice-maintenance"
+                    >
+                      <Scan className="w-4 h-4 mr-1" />
+                      AI Scan Invoice
+                    </Button>
+                  )}
                   <AppointmentScheduler 
                     triggerButtonText="Schedule Visit" 
                     triggerButtonVariant="outline"
@@ -4120,6 +4245,159 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             houseId={selectedHouseId}
           />
         </div>
+
+        {/* AI Invoice Scan Dialog */}
+        <Dialog open={aiInvoiceOpen} onOpenChange={setAiInvoiceOpen}>
+          <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2" style={{ color: '#2c0f5b' }}>
+                <Scan className="w-5 h-5" style={{ color: '#7c3aed' }} />
+                AI Scan Invoice
+              </DialogTitle>
+            </DialogHeader>
+
+            {aiStep === "upload" && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium" style={{ color: '#2c0f5b' }}>Completion Method</label>
+                  <Select value={aiCompletionMethod} onValueChange={(v) => setAiCompletionMethod(v as "contractor" | "diy")}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="contractor">Contractor (invoice/receipt)</SelectItem>
+                      <SelectItem value="diy">DIY (before/after photos + receipt)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {aiCompletionMethod === "contractor" ? (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium" style={{ color: '#2c0f5b' }}>
+                      Invoice / Receipt Photos *
+                    </label>
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-purple-50" style={{ borderColor: '#b6a6f4' }}>
+                      <Upload className="w-8 h-8 mb-2" style={{ color: '#7c3aed' }} />
+                      <span className="text-sm" style={{ color: '#2c0f5b' }}>Upload invoice photos</span>
+                      <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => setAiInvoiceFiles(Array.from(e.target.files || []))} />
+                    </label>
+                    {aiInvoiceFiles.length > 0 && <p className="text-xs text-green-600">{aiInvoiceFiles.length} file(s) selected</p>}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium" style={{ color: '#2c0f5b' }}>Before Photos</label>
+                      <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-purple-50" style={{ borderColor: '#b6a6f4' }}>
+                        <Upload className="w-6 h-6 mb-1" style={{ color: '#7c3aed' }} />
+                        <span className="text-xs" style={{ color: '#2c0f5b' }}>Before photos</span>
+                        <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => setAiBeforeFiles(Array.from(e.target.files || []))} />
+                      </label>
+                      {aiBeforeFiles.length > 0 && <p className="text-xs text-green-600">{aiBeforeFiles.length} before photo(s)</p>}
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium" style={{ color: '#2c0f5b' }}>After Photos</label>
+                      <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-purple-50" style={{ borderColor: '#b6a6f4' }}>
+                        <Upload className="w-6 h-6 mb-1" style={{ color: '#7c3aed' }} />
+                        <span className="text-xs" style={{ color: '#2c0f5b' }}>After photos</span>
+                        <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => setAiAfterFiles(Array.from(e.target.files || []))} />
+                      </label>
+                      {aiAfterFiles.length > 0 && <p className="text-xs text-green-600">{aiAfterFiles.length} after photo(s)</p>}
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium" style={{ color: '#2c0f5b' }}>Receipt (optional)</label>
+                      <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-purple-50" style={{ borderColor: '#b6a6f4' }}>
+                        <Upload className="w-6 h-6 mb-1" style={{ color: '#7c3aed' }} />
+                        <span className="text-xs" style={{ color: '#2c0f5b' }}>Receipt photos</span>
+                        <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => setAiReceiptFiles(Array.from(e.target.files || []))} />
+                      </label>
+                      {aiReceiptFiles.length > 0 && <p className="text-xs text-green-600">{aiReceiptFiles.length} receipt(s)</p>}
+                    </div>
+                  </div>
+                )}
+
+                <Button
+                  onClick={runAiAnalysis}
+                  disabled={aiAnalyzing}
+                  className="w-full text-white"
+                  style={{ backgroundColor: '#7c3aed' }}
+                >
+                  {aiAnalyzing ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Analyzing...</> : <><Scan className="w-4 h-4 mr-2" /> Analyze with AI</>}
+                </Button>
+              </div>
+            )}
+
+            {aiStep === "review" && aiAnalysis && (
+              <div className="space-y-4">
+                <div className="p-3 rounded-lg border" style={{ backgroundColor: '#f3e8ff', borderColor: '#b6a6f4' }}>
+                  <p className="text-xs font-medium mb-1" style={{ color: '#7c3aed' }}>AI Confidence: {Math.round((parseFloat(aiAnalysis.confidence || "0")) * 100)}%</p>
+                  {aiAnalysis.aiNotes && <p className="text-xs" style={{ color: '#2c0f5b' }}>{aiAnalysis.aiNotes}</p>}
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-medium" style={{ color: '#2c0f5b' }}>Description</label>
+                    <Input value={aiEditDescription} onChange={(e) => setAiEditDescription(e.target.value)} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium" style={{ color: '#2c0f5b' }}>Date</label>
+                      <Input type="date" value={aiEditDate} onChange={(e) => setAiEditDate(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium" style={{ color: '#2c0f5b' }}>Amount ($)</label>
+                      <Input type="number" placeholder="0.00" value={aiEditAmount} onChange={(e) => setAiEditAmount(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium" style={{ color: '#2c0f5b' }}>Contractor Name</label>
+                      <Input value={aiEditContractorName} onChange={(e) => setAiEditContractorName(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium" style={{ color: '#2c0f5b' }}>Company</label>
+                      <Input value={aiEditContractorCompany} onChange={(e) => setAiEditContractorCompany(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium" style={{ color: '#2c0f5b' }}>Home Area</label>
+                      <Input value={aiEditHomeArea} onChange={(e) => setAiEditHomeArea(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium" style={{ color: '#2c0f5b' }}>Service Type</label>
+                      <Input value={aiEditServiceType} onChange={(e) => setAiEditServiceType(e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+                {aiAnalysis.completionMethod === "diy" && !aiAnalysis.diyVerified && (
+                  <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
+                    <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                    <p className="text-xs text-amber-700">DIY work requires AI verification of before/after photos. Go to Service Records to complete the DIY verification step.</p>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setAiStep("upload")} className="flex-1">Back</Button>
+                  <Button
+                    onClick={confirmAiAnalysis}
+                    disabled={aiConfirming || (aiAnalysis.completionMethod === "diy" && !aiAnalysis.diyVerified)}
+                    className="flex-1 text-white"
+                    style={{ backgroundColor: '#2c0f5b' }}
+                    data-testid="button-confirm-ai-analysis-maintenance"
+                  >
+                    {aiConfirming ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</> : "Confirm & Add Record"}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {aiStep === "done" && (
+              <div className="text-center py-8">
+                <CheckCircle2 className="w-16 h-16 mx-auto mb-4" style={{ color: '#22c55e' }} />
+                <h3 className="text-lg font-semibold" style={{ color: '#2c0f5b' }}>Record Added!</h3>
+                <p className="text-sm text-muted-foreground">Your service record and health score have been updated.</p>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Maintenance Log Form Dialog */}
         <Dialog open={isMaintenanceLogDialogOpen} onOpenChange={setIsMaintenanceLogDialogOpen}>

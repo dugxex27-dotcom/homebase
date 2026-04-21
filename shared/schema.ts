@@ -419,8 +419,11 @@ export const invoiceAnalyses = pgTable("invoice_analyses", {
   serviceType: text("service_type"),
   aiConfidence: text("ai_confidence"), // "high" | "medium" | "low"
   aiNotes: text("ai_notes"), // Any caveats or issues the AI noticed
-  // Link to the maintenance log created on confirmation
+  rawExtraction: jsonb("raw_extraction"), // Full JSON blob from GPT-4o-mini
+  diyVerified: boolean("diy_verified").notNull().default(false), // true if AI verified DIY photos
+  // Links to created records on confirmation
   maintenanceLogId: text("maintenance_log_id"),
+  taskCompletionId: text("task_completion_id"),
   createdAt: timestamp("created_at").defaultNow(),
   confirmedAt: timestamp("confirmed_at"),
 });

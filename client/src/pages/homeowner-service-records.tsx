@@ -136,6 +136,21 @@ export default function HomeownerServiceRecords() {
     queryKey: ['/api/houses'],
   });
 
+  // Load confirmed invoice analyses to reliably power "Verified by AI" badges
+  const { data: confirmedAnalyses = [] } = useQuery<InvoiceAnalysis[]>({
+    queryKey: ['/api/invoice-analyses'],
+    queryFn: async () => {
+      const res = await fetch('/api/invoice-analyses');
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+  const aiVerifiedLogIds = new Set(
+    confirmedAnalyses
+      .filter((a) => a.status === "confirmed" && a.maintenanceLogId)
+      .map((a) => a.maintenanceLogId!)
+  );
+
   // Load maintenance logs (service records)
   const { data: maintenanceLogs, isLoading: maintenanceLogsLoading } = useQuery<MaintenanceLog[]>({
     queryKey: ['/api/maintenance-logs', { homeownerId, houseId: serviceRecordsHouseFilter === 'all' ? undefined : serviceRecordsHouseFilter }],
@@ -351,6 +366,7 @@ export default function HomeownerServiceRecords() {
       if (!res.ok) throw new Error("Confirm failed");
       const data = await res.json();
       queryClient.invalidateQueries({ queryKey: ["/api/maintenance-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoice-analyses"] });
       if (data.newAchievements?.length > 0) {
         toast({ title: "Achievement Unlocked!", description: data.newAchievements[0]?.title || "New achievement earned!" });
       }
@@ -627,7 +643,7 @@ export default function HomeownerServiceRecords() {
                           <h4 className="font-semibold text-foreground">
                             {log.serviceDescription}
                           </h4>
-                          {log.receiptUrls && log.receiptUrls.some((u: string) => u.includes('/invoices/')) && (
+                          {aiVerifiedLogIds.has(log.id) && (
                             <Badge className="text-xs gap-1 bg-purple-100 text-purple-800 border-purple-200 font-medium">
                               <CheckCircle2 className="w-3 h-3" /> Verified by AI
                             </Badge>

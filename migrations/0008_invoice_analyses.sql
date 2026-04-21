@@ -17,7 +17,10 @@ CREATE TABLE IF NOT EXISTS "invoice_analyses" (
         "service_type" text,
         "ai_confidence" text,
         "ai_notes" text,
+        "raw_extraction" jsonb,
+        "diy_verified" boolean NOT NULL DEFAULT false,
         "maintenance_log_id" text,
+        "task_completion_id" text,
         "created_at" timestamp DEFAULT now(),
         "confirmed_at" timestamp
 );

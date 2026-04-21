@@ -15064,7 +15064,7 @@ Severity levels:
       const [analysis] = await db.insert(invoiceAnalyses).values({
         homeownerId: req.session.user.id,
         houseId,
-        status: "pending",
+        status: completionMethod === "diy" && diyVerified ? "pending" : "pending",
         completionMethod,
         invoiceUrls: storedInvoiceUrls,
         beforePhotoUrls: storedBeforeUrls,
@@ -15079,13 +15079,99 @@ Severity levels:
         serviceType: extraction.serviceType,
         aiConfidence: extraction.aiConfidence,
         aiNotes: extraction.aiNotes || (diyVerificationNotes ?? null),
+        rawExtraction: extraction as any,
+        diyVerified,
         maintenanceLogId: null,
+        taskCompletionId: null,
       }).returning();
 
-      res.status(201).json({ ...analysis, diyVerified });
+      res.status(201).json(analysis);
     } catch (err: any) {
       console.error("[INVOICE ANALYSIS] analyze error:", err);
       res.status(500).json({ message: "Failed to analyze invoice" });
+    }
+  });
+
+  // POST /api/invoice-analyses/:id/diy-verify
+  // Run AI verification of DIY before/after/receipt photos for an existing pending analysis.
+  // Must be called before confirming a DIY analysis to update the diyVerified flag.
+  app.post("/api/invoice-analyses/:id/diy-verify", isAuthenticated, requireHomeownerSubscription, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const [analysis] = await db.select().from(invoiceAnalyses).where(eq(invoiceAnalyses.id, id));
+      if (!analysis) return res.status(404).json({ message: "Analysis not found" });
+      if (analysis.homeownerId !== req.session.user.id) return res.status(403).json({ message: "Access denied" });
+      if (analysis.status !== "pending") return res.status(400).json({ message: "Analysis already processed" });
+      if (analysis.completionMethod !== "diy") return res.status(400).json({ message: "DIY verification only applies to DIY analyses" });
+
+      const {
+        beforePhotoFiles = [],   // [{ fileData: base64, fileName, fileType }]
+        afterPhotoFiles = [],
+        receiptFiles = [],
+      } = req.body;
+
+      const allPhotos = [...beforePhotoFiles, ...afterPhotoFiles, ...receiptFiles];
+      if (allPhotos.length === 0 && analysis.beforePhotoUrls?.length === 0 && analysis.afterPhotoUrls?.length === 0) {
+        return res.status(400).json({ message: "Please provide before/after photos or receipts for DIY verification" });
+      }
+
+      // Helper: upload array of files and return stored URLs
+      const uploadFileSet = async (files: Array<{ fileData: string; fileName: string; fileType: string }>): Promise<string[]> => {
+        const urls: string[] = [];
+        for (const f of files) {
+          const base64Data = f.fileData.includes("base64,") ? f.fileData.split("base64,")[1] : f.fileData;
+          const buffer = Buffer.from(base64Data, "base64");
+          const ext = f.fileName.split(".").pop() || "bin";
+          const uniqueName = `${randomUUID()}.${ext}`;
+          const storagePath = `public/invoices/${uniqueName}`;
+          let mime = f.fileType || "application/octet-stream";
+          if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) mime = `image/${ext === "jpg" ? "jpeg" : ext}`;
+          await objectStorageService.uploadFile(storagePath, buffer, mime);
+          urls.push(`/public/invoices/${uniqueName}`);
+        }
+        return urls;
+      };
+
+      // Upload new photos if provided
+      const newBeforeUrls = await uploadFileSet(beforePhotoFiles);
+      const newAfterUrls = await uploadFileSet(afterPhotoFiles);
+      const newReceiptUrls = await uploadFileSet(receiptFiles);
+
+      // Run DIY verification using uploaded file data (if new files provided) or return based on existing
+      let diyVerified = analysis.diyVerified;
+      let verificationNotes = analysis.aiNotes;
+
+      if (allPhotos.length > 0) {
+        try {
+          const photoData = allPhotos.slice(0, 4).map((f) => ({
+            base64: f.fileData.includes("base64,") ? f.fileData.split("base64,")[1] : f.fileData,
+            mimeType: f.fileType || "image/jpeg",
+          }));
+          const verification = await verifyDIYPhotos(photoData);
+          diyVerified = verification.verified;
+          verificationNotes = verification.notes;
+        } catch (verifyErr) {
+          console.error("[INVOICE ANALYSIS] DIY verify error:", verifyErr);
+          return res.status(500).json({ message: "AI verification failed. Please try again." });
+        }
+      }
+
+      // Update the analysis with new photos and verification result
+      const [updated] = await db.update(invoiceAnalyses)
+        .set({
+          diyVerified,
+          aiNotes: verificationNotes,
+          beforePhotoUrls: [...(analysis.beforePhotoUrls || []), ...newBeforeUrls],
+          afterPhotoUrls: [...(analysis.afterPhotoUrls || []), ...newAfterUrls],
+          receiptUrls: [...(analysis.receiptUrls || []), ...newReceiptUrls],
+        })
+        .where(eq(invoiceAnalyses.id, id))
+        .returning();
+
+      res.json({ analysis: updated, diyVerified, verificationNotes });
+    } catch (err: any) {
+      console.error("[INVOICE ANALYSIS] diy-verify error:", err);
+      res.status(500).json({ message: "Failed to verify DIY photos" });
     }
   });
 
@@ -15098,6 +15184,14 @@ Severity levels:
       if (!analysis) return res.status(404).json({ message: "Analysis not found" });
       if (analysis.homeownerId !== req.session.user.id) return res.status(403).json({ message: "Access denied" });
       if (analysis.status !== "pending") return res.status(400).json({ message: "Analysis already processed" });
+
+      // DIY analyses must be verified before confirmation
+      if (analysis.completionMethod === "diy" && !analysis.diyVerified) {
+        return res.status(400).json({
+          message: "DIY work must be verified before confirming. Please upload before/after photos and run the DIY verification step.",
+          code: "DIY_VERIFICATION_REQUIRED",
+        });
+      }
 
       const {
         serviceDescription,
@@ -15137,7 +15231,7 @@ Severity levels:
 
       // Create task completion record for health score
       const now = new Date();
-      await db.insert(taskCompletions).values({
+      const [insertedCompletion] = await db.insert(taskCompletions).values({
         homeownerId: req.session.user.id,
         houseId: analysis.houseId,
         taskId: null,
@@ -15153,11 +15247,11 @@ Severity levels:
         costSavings: null,
         notes: null,
         documentsUploaded: (analysis.invoiceUrls?.length || 0) + (analysis.receiptUrls?.length || 0),
-      });
+      }).returning();
 
-      // Update analysis record to confirmed
+      // Update analysis record to confirmed, link both log and task completion
       const [updated] = await db.update(invoiceAnalyses)
-        .set({ status: "confirmed", maintenanceLogId: log.id, confirmedAt: now })
+        .set({ status: "confirmed", maintenanceLogId: log.id, taskCompletionId: insertedCompletion.id, confirmedAt: now })
         .where(eq(invoiceAnalyses.id, id))
         .returning();
 
