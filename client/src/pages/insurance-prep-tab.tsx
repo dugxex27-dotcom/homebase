@@ -107,23 +107,28 @@ export function InsurancePrepTab({ houses }: Props) {
   });
 
   const emailMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (vars: { sentTo: string; didCc: boolean }) => {
       if (!result) throw new Error("No result");
       const res = await apiRequest("/api/insurance-prep/send-email", "POST", {
-        adjusterEmail: adjusterEmail.trim(),
+        adjusterEmail: vars.sentTo,
         claimArea: result.claimArea,
         claimMemo: result.claimMemo,
         evidenceTimeline: result.evidenceTimeline,
         documentsToGather: result.documentsToGather,
         houseAddress: result.meta.houseAddress ?? null,
-        ccSelf,
+        ccSelf: vars.didCc,
       });
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
       setEmailDialogOpen(false);
       setAdjusterEmail("");
-      toast({ title: "Email sent", description: `Claim package sent to ${adjusterEmail}.` });
+      toast({
+        title: "Email sent",
+        description: vars.didCc
+          ? `Sent to ${vars.sentTo} — a copy was also sent to your inbox.`
+          : `Claim package sent to ${vars.sentTo}.`,
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/insurance-prep/email-logs"] });
     },
     onError: (err: unknown) => {
@@ -765,7 +770,7 @@ export function InsurancePrepTab({ houses }: Props) {
                 onChange={e => setAdjusterEmail(e.target.value)}
                 onKeyDown={e => {
                   if (e.key === "Enter" && adjusterEmail.trim() && !emailMutation.isPending) {
-                    emailMutation.mutate();
+                    emailMutation.mutate({ sentTo: adjusterEmail.trim(), didCc: ccSelf });
                   }
                 }}
                 className="text-sm"
@@ -793,7 +798,7 @@ export function InsurancePrepTab({ houses }: Props) {
               Cancel
             </Button>
             <Button
-              onClick={() => emailMutation.mutate()}
+              onClick={() => emailMutation.mutate({ sentTo: adjusterEmail.trim(), didCc: ccSelf })}
               disabled={!adjusterEmail.trim() || emailMutation.isPending}
               className="bg-blue-600 hover:bg-blue-700 text-white"
               data-testid="button-send-email"
