@@ -12019,6 +12019,7 @@ Respond ONLY with valid JSON (no markdown, no code fences):
         })).max(50),
         documentsToGather: z.array(z.string().max(300)).max(20),
         houseAddress: z.string().nullable().optional(),
+        ccSelf: z.boolean().optional(),
       });
 
       let body: z.infer<typeof bodySchema>;
@@ -12028,7 +12029,14 @@ Respond ONLY with valid JSON (no markdown, no code fences):
         return res.status(400).json({ message: "Invalid request body" });
       }
 
-      const { adjusterEmail, claimArea, claimMemo, evidenceTimeline, documentsToGather, houseAddress } = body;
+      const { adjusterEmail, claimArea, claimMemo, evidenceTimeline, documentsToGather, houseAddress, ccSelf } = body;
+
+      let ccEmail: string | undefined;
+      if (ccSelf) {
+        const userId = req.session.user.id;
+        const user = await storage.getUser(userId);
+        ccEmail = user?.email ?? undefined;
+      }
 
       const esc = (s: string) => s
         .replace(/&/g, "&amp;")
@@ -12126,6 +12134,7 @@ ${esc(claimMemo)}
         subject: `Insurance Claim Package — ${claimArea}${houseAddress ? ` · ${houseAddress}` : ""}`,
         text: textBody,
         html: htmlBody,
+        ...(ccEmail ? { cc: ccEmail } : {}),
       });
 
       if (!sent) {

@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -93,6 +94,13 @@ export function InsurancePrepTab({ houses }: Props) {
   const [memoExpanded, setMemoExpanded] = useState(true);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [adjusterEmail, setAdjusterEmail] = useState("");
+  const [ccSelf, setCcSelf] = useState(true);
+
+  useEffect(() => {
+    if (emailDialogOpen) {
+      setCcSelf(true);
+    }
+  }, [emailDialogOpen]);
 
   const emailMutation = useMutation({
     mutationFn: async () => {
@@ -104,6 +112,7 @@ export function InsurancePrepTab({ houses }: Props) {
         evidenceTimeline: result.evidenceTimeline,
         documentsToGather: result.documentsToGather,
         houseAddress: result.meta.houseAddress ?? null,
+        ccSelf,
       });
       return res.json();
     },
@@ -715,6 +724,17 @@ export function InsurancePrepTab({ houses }: Props) {
                 className="text-sm"
                 data-testid="input-adjuster-email"
               />
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <Checkbox
+                id="cc-self"
+                checked={ccSelf}
+                onCheckedChange={checked => setCcSelf(checked === true)}
+                data-testid="checkbox-cc-self"
+              />
+              <Label htmlFor="cc-self" className="text-sm text-gray-600 cursor-pointer select-none">
+                Send me a copy
+              </Label>
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-0">

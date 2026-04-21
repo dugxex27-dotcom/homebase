@@ -21,6 +21,7 @@ interface EmailData {
   subject: string;
   text: string;
   html: string;
+  cc?: string | string[];
 }
 
 // Logo URL for email templates
@@ -96,6 +97,7 @@ export async function sendEmail(data: EmailData): Promise<boolean> {
       subject: subjectPrefix + data.subject,
       text: data.text,
       html: data.html,
+      ...(data.cc && !testEmailOverride ? { cc: data.cc } : {}),
       trackingSettings: {
         clickTracking: { enable: false, enableText: false },
       },
