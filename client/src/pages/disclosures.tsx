@@ -263,6 +263,7 @@ export default function Disclosures() {
   const [copiedSectionId, setCopiedSectionId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [sectionCopied, setSectionCopied] = useState(false);
+  const [aiSuggestedKeys, setAiSuggestedKeys] = useState<Set<string>>(new Set());
   const [selectedHouseId, setSelectedHouseId] = useState<string | null>(null);
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [autosaving, setAutosaving] = useState(false);
@@ -393,6 +394,47 @@ export default function Disclosures() {
     },
   });
 
+  const aiSuggestMutation = useMutation({
+    mutationFn: async () => {
+      if (!houseId) throw new Error("No house selected");
+      const questions = activeSections.flatMap(s =>
+        s.questions.map(q => ({
+          id: q.id,
+          text: q.text,
+          type: q.type,
+          ...(q.options ? { options: q.options } : {}),
+        }))
+      );
+      const res = await apiRequest(`/api/houses/${houseId}/disclosure/ai-suggest`, "POST", { questions });
+      return res.json() as Promise<{ suggestions: Record<string, string | number> }>;
+    },
+    onSuccess: (data) => {
+      const newSuggestions = data.suggestions ?? {};
+      const newAiKeys = new Set<string>();
+      setAnswers(prev => {
+        const updated = { ...prev };
+        for (const [key, value] of Object.entries(newSuggestions)) {
+          const existing = prev[key];
+          if (existing === null || existing === undefined || existing === "") {
+            updated[key] = value;
+            newAiKeys.add(key);
+          }
+        }
+        scheduleAutosave(updated);
+        return updated;
+      });
+      setAiSuggestedKeys(newAiKeys);
+      const count = Object.keys(newSuggestions).length;
+      toast({
+        title: `AI suggested ${count} answer${count !== 1 ? "s" : ""}`,
+        description: count > 0 ? "Review and adjust as needed. AI-suggested answers are highlighted." : "Not enough property data to suggest answers yet.",
+      });
+    },
+    onError: () => {
+      toast({ title: "AI suggestion failed", description: "Unable to generate suggestions. Please try again.", variant: "destructive" });
+    },
+  });
+
   const saveMutationRef = useRef(saveMutation);
   useEffect(() => { saveMutationRef.current = saveMutation; }, [saveMutation]);
 
@@ -411,6 +453,13 @@ export default function Disclosures() {
       const updated = { ...prev, [id]: val };
       scheduleAutosave(updated);
       return updated;
+    });
+    // Clear AI-suggested flag when user manually edits a field
+    setAiSuggestedKeys(prev => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
     });
   }, [scheduleAutosave]);
 
@@ -599,12 +648,27 @@ export default function Disclosures() {
       <div className="max-w-3xl mx-auto px-4 py-6">
         {/* Header */}
         <div className="mb-4">
-          <div className="flex items-center gap-2 mb-1">
-            <FileText className="w-5 h-5 text-purple-700" />
-            <h1 className="text-xl font-bold text-gray-900">Property Disclosure Wizard</h1>
-            <Badge variant="secondary" className="text-xs">
-              {stateCode !== "UNKNOWN" ? `${stateCode} Form` : "Generic Form"}
-            </Badge>
+          <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
+            <div className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-purple-700" />
+              <h1 className="text-xl font-bold text-gray-900">Property Disclosure Wizard</h1>
+              <Badge variant="secondary" className="text-xs">
+                {stateCode !== "UNKNOWN" ? `${stateCode} Form` : "Generic Form"}
+              </Badge>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => aiSuggestMutation.mutate()}
+              disabled={aiSuggestMutation.isPending || !houseId}
+              className="border-purple-300 text-purple-700 hover:bg-purple-50 h-8 px-3 text-xs font-medium"
+            >
+              {aiSuggestMutation.isPending ? (
+                <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Analyzing…</>
+              ) : (
+                <><Sparkles className="w-3.5 h-3.5 mr-1.5" />Suggest with AI</>
+              )}
+            </Button>
           </div>
           <p className="text-sm text-gray-500">
             {formTitle} — guided walkthrough
@@ -705,6 +769,7 @@ export default function Disclosures() {
           <CardContent className="space-y-6">
             {currentSection.questions.map(question => {
               const isPrefilled = prefillKeys.has(question.id);
+              const isAiSuggested = aiSuggestedKeys.has(question.id);
               const val = answers[question.id] ?? null;
               const detailVal = String(answers[`${question.id}_details`] ?? "");
               return (
@@ -714,11 +779,18 @@ export default function Disclosures() {
                       <span className="font-bold text-purple-700 mr-1">Q{question.questionNumber}.</span>
                       {question.text}
                     </p>
-                    {question.hint && isPrefilled && (
-                      <span className="inline-flex items-center gap-1 text-xs text-purple-600 mt-0.5">
-                        <Info className="w-3 h-3" />{question.hint}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                      {question.hint && isPrefilled && (
+                        <span className="inline-flex items-center gap-1 text-xs text-purple-600">
+                          <Info className="w-3 h-3" />{question.hint}
+                        </span>
+                      )}
+                      {isAiSuggested && (
+                        <span className="inline-flex items-center gap-1 text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full font-medium">
+                          <Sparkles className="w-3 h-3" />AI suggested
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <QuestionWidget
                     question={question}

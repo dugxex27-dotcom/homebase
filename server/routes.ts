@@ -11206,6 +11206,129 @@ Return ONLY a JSON object with these fields (use null for any field you cannot c
 
   app.put("/api/houses/:houseId/disclosure", isAuthenticated, requirePropertyOwner, handleDisclosurePut);
 
+  // AI Disclosure Suggestion: POST /api/houses/:houseId/disclosure/ai-suggest
+  // Accepts the current form's question list, fetches house/systems/logs, calls GPT-4o-mini,
+  // and returns suggested answers keyed by question ID.
+  app.post("/api/houses/:houseId/disclosure/ai-suggest", isAuthenticated, requireHomeownerSubscription, async (req: any, res) => {
+    try {
+      const { houseId } = req.params;
+      const userId = req.session.user.id;
+
+      // Ownership check
+      const house = await storage.getHouse(houseId);
+      if (!house || house.homeownerId !== userId) {
+        return res.status(403).json({ message: "Access denied to this property" });
+      }
+
+      const { questions } = req.body;
+      if (!Array.isArray(questions) || questions.length === 0) {
+        return res.status(400).json({ message: "questions array is required" });
+      }
+
+      // Fetch data for AI context in parallel
+      const [systemRows, logRows, applianceRows] = await Promise.all([
+        db.select().from(homeSystems).where(eq(homeSystems.houseId, houseId)),
+        db.select().from(maintenanceLogs).where(eq(maintenanceLogs.houseId, houseId)),
+        db.select().from(homeAppliances).where(eq(homeAppliances.houseId, houseId)),
+      ]);
+
+      // Build context string from available property data
+      const contextLines: string[] = ["PROPERTY INFORMATION:"];
+      if (house.yearBuilt) contextLines.push(`- Year Built: ${house.yearBuilt}`);
+      if (house.address) contextLines.push(`- Address: ${house.address}`);
+      if ((house as any).foundationType) contextLines.push(`- Foundation Type: ${(house as any).foundationType}`);
+      if ((house as any).roofType) contextLines.push(`- Roof Type: ${(house as any).roofType}`);
+      if ((house as any).hvacType) contextLines.push(`- HVAC Type: ${(house as any).hvacType}`);
+      if ((house as any).primaryHeatingFuel) contextLines.push(`- Primary Heating Fuel: ${(house as any).primaryHeatingFuel}`);
+      if ((house as any).plumbingType) contextLines.push(`- Plumbing Type: ${(house as any).plumbingType}`);
+      if ((house as any).waterHeaterType) contextLines.push(`- Water Heater Type: ${(house as any).waterHeaterType}`);
+      if ((house as any).garageType) contextLines.push(`- Garage Type: ${(house as any).garageType}`);
+      if ((house as any).squareFeet) contextLines.push(`- Square Feet: ${(house as any).squareFeet}`);
+
+      if (systemRows.length > 0) {
+        contextLines.push("\nHOME SYSTEMS:");
+        for (const sys of systemRows) {
+          const brandModel = [sys.brand, sys.model].filter(Boolean).join(" ");
+          const parts = [sys.systemType, brandModel ? `(${brandModel})` : null, sys.installationYear ? `installed ${sys.installationYear}` : null].filter(Boolean);
+          contextLines.push(`- ${parts.join(" ")}`);
+        }
+      }
+
+      if (logRows.length > 0) {
+        contextLines.push("\nMAINTENANCE HISTORY (most recent 20 entries):");
+        for (const log of logRows.slice(-20)) {
+          const desc = log.serviceDescription ? log.serviceDescription.slice(0, 120) : null;
+          const parts = [log.serviceDate, log.serviceType, log.homeArea ? `(${log.homeArea})` : null, desc ? `— ${desc}` : null].filter(Boolean);
+          contextLines.push(`- ${parts.join(" ")}`);
+        }
+      }
+
+      if (applianceRows.length > 0) {
+        contextLines.push("\nAPPLIANCES:");
+        for (const ap of applianceRows) {
+          const brandModel = [ap.make, ap.model].filter(Boolean).join(" ");
+          const parts = [ap.name, brandModel ? `(${brandModel})` : null, ap.yearInstalled ? `installed ${ap.yearInstalled}` : null].filter(Boolean);
+          contextLines.push(`- ${parts.join(" ")}`);
+        }
+      }
+
+      const context = contextLines.join("\n");
+
+      const prompt = `You are helping a homeowner fill out a Property Condition Disclosure form using their documented property records.
+
+${context}
+
+Based ONLY on the property information above, suggest answers for the following disclosure questions.
+ONLY answer questions where you have clear evidence from the provided data. Omit any question you cannot answer confidently.
+
+Answer format rules:
+- yes_no_unknown type: answer must be exactly one of: "Yes", "No", "Unknown"
+- yes_no type: answer must be exactly one of: "Yes", "No"
+- select type: answer must be EXACTLY one of the listed options (case-sensitive)
+- number type: return a number (integer or decimal, no quotes)
+- text type: return a concise descriptive string
+
+Return ONLY a JSON object where keys are question IDs and values are the suggested answers.
+Do NOT include questions you cannot confidently answer. Do NOT include null values.
+
+Questions:
+${JSON.stringify(questions.map((q: any) => ({ id: q.id, text: q.text, type: q.type, ...(q.options ? { options: q.options } : {}) })), null, 2)}`;
+
+      const openai = new OpenAI({
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+      });
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 1200,
+        response_format: { type: "json_object" },
+      });
+
+      let suggestions: Record<string, unknown> = {};
+      try {
+        suggestions = JSON.parse(completion.choices[0]?.message?.content ?? "{}");
+      } catch {
+        suggestions = {};
+      }
+
+      // Validate: only keep keys that match the requested question IDs and have non-null values
+      const validIds = new Set(questions.map((q: any) => q.id));
+      const validated: Record<string, unknown> = {};
+      for (const [key, val] of Object.entries(suggestions)) {
+        if (validIds.has(key) && val !== null && val !== undefined && val !== "") {
+          validated[key] = val;
+        }
+      }
+
+      res.json({ suggestions: validated });
+    } catch (error) {
+      console.error("[AI DISCLOSURE SUGGEST] Error:", error);
+      res.status(500).json({ message: "Failed to generate AI suggestions" });
+    }
+  });
+
   // Contractor subscription endpoint
   app.get('/api/contractor/subscription', async (req: any, res) => {
     try {
