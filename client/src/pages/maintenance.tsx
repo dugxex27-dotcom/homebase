@@ -4065,7 +4065,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             })()}
 
             {/* AI Maintenance Coach Card */}
-            {selectedHouseId && (
+            {selectedHouseId && !isContractor && (
               <div className="mb-6">
                 <div className="rounded-xl border border-purple-200 bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/30 dark:to-background dark:border-purple-800 overflow-hidden">
                   {/* Header — always visible */}
