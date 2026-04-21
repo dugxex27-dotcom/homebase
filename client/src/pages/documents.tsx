@@ -227,7 +227,7 @@ export default function Documents() {
   const monitorCount = deficiencies.filter(d => d.severity === "monitor").length;
 
   return (
-    <div className="min-h-screen pb-20 lg:pb-0">
+    <div className="min-h-screen pb-20 lg:pb-0" data-tour-id="documents">
       <PageHero
         eyebrow="Secure storage"
         title="Documents & Disclosures"

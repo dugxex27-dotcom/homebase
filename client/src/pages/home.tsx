@@ -202,7 +202,7 @@ export default function Home() {
       {typedUser?.role === 'homeowner' && houses.length > 0 && (
         <section className="py-6 sm:py-8" style={{ backgroundColor: '#ffffff' }}>
           <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
-            <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-white shadow-md">
+            <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-white shadow-md" data-tour-id="resale-report">
               <CardContent className="p-4 sm:p-6">
                 <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                   <div className="flex-1 text-center md:text-left">

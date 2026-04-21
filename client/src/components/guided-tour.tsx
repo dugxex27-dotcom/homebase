@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { X, ChevronRight, CheckCircle2, Home, Wrench, ClipboardList, Package, Users, Trophy, ArrowRight, Star, Plus, Settings } from "lucide-react";
+import { X, ChevronRight, CheckCircle2, Home, Wrench, ClipboardList, Package, Users, Trophy, ArrowRight, Star, Settings, TrendingUp, FolderOpen } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import type { User } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -43,18 +43,18 @@ const STEPS: StepDef[] = [
     preferBelow: true,
   },
   {
-    tourId: "add-home",
-    page: "/maintenance",
-    title: "Add Your Property",
-    body: "Head to the Maintenance page and click 'Add House' to enter your home's address, year built, and details. You can track multiple properties — great for a vacation home or rental.",
-    icon: Plus,
+    tourId: "resale-report",
+    page: "/",
+    title: "AI Resale Readiness Report",
+    body: "Thinking about selling? Generate an AI-powered report that grades your home's resale readiness, highlights buyer strengths, surfaces concerns to fix, and gives you a prioritized action plan.",
+    icon: TrendingUp,
     preferBelow: true,
   },
   {
     tourId: "home-systems",
     page: "/maintenance",
     title: "Home Systems & Features",
-    body: "Check off every system your home has — heating, cooling, water, roof, and more. Use the pencil/plus icon next to each system to log its installation year. This unlocks age-based maintenance recommendations personalized to your equipment.",
+    body: "Check off every system your home has — heating, cooling, water, roof, and more. Log each system's installation year to unlock age-based maintenance recommendations personalized to your equipment.",
     icon: Settings,
     preferBelow: true,
   },
@@ -89,6 +89,14 @@ const STEPS: StepDef[] = [
     body: "Add your appliances with model and serial numbers. We'll store your owner's manuals and alert you to any recalls or warranty expirations automatically.",
     icon: Package,
     preferBelow: false,
+  },
+  {
+    tourId: "documents",
+    page: "/documents",
+    title: "Documents & Disclosures",
+    body: "Store all your home records in one secure place — inspection reports, warranties, permits, insurance docs, and seller disclosure forms. Everything you need for a smooth sale or insurance claim.",
+    icon: FolderOpen,
+    preferBelow: true,
   },
   {
     tourId: "find-contractors",
@@ -494,17 +502,16 @@ export function GuidedTour() {
       setTargetRect(null);
       setTourState({ phase: "tour", stepIndex: nextIndex });
     } else {
-      // Tour complete
+      // Tour complete — keep "inactive" state in localStorage so it never reappears
       setTourState({ phase: "inactive", stepIndex: 0 });
-      localStorage.removeItem(TOUR_STATE_KEY);
       completeMutation.mutate();
       setLocation("/");
     }
   }, [tourState.stepIndex, setTourState, completeMutation, setLocation]);
 
   const skipTour = useCallback(() => {
+    // Keep "inactive" state in localStorage so tour never reappears, even if API call fails
     setTourState({ phase: "inactive", stepIndex: 0 });
-    localStorage.removeItem(TOUR_STATE_KEY);
     completeMutation.mutate();
   }, [setTourState, completeMutation]);
 
