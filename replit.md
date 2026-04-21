@@ -71,12 +71,14 @@ Preferred communication style: Simple, everyday language.
     - **Verified Service badge**: shown on reviews that have `isVerifiedService=true` (always true for new reviews since service record is required).
     - "Request Review" button in contractor's service records page for completed jobs with a linked homeownerId.
 - **AI Invoice Analysis & Verification (Task #19)**:
-    - Homeowners upload invoice/receipt photos (or PDFs) from the Service Records page via "AI Scan Invoice" button.
-    - GPT-4o-mini vision extracts: service description, date, total amount, contractor name/company, home area, service type, and AI confidence level.
-    - DIY flow: users also upload before/after photos + material receipts; AI verifies the work is legitimate DIY.
-    - Two-step review dialog: upload step → review/edit AI-extracted data → confirm to create maintenance log and update Home Wellness Score.
-    - "Verified by AI" badge appears on service records created via the AI invoice flow.
-    - DB table: `invoice_analyses` (`0008_invoice_analyses.sql`). Service: `server/invoice-analysis-service.ts`. Routes: POST `/api/invoice-analyses/analyze`, PATCH `/api/invoice-analyses/:id/confirm`, PATCH `/api/invoice-analyses/:id/reject`, GET `/api/invoice-analyses`.
+    - Homeowners upload invoice/receipt photos from the Maintenance and Service Records pages via "AI Scan Invoice" button.
+    - GPT-4o-mini vision extracts: service description, date, total amount, contractor name/company, home area, service type, and AI confidence level (high/medium/low).
+    - Invalid images (non-invoices) return 422 INVALID_INVOICE and show a specific user-facing toast.
+    - Contractor flow (3 steps): upload invoice → review/edit extracted data → confirm to create maintenance log.
+    - DIY flow (4 steps): upload optional material receipt → **explicit diy-verify step** (before photos + after photos + optional receipt; AI verifies completion) → review/edit → confirm. Confirm is gated: DIY analyses require diyVerified=true.
+    - "Verified by AI" badge appears on maintenance records created via the AI invoice flow.
+    - API contract (implemented): JSON + base64 payloads (not multipart). Status values: pending/confirmed/rejected. Receipt is optional in both steps.
+    - DB table: `invoice_analyses` (`0008_invoice_analyses.sql`). Service: `server/invoice-analysis-service.ts`. Routes: POST `/api/invoice-analyses/analyze` (returns 422 on invalid invoice), POST `/api/invoice-analyses/:id/diy-verify`, PATCH `/api/invoice-analyses/:id/confirm`, PATCH `/api/invoice-analyses/:id/reject`, GET `/api/invoice-analyses`.
 - **Error Tracking**: React ErrorBoundary, client-side error logger, and database schema for error tracking accessible via an admin console.
 
 ## External Dependencies
