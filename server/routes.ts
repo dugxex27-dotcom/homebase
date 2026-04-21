@@ -14972,15 +14972,14 @@ Severity levels:
         houseId,
         completionMethod = "contractor",
         invoiceFiles = [],   // [{ fileData: base64, fileName, fileType }]
-        beforePhotoFiles = [],
-        afterPhotoFiles = [],
         receiptFiles = [],
+        // Note: beforePhotoFiles/afterPhotoFiles are NOT accepted here — they belong in /diy-verify
       } = req.body;
 
       if (!houseId) return res.status(400).json({ message: "houseId is required" });
 
       // Limit file count per request to prevent abuse
-      const totalFiles = invoiceFiles.length + beforePhotoFiles.length + afterPhotoFiles.length + receiptFiles.length;
+      const totalFiles = invoiceFiles.length + receiptFiles.length;
       if (totalFiles > 10) {
         return res.status(400).json({ message: "Too many files. Please upload at most 10 files at once." });
       }
@@ -15049,37 +15048,15 @@ Severity levels:
         }
       }
 
-      // Validation passed — now upload all file sets in parallel
-      const [storedInvoiceUrls, storedBeforeUrls, storedAfterUrls, storedReceiptUrls] = await Promise.all([
+      // Validation passed — now upload files (before/after photos are handled by /diy-verify)
+      const [storedInvoiceUrls, storedReceiptUrls] = await Promise.all([
         uploadFileSet(invoiceFiles),
-        uploadFileSet(beforePhotoFiles),
-        uploadFileSet(afterPhotoFiles),
         uploadFileSet(receiptFiles),
       ]);
 
-      // For DIY: run verification only if before/after photos are included during analyze
-      // (separate /diy-verify endpoint handles explicit post-review verification)
-      let diyVerified = false;
-      let diyVerificationNotes: string | null = null;
-      if (completionMethod === "diy") {
-        const photosToVerify = [...beforePhotoFiles, ...afterPhotoFiles, ...receiptFiles];
-        if (photosToVerify.length > 0) {
-          try {
-            const photoData = photosToVerify.slice(0, 4).map((f) => ({
-              base64: f.fileData.includes("base64,") ? f.fileData.split("base64,")[1] : f.fileData,
-              mimeType: f.fileType || "image/jpeg",
-            }));
-            const verification = await verifyDIYPhotos(photoData);
-            diyVerified = verification.verified;
-            diyVerificationNotes = verification.notes;
-            if (!extraction.aiNotes) {
-              extraction.aiNotes = verification.notes;
-            }
-          } catch (verifyErr) {
-            console.error("[INVOICE ANALYSIS] DIY verification error:", verifyErr);
-          }
-        }
-      }
+      // DIY analyses always start unverified — the explicit /diy-verify endpoint with
+      // mandatory before+after photos is the only way to set diyVerified=true.
+      const diyVerified = false;
 
       // Create invoice_analyses record
       const [analysis] = await db.insert(invoiceAnalyses).values({
@@ -15088,8 +15065,8 @@ Severity levels:
         status: "pending",
         completionMethod,
         invoiceUrls: storedInvoiceUrls,
-        beforePhotoUrls: storedBeforeUrls,
-        afterPhotoUrls: storedAfterUrls,
+        beforePhotoUrls: [],
+        afterPhotoUrls: [],
         receiptUrls: storedReceiptUrls,
         serviceDescription: extraction.serviceDescription,
         serviceDate: extraction.serviceDate,
@@ -15099,7 +15076,7 @@ Severity levels:
         homeArea: extraction.homeArea,
         serviceType: extraction.serviceType,
         aiConfidence: extraction.aiConfidence,
-        aiNotes: extraction.aiNotes || (diyVerificationNotes ?? null),
+        aiNotes: extraction.aiNotes,
         rawExtraction: JSON.parse(JSON.stringify(extraction)) as Record<string, unknown>,
         diyVerified,
         maintenanceLogId: null,
@@ -15217,12 +15194,17 @@ Severity levels:
       if (analysis.homeownerId !== req.session.user.id) return res.status(403).json({ message: "Access denied" });
       if (analysis.status !== "pending") return res.status(400).json({ message: "Analysis already processed" });
 
-      // DIY analyses must be verified before confirmation
-      if (analysis.completionMethod === "diy" && !analysis.diyVerified) {
-        return res.status(400).json({
-          message: "DIY work must be verified before confirming. Please upload before/after photos and run the DIY verification step.",
-          code: "DIY_VERIFICATION_REQUIRED",
-        });
+      // DIY analyses must be verified before confirmation — require diyVerified flag
+      // AND persisted before+after photos to prevent flag-only bypass
+      if (analysis.completionMethod === "diy") {
+        const hasBeforePhotos = (analysis.beforePhotoUrls?.length ?? 0) > 0;
+        const hasAfterPhotos = (analysis.afterPhotoUrls?.length ?? 0) > 0;
+        if (!analysis.diyVerified || !hasBeforePhotos || !hasAfterPhotos) {
+          return res.status(400).json({
+            message: "DIY work must be verified before confirming. Please upload before AND after photos in the verification step.",
+            code: "DIY_VERIFICATION_REQUIRED",
+          });
+        }
       }
 
       const {
