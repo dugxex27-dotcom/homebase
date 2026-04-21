@@ -2119,6 +2119,7 @@ export const weatherForecastRemindersSent = pgTable("weather_forecast_reminders_
   triggerType: text("trigger_type").notNull(),
   sentAt: timestamp("sent_at").defaultNow().notNull(),
 }, (table) => [
+  uniqueIndex("UX_wfr_user_house_trigger").on(table.userId, table.houseId, table.triggerType),
   index("IDX_wfr_user").on(table.userId),
   index("IDX_wfr_sent_at").on(table.sentAt),
 ]);

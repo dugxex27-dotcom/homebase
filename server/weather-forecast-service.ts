@@ -154,18 +154,21 @@ export function detectForecastTriggers(periods: ForecastPeriod[]): ForecastTrigg
     }
 
     if (!highWindsFound) {
-      const windText = period.windSpeed.toLowerCase();
-      const windMatch = windText.match(/(\d+)\s*(to\s*(\d+))?\s*mph/);
-      if (windMatch) {
-        const windMax = windMatch[3] ? parseInt(windMatch[3]) : parseInt(windMatch[1]);
-        if (windMax >= 40) {
-          highWindsFound = true;
-          triggers.push({
-            trigger: 'high_winds',
-            description: `High winds expected — ${period.windSpeed}`,
-            expectedDate: period.name,
-          });
-        }
+      const windSpeedText = period.windSpeed.toLowerCase();
+      const detailText = (period.shortForecast + ' ' + period.detailedForecast).toLowerCase();
+      const allWindText = windSpeedText + ' ' + detailText;
+      const speedMatch = windSpeedText.match(/(\d+)\s*(?:to\s*(\d+))?\s*mph/);
+      const gustMatch = allWindText.match(/gust(?:s?(?:\s+(?:to|up\s+to))?\s+(\d+)\s*mph)/);
+      let windMax = 0;
+      if (speedMatch) windMax = speedMatch[2] ? parseInt(speedMatch[2]) : parseInt(speedMatch[1]);
+      if (gustMatch) windMax = Math.max(windMax, parseInt(gustMatch[1]));
+      if (windMax >= 40) {
+        highWindsFound = true;
+        triggers.push({
+          trigger: 'high_winds',
+          description: `High winds expected — ${period.windSpeed}${gustMatch ? `, gusts to ${gustMatch[1]} mph` : ''}`,
+          expectedDate: period.name,
+        });
       }
     }
 
