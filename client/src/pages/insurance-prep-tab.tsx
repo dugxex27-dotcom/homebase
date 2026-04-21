@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -54,6 +54,14 @@ export function InsurancePrepTab({ houses }: Props) {
   const { toast } = useToast();
   const [selectedHouseId, setSelectedHouseId] = useState<string>(houses[0]?.id ?? "");
   const [claimArea, setClaimArea] = useState<string>("");
+
+  // Sync selectedHouseId when houses finish loading (handles async query)
+  useEffect(() => {
+    if (!selectedHouseId && houses.length > 0) {
+      setSelectedHouseId(houses[0].id);
+    }
+  }, [houses, selectedHouseId]);
+
   const [incidentDescription, setIncidentDescription] = useState("");
   const [incidentDate, setIncidentDate] = useState("");
   const [result, setResult] = useState<InsurancePrepResult | null>(null);

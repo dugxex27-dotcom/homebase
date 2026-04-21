@@ -11766,8 +11766,9 @@ Respond ONLY with valid JSON (no markdown, no code fences):
       const { houseId } = req.params;
       const homeownerId = req.session.user.id;
 
+      const VALID_CLAIM_AREAS = ["Roof", "HVAC", "Plumbing", "Electrical", "Foundation", "Appliances", "Interior", "Exterior", "Garage", "Other"] as const;
       const bodySchema = z.object({
-        claimArea: z.string().min(1).max(100),
+        claimArea: z.enum(VALID_CLAIM_AREAS),
         incidentDescription: z.string().max(1000).optional(),
         incidentDate: z.string().max(20).optional(),
       });
@@ -11846,6 +11847,29 @@ Respond ONLY with valid JSON (no markdown, no code fences):
       // Sort chronologically
       events.sort((a, b) => a.date.localeCompare(b.date));
 
+      // Area-keyword pre-filter: prioritise records related to the selected claim area
+      const AREA_KEYWORDS: Record<string, string[]> = {
+        Roof:        ["roof", "shingle", "gutter", "flashing", "fascia", "soffit", "chimney"],
+        HVAC:        ["hvac", "heat", "cool", "ac ", " ac", "furnace", "air condition", "duct", "thermostat", "filter", "boiler"],
+        Plumbing:    ["plumb", "water", "pipe", "drain", "toilet", "faucet", "leak", "sewer", "septic"],
+        Electrical:  ["electr", "wiring", "circuit", "panel", "outlet", "breaker", "lighting", "switch"],
+        Foundation:  ["foundation", "structur", "crawl", "basement", "slab", "crack", "settlement"],
+        Appliances:  ["appliance", "dishwasher", "refrigerator", "washer", "dryer", "stove", "oven", "microwave"],
+        Interior:    ["interior", "wall", "floor", "ceiling", "drywall", "paint", "carpet", "tile", "window", "door"],
+        Exterior:    ["exterior", "siding", "deck", "fence", "porch", "patio", "driveway", "walkway"],
+        Garage:      ["garage", "opener"],
+      };
+      const areaKws = AREA_KEYWORDS[claimArea] ?? [];
+      const matchesArea = (ev: EventEntry) => {
+        if (areaKws.length === 0) return false; // "Other" — no pre-filter
+        const text = ev.description.toLowerCase() + " " + (ev.area ?? "").toLowerCase();
+        return areaKws.some(kw => text.includes(kw));
+      };
+      // Split into relevant-first, then general, capping total at 40
+      const relevantEvents = events.filter(ev => matchesArea(ev));
+      const generalEvents = events.filter(ev => !matchesArea(ev));
+      const prioritisedEvents = [...relevantEvents, ...generalEvents].slice(0, 40);
+
       const currentYear = new Date().getFullYear();
       const houseAge = house.yearBuilt ? currentYear - house.yearBuilt : null;
       const houseAgeStr = houseAge !== null ? `${houseAge} years old (built ${house.yearBuilt})` : "age unknown";
@@ -11858,8 +11882,8 @@ Respond ONLY with valid JSON (no markdown, no code fences):
         return parts.join(", ");
       }).join("; ");
 
-      // Format event list for the prompt
-      const eventLines = events.slice(0, 40).map(e => {
+      // Format event list for the prompt (area-relevant records first)
+      const eventLines = prioritisedEvents.map(e => {
         const parts = [`[${e.date}]`, e.source === "service_record" ? "(Contractor)" : "(Owner)", e.description];
         if (e.area) parts.push(`— Area: ${e.area}`);
         if (e.cost) parts.push(`— Cost: ${e.cost}`);
@@ -11874,7 +11898,7 @@ Respond ONLY with valid JSON (no markdown, no code fences):
         incidentDescription ? `Incident description: ${incidentDescription}` : null,
         incidentDate ? `Approximate incident date: ${incidentDate}` : null,
         ``,
-        `Full maintenance & service history (last 5 years, ${events.length} total records):`,
+        `Maintenance & service records (last 5 years; ${relevantEvents.length} area-relevant, ${generalEvents.length} general — area-relevant shown first):`,
         eventLines.length > 0 ? eventLines.join("\n") : "No maintenance records on file.",
       ].filter(s => s !== null).join("\n");
 
