@@ -11553,7 +11553,13 @@ Include up to 3 tasks (fewer if fewer than 3 are pending). Do not include null e
         houseId: z.string().optional(),
         taskContext: z.string().optional(),
       });
-      const { issueDescription, houseId, taskContext } = bodySchema.parse(req.body);
+      let parsed: z.infer<typeof bodySchema>;
+      try {
+        parsed = bodySchema.parse(req.body);
+      } catch {
+        return res.status(400).json({ message: "Invalid request body" });
+      }
+      const { issueDescription, houseId, taskContext } = parsed;
 
       // Build house context if a valid house is provided
       let houseContext = "";
@@ -11602,7 +11608,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
         max_tokens: 300,
       });
 
-      const message = completion.choices[0]?.message?.content?.trim() ?? "";
+      const message = completion.choices[0]?.message?.content?.trim() || "I noticed an issue at my home and would like to discuss it with you. Please let me know your availability for an estimate or appointment.";
       res.json({ message });
     } catch (error) {
       console.error("[AI DRAFT MESSAGE] Error:", error);
