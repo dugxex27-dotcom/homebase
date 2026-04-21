@@ -1,5 +1,5 @@
 import { db } from './db';
-import { eq, and, gte } from 'drizzle-orm';
+import { eq, and, gte, lt } from 'drizzle-orm';
 import { users, houses, notificationPreferences, weatherForecastRemindersSent } from '@shared/schema';
 import { geocodeAddress } from './geocoding-service';
 import { isDemoId } from './storage';
@@ -88,7 +88,7 @@ async function cleanupOldReminders(): Promise<void> {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     await db.delete(weatherForecastRemindersSent)
-      .where(eq(weatherForecastRemindersSent.sentAt, thirtyDaysAgo));
+      .where(lt(weatherForecastRemindersSent.sentAt, thirtyDaysAgo));
     console.log('[FORECAST] Cleaned up old forecast reminder records');
   } catch (error) {
     console.error('[FORECAST] Error cleaning up old reminders:', error);

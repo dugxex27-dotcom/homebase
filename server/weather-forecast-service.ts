@@ -1,5 +1,5 @@
 import { db } from './db';
-import { eq, or, ilike, and, gte } from 'drizzle-orm';
+import { eq, or, ilike, and, gte, isNull, sql } from 'drizzle-orm';
 import { maintenanceTasks, customMaintenanceTasks, taskCompletions } from '@shared/schema';
 
 export type WeatherTrigger = 'hard_freeze' | 'heavy_rain' | 'high_winds' | 'extreme_heat' | 'snow_storm';
@@ -61,6 +61,17 @@ const TRIGGER_KEYWORDS: Record<WeatherTrigger, string[]> = {
   extreme_heat: ['hvac', 'air condition', 'cooling', 'fan', 'attic', 'ventil', 'filter', 'refrigerant', 'condenser'],
   snow_storm: ['furnace', 'heating', 'generator', 'walkway', 'driveway', 'ice', 'snow', 'shovel', 'salt', 'de-ice'],
 };
+
+function frequencyToDays(frequencyType: string, frequencyValue: number | null): number {
+  switch (frequencyType) {
+    case 'monthly': return 30;
+    case 'quarterly': return 90;
+    case 'biannually': return 183;
+    case 'annually': return 365;
+    case 'custom': return frequencyValue ?? 365;
+    default: return 365;
+  }
+}
 
 export async function getWeatherForecast(latitude: number, longitude: number): Promise<ForecastPeriod[]> {
   try {
@@ -190,23 +201,54 @@ export async function findRelevantOverdueTasks(
 
   if (triggers.length === 0) return result;
 
-  const twelveMonthsAgo = new Date();
-  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+  const now = new Date();
 
-  const recentCompletions = await db.select({
-    taskTitle: taskCompletions.taskTitle,
+  const completionRows = await db.select({
     taskId: taskCompletions.taskId,
-    taskCategory: taskCompletions.taskCategory,
+    taskTitle: taskCompletions.taskTitle,
     completedAt: taskCompletions.completedAt,
   })
     .from(taskCompletions)
     .where(and(
       eq(taskCompletions.homeownerId, homeownerId),
       eq(taskCompletions.houseId, houseId),
-      gte(taskCompletions.completedAt, twelveMonthsAgo)
     ));
 
-  const recentTitleSet = new Set(recentCompletions.map(c => c.taskTitle.toLowerCase()));
+  const latestCompletionByTitle = new Map<string, Date>();
+  const latestCompletionById = new Map<string, Date>();
+  for (const c of completionRows) {
+    const titleKey = c.taskTitle.toLowerCase();
+    const existing = latestCompletionByTitle.get(titleKey);
+    if (!existing || c.completedAt > existing) {
+      latestCompletionByTitle.set(titleKey, c.completedAt);
+    }
+    if (c.taskId) {
+      const existingId = latestCompletionById.get(c.taskId);
+      if (!existingId || c.completedAt > existingId) {
+        latestCompletionById.set(c.taskId, c.completedAt);
+      }
+    }
+  }
+
+  function isOverdueStandard(taskTitle: string, taskId: string): boolean {
+    const lastById = latestCompletionById.get(taskId);
+    const lastByTitle = latestCompletionByTitle.get(taskTitle.toLowerCase());
+    const last = lastById && lastByTitle
+      ? (lastById > lastByTitle ? lastById : lastByTitle)
+      : (lastById || lastByTitle);
+    if (!last) return true;
+    const defaultWindowDays = 180;
+    const msSinceCompletion = now.getTime() - last.getTime();
+    return msSinceCompletion > defaultWindowDays * 24 * 60 * 60 * 1000;
+  }
+
+  function isOverdueCustom(taskId: string, taskTitle: string, frequencyType: string, frequencyValue: number | null): boolean {
+    const windowDays = frequencyToDays(frequencyType, frequencyValue);
+    const last = latestCompletionById.get(taskId) ?? latestCompletionByTitle.get(taskTitle.toLowerCase());
+    if (!last) return true;
+    const msSinceCompletion = now.getTime() - last.getTime();
+    return msSinceCompletion > windowDays * 24 * 60 * 60 * 1000;
+  }
 
   for (const triggerResult of triggers) {
     const keywords = TRIGGER_KEYWORDS[triggerResult.trigger];
@@ -229,10 +271,10 @@ export async function findRelevantOverdueTasks(
     })
       .from(maintenanceTasks)
       .where(or(...orConditions))
-      .limit(10);
+      .limit(20);
 
     for (const task of standardTasks) {
-      if (!recentTitleSet.has(task.title.toLowerCase())) {
+      if (isOverdueStandard(task.title, task.id)) {
         matchedTasks.push({ ...task, taskType: 'maintenance' });
       }
     }
@@ -249,17 +291,23 @@ export async function findRelevantOverdueTasks(
       title: customMaintenanceTasks.title,
       category: customMaintenanceTasks.category,
       priority: customMaintenanceTasks.priority,
+      frequencyType: customMaintenanceTasks.frequencyType,
+      frequencyValue: customMaintenanceTasks.frequencyValue,
     })
       .from(customMaintenanceTasks)
       .where(and(
         eq(customMaintenanceTasks.homeownerId, homeownerId),
         eq(customMaintenanceTasks.isActive, true),
+        or(
+          eq(customMaintenanceTasks.houseId, houseId),
+          isNull(customMaintenanceTasks.houseId)
+        ),
         or(...customOrConditions)!
       ))
-      .limit(5);
+      .limit(10);
 
     for (const task of customTasks) {
-      if (!recentTitleSet.has(task.title.toLowerCase())) {
+      if (isOverdueCustom(task.id, task.title, task.frequencyType, task.frequencyValue)) {
         matchedTasks.push({
           id: task.id,
           title: task.title,
