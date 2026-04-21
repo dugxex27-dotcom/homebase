@@ -198,6 +198,40 @@ export default function Home() {
           </section>
         </HomeownerFeatureGate>
       )}
+      {/* Resale Readiness Report - Homeowners with houses */}
+      {typedUser?.role === 'homeowner' && houses.length > 0 && (
+        <section className="py-6 sm:py-8" style={{ backgroundColor: '#ffffff' }}>
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
+            <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-white shadow-md">
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                  <div className="flex-1 text-center md:text-left">
+                    <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
+                      <TrendingUp className="w-5 h-5 text-purple-600" />
+                      <h3 className="text-base sm:text-lg font-bold text-purple-800">Thinking about selling?</h3>
+                    </div>
+                    <p className="text-gray-600 text-sm mb-3">Get an AI-powered Resale Readiness Report — graded assessment, buyer strengths, concerns to fix, and a prioritized action plan.</p>
+                  </div>
+                  <div className="flex flex-col gap-2 flex-shrink-0 w-full md:w-auto">
+                    {houses.map((h: House) => (
+                      <Link key={h.id} href={`/resale-report/${h.id}`}>
+                        <Button
+                          variant="outline"
+                          className="w-full border-purple-300 text-purple-700 hover:bg-purple-100 font-medium"
+                          data-testid={`button-resale-report-${h.id}`}
+                        >
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          {houses.length > 1 ? `Report for ${h.name || h.address || 'this home'}` : 'Generate Resale Report'}
+                        </Button>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+      )}
       {/* AI Help Feature - Homeowners Only */}
       {typedUser?.role === 'homeowner' && (
         <section className="py-8 sm:py-12" style={{ backgroundColor: 'var(--theme-primary)' }}>

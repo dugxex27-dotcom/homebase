@@ -11543,6 +11543,156 @@ Include up to 3 tasks (fewer if fewer than 3 are pending). Do not include null e
     }
   });
 
+  // ===== AI HOME RESALE READINESS REPORT =====
+  app.post("/api/houses/:houseId/resale-readiness", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res) => {
+    try {
+      const { houseId } = req.params;
+      const homeownerId = req.session.user.id;
+
+      const house = await storage.getHouse(houseId);
+      if (!house || house.homeownerId !== homeownerId) {
+        return res.status(404).json({ message: "House not found" });
+      }
+
+      const threeYearsAgo = new Date();
+      threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
+      const threeYearsAgoStr = threeYearsAgo.toISOString().slice(0, 10);
+
+      // Fetch all needed data in parallel
+      const [completedTaskRows, allMaintenanceLogs, allHomeSystems] = await Promise.all([
+        db.select().from(taskCompletions).where(eq(taskCompletions.houseId, houseId)),
+        storage.getMaintenanceLogs(homeownerId, houseId),
+        storage.getHomeSystems(homeownerId, houseId),
+      ]);
+
+      const wellnessScore = completedTaskRows.length * 4;
+
+      // Maintenance logs from last 3 years
+      const recentLogs = allMaintenanceLogs.filter(log => {
+        return log.serviceDate >= threeYearsAgoStr;
+      });
+
+      // Group logs by category/area
+      const logsByArea: Record<string, number> = {};
+      for (const log of recentLogs) {
+        const area = log.homeArea ?? "general";
+        logsByArea[area] = (logsByArea[area] ?? 0) + 1;
+      }
+
+      // Home systems: gather names and ages
+      const systemSummary = allHomeSystems.slice(0, 10).map(sys => {
+        const parts = [sys.systemType];
+        if (sys.installationYear) parts.push(`installed ${sys.installationYear}`);
+        if (sys.brand) parts.push(sys.brand);
+        return parts.join(" — ");
+      });
+
+      const currentYear = new Date().getFullYear();
+      const completedThisYear = completedTaskRows.filter(r => r.year === currentYear).length;
+
+      // Build a readable log summary for the prompt
+      const logSummaryLines: string[] = [];
+      for (const [area, count] of Object.entries(logsByArea).sort((a, b) => b[1] - a[1]).slice(0, 8)) {
+        logSummaryLines.push(`  - ${area}: ${count} service record${count > 1 ? "s" : ""}`);
+      }
+
+      const houseAge = house.yearBuilt ? currentYear - house.yearBuilt : null;
+      const houseAgeStr = houseAge !== null ? `${houseAge} years old (built ${house.yearBuilt})` : "age unknown";
+      const homeSysStr = systemSummary.length > 0
+        ? systemSummary.join(", ")
+        : "No home systems on file";
+
+      const contextBlock = [
+        `Property: ${house.address ?? "address not recorded"} — ${houseAgeStr}`,
+        `Home Wellness Score: ${wellnessScore} points (${completedTaskRows.length} total tasks completed across all time)`,
+        `Tasks completed this year (${currentYear}): ${completedThisYear}`,
+        `Total maintenance log entries in last 3 years: ${recentLogs.length}`,
+        recentLogs.length > 0 ? `Service history breakdown:\n${logSummaryLines.join("\n")}` : "No service records in last 3 years.",
+        `Documented home systems (${allHomeSystems.length}): ${homeSysStr}`,
+        house.climateZone ? `Climate zone: ${house.climateZone}` : null,
+      ].filter(Boolean).join("\n");
+
+      const prompt = `You are a seasoned home sale consultant reviewing a property's documented maintenance record to prepare a Resale Readiness Report for the homeowner.
+
+Property data:
+${contextBlock}
+
+Grading scale for context:
+- A (Excellent): Wellness score 100+, 10+ service records in 3 years, most systems documented
+- B (Good): Wellness score 60–99, 5–9 records, several systems on file
+- C (Fair): Wellness score 30–59, 2–4 records, some documentation gaps
+- D (Needs Work): Wellness score < 30 or 1–2 records or very few systems
+- F (Critical Gaps): No service records, no systems, or wellness score 0
+
+Your job:
+1. Assign a letter grade (A, B, C, D, or F) reflecting the overall sell-readiness based on documented history only.
+2. Write a concise summary paragraph (3-4 sentences) that's honest and constructive — not just positive.
+3. List 3–5 Strengths: things documented in this home's history that buyers and agents will find reassuring.
+4. List 3–5 Concerns: gaps or issues that could hurt buyer confidence or trigger inspection flags.
+5. List 4–6 Action Items: specific steps to take before listing, ranked by impact.
+
+Be honest. If the data shows gaps, say so. Each bullet should be 1-2 sentences max.
+
+Respond ONLY with valid JSON (no markdown, no code fences):
+{
+  "grade": "B",
+  "summary": "...",
+  "strengths": ["...", "..."],
+  "concerns": ["...", "..."],
+  "actionItems": ["...", "..."]
+}`;
+
+      const openai = new OpenAI({
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+      });
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.4,
+        max_tokens: 1000,
+        response_format: { type: "json_object" },
+      });
+
+      const raw = completion.choices[0]?.message?.content ?? "{}";
+
+      let parsed: { grade?: string; summary?: string; strengths?: unknown; concerns?: unknown; actionItems?: unknown };
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        return res.status(500).json({ message: "Failed to parse AI response" });
+      }
+
+      const validGrades = ["A", "B", "C", "D", "F"];
+      const grade = validGrades.includes(String(parsed.grade ?? "")) ? String(parsed.grade) : "C";
+      const summary = typeof parsed.summary === "string" && parsed.summary.length > 0
+        ? parsed.summary
+        : "Your home has some documented history. Review the sections below for detailed analysis.";
+      const strengths = Array.isArray(parsed.strengths) ? (parsed.strengths as unknown[]).filter((s): s is string => typeof s === "string").slice(0, 6) : [];
+      const concerns = Array.isArray(parsed.concerns) ? (parsed.concerns as unknown[]).filter((s): s is string => typeof s === "string").slice(0, 6) : [];
+      const actionItems = Array.isArray(parsed.actionItems) ? (parsed.actionItems as unknown[]).filter((s): s is string => typeof s === "string").slice(0, 8) : [];
+
+      res.json({
+        grade,
+        summary,
+        strengths,
+        concerns,
+        actionItems,
+        meta: {
+          wellnessScore,
+          maintenanceLogCount: recentLogs.length,
+          systemCount: allHomeSystems.length,
+          houseAddress: house.address ?? null,
+          houseAge: houseAge ?? null,
+        },
+      });
+    } catch (error) {
+      console.error("[AI RESALE READINESS] Error:", error);
+      res.status(500).json({ message: "Failed to generate resale readiness report" });
+    }
+  });
+
   // ===== AI CONTRACTOR MESSAGE DRAFTING =====
   app.post("/api/ai/draft-contractor-message", isAuthenticated, requireHomeownerSubscription, async (req: any, res) => {
     try {
