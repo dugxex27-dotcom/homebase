@@ -2746,9 +2746,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
   const runDiyVerify = async () => {
     if (!aiAnalysis) return;
-    const allFiles = [...aiDiyVerifyFiles.before, ...aiDiyVerifyFiles.after, ...aiDiyVerifyFiles.receipt];
-    if (allFiles.length === 0) {
-      toast({ title: "Photos required", description: "Please upload at least one before or after photo to verify your DIY work.", variant: "destructive" });
+    if (aiDiyVerifyFiles.before.length === 0 || aiDiyVerifyFiles.after.length === 0) {
+      toast({ title: "Before & after photos required", description: "Please upload at least one before photo AND one after photo to verify your DIY work.", variant: "destructive" });
       return;
     }
     setAiDiyVerifying(true);
@@ -2782,9 +2781,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       toast({ title: "Error", description: "Please select a house first.", variant: "destructive" });
       return;
     }
-    const allFiles = [...aiInvoiceFiles, ...aiReceiptFiles];
-    if (allFiles.length === 0) {
-      toast({ title: "Error", description: "Please upload at least one invoice or receipt.", variant: "destructive" });
+    // Contractor work requires an invoice; DIY receipt is truly optional
+    if (aiCompletionMethod === "contractor" && aiInvoiceFiles.length === 0) {
+      toast({ title: "Invoice required", description: "Please upload at least one invoice photo for contractor work.", variant: "destructive" });
       return;
     }
     setAiAnalyzing(true);

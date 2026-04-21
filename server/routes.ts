@@ -14979,6 +14979,11 @@ Severity levels:
 
       if (!houseId) return res.status(400).json({ message: "houseId is required" });
 
+      // Contractor work requires an invoice; DIY receipt is optional
+      if (completionMethod === "contractor" && invoiceFiles.length === 0 && receiptFiles.length === 0) {
+        return res.status(400).json({ message: "Please upload at least one invoice photo for contractor work." });
+      }
+
       const house = await storage.getHouse(houseId);
       if (!house || house.homeownerId !== req.session.user.id) {
         return res.status(403).json({ message: "Access denied to house" });
@@ -15118,9 +15123,11 @@ Severity levels:
         receiptFiles = [],
       } = req.body;
 
-      const allPhotos = [...beforePhotoFiles, ...afterPhotoFiles, ...receiptFiles];
-      if (allPhotos.length === 0 && analysis.beforePhotoUrls?.length === 0 && analysis.afterPhotoUrls?.length === 0) {
-        return res.status(400).json({ message: "Please provide before/after photos or receipts for DIY verification" });
+      // Require at least one before AND one after photo for a meaningful verification
+      const totalBefore = beforePhotoFiles.length + (analysis.beforePhotoUrls?.length ?? 0);
+      const totalAfter = afterPhotoFiles.length + (analysis.afterPhotoUrls?.length ?? 0);
+      if (totalBefore === 0 || totalAfter === 0) {
+        return res.status(400).json({ message: "Please provide at least one before photo AND one after photo to verify your DIY work." });
       }
 
       // Helper: upload array of files and return stored URLs
