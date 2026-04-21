@@ -19,7 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MessageCircle, Send, User, Calendar, Plus, Users, FileText, DollarSign, Clock, Star, Image as ImageIcon, X, File, Paperclip, Wifi, WifiOff, CheckCheck, Check } from "lucide-react";
+import { MessageCircle, Send, User, Calendar, Plus, Users, FileText, DollarSign, Clock, Star, Image as ImageIcon, X, File, Paperclip, Wifi, WifiOff, CheckCheck, Check, Sparkles, Loader2 } from "lucide-react";
 import { PageHero } from "@/components/page-hero";
 import { insertProposalSchema } from "@shared/schema";
 import { z } from "zod";
@@ -59,6 +59,16 @@ export default function Messages() {
     wouldRecommend: true
   });
   const [isReviewSectionOpen, setIsReviewSectionOpen] = useState(false);
+
+  // AI Draft state — active conversation composer
+  const [aiDraftOpen, setAiDraftOpen] = useState(false);
+  const [aiDraftIssue, setAiDraftIssue] = useState("");
+  // AI Draft state — compose dialog
+  const [aiComposeOpen, setAiComposeOpen] = useState(false);
+  const [aiComposeIssue, setAiComposeIssue] = useState("");
+  // Task context and house ID passed in via URL query params
+  const [urlTaskContext, setUrlTaskContext] = useState("");
+  const [urlHouseId, setUrlHouseId] = useState("");
   
   // Proposal form schema and setup
   const proposalFormSchema = z.object({
@@ -230,6 +240,44 @@ export default function Messages() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Read task context and house ID from URL query params (passed from maintenance page)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const taskTitle = params.get("taskTitle") ?? "";
+    const houseId = params.get("houseId") ?? "";
+    if (taskTitle) {
+      setUrlTaskContext(taskTitle);
+      setAiDraftIssue(taskTitle);
+      setAiComposeIssue(taskTitle);
+    }
+    if (houseId) setUrlHouseId(houseId);
+  }, []);
+
+  // AI draft mutation (homeowners only)
+  const draftMutation = useMutation({
+    mutationFn: async ({ issueDescription, targetField }: { issueDescription: string; targetField: "conversation" | "compose" }) => {
+      const res = await apiRequest("/api/ai/draft-contractor-message", "POST", {
+        issueDescription,
+        houseId: urlHouseId || undefined,
+        taskContext: urlTaskContext || undefined,
+      });
+      const data = await res.json() as { message: string };
+      return { draft: data.message, targetField };
+    },
+    onSuccess: ({ draft, targetField }) => {
+      if (targetField === "conversation") {
+        setNewMessage(draft);
+        setAiDraftOpen(false);
+      } else {
+        setComposeForm(prev => ({ ...prev, message: draft }));
+        setAiComposeOpen(false);
+      }
+    },
+    onError: () => {
+      toast({ title: "Draft failed", description: "Could not generate a draft right now. Please try again.", variant: "destructive" });
+    },
+  });
 
   // Send message mutation
   const sendMessageMutation = useMutation({
@@ -547,6 +595,52 @@ export default function Messages() {
                           rows={4}
                           data-testid="textarea-compose-message"
                         />
+                        {typedUser.role === 'homeowner' && (
+                          <div className="mt-2">
+                            {!aiComposeOpen ? (
+                              <button
+                                type="button"
+                                onClick={() => setAiComposeOpen(true)}
+                                className="flex items-center gap-1.5 text-xs text-purple-600 hover:text-purple-700 font-medium"
+                                data-testid="button-ai-draft-compose"
+                              >
+                                <Sparkles className="h-3.5 w-3.5" />
+                                Draft with AI
+                              </button>
+                            ) : (
+                              <div className="border border-purple-200 rounded-lg p-3 bg-purple-50 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="flex items-center gap-1.5 text-xs font-semibold text-purple-700">
+                                    <Sparkles className="h-3.5 w-3.5" /> Draft with AI
+                                  </span>
+                                  <button type="button" onClick={() => setAiComposeOpen(false)} className="text-gray-400 hover:text-gray-600">
+                                    <X className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                                <Textarea
+                                  value={aiComposeIssue}
+                                  onChange={(e) => setAiComposeIssue(e.target.value)}
+                                  placeholder="Briefly describe the issue (e.g. HVAC isn't cooling, leaking faucet...)"
+                                  rows={2}
+                                  className="text-sm resize-none"
+                                  data-testid="textarea-ai-compose-issue"
+                                />
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  disabled={!aiComposeIssue.trim() || draftMutation.isPending}
+                                  onClick={() => draftMutation.mutate({ issueDescription: aiComposeIssue, targetField: "compose" })}
+                                  className="bg-purple-600 hover:bg-purple-700 text-white text-xs h-7 px-3"
+                                  data-testid="button-ai-generate-compose"
+                                >
+                                  {draftMutation.isPending ? (
+                                    <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />Generating...</>
+                                  ) : "Generate Draft"}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                       
                       <div>
@@ -1029,6 +1123,53 @@ export default function Messages() {
                     </div>
                   )}
                   
+                  {typedUser.role === 'homeowner' && (
+                    <div className="mb-2">
+                      {!aiDraftOpen ? (
+                        <button
+                          type="button"
+                          onClick={() => setAiDraftOpen(true)}
+                          className="flex items-center gap-1.5 text-xs text-purple-600 hover:text-purple-700 font-medium"
+                          data-testid="button-ai-draft-conversation"
+                        >
+                          <Sparkles className="h-3.5 w-3.5" />
+                          Draft with AI
+                        </button>
+                      ) : (
+                        <div className="border border-purple-200 rounded-lg p-3 bg-purple-50 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="flex items-center gap-1.5 text-xs font-semibold text-purple-700">
+                              <Sparkles className="h-3.5 w-3.5" /> Draft with AI
+                            </span>
+                            <button type="button" onClick={() => setAiDraftOpen(false)} className="text-gray-400 hover:text-gray-600">
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          <Textarea
+                            value={aiDraftIssue}
+                            onChange={(e) => setAiDraftIssue(e.target.value)}
+                            placeholder="Briefly describe the issue (e.g. HVAC isn't cooling, leaking faucet...)"
+                            rows={2}
+                            className="text-sm resize-none"
+                            data-testid="textarea-ai-draft-issue"
+                          />
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={!aiDraftIssue.trim() || draftMutation.isPending}
+                            onClick={() => draftMutation.mutate({ issueDescription: aiDraftIssue, targetField: "conversation" })}
+                            className="bg-purple-600 hover:bg-purple-700 text-white text-xs h-7 px-3"
+                            data-testid="button-ai-generate-conversation"
+                          >
+                            {draftMutation.isPending ? (
+                              <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />Generating...</>
+                            ) : "Generate Draft"}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="flex gap-2">
                     <Input
                       type="file"

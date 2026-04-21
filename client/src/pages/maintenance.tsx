@@ -1196,6 +1196,17 @@ function TaskDetailDialog({
                 >
                   Find a Contractor
                 </a>
+                {!isContractor && (
+                  <a
+                    href={`/messages?taskTitle=${encodeURIComponent(task.title)}&taskDescription=${encodeURIComponent(task.description || '')}&houseId=${encodeURIComponent(selectedHouseId || '')}`}
+                    className="flex items-center justify-center gap-2 w-full text-center py-3 px-4 bg-purple-50 text-purple-700 font-medium rounded-lg hover:bg-purple-100 transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/><path d="M19 3v4"/><path d="M21 5h-4"/>
+                    </svg>
+                    Message a Contractor with AI
+                  </a>
+                )}
               </div>
             </div>
 

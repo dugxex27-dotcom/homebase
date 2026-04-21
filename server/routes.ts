@@ -11543,6 +11543,73 @@ Include up to 3 tasks (fewer if fewer than 3 are pending). Do not include null e
     }
   });
 
+  // ===== AI CONTRACTOR MESSAGE DRAFTING =====
+  app.post("/api/ai/draft-contractor-message", isAuthenticated, requireHomeownerSubscription, async (req: any, res) => {
+    try {
+      const userId = req.session.user.id;
+
+      const bodySchema = z.object({
+        issueDescription: z.string().min(1).max(500),
+        houseId: z.string().optional(),
+        taskContext: z.string().optional(),
+      });
+      const { issueDescription, houseId, taskContext } = bodySchema.parse(req.body);
+
+      // Build house context if a valid house is provided
+      let houseContext = "";
+      if (houseId) {
+        const house = await storage.getHouse(houseId);
+        if (house && house.homeownerId === userId) {
+          const parts: string[] = [];
+          if (house.yearBuilt) parts.push(`built in ${house.yearBuilt}`);
+          if (house.address) parts.push(`located at ${house.address}`);
+          const systems = (Array.isArray(house.homeSystems) ? house.homeSystems as string[] : []).slice(0, 5);
+          if (systems.length > 0) parts.push(`home systems include: ${systems.join(', ')}`);
+          if (parts.length > 0) houseContext = `Home details: ${parts.join('; ')}.`;
+        }
+      }
+
+      const contextParts: string[] = [];
+      if (taskContext) contextParts.push(`Maintenance task: ${taskContext}`);
+      if (houseContext) contextParts.push(houseContext);
+      contextParts.push(`Issue described by homeowner: ${issueDescription}`);
+
+      const prompt = `You are helping a homeowner write a professional message to a contractor.
+
+Context:
+${contextParts.join('\n')}
+
+Write a polite, clear, and specific message that the homeowner would send to a contractor. The message should:
+- Be 3-5 sentences
+- Describe the issue clearly using the homeowner's words
+- Mention relevant home details (age, system type) when available
+- Include a sense of urgency if the issue sounds urgent
+- Close with a request for an estimate or appointment
+- Sound like a real homeowner — not overly formal, not too casual
+- Be under 150 words
+
+Respond with ONLY the message text. No subject line, no greeting prefix like "Here is your draft:", no extra commentary.`;
+
+      const openai = new OpenAI({
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+      });
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.6,
+        max_tokens: 300,
+      });
+
+      const message = completion.choices[0]?.message?.content?.trim() ?? "";
+      res.json({ message });
+    } catch (error) {
+      console.error("[AI DRAFT MESSAGE] Error:", error);
+      res.status(500).json({ message: "Failed to generate message draft" });
+    }
+  });
+
   // Contractor subscription endpoint
   app.get('/api/contractor/subscription', async (req: any, res) => {
     try {
