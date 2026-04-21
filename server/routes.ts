@@ -14979,6 +14979,12 @@ Severity levels:
 
       if (!houseId) return res.status(400).json({ message: "houseId is required" });
 
+      // Limit file count per request to prevent abuse
+      const totalFiles = invoiceFiles.length + beforePhotoFiles.length + afterPhotoFiles.length + receiptFiles.length;
+      if (totalFiles > 10) {
+        return res.status(400).json({ message: "Too many files. Please upload at most 10 files at once." });
+      }
+
       // Contractor work requires at least one invoice file; DIY receipt is fully optional
       if (completionMethod === "contractor" && invoiceFiles.length === 0) {
         return res.status(400).json({ message: "Please upload at least one invoice photo for contractor work." });
@@ -15122,6 +15128,12 @@ Severity levels:
         afterPhotoFiles = [],
         receiptFiles = [],
       } = req.body;
+
+      // Limit file count per request to prevent abuse
+      const totalFiles = beforePhotoFiles.length + afterPhotoFiles.length + receiptFiles.length;
+      if (totalFiles > 10) {
+        return res.status(400).json({ message: "Too many files. Please upload at most 10 files at once." });
+      }
 
       // Require at least one before AND one after photo for a meaningful verification
       const totalBefore = beforePhotoFiles.length + (analysis.beforePhotoUrls?.length ?? 0);
@@ -15284,7 +15296,7 @@ Severity levels:
   });
 
   // PATCH /api/invoice-analyses/:id/reject
-  app.patch("/api/invoice-analyses/:id/reject", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/invoice-analyses/:id/reject", isAuthenticated, requireHomeownerSubscription, async (req: any, res) => {
     try {
       const { id } = req.params;
       const [analysis] = await db.select().from(invoiceAnalyses).where(eq(invoiceAnalyses.id, id));
