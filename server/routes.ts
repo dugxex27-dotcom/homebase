@@ -11220,10 +11220,18 @@ Return ONLY a JSON object with these fields (use null for any field you cannot c
         return res.status(403).json({ message: "Access denied to this property" });
       }
 
-      const { questions } = req.body;
-      if (!Array.isArray(questions) || questions.length === 0) {
-        return res.status(400).json({ message: "questions array is required" });
+      // Validate and type the incoming question list
+      const questionSchema = z.array(z.object({
+        id: z.string(),
+        text: z.string(),
+        type: z.enum(["yes_no_unknown", "yes_no", "select", "number", "text"]),
+        options: z.array(z.string()).optional(),
+      }));
+      const parsed = questionSchema.safeParse(req.body.questions);
+      if (!parsed.success || parsed.data.length === 0) {
+        return res.status(400).json({ message: "questions must be a non-empty array of valid question objects" });
       }
+      const questions = parsed.data;
 
       // Fetch data for AI context in parallel
       const [systemRows, logRows, applianceRows] = await Promise.all([
@@ -11232,18 +11240,18 @@ Return ONLY a JSON object with these fields (use null for any field you cannot c
         db.select().from(homeAppliances).where(eq(homeAppliances.houseId, houseId)),
       ]);
 
-      // Build context string from available property data
+      // Build context string from available property data (all fields are typed on the House schema)
       const contextLines: string[] = ["PROPERTY INFORMATION:"];
       if (house.yearBuilt) contextLines.push(`- Year Built: ${house.yearBuilt}`);
       if (house.address) contextLines.push(`- Address: ${house.address}`);
-      if ((house as any).foundationType) contextLines.push(`- Foundation Type: ${(house as any).foundationType}`);
-      if ((house as any).roofType) contextLines.push(`- Roof Type: ${(house as any).roofType}`);
-      if ((house as any).hvacType) contextLines.push(`- HVAC Type: ${(house as any).hvacType}`);
-      if ((house as any).primaryHeatingFuel) contextLines.push(`- Primary Heating Fuel: ${(house as any).primaryHeatingFuel}`);
-      if ((house as any).plumbingType) contextLines.push(`- Plumbing Type: ${(house as any).plumbingType}`);
-      if ((house as any).waterHeaterType) contextLines.push(`- Water Heater Type: ${(house as any).waterHeaterType}`);
-      if ((house as any).garageType) contextLines.push(`- Garage Type: ${(house as any).garageType}`);
-      if ((house as any).squareFeet) contextLines.push(`- Square Feet: ${(house as any).squareFeet}`);
+      if (house.foundationType) contextLines.push(`- Foundation Type: ${house.foundationType}`);
+      if (house.roofType) contextLines.push(`- Roof Type: ${house.roofType}`);
+      if (house.hvacType) contextLines.push(`- HVAC Type: ${house.hvacType}`);
+      if (house.primaryHeatingFuel) contextLines.push(`- Primary Heating Fuel: ${house.primaryHeatingFuel}`);
+      if (house.plumbingType) contextLines.push(`- Plumbing Type: ${house.plumbingType}`);
+      if (house.waterHeaterType) contextLines.push(`- Water Heater Type: ${house.waterHeaterType}`);
+      if (house.garageType) contextLines.push(`- Garage Type: ${house.garageType}`);
+      if (house.squareFootage) contextLines.push(`- Square Footage: ${house.squareFootage}`);
 
       if (systemRows.length > 0) {
         contextLines.push("\nHOME SYSTEMS:");
@@ -11292,7 +11300,7 @@ Return ONLY a JSON object where keys are question IDs and values are the suggest
 Do NOT include questions you cannot confidently answer. Do NOT include null values.
 
 Questions:
-${JSON.stringify(questions.map((q: any) => ({ id: q.id, text: q.text, type: q.type, ...(q.options ? { options: q.options } : {}) })), null, 2)}`;
+${JSON.stringify(questions.map(q => ({ id: q.id, text: q.text, type: q.type, ...(q.options ? { options: q.options } : {}) })), null, 2)}`;
 
       const openai = new OpenAI({
         baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
@@ -11314,7 +11322,7 @@ ${JSON.stringify(questions.map((q: any) => ({ id: q.id, text: q.text, type: q.ty
       }
 
       // Validate: only keep keys that match the requested question IDs and have non-null values
-      const validIds = new Set(questions.map((q: any) => q.id));
+      const validIds = new Set(questions.map(q => q.id));
       const validated: Record<string, unknown> = {};
       for (const [key, val] of Object.entries(suggestions)) {
         if (validIds.has(key) && val !== null && val !== undefined && val !== "") {

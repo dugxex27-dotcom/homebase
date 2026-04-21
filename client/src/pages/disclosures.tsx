@@ -423,7 +423,8 @@ export default function Disclosures() {
         scheduleAutosave(updated);
         return updated;
       });
-      setAiSuggestedKeys(newAiKeys);
+      // Union with existing AI-suggested keys so prior badges are preserved
+      setAiSuggestedKeys(prev => new Set([...prev, ...newAiKeys]));
       const count = Object.keys(newSuggestions).length;
       toast({
         title: `AI suggested ${count} answer${count !== 1 ? "s" : ""}`,
@@ -753,6 +754,21 @@ export default function Disclosures() {
                 <Badge variant="outline" className="text-xs">
                   {getSectionProgress(currentSection.id, answers, activeSections)}% done
                 </Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => aiSuggestMutation.mutate()}
+                  disabled={aiSuggestMutation.isPending || !houseId}
+                  className="text-xs h-7 px-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                  title="Fill blank answers in this section using AI"
+                >
+                  {aiSuggestMutation.isPending ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5" />
+                  )}
+                  <span className="ml-1 hidden sm:inline">AI</span>
+                </Button>
                 <Button
                   variant="ghost"
                   size="sm"
