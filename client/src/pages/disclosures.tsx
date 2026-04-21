@@ -359,6 +359,7 @@ export default function Disclosures() {
 
   // Cancel any pending autosave when the selected house changes to prevent cross-property writes
   // Also reset section index so we never render an out-of-bounds section (NY has 6, generic has 5)
+  // Clear AI badge state so stale badges from the previous property don't appear on the new one
   useEffect(() => {
     if (autosaveTimer.current) {
       clearTimeout(autosaveTimer.current);
@@ -366,6 +367,7 @@ export default function Disclosures() {
       setAutosaving(false);
     }
     setSectionIdx(0);
+    setAiSuggestedKeys(new Set());
   }, [houseId]);
 
   const saveMutation = useMutation({
@@ -395,8 +397,7 @@ export default function Disclosures() {
   });
 
   const aiSuggestMutation = useMutation({
-    mutationFn: async () => {
-      if (!houseId) throw new Error("No house selected");
+    mutationFn: async (requestedHouseId: string) => {
       const questions = activeSections.flatMap(s =>
         s.questions.map(q => ({
           id: q.id,
@@ -405,10 +406,13 @@ export default function Disclosures() {
           ...(q.options ? { options: q.options } : {}),
         }))
       );
-      const res = await apiRequest(`/api/houses/${houseId}/disclosure/ai-suggest`, "POST", { questions });
-      return res.json() as Promise<{ suggestions: Record<string, string | number> }>;
+      const res = await apiRequest(`/api/houses/${requestedHouseId}/disclosure/ai-suggest`, "POST", { questions });
+      const body = await res.json() as { suggestions: Record<string, string | number> };
+      return { ...body, requestedHouseId };
     },
-    onSuccess: (data) => {
+    onSuccess: (data, requestedHouseId) => {
+      // Guard: discard response if the user has switched to a different property since the request was sent
+      if (requestedHouseId !== houseIdRef.current) return;
       const newSuggestions = data.suggestions ?? {};
       const newAiKeys = new Set<string>();
       setAnswers(prev => {
@@ -425,7 +429,8 @@ export default function Disclosures() {
       });
       // Union with existing AI-suggested keys so prior badges are preserved
       setAiSuggestedKeys(prev => new Set([...prev, ...newAiKeys]));
-      const count = Object.keys(newSuggestions).length;
+      // Count actually-applied suggestions, not all returned ones
+      const count = newAiKeys.size;
       toast({
         title: `AI suggested ${count} answer${count !== 1 ? "s" : ""}`,
         description: count > 0 ? "Review and adjust as needed. AI-suggested answers are highlighted." : "Not enough property data to suggest answers yet.",
@@ -660,7 +665,7 @@ export default function Disclosures() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => aiSuggestMutation.mutate()}
+              onClick={() => { if (houseId) aiSuggestMutation.mutate(houseId); }}
               disabled={aiSuggestMutation.isPending || !houseId}
               className="border-purple-300 text-purple-700 hover:bg-purple-50 h-8 px-3 text-xs font-medium"
             >
@@ -757,7 +762,7 @@ export default function Disclosures() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => aiSuggestMutation.mutate()}
+                  onClick={() => { if (houseId) aiSuggestMutation.mutate(houseId); }}
                   disabled={aiSuggestMutation.isPending || !houseId}
                   className="text-xs h-7 px-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
                   title="Suggest answers for all blank fields in the form using AI"

@@ -11331,6 +11331,7 @@ ${JSON.stringify(questions.map(q => ({ id: q.id, text: q.text, type: q.type, ...
         if (q.type === "yes_no" && !["Yes", "No"].includes(String(val))) continue;
         if (q.type === "select" && q.options && !q.options.includes(String(val))) continue;
         if (q.type === "number" && typeof val !== "number" && isNaN(Number(val))) continue;
+        if (q.type === "text" && typeof val !== "string") continue;
         validated[key] = val;
       }
 
