@@ -12141,6 +12141,13 @@ ${esc(claimMemo)}
         return res.status(503).json({ message: "Email service is not available. Please use Copy All or Print instead." });
       }
 
+      // Persist the send record — required for history tracking
+      await storage.createInsuranceEmailLog({
+        homeownerId: req.session.user.id,
+        adjusterEmail,
+        claimArea,
+      });
+
       res.json({ success: true });
     } catch (error) {
       console.error("[INSURANCE PREP EMAIL] Error:", error);
@@ -12172,6 +12179,17 @@ ${esc(claimMemo)}
     } catch (error) {
       console.error("[INSURANCE CLAIM PACKAGE] Error:", error);
       res.status(500).json({ message: "Failed to fetch claim package" });
+    }
+  });
+
+  app.get("/api/insurance-prep/email-logs", isAuthenticated, requireHomeownerSubscription, async (req: any, res) => {
+    try {
+      const userId = req.session.user.id;
+      const logs = await storage.getInsuranceEmailLogs(userId);
+      res.json(logs);
+    } catch (error) {
+      console.error("[INSURANCE PREP EMAIL LOGS] Error:", error);
+      res.status(500).json({ message: "Failed to fetch email logs" });
     }
   });
 

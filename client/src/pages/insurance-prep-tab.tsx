@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { House } from "@shared/schema";
+import type { House, InsuranceEmailLog } from "@shared/schema";
 
 const CLAIM_AREAS = [
   { value: "Roof", label: "Roof / Roofing" },
@@ -102,6 +102,10 @@ export function InsurancePrepTab({ houses }: Props) {
     }
   }, [emailDialogOpen]);
 
+  const emailLogsQuery = useQuery<InsuranceEmailLog[]>({
+    queryKey: ["/api/insurance-prep/email-logs"],
+  });
+
   const emailMutation = useMutation({
     mutationFn: async () => {
       if (!result) throw new Error("No result");
@@ -120,6 +124,7 @@ export function InsurancePrepTab({ houses }: Props) {
       setEmailDialogOpen(false);
       setAdjusterEmail("");
       toast({ title: "Email sent", description: `Claim package sent to ${adjusterEmail}.` });
+      queryClient.invalidateQueries({ queryKey: ["/api/insurance-prep/email-logs"] });
     },
     onError: (err: unknown) => {
       toast({
@@ -691,6 +696,48 @@ export function InsurancePrepTab({ houses }: Props) {
             </p>
           </div>
         </div>
+      )}
+
+      {/* Sent Emails History — always shown once data has loaded */}
+      {!emailLogsQuery.isLoading && (
+        <Card className="border border-gray-200 shadow-sm">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <History className="w-5 h-5 text-gray-500" />
+              <h3 className="font-bold text-gray-800 text-base">Sent Emails</h3>
+              <span className="text-xs text-gray-400 ml-1">Your claim package send history</span>
+            </div>
+            {(!emailLogsQuery.data || emailLogsQuery.data.length === 0) ? (
+              <p className="text-sm text-gray-400 italic">
+                No claim packages sent yet. When you email a claim package to an adjuster, it will appear here.
+              </p>
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {emailLogsQuery.data.map((log) => {
+                  const email = log.adjusterEmail;
+                  const atIdx = email.indexOf("@");
+                  const truncated = atIdx > 2
+                    ? email.slice(0, 2) + "***" + email.slice(atIdx)
+                    : "***" + email.slice(atIdx);
+                  return (
+                    <div key={log.id} className="flex items-center justify-between py-2.5 gap-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Mail className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-700 truncate">{log.claimArea} Claim Package</p>
+                          <p className="text-xs text-gray-400 truncate">Sent to {truncated}</p>
+                        </div>
+                      </div>
+                      <span className="text-xs text-gray-400 flex-shrink-0 whitespace-nowrap">
+                        {new Date(log.sentAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Email to Adjuster Dialog */}

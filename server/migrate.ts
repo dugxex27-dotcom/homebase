@@ -78,6 +78,39 @@ export async function runMigrations() {
     console.warn('[MIGRATE] house_disclosures FK constraints warning (non-fatal):', err?.message ?? err);
   }
 
+  // Ensure insurance_email_logs table exists (created via raw SQL to avoid drizzle-kit push issues)
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS "insurance_email_logs" (
+        "id" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+        "homeowner_id" varchar NOT NULL,
+        "adjuster_email" text NOT NULL,
+        "claim_area" text NOT NULL,
+        "sent_at" timestamp NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS "IDX_insurance_email_logs_homeowner_id" ON "insurance_email_logs"("homeowner_id");
+    `);
+  } catch (err: any) {
+    console.warn('[MIGRATE] insurance_email_logs table setup warning (non-fatal):', err?.message ?? err);
+  }
+  // Add FK constraint on homeowner_id (idempotent via DO block)
+  try {
+    await pool.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'insurance_email_logs_homeowner_id_fkey'
+        ) THEN
+          ALTER TABLE "insurance_email_logs"
+            ADD CONSTRAINT "insurance_email_logs_homeowner_id_fkey"
+            FOREIGN KEY ("homeowner_id") REFERENCES "users"("id") ON DELETE CASCADE;
+        END IF;
+      END $$;
+    `);
+  } catch (err: any) {
+    console.warn('[MIGRATE] insurance_email_logs FK constraint warning (non-fatal):', err?.message ?? err);
+  }
+
   await pool.end();
 }
 

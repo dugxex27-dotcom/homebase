@@ -2289,3 +2289,20 @@ export const insuranceClaimPackages = pgTable("insurance_claim_packages", {
 export const insertInsuranceClaimPackageSchema = createInsertSchema(insuranceClaimPackages).omit({ id: true, createdAt: true });
 export type InsertInsuranceClaimPackage = z.infer<typeof insertInsuranceClaimPackageSchema>;
 export type InsuranceClaimPackage = typeof insuranceClaimPackages.$inferSelect;
+
+// ─── Insurance Email Send Log ─────────────────────────────────────────────────
+// Records each time a homeowner emails a claim package to an adjuster.
+
+export const insuranceEmailLogs = pgTable("insurance_email_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  homeownerId: varchar("homeowner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  adjusterEmail: text("adjuster_email").notNull(),
+  claimArea: text("claim_area").notNull(),
+  sentAt: timestamp("sent_at").notNull().defaultNow(),
+}, (table) => [
+  index("IDX_insurance_email_logs_homeowner_id").on(table.homeownerId),
+]);
+
+export const insertInsuranceEmailLogSchema = createInsertSchema(insuranceEmailLogs).omit({ id: true, sentAt: true });
+export type InsertInsuranceEmailLog = z.infer<typeof insertInsuranceEmailLogSchema>;
+export type InsuranceEmailLog = typeof insuranceEmailLogs.$inferSelect;
