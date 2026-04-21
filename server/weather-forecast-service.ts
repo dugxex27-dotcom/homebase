@@ -144,7 +144,7 @@ export function detectForecastTriggers(periods: ForecastPeriod[]): ForecastTrigg
     }
 
     const precipProb = period.probabilityOfPrecipitation?.value ?? 0;
-    if (!heavyRainFound && precipProb >= 60 && (forecastText.includes('rain') || forecastText.includes('shower'))) {
+    if (!heavyRainFound && precipProb > 50 && (forecastText.includes('rain') || forecastText.includes('shower'))) {
       heavyRainFound = true;
       triggers.push({
         trigger: 'heavy_rain',
@@ -237,9 +237,9 @@ export async function findRelevantOverdueTasks(
       ? (lastById > lastByTitle ? lastById : lastByTitle)
       : (lastById || lastByTitle);
     if (!last) return true;
-    const defaultWindowDays = 180;
+    const annualWindowDays = 330;
     const msSinceCompletion = now.getTime() - last.getTime();
-    return msSinceCompletion > defaultWindowDays * 24 * 60 * 60 * 1000;
+    return msSinceCompletion > annualWindowDays * 24 * 60 * 60 * 1000;
   }
 
   function isOverdueCustom(taskId: string, taskTitle: string, frequencyType: string, frequencyValue: number | null): boolean {
