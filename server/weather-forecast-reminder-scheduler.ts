@@ -77,7 +77,16 @@ async function hasAlreadySentForecastReminder(userId: string, houseId: string, t
 
 async function recordForecastReminderSent(userId: string, houseId: string, triggerType: WeatherTrigger): Promise<void> {
   try {
-    await db.insert(weatherForecastRemindersSent).values({ userId, houseId, triggerType });
+    await db.insert(weatherForecastRemindersSent)
+      .values({ userId, houseId, triggerType })
+      .onConflictDoUpdate({
+        target: [
+          weatherForecastRemindersSent.userId,
+          weatherForecastRemindersSent.houseId,
+          weatherForecastRemindersSent.triggerType,
+        ],
+        set: { sentAt: new Date() },
+      });
   } catch (error) {
     console.error('[FORECAST] Error recording reminder sent:', error);
   }
