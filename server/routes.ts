@@ -11359,14 +11359,26 @@ ${JSON.stringify(questions.map(q => ({ id: q.id, text: q.text, type: q.type, ...
       });
       const { month, zone } = bodySchema.parse(req.body);
 
-      // Calculate wellness score (canonical: same formula as health-score endpoint)
+      const currentYear = new Date().getFullYear();
+      const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+      const season = month >= 3 && month <= 5 ? "Spring" : month >= 6 && month <= 8 ? "Summer" : month >= 9 && month <= 11 ? "Fall" : "Winter";
+
+      // Fetch completions + custom tasks in parallel
       const [completedTaskRows, customTaskRows] = await Promise.all([
         db.select().from(taskCompletions).where(eq(taskCompletions.houseId, houseId)),
         storage.getCustomMaintenanceTasks(homeownerId, houseId),
       ]);
+
+      // Wellness score: canonical formula matching health-score endpoint
       const wellnessScore = completedTaskRows.length * 4;
 
-      // Derive tasks server-side from shared location data
+      // Completed task titles for THIS month — used to filter out already-done tasks
+      const completedThisMonth = new Set(
+        completedTaskRows
+          .filter(r => r.month === month && r.year === currentYear)
+          .map(r => r.taskTitle)
+      );
+
       // Map client zone name → US_MAINTENANCE_DATA region key
       const zoneToRegion: Record<string, string> = {
         "northeast": "Northeast",
@@ -11382,41 +11394,57 @@ ${JSON.stringify(questions.map(q => ({ id: q.id, text: q.text, type: q.type, ...
       const regionName = zoneToRegion[zone] ?? "Midwest";
       const regionData = US_MAINTENANCE_DATA[regionName];
 
-      interface CoachTask { title: string; priority: string; status: "overdue" | "current" | "upcoming"; month: number }
-      const coachTasks: CoachTask[] = [];
+      interface CoachTask {
+        title: string;
+        priority: string;
+        status: "overdue" | "current" | "upcoming";
+        month: number;
+        costHint?: string; // e.g. "$50–$200 pro"
+      }
 
-      // Gather tasks for overdue months (previous 2 months), current month, and next 2 months
-      const monthsToCheck = [-2, -1, 0, 1, 2].map(offset => {
-        let m = month + offset;
-        if (m < 1) m += 12;
-        if (m > 12) m -= 12;
-        const status: "overdue" | "current" | "upcoming" = offset < 0 ? "overdue" : offset === 0 ? "current" : "upcoming";
-        return { m, status };
-      });
+      // currentMonthTasks: shown in the UI grid — only these can be topTask candidates
+      const currentMonthTasks: CoachTask[] = [];
+      // contextTasks: overdue + upcoming — used only for briefing context, not topTask validation
+      const contextTasks: CoachTask[] = [];
 
       if (regionData) {
-        for (const { m, status } of monthsToCheck) {
+        for (const offset of [-2, -1, 0, 1, 2]) {
+          let m = month + offset;
+          if (m < 1) m += 12;
+          if (m > 12) m -= 12;
+          const status: "overdue" | "current" | "upcoming" = offset < 0 ? "overdue" : offset === 0 ? "current" : "upcoming";
           const monthData = regionData.monthlyTasks[m];
           if (!monthData) continue;
-          const seasonalTasks = monthData.seasonal ?? [];
-          const weatherTasks = monthData.weatherSpecific ?? [];
-          for (const t of [...seasonalTasks, ...weatherTasks]) {
-            if (coachTasks.length >= 30) break; // Cap total
-            coachTasks.push({
+          const allItems = [...(monthData.seasonal ?? []), ...(monthData.weatherSpecific ?? [])];
+          for (const t of allItems) {
+            const costEst = t.costEstimate;
+            const costHint = costEst
+              ? (costEst.proHigh ? `$${costEst.proLow}–$${costEst.proHigh} pro` : `$${costEst.proLow}+ pro`)
+              : undefined;
+            const task: CoachTask = {
               title: t.title,
               priority: t.priority ?? monthData.priority ?? "medium",
               status,
               month: m,
-            });
+              costHint,
+            };
+            if (offset === 0) {
+              // Exclude already-completed tasks from current month recommendations
+              if (!completedThisMonth.has(t.title)) {
+                currentMonthTasks.push(task);
+              }
+            } else {
+              if (contextTasks.length < 20) contextTasks.push(task);
+            }
           }
         }
       }
 
-      // Add active custom maintenance tasks
-      const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+      // Add active custom tasks to current month candidates (not completed this month)
       for (const ct of customTaskRows) {
         if (!ct.isActive) continue;
-        coachTasks.push({
+        if (completedThisMonth.has(ct.title)) continue;
+        currentMonthTasks.push({
           title: ct.title,
           priority: ct.priority,
           status: "current",
@@ -11424,58 +11452,63 @@ ${JSON.stringify(questions.map(q => ({ id: q.id, text: q.text, type: q.type, ...
         });
       }
 
-      // Build a de-duped title set for topTask validation
-      const validTitles = new Set(coachTasks.map(t => t.title));
+      // topTask validation: only titles from the current-month pending set
+      const validTitles = new Set(currentMonthTasks.map(t => t.title));
 
-      const season = month >= 3 && month <= 5 ? "Spring" : month >= 6 && month <= 8 ? "Summer" : month >= 9 && month <= 11 ? "Fall" : "Winter";
-      const currentYear = new Date().getFullYear();
-      const monthName = monthNames[month - 1];
-
+      // Build prompt context
       const contextLines: string[] = [
-        `Date: ${monthName} ${currentYear}`,
+        `Date: ${monthNames[month - 1]} ${currentYear}`,
         `Season: ${season}`,
         `Climate zone / region: ${zone} (${regionName})`,
         `Home wellness score: ${wellnessScore} (each completed task earns 4 points)`,
-        "",
-        `Pending maintenance tasks (${coachTasks.length} total):`,
       ];
 
-      if (coachTasks.length === 0) {
-        contextLines.push("  (no pending tasks)");
-      } else {
-        coachTasks.forEach((t, i) => {
-          const label = t.status === "overdue" ? `⚠ OVERDUE (${monthNames[t.month - 1]})` : t.status === "upcoming" ? `upcoming (${monthNames[t.month - 1]})` : "this month";
-          contextLines.push(`  ${i + 1}. [${t.priority.toUpperCase()}] ${t.title} — ${label}`);
+      if (currentMonthTasks.length > 0) {
+        contextLines.push("", `Pending tasks for THIS month (${currentMonthTasks.length} — these are the only candidates for your top-3 list):`);
+        currentMonthTasks.forEach((t, i) => {
+          const cost = t.costHint ? ` [est. ${t.costHint}]` : "";
+          contextLines.push(`  ${i + 1}. [${t.priority.toUpperCase()}] ${t.title}${cost}`);
         });
       }
 
-      const context = contextLines.join("\n");
+      if (contextTasks.length > 0) {
+        const overdue = contextTasks.filter(t => t.status === "overdue");
+        const upcoming = contextTasks.filter(t => t.status === "upcoming");
+        if (overdue.length > 0) {
+          contextLines.push("", `Overdue tasks from prior months (for briefing context only — DO NOT put these in topTasks):`);
+          overdue.slice(0, 8).forEach(t => contextLines.push(`  - [${t.priority.toUpperCase()}] ${t.title} (from ${monthNames[t.month - 1]})`));
+        }
+        if (upcoming.length > 0) {
+          contextLines.push("", `Upcoming tasks in the next 1-2 months (for briefing context only):`);
+          upcoming.slice(0, 6).forEach(t => contextLines.push(`  - ${t.title} (${monthNames[t.month - 1]})`));
+        }
+      }
 
-      const noTasks = coachTasks.length === 0;
+      const noCurrentTasks = currentMonthTasks.length === 0;
       const prompt = `You are an expert home maintenance advisor helping a homeowner prioritize their tasks.
 
-${context}
+${contextLines.join("\n")}
 
-${noTasks
-  ? 'The homeowner has no pending maintenance tasks. Acknowledge this warmly (2-3 sentences) and encourage them to stay consistent. Respond with ONLY valid JSON: { "briefing": "...", "topTasks": [] }'
-  : `Provide a personalized maintenance briefing for this homeowner.
+${noCurrentTasks
+  ? 'The homeowner has completed all tasks for this month or has none pending. Acknowledge this warmly (2-3 sentences) and mention any overdue context if relevant. Respond with ONLY valid JSON: { "briefing": "...", "topTasks": [] }'
+  : `Provide a personalized maintenance briefing and top-3 task list for this homeowner.
 
-Ranking rules (apply in this order):
-1. OVERDUE tasks come first — they were recommended in a past month.
-2. Among non-overdue tasks: HIGH priority before MEDIUM before LOW.
-3. Prefer tasks especially important in ${season} in a ${regionName} climate.
-4. If wellness score < 40, nudge the homeowner to build their maintenance habit.
+Rules:
+1. topTasks MUST only use exact titles from the "Pending tasks for THIS month" list above.
+2. Rank by: HIGH priority first, then MEDIUM, then LOW. Within same priority, prefer tasks most critical in ${season} for ${regionName}.
+3. If wellness score < 40, encourage habit-building in the briefing.
+4. If there are overdue tasks listed in context, mention them in the briefing (but do NOT put them in topTasks).
 
-Respond with ONLY valid JSON (no markdown):
+Respond with ONLY valid JSON (no markdown, no code fences):
 {
-  "briefing": "2-4 personalized sentences covering current month focus, season context, and a wellness score observation",
+  "briefing": "2-4 personalized sentences: month/season focus, overdue mention if any, wellness observation",
   "topTasks": [
-    { "title": "<exact task title from the list>", "reason": "<1 short sentence: why now, or overdue, or season-specific>" },
+    { "title": "<exact title from THIS MONTH list>", "reason": "<1 sentence: why this task matters right now>" },
     { "title": "...", "reason": "..." },
     { "title": "...", "reason": "..." }
   ]
 }
-Include up to 3 tasks. Use exact titles from the list. Do not include null entries.`}`;
+Include up to 3 tasks (fewer if fewer than 3 are pending). Do not include null entries.`}`;
 
       const openai = new OpenAI({
         baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
@@ -11486,7 +11519,7 @@ Include up to 3 tasks. Use exact titles from the list. Do not include null entri
         model: "gpt-4o-mini",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.4,
-        max_tokens: 600,
+        max_tokens: 700,
       });
 
       const raw = completion.choices[0]?.message?.content ?? "";
@@ -11498,7 +11531,7 @@ Include up to 3 tasks. Use exact titles from the list. Do not include null entri
         return res.json({ briefing: "Your home is looking great! Stay consistent with your maintenance plan.", topTasks: [] });
       }
 
-      // Validate topTasks: title must match a server-derived task title
+      // Validate topTasks: must be current-month, pending (non-completed) tasks
       const validatedTopTasks = (result.topTasks ?? [])
         .filter(t => t && typeof t.title === "string" && typeof t.reason === "string" && validTitles.has(t.title))
         .slice(0, 3);
