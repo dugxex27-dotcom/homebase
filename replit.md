@@ -70,6 +70,13 @@ Preferred communication style: Simple, everyday language.
     - New `review_requests` table: tracks contractor-initiated review requests with status (pending/accepted/declined).
     - **Verified Service badge**: shown on reviews that have `isVerifiedService=true` (always true for new reviews since service record is required).
     - "Request Review" button in contractor's service records page for completed jobs with a linked homeownerId.
+- **AI Invoice Analysis & Verification (Task #19)**:
+    - Homeowners upload invoice/receipt photos (or PDFs) from the Service Records page via "AI Scan Invoice" button.
+    - GPT-4o-mini vision extracts: service description, date, total amount, contractor name/company, home area, service type, and AI confidence level.
+    - DIY flow: users also upload before/after photos + material receipts; AI verifies the work is legitimate DIY.
+    - Two-step review dialog: upload step → review/edit AI-extracted data → confirm to create maintenance log and update Home Wellness Score.
+    - "Verified by AI" badge appears on service records created via the AI invoice flow.
+    - DB table: `invoice_analyses` (`0008_invoice_analyses.sql`). Service: `server/invoice-analysis-service.ts`. Routes: POST `/api/invoice-analyses/analyze`, PATCH `/api/invoice-analyses/:id/confirm`, PATCH `/api/invoice-analyses/:id/reject`, GET `/api/invoice-analyses`.
 - **Error Tracking**: React ErrorBoundary, client-side error logger, and database schema for error tracking accessible via an admin console.
 
 ## External Dependencies

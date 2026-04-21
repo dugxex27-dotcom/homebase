@@ -11,6 +11,8 @@ import rateLimit from "express-rate-limit";
 import { eq, and, or, lte, gte, sql as drizzleSql, isNull, isNotNull, desc, count } from "drizzle-orm";
 import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, maintenanceTasks, customMaintenanceTasks, insertSupportTicketSchema, insertSubscriptionCycleEventSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, crmClients, crmJobs, crmQuotes, crmInvoices, securitySessions, referralCredits, referralFreeMonths, agentProfiles, users, siteContent, insertSiteContentSchema, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, homeDocuments, insertHomeDocumentSchema, type House } from "@shared/schema";
 import { calculateDIYSavingsAmount } from "@shared/cost-helpers";
+import { extractInvoiceData, verifyDIYPhotos } from "./invoice-analysis-service";
+import { invoiceAnalyses } from "@shared/schema";
 import pushRoutes from "./push-routes";
 import { pushService } from "./push-service";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
@@ -14955,6 +14957,259 @@ Severity levels:
     } catch (err) {
       console.error("[INSPECTION] Summary error:", err);
       res.status(500).json({ message: "Failed to fetch inspection summary" });
+    }
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // AI INVOICE ANALYSIS
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // POST /api/invoice-analyses/analyze
+  // Upload invoice/receipt images + optional before/after photos, run GPT-4o vision extraction
+  app.post("/api/invoice-analyses/analyze", isAuthenticated, requireHomeownerSubscription, async (req: any, res) => {
+    try {
+      const {
+        houseId,
+        completionMethod = "contractor",
+        invoiceFiles = [],   // [{ fileData: base64, fileName, fileType }]
+        beforePhotoFiles = [],
+        afterPhotoFiles = [],
+        receiptFiles = [],
+      } = req.body;
+
+      if (!houseId) return res.status(400).json({ message: "houseId is required" });
+
+      const house = await storage.getHouse(houseId);
+      if (!house || house.homeownerId !== req.session.user.id) {
+        return res.status(403).json({ message: "Access denied to house" });
+      }
+
+      // Helper: upload array of files and return stored URLs
+      const uploadFileSet = async (files: Array<{ fileData: string; fileName: string; fileType: string }>): Promise<string[]> => {
+        const urls: string[] = [];
+        for (const f of files) {
+          const base64Data = f.fileData.includes("base64,") ? f.fileData.split("base64,")[1] : f.fileData;
+          const buffer = Buffer.from(base64Data, "base64");
+          const ext = f.fileName.split(".").pop() || "bin";
+          const uniqueName = `${randomUUID()}.${ext}`;
+          const path = `public/invoices/${uniqueName}`;
+          let mime = f.fileType || "application/octet-stream";
+          if (ext === "pdf") mime = "application/pdf";
+          else if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) mime = `image/${ext === "jpg" ? "jpeg" : ext}`;
+          await objectStorageService.uploadFile(path, buffer, mime);
+          urls.push(`/public/invoices/${uniqueName}`);
+        }
+        return urls;
+      };
+
+      // Upload all file sets in parallel
+      const [storedInvoiceUrls, storedBeforeUrls, storedAfterUrls, storedReceiptUrls] = await Promise.all([
+        uploadFileSet(invoiceFiles),
+        uploadFileSet(beforePhotoFiles),
+        uploadFileSet(afterPhotoFiles),
+        uploadFileSet(receiptFiles),
+      ]);
+
+      // Run AI extraction on the first invoice image (or receipt if no invoice)
+      let extraction = {
+        serviceDescription: null as string | null,
+        serviceDate: null as string | null,
+        totalAmount: null as number | null,
+        contractorName: null as string | null,
+        contractorCompany: null as string | null,
+        homeArea: null as string | null,
+        serviceType: null as string | null,
+        aiConfidence: "low" as "high" | "medium" | "low",
+        aiNotes: null as string | null,
+      };
+
+      const primaryImageFile = invoiceFiles[0] || receiptFiles[0];
+      if (primaryImageFile) {
+        const base64Data = primaryImageFile.fileData.includes("base64,")
+          ? primaryImageFile.fileData.split("base64,")[1]
+          : primaryImageFile.fileData;
+        const mimeType = primaryImageFile.fileType || "image/jpeg";
+        try {
+          extraction = await extractInvoiceData(base64Data, mimeType);
+        } catch (aiErr) {
+          console.error("[INVOICE ANALYSIS] GPT-4o extraction error:", aiErr);
+          extraction.aiNotes = "AI extraction failed — please fill in details manually.";
+        }
+      }
+
+      // For DIY: if before/after photos provided, run verification too
+      let diyVerified = false;
+      let diyVerificationNotes: string | null = null;
+      if (completionMethod === "diy") {
+        const photosToVerify = [...beforePhotoFiles, ...afterPhotoFiles, ...receiptFiles];
+        if (photosToVerify.length > 0) {
+          try {
+            const photoData = photosToVerify.slice(0, 4).map((f) => ({
+              base64: f.fileData.includes("base64,") ? f.fileData.split("base64,")[1] : f.fileData,
+              mimeType: f.fileType || "image/jpeg",
+            }));
+            const verification = await verifyDIYPhotos(photoData);
+            diyVerified = verification.verified;
+            diyVerificationNotes = verification.notes;
+            if (!extraction.aiNotes) {
+              extraction.aiNotes = verification.notes;
+            }
+          } catch (verifyErr) {
+            console.error("[INVOICE ANALYSIS] DIY verification error:", verifyErr);
+          }
+        }
+      }
+
+      // Create invoice_analyses record
+      const [analysis] = await db.insert(invoiceAnalyses).values({
+        homeownerId: req.session.user.id,
+        houseId,
+        status: "pending",
+        completionMethod,
+        invoiceUrls: storedInvoiceUrls,
+        beforePhotoUrls: storedBeforeUrls,
+        afterPhotoUrls: storedAfterUrls,
+        receiptUrls: storedReceiptUrls,
+        serviceDescription: extraction.serviceDescription,
+        serviceDate: extraction.serviceDate,
+        totalAmount: extraction.totalAmount !== null ? extraction.totalAmount.toFixed(2) : null,
+        contractorName: extraction.contractorName,
+        contractorCompany: extraction.contractorCompany,
+        homeArea: extraction.homeArea,
+        serviceType: extraction.serviceType,
+        aiConfidence: extraction.aiConfidence,
+        aiNotes: extraction.aiNotes || (diyVerificationNotes ?? null),
+        maintenanceLogId: null,
+      }).returning();
+
+      res.status(201).json({ ...analysis, diyVerified });
+    } catch (err: any) {
+      console.error("[INVOICE ANALYSIS] analyze error:", err);
+      res.status(500).json({ message: "Failed to analyze invoice" });
+    }
+  });
+
+  // PATCH /api/invoice-analyses/:id/confirm
+  // Homeowner reviews & edits AI-extracted data, then confirms to create a maintenance log
+  app.patch("/api/invoice-analyses/:id/confirm", isAuthenticated, requireHomeownerSubscription, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const [analysis] = await db.select().from(invoiceAnalyses).where(eq(invoiceAnalyses.id, id));
+      if (!analysis) return res.status(404).json({ message: "Analysis not found" });
+      if (analysis.homeownerId !== req.session.user.id) return res.status(403).json({ message: "Access denied" });
+      if (analysis.status !== "pending") return res.status(400).json({ message: "Analysis already processed" });
+
+      const {
+        serviceDescription,
+        serviceDate,
+        totalAmount,
+        contractorName,
+        contractorCompany,
+        homeArea,
+        serviceType,
+      } = req.body;
+
+      const finalDescription = serviceDescription || analysis.serviceDescription || "Home Maintenance";
+      const finalDate = serviceDate || analysis.serviceDate || new Date().toISOString().split("T")[0];
+      const finalCost = totalAmount ?? (analysis.totalAmount ? parseFloat(analysis.totalAmount) : null);
+      const finalContractorName = contractorName || analysis.contractorName || null;
+      const finalContractorCompany = contractorCompany || analysis.contractorCompany || null;
+      const finalHomeArea = homeArea || analysis.homeArea || "other";
+      const finalServiceType = serviceType || analysis.serviceType || "maintenance";
+
+      // Create maintenance log
+      const logData = {
+        homeownerId: req.session.user.id,
+        houseId: analysis.houseId,
+        serviceDate: finalDate,
+        serviceType: finalServiceType,
+        homeArea: finalHomeArea,
+        serviceDescription: finalDescription,
+        cost: finalCost !== null ? finalCost.toFixed(2) : null,
+        contractorName: finalContractorName,
+        contractorCompany: finalContractorCompany,
+        completionMethod: analysis.completionMethod,
+        receiptUrls: [...(analysis.invoiceUrls || []), ...(analysis.receiptUrls || [])],
+        beforePhotoUrls: analysis.beforePhotoUrls || [],
+        afterPhotoUrls: analysis.afterPhotoUrls || [],
+      };
+      const log = await storage.createMaintenanceLog(logData);
+
+      // Create task completion record for health score
+      const now = new Date();
+      await db.insert(taskCompletions).values({
+        homeownerId: req.session.user.id,
+        houseId: analysis.houseId,
+        taskId: null,
+        taskType: "maintenance",
+        taskTitle: finalDescription,
+        taskCategory: finalHomeArea,
+        completedAt: now,
+        month: now.getMonth() + 1,
+        year: now.getFullYear(),
+        completionMethod: analysis.completionMethod === "diy" ? "diy" : "professional",
+        estimatedCost: null,
+        actualCost: finalCost !== null ? finalCost.toFixed(2) : null,
+        costSavings: null,
+        notes: null,
+        documentsUploaded: (analysis.invoiceUrls?.length || 0) + (analysis.receiptUrls?.length || 0),
+      });
+
+      // Update analysis record to confirmed
+      const [updated] = await db.update(invoiceAnalyses)
+        .set({ status: "confirmed", maintenanceLogId: log.id, confirmedAt: now })
+        .where(eq(invoiceAnalyses.id, id))
+        .returning();
+
+      // Check achievements
+      const newAchievements = await storage.checkAndAwardAchievements(req.session.user.id);
+
+      res.json({ analysis: updated, maintenanceLog: log, newAchievements: newAchievements || [] });
+    } catch (err: any) {
+      console.error("[INVOICE ANALYSIS] confirm error:", err);
+      res.status(500).json({ message: "Failed to confirm invoice analysis" });
+    }
+  });
+
+  // PATCH /api/invoice-analyses/:id/reject
+  app.patch("/api/invoice-analyses/:id/reject", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const [analysis] = await db.select().from(invoiceAnalyses).where(eq(invoiceAnalyses.id, id));
+      if (!analysis) return res.status(404).json({ message: "Analysis not found" });
+      if (analysis.homeownerId !== req.session.user.id) return res.status(403).json({ message: "Access denied" });
+
+      const [updated] = await db.update(invoiceAnalyses)
+        .set({ status: "rejected" })
+        .where(eq(invoiceAnalyses.id, id))
+        .returning();
+
+      res.json(updated);
+    } catch (err: any) {
+      console.error("[INVOICE ANALYSIS] reject error:", err);
+      res.status(500).json({ message: "Failed to reject analysis" });
+    }
+  });
+
+  // GET /api/invoice-analyses?houseId=...
+  app.get("/api/invoice-analyses", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+    try {
+      const houseId = req.query.houseId as string | undefined;
+      const homeownerId = req.session.user.id;
+
+      const conditions = houseId
+        ? and(eq(invoiceAnalyses.homeownerId, homeownerId), eq(invoiceAnalyses.houseId, houseId))
+        : eq(invoiceAnalyses.homeownerId, homeownerId);
+
+      const results = await db.select().from(invoiceAnalyses)
+        .where(conditions)
+        .orderBy(desc(invoiceAnalyses.createdAt))
+        .limit(50);
+
+      res.json(results);
+    } catch (err: any) {
+      console.error("[INVOICE ANALYSIS] list error:", err);
+      res.status(500).json({ message: "Failed to fetch invoice analyses" });
     }
   });
 

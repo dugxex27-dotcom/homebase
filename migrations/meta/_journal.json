@@ -57,6 +57,13 @@
       "when": 1745251200000,
       "tag": "0007_weather_forecast_reminders_sent",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1745510400000,
+      "tag": "0008_invoice_analyses",
+      "breakpoints": true
     }
   ]
 }

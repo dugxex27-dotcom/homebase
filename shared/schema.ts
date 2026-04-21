@@ -398,6 +398,41 @@ export const maintenanceLogs = pgTable("maintenance_logs", {
   index("IDX_maintenance_logs_completion_method").on(table.completionMethod),
 ]);
 
+export const invoiceAnalyses = pgTable("invoice_analyses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  homeownerId: text("homeowner_id").notNull(),
+  houseId: text("house_id").notNull(),
+  status: text("status").notNull().default("pending"), // "pending" | "confirmed" | "rejected"
+  completionMethod: text("completion_method").notNull().default("contractor"), // "contractor" | "diy"
+  // Uploaded files
+  invoiceUrls: text("invoice_urls").array().default(sql`'{}'::text[]`),
+  beforePhotoUrls: text("before_photo_urls").array().default(sql`'{}'::text[]`),
+  afterPhotoUrls: text("after_photo_urls").array().default(sql`'{}'::text[]`),
+  receiptUrls: text("receipt_urls").array().default(sql`'{}'::text[]`),
+  // AI-extracted fields (all nullable — may not be readable)
+  serviceDescription: text("service_description"),
+  serviceDate: text("service_date"),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }),
+  contractorName: text("contractor_name"),
+  contractorCompany: text("contractor_company"),
+  homeArea: text("home_area"),
+  serviceType: text("service_type"),
+  aiConfidence: text("ai_confidence"), // "high" | "medium" | "low"
+  aiNotes: text("ai_notes"), // Any caveats or issues the AI noticed
+  // Link to the maintenance log created on confirmation
+  maintenanceLogId: text("maintenance_log_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  confirmedAt: timestamp("confirmed_at"),
+});
+
+export const insertInvoiceAnalysisSchema = createInsertSchema(invoiceAnalyses).omit({
+  id: true,
+  createdAt: true,
+  confirmedAt: true,
+});
+export type InsertInvoiceAnalysis = z.infer<typeof insertInvoiceAnalysisSchema>;
+export type InvoiceAnalysis = typeof invoiceAnalyses.$inferSelect;
+
 export const contractorAppointments = pgTable("contractor_appointments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   homeownerId: text("homeowner_id").notNull(),
