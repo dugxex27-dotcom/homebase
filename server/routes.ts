@@ -15031,13 +15031,21 @@ Severity levels:
         const mimeType = primaryImageFile.fileType || "image/jpeg";
         try {
           extraction = await extractInvoiceData(base64Data, mimeType);
+          // If the image is not a valid invoice/receipt, return a structured error
+          if (!extraction.isValidInvoice) {
+            return res.status(422).json({
+              code: "INVALID_INVOICE",
+              message: extraction.invalidReason || "The uploaded image does not appear to be a home service invoice or receipt. Please upload a clear photo of your invoice, receipt, or work order.",
+            });
+          }
         } catch (aiErr) {
           console.error("[INVOICE ANALYSIS] GPT-4o extraction error:", aiErr);
           extraction.aiNotes = "AI extraction failed — please fill in details manually.";
         }
       }
 
-      // For DIY: if before/after photos provided, run verification too
+      // For DIY: run verification only if before/after photos are included during analyze
+      // (separate /diy-verify endpoint handles explicit post-review verification)
       let diyVerified = false;
       let diyVerificationNotes: string | null = null;
       if (completionMethod === "diy") {
@@ -15064,7 +15072,7 @@ Severity levels:
       const [analysis] = await db.insert(invoiceAnalyses).values({
         homeownerId: req.session.user.id,
         houseId,
-        status: completionMethod === "diy" && diyVerified ? "pending" : "pending",
+        status: "pending",
         completionMethod,
         invoiceUrls: storedInvoiceUrls,
         beforePhotoUrls: storedBeforeUrls,

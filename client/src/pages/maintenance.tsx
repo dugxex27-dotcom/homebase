@@ -1571,11 +1571,9 @@ export default function Maintenance() {
 
   // AI Invoice Scan dialog state
   const [aiInvoiceOpen, setAiInvoiceOpen] = useState(false);
-  const [aiStep, setAiStep] = useState<"upload" | "review" | "done">("upload");
+  const [aiStep, setAiStep] = useState<"upload" | "diy-verify" | "review" | "done">("upload");
   const [aiCompletionMethod, setAiCompletionMethod] = useState<"contractor" | "diy">("contractor");
   const [aiInvoiceFiles, setAiInvoiceFiles] = useState<File[]>([]);
-  const [aiBeforeFiles, setAiBeforeFiles] = useState<File[]>([]);
-  const [aiAfterFiles, setAiAfterFiles] = useState<File[]>([]);
   const [aiReceiptFiles, setAiReceiptFiles] = useState<File[]>([]);
   const [aiAnalysis, setAiAnalysis] = useState<InvoiceAnalysis | null>(null);
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
@@ -1587,6 +1585,9 @@ export default function Maintenance() {
   const [aiEditContractorCompany, setAiEditContractorCompany] = useState("");
   const [aiEditHomeArea, setAiEditHomeArea] = useState("");
   const [aiEditServiceType, setAiEditServiceType] = useState("");
+  const [aiDiyVerifyFiles, setAiDiyVerifyFiles] = useState<{ before: File[]; after: File[]; receipt: File[] }>({ before: [], after: [], receipt: [] });
+  const [aiDiyVerifying, setAiDiyVerifying] = useState(false);
+  const [aiDiyVerifyResult, setAiDiyVerifyResult] = useState<{ diyVerified: boolean; verificationNotes: string | null } | null>(null);
 
   // Delete confirmation dialog states
   const [deleteApplianceConfirmOpen, setDeleteApplianceConfirmOpen] = useState(false);
@@ -2736,11 +2737,44 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     setAiStep("upload");
     setAiCompletionMethod("contractor");
     setAiInvoiceFiles([]);
-    setAiBeforeFiles([]);
-    setAiAfterFiles([]);
     setAiReceiptFiles([]);
     setAiAnalysis(null);
+    setAiDiyVerifyFiles({ before: [], after: [], receipt: [] });
+    setAiDiyVerifyResult(null);
     setAiInvoiceOpen(true);
+  };
+
+  const runDiyVerify = async () => {
+    if (!aiAnalysis) return;
+    const allFiles = [...aiDiyVerifyFiles.before, ...aiDiyVerifyFiles.after, ...aiDiyVerifyFiles.receipt];
+    if (allFiles.length === 0) {
+      toast({ title: "Photos required", description: "Please upload at least one before or after photo to verify your DIY work.", variant: "destructive" });
+      return;
+    }
+    setAiDiyVerifying(true);
+    try {
+      const toPayload = async (files: File[]) =>
+        Promise.all(files.map(async (f) => ({ fileData: await fileToBase64Ai(f), fileName: f.name, fileType: f.type })));
+      const res = await apiRequest(`/api/invoice-analyses/${aiAnalysis.id}/diy-verify`, "POST", {
+        beforePhotoFiles: await toPayload(aiDiyVerifyFiles.before),
+        afterPhotoFiles: await toPayload(aiDiyVerifyFiles.after),
+        receiptFiles: await toPayload(aiDiyVerifyFiles.receipt),
+      });
+      const data = await res.json();
+      setAiDiyVerifyResult({ diyVerified: data.diyVerified, verificationNotes: data.verificationNotes });
+      setAiAnalysis((prev) => prev ? { ...prev, diyVerified: data.diyVerified } : prev);
+      queryClient.invalidateQueries({ queryKey: ["/api/invoice-analyses"] });
+      if (data.diyVerified) {
+        toast({ title: "Verification passed", description: "Your DIY work has been verified. You can now confirm the record." });
+      } else {
+        toast({ title: "Verification inconclusive", description: "Please add clearer before/after photos showing the completed work.", variant: "destructive" });
+      }
+    } catch (err) {
+      console.error("[DIY VERIFY]", err);
+      toast({ title: "Verification failed", description: "Could not verify your photos. Please try again.", variant: "destructive" });
+    } finally {
+      setAiDiyVerifying(false);
+    }
   };
 
   const runAiAnalysis = async () => {
@@ -2748,9 +2782,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       toast({ title: "Error", description: "Please select a house first.", variant: "destructive" });
       return;
     }
-    const allFiles = [...aiInvoiceFiles, ...aiReceiptFiles, ...aiBeforeFiles, ...aiAfterFiles];
+    const allFiles = [...aiInvoiceFiles, ...aiReceiptFiles];
     if (allFiles.length === 0) {
-      toast({ title: "Error", description: "Please upload at least one invoice or photo.", variant: "destructive" });
+      toast({ title: "Error", description: "Please upload at least one invoice or receipt.", variant: "destructive" });
       return;
     }
     setAiAnalyzing(true);
@@ -2762,11 +2796,21 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
         completionMethod: aiCompletionMethod,
         invoiceFiles: await toPayloadFiles(aiInvoiceFiles),
         receiptFiles: await toPayloadFiles(aiReceiptFiles),
-        beforePhotoFiles: await toPayloadFiles(aiBeforeFiles),
-        afterPhotoFiles: await toPayloadFiles(aiAfterFiles),
       };
-      const res = await apiRequest("/api/invoice-analyses/analyze", "POST", payload);
-      const a: InvoiceAnalysis = await res.json();
+      const res = await fetch("/api/invoice-analyses/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+      const responseData = await res.json();
+      if (!res.ok) {
+        const reason = responseData?.message || "Could not analyze your invoice. Please try again.";
+        toast({ title: "Upload not recognized", description: reason, variant: "destructive" });
+        setAiAnalyzing(false);
+        return;
+      }
+      const a: InvoiceAnalysis = responseData;
       setAiAnalysis(a);
       setAiEditDescription(a.serviceDescription || "");
       setAiEditDate(a.serviceDate || new Date().toISOString().split("T")[0]);
@@ -2775,7 +2819,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       setAiEditContractorCompany(a.contractorCompany || "");
       setAiEditHomeArea(a.homeArea || "");
       setAiEditServiceType(a.serviceType || "maintenance");
-      setAiStep("review");
+      // For DIY work, route to the explicit verification step before review
+      setAiStep(aiCompletionMethod === "diy" && !a.diyVerified ? "diy-verify" : "review");
     } catch {
       toast({ title: "Analysis failed", description: "Could not analyze your invoice. Please try again.", variant: "destructive" });
     } finally {
@@ -4249,7 +4294,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2" style={{ color: '#2c0f5b' }}>
                 <Scan className="w-5 h-5" style={{ color: '#7c3aed' }} />
-                AI Scan Invoice
+                {aiStep === "diy-verify" ? "Verify DIY Work" : "AI Scan Invoice"}
               </DialogTitle>
             </DialogHeader>
 
@@ -4283,32 +4328,15 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                 ) : (
                   <div className="space-y-3">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium" style={{ color: '#2c0f5b' }}>Before Photos</label>
+                      <label className="text-sm font-medium" style={{ color: '#2c0f5b' }}>Material Receipt (optional)</label>
                       <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-purple-50" style={{ borderColor: '#b6a6f4' }}>
                         <Upload className="w-6 h-6 mb-1" style={{ color: '#7c3aed' }} />
-                        <span className="text-xs" style={{ color: '#2c0f5b' }}>Before photos</span>
-                        <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => setAiBeforeFiles(Array.from(e.target.files || []))} />
-                      </label>
-                      {aiBeforeFiles.length > 0 && <p className="text-xs text-green-600">{aiBeforeFiles.length} before photo(s)</p>}
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium" style={{ color: '#2c0f5b' }}>After Photos</label>
-                      <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-purple-50" style={{ borderColor: '#b6a6f4' }}>
-                        <Upload className="w-6 h-6 mb-1" style={{ color: '#7c3aed' }} />
-                        <span className="text-xs" style={{ color: '#2c0f5b' }}>After photos</span>
-                        <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => setAiAfterFiles(Array.from(e.target.files || []))} />
-                      </label>
-                      {aiAfterFiles.length > 0 && <p className="text-xs text-green-600">{aiAfterFiles.length} after photo(s)</p>}
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium" style={{ color: '#2c0f5b' }}>Receipt (optional)</label>
-                      <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-purple-50" style={{ borderColor: '#b6a6f4' }}>
-                        <Upload className="w-6 h-6 mb-1" style={{ color: '#7c3aed' }} />
-                        <span className="text-xs" style={{ color: '#2c0f5b' }}>Receipt photos</span>
+                        <span className="text-xs" style={{ color: '#2c0f5b' }}>Upload receipt for AI to extract service details</span>
                         <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => setAiReceiptFiles(Array.from(e.target.files || []))} />
                       </label>
                       {aiReceiptFiles.length > 0 && <p className="text-xs text-green-600">{aiReceiptFiles.length} receipt(s)</p>}
                     </div>
+                    <p className="text-xs text-amber-700 bg-amber-50 rounded p-2 border border-amber-200">Before &amp; after photos for verification will be requested in the next step.</p>
                   </div>
                 )}
 
@@ -4320,6 +4348,77 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                 >
                   {aiAnalyzing ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Analyzing...</> : <><Scan className="w-4 h-4 mr-2" /> Analyze with AI</>}
                 </Button>
+              </div>
+            )}
+
+            {aiStep === "diy-verify" && aiAnalysis && (
+              <div className="space-y-4">
+                <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
+                  <p className="text-sm font-medium text-amber-800 mb-1">DIY Work Verification Required</p>
+                  <p className="text-xs text-amber-700">Upload before and after photos of your DIY work so AI can verify completion. This is required before saving your record.</p>
+                </div>
+
+                {aiDiyVerifyResult && (
+                  <div className={`p-3 rounded-lg border ${aiDiyVerifyResult.diyVerified ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}>
+                    <p className={`text-sm font-medium ${aiDiyVerifyResult.diyVerified ? "text-green-800" : "text-red-800"}`}>
+                      {aiDiyVerifyResult.diyVerified ? "✓ Verification passed" : "✗ Verification inconclusive"}
+                    </p>
+                    {aiDiyVerifyResult.verificationNotes && <p className="text-xs mt-1" style={{ color: aiDiyVerifyResult.diyVerified ? '#166534' : '#991b1b' }}>{aiDiyVerifyResult.verificationNotes}</p>}
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium mb-1 text-gray-700">Before Photos *</label>
+                    <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-purple-50" style={{ borderColor: '#b6a6f4' }}>
+                      <Upload className="w-5 h-5 mb-1" style={{ color: '#7c3aed' }} />
+                      <span className="text-xs text-gray-600">Upload before photos</span>
+                      <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => setAiDiyVerifyFiles((p) => ({ ...p, before: Array.from(e.target.files || []) }))} />
+                    </label>
+                    {aiDiyVerifyFiles.before.length > 0 && <p className="text-xs text-green-600 mt-1">{aiDiyVerifyFiles.before.length} before photo(s)</p>}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1 text-gray-700">After Photos *</label>
+                    <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-purple-50" style={{ borderColor: '#b6a6f4' }}>
+                      <Upload className="w-5 h-5 mb-1" style={{ color: '#7c3aed' }} />
+                      <span className="text-xs text-gray-600">Upload after photos</span>
+                      <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => setAiDiyVerifyFiles((p) => ({ ...p, after: Array.from(e.target.files || []) }))} />
+                    </label>
+                    {aiDiyVerifyFiles.after.length > 0 && <p className="text-xs text-green-600 mt-1">{aiDiyVerifyFiles.after.length} after photo(s)</p>}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1 text-gray-700">Receipt (optional)</label>
+                    <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed rounded-lg cursor-pointer hover:bg-purple-50" style={{ borderColor: '#b6a6f4' }}>
+                      <Upload className="w-5 h-5 mb-1" style={{ color: '#7c3aed' }} />
+                      <span className="text-xs text-gray-600">Upload receipt</span>
+                      <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => setAiDiyVerifyFiles((p) => ({ ...p, receipt: Array.from(e.target.files || []) }))} />
+                    </label>
+                    {aiDiyVerifyFiles.receipt.length > 0 && <p className="text-xs text-green-600 mt-1">{aiDiyVerifyFiles.receipt.length} receipt(s)</p>}
+                  </div>
+                </div>
+
+                <DialogFooter className="gap-2 flex-col sm:flex-row">
+                  <Button variant="outline" onClick={() => setAiStep("upload")} disabled={aiDiyVerifying}>Back</Button>
+                  <Button
+                    onClick={runDiyVerify}
+                    disabled={aiDiyVerifying}
+                    className="text-white"
+                    style={{ backgroundColor: '#7c3aed' }}
+                    data-testid="button-run-diy-verify"
+                  >
+                    {aiDiyVerifying ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Verifying...</> : "Verify with AI"}
+                  </Button>
+                  {aiDiyVerifyResult?.diyVerified && (
+                    <Button
+                      onClick={() => setAiStep("review")}
+                      className="text-white"
+                      style={{ backgroundColor: '#2c0f5b' }}
+                      data-testid="button-diy-verify-to-review"
+                    >
+                      Continue to Review
+                    </Button>
+                  )}
+                </DialogFooter>
               </div>
             )}
 

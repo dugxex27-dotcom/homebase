@@ -1,6 +1,8 @@
 import OpenAI from "openai";
 
 export interface InvoiceExtraction {
+  isValidInvoice: boolean; // false if image is not an invoice/receipt at all
+  invalidReason: string | null; // populated when isValidInvoice is false
   serviceDescription: string | null;
   serviceDate: string | null;
   totalAmount: number | null;
@@ -21,15 +23,20 @@ export interface DIYVerification {
 }
 
 const INVOICE_PROMPT = `You are extracting home maintenance service details from an invoice, receipt, or work order photo.
-Return ONLY a JSON object with these fields (use null for any field you cannot find or read clearly):
+
+FIRST: Determine if this image is a home maintenance invoice, receipt, or work order. If not (e.g. selfie, unrelated photo, blank image, food receipt), set isValidInvoice to false and fill invalidReason.
+
+Return ONLY a JSON object with these fields:
 {
-  "serviceDescription": "concise description of what work was done (1-2 sentences)",
+  "isValidInvoice": true if this looks like a home service invoice/receipt, false otherwise,
+  "invalidReason": "brief reason if not valid, e.g. 'Image does not appear to be a home service invoice', or null if valid",
+  "serviceDescription": "concise description of what work was done (1-2 sentences), or null",
   "serviceDate": "date of service in YYYY-MM-DD format, or null",
   "totalAmount": number (dollars, no currency symbol) or null,
   "contractorName": "name of technician or contractor, or null",
   "contractorCompany": "company or business name, or null",
-  "homeArea": "one of: hvac, plumbing, electrical, roof, foundation, siding, windows, doors, flooring, kitchen, bathroom, basement, attic, garage, landscaping, driveway, gutters, chimney, septic, well, other",
-  "serviceType": "one of: maintenance, repair, installation, replacement, inspection, cleaning, upgrade, emergency, other",
+  "homeArea": "one of: hvac, plumbing, electrical, roof, foundation, siding, windows, doors, flooring, kitchen, bathroom, basement, attic, garage, landscaping, driveway, gutters, chimney, septic, well, other, or null",
+  "serviceType": "one of: maintenance, repair, installation, replacement, inspection, cleaning, upgrade, emergency, other, or null",
   "aiConfidence": "high if most fields found clearly, medium if some fields missing/uncertain, low if image is unclear or few fields found",
   "aiNotes": "any caveats, e.g. 'date partially obscured', 'handwritten invoice difficult to read', or null"
 }`;
@@ -71,7 +78,10 @@ export async function extractInvoiceData(
   const raw = response.choices[0]?.message?.content ?? "{}";
   const parsed = JSON.parse(raw);
 
+  const isValidInvoice = parsed.isValidInvoice !== false;
   return {
+    isValidInvoice,
+    invalidReason: isValidInvoice ? null : (parsed.invalidReason ?? "Image does not appear to be a home service invoice"),
     serviceDescription: parsed.serviceDescription ?? null,
     serviceDate: parsed.serviceDate ?? null,
     totalAmount:
