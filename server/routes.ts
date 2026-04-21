@@ -14979,8 +14979,8 @@ Severity levels:
 
       if (!houseId) return res.status(400).json({ message: "houseId is required" });
 
-      // Contractor work requires an invoice; DIY receipt is optional
-      if (completionMethod === "contractor" && invoiceFiles.length === 0 && receiptFiles.length === 0) {
+      // Contractor work requires at least one invoice file; DIY receipt is fully optional
+      if (completionMethod === "contractor" && invoiceFiles.length === 0) {
         return res.status(400).json({ message: "Please upload at least one invoice photo for contractor work." });
       }
 
@@ -15129,6 +15129,9 @@ Severity levels:
       if (totalBefore === 0 || totalAfter === 0) {
         return res.status(400).json({ message: "Please provide at least one before photo AND one after photo to verify your DIY work." });
       }
+
+      // All newly uploaded files for AI verification
+      const allPhotos = [...beforePhotoFiles, ...afterPhotoFiles, ...receiptFiles];
 
       // Helper: upload array of files and return stored URLs
       const uploadFileSet = async (files: Array<{ fileData: string; fileName: string; fileType: string }>): Promise<string[]> => {
