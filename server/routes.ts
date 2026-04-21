@@ -11563,7 +11563,7 @@ Include up to 3 tasks (fewer if fewer than 3 are pending). Do not include null e
         db.select().from(taskCompletions).where(eq(taskCompletions.houseId, houseId)),
         storage.getMaintenanceLogs(homeownerId, houseId),
         storage.getHomeSystems(homeownerId, houseId),
-        db.select().from(serviceRecords).where(
+        db.select({ serviceType: serviceRecords.serviceType }).from(serviceRecords).where(
           and(
             eq(serviceRecords.houseId, houseId),
             eq(serviceRecords.isVisibleToHomeowner, true)
