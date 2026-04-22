@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -40,7 +40,8 @@ import {
   AlertCircle,
   Loader2,
   Upload,
-  X
+  X,
+  ChevronUp
 } from "lucide-react";
 
 const SERVICE_TYPES = [
@@ -132,6 +133,14 @@ export default function HomeownerServiceRecords() {
   const [aiEditHomeArea, setAiEditHomeArea] = useState("");
   const [aiEditServiceType, setAiEditServiceType] = useState("");
   const [aiSelectedHouseId, setAiSelectedHouseId] = useState("");
+
+  // Back-to-top button
+  const [showBackToTop, setShowBackToTop] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setShowBackToTop(window.scrollY > 320);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   // Load houses
   const { data: houses = [] } = useQuery<House[]>({
@@ -1586,6 +1595,12 @@ export default function HomeownerServiceRecords() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {showBackToTop && (
+        <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} aria-label="Back to top" data-testid="button-back-to-top" style={{ position: 'fixed', bottom: '88px', right: '16px', zIndex: 50, width: 44, height: 44, borderRadius: '50%', backgroundColor: '#2c0f5b', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(44,15,91,0.45)' }}>
+          <ChevronUp style={{ width: 20, height: 20 }} />
+        </button>
+      )}
     </div>
   );
 }
