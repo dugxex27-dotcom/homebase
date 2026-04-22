@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { PageHero } from "@/components/page-hero";
+import logoHomeowner from "@assets/my-homebase-logo-tm-howner-white-final_1776538414393.png";
+import "./home.css";
 import {
   Sparkles, Search, Loader2, AlertCircle, MessageCircle,
   Send, RotateCcw, HardHat, Wrench, Zap, Droplets,
@@ -336,21 +337,41 @@ export default function AIContractorHelp() {
   };
 
   return (
-    <div className="min-h-screen">
-      <PageHero
-        eyebrow="Homeowner"
-        title="HomeBase AI"
-        subtitle="Diagnose issues, get DIY fixes, and find the right contractor"
-      />
-      <div className="container mx-auto py-8 px-4 max-w-3xl">
+    <div className="min-h-screen" style={{ background: '#ffffff' }}>
+
+      {/* ── PAGE HEADER ─────────────────────────── */}
+      <div className="dash-header">
+        <div className="dash-header-top">
+          <img src={logoHomeowner} alt="MyHomeBase™" className="dash-logo" />
+        </div>
+        <span className="dash-eyebrow">Homeowner</span>
+        <div className="dash-title">Ask AI</div>
+        <div className="dash-subtitle">Diagnose issues, get DIY fixes, and find the right contractor</div>
+        <div className="dash-chips">
+          <div className="dash-chip">
+            <div className="dash-chip-num">{QUICK_START_PROMPTS.length}</div>
+            <div className="dash-chip-label">Quick Topics</div>
+          </div>
+          <div className="dash-chip">
+            <div className="dash-chip-num">2</div>
+            <div className="dash-chip-label">Modes</div>
+          </div>
+          <div className="dash-chip">
+            <div className="dash-chip-num good">AI</div>
+            <div className="dash-chip-label">Instant Help</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="container mx-auto py-6 sm:py-8 px-4 max-w-3xl">
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2 mb-6 h-12">
-            <TabsTrigger value="troubleshoot" className="flex items-center gap-2 text-sm font-medium" data-testid="tab-troubleshoot">
+          <TabsList className="grid w-full grid-cols-2 mb-6 h-12" style={{ backgroundColor: '#f0ebfa' }}>
+            <TabsTrigger value="troubleshoot" className="flex items-center gap-2 text-sm font-medium data-[state=active]:text-white" style={{ '--tw-ring-color': '#2c0f5b' } as any} data-testid="tab-troubleshoot">
               <MessageCircle className="w-4 h-4" />
               Troubleshoot My Issue
             </TabsTrigger>
-            <TabsTrigger value="contractor" className="flex items-center gap-2 text-sm font-medium" data-testid="tab-contractor">
+            <TabsTrigger value="contractor" className="flex items-center gap-2 text-sm font-medium data-[state=active]:text-white" data-testid="tab-contractor">
               <HardHat className="w-4 h-4" />
               Find a Contractor
             </TabsTrigger>
@@ -358,16 +379,16 @@ export default function AIContractorHelp() {
 
           {/* Troubleshoot Tab */}
           <TabsContent value="troubleshoot" className="mt-0">
-            <Card className="border-0 shadow-md overflow-hidden">
+            <Card className="overflow-hidden" style={{ border: '1px solid #ede9f8', boxShadow: '0 2px 12px rgba(44,15,91,0.06)' }}>
               <TroubleshootTab onSwitchToContractor={handleSwitchToContractor} />
             </Card>
           </TabsContent>
 
           {/* Find a Contractor Tab */}
           <TabsContent value="contractor" className="mt-0">
-            <Card className="mb-6 border-0 shadow-md">
+            <Card className="mb-6" style={{ border: '1px solid #ede9f8', boxShadow: '0 2px 12px rgba(44,15,91,0.06)' }}>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-purple-700">
+                <CardTitle className="flex items-center gap-2" style={{ color: '#2c0f5b' }}>
                   <Sparkles className="w-5 h-5" />
                   Who Should I Contact?
                 </CardTitle>
@@ -408,45 +429,47 @@ export default function AIContractorHelp() {
             </Card>
 
             {recommendation && (
-              <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-blue-50 border-0 shadow-md">
+              <Card style={{ background: '#f8f5ff', border: '1px solid #ede9f8', boxShadow: '0 2px 12px rgba(44,15,91,0.06)' }}>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-purple-700">
+                  <CardTitle className="flex items-center gap-2" style={{ color: '#2c0f5b' }}>
                     <AlertCircle className="w-5 h-5" />
                     AI Recommendation
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Possible Causes</h3>
-                    <p className="text-gray-700" data-testid="text-possible-causes">
+                    <h3 className="font-semibold mb-2" style={{ color: '#2c0f5b' }}>Possible Causes</h3>
+                    <p style={{ color: '#4a3670' }} data-testid="text-possible-causes">
                       {recommendation.possibleCauses}
                     </p>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Recommended Contractor Types</h3>
+                    <h3 className="font-semibold mb-2" style={{ color: '#2c0f5b' }}>Recommended Contractor Types</h3>
                     <div className="flex flex-wrap gap-2 mb-3">
                       {recommendation.recommendedServices.map((service, index) => (
                         <span
                           key={index}
-                          className="px-4 py-2 bg-purple-600 text-white rounded-full text-sm font-medium"
+                          className="px-4 py-2 text-white rounded-full text-sm font-medium"
+                          style={{ backgroundColor: '#2c0f5b' }}
                           data-testid={`badge-recommended-service-${index}`}
                         >
                           {service}
                         </span>
                       ))}
                     </div>
-                    <p className="text-gray-700" data-testid="text-explanation">
+                    <p style={{ color: '#4a3670' }} data-testid="text-explanation">
                       {recommendation.explanation}
                     </p>
                   </div>
-                  <div className="border-t pt-4">
-                    <h3 className="font-semibold text-gray-900 mb-3">Find Contractors</h3>
+                  <div className="border-t pt-4" style={{ borderColor: '#ede9f8' }}>
+                    <h3 className="font-semibold mb-3" style={{ color: '#2c0f5b' }}>Find Contractors</h3>
                     <div className="flex flex-wrap gap-3">
                       {recommendation.recommendedServices.map((service, index) => (
                         <Button
                           key={index}
                           onClick={() => handleFindContractor(service)}
-                          className="bg-blue-600 hover:bg-blue-700"
+                          className="hover:opacity-90"
+                          style={{ backgroundColor: '#3c258e', color: '#fff' }}
                           data-testid={`button-find-contractor-${index}`}
                         >
                           <Search className="w-4 h-4 mr-2" />
@@ -460,12 +483,12 @@ export default function AIContractorHelp() {
             )}
 
             {!recommendation && !recommendationMutation.isPending && (
-              <Card className="bg-blue-50 border-blue-200 border-0 shadow-sm">
+              <Card style={{ background: '#f8f5ff', border: '1px solid #ede9f8', boxShadow: '0 2px 8px rgba(44,15,91,0.05)' }}>
                 <CardHeader>
-                  <CardTitle className="text-blue-700 text-base">Example Problems</CardTitle>
+                  <CardTitle className="text-base" style={{ color: '#2c0f5b' }}>Example Problems</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ul className="space-y-2 text-gray-700 text-sm">
+                  <ul className="space-y-2 text-sm">
                     {[
                       "My toilet keeps running and won't stop filling with water",
                       "The electrical outlet in my kitchen stopped working",
@@ -475,10 +498,11 @@ export default function AIContractorHelp() {
                     ].map((ex, i) => (
                       <li
                         key={i}
-                        className="flex items-start cursor-pointer hover:text-blue-700 transition-colors"
+                        className="flex items-start cursor-pointer transition-colors hover:opacity-80"
+                        style={{ color: '#4a3670' }}
                         onClick={() => setProblem(ex)}
                       >
-                        <span className="text-blue-600 mr-2 mt-0.5">•</span>
+                        <span className="mr-2 mt-0.5 font-bold" style={{ color: '#b6a6f4' }}>•</span>
                         <span>{ex}</span>
                       </li>
                     ))}
