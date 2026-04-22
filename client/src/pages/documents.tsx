@@ -1,4 +1,4 @@
-import { useState, useRef, lazy, Suspense } from "react";
+import { useState, useRef, useEffect, lazy, Suspense } from "react";
 const DisclosuresContent = lazy(() => import("./disclosures"));
 import { InsurancePrepTab } from "./insurance-prep-tab";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -18,9 +18,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   FileText, Upload, Download, Trash2, FolderOpen, Shield, AlertTriangle,
-  CheckCircle, Clock, Info, Eye, Home, Pencil, X, Star, AlertCircle, Search
+  CheckCircle, Clock, Info, Eye, Home, Pencil, X, Star, AlertCircle, Search, ChevronUp
 } from "lucide-react";
-import { PageHero } from "@/components/page-hero";
+import logoHomeowner from "@assets/my-homebase-logo-tm-howner-white-final_1776538414393.png";
+import "./home.css";
 import type { House, HomeDocument } from "@shared/schema";
 
 const CATEGORIES = [
@@ -85,6 +86,13 @@ export default function Documents() {
   const [editDoc, setEditDoc] = useState<{ fileName: string; notes: string; category: string } | null>(null);
   const [editingHouseId, setEditingHouseId] = useState<string | null>(null);
   const [topSection, setTopSection] = useState<"documents" | "disclosures" | "insurance">("documents");
+  const [showBackToTop, setShowBackToTop] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setShowBackToTop(window.scrollY > 320);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const { data: documents = [], isLoading } = useQuery<HomeDocument[]>({
     queryKey: ["/api/home-documents"],
@@ -228,48 +236,73 @@ export default function Documents() {
   const monitorCount = deficiencies.filter(d => d.severity === "monitor").length;
 
   return (
-    <div className="min-h-screen pb-20 lg:pb-0" data-tour-id="documents">
-      <PageHero
-        eyebrow="Secure storage"
-        title="Documents & Disclosures"
-        subtitle="All your home records and disclosure forms in one place"
-        action={topSection === "documents" ? (
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              onClick={() => setInspectionDialogOpen(true)}
-              style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 9, padding: '5px 10px', fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer' }}
-            >
-              + Inspection
-            </button>
-            <button
-              onClick={() => setUploadDialogOpen(true)}
-              style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 9, padding: '5px 10px', fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer' }}
-            >
-              + Upload
-            </button>
+    <div className="min-h-screen pb-20 lg:pb-0" style={{ background: '#ffffff' }} data-tour-id="documents">
+
+      {/* ── PAGE HEADER ─────────────────────────── */}
+      <div className="dash-header">
+        <div className="dash-header-top">
+          <img src={logoHomeowner} alt="MyHomeBase™" className="dash-logo" />
+          {topSection === "documents" && (
+            <div className="dash-header-actions">
+              <button
+                onClick={() => setInspectionDialogOpen(true)}
+                className="dash-icon-btn"
+                style={{ width: 'auto', padding: '0 10px', fontSize: 11, fontWeight: 700, gap: 4 }}
+              >
+                + Inspection
+              </button>
+              <button
+                onClick={() => setUploadDialogOpen(true)}
+                className="dash-icon-btn"
+                style={{ width: 'auto', padding: '0 10px', fontSize: 11, fontWeight: 700, gap: 4 }}
+              >
+                + Upload
+              </button>
+            </div>
+          )}
+        </div>
+        <span className="dash-eyebrow">Secure Storage</span>
+        <div className="dash-title">Documents & Disclosures</div>
+        <div className="dash-subtitle">All your home records and disclosure forms in one place</div>
+        <div className="dash-chips">
+          <div className="dash-chip">
+            <div className={`dash-chip-num${documents.length > 0 ? ' good' : ''}`}>{documents.length}</div>
+            <div className="dash-chip-label">Documents</div>
           </div>
-        ) : undefined}
-      />
+          <div className="dash-chip">
+            <div className="dash-chip-num">{CATEGORIES.length}</div>
+            <div className="dash-chip-label">Categories</div>
+          </div>
+          <div className="dash-chip">
+            <div className={`dash-chip-num${houses.length > 0 ? ' good' : ''}`}>{houses.length}</div>
+            <div className="dash-chip-label">Properties</div>
+          </div>
+        </div>
+      </div>
+
       <div className="max-w-6xl mx-auto px-4 pt-4 pb-6">
         {/* Top-level section switcher */}
-        <div className="flex gap-1 mb-6 border-b border-gray-200 overflow-x-auto">
+        <div className="flex gap-1 mb-6 overflow-x-auto" style={{ borderBottom: '1px solid #ede9f8' }}>
           <button
             onClick={() => setTopSection("documents")}
-            className={`px-5 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px whitespace-nowrap ${topSection === "documents" ? "border-purple-600 text-purple-700" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+            className="px-5 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px whitespace-nowrap"
+            style={topSection === "documents" ? { borderColor: '#2c0f5b', color: '#2c0f5b' } : { borderColor: 'transparent', color: '#7c6fa0' }}
             data-testid="tab-documents"
           >
             Documents
           </button>
           <button
             onClick={() => setTopSection("disclosures")}
-            className={`px-5 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px whitespace-nowrap ${topSection === "disclosures" ? "border-purple-600 text-purple-700" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+            className="px-5 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px whitespace-nowrap"
+            style={topSection === "disclosures" ? { borderColor: '#2c0f5b', color: '#2c0f5b' } : { borderColor: 'transparent', color: '#7c6fa0' }}
             data-testid="tab-disclosures"
           >
             Disclosures
           </button>
           <button
             onClick={() => setTopSection("insurance")}
-            className={`px-5 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px whitespace-nowrap ${topSection === "insurance" ? "border-blue-600 text-blue-700" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+            className="px-5 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px whitespace-nowrap"
+            style={topSection === "insurance" ? { borderColor: '#2c0f5b', color: '#2c0f5b' } : { borderColor: 'transparent', color: '#7c6fa0' }}
             data-testid="tab-insurance-prep"
           >
             Insurance Prep
@@ -287,7 +320,7 @@ export default function Documents() {
 
         {/* Category Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
-          <TabsList className="flex flex-wrap h-auto gap-1 bg-gray-100 dark:bg-gray-800 p-1">
+          <TabsList className="flex flex-wrap h-auto gap-1 p-1" style={{ backgroundColor: '#f0ebfa' }}>
             <TabsTrigger value="all" className="text-xs sm:text-sm">All ({documents.length})</TabsTrigger>
             {CATEGORIES.map(cat => {
               const count = documents.filter(d => d.category === cat.value).length;
@@ -302,17 +335,17 @@ export default function Documents() {
 
           <TabsContent value={activeTab} className="mt-4">
             {isLoading ? (
-              <div className="text-center py-12 text-gray-400">Loading documents...</div>
+              <div className="text-center py-12" style={{ color: '#b6a6f4' }}>Loading documents...</div>
             ) : filteredDocs.length === 0 ? (
               <div className="text-center py-12">
-                <FolderOpen className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-                <p className="text-gray-500 font-medium">No documents yet</p>
-                <p className="text-sm text-gray-400 mt-1">Upload your first document to get started</p>
+                <FolderOpen className="w-12 h-12 mx-auto mb-3" style={{ color: '#b6a6f4' }} />
+                <p className="font-medium" style={{ color: '#4a3670' }}>No documents yet</p>
+                <p className="text-sm mt-1" style={{ color: '#7c6fa0' }}>Upload your first document to get started</p>
               </div>
             ) : (
               <div className="grid gap-3">
                 {filteredDocs.map(doc => (
-                  <Card key={doc.id} className="border border-gray-200 dark:border-gray-700 hover:border-purple-300 transition-colors">
+                  <Card key={doc.id} className="transition-colors" style={{ border: '1px solid #ede9f8', boxShadow: '0 1px 4px rgba(44,15,91,0.05)' }}>
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
                         <div className="flex-shrink-0 w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
@@ -776,6 +809,23 @@ export default function Documents() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {showBackToTop && (
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          data-testid="button-back-to-top"
+          style={{
+            position: 'fixed', bottom: 88, right: 16, zIndex: 50,
+            width: 44, height: 44, borderRadius: '50%',
+            background: '#2c0f5b', border: 'none', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 4px 16px rgba(44,15,91,0.35)',
+          }}
+          aria-label="Back to top"
+        >
+          <ChevronUp style={{ width: 20, height: 20, color: '#fff' }} />
+        </button>
+      )}
     </div>
   );
 }
