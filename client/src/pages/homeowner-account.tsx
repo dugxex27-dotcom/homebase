@@ -41,8 +41,9 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import PushNotificationManager from "@/components/push-notification-manager";
-import { PageHero } from "@/components/page-hero";
 import { HomeownerConnectionCodes } from "@/components/ConnectionCodes";
+import logoHomeowner from "@assets/my-homebase-logo-tm-howner-white-final_1776538414393.png";
+import "./home.css";
 import instagramPostImg from '@assets/ChatGPT_Image_Dec_26,_2025,_12_25_05_PM_1766769919337.png';
 import instagramStoryImg from '@assets/ChatGPT_Image_Dec_26,_2025,_12_15_06_PM_1766769329697.png';
 import facebookTwitterImg from '@assets/homebase-homeowner-referral_(2)_1766768136456.png';
@@ -432,18 +433,45 @@ export default function HomeownerAccount() {
     }
   });
 
-  return (
-    <div className="min-h-screen">
-      <PageHero
-        eyebrow="Homeowner"
-        title="Account Settings"
-        subtitle="Manage your profile and preferences"
-      />
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+  const planLabel = isPaidSubscriber
+    ? (currentPlan === 'premium_plus' ? 'Premium+' : currentPlan === 'premium' ? 'Premium' : 'Basic')
+    : isInTrial ? 'Trial' : 'Free';
+  const housesCount = Array.isArray(houses) ? (houses as any[]).length : 0;
 
-        <div className="space-y-6 max-w-4xl mx-auto">
+  return (
+    <div className="min-h-screen" style={{ background: '#ffffff' }}>
+
+      {/* ── PAGE HEADER ────────────────────────────── */}
+      <div className="dash-header">
+        <div className="dash-header-top">
+          <img src={logoHomeowner} alt="MyHomeBase™" className="dash-logo" />
+        </div>
+        <span className="dash-eyebrow">Homeowner</span>
+        <div className="dash-title">Account Settings</div>
+        <div className="dash-subtitle">Manage your profile and preferences</div>
+        <div className="dash-chips">
+          <div className="dash-chip">
+            <div className={`dash-chip-num ${isPaidSubscriber ? 'good' : isInTrial ? 'warn' : ''}`}>
+              {planLabel}
+            </div>
+            <div className="dash-chip-label">Current plan</div>
+          </div>
+          <div className="dash-chip">
+            <div className="dash-chip-num">{housesCount}</div>
+            <div className="dash-chip-label">Properties</div>
+          </div>
+          <div className="dash-chip">
+            <div className="dash-chip-num">{isLoadingReferral ? '—' : referralCount}</div>
+            <div className="dash-chip-label">Referrals</div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── PAGE BODY ──────────────────────────────── */}
+      <div className="dash-body">
+        <div className="space-y-4 max-w-2xl mx-auto">
           {/* Basic Profile */}
-          <Card style={{ backgroundColor: '#f2f2f2' }}>
+          <Card style={{ backgroundColor: '#ffffff' }}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <User className="w-5 h-5" />
@@ -544,7 +572,7 @@ export default function HomeownerAccount() {
             </Card>
 
             {/* Account Security */}
-            <Card style={{ backgroundColor: '#f2f2f2' }}>
+            <Card style={{ backgroundColor: '#ffffff' }}>
               <CardHeader>
                 <CardTitle>Account Security</CardTitle>
                 <CardDescription>
@@ -596,7 +624,7 @@ export default function HomeownerAccount() {
             </Card>
 
           {/* Subscription & Billing */}
-          <Card style={{ backgroundColor: '#f2f2f2' }}>
+          <Card style={{ backgroundColor: '#ffffff' }}>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CreditCard className="w-5 h-5" />
@@ -710,7 +738,7 @@ export default function HomeownerAccount() {
           </Card>
 
           {/* Notification Preferences */}
-          <Card style={{ backgroundColor: '#f2f2f2' }}>
+          <Card style={{ backgroundColor: '#ffffff' }}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Bell className="w-5 h-5" />
@@ -857,7 +885,7 @@ export default function HomeownerAccount() {
             )}
 
             {/* Referral Sharing */}
-            <Card style={{ backgroundColor: '#f2f2f2' }}>
+            <Card style={{ backgroundColor: '#ffffff' }}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Gift className="w-5 h-5" />
@@ -1009,7 +1037,7 @@ export default function HomeownerAccount() {
             </Card>
 
             {/* Shareable Graphics */}
-            <Card style={{ backgroundColor: '#f2f2f2' }}>
+            <Card style={{ backgroundColor: '#ffffff' }}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <ImageIcon className="w-5 h-5" />
