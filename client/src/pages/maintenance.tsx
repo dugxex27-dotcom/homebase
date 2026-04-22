@@ -28,6 +28,8 @@ import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, Ch
 import { AppointmentScheduler } from "@/components/appointment-scheduler";
 import { CustomMaintenanceTasks } from "@/components/custom-maintenance-tasks";
 import HouseMap from "@/components/house-map";
+import logoHomeowner from "@assets/my-homebase-logo-tm-howner-white-final_1776538414393.png";
+import "./home.css";
 import { US_MAINTENANCE_DATA, getRegionFromClimateZone, getCurrentMonthTasks } from "@shared/location-maintenance-data";
 import { enrichTasksWithCosts } from "@shared/cost-helpers";
 import { formatCostEstimate, formatDIYSavings, type CostEstimate } from "@shared/cost-baselines";
@@ -3434,14 +3436,32 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--page-background)' }}>
-      {/* Welcome Header */}
-      <section className="py-6 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto text-center">
-          <h1 className="text-xl sm:text-2xl font-bold mb-2" style={{ color: '#2c0f5b' }} data-testid="text-welcome-title">Your MyHomeBase™ Dashboard</h1>
-          <p className="text-gray-600 max-w-lg mx-auto">Every property you own, every system inside it, and every task that keeps it running — visible at a glance.<br /><br />Track your <strong>Home Wellness Score™</strong>, log upgrades and appliances, plan tasks, and see exactly what you’re saving by doing it yourself.</p>
+    <div className="min-h-screen" style={{ background: '#ffffff' }}>
+
+      {/* ── PAGE HEADER ───────────────────────────── */}
+      <div className="dash-header">
+        <div className="dash-header-top">
+          <img src={logoHomeowner} alt="MyHomeBase™" className="dash-logo" />
         </div>
-      </section>
+        <span className="dash-eyebrow">Homeowner</span>
+        <div className="dash-title">Your Tasks</div>
+        <div className="dash-subtitle">{MONTHS[selectedMonth - 1]} maintenance schedule for your home</div>
+        <div className="dash-chips">
+          <div className="dash-chip">
+            <div className={`dash-chip-num${totalTasks > 0 && completedCount < totalTasks ? ' alert' : ''}`}>{totalTasks}</div>
+            <div className="dash-chip-label">Tasks this month</div>
+          </div>
+          <div className="dash-chip">
+            <div className={`dash-chip-num${completedCount > 0 ? ' good' : ''}`}>{completedCount}</div>
+            <div className="dash-chip-label">Completed</div>
+          </div>
+          <div className="dash-chip">
+            <div className="dash-chip-num">{(houses as any[]).length}</div>
+            <div className="dash-chip-label">Properties</div>
+          </div>
+        </div>
+      </div>
+
       {/* Trial Banner for Homeowners */}
       {userRole === 'homeowner' && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
