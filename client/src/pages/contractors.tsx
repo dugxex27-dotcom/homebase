@@ -10,7 +10,8 @@ import { ChevronLeft, ChevronRight, Search, ChevronDown, X, Home, ChevronUp } fr
 import type { Contractor, House } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
 import { getDistanceOptions, getDistanceUnit, extractCountryFromAddress, convertDistanceForStorage } from '@shared/distance-utils';
-import { PageHero } from "@/components/page-hero";
+import logoHomeowner from "@assets/my-homebase-logo-tm-howner-white-final_1776538414393.png";
+import "./home.css";
 
 export default function Contractors() {
   const [location] = useLocation();
@@ -359,22 +360,38 @@ export default function Contractors() {
   }
 
   return (
-    <div className="min-h-screen">
-      <PageHero
-        eyebrow="Homeowner"
-        title="Find Trusted Contractors"
-        subtitle="Connect with verified professionals for your home"
-      />
-      <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-6 sm:py-8">
-        {/* Find Contractor Section */}
+    <div className="min-h-screen" style={{ background: '#ffffff' }}>
+
+      {/* ── PAGE HEADER ─────────────────────────── */}
+      <div className="dash-header">
+        <div className="dash-header-top">
+          <img src={logoHomeowner} alt="MyHomeBase™" className="dash-logo" />
+        </div>
+        <span className="dash-eyebrow">Homeowner</span>
+        <div className="dash-title">Find Contractors</div>
+        <div className="dash-subtitle">Connect with verified professionals for your home</div>
+        <div className="dash-chips">
+          <div className="dash-chip">
+            <div className={`dash-chip-num${sortedContractors.length > 0 ? ' good' : ''}`}>{sortedContractors.length}</div>
+            <div className="dash-chip-label">Results</div>
+          </div>
+          <div className="dash-chip">
+            <div className="dash-chip-num">{services.length}</div>
+            <div className="dash-chip-label">Service Types</div>
+          </div>
+          <div className="dash-chip">
+            <div className="dash-chip-num">{(houses as any[]).length}</div>
+            <div className="dash-chip-label">Properties</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-6 sm:py-8">
+        {/* Filters Card */}
         <div className="mb-6 sm:mb-8">
-          <h2 className="text-lg sm:text-xl lg:text-2xl font-bold mb-4 sm:mb-6 text-gray-900">
-            Find Contractor
-          </h2>
-          
           {/* Horizontal Filters */}
-          <div className="bg-card rounded-xl shadow-sm border p-4 sm:p-6 mb-6 sm:mb-8" data-tour-id="find-contractors">
-            <h3 className="text-base sm:text-lg font-semibold text-foreground mb-4 sm:mb-6">Find Your Perfect Contractor</h3>
+          <div className="rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8" style={{ background: '#fff', border: '1px solid #ede9f8', boxShadow: '0 2px 12px rgba(44,15,91,0.06)' }} data-tour-id="find-contractors">
+            <h3 className="text-base sm:text-lg font-bold mb-4 sm:mb-6" style={{ color: '#2c0f5b' }}>Find Your Perfect Contractor</h3>
             
             {/* House Selection Banner - Only show for authenticated homeowners with houses */}
             {isAuthenticated && userRole === 'homeowner' && houses.length > 0 && selectedHouseId && (
@@ -607,10 +624,10 @@ export default function Contractors() {
         {isAuthenticated && userRole === 'homeowner' && selectedHouseId && contractorsUsedAtHouse.length > 0 && (
           <div className="mb-8">
             <div className="mb-6">
-              <h2 className="text-lg sm:text-xl lg:text-2xl font-bold mb-2 text-gray-900">
+              <h2 className="text-lg sm:text-xl lg:text-2xl font-bold mb-2" style={{ color: '#2c0f5b' }}>
                 Your Contractors at {houses.find(h => h.id === selectedHouseId)?.name}
               </h2>
-              <p className="text-sm sm:text-base lg:text-lg" style={{ color: '#2c0f5b' }}>
+              <p className="text-sm sm:text-base lg:text-lg" style={{ color: '#4a3670' }}>
                 {contractorsUsedAtHouse.length} {contractorsUsedAtHouse.length === 1 ? 'contractor' : 'contractors'} you've worked with at this property
               </p>
             </div>
@@ -634,15 +651,15 @@ export default function Contractors() {
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div>
-              <h2 className="text-lg sm:text-xl lg:text-2xl font-bold mb-2 text-gray-900">
+              <h2 className="text-lg sm:text-xl lg:text-2xl font-bold mb-2" style={{ color: '#2c0f5b' }}>
                 Available Contractors
               </h2>
-              <p className="text-lg text-gray-600">
+              <p className="text-base" style={{ color: '#4a3670' }}>
                 {isLoading ? 'Loading...' : `${sortedContractors.length} verified contractors specializing in niche services`}
               </p>
             </div>
             <div className="flex items-center gap-4">
-              <div className="text-sm text-gray-600">
+              <div className="text-sm font-medium" style={{ color: '#4a3670' }}>
                 Sort by:
               </div>
               <Select value={sortBy} onValueChange={setSortBy}>
@@ -661,14 +678,14 @@ export default function Contractors() {
         </div>
 
         {!hasAppliedFilters && !filters.searchQuery && !filters.searchLocation ? (
-              <div className="text-center py-16 bg-card rounded-xl shadow-sm border">
+              <div className="text-center py-16 rounded-2xl" style={{ background: '#fff', border: '1px solid #ede9f8', boxShadow: '0 2px 12px rgba(44,15,91,0.06)' }}>
                 <div className="max-w-md mx-auto">
                   <Search className="w-16 h-16 mx-auto mb-4" style={{ color: '#b6a6f4' }} />
-                  <h3 className="text-xl font-semibold mb-2 text-foreground">Ready to Find Contractors?</h3>
-                  <p className="text-muted-foreground mb-4">
+                  <h3 className="text-xl font-semibold mb-2" style={{ color: '#2c0f5b' }}>Ready to Find Contractors?</h3>
+                  <p className="mb-4" style={{ color: '#4a3670' }}>
                     Use the filters above to search for contractors by distance, services, rating, and more.
                   </p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm" style={{ color: '#7c6fa0' }}>
                     Select your preferences and click "Apply Filters" to see available contractors.
                   </p>
                 </div>
@@ -698,9 +715,9 @@ export default function Contractors() {
                 ))}
               </div>
             ) : sortedContractors.length === 0 ? (
-              <div className="text-center py-12">
-                <h3 className="text-lg font-medium mb-2 text-gray-900">No contractors found</h3>
-                <p className="text-gray-600">Try adjusting your filters or search criteria.</p>
+              <div className="text-center py-12 rounded-2xl" style={{ background: '#fff', border: '1px solid #ede9f8' }}>
+                <h3 className="text-lg font-semibold mb-2" style={{ color: '#2c0f5b' }}>No contractors found</h3>
+                <p style={{ color: '#4a3670' }}>Try adjusting your filters or search criteria.</p>
               </div>
             ) : (
               <>
@@ -728,7 +745,7 @@ export default function Contractors() {
                 </div>
               </>
             )}
-      </main>
+      </div>
 
       {showBackToTop && (
         <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} aria-label="Back to top" data-testid="button-back-to-top" style={{ position: 'fixed', bottom: '88px', right: '16px', zIndex: 50, width: 44, height: 44, borderRadius: '50%', backgroundColor: '#2c0f5b', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(44,15,91,0.45)' }}>
