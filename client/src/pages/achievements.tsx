@@ -28,7 +28,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { HomeownerFeatureGate, HomeownerTrialBanner, FreeUserUpgradePrompt } from "@/components/homeowner-feature-gate";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
-import { PageHero } from "@/components/page-hero";
+import logoHomeowner from "@assets/my-homebase-logo-tm-howner-white-final_1776538414393.png";
+import "./home.css";
 
 // Category descriptions for tooltips
 const categoryDescriptions: Record<string, string> = {
@@ -215,8 +216,18 @@ export default function Achievements() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen">
-        <PageHero eyebrow="Homeowner" title="Achievements" subtitle="Loading your milestones..." />
+      <div className="min-h-screen" style={{ background: '#ffffff' }}>
+        <div className="dash-header">
+          <div className="dash-header-top">
+            <img src={logoHomeowner} alt="MyHomeBase™" className="dash-logo" />
+          </div>
+          <span className="dash-eyebrow">Homeowner</span>
+          <div className="dash-title">Achievements</div>
+          <div className="dash-subtitle">Loading your milestones…</div>
+        </div>
+        <div className="flex items-center justify-center py-24">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2" style={{ borderColor: '#2c0f5b' }} />
+        </div>
       </div>
     );
   }
@@ -266,12 +277,32 @@ export default function Achievements() {
 
   return (
     <>
-      <div className="min-h-screen" data-tour-id="achievements">
-        <PageHero
-          eyebrow="Homeowner"
-          title="Achievements"
-          subtitle="Track your home maintenance milestones"
-        />
+      <div className="min-h-screen" style={{ background: '#ffffff' }} data-tour-id="achievements">
+
+        {/* ── PAGE HEADER ─────────────────────────── */}
+        <div className="dash-header">
+          <div className="dash-header-top">
+            <img src={logoHomeowner} alt="MyHomeBase™" className="dash-logo" />
+          </div>
+          <span className="dash-eyebrow">Homeowner</span>
+          <div className="dash-title">Achievements</div>
+          <div className="dash-subtitle">Track your home maintenance milestones</div>
+          <div className="dash-chips">
+            <div className="dash-chip">
+              <div className={`dash-chip-num${unlockedCount > 0 ? ' good' : ''}`}>{unlockedCount}</div>
+              <div className="dash-chip-label">Unlocked</div>
+            </div>
+            <div className="dash-chip">
+              <div className="dash-chip-num">{totalCount}</div>
+              <div className="dash-chip-label">Total</div>
+            </div>
+            <div className="dash-chip">
+              <div className="dash-chip-num">{(houses as any[]).length}</div>
+              <div className="dash-chip-label">Properties</div>
+            </div>
+          </div>
+        </div>
+
         <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
           {/* Trial Banner */}
           <HomeownerTrialBanner />
@@ -313,7 +344,7 @@ export default function Achievements() {
                         </SelectContent>
                       </Select>
                       {selectedHouseId !== "all" && (
-                        <p className="text-xs sm:text-sm text-gray-600">
+                        <p className="text-xs sm:text-sm" style={{ color: '#4a3670' }}>
                           Showing achievements for {houses.find(h => h.id === selectedHouseId)?.name}
                         </p>
                       )}
