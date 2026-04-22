@@ -357,8 +357,10 @@ export default function AIContractorHelp() {
             <div className="dash-chip-label">Modes</div>
           </div>
           <div className="dash-chip">
-            <div className="dash-chip-num good">24/7</div>
-            <div className="dash-chip-label">Available</div>
+            <div className="dash-chip-num" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '32px' }}>
+              <span className="ai-status-dot" />
+            </div>
+            <div className="dash-chip-label">Always On</div>
           </div>
         </div>
       </div>
