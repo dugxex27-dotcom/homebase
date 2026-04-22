@@ -357,8 +357,8 @@ export default function AIContractorHelp() {
             <div className="dash-chip-label">Modes</div>
           </div>
           <div className="dash-chip">
-            <div className="dash-chip-num good">AI</div>
-            <div className="dash-chip-label">Instant Help</div>
+            <div className="dash-chip-num good">24/7</div>
+            <div className="dash-chip-label">Available</div>
           </div>
         </div>
       </div>
