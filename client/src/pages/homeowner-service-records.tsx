@@ -17,8 +17,9 @@ import type { MaintenanceLog, House, InvoiceAnalysis } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { FreeUserUpgradePrompt, HomeownerTrialBanner } from "@/components/homeowner-feature-gate";
-import { PageHero } from "@/components/page-hero";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
+import logoHomeowner from "@assets/my-homebase-logo-tm-howner-white-final_1776538414393.png";
+import "./home.css";
 import { apiRequest } from "@/lib/queryClient";
 import { 
   FileText, 
@@ -552,33 +553,64 @@ export default function HomeownerServiceRecords() {
 
   const filteredLogs = maintenanceLogs?.filter(log => homeAreaFilter === "all" || log.homeArea === homeAreaFilter) || [];
 
+  // Stat chip computations
+  const totalRecords = maintenanceLogs?.length || 0;
+  const totalSpent = maintenanceLogs?.reduce((sum, l) => sum + (Number(l.cost) || 0), 0) || 0;
+  const recordsThisYear = maintenanceLogs?.filter(l => new Date(l.serviceDate).getFullYear() === new Date().getFullYear()).length || 0;
+
   return (
-    <div className="min-h-screen">
-      <PageHero
-        eyebrow="Homeowner"
-        title="Service Records"
-        subtitle="Complete history of maintenance and repairs"
-        action={
-          <div style={{ display: 'flex', gap: 8 }}>
+    <div className="min-h-screen" style={{ background: "#ffffff" }}>
+
+      {/* ── PAGE HEADER ────────────────────────────── */}
+      <div className="dash-header">
+        <div className="dash-header-top">
+          <img src={logoHomeowner} alt="MyHomeBase™" className="dash-logo" />
+          <div className="dash-header-actions">
             <button
               onClick={openAiInvoiceDialog}
               data-testid="button-ai-scan-invoice"
-              style={{ background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.4)', borderRadius: 9, padding: '5px 10px', fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+              className="dash-icon-btn"
+              style={{ width: "auto", padding: "0 10px", gap: 5, fontSize: 11, fontWeight: 700 }}
             >
-              <Scan style={{ width: 13, height: 13 }} />
-              AI Scan Invoice
+              <Scan size={13} />
+              AI Scan
             </button>
             <button
               onClick={handleAddNewMaintenanceLog}
               data-testid="button-add-service-record"
-              style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 9, padding: '5px 10px', fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer' }}
+              className="dash-icon-btn"
+              style={{ width: "auto", padding: "0 10px", gap: 4, fontSize: 11, fontWeight: 700 }}
             >
-              + Add record
+              <Plus size={13} />
+              Add
             </button>
           </div>
-        }
-      />
-      <div className="container mx-auto px-4 py-8">
+        </div>
+
+        <span className="dash-eyebrow">Homeowner</span>
+        <div className="dash-title">Service Records</div>
+        <div className="dash-subtitle">Complete history of maintenance and repairs</div>
+
+        <div className="dash-chips">
+          <div className="dash-chip">
+            <div className="dash-chip-num">{totalRecords}</div>
+            <div className="dash-chip-label">Total records</div>
+          </div>
+          <div className="dash-chip">
+            <div className="dash-chip-num">
+              ${totalSpent >= 1000 ? `${(totalSpent / 1000).toFixed(1)}k` : Math.round(totalSpent)}
+            </div>
+            <div className="dash-chip-label">Total spent</div>
+          </div>
+          <div className="dash-chip">
+            <div className="dash-chip-num">{recordsThisYear}</div>
+            <div className="dash-chip-label">This year</div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── PAGE BODY ──────────────────────────────── */}
+      <div className="dash-body">
         <HomeownerTrialBanner />
 
         {/* Filters and Download Options */}
@@ -587,7 +619,7 @@ export default function HomeownerServiceRecords() {
             {/* House Filter */}
             {houses.length > 1 && (
               <Select value={serviceRecordsHouseFilter} onValueChange={setServiceRecordsHouseFilter}>
-                <SelectTrigger className="w-full sm:w-64" style={{ backgroundColor: '#f2f2f2' }} data-testid="select-house-filter-service-records">
+                <SelectTrigger className="w-full sm:w-64" style={{ backgroundColor: '#ffffff', borderColor: 'rgba(83,74,183,0.15)' }} data-testid="select-house-filter-service-records">
                   <SelectValue placeholder="Filter by house" />
                 </SelectTrigger>
                 <SelectContent>
@@ -601,7 +633,7 @@ export default function HomeownerServiceRecords() {
             
             {/* Home Area Filter */}
             <Select value={homeAreaFilter} onValueChange={setHomeAreaFilter}>
-              <SelectTrigger className="w-full sm:w-64" style={{ backgroundColor: '#f2f2f2' }} data-testid="select-home-area-filter-logs">
+              <SelectTrigger className="w-full sm:w-64" style={{ backgroundColor: '#ffffff', borderColor: 'rgba(83,74,183,0.15)' }} data-testid="select-home-area-filter-logs">
                 <SelectValue placeholder="Filter by home area" />
               </SelectTrigger>
               <SelectContent>
@@ -616,9 +648,7 @@ export default function HomeownerServiceRecords() {
           {/* Download Buttons */}
           {maintenanceLogs && maintenanceLogs.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                size="sm"
+              <button
                 onClick={() => {
                   const sortedByDate = [...maintenanceLogs].sort((a, b) => 
                     new Date(b.serviceDate).getTime() - new Date(a.serviceDate).getTime()
@@ -626,16 +656,13 @@ export default function HomeownerServiceRecords() {
                   const csv = generateServiceRecordsCSV(sortedByDate, 'date');
                   downloadCSV(csv, `service-records-by-date-${new Date().toISOString().split('T')[0]}.csv`);
                 }}
-                className="text-xs"
-                style={{ backgroundColor: '#2c0f5b', color: 'white', borderColor: '#2c0f5b' }}
+                className="dash-light-card-btn"
                 data-testid="button-download-by-date"
               >
-                <Download className="w-3 h-3 mr-1" />
+                <Download size={13} />
                 Download by Date
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
+              </button>
+              <button
                 onClick={() => {
                   const sortedByArea = [...maintenanceLogs].sort((a, b) => {
                     const areaCompare = (a.homeArea || '').localeCompare(b.homeArea || '');
@@ -645,45 +672,41 @@ export default function HomeownerServiceRecords() {
                   const csv = generateServiceRecordsCSV(sortedByArea, 'area');
                   downloadCSV(csv, `service-records-by-area-${new Date().toISOString().split('T')[0]}.csv`);
                 }}
-                className="text-xs"
-                style={{ backgroundColor: '#2c0f5b', color: 'white', borderColor: '#2c0f5b' }}
+                className="dash-light-card-btn"
                 data-testid="button-download-by-area"
               >
-                <Download className="w-3 h-3 mr-1" />
+                <Download size={13} />
                 Download by Area
-              </Button>
+              </button>
             </div>
           )}
         </div>
 
         {/* Service Records List */}
         {maintenanceLogsLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="space-y-3">
             {[...Array(3)].map((_, i) => (
-              <Card key={i} className="animate-pulse">
-                <CardContent className="p-6">
-                  <div className="space-y-3">
-                    <div className="h-4 bg-muted rounded w-1/2"></div>
-                    <div className="h-3 bg-muted rounded w-3/4"></div>
-                    <div className="h-3 bg-muted rounded w-2/3"></div>
-                  </div>
-                </CardContent>
-              </Card>
+              <div key={i} className="property-card animate-pulse">
+                <div className="space-y-3">
+                  <div className="h-4 bg-muted rounded w-1/2"></div>
+                  <div className="h-3 bg-muted rounded w-3/4"></div>
+                  <div className="h-3 bg-muted rounded w-2/3"></div>
+                </div>
+              </div>
             ))}
           </div>
         ) : filteredLogs.length > 0 ? (
           (() => {
             const renderServiceCard = (log: MaintenanceLog) => (
-              <Card key={log.id} className="hover:shadow-md transition-shadow" style={{ backgroundColor: '#f2f2f2' }}>
-                <CardContent className="p-6">
+              <div key={log.id} className="property-card hover:shadow-md transition-shadow" style={{ cursor: 'default' }}>
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-start gap-3">
-                      <div className="bg-primary/10 p-2 rounded">
-                        <Wrench className="w-5 h-5 text-primary" />
+                      <div style={{ background: '#EEEDFE', padding: 8, borderRadius: 10, flexShrink: 0 }}>
+                        <Wrench style={{ width: 18, height: 18, color: '#534AB7' }} />
                       </div>
-                      <div>
+                      <div style={{ minWidth: 0 }}>
                         <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <h4 className="font-semibold text-foreground">
+                          <h4 style={{ fontWeight: 700, fontSize: 13, color: '#2d1f6e', lineHeight: 1.3 }}>
                             {log.serviceDescription}
                           </h4>
                           {aiVerifiedLogIds.has(log.id) && (
@@ -692,30 +715,29 @@ export default function HomeownerServiceRecords() {
                             </Badge>
                           )}
                         </div>
-                        <div className="flex items-center gap-4 text-sm" style={{ color: '#2c0f5b' }}>
+                        <div className="flex items-center flex-wrap gap-3" style={{ fontSize: 11, color: '#534AB7', marginTop: 3 }}>
                           <span className="flex items-center gap-1">
-                            <Calendar className="w-4 h-4" />
+                            <Calendar style={{ width: 13, height: 13 }} />
                             {new Date(log.serviceDate).toLocaleDateString()}
                           </span>
                           {log.homeArea && (
                             <span className="flex items-center gap-1">
-                              <MapPin className="w-4 h-4" />
+                              <MapPin style={{ width: 13, height: 13 }} />
                               {getHomeAreaLabel(log.homeArea)}
                             </span>
                           )}
-                          <span className="px-2 py-1 rounded-full text-xs" style={{ backgroundColor: '#2c0f5b20', color: '#2c0f5b' }}>
+                          <span style={{ background: '#EEEDFE', color: '#534AB7', borderRadius: 5, padding: '2px 7px', fontSize: 10, fontWeight: 600 }}>
                             {getServiceTypeLabel(log.serviceType)}
                           </span>
                         </div>
                       </div>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 flex-shrink-0">
                       <Button 
                         size="sm" 
                         variant="ghost" 
                         onClick={() => handleEditMaintenanceLog(log)}
-                        style={{ color: '#2c0f5b' }}
-                        className="hover:opacity-90"
+                        style={{ color: '#534AB7' }}
                         data-testid={`button-edit-record-${log.id}`}
                       >
                         <Edit className="w-4 h-4" />
@@ -732,125 +754,89 @@ export default function HomeownerServiceRecords() {
                     </div>
                   </div>
                   
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    {log.cost && (
-                      <div className="flex items-center gap-2">
-                        <DollarSign className="w-4 h-4 text-muted-foreground" />
-                        <span className="font-medium">${log.cost}</span>
-                      </div>
-                    )}
-                    {log.contractorName && (
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4 text-muted-foreground" />
-                        <span>{log.contractorName}</span>
-                      </div>
-                    )}
-                    {log.contractorCompany && (
-                      <div className="flex items-center gap-2">
-                        <Building2 className="w-4 h-4 text-muted-foreground" />
-                        <span>{log.contractorCompany}</span>
-                      </div>
-                    )}
-                    {log.nextServiceDue && (
-                      <div className="flex items-center gap-2">
-                        <Clock className="w-4 h-4 text-muted-foreground" />
-                        <span>Due: {new Date(log.nextServiceDue).toLocaleDateString()}</span>
-                      </div>
-                    )}
-                  </div>
+                  {(log.cost || log.contractorName || log.contractorCompany || log.nextServiceDue) && (
+                    <div className="flex flex-wrap gap-4" style={{ fontSize: 12, color: '#6b7280', marginBottom: log.notes ? 12 : 0 }}>
+                      {log.cost && (
+                        <span className="flex items-center gap-1">
+                          <DollarSign style={{ width: 13, height: 13 }} />
+                          <span style={{ fontWeight: 600, color: '#2d1f6e' }}>${log.cost}</span>
+                        </span>
+                      )}
+                      {log.contractorName && (
+                        <span className="flex items-center gap-1">
+                          <User style={{ width: 13, height: 13 }} />
+                          {log.contractorName}
+                        </span>
+                      )}
+                      {log.contractorCompany && (
+                        <span className="flex items-center gap-1">
+                          <Building2 style={{ width: 13, height: 13 }} />
+                          {log.contractorCompany}
+                        </span>
+                      )}
+                      {log.nextServiceDue && (
+                        <span className="flex items-center gap-1">
+                          <Clock style={{ width: 13, height: 13 }} />
+                          Due: {new Date(log.nextServiceDue).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   
                   {log.notes && (
-                    <div className="mt-4 p-3 bg-muted rounded text-sm">
-                      <span className="text-muted-foreground">{log.notes}</span>
+                    <div style={{ background: '#F8F7FF', borderRadius: 8, padding: '8px 10px', fontSize: 12, color: '#6b7280', marginTop: 10 }}>
+                      {log.notes}
                     </div>
                   )}
                   
                   {/* Attachments Display */}
                   {(log.receiptUrls?.length > 0 || log.beforePhotoUrls?.length > 0 || log.afterPhotoUrls?.length > 0) && (
                     <div className="mt-4 space-y-3">
-                      {/* Receipts */}
                       {log.receiptUrls && log.receiptUrls.length > 0 && (
                         <div>
-                          <h5 className="text-sm font-semibold mb-2 flex items-center gap-2" style={{ color: '#2c0f5b' }}>
-                            <FileText className="w-4 h-4" />
+                          <h5 style={{ fontSize: 11, fontWeight: 700, color: '#534AB7', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <FileText style={{ width: 13, height: 13 }} />
                             Receipts ({log.receiptUrls.length})
                           </h5>
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             {log.receiptUrls.map((url: string, index: number) => (
-                              <a
-                                key={index}
-                                href={url}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                              <a key={index} href={url} target="_blank" rel="noopener noreferrer"
                                 className="block p-2 border rounded hover:bg-gray-50 transition-colors"
-                                data-testid={`link-receipt-${index}`}
-                              >
+                                data-testid={`link-receipt-${index}`}>
                                 {url.endsWith('.pdf') ? (
                                   <div className="flex items-center gap-2 text-sm">
                                     <FileText className="w-5 h-5 text-red-500" />
                                     <span className="truncate">Receipt {index + 1}</span>
                                   </div>
                                 ) : (
-                                  <img
-                                    src={url}
-                                    alt={`Receipt ${index + 1}`}
-                                    className="w-full h-20 object-cover rounded"
-                                  />
+                                  <img src={url} alt={`Receipt ${index + 1}`} className="w-full h-20 object-cover rounded" />
                                 )}
                               </a>
                             ))}
                           </div>
                         </div>
                       )}
-                      
-                      {/* Before Photos */}
                       {log.beforePhotoUrls && log.beforePhotoUrls.length > 0 && (
                         <div>
-                          <h5 className="text-sm font-semibold mb-2 flex items-center gap-2" style={{ color: '#2c0f5b' }}>
-                            Before Photos ({log.beforePhotoUrls.length})
-                          </h5>
+                          <h5 style={{ fontSize: 11, fontWeight: 700, color: '#534AB7', marginBottom: 6 }}>Before Photos ({log.beforePhotoUrls.length})</h5>
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             {log.beforePhotoUrls.map((url: string, index: number) => (
-                              <a
-                                key={index}
-                                href={url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="block"
-                                data-testid={`link-before-photo-${index}`}
-                              >
-                                <img
-                                  src={url}
-                                  alt={`Before photo ${index + 1}`}
-                                  className="w-full h-24 object-cover rounded hover:opacity-90 transition-opacity"
-                                />
+                              <a key={index} href={url} target="_blank" rel="noopener noreferrer"
+                                className="block" data-testid={`link-before-photo-${index}`}>
+                                <img src={url} alt={`Before photo ${index + 1}`} className="w-full h-24 object-cover rounded hover:opacity-90 transition-opacity" />
                               </a>
                             ))}
                           </div>
                         </div>
                       )}
-                      
-                      {/* After Photos */}
                       {log.afterPhotoUrls && log.afterPhotoUrls.length > 0 && (
                         <div>
-                          <h5 className="text-sm font-semibold mb-2 flex items-center gap-2" style={{ color: '#2c0f5b' }}>
-                            After Photos ({log.afterPhotoUrls.length})
-                          </h5>
+                          <h5 style={{ fontSize: 11, fontWeight: 700, color: '#534AB7', marginBottom: 6 }}>After Photos ({log.afterPhotoUrls.length})</h5>
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             {log.afterPhotoUrls.map((url: string, index: number) => (
-                              <a
-                                key={index}
-                                href={url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="block"
-                                data-testid={`link-after-photo-${index}`}
-                              >
-                                <img
-                                  src={url}
-                                  alt={`After photo ${index + 1}`}
-                                  className="w-full h-24 object-cover rounded hover:opacity-90 transition-opacity"
-                                />
+                              <a key={index} href={url} target="_blank" rel="noopener noreferrer"
+                                className="block" data-testid={`link-after-photo-${index}`}>
+                                <img src={url} alt={`After photo ${index + 1}`} className="w-full h-24 object-cover rounded hover:opacity-90 transition-opacity" />
                               </a>
                             ))}
                           </div>
@@ -860,18 +846,13 @@ export default function HomeownerServiceRecords() {
                   )}
                   
                   {log.createdAt && (
-                    <div className="mt-3 text-xs text-gray-500 border-t pt-2">
+                    <div style={{ marginTop: 10, fontSize: 10, color: '#9b97c4', borderTop: '1px solid #EEEDFE', paddingTop: 8 }}>
                       Record added on {new Date(log.createdAt).toLocaleDateString('en-US', { 
-                        year: 'numeric', 
-                        month: 'short', 
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
+                        year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
                       })}
                     </div>
                   )}
-                </CardContent>
-              </Card>
+              </div>
             );
 
             // Show last 2 records by default, with dropdown for older records
@@ -887,26 +868,23 @@ export default function HomeownerServiceRecords() {
 
                 {/* Older Records - Collapsible Dropdown */}
                 {olderRecords.length > 0 && (
-                  <div className="mt-4">
+                  <div className="mt-2">
                     <Collapsible open={showAllRecords} onOpenChange={setShowAllRecords}>
                       <CollapsibleTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full flex items-center justify-center gap-2"
-                          style={{ backgroundColor: '#f2f2f2', borderColor: '#2c0f5b' }}
+                        <button
+                          className="dash-light-card-btn w-full justify-center"
+                          style={{ width: '100%', justifyContent: 'center' }}
                           data-testid="button-toggle-older-records"
                         >
-                          <span style={{ color: '#2c0f5b' }}>
-                            {showAllRecords ? 'Hide' : 'Show'} {olderRecords.length} Older Record{olderRecords.length !== 1 ? 's' : ''}
-                          </span>
+                          {showAllRecords ? 'Hide' : 'Show'} {olderRecords.length} Older Record{olderRecords.length !== 1 ? 's' : ''}
                           <ChevronDown 
-                            className={`w-4 h-4 transition-transform ${showAllRecords ? 'rotate-180' : ''}`}
-                            style={{ color: '#2c0f5b' }}
+                            className={`transition-transform ${showAllRecords ? 'rotate-180' : ''}`}
+                            style={{ width: 14, height: 14 }}
                           />
-                        </Button>
+                        </button>
                       </CollapsibleTrigger>
-                      <CollapsibleContent className="mt-4">
-                        <div className="space-y-4">
+                      <CollapsibleContent className="mt-3">
+                        <div className="space-y-3">
                           {olderRecords.map(log => renderServiceCard(log))}
                         </div>
                       </CollapsibleContent>
@@ -917,16 +895,18 @@ export default function HomeownerServiceRecords() {
             );
           })()
         ) : (
-          <div className="text-center py-12 rounded-lg" style={{ backgroundColor: '#ffffff' }}>
-            <FileText className="w-16 h-16 mx-auto mb-4" style={{ color: '#b6a6f4' }} />
-            <h3 className="text-lg font-medium mb-2" style={{ color: '#2c0f5b' }}>No service records yet</h3>
-            <p className="mb-4" style={{ color: '#000000' }}>
+          <div className="dash-light-card" style={{ textAlign: 'center', padding: '32px 20px' }}>
+            <div style={{ width: 52, height: 52, background: '#EEEDFE', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+              <FileText style={{ width: 24, height: 24, color: '#534AB7' }} />
+            </div>
+            <div className="dash-light-card-title" style={{ marginBottom: 6 }}>No service records yet</div>
+            <div className="dash-light-card-sub" style={{ marginBottom: 18 }}>
               Start tracking maintenance and repairs to build a complete home service history.
-            </p>
-            <Button onClick={handleAddNewMaintenanceLog} style={{ backgroundColor: '#2c0f5b', color: 'white' }} className="hover:opacity-90">
-              <Plus className="w-4 h-4 mr-2" />
+            </div>
+            <button onClick={handleAddNewMaintenanceLog} className="dash-light-card-btn" style={{ margin: '0 auto' }}>
+              <Plus size={14} />
               Add Your First Service Record
-            </Button>
+            </button>
           </div>
         )}
 
