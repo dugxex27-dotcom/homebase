@@ -1,0 +1,317 @@
+/* ─── DASHBOARD HEADER ─────────────────────────────────────────── */
+.dash-header {
+  background: #2d1f6e;
+  padding: 16px 18px 0;
+  flex-shrink: 0;
+}
+
+.dash-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.dash-logo {
+  height: 22px;
+  width: auto;
+}
+
+.dash-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.dash-icon-btn {
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  color: #ffffff;
+  transition: background 0.15s;
+  text-decoration: none;
+}
+
+.dash-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.dash-eyebrow {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  color: #CECBF6;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+
+.dash-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.4px;
+  line-height: 1.15;
+  margin-bottom: 4px;
+}
+
+.dash-subtitle {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 18px;
+}
+
+/* ─── STAT CHIPS ──────────────────────────────────────────────── */
+.dash-chips {
+  display: flex;
+  gap: 8px;
+  padding-bottom: 18px;
+}
+
+.dash-chip {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 13px;
+  padding: 10px 14px;
+  flex: 1;
+}
+
+.dash-chip-num {
+  font-size: 20px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+
+.dash-chip-num.good  { color: #4a9e2f; }
+.dash-chip-num.warn  { color: #EF9F27; }
+.dash-chip-num.alert { color: #e03e3e; }
+
+.dash-chip-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.45);
+  margin-top: 4px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ─── PAGE BODY ───────────────────────────────────────────────── */
+.dash-body {
+  background: #ffffff;
+  padding: 16px 16px 8px;
+}
+
+/* ─── PROPERTY CARDS ──────────────────────────────────────────── */
+.property-card {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid rgba(83, 74, 183, 0.10);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  padding: 14px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+/* ─── AI COACH CARD ───────────────────────────────────────────── */
+.ai-coach-card {
+  background: #534AB7;
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+
+.ai-coach-card:hover { opacity: 0.93; }
+
+.ai-coach-icon {
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #ffffff;
+}
+
+.ai-coach-copy { flex: 1; min-width: 0; }
+
+.ai-coach-eyebrow {
+  font-size: 9px;
+  font-weight: 700;
+  color: #CECBF6;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+
+.ai-coach-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.2px;
+  line-height: 1.25;
+}
+
+.ai-coach-sub {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 2px;
+}
+
+.ai-coach-btn {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 9px;
+  padding: 7px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-family: inherit;
+}
+
+/* ─── UPLOAD PROMPT CARD ──────────────────────────────────────── */
+.upload-prompt-card {
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1.5px dashed rgba(83, 74, 183, 0.22);
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  text-decoration: none;
+  transition: border-color 0.15s;
+}
+
+.upload-prompt-card:hover { border-color: rgba(83, 74, 183, 0.4); }
+
+.upload-prompt-icon {
+  width: 38px;
+  height: 38px;
+  background: #EEEDFE;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #534AB7;
+}
+
+.upload-prompt-copy { flex: 1; min-width: 0; }
+
+.upload-prompt-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #2d1f6e;
+}
+
+.upload-prompt-sub {
+  font-size: 10px;
+  font-weight: 500;
+  color: #9b97c4;
+  margin-top: 2px;
+}
+
+.upload-prompt-link {
+  font-size: 11px;
+  font-weight: 700;
+  color: #534AB7;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ─── SECTION DIVIDER ─────────────────────────────────────────── */
+.dash-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #9b97c4;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  margin-top: 4px;
+  display: block;
+}
+
+/* ─── RESALE / REFERRAL LIGHT CARD ───────────────────────────── */
+.dash-light-card {
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid rgba(83, 74, 183, 0.10);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.dash-light-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dash-light-card-icon {
+  width: 36px;
+  height: 36px;
+  background: #EEEDFE;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #534AB7;
+}
+
+.dash-light-card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #2d1f6e;
+  line-height: 1.3;
+}
+
+.dash-light-card-sub {
+  font-size: 11px;
+  font-weight: 500;
+  color: #9b97c4;
+  margin-top: 2px;
+}
+
+.dash-light-card-btn {
+  background: #EEEDFE;
+  color: #534AB7;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-family: inherit;
+  transition: background 0.15s;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dash-light-card-btn:hover { background: #dddcfc; }
