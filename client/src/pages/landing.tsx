@@ -18,6 +18,7 @@ export default function Landing() {
   const [demoLoading, setDemoLoading] = useState<string | null>(null);
   const [referralOpen, setReferralOpen] = useState(false);
   const [claimsOpen, setClaimsOpen] = useState(false);
+  const [signinOpen, setSigninOpen] = useState(false);
 
   useEffect(() => {
     if (!referralOpen) return;
@@ -32,6 +33,13 @@ export default function Landing() {
     document.addEventListener('click', close);
     return () => document.removeEventListener('click', close);
   }, [claimsOpen]);
+
+  useEffect(() => {
+    if (!signinOpen) return;
+    const close = () => setSigninOpen(false);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [signinOpen]);
 
   const handleRoleSelection = (role: 'homeowner' | 'contractor' | 'agent') => {
     window.location.href = `/signin/${role}`;
@@ -73,9 +81,37 @@ export default function Landing() {
             alt="MyHomeBase — Home Wellness Score and Home Record App"
             className="mhb-logo"
           />
-          <a href="/signin/homeowner" className="mhb-hero-signin" aria-label="Homeowner Sign In / Register">
-            <UserCircle size={26} strokeWidth={1.75} />
-          </a>
+          <div className="mhb-signin-flyout-wrap">
+            <button
+              className="mhb-hero-signin"
+              aria-label="Sign In"
+              aria-expanded={signinOpen}
+              onClick={(e) => { e.stopPropagation(); setSigninOpen(v => !v); }}
+            >
+              <UserCircle size={26} strokeWidth={1.75} />
+              <span>Sign in</span>
+            </button>
+            {signinOpen && (
+              <div className="mhb-signin-flyout" onClick={(e) => e.stopPropagation()}>
+                <div className="mhb-signin-flyout-title">Sign in as…</div>
+                <a href="/signin/homeowner" className="mhb-signin-flyout-item mhb-signin-flyout-purple">
+                  <span className="mhb-signin-flyout-dot" />
+                  <span className="mhb-signin-flyout-label">Homeowner</span>
+                  <span className="mhb-signin-flyout-arrow">›</span>
+                </a>
+                <a href="/signin/contractor" className="mhb-signin-flyout-item mhb-signin-flyout-blue">
+                  <span className="mhb-signin-flyout-dot" />
+                  <span className="mhb-signin-flyout-label">Contractor</span>
+                  <span className="mhb-signin-flyout-arrow">›</span>
+                </a>
+                <a href="/signin/agent" className="mhb-signin-flyout-item mhb-signin-flyout-green">
+                  <span className="mhb-signin-flyout-dot" />
+                  <span className="mhb-signin-flyout-label">Real Estate Agent</span>
+                  <span className="mhb-signin-flyout-arrow">›</span>
+                </a>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Two-column layout: copy left, stats right */}
