@@ -159,7 +159,7 @@ body[data-role="homeowner"],
   --popover-foreground:  var(--hw-primary);
   --card:                #ffffff;
   --card-foreground:     var(--hw-primary);
-  --border:              rgba(83, 74, 183, 0.12);
+  --border:              rgba(0, 0, 0, 0.07);
   --input:               var(--hw-fill);
   --primary:             var(--hw-accent);
   --primary-foreground:  #ffffff;
@@ -210,7 +210,7 @@ body[data-role="contractor"],
   --popover-foreground:   var(--co-primary);
   --card:                 #ffffff;
   --card-foreground:      var(--co-primary);
-  --border:               rgba(24, 95, 165, 0.12);
+  --border:               rgba(0, 0, 0, 0.07);
   --input:                var(--co-fill);
   --primary:              var(--co-accent);
   --primary-foreground:   #ffffff;
@@ -258,7 +258,7 @@ body[data-role="agent"],
   --popover-foreground:   var(--ag-primary);
   --card:                 #ffffff;
   --card-foreground:      var(--ag-primary);
-  --border:               rgba(59, 109, 17, 0.12);
+  --border:               rgba(0, 0, 0, 0.07);
   --input:                var(--ag-fill);
   --primary:              var(--ag-accent);
   --primary-foreground:   #ffffff;

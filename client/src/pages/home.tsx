@@ -112,7 +112,8 @@ export default function Home() {
                     style={{
                       background: "#fff",
                       borderRadius: "16px",
-                      border: houses.length > 1 ? "1.5px solid #534AB7" : "1px solid rgba(83,74,183,0.08)",
+                      border: "1px solid rgba(0,0,0,0.07)",
+                      boxShadow: "0 1px 3px 0 rgba(0,0,0,0.08), 0 1px 2px -1px rgba(0,0,0,0.06)",
                       padding: "18px",
                     }}
                   >
@@ -202,7 +203,7 @@ export default function Home() {
       {typedUser?.role === 'homeowner' && houses.length > 0 && (
         <section className="py-6 sm:py-8" style={{ backgroundColor: '#ffffff' }}>
           <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
-            <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-white shadow-md" data-tour-id="resale-report">
+            <Card className="bg-gradient-to-br from-purple-50 to-white" data-tour-id="resale-report">
               <CardContent className="p-4 sm:p-6">
                 <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                   <div className="flex-1 text-center md:text-left">
@@ -236,7 +237,7 @@ export default function Home() {
       {typedUser?.role === 'homeowner' && (
         <section className="py-8 sm:py-12" style={{ backgroundColor: 'var(--theme-primary)' }}>
           <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
-            <Card className="border-2 border-purple-300 bg-white shadow-xl">
+            <Card className="bg-white shadow-md">
               <CardContent className="p-4 sm:p-6 lg:p-8">
                 <div className="flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6">
                   <div className="flex-1 text-center md:text-left">
@@ -282,7 +283,7 @@ export default function Home() {
       {typedUser?.role === 'homeowner' && isPaidSubscriber && (
         <section className="py-8 sm:py-12" style={{ background: 'transparent' }} data-tour-id="referral">
           <div className="max-w-4xl mx-auto px-3 sm:px-4 lg:px-6">
-            <Card className="bg-white border-purple-200 shadow-xl">
+            <Card className="bg-white shadow-md">
               <CardHeader className="pb-4">
                 <CardTitle className="text-center">
                   <div className="flex items-center justify-center gap-2 text-2xl sm:text-3xl font-bold" style={{ color: '#2c0f5b' }}>
@@ -360,7 +361,7 @@ export default function Home() {
               {/* Contractor Dashboard Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-4 items-stretch" style={{ marginBottom: '-100px' }}>
                 <Link href="/contractor-profile" className="h-full">
-                  <Card className="border-gray-300 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group h-full flex flex-col" style={{ background: '#f2f2f2' }}>
+                  <Card className="shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group h-full flex flex-col" style={{ background: '#f2f2f2' }}>
                     <CardContent className="p-4 sm:p-6 flex-1 flex flex-col">
                       <div className="flex items-center mb-3 sm:mb-4">
                         <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center group-hover:opacity-80 transition-colors flex-shrink-0" style={{ backgroundColor: 'var(--theme-primary)' }}>
@@ -379,7 +380,7 @@ export default function Home() {
                 </Link>
 
                 <Link href="/messages" className="h-full">
-                  <Card className="border-gray-300 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group h-full flex flex-col" style={{ background: '#f2f2f2' }}>
+                  <Card className="shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group h-full flex flex-col" style={{ background: '#f2f2f2' }}>
                     <CardContent className="p-4 sm:p-6 flex-1 flex flex-col">
                       <div className="flex items-center mb-3 sm:mb-4">
                         <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center group-hover:opacity-80 transition-colors flex-shrink-0" style={{ backgroundColor: 'var(--theme-primary)' }}>
@@ -399,7 +400,7 @@ export default function Home() {
 
 
                 <Link href="/contractor-dashboard" className="h-full">
-                  <Card className="border-gray-300 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group h-full flex flex-col" style={{ background: '#f2f2f2' }}>
+                  <Card className="shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group h-full flex flex-col" style={{ background: '#f2f2f2' }}>
                     <CardContent className="p-4 sm:p-6 flex-1 flex flex-col">
                       <div className="flex items-center mb-3 sm:mb-4">
                         <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center group-hover:opacity-80 transition-colors flex-shrink-0" style={{ backgroundColor: 'var(--theme-primary)' }}>
@@ -418,7 +419,7 @@ export default function Home() {
                 </Link>
 
                 <Link href="/contractor-dashboard" className="h-full">
-                  <Card className="border-gray-300 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group h-full flex flex-col" style={{ background: '#f2f2f2' }}>
+                  <Card className="shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group h-full flex flex-col" style={{ background: '#f2f2f2' }}>
                     <CardContent className="p-4 sm:p-6 flex-1 flex flex-col">
                       <div className="flex items-center mb-3 sm:mb-4">
                         <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center group-hover:opacity-80 transition-colors flex-shrink-0" style={{ backgroundColor: 'var(--theme-primary)' }}>
@@ -437,7 +438,7 @@ export default function Home() {
                 </Link>
 
                 <Link href="/contractor-dashboard" className="h-full">
-                  <Card className="border-gray-300 dark:border-gray-700 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer group h-full flex flex-col" style={{ background: '#f2f2f2' }}>
+                  <Card className="shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group h-full flex flex-col" style={{ background: '#f2f2f2' }}>
                     <CardContent className="p-4 sm:p-6 flex-1 flex flex-col">
                       <div className="flex items-center mb-3 sm:mb-4">
                         <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center group-hover:opacity-80 transition-colors flex-shrink-0" style={{ backgroundColor: 'var(--theme-primary)' }}>

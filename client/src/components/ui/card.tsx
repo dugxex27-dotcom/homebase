@@ -9,7 +9,7 @@ const cardVariants = cva(
     variants: {
       shadow: {
         none: "",
-        sm: "shadow-sm hover:shadow-md",
+        sm: "shadow hover:shadow-md",
         md: "shadow-md hover:shadow-lg",
         lg: "shadow-lg hover:shadow-xl",
       },
