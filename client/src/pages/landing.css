@@ -539,7 +539,7 @@
   top: calc(100% + 10px);
   width: 320px;
   max-width: calc(100vw - 32px);
-  padding: 40px 0 0;
+  padding: 40px 14px 14px;
   background: #fff;
 }
 
