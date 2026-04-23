@@ -46,7 +46,8 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
 import { StripeConnectOnboarding } from "@/components/stripe-connect-onboarding";
-import { PageHero } from "@/components/page-hero";
+import logoContractor from "@assets/my-homebase-logo-tm-contractor-white-final_1776538414391.png";
+import "./home.css";
 
 const AVAILABLE_SERVICES = [
   "Appliance Installation",
@@ -1156,13 +1157,41 @@ export default function ContractorProfile() {
     );
   }
 
+  const profileRating  = parseFloat(formData.rating) || 0;
+  const planLabel      = hasActiveSubscription && !isInTrial ? planName : isInTrial ? 'Trial' : 'None';
+
   return (
-    <div className="min-h-screen">
-      <PageHero
-        eyebrow="Contractor"
-        title="My Profile"
-        subtitle="Manage your business information and professional credentials"
-      />
+    <div className="min-h-screen" style={{ background: '#f8fafc' }}>
+
+      {/* ── DASH HEADER ─────────────────────────── */}
+      <div className="dash-header" style={{ background: '#0c2461' }}>
+        <div className="dash-header-top">
+          <img src={logoContractor} alt="MyHomeBase™" className="dash-logo" />
+        </div>
+        <span className="dash-eyebrow" style={{ color: '#93c5fd' }}>Contractor</span>
+        <div className="dash-title">My Profile</div>
+        <div className="dash-subtitle">Manage your business info and credentials</div>
+        <div className="dash-chips">
+          <div className="dash-chip">
+            <div className={`dash-chip-num${profileRating > 0 ? ' good' : ''}`}>
+              {profileRating > 0 ? profileRating.toFixed(1) : '—'}
+            </div>
+            <div className="dash-chip-label">Rating</div>
+          </div>
+          <div className="dash-chip">
+            <div className={`dash-chip-num${formData.reviewCount > 0 ? ' good' : ''}`}>{formData.reviewCount}</div>
+            <div className="dash-chip-label">Reviews</div>
+          </div>
+          <div className="dash-chip">
+            <div className={`dash-chip-num${hasActiveSubscription ? ' good' : isInTrial ? ' warn' : ''}`}
+              style={{ fontSize: 13, paddingTop: 3 }}>
+              {planLabel}
+            </div>
+            <div className="dash-chip-label">Plan</div>
+          </div>
+        </div>
+      </div>
+
       <div className="container mx-auto py-8 px-4 max-w-4xl">
 
       {/* Subscription & Billing Card */}
