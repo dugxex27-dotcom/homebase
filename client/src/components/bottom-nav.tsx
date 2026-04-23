@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, useRef } from "react";
 
-const toolsItems = [
+const homeownerToolsItems = [
   { href: "/maintenance",         icon: Wrench,         label: "Your Tasks",           description: "View your maintenance schedule" },
   { href: "/contractors",         icon: HardHat,        label: "Find Contractor",      description: "Search local professionals" },
   { href: "/achievements",        icon: Trophy,         label: "Explore Achievements", description: "Earn badges & rewards" },
@@ -17,6 +17,13 @@ const toolsItems = [
   { href: "/messages",            icon: MessageCircle,  label: "Messages",             description: "Chat with your contractors" },
   { href: "/homeowner-referral",  icon: Gift,           label: "Refer & Earn",         description: "Earn free months by referring friends" },
   { href: "/support",             icon: HelpCircle,     label: "Support",              description: "Get help from our team" },
+];
+
+const contractorToolsItems = [
+  { href: "/contractor-dashboard", icon: LayoutDashboard, label: "Jobs",           description: "View and manage your active jobs" },
+  { href: "/crm",                  icon: Users,           label: "Clients",         description: "Manage leads and clients" },
+  { href: "/messages",             icon: MessageCircle,   label: "Messages",        description: "Chat with homeowners" },
+  { href: "/support",              icon: HelpCircle,      label: "Support Center",  description: "Get help from our team" },
 ];
 
 export default function BottomNav() {
@@ -40,7 +47,11 @@ export default function BottomNav() {
     return arr.some(p => location === p || location.startsWith(p + '/'));
   };
 
-  const isToolsActive = toolsItems.some(t => isActive(t.href));
+  const isHomeownerToolsActive = homeownerToolsItems.some(t => isActive(t.href));
+  const isContractorToolsActive = contractorToolsItems.some(t => isActive(t.href));
+  const isToolsActive = typedUser?.role === 'contractor' ? isContractorToolsActive : isHomeownerToolsActive;
+
+  const hasFlyout = typedUser?.role === 'homeowner' || typedUser?.role === 'contractor';
 
   useEffect(() => {
     if (!toolsOpen) return;
@@ -60,16 +71,13 @@ export default function BottomNav() {
   const navItems =
     typedUser?.role === 'homeowner'
       ? [
-          { href: '/',               icon: Home,     label: 'Home',    active: isActive('/') },
+          { href: '/',                icon: Home,     label: 'Home',    active: isActive('/') },
           { href: '/service-records', icon: FileText, label: 'Records', active: isActive(['/service-records', '/documents']) },
           { href: '/account',         icon: User,     label: 'Account', active: isActive(['/account', '/billing', '/homeowner-referral']) },
         ]
       : typedUser?.role === 'contractor'
       ? [
-          { href: '/contractor-dashboard', icon: LayoutDashboard, label: 'Jobs',    active: isActive(['/contractor-dashboard', '/']) },
-          { href: '/messages',             icon: MessageCircle,   label: 'Messages', active: isActive('/messages'), badge: unreadCount },
-          { href: '/crm',                  icon: Users,           label: 'Clients', active: isActive(['/crm', '/manage-team']) },
-          { href: '/contractor-profile',   icon: User,            label: 'Profile', active: isActive(['/contractor-profile', '/billing']) },
+          { href: '/contractor-profile', icon: User, label: 'Profile', active: isActive(['/contractor-profile', '/billing', '/contractor-pricing']) },
         ]
       : typedUser?.role === 'agent'
       ? [
@@ -79,12 +87,14 @@ export default function BottomNav() {
         ]
       : [];
 
-  if (!typedUser || (navItems.length === 0 && typedUser?.role !== 'homeowner')) return null;
+  if (!typedUser || (navItems.length === 0 && !hasFlyout)) return null;
+
+  const activeFlyoutItems = typedUser?.role === 'contractor' ? contractorToolsItems : homeownerToolsItems;
 
   return (
     <>
       {/* Tools flyout backdrop */}
-      {toolsOpen && typedUser?.role === 'homeowner' && (
+      {toolsOpen && hasFlyout && (
         <div
           className="fixed inset-0 z-40 bg-black/30 md:hidden"
           onClick={() => setToolsOpen(false)}
@@ -92,7 +102,7 @@ export default function BottomNav() {
       )}
 
       {/* Tools flyout panel */}
-      {typedUser?.role === 'homeowner' && (
+      {hasFlyout && (
         <div
           ref={flyoutRef}
           className={cn(
@@ -124,9 +134,10 @@ export default function BottomNav() {
 
             {/* Flyout items */}
             <div className="py-1">
-              {toolsItems.map((item) => {
+              {activeFlyoutItems.map((item) => {
                 const Icon = item.icon;
                 const active = isActive(item.href);
+                const badge = (item as any).badge ?? (item.href === '/messages' && typedUser?.role === 'contractor' ? unreadCount : 0);
                 return (
                   <Link
                     key={item.href}
@@ -138,7 +149,7 @@ export default function BottomNav() {
                     onClick={() => setToolsOpen(false)}
                   >
                     <div
-                      className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                      className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 relative"
                       style={{
                         backgroundColor: active ? 'var(--theme-fill)' : '#f1f5f9',
                       }}
@@ -147,6 +158,11 @@ export default function BottomNav() {
                         className="w-[18px] h-[18px]"
                         style={{ color: active ? 'var(--theme-accent)' : '#64748b' }}
                       />
+                      {badge > 0 && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                          {badge > 9 ? '9+' : badge}
+                        </span>
+                      )}
                     </div>
                     <div className="flex flex-col min-w-0">
                       <span
@@ -233,8 +249,8 @@ export default function BottomNav() {
             );
           })}
 
-          {/* Tools tab — homeowner only */}
-          {typedUser?.role === 'homeowner' && (
+          {/* Tools tab — homeowner & contractor */}
+          {hasFlyout && (
             <button
               onClick={() => setToolsOpen(prev => !prev)}
               className="flex flex-col items-center justify-center gap-0.5 px-2 py-2 flex-1 transition-all duration-200 relative focus:outline-none"
