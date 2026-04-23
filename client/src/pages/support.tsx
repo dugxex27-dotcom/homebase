@@ -428,7 +428,7 @@ export default function SupportPage() {
             {/* Still need help? */}
             <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(83,74,183,0.08)', padding: 14, textAlign: 'center', marginBottom: 4 }}>
               <div style={{ fontSize: 13, fontWeight: 800, color: palette.bg, marginBottom: 4 }}>Still need help?</div>
-              <div style={{ fontSize: 11, fontWeight: 500, color: '#9b97c4', marginBottom: 12 }}>Our team responds within 24 hours</div>
+              <div style={{ fontSize: 11, fontWeight: 500, color: palette.tileBg, opacity: 0.7, marginBottom: 12 }}>Our team responds within 24 hours</div>
               <button
                 onClick={() => { setActiveTab('tickets'); setShowTicketForm(true); }}
                 data-testid="button-create-ticket-from-faq"
