@@ -83,6 +83,19 @@
   flex: 1;
 }
 
+.dash-chip-earnings {
+  flex: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.dash-chip-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+  margin: 8px 0;
+}
+
 .dash-chip-num {
   font-size: 20px;
   font-weight: 800;

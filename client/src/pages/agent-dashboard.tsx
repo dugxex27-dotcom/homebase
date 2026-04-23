@@ -236,13 +236,16 @@ export default function AgentDashboard() {
             <div className={`dash-chip-num${(stats?.activeReferrals || 0) > 0 ? ' good' : ''}`}>{stats?.activeReferrals || 0}</div>
             <div className="dash-chip-label">Active Subscribers</div>
           </div>
-          <div className="dash-chip">
-            <div className={`dash-chip-num${(stats?.totalEarnings || 0) > 0 ? ' good' : ''}`}>${(stats?.totalEarnings || 0).toFixed(2)}</div>
-            <div className="dash-chip-label">Total Earnings</div>
-          </div>
-          <div className="dash-chip">
-            <div className={`dash-chip-num${(stats?.pendingEarnings || 0) > 0 ? ' warn' : ''}`}>${(stats?.pendingEarnings || 0).toFixed(2)}</div>
-            <div className="dash-chip-label">Pending Earnings</div>
+          <div className="dash-chip dash-chip-earnings">
+            <div>
+              <div className={`dash-chip-num${(stats?.totalEarnings || 0) > 0 ? ' good' : ''}`}>${(stats?.totalEarnings || 0).toFixed(2)}</div>
+              <div className="dash-chip-label">Total Earnings</div>
+            </div>
+            <div className="dash-chip-divider" />
+            <div>
+              <div className={`dash-chip-num${(stats?.pendingEarnings || 0) > 0 ? ' warn' : ''}`}>${(stats?.pendingEarnings || 0).toFixed(2)}</div>
+              <div className="dash-chip-label">Pending Earnings</div>
+            </div>
           </div>
         </div>
       </div>
