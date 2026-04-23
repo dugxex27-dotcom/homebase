@@ -159,11 +159,13 @@ export default function SupportPage() {
   const { user, isAuthenticated } = useAuth();
   const search = useSearch();
   const initialTab = new URLSearchParams(search).get('tab') || 'faq';
+  const roleParam = new URLSearchParams(search).get('role');
 
   const userRole = (user as any)?.role as RoleKey | undefined;
   const safeUserRole: RoleKey = userRole && roleConfig[userRole] ? userRole : 'homeowner';
+  const initialRole: RoleKey = (roleParam && roleConfig[roleParam as RoleKey]) ? roleParam as RoleKey : safeUserRole;
 
-  const [selectedRole, setSelectedRole] = useState<RoleKey>(safeUserRole);
+  const [selectedRole, setSelectedRole] = useState<RoleKey>(initialRole);
   const [activeTab, setActiveTab] = useState(initialTab);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedFaq, setExpandedFaq] = useState<number | null>(null);

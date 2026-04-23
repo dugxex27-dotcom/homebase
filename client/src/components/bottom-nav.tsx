@@ -81,9 +81,10 @@ export default function BottomNav() {
         ]
       : typedUser?.role === 'agent'
       ? [
-          { href: '/agent-dashboard', icon: LayoutDashboard, label: 'Dashboard',  active: isActive(['/agent-dashboard', '/']) },
+          { href: '/agent-dashboard', icon: LayoutDashboard, label: 'Dashboard', active: isActive(['/agent-dashboard', '/']) },
           { href: '/agent-referral',  icon: Gift,            label: 'Referrals', active: isActive('/agent-referral') },
           { href: '/agent-account',   icon: User,            label: 'Profile',   active: isActive(['/agent-account', '/billing']) },
+          { href: '/support?role=agent', icon: HelpCircle,  label: 'Support',   active: isActive('/support') },
         ]
       : [];
 
