@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { HelpCircle, MessageCircle, CheckCircle, Clock, AlertCircle, Ticket, Mail } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import logoHomeowner from "@assets/my-homebase-logo-tm-howner-white-final_1776538414393.png";
 import "./home.css";
@@ -170,6 +170,8 @@ const statusColors = {
 export default function SupportPage() {
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
+  const search = useSearch();
+  const initialTab = new URLSearchParams(search).get('tab') || 'faq';
   const [showTicketForm, setShowTicketForm] = useState(false);
   const [contactSubmitted, setContactSubmitted] = useState(false);
 
@@ -275,7 +277,7 @@ export default function SupportPage() {
       </div>
 
       <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-5xl">
-      <Tabs defaultValue="faq" className="w-full">
+      <Tabs defaultValue={initialTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3 h-auto" style={{ backgroundColor: '#f0ebfa' }}>
           <TabsTrigger value="faq" data-testid="tab-faq" className="text-xs sm:text-sm py-2 sm:py-2.5">
             <HelpCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
