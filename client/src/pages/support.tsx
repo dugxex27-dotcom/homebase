@@ -171,7 +171,7 @@ export default function SupportPage() {
   const [showTicketForm, setShowTicketForm] = useState(false);
   const [contactSubmitted, setContactSubmitted] = useState(false);
 
-  const palette = ROLE_PALETTE[safeUserRole];
+  const palette = ROLE_PALETTE[selectedRole];
   const currentRole = roleConfig[selectedRole];
 
   const filteredFaqs = searchQuery
@@ -286,7 +286,7 @@ export default function SupportPage() {
                   background: ROLE_PALETTE[key].tileBg,
                   border: isActive ? '2px solid rgba(255,255,255,0.5)' : '2px solid transparent',
                   borderRadius: '13px',
-                  padding: '11px 8px',
+                  padding: '11px 8px 15px',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
@@ -341,7 +341,7 @@ export default function SupportPage() {
                 border: 'none',
                 cursor: 'pointer',
                 background: activeTab === tab.key ? '#fff' : 'transparent',
-                color: activeTab === tab.key ? '#2d1f6e' : '#9b97c4',
+                color: activeTab === tab.key ? palette.bg : '#9b97c4',
                 transition: 'background 0.15s, color 0.15s',
               }}
             >
@@ -354,12 +354,12 @@ export default function SupportPage() {
         {activeTab === 'faq' && (
           <>
             {/* AI assistant card */}
-            <div style={{ background: '#534AB7', borderRadius: 14, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ background: palette.tileBg, borderRadius: 14, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ width: 34, height: 34, background: 'rgba(255,255,255,0.15)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Sparkles style={{ width: 16, height: 16, color: '#fff' }} />
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 9, fontWeight: 700, color: '#CECBF6', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 2 }}>AI assistant</div>
+                <div style={{ fontSize: 9, fontWeight: 700, color: palette.eyebrow, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 2 }}>AI assistant</div>
                 <div style={{ fontSize: 12, fontWeight: 800, color: '#fff' }}>Ask anything about your home</div>
                 <div style={{ fontSize: 10, fontWeight: 500, color: 'rgba(255,255,255,0.6)', marginTop: 1 }}>Instant answers, no waiting</div>
               </div>
@@ -378,7 +378,7 @@ export default function SupportPage() {
             {/* FAQ card */}
             <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(83,74,183,0.1)', overflow: 'hidden' }}>
               <div style={{ padding: '12px 14px', borderBottom: '1px solid rgba(83,74,183,0.08)' }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: '#2d1f6e' }}>Frequently asked questions</div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: palette.bg }}>Frequently asked questions</div>
                 <div style={{ fontSize: 11, fontWeight: 500, color: '#9b97c4', marginTop: 2 }}>
                   Quick answers about MyHomeBase™ · {currentRole.label}
                 </div>
@@ -396,7 +396,7 @@ export default function SupportPage() {
                       data-testid={`faq-question-${idx}`}
                       style={{ width: '100%', padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}
                     >
-                      <span style={{ fontSize: 12, fontWeight: 600, color: '#2d1f6e', flex: 1, marginRight: 10, lineHeight: 1.4 }}>{faq.question}</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: palette.bg, flex: 1, marginRight: 10, lineHeight: 1.4 }}>{faq.question}</span>
                       <ChevronRight
                         style={{ width: 14, height: 14, color: '#9b97c4', flexShrink: 0, transform: expandedFaq === idx ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}
                       />
@@ -417,7 +417,7 @@ export default function SupportPage() {
                 <div style={{ padding: '10px 14px', textAlign: 'center', borderTop: '1px solid rgba(83,74,183,0.07)' }}>
                   <button
                     onClick={() => { setShowAllFaqs(!showAllFaqs); setExpandedFaq(null); }}
-                    style={{ fontSize: 11, fontWeight: 700, color: '#534AB7', background: 'none', border: 'none', cursor: 'pointer' }}
+                    style={{ fontSize: 11, fontWeight: 700, color: palette.tileBg, background: 'none', border: 'none', cursor: 'pointer' }}
                   >
                     {showAllFaqs ? `Show fewer FAQs ↑` : `View all ${filteredFaqs.length} FAQs →`}
                   </button>
@@ -427,12 +427,12 @@ export default function SupportPage() {
 
             {/* Still need help? */}
             <div style={{ background: '#f8f7fd', borderRadius: 14, border: '1px solid rgba(83,74,183,0.08)', padding: 14, textAlign: 'center', marginBottom: 4 }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: '#2d1f6e', marginBottom: 4 }}>Still need help?</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: palette.bg, marginBottom: 4 }}>Still need help?</div>
               <div style={{ fontSize: 11, fontWeight: 500, color: '#9b97c4', marginBottom: 12 }}>Our team responds within 24 hours</div>
               <button
                 onClick={() => { setActiveTab('tickets'); setShowTicketForm(true); }}
                 data-testid="button-create-ticket-from-faq"
-                style={{ background: '#534AB7', borderRadius: 11, padding: '10px 20px', fontSize: 12, fontWeight: 700, color: '#fff', border: 'none', cursor: 'pointer' }}
+                style={{ background: palette.tileBg, borderRadius: 11, padding: '10px 20px', fontSize: 12, fontWeight: 700, color: '#fff', border: 'none', cursor: 'pointer' }}
               >
                 Open a support ticket
               </button>
@@ -447,7 +447,7 @@ export default function SupportPage() {
               <button
                 onClick={() => setShowTicketForm(true)}
                 data-testid="button-create-ticket"
-                style={{ background: '#534AB7', color: '#fff', border: 'none', borderRadius: 12, padding: '12px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                style={{ background: palette.tileBg, color: '#fff', border: 'none', borderRadius: 12, padding: '12px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
               >
                 <MessageCircle style={{ width: 16, height: 16 }} />
                 Create New Ticket
@@ -457,7 +457,7 @@ export default function SupportPage() {
             {showTicketForm && (
               <Card style={{ border: '1px solid rgba(83,74,183,0.12)' }}>
                 <CardHeader>
-                  <CardTitle style={{ color: '#2d1f6e' }}>Create Support Ticket</CardTitle>
+                  <CardTitle style={{ color: palette.bg }}>Create Support Ticket</CardTitle>
                   <CardDescription>Describe your issue and our support team will help you shortly</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -519,7 +519,7 @@ export default function SupportPage() {
 
                       <div className="flex gap-2 justify-end">
                         <Button type="button" variant="outline" onClick={() => { setShowTicketForm(false); form.reset(); }} data-testid="button-cancel">Cancel</Button>
-                        <Button type="submit" disabled={createTicketMutation.isPending} style={{ background: '#534AB7' }} data-testid="button-submit-ticket">
+                        <Button type="submit" disabled={createTicketMutation.isPending} style={{ background: palette.tileBg }} data-testid="button-submit-ticket">
                           {createTicketMutation.isPending ? "Creating..." : "Create Ticket"}
                         </Button>
                       </div>
@@ -534,7 +534,7 @@ export default function SupportPage() {
             ) : tickets.length === 0 ? (
               <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(83,74,183,0.1)', padding: '32px 16px', textAlign: 'center' }}>
                 <Ticket style={{ width: 36, height: 36, margin: '0 auto 12px', color: '#c4c1e0' }} />
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#2d1f6e', marginBottom: 4 }}>No tickets yet</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: palette.bg, marginBottom: 4 }}>No tickets yet</div>
                 <div style={{ fontSize: 12, color: '#9b97c4' }}>Create a ticket to get help from our team</div>
               </div>
             ) : (
@@ -576,9 +576,9 @@ export default function SupportPage() {
                 <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4" style={{ background: '#f0fdf4' }}>
                   <CheckCircle className="w-8 h-8 text-green-600" />
                 </div>
-                <h2 className="text-xl font-bold mb-2" style={{ color: '#2d1f6e' }}>Message Sent!</h2>
+                <h2 className="text-xl font-bold mb-2" style={{ color: palette.bg }}>Message Sent!</h2>
                 <p className="mb-6" style={{ color: '#4a3670' }}>We'll review your message and get back to you within 24-48 hours.</p>
-                <Button onClick={() => { setContactSubmitted(false); contactForm.reset(); }} style={{ background: '#534AB7', color: '#fff' }}>
+                <Button onClick={() => { setContactSubmitted(false); contactForm.reset(); }} style={{ background: palette.tileBg, color: '#fff' }}>
                   Send Another Message
                 </Button>
               </CardContent>
@@ -586,7 +586,7 @@ export default function SupportPage() {
           ) : (
             <Card style={{ border: '1px solid rgba(83,74,183,0.12)' }}>
               <CardHeader>
-                <CardTitle style={{ color: '#2d1f6e' }} className="flex items-center gap-2">
+                <CardTitle style={{ color: palette.bg }} className="flex items-center gap-2">
                   <Mail className="w-5 h-5" /> Send Us a Message
                 </CardTitle>
                 <CardDescription>Our team responds within 24-48 hours.</CardDescription>
@@ -646,7 +646,7 @@ export default function SupportPage() {
                       </FormItem>
                     )} />
 
-                    <Button type="submit" className="w-full text-white" style={{ background: '#534AB7' }} disabled={contactMutation.isPending} data-testid="button-contact-submit">
+                    <Button type="submit" className="w-full text-white" style={{ background: palette.tileBg }} disabled={contactMutation.isPending} data-testid="button-contact-submit">
                       {contactMutation.isPending ? 'Sending…' : 'Send Message'}
                     </Button>
                   </form>
