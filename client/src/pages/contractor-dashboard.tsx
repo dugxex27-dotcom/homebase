@@ -240,11 +240,11 @@ export default function ContractorDashboard() {
     <div className="min-h-screen" style={{ background: '#ffffff' }}>
 
       {/* ── DASH HEADER ─────────────────────────── */}
-      <div className="dash-header">
+      <div className="dash-header" style={{ background: '#0c2461' }}>
         <div className="dash-header-top">
           <img src={logoContractor} alt="MyHomeBase™" className="dash-logo" />
         </div>
-        <span className="dash-eyebrow">Contractor</span>
+        <span className="dash-eyebrow" style={{ color: '#93c5fd' }}>Contractor</span>
         <div className="dash-title">Jobs & Proposals</div>
         <div className="dash-subtitle">Manage your work and grow your client base</div>
         <div className="dash-chips">
@@ -268,8 +268,8 @@ export default function ContractorDashboard() {
         <div className="grid grid-cols-12 gap-6">
           {/* Left column / sidebar */}
           <aside className="col-span-12 lg:col-span-3">
-            <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: '1px solid #ede9f8' }}>
-              <h3 className="text-lg font-semibold mb-3" style={{ color: '#2c0f5b' }} data-testid="text-overview-title">Overview</h3>
+            <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: '1px solid #dbeafe' }}>
+              <h3 className="text-lg font-semibold mb-3" style={{ color: '#0c2461' }} data-testid="text-overview-title">Overview</h3>
               <ul className="space-y-3 text-sm text-slate-600">
                 <li className="flex items-center gap-3">
                   <DollarSign size={18} className="text-blue-600" />
@@ -307,8 +307,8 @@ export default function ContractorDashboard() {
             </div>
 
             <div className="mt-6">
-              <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: '1px solid #ede9f8' }}>
-                <h4 className="text-sm font-semibold mb-2" style={{ color: '#2c0f5b' }}>Quick Actions</h4>
+              <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: '1px solid #dbeafe' }}>
+                <h4 className="text-sm font-semibold mb-2" style={{ color: '#0c2461' }}>Quick Actions</h4>
                 <div className="grid grid-cols-1 gap-2">
                   <Link href="/crm">
                     <button 
@@ -359,10 +359,10 @@ export default function ContractorDashboard() {
           {/* Main content */}
           <section className="col-span-12 lg:col-span-9">
             {/* Welcome banner */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4" style={{ border: '1px solid #ede9f8' }}>
+            <div className="bg-white rounded-2xl p-6 shadow-sm mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4" style={{ border: '1px solid #dbeafe' }}>
               <div>
-                <h2 className="text-2xl font-bold" style={{ color: '#2c0f5b' }} data-testid="text-welcome-message">Welcome back, {firstName}</h2>
-                <p className="mt-1" style={{ color: '#4a3670' }}>Quick snapshot of your business. Keep doing great work — we'll handle the busywork.</p>
+                <h2 className="text-2xl font-bold" style={{ color: '#0c2461' }} data-testid="text-welcome-message">Welcome back, {firstName}</h2>
+                <p className="mt-1" style={{ color: '#1e3a6e' }}>Quick snapshot of your business. Keep doing great work — we'll handle the busywork.</p>
               </div>
               <div className="flex items-center gap-3">
                 <div className="text-xs text-slate-400">Subscription</div>
@@ -374,22 +374,22 @@ export default function ContractorDashboard() {
 
             {/* Metric cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: '1px solid #ede9f8' }}>
-                <div className="text-xs" style={{ color: '#7c6fa0' }}>Earnings (30d)</div>
-                <div className="text-xl font-semibold mt-2" style={{ color: '#2c0f5b' }} data-testid="text-earnings-30d">${totalEarnings.toLocaleString()}</div>
-                <div className="text-sm mt-1" style={{ color: '#4a3670' }}>From accepted proposals</div>
+              <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: '1px solid #dbeafe' }}>
+                <div className="text-xs" style={{ color: '#4b72a0' }}>Earnings (30d)</div>
+                <div className="text-xl font-semibold mt-2" style={{ color: '#0c2461' }} data-testid="text-earnings-30d">${totalEarnings.toLocaleString()}</div>
+                <div className="text-sm mt-1" style={{ color: '#1e3a6e' }}>From accepted proposals</div>
               </div>
 
-              <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: '1px solid #ede9f8' }}>
-                <div className="text-xs" style={{ color: '#7c6fa0' }}>Active Jobs</div>
-                <div className="text-xl font-semibold mt-2" style={{ color: '#2c0f5b' }} data-testid="text-active-jobs">{acceptedProposals.length}</div>
-                <div className="text-sm mt-1" style={{ color: '#4a3670' }}>{upcomingAppointments.length} scheduled this week</div>
+              <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: '1px solid #dbeafe' }}>
+                <div className="text-xs" style={{ color: '#4b72a0' }}>Active Jobs</div>
+                <div className="text-xl font-semibold mt-2" style={{ color: '#0c2461' }} data-testid="text-active-jobs">{acceptedProposals.length}</div>
+                <div className="text-sm mt-1" style={{ color: '#1e3a6e' }}>{upcomingAppointments.length} scheduled this week</div>
               </div>
 
-              <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: '1px solid #ede9f8' }}>
-                <div className="text-xs" style={{ color: '#7c6fa0' }}>Avg Response Time</div>
-                <div className="text-xl font-semibold mt-2" style={{ color: '#2c0f5b' }} data-testid="text-response-time">2h 12m</div>
-                <div className="text-sm mt-1" style={{ color: '#4a3670' }}>Keep response rate high to win more leads</div>
+              <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: '1px solid #dbeafe' }}>
+                <div className="text-xs" style={{ color: '#4b72a0' }}>Avg Response Time</div>
+                <div className="text-xl font-semibold mt-2" style={{ color: '#0c2461' }} data-testid="text-response-time">2h 12m</div>
+                <div className="text-sm mt-1" style={{ color: '#1e3a6e' }}>Keep response rate high to win more leads</div>
               </div>
             </div>
 
@@ -428,10 +428,10 @@ export default function ContractorDashboard() {
 
             {/* Proposals + Calendar row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <div className="bg-white rounded-2xl p-6 shadow-sm" style={{ border: '1px solid #ede9f8' }}>
+              <div className="bg-white rounded-2xl p-6 shadow-sm" style={{ border: '1px solid #dbeafe' }}>
                 <div className="flex items-start justify-between">
                   <div>
-                    <h3 className="text-lg font-semibold" style={{ color: '#2c0f5b' }}>Proposals</h3>
+                    <h3 className="text-lg font-semibold" style={{ color: '#0c2461' }}>Proposals</h3>
                     <p className="text-sm text-slate-500 mt-1">
                       {proposals.length === 0 
                         ? "No proposals yet. Create your first proposal to get started." 
@@ -469,10 +469,10 @@ export default function ContractorDashboard() {
                 )}
               </div>
 
-              <div className="bg-white rounded-2xl p-6 shadow-sm" style={{ border: '1px solid #ede9f8' }}>
+              <div className="bg-white rounded-2xl p-6 shadow-sm" style={{ border: '1px solid #dbeafe' }}>
                 <div className="flex items-start justify-between">
                   <div>
-                    <h3 className="text-lg font-semibold" style={{ color: '#2c0f5b' }}>Calendar</h3>
+                    <h3 className="text-lg font-semibold" style={{ color: '#0c2461' }}>Calendar</h3>
                     <p className="text-sm text-slate-500 mt-1">
                       {nextAppointment 
                         ? `Next: ${new Date(nextAppointment.scheduledDateTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} • ${new Date(nextAppointment.scheduledDateTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
@@ -515,9 +515,9 @@ export default function ContractorDashboard() {
             </div>
 
             {/* Jobs list */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm mb-6" style={{ border: '1px solid #ede9f8' }}>
+            <div className="bg-white rounded-2xl p-6 shadow-sm mb-6" style={{ border: '1px solid #dbeafe' }}>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold" style={{ color: '#2c0f5b' }}>Jobs</h3>
+                <h3 className="text-lg font-semibold" style={{ color: '#0c2461' }}>Jobs</h3>
                 <Link href="/crm">
                   <Button 
                     variant="outline" 
