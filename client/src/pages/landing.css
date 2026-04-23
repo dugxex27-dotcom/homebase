@@ -537,11 +537,10 @@
 .mhb-claims-chip .mhb-referral-popover {
   bottom: auto;
   top: calc(100% + 10px);
-  width: 308px;
+  width: 320px;
   max-width: calc(100vw - 32px);
-  padding: 2px;
-  background: #EEEDFE;
-  border-color: #AFA9EC;
+  padding: 40px 0 0;
+  background: #fff;
 }
 
 .mhb-referral-popover-title {
@@ -596,9 +595,15 @@
    42% claims denied popover
    ═══════════════════════════ */
 
+.msc-card-wrap {
+  background: #f5f4fd;
+  border-radius: 20px;
+  padding: 2px;
+}
+
 .msc-inner {
   background: #ffffff;
-  border-radius: 16px;
+  border-radius: 18px;
   border: 0.5px solid #AFA9EC;
   overflow: hidden;
   font-family: 'Inter', system-ui, sans-serif;
@@ -797,7 +802,7 @@
 .mrr-popover {
   font-family: 'Inter', system-ui, sans-serif !important;
   padding: 40px 0 0;
-  width: 300px;
+  width: 320px;
   overflow: visible;
 }
 
@@ -1095,7 +1100,7 @@
 .mpr-popover {
   font-family: 'Inter', system-ui, sans-serif !important;
   padding: 40px 0 0;
-  width: 340px;
+  width: 320px;
   max-height: 78vh;
   overflow-y: auto;
   overflow-x: hidden;
@@ -1120,7 +1125,7 @@
 }
 
 .mpr-header {
-  padding: 20px 18px 0;
+  padding: 20px 20px 0;
 }
 
 .mpr-eyebrow {

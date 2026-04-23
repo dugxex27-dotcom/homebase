@@ -183,7 +183,7 @@ export default function Landing() {
                   onClick={(e) => e.stopPropagation()}
                 >
                   <button className="mhb-referral-close" onClick={() => setClaimsOpen(false)} aria-label="Close">✕</button>
-                  <div className="msc-inner">
+                  <div className="msc-card-wrap"><div className="msc-inner">
                     <div className="msc-bar" />
                     <div className="msc-header">
                       <p className="msc-eyebrow">Insurance Reality Check</p>
@@ -225,7 +225,7 @@ export default function Landing() {
                       <p className="msc-source-text">Source: Weiss Ratings</p>
                       <div className="msc-source-line" />
                     </div>
-                  </div>
+                  </div></div>
                 </div>
               )}
             </div>
