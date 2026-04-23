@@ -341,7 +341,7 @@ export default function SupportPage() {
                 border: 'none',
                 cursor: 'pointer',
                 background: activeTab === tab.key ? '#fff' : 'transparent',
-                color: activeTab === tab.key ? palette.bg : '#9b97c4',
+                color: activeTab === tab.key ? palette.tileBg : '#9b97c4',
                 transition: 'background 0.15s, color 0.15s',
               }}
             >
