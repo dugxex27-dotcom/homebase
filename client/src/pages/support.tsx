@@ -310,7 +310,7 @@ export default function SupportPage() {
       <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: 600, margin: '0 auto' }}>
 
         {/* Search */}
-        <div style={{ background: '#f8f7fd', borderRadius: 12, padding: '11px 14px', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid rgba(83,74,183,0.12)' }}>
+        <div style={{ background: '#fff', borderRadius: 12, padding: '11px 14px', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid rgba(83,74,183,0.12)' }}>
           <Search style={{ width: 14, height: 14, color: '#9b97c4', flexShrink: 0 }} />
           <input
             value={searchQuery}
@@ -321,7 +321,7 @@ export default function SupportPage() {
         </div>
 
         {/* Tab row */}
-        <div style={{ display: 'flex', background: '#f0eef8', borderRadius: 12, padding: 3, gap: 2 }}>
+        <div style={{ display: 'flex', background: '#f5f5f5', borderRadius: 12, padding: 3, gap: 2 }}>
           {[
             { key: 'faq',     label: 'FAQs' },
             { key: 'tickets', label: `Tickets (${tickets.length})` },
@@ -426,7 +426,7 @@ export default function SupportPage() {
             </div>
 
             {/* Still need help? */}
-            <div style={{ background: '#f8f7fd', borderRadius: 14, border: '1px solid rgba(83,74,183,0.08)', padding: 14, textAlign: 'center', marginBottom: 4 }}>
+            <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(83,74,183,0.08)', padding: 14, textAlign: 'center', marginBottom: 4 }}>
               <div style={{ fontSize: 13, fontWeight: 800, color: palette.bg, marginBottom: 4 }}>Still need help?</div>
               <div style={{ fontSize: 11, fontWeight: 500, color: '#9b97c4', marginBottom: 12 }}>Our team responds within 24 hours</div>
               <button
