@@ -25,6 +25,8 @@ import { Link } from "wouter";
 import { ProFeatureGate, ProUpgradeBanner, ProBenefitsDialog } from "@/components/pro-feature-gate";
 import { StripeConnectOnboarding } from "@/components/stripe-connect-onboarding";
 import { CreditCard } from "lucide-react";
+import logoContractor from "@assets/my-homebase-logo-tm-contractor-white-final_1776538414391.png";
+import "./home.css";
 
 // Types
 interface CrmLead {
@@ -840,12 +842,37 @@ export default function ContractorCRMPage() {
     setSendDialogOpen(false);
   };
 
+  const activeJobs    = jobs?.filter(j => j.status === 'scheduled' || j.status === 'in_progress').length ?? 0;
+  const openInvoices  = invoices?.filter(i => i.status === 'sent' || i.status === 'overdue').length ?? 0;
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">CRM - Business Management</h1>
-        <p className="text-muted-foreground mt-1">Manage your leads, clients, jobs, quotes, and invoices</p>
+    <div className="min-h-screen" style={{ background: '#f8fafc' }}>
+
+      {/* ── DASH HEADER ─────────────────────────── */}
+      <div className="dash-header" style={{ background: '#0c2461' }}>
+        <div className="dash-header-top">
+          <img src={logoContractor} alt="MyHomeBase™" className="dash-logo" />
+        </div>
+        <span className="dash-eyebrow" style={{ color: '#93c5fd' }}>Contractor</span>
+        <div className="dash-title">CRM &amp; Clients</div>
+        <div className="dash-subtitle">Leads, jobs, quotes and invoices in one place</div>
+        <div className="dash-chips">
+          <div className="dash-chip">
+            <div className={`dash-chip-num${(leads?.length ?? 0) > 0 ? ' good' : ''}`}>{leads?.length ?? 0}</div>
+            <div className="dash-chip-label">Leads</div>
+          </div>
+          <div className="dash-chip">
+            <div className={`dash-chip-num${activeJobs > 0 ? ' good' : ''}`}>{activeJobs}</div>
+            <div className="dash-chip-label">Active Jobs</div>
+          </div>
+          <div className="dash-chip">
+            <div className={`dash-chip-num${openInvoices > 0 ? ' warn' : ''}`}>{openInvoices}</div>
+            <div className="dash-chip-label">Open Invoices</div>
+          </div>
+        </div>
       </div>
+
+    <div className="container mx-auto px-4 py-8">
 
       {/* Pro Upgrade Banner for non-Pro users */}
       {needsUpgrade && (
@@ -2464,6 +2491,7 @@ export default function ContractorCRMPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
     </div>
   );
 }
