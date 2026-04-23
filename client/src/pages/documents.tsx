@@ -241,7 +241,6 @@ export default function Documents() {
       {/* ── PAGE HEADER ─────────────────────────── */}
       <div className="dash-header">
         <div className="dash-header-top">
-          <img src={logoHomeowner} alt="MyHomeBase™" className="dash-logo" />
           {topSection === "documents" && (
             <div className="dash-header-actions">
               <button

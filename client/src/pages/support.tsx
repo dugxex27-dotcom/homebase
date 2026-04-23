@@ -17,7 +17,6 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { HelpCircle, MessageCircle, CheckCircle, Clock, AlertCircle, Ticket, Mail, Home, Wrench, UserCheck } from "lucide-react";
 import { Link, useSearch } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import logoHomeowner from "@assets/my-homebase-logo-tm-howner-white-final_1776538414393.png";
 import "./home.css";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -250,9 +249,6 @@ export default function SupportPage() {
 
       {/* ── PAGE HEADER ─────────────────────────── */}
       <div className="dash-header">
-        <div className="dash-header-top">
-          <img src={logoHomeowner} alt="MyHomeBase™" className="dash-logo" />
-        </div>
         <span className="dash-eyebrow">Homeowner</span>
         <div className="dash-title">Support Center</div>
         <div className="dash-subtitle">Get answers or open a ticket with our team</div>

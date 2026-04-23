@@ -28,7 +28,6 @@ import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, Ch
 import { AppointmentScheduler } from "@/components/appointment-scheduler";
 import { CustomMaintenanceTasks } from "@/components/custom-maintenance-tasks";
 import HouseMap from "@/components/house-map";
-import logoHomeowner from "@assets/my-homebase-logo-tm-howner-white-final_1776538414393.png";
 import "./home.css";
 import { US_MAINTENANCE_DATA, getRegionFromClimateZone, getCurrentMonthTasks } from "@shared/location-maintenance-data";
 import { enrichTasksWithCosts } from "@shared/cost-helpers";
@@ -3448,9 +3447,6 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
       {/* ── PAGE HEADER ───────────────────────────── */}
       <div className="dash-header">
-        <div className="dash-header-top">
-          <img src={logoHomeowner} alt="MyHomeBase™" className="dash-logo" />
-        </div>
         <span className="dash-eyebrow">Homeowner</span>
         <div className="dash-title">Your Tasks</div>
         <div className="dash-subtitle">{MONTHS[selectedMonth - 1]} maintenance schedule for your home</div>

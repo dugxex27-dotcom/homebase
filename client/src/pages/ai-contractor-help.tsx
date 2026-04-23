@@ -7,7 +7,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import logoHomeowner from "@assets/my-homebase-logo-tm-howner-white-final_1776538414393.png";
 import "./home.css";
 import {
   Sparkles, Search, Loader2, AlertCircle, MessageCircle,
@@ -341,9 +340,6 @@ export default function AIContractorHelp() {
 
       {/* ── PAGE HEADER ─────────────────────────── */}
       <div className="dash-header">
-        <div className="dash-header-top">
-          <img src={logoHomeowner} alt="MyHomeBase™" className="dash-logo" />
-        </div>
         <span className="dash-eyebrow">Homeowner</span>
         <div className="dash-title">Ask AI</div>
         <div className="dash-subtitle">Diagnose issues, get DIY fixes, and find the right contractor</div>

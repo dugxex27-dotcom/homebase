@@ -25,7 +25,6 @@ import { Link } from "wouter";
 import { ProFeatureGate, ProUpgradeBanner, ProBenefitsDialog } from "@/components/pro-feature-gate";
 import { StripeConnectOnboarding } from "@/components/stripe-connect-onboarding";
 import { CreditCard } from "lucide-react";
-import logoContractor from "@assets/my-homebase-logo-tm-contractor-white-final_1776538414391.png";
 import "./home.css";
 
 // Types
@@ -850,9 +849,6 @@ export default function ContractorCRMPage() {
 
       {/* ── DASH HEADER ─────────────────────────── */}
       <div className="dash-header" style={{ background: '#0c2461' }}>
-        <div className="dash-header-top">
-          <img src={logoContractor} alt="MyHomeBase™" className="dash-logo" />
-        </div>
         <span className="dash-eyebrow" style={{ color: '#93c5fd' }}>Contractor</span>
         <div className="dash-title">CRM &amp; Clients</div>
         <div className="dash-subtitle">Leads, jobs, quotes and invoices in one place</div>

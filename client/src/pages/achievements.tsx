@@ -28,7 +28,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { HomeownerFeatureGate, HomeownerTrialBanner, FreeUserUpgradePrompt } from "@/components/homeowner-feature-gate";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
-import logoHomeowner from "@assets/my-homebase-logo-tm-howner-white-final_1776538414393.png";
 import "./home.css";
 
 // Category descriptions for tooltips
@@ -218,9 +217,6 @@ export default function Achievements() {
     return (
       <div className="min-h-screen" style={{ background: '#ffffff' }}>
         <div className="dash-header">
-          <div className="dash-header-top">
-            <img src={logoHomeowner} alt="MyHomeBase™" className="dash-logo" />
-          </div>
           <span className="dash-eyebrow">Homeowner</span>
           <div className="dash-title">Achievements</div>
           <div className="dash-subtitle">Loading your milestones…</div>
@@ -281,9 +277,6 @@ export default function Achievements() {
 
         {/* ── PAGE HEADER ─────────────────────────── */}
         <div className="dash-header">
-          <div className="dash-header-top">
-            <img src={logoHomeowner} alt="MyHomeBase™" className="dash-logo" />
-          </div>
           <span className="dash-eyebrow">Homeowner</span>
           <div className="dash-title">Achievements</div>
           <div className="dash-subtitle">Track your home maintenance milestones</div>

@@ -121,7 +121,6 @@ export default function Home() {
       {typedUser?.role === "homeowner" && (
         <div className="dash-header">
           <div className="dash-header-top">
-            <img src={logoHomeowner} alt="MyHomeBase™" className="dash-logo" />
             <div className="dash-header-actions">
               <Link href="/account" className="dash-icon-btn" aria-label="Account">
                 <User size={15} />

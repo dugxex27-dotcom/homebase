@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge"; 
 import { Search, ChevronLeft, ChevronRight, ChevronUp } from "lucide-react";
 import type { Product } from "@shared/schema";
-import logoHomeowner from "@assets/my-homebase-logo-tm-howner-white-final_1776538414393.png";
 import "./home.css";
 
 export default function Products() {
@@ -83,9 +82,6 @@ export default function Products() {
     return (
       <div className="min-h-screen" style={{ background: '#ffffff' }}>
         <div className="dash-header">
-          <div className="dash-header-top">
-            <img src={logoHomeowner} alt="MyHomeBase™" className="dash-logo" />
-          </div>
           <span className="dash-eyebrow">Homeowner</span>
           <div className="dash-title">Shop Products</div>
           <div className="dash-subtitle">Professional-grade tools and materials for every home project</div>
@@ -103,9 +99,6 @@ export default function Products() {
 
       {/* ── PAGE HEADER ─────────────────────────── */}
       <div className="dash-header">
-        <div className="dash-header-top">
-          <img src={logoHomeowner} alt="MyHomeBase™" className="dash-logo" />
-        </div>
         <span className="dash-eyebrow">Homeowner</span>
         <div className="dash-title">Shop Products</div>
         <div className="dash-subtitle">Professional-grade tools and materials for every home project</div>

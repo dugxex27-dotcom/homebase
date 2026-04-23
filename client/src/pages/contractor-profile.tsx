@@ -46,7 +46,6 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
 import { StripeConnectOnboarding } from "@/components/stripe-connect-onboarding";
-import logoContractor from "@assets/my-homebase-logo-tm-contractor-white-final_1776538414391.png";
 import "./home.css";
 
 const AVAILABLE_SERVICES = [
@@ -1165,9 +1164,6 @@ export default function ContractorProfile() {
 
       {/* ── DASH HEADER ─────────────────────────── */}
       <div className="dash-header" style={{ background: '#0c2461' }}>
-        <div className="dash-header-top">
-          <img src={logoContractor} alt="MyHomeBase™" className="dash-logo" />
-        </div>
         <span className="dash-eyebrow" style={{ color: '#93c5fd' }}>Contractor</span>
         <div className="dash-title">My Profile</div>
         <div className="dash-subtitle">Manage your business info and credentials</div>

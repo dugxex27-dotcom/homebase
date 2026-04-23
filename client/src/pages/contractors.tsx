@@ -10,7 +10,6 @@ import { ChevronLeft, ChevronRight, Search, ChevronDown, X, Home, ChevronUp } fr
 import type { Contractor, House } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
 import { getDistanceOptions, getDistanceUnit, extractCountryFromAddress, convertDistanceForStorage } from '@shared/distance-utils';
-import logoHomeowner from "@assets/my-homebase-logo-tm-howner-white-final_1776538414393.png";
 import "./home.css";
 
 export default function Contractors() {
@@ -364,9 +363,6 @@ export default function Contractors() {
 
       {/* ── PAGE HEADER ─────────────────────────── */}
       <div className="dash-header">
-        <div className="dash-header-top">
-          <img src={logoHomeowner} alt="MyHomeBase™" className="dash-logo" />
-        </div>
         <span className="dash-eyebrow">Homeowner</span>
         <div className="dash-title">Find Contractors</div>
         <div className="dash-subtitle">Connect with verified professionals for your home</div>

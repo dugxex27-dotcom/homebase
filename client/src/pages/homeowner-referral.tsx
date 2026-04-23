@@ -14,7 +14,6 @@ import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
 import instagramPostImg from '@assets/homebase-homeowner-homeowner-ig-post_1768410840843.png';
 import instagramStoryImg from '@assets/homebase-homeowner-homeowner-ig-story_1768411215294.png';
 import facebookTwitterImg from '@assets/homebase-homeowner-referral_(3)_1768267382477.png';
-import logoHomeowner from "@assets/my-homebase-logo-tm-howner-white-final_1776538414393.png";
 import "./home.css";
 
 export default function HomeownerReferral() {
@@ -101,9 +100,6 @@ export default function HomeownerReferral() {
 
       {/* ── PAGE HEADER ─────────────────────────── */}
       <div className="dash-header">
-        <div className="dash-header-top">
-          <img src={logoHomeowner} alt="MyHomeBase™" className="dash-logo" />
-        </div>
         <span className="dash-eyebrow">Homeowner</span>
         <div className="dash-title">Refer & Earn</div>
         <div className="dash-subtitle">Share MyHomeBase™ and earn free months</div>

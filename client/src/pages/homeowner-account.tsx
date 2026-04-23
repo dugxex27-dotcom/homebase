@@ -43,7 +43,6 @@ import {
 import { Link } from "wouter";
 import PushNotificationManager from "@/components/push-notification-manager";
 import { HomeownerConnectionCodes } from "@/components/ConnectionCodes";
-import logoHomeowner from "@assets/my-homebase-logo-tm-howner-white-final_1776538414393.png";
 import "./home.css";
 import instagramPostImg from '@assets/ChatGPT_Image_Dec_26,_2025,_12_25_05_PM_1766769919337.png';
 import instagramStoryImg from '@assets/ChatGPT_Image_Dec_26,_2025,_12_15_06_PM_1766769329697.png';
@@ -452,9 +451,6 @@ export default function HomeownerAccount() {
 
       {/* ── PAGE HEADER ────────────────────────────── */}
       <div className="dash-header">
-        <div className="dash-header-top">
-          <img src={logoHomeowner} alt="MyHomeBase™" className="dash-logo" />
-        </div>
         <span className="dash-eyebrow">Homeowner</span>
         <div className="dash-title">Account Settings</div>
         <div className="dash-subtitle">Manage your profile and preferences</div>
