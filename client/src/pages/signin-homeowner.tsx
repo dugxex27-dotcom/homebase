@@ -13,6 +13,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Eye, EyeOff } from "lucide-react";
 import logoHomeowner from '@assets/my-homebase-logo-tm-howner-white-final_1776538414393.png';
 import iconHomeowner from '@assets/myhomebase-icon-homeowner_1776539226013.png';
+import { PLAN_LABELS } from '@/lib/planLabels';
 
 const C = {
   header: '#2d1f6e',
@@ -64,12 +65,6 @@ const GoogleSVG = () => (
     <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
   </svg>
 );
-
-const PLAN_LABELS: Record<string, { name: string; price: string }> = {
-  base: { name: 'Base Plan', price: '$5/mo' },
-  premium: { name: 'Premium Plan', price: '$20/mo' },
-  plus: { name: 'Premium Plus', price: '$40/mo' },
-};
 
 export default function SignInHomeowner() {
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');

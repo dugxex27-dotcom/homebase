@@ -12,6 +12,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import logoImage from '@assets/my-homebase-logo-tm-final_1776295160061.png';
+import { PLAN_LABELS } from '@/lib/planLabels';
 
 const profileSchema = z.object({
   zipCode: z.string().min(5, "Zip code must be at least 5 characters"),
@@ -36,7 +37,12 @@ type ProfileFormData = z.infer<typeof profileSchema>;
 
 export default function CompleteProfile() {
   const { toast } = useToast();
-  
+
+  const pendingPlanSlug = sessionStorage.getItem('pendingPlan') ?? '';
+  const pendingPlan = PLAN_LABELS[pendingPlanSlug]
+    ? { slug: pendingPlanSlug, ...PLAN_LABELS[pendingPlanSlug] }
+    : null;
+
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
@@ -105,6 +111,29 @@ export default function CompleteProfile() {
             Complete your profile to get started
           </p>
         </div>
+
+        {/* Plan reminder banner */}
+        {pendingPlan && (
+          <div
+            data-testid="plan-reminder-banner"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              background: 'rgba(83,74,183,0.08)',
+              border: '1.5px solid rgba(83,74,183,0.2)',
+              borderRadius: 12,
+              padding: '10px 14px',
+              marginBottom: 16,
+            }}
+          >
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#534AB7', flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: '#2d1f6e', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Selected plan</p>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#534AB7' }}>{pendingPlan.name} — {pendingPlan.price}</p>
+            </div>
+          </div>
+        )}
 
         <Card className="border-0 shadow-xl">
           <CardHeader className="text-center pb-6">
