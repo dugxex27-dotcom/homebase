@@ -20,12 +20,27 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MessageCircle, Send, User, Calendar, Plus, Users, FileText, DollarSign, Clock, Star, Image as ImageIcon, X, File, Paperclip, Wifi, WifiOff, CheckCheck, Check, Sparkles, Loader2 } from "lucide-react";
-import logoHomeowner from "@assets/my-homebase-logo-tm-howner-white-final_1776538414393.png";
+import logoHomeowner   from "@assets/my-homebase-logo-tm-howner-white-final_1776538414393.png";
+import logoContractor  from "@assets/my-homebase-logo-tm-contractor-white-final_1776538414391.png";
+import logoAgent       from "@assets/my-homebase-logo-tm-re-white-final_1776538414394.png";
 import "./home.css";
+
 import { insertProposalSchema } from "@shared/schema";
 import { z } from "zod";
 import type { User as UserType, Conversation, Message, Contractor, Proposal, ContractorReview } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
+
+const ROLE_PALETTE = {
+  homeowner: { bg: '#2d1f6e', eyebrow: '#CECBF6', label: 'Homeowner' },
+  contractor: { bg: '#0c2461', eyebrow: '#93c5fd', label: 'Contractor' },
+  agent:      { bg: '#064e3b', eyebrow: '#6ee7b7', label: 'RE Agent'  },
+} as const;
+
+const ROLE_LOGO = {
+  homeowner: logoHomeowner,
+  contractor: logoContractor,
+  agent: logoAgent,
+} as const;
 
 interface ConversationWithDetails extends Conversation {
   otherPartyName: string;
@@ -36,6 +51,9 @@ export default function Messages() {
   const { user } = useAuth();
   const { toast } = useToast();
   const typedUser = user as UserType | undefined;
+  const role = (typedUser?.role ?? 'homeowner') as keyof typeof ROLE_PALETTE;
+  const palette = ROLE_PALETTE[role] ?? ROLE_PALETTE.homeowner;
+  const roleLogo = ROLE_LOGO[role] ?? ROLE_LOGO.homeowner;
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -535,9 +553,9 @@ export default function Messages() {
     <div className="min-h-screen" style={{ background: '#ffffff' }}>
 
       {/* ── PAGE HEADER ─────────────────────────── */}
-      <div className="dash-header">
+      <div className="dash-header" style={{ background: palette.bg }}>
         <div className="dash-header-top">
-          <img src={logoHomeowner} alt="MyHomeBase™" className="dash-logo" />
+          <img src={roleLogo} alt="MyHomeBase™" className="dash-logo" />
           <div className="dash-header-actions" data-testid="websocket-status">
             {wsConnected ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -552,9 +570,13 @@ export default function Messages() {
             )}
           </div>
         </div>
-        <span className="dash-eyebrow">{typedUser.role === 'homeowner' ? 'Homeowner' : 'Contractor'}</span>
+        <span className="dash-eyebrow" style={{ color: palette.eyebrow }}>{palette.label}</span>
         <div className="dash-title">Messages</div>
-        <div className="dash-subtitle">Chat in real-time with {typedUser.role === 'homeowner' ? 'your contractors' : 'homeowners'}</div>
+        <div className="dash-subtitle">
+          {role === 'homeowner' ? 'Chat in real-time with your contractors' :
+           role === 'contractor' ? 'Chat in real-time with homeowners' :
+           'Chat in real-time with clients & partners'}
+        </div>
         <div className="dash-chips">
           <div className="dash-chip">
             <div className={`dash-chip-num${conversations.length > 0 ? ' good' : ''}`}>{conversations.length}</div>
