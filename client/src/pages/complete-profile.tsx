@@ -61,9 +61,18 @@ export default function CompleteProfile() {
       });
       
       // Redirect to appropriate dashboard
-      const redirectPath = data.role === 'contractor' 
-        ? '/contractor-dashboard' 
-        : '/';
+      let redirectPath: string;
+      if (data.role === 'contractor') {
+        redirectPath = '/contractor-dashboard';
+      } else {
+        const pendingPlan = sessionStorage.getItem('pendingPlan');
+        if (pendingPlan) {
+          sessionStorage.removeItem('pendingPlan');
+          redirectPath = `/homeowner-pricing?onboarding=true&plan=${encodeURIComponent(pendingPlan)}`;
+        } else {
+          redirectPath = '/';
+        }
+      }
       
       setTimeout(() => {
         window.location.href = redirectPath;

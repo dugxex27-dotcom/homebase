@@ -38,7 +38,13 @@ export default function Home() {
     } else if (typedUser?.role === "agent") {
       setLocation("/agent-dashboard");
     } else if (typedUser?.role === "homeowner" && !subLoading && subscriptionStatus === "inactive") {
-      setLocation("/homeowner-pricing?onboarding=true");
+      const pendingPlan = sessionStorage.getItem('pendingPlan');
+      if (pendingPlan) {
+        sessionStorage.removeItem('pendingPlan');
+        setLocation(`/homeowner-pricing?onboarding=true&plan=${encodeURIComponent(pendingPlan)}`);
+      } else {
+        setLocation("/homeowner-pricing?onboarding=true");
+      }
     }
   }, [typedUser, setLocation, subscriptionStatus, subLoading]);
 

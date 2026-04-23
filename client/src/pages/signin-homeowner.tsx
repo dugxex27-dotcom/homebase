@@ -255,9 +255,9 @@ export default function SignInHomeowner() {
                   <span style={{ fontSize: 10, fontWeight: 700, color: C.inactive }}>or</span>
                   <div style={{ flex: 1, height: 1, background: C.border }} />
                 </div>
-                <a href="/auth/google" data-testid="button-google-signin-homeowner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', background: '#fff', border: '1.5px solid rgba(0,0,0,0.12)', borderRadius: 12, padding: '12px 0', fontSize: 13, fontWeight: 700, color: '#1a1a1a', textDecoration: 'none', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+                <button type="button" data-testid="button-google-signin-homeowner" onClick={() => { if (selectedPlan) { sessionStorage.setItem('pendingPlan', selectedPlan.slug); } else { sessionStorage.removeItem('pendingPlan'); } window.location.href = '/auth/google'; }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', background: '#fff', border: '1.5px solid rgba(0,0,0,0.12)', borderRadius: 12, padding: '12px 0', fontSize: 13, fontWeight: 700, color: '#1a1a1a', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', fontFamily: 'inherit' }}>
                   <GoogleSVG />Continue with Google
-                </a>
+                </button>
               </form>
             </Form>
           )}
@@ -341,9 +341,9 @@ export default function SignInHomeowner() {
                   <span style={{ fontSize: 10, fontWeight: 700, color: C.inactive }}>or</span>
                   <div style={{ flex: 1, height: 1, background: C.border }} />
                 </div>
-                <a href="/auth/google" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', background: '#fff', border: '1.5px solid rgba(0,0,0,0.12)', borderRadius: 12, padding: '12px 0', fontSize: 13, fontWeight: 700, color: '#1a1a1a', textDecoration: 'none', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+                <button type="button" onClick={() => { if (selectedPlan) { sessionStorage.setItem('pendingPlan', selectedPlan.slug); } else { sessionStorage.removeItem('pendingPlan'); } window.location.href = '/auth/google'; }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', background: '#fff', border: '1.5px solid rgba(0,0,0,0.12)', borderRadius: 12, padding: '12px 0', fontSize: 13, fontWeight: 700, color: '#1a1a1a', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', fontFamily: 'inherit' }}>
                   <GoogleSVG />Continue with Google
-                </a>
+                </button>
               </form>
             </Form>
           )}
