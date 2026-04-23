@@ -257,8 +257,10 @@
   border-radius: 14px;
   padding: 14px 16px;
   width: 100%;
+  min-height: 120px;
   display: flex;
   flex-direction: column;
+  justify-content: flex-end;
 }
 
 .mhb-stat-num {
