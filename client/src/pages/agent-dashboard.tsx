@@ -60,6 +60,7 @@ interface AgentStats {
   activeReferrals: number;
   totalEarnings: number;
   pendingEarnings: number;
+  nextPayoutDate: string | null;
 }
 
 export default function AgentDashboard() {
@@ -245,6 +246,11 @@ export default function AgentDashboard() {
             <div>
               <div className={`dash-chip-num${(stats?.pendingEarnings || 0) > 0 ? ' warn' : ''}`}>${(stats?.pendingEarnings || 0).toFixed(2)}</div>
               <div className="dash-chip-label">Pending Earnings</div>
+              {stats?.nextPayoutDate && (
+                <div className="dash-chip-sublabel">
+                  Est. {new Date(stats.nextPayoutDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -442,6 +442,7 @@ export interface IStorage {
     activeReferrals: number;
     totalEarnings: number;
     pendingEarnings: number;
+    nextPayoutDate: string | null;
   }>;
   
   // Agent verification operations
@@ -5827,6 +5828,7 @@ export class MemStorage implements IStorage {
     activeReferrals: number;
     totalEarnings: number;
     pendingEarnings: number;
+    nextPayoutDate: string | null;
   }> {
     const referrals = await db
       .select()
@@ -5853,11 +5855,53 @@ export class MemStorage implements IStorage {
       sum + parseFloat(p.amount || '0'), 0
     );
 
+    // Compute nextPayoutDate: earliest estimated date agent will receive money
+    const candidateDates: Date[] = [];
+
+    // Pending payouts (status='pending' or 'payout_pending') that are queued to process:
+    // estimate 1st of next month as the processing date
+    const hasPendingPayout = payouts.some(p => p.status === 'pending' || p.status === 'payout_pending' || p.status === 'processing');
+    if (hasPendingPayout) {
+      const now = new Date();
+      const firstOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      candidateDates.push(firstOfNextMonth);
+    }
+
+    // Referrals in progress: estimate payout date as firstPaymentDate + (4 - consecutiveMonthsPaid) months
+    const inProgressReferrals = referrals.filter(r =>
+      r.firstPaymentDate !== null &&
+      r.consecutiveMonthsPaid < 4 &&
+      !['voided', 'paid', 'eligible'].includes(r.status)
+    );
+    for (const referral of inProgressReferrals) {
+      if (referral.firstPaymentDate) {
+        const monthsRemaining = 4 - (referral.consecutiveMonthsPaid || 0);
+        const estimatedDate = new Date(referral.firstPaymentDate);
+        estimatedDate.setMonth(estimatedDate.getMonth() + monthsRemaining);
+        candidateDates.push(estimatedDate);
+      }
+    }
+
+    // Eligible referrals not yet paid (milestone reached, waiting for payout)
+    const eligibleReferrals = referrals.filter(r => r.status === 'eligible' || r.status === 'payout_pending');
+    if (eligibleReferrals.length > 0) {
+      const now = new Date();
+      const firstOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      candidateDates.push(firstOfNextMonth);
+    }
+
+    let nextPayoutDate: string | null = null;
+    if (candidateDates.length > 0) {
+      const earliest = candidateDates.reduce((a, b) => a < b ? a : b);
+      nextPayoutDate = earliest.toISOString().split('T')[0]; // YYYY-MM-DD
+    }
+
     return {
       totalReferrals,
       activeReferrals,
       totalEarnings,
       pendingEarnings,
+      nextPayoutDate,
     };
   }
 
