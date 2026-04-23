@@ -371,7 +371,7 @@ export default function SupportPage() {
             </div>
 
             {/* Section label */}
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#9b97c4', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: palette.tileBg, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
               Frequently asked
             </div>
 
@@ -379,7 +379,7 @@ export default function SupportPage() {
             <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(83,74,183,0.1)', overflow: 'hidden' }}>
               <div style={{ padding: '12px 14px', borderBottom: '1px solid rgba(83,74,183,0.08)' }}>
                 <div style={{ fontSize: 13, fontWeight: 800, color: palette.bg }}>Frequently asked questions</div>
-                <div style={{ fontSize: 11, fontWeight: 500, color: '#9b97c4', marginTop: 2 }}>
+                <div style={{ fontSize: 11, fontWeight: 500, color: palette.tileBg, marginTop: 2, opacity: 0.7 }}>
                   Quick answers about MyHomeBase™ · {currentRole.label}
                 </div>
               </div>
@@ -404,7 +404,7 @@ export default function SupportPage() {
                     {expandedFaq === idx && (
                       <div
                         data-testid={`faq-answer-${idx}`}
-                        style={{ padding: '0 14px 14px', fontSize: 12, lineHeight: 1.6, color: '#4a3670', background: 'rgba(83,74,183,0.03)' }}
+                        style={{ padding: '0 14px 14px', fontSize: 12, lineHeight: 1.6, color: palette.bg, opacity: 0.8, background: 'transparent' }}
                       >
                         {faq.answer}
                       </div>
