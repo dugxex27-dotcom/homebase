@@ -22,6 +22,9 @@ export default function Landing() {
   const [referralTab, setReferralTab] = useState<'hw' | 'ct'>('hw');
   const [hwSlider, setHwSlider] = useState(0);
   const [ctSlider, setCtSlider] = useState(0);
+  const [plansOpen, setPlansOpen] = useState(false);
+  const [selectedPlanCard, setSelectedPlanCard] = useState<'base' | 'premium' | 'plus'>('premium');
+  const [openFaqIdx, setOpenFaqIdx] = useState<number | null>(null);
 
   useEffect(() => {
     if (!referralOpen) return;
@@ -43,6 +46,13 @@ export default function Landing() {
     document.addEventListener('click', close);
     return () => document.removeEventListener('click', close);
   }, [signinOpen]);
+
+  useEffect(() => {
+    if (!plansOpen) return;
+    const close = () => setPlansOpen(false);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [plansOpen]);
 
   const handleRoleSelection = (role: 'homeowner' | 'contractor' | 'agent') => {
     window.location.href = `/signin/${role}`;
@@ -190,9 +200,167 @@ export default function Landing() {
                 </div>
               )}
             </div>
-            <div className="mhb-stat-chip">
+            <div
+              className="mhb-stat-chip mhb-referral-chip"
+              onMouseLeave={() => setPlansOpen(false)}
+            >
               <div className="mhb-stat-num"><strong>$5</strong><span>/mo</span></div>
-              <div className="mhb-stat-label">Full protection</div>
+              <div className="mhb-referral-footer">
+                <div className="mhb-stat-label">Full protection</div>
+                <button
+                  className="mhb-referral-trigger"
+                  onClick={(e) => { e.stopPropagation(); setPlansOpen(v => !v); }}
+                  onMouseEnter={() => setPlansOpen(true)}
+                  aria-label="View pricing plans"
+                ><Info size={11} strokeWidth={2.5} /></button>
+              </div>
+
+              {plansOpen && (
+                <div className="mhb-referral-popover mpr-popover" onClick={(e) => e.stopPropagation()}>
+                  <button className="mhb-referral-close" onClick={() => setPlansOpen(false)} aria-label="Close">✕</button>
+
+                  {/* Card shell */}
+                  <div className="mpr-card-wrap">
+                    <div className="mpr-card">
+
+                      {/* Gradient bar */}
+                      <div className="mpr-bar" />
+
+                      {/* Header */}
+                      <div className="mpr-header">
+                        <p className="mpr-eyebrow">Subscription</p>
+                        <h2 className="mpr-heading">Choose Your Plan</h2>
+                        <p className="mpr-body">Select the plan that fits your property management needs. Upgrade or downgrade anytime.</p>
+                        <div className="mpr-trial-banner">
+                          <span className="mpr-trial-icon">⏰</span>
+                          <p className="mpr-trial-text">Your free trial has ended. Select a plan below to continue using MyHomeBase™.</p>
+                        </div>
+                        <div className="mpr-divider" />
+                      </div>
+
+                      {/* Plan cards */}
+                      <div className="mpr-plans">
+
+                        {/* Base */}
+                        <div
+                          className={`mpr-plan-card ${selectedPlanCard === 'base' ? 'mpr-plan-selected' : ''}`}
+                          onClick={() => setSelectedPlanCard('base')}
+                        >
+                          <div className="mpr-plan-header">
+                            <div>
+                              <p className="mpr-plan-name">Base Plan</p>
+                              <p className="mpr-plan-sub">Perfect for getting started</p>
+                            </div>
+                            <div className="mpr-plan-price-wrap">
+                              <p className="mpr-plan-price">$5</p>
+                              <p className="mpr-plan-per">/month</p>
+                            </div>
+                          </div>
+                          <div className="mpr-plan-features">
+                            {['Up to 2 properties','Full maintenance scheduling','Contractor directory access','Service record tracking','Home Wellness Score™','DIY savings tracker','Email support'].map(f => (
+                              <div key={f} className="mpr-feature-row"><span className="mpr-check">✓</span>{f}</div>
+                            ))}
+                          </div>
+                          <button
+                            className={`mpr-plan-btn ${selectedPlanCard === 'base' ? 'mpr-plan-btn-selected' : 'mpr-plan-btn-ghost'}`}
+                            onClick={(e) => { e.stopPropagation(); handleRoleSelection('homeowner'); }}
+                          >Select Base Plan</button>
+                        </div>
+
+                        {/* Premium — featured */}
+                        <div
+                          className={`mpr-plan-card mpr-plan-featured ${selectedPlanCard === 'premium' ? 'mpr-plan-selected' : ''}`}
+                          onClick={() => setSelectedPlanCard('premium')}
+                        >
+                          <div className="mpr-popular-badge">Most Popular</div>
+                          <div className="mpr-plan-header mpr-plan-header-featured">
+                            <div>
+                              <p className="mpr-plan-name">Premium Plan</p>
+                              <p className="mpr-plan-sub">For active property managers</p>
+                            </div>
+                            <div className="mpr-plan-price-wrap">
+                              <p className="mpr-plan-price">$20</p>
+                              <p className="mpr-plan-per">/month</p>
+                            </div>
+                          </div>
+                          <div className="mpr-plan-features mpr-plan-features-featured">
+                            <div className="mpr-feature-row"><span className="mpr-check">✓</span>3–6 properties</div>
+                            <div className="mpr-feature-row"><span className="mpr-plus">+</span>Everything in Base</div>
+                          </div>
+                          <button
+                            className="mpr-plan-btn mpr-plan-btn-primary"
+                            onClick={(e) => { e.stopPropagation(); handleRoleSelection('homeowner'); }}
+                          >Select Premium Plan</button>
+                        </div>
+
+                        {/* Premium Plus */}
+                        <div
+                          className={`mpr-plan-card ${selectedPlanCard === 'plus' ? 'mpr-plan-selected' : ''}`}
+                          onClick={() => setSelectedPlanCard('plus')}
+                        >
+                          <div className="mpr-plan-header">
+                            <div>
+                              <p className="mpr-plan-name">Premium Plus</p>
+                              <p className="mpr-plan-sub">For serious property portfolios</p>
+                            </div>
+                            <div className="mpr-plan-price-wrap">
+                              <p className="mpr-plan-price">$40</p>
+                              <p className="mpr-plan-per">/month</p>
+                            </div>
+                          </div>
+                          <div className="mpr-plan-features">
+                            <div className="mpr-feature-row"><span className="mpr-check">✓</span>7+ properties</div>
+                            <div className="mpr-feature-row"><span className="mpr-plus">+</span>Everything in Premium</div>
+                          </div>
+                          <button
+                            className={`mpr-plan-btn ${selectedPlanCard === 'plus' ? 'mpr-plan-btn-selected' : 'mpr-plan-btn-ghost'}`}
+                            onClick={(e) => { e.stopPropagation(); handleRoleSelection('homeowner'); }}
+                          >Select Premium Plus</button>
+                        </div>
+                      </div>
+
+                      {/* 14-day trial note */}
+                      <div className="mpr-free-banner">
+                        <p className="mpr-free-title">All Plans Include a 14-Day Free Trial</p>
+                        <p className="mpr-free-sub">Try MyHomeBase™ risk-free. Cancel anytime during your trial with no charges.</p>
+                      </div>
+
+                      {/* Manage / Billing */}
+                      <div className="mpr-manage-row">
+                        <button className="mpr-manage-btn mpr-manage-btn-left">Manage Subscription</button>
+                        <button className="mpr-manage-btn">View Billing History</button>
+                      </div>
+
+                      {/* FAQ */}
+                      <div className="mpr-faq">
+                        <p className="mpr-faq-label">Frequently Asked Questions</p>
+                        <div className="mpr-faq-list">
+                          {[
+                            { q: 'Can I change my plan at any time?', a: 'Yes! You can upgrade or downgrade your plan at any time. Changes take effect immediately, and we\'ll prorate any charges.' },
+                            { q: 'What happens if I exceed my property limit?', a: 'You\'ll be prompted to upgrade to the next tier when you try to add a property beyond your current plan\'s limit. Your existing properties remain accessible.' },
+                            { q: 'Do you offer refunds?', a: 'Every new account includes a 14-day free trial. Your card is saved securely but not charged during the trial. If you cancel before the trial ends, you won\'t be charged at all. After the trial, subscriptions are billed monthly with no long-term contracts.' },
+                          ].map((item, i) => (
+                            <div
+                              key={i}
+                              className={`mpr-faq-item ${i < 2 ? 'mpr-faq-item-border' : ''}`}
+                              onClick={(e) => { e.stopPropagation(); setOpenFaqIdx(openFaqIdx === i ? null : i); }}
+                            >
+                              <div className="mpr-faq-q-row">
+                                <p className="mpr-faq-q">{item.q}</p>
+                                <span className="mpr-faq-chevron" style={{ transform: openFaqIdx === i ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+                              </div>
+                              {openFaqIdx === i && (
+                                <p className="mpr-faq-a">{item.a}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
             <div
               className="mhb-stat-chip mhb-referral-chip"

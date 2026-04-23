@@ -1,0 +1,201 @@
+
+<div style="background:var(--color-background-secondary);border-radius:20px;padding:2px;">
+<div style="background:var(--color-background-primary);border-radius:18px;border:0.5px solid var(--color-border-tertiary);overflow:hidden;">
+
+  <!-- Header -->
+  <div style="height:4px;background:linear-gradient(90deg,#534AB7,#185FA5);"></div>
+  <div style="padding:26px 22px 0;">
+    <p style="font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--color-text-tertiary);margin:0 0 6px;">Subscription</p>
+    <h2 style="font-size:20px;font-weight:500;margin:0 0 6px;color:var(--color-text-primary);line-height:1.25;font-family:var(--font-serif);">Choose Your Plan</h2>
+    <p style="font-size:13px;color:var(--color-text-secondary);margin:0 0 14px;line-height:1.5;">Select the plan that fits your property management needs. Upgrade or downgrade anytime.</p>
+    <div style="background:#EEEDFE;border:0.5px solid #CECBF6;border-radius:var(--border-radius-md);padding:10px 14px;margin-bottom:20px;display:flex;gap:10px;align-items:flex-start;">
+      <span style="font-size:15px;flex-shrink:0;margin-top:1px;">⏰</span>
+      <p style="font-size:12px;color:#3C3489;margin:0;line-height:1.5;">Your free trial has ended. Select a plan below to continue using MyHomeBase™.</p>
+    </div>
+    <div style="border-top:0.5px solid var(--color-border-tertiary);"></div>
+  </div>
+
+  <!-- Plan Cards -->
+  <div style="padding:18px 22px 0;display:flex;flex-direction:column;gap:12px;">
+
+    <!-- Base -->
+    <div id="card-base" onclick="selectPlan('base')" style="border-radius:var(--border-radius-lg);border:0.5px solid var(--color-border-tertiary);padding:16px;cursor:pointer;transition:border-color 0.2s;position:relative;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;">
+        <div>
+          <p style="font-size:14px;font-weight:500;color:var(--color-text-primary);margin:0 0 2px;">Base Plan</p>
+          <p style="font-size:11px;color:var(--color-text-tertiary);margin:0;">Perfect for getting started</p>
+        </div>
+        <div style="text-align:right;">
+          <p style="font-size:20px;font-weight:500;color:var(--color-text-primary);margin:0;line-height:1;">$5</p>
+          <p style="font-size:10px;color:var(--color-text-tertiary);margin:0;">/month</p>
+        </div>
+      </div>
+      <div style="border-top:0.5px solid var(--color-border-tertiary);padding-top:10px;display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--color-text-secondary);">
+          <span style="font-size:11px;color:#0F6E56;font-weight:500;">✓</span> Up to 2 properties
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--color-text-secondary);">
+          <span style="font-size:11px;color:#0F6E56;font-weight:500;">✓</span> Full maintenance scheduling
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--color-text-secondary);">
+          <span style="font-size:11px;color:#0F6E56;font-weight:500;">✓</span> Contractor directory access
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--color-text-secondary);">
+          <span style="font-size:11px;color:#0F6E56;font-weight:500;">✓</span> Service record tracking
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--color-text-secondary);">
+          <span style="font-size:11px;color:#0F6E56;font-weight:500;">✓</span> Home Wellness Score™
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--color-text-secondary);">
+          <span style="font-size:11px;color:#0F6E56;font-weight:500;">✓</span> DIY savings tracker
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--color-text-secondary);">
+          <span style="font-size:11px;color:#0F6E56;font-weight:500;">✓</span> Email support
+        </div>
+      </div>
+      <button id="btn-base" style="width:100%;margin-top:14px;padding:10px;border-radius:8px;border:0.5px solid var(--color-border-secondary);background:var(--color-background-secondary);color:var(--color-text-primary);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font-sans);transition:all 0.2s;">Select Base Plan</button>
+    </div>
+
+    <!-- Premium — featured -->
+    <div id="card-premium" onclick="selectPlan('premium')" style="border-radius:var(--border-radius-lg);border:2px solid #534AB7;padding:16px;cursor:pointer;transition:border-color 0.2s;position:relative;">
+      <div style="position:absolute;top:-1px;left:50%;transform:translateX(-50%);">
+        <span style="background:#534AB7;color:#fff;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;padding:3px 10px;border-radius:0 0 6px 6px;white-space:nowrap;">Most Popular</span>
+      </div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;margin-top:8px;">
+        <div>
+          <p style="font-size:14px;font-weight:500;color:var(--color-text-primary);margin:0 0 2px;">Premium Plan</p>
+          <p style="font-size:11px;color:var(--color-text-tertiary);margin:0;">For active property managers</p>
+        </div>
+        <div style="text-align:right;">
+          <p style="font-size:20px;font-weight:500;color:var(--color-text-primary);margin:0;line-height:1;">$20</p>
+          <p style="font-size:10px;color:var(--color-text-tertiary);margin:0;">/month</p>
+        </div>
+      </div>
+      <div style="border-top:0.5px solid #CECBF6;padding-top:10px;display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--color-text-secondary);">
+          <span style="font-size:11px;color:#0F6E56;font-weight:500;">✓</span> 3–6 properties
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--color-text-secondary);">
+          <span style="font-size:11px;color:#534AB7;font-weight:500;">+</span> Everything in Base
+        </div>
+      </div>
+      <button id="btn-premium" style="width:100%;margin-top:14px;padding:10px;border-radius:8px;border:none;background:#534AB7;color:#fff;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font-sans);">Select Premium Plan</button>
+    </div>
+
+    <!-- Premium Plus -->
+    <div id="card-plus" onclick="selectPlan('plus')" style="border-radius:var(--border-radius-lg);border:0.5px solid var(--color-border-tertiary);padding:16px;cursor:pointer;transition:border-color 0.2s;position:relative;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;">
+        <div>
+          <p style="font-size:14px;font-weight:500;color:var(--color-text-primary);margin:0 0 2px;">Premium Plus</p>
+          <p style="font-size:11px;color:var(--color-text-tertiary);margin:0;">For serious property portfolios</p>
+        </div>
+        <div style="text-align:right;">
+          <p style="font-size:20px;font-weight:500;color:var(--color-text-primary);margin:0;line-height:1;">$40</p>
+          <p style="font-size:10px;color:var(--color-text-tertiary);margin:0;">/month</p>
+        </div>
+      </div>
+      <div style="border-top:0.5px solid var(--color-border-tertiary);padding-top:10px;display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--color-text-secondary);">
+          <span style="font-size:11px;color:#0F6E56;font-weight:500;">✓</span> 7+ properties
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--color-text-secondary);">
+          <span style="font-size:11px;color:#534AB7;font-weight:500;">+</span> Everything in Premium
+        </div>
+      </div>
+      <button id="btn-plus" style="width:100%;margin-top:14px;padding:10px;border-radius:8px;border:0.5px solid var(--color-border-secondary);background:var(--color-background-secondary);color:var(--color-text-primary);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font-sans);transition:all 0.2s;">Select Premium Plus</button>
+    </div>
+  </div>
+
+  <!-- Trial Banner -->
+  <div style="margin:18px 22px;background:linear-gradient(135deg,#EEEDFE,#E6F1FB);border-radius:var(--border-radius-lg);padding:16px;border:0.5px solid #CECBF6;text-align:center;">
+    <p style="font-size:13px;font-weight:500;color:#3C3489;margin:0 0 4px;">All Plans Include a 14-Day Free Trial</p>
+    <p style="font-size:12px;color:#534AB7;margin:0;line-height:1.5;">Try MyHomeBase™ risk-free for 14 days. Cancel anytime during your trial with no charges.</p>
+  </div>
+
+  <!-- Manage Links -->
+  <div style="display:flex;gap:0;margin:0 22px 20px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);overflow:hidden;">
+    <button style="flex:1;padding:11px 8px;border:none;background:var(--color-background-secondary);color:var(--color-text-secondary);font-size:12px;cursor:pointer;font-family:var(--font-sans);border-right:0.5px solid var(--color-border-tertiary);">Manage Subscription</button>
+    <button style="flex:1;padding:11px 8px;border:none;background:var(--color-background-secondary);color:var(--color-text-secondary);font-size:12px;cursor:pointer;font-family:var(--font-sans);">View Billing History</button>
+  </div>
+
+  <!-- FAQ -->
+  <div style="margin:0 22px 28px;">
+    <p style="font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--color-text-tertiary);margin:0 0 12px;">Frequently Asked Questions</p>
+    <div style="display:flex;flex-direction:column;gap:0;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden;">
+
+      <div onclick="toggleFaq(0)" style="cursor:pointer;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:13px 14px;border-bottom:0.5px solid var(--color-border-tertiary);">
+          <p style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin:0;">Can I change my plan at any time?</p>
+          <span id="faq-icon-0" style="color:var(--color-text-tertiary);font-size:11px;flex-shrink:0;margin-left:8px;transition:transform 0.2s;">▼</span>
+        </div>
+        <div id="faq-body-0" style="display:none;padding:0 14px 13px;border-bottom:0.5px solid var(--color-border-tertiary);">
+          <p style="font-size:12px;color:var(--color-text-secondary);margin:0;line-height:1.6;">Yes! You can upgrade or downgrade your plan at any time. Changes take effect immediately, and we'll prorate any charges.</p>
+        </div>
+      </div>
+
+      <div onclick="toggleFaq(1)" style="cursor:pointer;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:13px 14px;border-bottom:0.5px solid var(--color-border-tertiary);">
+          <p style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin:0;">What happens if I exceed my property limit?</p>
+          <span id="faq-icon-1" style="color:var(--color-text-tertiary);font-size:11px;flex-shrink:0;margin-left:8px;transition:transform 0.2s;">▼</span>
+        </div>
+        <div id="faq-body-1" style="display:none;padding:0 14px 13px;border-bottom:0.5px solid var(--color-border-tertiary);">
+          <p style="font-size:12px;color:var(--color-text-secondary);margin:0;line-height:1.6;">You'll be prompted to upgrade to the next tier when you try to add a property beyond your current plan's limit. Your existing properties remain accessible.</p>
+        </div>
+      </div>
+
+      <div onclick="toggleFaq(2)" style="cursor:pointer;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:13px 14px;">
+          <p style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin:0;">Do you offer refunds?</p>
+          <span id="faq-icon-2" style="color:var(--color-text-tertiary);font-size:11px;flex-shrink:0;margin-left:8px;transition:transform 0.2s;">▼</span>
+        </div>
+        <div id="faq-body-2" style="display:none;padding:0 14px 13px;">
+          <p style="font-size:12px;color:var(--color-text-secondary);margin:0;line-height:1.6;">Every new account includes a 14-day free trial. Your card is saved securely but not charged during the trial. If you cancel before the trial ends, you won't be charged at all. After the trial, subscriptions are billed monthly with no long-term contracts.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+const cards = {
+  base: { border: '0.5px solid #534AB7', btnBg: '#534AB7', btnColor: '#fff', btnBorder: 'none' },
+  premium: { border: '2px solid #534AB7', btnBg: '#534AB7', btnColor: '#fff', btnBorder: 'none' },
+  plus: { border: '0.5px solid #185FA5', btnBg: '#185FA5', btnColor: '#fff', btnBorder: 'none' },
+};
+const defaults = {
+  base: { border: '0.5px solid var(--color-border-tertiary)', btnBg: 'var(--color-background-secondary)', btnColor: 'var(--color-text-primary)', btnBorder: '0.5px solid var(--color-border-secondary)' },
+  premium: { border: '2px solid #534AB7', btnBg: '#534AB7', btnColor: '#fff', btnBorder: 'none' },
+  plus: { border: '0.5px solid var(--color-border-tertiary)', btnBg: 'var(--color-background-secondary)', btnColor: 'var(--color-text-primary)', btnBorder: '0.5px solid var(--color-border-secondary)' },
+};
+
+let selected = 'premium';
+
+function selectPlan(plan) {
+  ['base','premium','plus'].forEach(p => {
+    const card = document.getElementById('card-' + p);
+    const btn = document.getElementById('btn-' + p);
+    const d = defaults[p];
+    card.style.border = d.border;
+    btn.style.background = d.btnBg;
+    btn.style.color = d.btnColor;
+    btn.style.border = d.btnBorder;
+  });
+  const c = cards[plan];
+  document.getElementById('card-' + plan).style.border = c.border;
+  document.getElementById('btn-' + plan).style.background = c.btnBg;
+  document.getElementById('btn-' + plan).style.color = c.btnColor;
+  document.getElementById('btn-' + plan).style.border = c.btnBorder;
+  selected = plan;
+}
+
+function toggleFaq(i) {
+  const body = document.getElementById('faq-body-' + i);
+  const icon = document.getElementById('faq-icon-' + i);
+  const open = body.style.display === 'block';
+  body.style.display = open ? 'none' : 'block';
+  icon.style.transform = open ? 'rotate(0deg)' : 'rotate(180deg)';
+}
+</script>
