@@ -10,23 +10,20 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { HelpCircle, MessageCircle, CheckCircle, Clock, AlertCircle, Ticket, Mail, Home, Wrench, UserCheck } from "lucide-react";
+import { CheckCircle, Clock, MessageCircle, AlertCircle, Ticket, Mail, Home, Wrench, UserCheck, ChevronRight, Search, Sparkles } from "lucide-react";
 import { Link, useSearch } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import "./home.css";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+/* ── schemas ─────────────────────────────────────────────── */
 const ticketFormSchema = insertSupportTicketSchema.extend({
   category: z.enum(['billing', 'technical', 'feature_request', 'account', 'contractor', 'general']),
   priority: z.enum(['low', 'medium', 'high', 'urgent']),
   subject: z.string().min(5, "Subject must be at least 5 characters").max(200),
   description: z.string().min(10, "Description must be at least 10 characters").max(5000),
 }).omit({ userId: true });
-
 type TicketFormData = z.infer<typeof ticketFormSchema>;
 
 const contactFormSchema = z.object({
@@ -38,7 +35,14 @@ const contactFormSchema = z.object({
 });
 type ContactFormData = z.infer<typeof contactFormSchema>;
 
+/* ── role config ─────────────────────────────────────────── */
 type RoleKey = 'homeowner' | 'contractor' | 'agent';
+
+const ROLE_PALETTE: Record<RoleKey, { bg: string; eyebrow: string; tileBg: string }> = {
+  homeowner: { bg: '#2d1f6e', eyebrow: '#CECBF6', tileBg: '#534AB7' },
+  contractor: { bg: '#0c2461', eyebrow: '#93c5fd', tileBg: '#185FA5' },
+  agent:      { bg: '#064e3b', eyebrow: '#6ee7b7', tileBg: '#3B6D11' },
+};
 
 const roleConfig: Record<RoleKey, {
   label: string;
@@ -61,9 +65,6 @@ const roleConfig: Record<RoleKey, {
       { question: "What is the Home Wellness Score™?", answer: "Your Home Wellness Score™ is a gamified metric (0-100) based on completed vs. missed maintenance tasks. Complete seasonal tasks to improve your score and unlock achievements. It helps you track how well you're maintaining your property." },
       { question: "How do I find contractors in my area?", answer: "Click 'Find Contractors' from your dashboard or any maintenance task. We'll show you verified contractors within 20 miles of your property who specialize in the service you need. You can view their profiles, ratings, and request quotes directly." },
       { question: "How does the connection code work?", answer: "Your unique 8-character Connection Code lets you securely share your home's service history with contractors. Give your code to a contractor, and they can access your records to provide more accurate quotes. You control who has access and can revoke it anytime." },
-      { question: "Can I transfer my house to a new owner?", answer: "Yes! If you're selling your home, you can transfer all service records and maintenance history to the new owner. Go to your house settings and select 'Transfer Ownership'. The new owner will receive a secure link to accept the transfer and claim the property history." },
-      { question: "How does the DIY Savings Tracker work?", answer: "When you mark a maintenance task as DIY-completed, we estimate the professional cost based on your region and task type. Your total DIY savings show how much money you've saved by doing tasks yourself instead of hiring contractors." },
-      { question: "Is my data secure?", answer: "Absolutely! We use enterprise-grade security including encrypted connections (HTTPS), secure session management, SQL injection and XSS prevention, and rate limiting. Your payment information is processed through Stripe's PCI-compliant system and never stored on our servers." },
     ],
     contactCategories: [
       { value: 'general', label: 'General Inquiry' },
@@ -134,12 +135,7 @@ const categoryLabels = {
   general: "General Question"
 };
 
-const priorityLabels = {
-  low: "Low",
-  medium: "Medium",
-  high: "High",
-  urgent: "Urgent"
-};
+const priorityLabels = { low: "Low", medium: "Medium", high: "High", urgent: "Urgent" };
 
 const statusIcons = {
   open: Clock,
@@ -157,59 +153,61 @@ const statusColors = {
   closed: "bg-gray-500"
 };
 
+/* ── component ───────────────────────────────────────────── */
 export default function SupportPage() {
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
   const search = useSearch();
   const initialTab = new URLSearchParams(search).get('tab') || 'faq';
+
   const userRole = (user as any)?.role as RoleKey | undefined;
-  const [selectedRole, setSelectedRole] = useState<RoleKey>(userRole && roleConfig[userRole] ? userRole : 'homeowner');
+  const safeUserRole: RoleKey = userRole && roleConfig[userRole] ? userRole : 'homeowner';
+
+  const [selectedRole, setSelectedRole] = useState<RoleKey>(safeUserRole);
+  const [activeTab, setActiveTab] = useState(initialTab);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
+  const [showAllFaqs, setShowAllFaqs] = useState(false);
   const [showTicketForm, setShowTicketForm] = useState(false);
   const [contactSubmitted, setContactSubmitted] = useState(false);
 
+  const palette = ROLE_PALETTE[safeUserRole];
   const currentRole = roleConfig[selectedRole];
+
+  const filteredFaqs = searchQuery
+    ? currentRole.faqs.filter(
+        faq =>
+          faq.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          faq.answer.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : currentRole.faqs;
+  const displayedFaqs = showAllFaqs ? filteredFaqs : filteredFaqs.slice(0, 5);
 
   const { data: tickets = [], isLoading: ticketsLoading } = useQuery<SupportTicket[]>({
     queryKey: ['/api/support/tickets'],
     enabled: isAuthenticated,
   });
 
+  /* ── ticket form ── */
   const form = useForm<TicketFormData>({
     resolver: zodResolver(ticketFormSchema),
-    defaultValues: {
-      category: 'general',
-      priority: 'medium',
-      subject: '',
-      description: '',
-    },
+    defaultValues: { category: 'general', priority: 'medium', subject: '', description: '' },
   });
 
   const createTicketMutation = useMutation({
-    mutationFn: async (data: TicketFormData) => {
-      return await apiRequest('/api/support/tickets', 'POST', data);
-    },
+    mutationFn: (data: TicketFormData) => apiRequest('/api/support/tickets', 'POST', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/support/tickets'] });
-      toast({
-        title: "Ticket created",
-        description: "Your support ticket has been submitted. Our team will respond shortly.",
-      });
+      toast({ title: "Ticket created", description: "Our team will respond shortly." });
       form.reset();
       setShowTicketForm(false);
     },
     onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create ticket",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: error.message || "Failed to create ticket", variant: "destructive" });
     },
   });
 
-  const onSubmit = (data: TicketFormData) => {
-    createTicketMutation.mutate(data);
-  };
-
+  /* ── contact form ── */
   const contactForm = useForm<ContactFormData>({
     resolver: zodResolver(contactFormSchema),
     defaultValues: {
@@ -222,17 +220,16 @@ export default function SupportPage() {
   });
 
   const contactMutation = useMutation({
-    mutationFn: async (data: ContactFormData) => {
+    mutationFn: (data: ContactFormData) => {
       if (isAuthenticated) {
-        return await apiRequest('/api/support/tickets', 'POST', {
+        return apiRequest('/api/support/tickets', 'POST', {
           category: data.category,
           priority: 'medium',
           subject: data.subject,
           description: `From: ${data.name} (${data.email})\n\n${data.message}`,
         });
-      } else {
-        return await apiRequest('/api/contact', 'POST', data);
       }
+      return apiRequest('/api/contact', 'POST', data);
     },
     onSuccess: () => {
       setContactSubmitted(true);
@@ -244,448 +241,421 @@ export default function SupportPage() {
     },
   });
 
-  return (
-    <div className="min-h-screen" style={{ background: '#ffffff' }}>
+  /* ── tile config ── */
+  const roleTiles: { key: RoleKey; label: string; icon: React.ElementType }[] = [
+    { key: 'homeowner', label: 'Homeowner', icon: Home },
+    { key: 'contractor', label: 'Contractor', icon: Wrench },
+    { key: 'agent',     label: 'RE Agent',   icon: UserCheck },
+  ];
 
-      {/* ── PAGE HEADER ─────────────────────────── */}
-      <div className="dash-header">
-        <span className="dash-eyebrow">Homeowner</span>
+  /* ── render ──────────────────────────────────────────────── */
+  return (
+    <div style={{ background: '#f8f7fd', minHeight: '100vh' }}>
+
+      {/* ── HEADER ── */}
+      <div className="dash-header" style={{ background: palette.bg }}>
+        <span className="dash-eyebrow" style={{ color: palette.eyebrow }}>Help &amp; support</span>
         <div className="dash-title">Support Center</div>
         <div className="dash-subtitle">Get answers or open a ticket with our team</div>
+
         <div className="dash-chips">
           <div className="dash-chip">
             <div className="dash-chip-num">{currentRole.faqs.length}</div>
             <div className="dash-chip-label">FAQs</div>
           </div>
           <div className="dash-chip">
-            <div className={`dash-chip-num${tickets.length > 0 ? ' warn' : ''}`}>{tickets.length}</div>
+            <div className="dash-chip-num">{tickets.length}</div>
             <div className="dash-chip-label">My Tickets</div>
           </div>
           <div className="dash-chip">
             <div className="dash-chip-num good">24h</div>
-            <div className="dash-chip-label">Response Time</div>
+            <div className="dash-chip-label">Response</div>
           </div>
+        </div>
+
+        {/* Role tiles */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '7px', marginTop: '4px' }}>
+          {roleTiles.map(({ key, label, icon: Icon }) => {
+            const isActive = selectedRole === key;
+            return (
+              <button
+                key={key}
+                onClick={() => { setSelectedRole(key); setShowAllFaqs(false); setExpandedFaq(null); setSearchQuery(''); }}
+                data-testid={`role-btn-${key}`}
+                style={{
+                  background: ROLE_PALETTE[key].tileBg,
+                  border: isActive ? '2px solid rgba(255,255,255,0.5)' : '2px solid transparent',
+                  borderRadius: '13px',
+                  padding: '11px 8px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '7px',
+                  cursor: 'pointer',
+                  opacity: isActive ? 1 : 0.75,
+                  transition: 'opacity 0.15s, border-color 0.15s',
+                }}
+              >
+                <div style={{ width: 32, height: 32, background: 'rgba(255,255,255,0.15)', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon style={{ width: 15, height: 15, color: '#fff' }} />
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#fff', lineHeight: 1.2, textAlign: 'center' }}>{label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-5xl">
+      {/* ── BODY ── */}
+      <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: 600, margin: '0 auto' }}>
 
-        {/* ── Role Selector ───────────────────────── */}
-        <div className="mb-6">
-          <p className="text-center text-sm font-medium mb-3" style={{ color: '#7c6fa0' }}>I am a…</p>
-          <div className="grid grid-cols-3 gap-3">
-            {(Object.keys(roleConfig) as RoleKey[]).map((role) => {
-              const RoleIcon = roleConfig[role].icon;
-              const isActive = selectedRole === role;
-              return (
-                <button
-                  key={role}
-                  onClick={() => setSelectedRole(role)}
-                  className="flex flex-col items-center gap-2 py-4 px-2 rounded-2xl border-2 transition-all font-medium text-sm"
-                  style={{
-                    backgroundColor: isActive ? '#2c0f5b' : '#faf8ff',
-                    borderColor: isActive ? '#2c0f5b' : '#ede9f8',
-                    color: isActive ? '#ffffff' : '#4a3670',
-                    boxShadow: isActive ? '0 4px 16px rgba(44,15,91,0.18)' : 'none',
-                  }}
-                  data-testid={`role-btn-${role}`}
-                >
-                  <RoleIcon style={{ width: 22, height: 22, opacity: isActive ? 1 : 0.6 }} />
-                  <span>{roleConfig[role].label}</span>
-                </button>
-              );
-            })}
-          </div>
+        {/* Search */}
+        <div style={{ background: '#f8f7fd', borderRadius: 12, padding: '11px 14px', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid rgba(83,74,183,0.12)' }}>
+          <Search style={{ width: 14, height: 14, color: '#9b97c4', flexShrink: 0 }} />
+          <input
+            value={searchQuery}
+            onChange={e => { setSearchQuery(e.target.value); setShowAllFaqs(true); setExpandedFaq(null); }}
+            placeholder="Search FAQs..."
+            style={{ background: 'transparent', border: 'none', outline: 'none', flex: 1, fontSize: 13, fontWeight: 500, color: '#2d1f6e' }}
+          />
         </div>
 
-      <Tabs defaultValue={initialTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 h-auto" style={{ backgroundColor: '#f0ebfa' }}>
-          <TabsTrigger value="faq" data-testid="tab-faq" className="text-xs sm:text-sm py-2 sm:py-2.5">
-            <HelpCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-            <span className="hidden sm:inline">FAQs</span>
-            <span className="sm:hidden">FAQs</span>
-          </TabsTrigger>
-          <TabsTrigger value="tickets" data-testid="tab-tickets" className="text-xs sm:text-sm py-2 sm:py-2.5">
-            <Ticket className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-            <span className="hidden sm:inline">My Tickets ({tickets.length})</span>
-            <span className="sm:hidden">Tickets ({tickets.length})</span>
-          </TabsTrigger>
-          <TabsTrigger value="contact" data-testid="tab-contact" className="text-xs sm:text-sm py-2 sm:py-2.5">
-            <Mail className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-            <span className="hidden sm:inline">Contact Us</span>
-            <span className="sm:hidden">Contact</span>
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="faq" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Frequently Asked Questions</CardTitle>
-              <CardDescription>
-                Find quick answers to common questions about MyHomeBase™
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Accordion type="single" collapsible className="w-full">
-                {currentRole.faqs.map((faq, index) => (
-                  <AccordionItem key={index} value={`item-${index}`}>
-                    <AccordionTrigger data-testid={`faq-question-${index}`}>
-                      {faq.question}
-                    </AccordionTrigger>
-                    <AccordionContent data-testid={`faq-answer-${index}`}>
-                      {faq.answer}
-                    </AccordionContent>
-                  </AccordionItem>
-                ))}
-              </Accordion>
-
-              <div className="mt-8 p-4 bg-muted rounded-lg">
-                <p className="text-sm text-muted-foreground">
-                  Can't find what you're looking for?{" "}
-                  <Button
-                    variant="link"
-                    className="p-0 h-auto"
-                    onClick={() => setShowTicketForm(true)}
-                    data-testid="button-create-ticket-from-faq"
-                  >
-                    Create a support ticket
-                  </Button>
-                  {" "}and our team will help you.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="tickets" className="mt-6 space-y-6">
-          {!showTicketForm && (
-            <Button
-              onClick={() => setShowTicketForm(true)}
-              data-testid="button-create-ticket"
-              className="w-full sm:w-auto"
+        {/* Tab row */}
+        <div style={{ display: 'flex', background: '#f0eef8', borderRadius: 12, padding: 3, gap: 2 }}>
+          {[
+            { key: 'faq',     label: 'FAQs' },
+            { key: 'tickets', label: `Tickets (${tickets.length})` },
+            { key: 'contact', label: 'Contact' },
+          ].map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              data-testid={`tab-${tab.key}`}
+              style={{
+                flex: 1,
+                padding: '8px 6px',
+                borderRadius: 10,
+                fontSize: 11,
+                fontWeight: 700,
+                textAlign: 'center',
+                border: 'none',
+                cursor: 'pointer',
+                background: activeTab === tab.key ? '#fff' : 'transparent',
+                color: activeTab === tab.key ? '#2d1f6e' : '#9b97c4',
+                transition: 'background 0.15s, color 0.15s',
+              }}
             >
-              <MessageCircle className="h-4 w-4 mr-2" />
-              Create New Ticket
-            </Button>
-          )}
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-          {showTicketForm && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Create Support Ticket</CardTitle>
-                <CardDescription>
-                  Describe your issue and our support team will help you as soon as possible
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="category"
-                      render={({ field }) => (
+        {/* ── FAQ TAB ── */}
+        {activeTab === 'faq' && (
+          <>
+            {/* AI assistant card */}
+            <div style={{ background: '#534AB7', borderRadius: 14, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 34, height: 34, background: 'rgba(255,255,255,0.15)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Sparkles style={{ width: 16, height: 16, color: '#fff' }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 9, fontWeight: 700, color: '#CECBF6', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 2 }}>AI assistant</div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: '#fff' }}>Ask anything about your home</div>
+                <div style={{ fontSize: 10, fontWeight: 500, color: 'rgba(255,255,255,0.6)', marginTop: 1 }}>Instant answers, no waiting</div>
+              </div>
+              <Link href="/ai-help">
+                <button style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 9, padding: '7px 10px', fontSize: 11, fontWeight: 700, color: '#fff', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  Ask AI →
+                </button>
+              </Link>
+            </div>
+
+            {/* Section label */}
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#9b97c4', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              Frequently asked
+            </div>
+
+            {/* FAQ card */}
+            <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(83,74,183,0.1)', overflow: 'hidden' }}>
+              <div style={{ padding: '12px 14px', borderBottom: '1px solid rgba(83,74,183,0.08)' }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: '#2d1f6e' }}>Frequently asked questions</div>
+                <div style={{ fontSize: 11, fontWeight: 500, color: '#9b97c4', marginTop: 2 }}>
+                  Quick answers about MyHomeBase™ · {currentRole.label}
+                </div>
+              </div>
+
+              {filteredFaqs.length === 0 ? (
+                <div style={{ padding: '20px 14px', textAlign: 'center', color: '#9b97c4', fontSize: 13 }}>
+                  No FAQs match your search.
+                </div>
+              ) : (
+                displayedFaqs.map((faq, idx) => (
+                  <div key={idx} style={{ borderBottom: idx < displayedFaqs.length - 1 ? '1px solid rgba(83,74,183,0.06)' : 'none' }}>
+                    <button
+                      onClick={() => setExpandedFaq(expandedFaq === idx ? null : idx)}
+                      data-testid={`faq-question-${idx}`}
+                      style={{ width: '100%', padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                    >
+                      <span style={{ fontSize: 12, fontWeight: 600, color: '#2d1f6e', flex: 1, marginRight: 10, lineHeight: 1.4 }}>{faq.question}</span>
+                      <ChevronRight
+                        style={{ width: 14, height: 14, color: '#9b97c4', flexShrink: 0, transform: expandedFaq === idx ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}
+                      />
+                    </button>
+                    {expandedFaq === idx && (
+                      <div
+                        data-testid={`faq-answer-${idx}`}
+                        style={{ padding: '0 14px 14px', fontSize: 12, lineHeight: 1.6, color: '#4a3670', background: 'rgba(83,74,183,0.03)' }}
+                      >
+                        {faq.answer}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+
+              {filteredFaqs.length > 5 && (
+                <div style={{ padding: '10px 14px', textAlign: 'center', borderTop: '1px solid rgba(83,74,183,0.07)' }}>
+                  <button
+                    onClick={() => { setShowAllFaqs(!showAllFaqs); setExpandedFaq(null); }}
+                    style={{ fontSize: 11, fontWeight: 700, color: '#534AB7', background: 'none', border: 'none', cursor: 'pointer' }}
+                  >
+                    {showAllFaqs ? `Show fewer FAQs ↑` : `View all ${filteredFaqs.length} FAQs →`}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Still need help? */}
+            <div style={{ background: '#f8f7fd', borderRadius: 14, border: '1px solid rgba(83,74,183,0.08)', padding: 14, textAlign: 'center', marginBottom: 4 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#2d1f6e', marginBottom: 4 }}>Still need help?</div>
+              <div style={{ fontSize: 11, fontWeight: 500, color: '#9b97c4', marginBottom: 12 }}>Our team responds within 24 hours</div>
+              <button
+                onClick={() => { setActiveTab('tickets'); setShowTicketForm(true); }}
+                data-testid="button-create-ticket-from-faq"
+                style={{ background: '#534AB7', borderRadius: 11, padding: '10px 20px', fontSize: 12, fontWeight: 700, color: '#fff', border: 'none', cursor: 'pointer' }}
+              >
+                Open a support ticket
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ── TICKETS TAB ── */}
+        {activeTab === 'tickets' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {!showTicketForm && (
+              <button
+                onClick={() => setShowTicketForm(true)}
+                data-testid="button-create-ticket"
+                style={{ background: '#534AB7', color: '#fff', border: 'none', borderRadius: 12, padding: '12px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+              >
+                <MessageCircle style={{ width: 16, height: 16 }} />
+                Create New Ticket
+              </button>
+            )}
+
+            {showTicketForm && (
+              <Card style={{ border: '1px solid rgba(83,74,183,0.12)' }}>
+                <CardHeader>
+                  <CardTitle style={{ color: '#2d1f6e' }}>Create Support Ticket</CardTitle>
+                  <CardDescription>Describe your issue and our support team will help you shortly</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(d => createTicketMutation.mutate(d))} className="space-y-4">
+                      <FormField control={form.control} name="category" render={({ field }) => (
                         <FormItem>
                           <FormLabel>Category</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
-                              <SelectTrigger data-testid="select-category">
-                                <SelectValue placeholder="Select a category" />
-                              </SelectTrigger>
+                              <SelectTrigger data-testid="select-category"><SelectValue placeholder="Select a category" /></SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {Object.entries(categoryLabels).map(([value, label]) => (
-                                <SelectItem key={value} value={value} data-testid={`category-${value}`}>
-                                  {label}
-                                </SelectItem>
+                              {currentRole.contactCategories.map(cat => (
+                                <SelectItem key={cat.value} value={cat.value} data-testid={`category-${cat.value}`}>{cat.label}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                           <FormMessage />
                         </FormItem>
-                      )}
-                    />
+                      )} />
 
-                    <FormField
-                      control={form.control}
-                      name="priority"
-                      render={({ field }) => (
+                      <FormField control={form.control} name="priority" render={({ field }) => (
                         <FormItem>
                           <FormLabel>Priority</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
-                              <SelectTrigger data-testid="select-priority">
-                                <SelectValue placeholder="Select priority" />
-                              </SelectTrigger>
+                              <SelectTrigger data-testid="select-priority"><SelectValue placeholder="Select priority" /></SelectTrigger>
                             </FormControl>
                             <SelectContent>
                               {Object.entries(priorityLabels).map(([value, label]) => (
-                                <SelectItem key={value} value={value} data-testid={`priority-${value}`}>
-                                  {label}
-                                </SelectItem>
+                                <SelectItem key={value} value={value} data-testid={`priority-${value}`}>{label}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                           <FormMessage />
                         </FormItem>
-                      )}
-                    />
+                      )} />
 
-                    <FormField
-                      control={form.control}
-                      name="subject"
-                      render={({ field }) => (
+                      <FormField control={form.control} name="subject" render={({ field }) => (
                         <FormItem>
                           <FormLabel>Subject</FormLabel>
                           <FormControl>
-                            <Input
-                              {...field}
-                              placeholder="Brief description of your issue"
-                              data-testid="input-subject"
-                            />
+                            <Input {...field} placeholder="Brief description of your issue" data-testid="input-subject" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
-                      )}
-                    />
+                      )} />
 
-                    <FormField
-                      control={form.control}
-                      name="description"
-                      render={({ field }) => (
+                      <FormField control={form.control} name="description" render={({ field }) => (
                         <FormItem>
                           <FormLabel>Description</FormLabel>
                           <FormControl>
-                            <Textarea
-                              {...field}
-                              placeholder="Please provide as much detail as possible..."
-                              className="min-h-[150px]"
-                              data-testid="textarea-description"
-                            />
+                            <Textarea {...field} placeholder="Please provide as much detail as possible..." className="min-h-[120px]" data-testid="textarea-description" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
-                      )}
-                    />
+                      )} />
 
-                    <div className="flex gap-2 justify-end">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          setShowTicketForm(false);
-                          form.reset();
-                        }}
-                        data-testid="button-cancel"
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        type="submit"
-                        disabled={createTicketMutation.isPending}
-                        data-testid="button-submit-ticket"
-                      >
-                        {createTicketMutation.isPending ? "Creating..." : "Create Ticket"}
-                      </Button>
-                    </div>
-                  </form>
-                </Form>
-              </CardContent>
-            </Card>
-          )}
+                      <div className="flex gap-2 justify-end">
+                        <Button type="button" variant="outline" onClick={() => { setShowTicketForm(false); form.reset(); }} data-testid="button-cancel">Cancel</Button>
+                        <Button type="submit" disabled={createTicketMutation.isPending} style={{ background: '#534AB7' }} data-testid="button-submit-ticket">
+                          {createTicketMutation.isPending ? "Creating..." : "Create Ticket"}
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
+            )}
 
-          <div className="space-y-4">
             {ticketsLoading ? (
-              <Card>
-                <CardContent className="py-8 text-center text-muted-foreground">
-                  Loading tickets...
-                </CardContent>
-              </Card>
+              <div style={{ textAlign: 'center', padding: '24px 0', color: '#9b97c4', fontSize: 13 }}>Loading tickets…</div>
             ) : tickets.length === 0 ? (
-              <Card>
-                <CardContent className="py-8 text-center text-muted-foreground">
-                  <Ticket className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No support tickets yet</p>
-                  <p className="text-sm mt-2">Create a ticket to get help from our support team</p>
-                </CardContent>
-              </Card>
+              <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(83,74,183,0.1)', padding: '32px 16px', textAlign: 'center' }}>
+                <Ticket style={{ width: 36, height: 36, margin: '0 auto 12px', color: '#c4c1e0' }} />
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#2d1f6e', marginBottom: 4 }}>No tickets yet</div>
+                <div style={{ fontSize: 12, color: '#9b97c4' }}>Create a ticket to get help from our team</div>
+              </div>
             ) : (
-              tickets.map((ticket) => {
+              tickets.map(ticket => {
                 const StatusIcon = statusIcons[ticket.status as keyof typeof statusIcons] || Clock;
                 const statusColor = statusColors[ticket.status as keyof typeof statusColors] || "bg-gray-500";
-                
                 return (
                   <Link key={ticket.id} href={`/support/${ticket.id}`}>
-                    <Card className="cursor-pointer hover:shadow-lg transition-shadow" data-testid={`ticket-card-${ticket.id}`}>
-                      <CardHeader>
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <CardTitle className="text-lg" data-testid={`ticket-subject-${ticket.id}`}>
-                              {ticket.subject}
-                            </CardTitle>
-                            <CardDescription className="mt-1">
-                              {categoryLabels[ticket.category as keyof typeof categoryLabels]} • {priorityLabels[ticket.priority as keyof typeof priorityLabels]} priority
-                            </CardDescription>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className={`h-2 w-2 rounded-full ${statusColor}`} />
-                            <StatusIcon className="h-4 w-4" />
-                            <Badge variant="outline" data-testid={`ticket-status-${ticket.id}`}>
-                              {(ticket.status || 'open').replace(/_/g, ' ')}
-                            </Badge>
-                          </div>
+                    <div
+                      data-testid={`ticket-card-${ticket.id}`}
+                      style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(83,74,183,0.1)', padding: '14px', cursor: 'pointer' }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+                        <div data-testid={`ticket-subject-${ticket.id}`} style={{ fontSize: 13, fontWeight: 700, color: '#2d1f6e', flex: 1 }}>{ticket.subject}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                          <div className={`h-2 w-2 rounded-full ${statusColor}`} />
+                          <StatusIcon style={{ width: 13, height: 13, color: '#9b97c4' }} />
                         </div>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {ticket.description}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Created {ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString() : 'Unknown'}
-                        </p>
-                      </CardContent>
-                    </Card>
+                      </div>
+                      <div style={{ fontSize: 11, color: '#9b97c4' }}>
+                        {categoryLabels[ticket.category as keyof typeof categoryLabels]} · {priorityLabels[ticket.priority as keyof typeof priorityLabels]} priority
+                      </div>
+                      <div style={{ fontSize: 11, color: '#c4c1e0', marginTop: 4 }}>
+                        {ticket.createdAt ? new Date(ticket.createdAt).toLocaleDateString() : ''}
+                      </div>
+                    </div>
                   </Link>
                 );
               })
             )}
           </div>
-        </TabsContent>
+        )}
 
-        {/* ── Contact Us Tab ───────────────────── */}
-        <TabsContent value="contact" className="mt-6">
-          {contactSubmitted ? (
-            <Card style={{ border: '1px solid #ede9f8' }}>
+        {/* ── CONTACT TAB ── */}
+        {activeTab === 'contact' && (
+          contactSubmitted ? (
+            <Card style={{ border: '1px solid rgba(83,74,183,0.12)' }}>
               <CardContent className="py-12 text-center">
-                <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4" style={{ backgroundColor: '#f0fdf4' }}>
+                <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4" style={{ background: '#f0fdf4' }}>
                   <CheckCircle className="w-8 h-8 text-green-600" />
                 </div>
-                <h2 className="text-xl font-bold mb-2" style={{ color: '#2c0f5b' }}>Message Sent!</h2>
-                <p className="mb-6" style={{ color: '#4a3670' }}>
-                  Thank you for reaching out. We'll review your message and get back to you within 24-48 hours.
-                </p>
-                <Button
-                  onClick={() => { setContactSubmitted(false); contactForm.reset(); }}
-                  style={{ backgroundColor: '#2c0f5b', color: '#fff' }}
-                >
+                <h2 className="text-xl font-bold mb-2" style={{ color: '#2d1f6e' }}>Message Sent!</h2>
+                <p className="mb-6" style={{ color: '#4a3670' }}>We'll review your message and get back to you within 24-48 hours.</p>
+                <Button onClick={() => { setContactSubmitted(false); contactForm.reset(); }} style={{ background: '#534AB7', color: '#fff' }}>
                   Send Another Message
                 </Button>
               </CardContent>
             </Card>
           ) : (
-            <Card style={{ border: '1px solid #ede9f8', boxShadow: '0 2px 12px rgba(44,15,91,0.06)' }}>
+            <Card style={{ border: '1px solid rgba(83,74,183,0.12)' }}>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2" style={{ color: '#2c0f5b' }}>
-                  <Mail className="w-5 h-5" />
-                  Send Us a Message
+                <CardTitle style={{ color: '#2d1f6e' }} className="flex items-center gap-2">
+                  <Mail className="w-5 h-5" /> Send Us a Message
                 </CardTitle>
-                <CardDescription>
-                  Fill out the form below and our team will respond within 24-48 hours.
-                </CardDescription>
+                <CardDescription>Our team responds within 24-48 hours.</CardDescription>
               </CardHeader>
               <CardContent>
                 <Form {...contactForm}>
                   <form onSubmit={contactForm.handleSubmit(d => contactMutation.mutate(d))} className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <FormField
-                        control={contactForm.control}
-                        name="name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Your Name</FormLabel>
-                            <FormControl>
-                              <Input placeholder="John Smith" {...field} data-testid="input-contact-name" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={contactForm.control}
-                        name="email"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Email Address</FormLabel>
-                            <FormControl>
-                              <Input type="email" placeholder="you@example.com" {...field} data-testid="input-contact-email" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      <FormField control={contactForm.control} name="name" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Your Name</FormLabel>
+                          <FormControl><Input placeholder="John Smith" {...field} data-testid="input-contact-name" /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={contactForm.control} name="email" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email Address</FormLabel>
+                          <FormControl><Input type="email" placeholder="you@example.com" {...field} data-testid="input-contact-email" /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
                     </div>
 
-                    <FormField
-                      control={contactForm.control}
-                      name="category"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Category</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger data-testid="select-contact-category">
-                                <SelectValue placeholder="Select a category" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {currentRole.contactCategories.map(cat => (
-                                <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={contactForm.control}
-                      name="subject"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Subject</FormLabel>
+                    <FormField control={contactForm.control} name="category" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Category</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <Input placeholder="Brief description of your inquiry" {...field} data-testid="input-contact-subject" />
+                            <SelectTrigger data-testid="select-contact-category"><SelectValue placeholder="Select a category" /></SelectTrigger>
                           </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                          <SelectContent>
+                            {currentRole.contactCategories.map(cat => (
+                              <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
 
-                    <FormField
-                      control={contactForm.control}
-                      name="message"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Message</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Please describe your question or issue in detail..."
-                              className="min-h-[150px]"
-                              {...field}
-                              data-testid="textarea-contact-message"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <FormField control={contactForm.control} name="subject" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Subject</FormLabel>
+                        <FormControl><Input placeholder="Brief description of your inquiry" {...field} data-testid="input-contact-subject" /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
 
-                    <Button
-                      type="submit"
-                      className="w-full text-white"
-                      style={{ backgroundColor: '#2c0f5b' }}
-                      disabled={contactMutation.isPending}
-                      data-testid="button-contact-submit"
-                    >
-                      {contactMutation.isPending ? 'Sending...' : 'Send Message'}
+                    <FormField control={contactForm.control} name="message" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Message</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Please describe your question or issue in detail..." className="min-h-[150px]" {...field} data-testid="textarea-contact-message" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+
+                    <Button type="submit" className="w-full text-white" style={{ background: '#534AB7' }} disabled={contactMutation.isPending} data-testid="button-contact-submit">
+                      {contactMutation.isPending ? 'Sending…' : 'Send Message'}
                     </Button>
                   </form>
                 </Form>
               </CardContent>
             </Card>
-          )}
-        </TabsContent>
-      </Tabs>
+          )
+        )}
+
       </div>
     </div>
   );
