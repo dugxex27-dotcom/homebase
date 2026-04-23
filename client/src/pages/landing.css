@@ -533,14 +533,14 @@
 }
 
 .mhb-referral-popover-title {
-  font-size: 16px;
+  font-size: 12px;
   font-weight: 700;
   color: #2d1f6e;
   margin-bottom: 7px;
 }
 
 .mhb-referral-popover-body {
-  font-size: 15px;
+  font-size: 11px;
   font-weight: 500;
   color: #9b97c4;
   line-height: 1.6;
@@ -552,7 +552,7 @@
   margin-top: 10px;
   padding-top: 10px;
   border-top: 1px solid rgba(83, 74, 183, 0.08);
-  font-size: 14px;
+  font-size: 10px;
   font-weight: 600;
   color: #c4c1e0;
 }
@@ -608,7 +608,7 @@
   .mhb-stat-num { font-size: 40px; }
 }
 
-/* Mobile popover: full screen */
+/* Mobile popover: full screen + larger copy */
 @media (max-width: 767px) {
   .mhb-referral-popover {
     position: fixed;
@@ -626,6 +626,9 @@
     overflow-y: auto;
     padding: 24px 20px;
   }
+  .mhb-referral-popover-title { font-size: 16px; }
+  .mhb-referral-popover-body  { font-size: 15px; }
+  .mhb-referral-popover-footer { font-size: 14px; }
 }
 
 /* ── TABLET (768–1023px): wider sheet, centered hero, side-by-side layout ── */
