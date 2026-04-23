@@ -275,22 +275,24 @@ export default function AgentDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <input
                   type="text"
                   value={referralUrl}
                   readOnly
-                  className="flex-1 px-3 py-2 border border-input bg-background rounded-md text-sm"
+                  className="flex-1 min-w-0 px-3 py-2 border border-input bg-background rounded-md text-sm"
                   data-testid="input-referral-link"
                 />
-                <Button onClick={handleCopyLink} variant="outline" data-testid="button-copy-link">
-                  <Copy className="h-4 w-4 mr-2" />
-                  Copy
-                </Button>
-                <Button onClick={handleShareLink} variant="outline" data-testid="button-share-link">
-                  <Share2 className="h-4 w-4 mr-2" />
-                  Share
-                </Button>
+                <div className="flex gap-2 flex-shrink-0">
+                  <Button onClick={handleCopyLink} variant="outline" data-testid="button-copy-link">
+                    <Copy className="h-4 w-4 mr-2" />
+                    Copy
+                  </Button>
+                  <Button onClick={handleShareLink} variant="outline" data-testid="button-share-link">
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Share
+                  </Button>
+                </div>
               </div>
 
               <div className="flex gap-2">
