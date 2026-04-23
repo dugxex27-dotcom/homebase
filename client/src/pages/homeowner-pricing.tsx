@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
@@ -26,6 +26,7 @@ export default function HomeownerPricing() {
   const rawPlanParam = urlParams.get('plan') ?? '';
   const preSelectedPlan = PLAN_SLUG_MAP[rawPlanParam] ?? null;
   const [checkoutPlan, setCheckoutPlan] = useState<string | null>(null);
+  const planRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const { 
     hasActiveSubscription, 
     isInTrial, 
@@ -65,6 +66,15 @@ export default function HomeownerPricing() {
     },
     enabled: !!user,
   });
+
+  useEffect(() => {
+    if (preSelectedPlan && !isLoading && !subscriptionLoading) {
+      const el = planRefs.current[preSelectedPlan];
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [preSelectedPlan, isLoading, subscriptionLoading]);
 
   // Show loading state while fetching user data
   if (isLoading || subscriptionLoading) {
@@ -158,6 +168,7 @@ export default function HomeownerPricing() {
         {/* Pricing Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
           {/* Base Plan */}
+          <div ref={(el) => { planRefs.current['base'] = el; }}>
           <Card className={`relative transition-all hover:shadow-lg ${hasActiveSubscription && actualPlan === 'base' ? 'border-4 border-purple-600 shadow-xl' : preSelectedPlan === 'base' && !hasActiveSubscription ? 'border-4 border-purple-500 shadow-xl' : 'border-2'}`}>
             {hasActiveSubscription && actualPlan === 'base' ? (
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
@@ -235,8 +246,10 @@ export default function HomeownerPricing() {
               )}
             </CardContent>
           </Card>
+          </div>
 
           {/* Premium Plan */}
+          <div ref={(el) => { planRefs.current['premium'] = el; }}>
           <Card className={`relative transition-all hover:shadow-lg ${hasActiveSubscription && actualPlan === 'premium' ? 'border-4 border-purple-600 shadow-xl' : preSelectedPlan === 'premium' && !hasActiveSubscription ? 'border-4 border-purple-500 shadow-xl' : 'border-2'}`}>
             {hasActiveSubscription && actualPlan === 'premium' ? (
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
@@ -294,8 +307,10 @@ export default function HomeownerPricing() {
               )}
             </CardContent>
           </Card>
+          </div>
 
           {/* Premium Plus Plan */}
+          <div ref={(el) => { planRefs.current['premium_plus'] = el; }}>
           <Card className={`relative transition-all hover:shadow-lg ${hasActiveSubscription && actualPlan === 'premium_plus' ? 'border-4 border-purple-600 shadow-xl' : preSelectedPlan === 'premium_plus' && !hasActiveSubscription ? 'border-4 border-purple-500 shadow-xl' : 'border-2'}`}>
             {hasActiveSubscription && actualPlan === 'premium_plus' ? (
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
@@ -353,6 +368,7 @@ export default function HomeownerPricing() {
               )}
             </CardContent>
           </Card>
+          </div>
         </div>
 
         {/* Additional Info */}
