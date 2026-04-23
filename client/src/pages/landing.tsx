@@ -260,10 +260,6 @@ export default function Landing() {
                         <p className="mpr-eyebrow">Subscription</p>
                         <h2 className="mpr-heading">Choose Your Plan</h2>
                         <p className="mpr-body">Select the plan that fits your property management needs. Upgrade or downgrade anytime.</p>
-                        <div className="mpr-trial-banner">
-                          <span className="mpr-trial-icon">⏰</span>
-                          <p className="mpr-trial-text">Your free trial has ended. Select a plan below to continue using MyHomeBase™.</p>
-                        </div>
                         <div className="mpr-divider" />
                       </div>
 
