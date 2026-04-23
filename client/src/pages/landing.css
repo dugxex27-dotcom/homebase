@@ -537,6 +537,11 @@
 .mhb-claims-chip .mhb-referral-popover {
   bottom: auto;
   top: calc(100% + 10px);
+  width: 308px;
+  max-width: calc(100vw - 32px);
+  padding: 2px;
+  background: #EEEDFE;
+  border-color: #AFA9EC;
 }
 
 .mhb-referral-popover-title {
@@ -585,6 +590,204 @@
 }
 
 .mhb-referral-close:hover { background: #e4e1f5; }
+
+/* ═══════════════════════════
+   STAT CARDS MODAL (msc-*)
+   42% claims denied popover
+   ═══════════════════════════ */
+
+.msc-inner {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 0.5px solid #AFA9EC;
+  overflow: hidden;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.msc-bar {
+  height: 4px;
+  background: linear-gradient(90deg, #534AB7, #185FA5);
+}
+
+.msc-header {
+  padding: 20px 20px 0;
+}
+
+.msc-eyebrow {
+  font-size: 9px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: #9b97c4;
+  margin: 0 0 5px;
+  font-weight: 600;
+}
+
+.msc-heading {
+  font-size: 17px;
+  font-weight: 500;
+  margin: 0 0 5px;
+  color: #1a1340;
+  line-height: 1.25;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.msc-subtitle {
+  font-size: 11px;
+  color: #6b7280;
+  margin: 0 0 14px;
+  line-height: 1.5;
+}
+
+.msc-divider {
+  border-top: 0.5px solid #CECBF6;
+}
+
+.msc-cards {
+  padding: 14px 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.msc-card {
+  border-radius: 11px;
+  padding: 13px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: msc-fadein 0.4s both;
+}
+
+.msc-card-purple {
+  background: #EEEDFE;
+  border: 0.5px solid #CECBF6;
+}
+
+.msc-card-dark {
+  background: #f5f4fb;
+  border: 0.5px solid #e5e3f5;
+}
+
+.msc-icon {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+.msc-icon-purple { background: #534AB7; }
+.msc-icon-dark   { background: #1B2D45; }
+
+.msc-icon-stat {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.2;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.msc-icon-avg {
+  font-size: 8px;
+  color: rgba(255,255,255,0.6);
+  line-height: 1;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.msc-card-title {
+  font-size: 11px;
+  font-weight: 500;
+  margin: 0 0 2px;
+  line-height: 1.3;
+}
+
+.msc-card-purple .msc-card-title { color: #3C3489; }
+.msc-card-dark   .msc-card-title { color: #1a1340; }
+
+.msc-card-sub {
+  font-size: 10px;
+  margin: 0;
+}
+
+.msc-card-purple .msc-card-sub { color: #7F77DD; }
+.msc-card-dark   .msc-card-sub { color: #9b97c4; }
+
+.msc-cta-wrap {
+  margin: 12px 20px 0;
+  background: linear-gradient(135deg, #534AB7, #185FA5);
+  border-radius: 11px;
+  padding: 15px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  animation: msc-fadein 0.4s both;
+}
+
+.msc-cta-price {
+  font-size: 19px;
+  font-weight: 500;
+  color: #fff;
+  margin: 0 0 2px;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.msc-cta-desc {
+  font-size: 10px;
+  color: rgba(255,255,255,0.75);
+  margin: 0;
+  line-height: 1.4;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.msc-cta-vs {
+  font-size: 9px;
+  color: rgba(255,255,255,0.6);
+  margin: 0 0 2px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  text-align: right;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.msc-cta-amount {
+  font-size: 15px;
+  font-weight: 500;
+  color: #fff;
+  margin: 0;
+  text-align: right;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.msc-source-row {
+  padding: 0 20px 18px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.msc-source-line {
+  height: 1px;
+  flex: 1;
+  background: #e5e3f5;
+}
+
+.msc-source-text {
+  font-size: 9px;
+  color: #c4c1e0;
+  margin: 0;
+  letter-spacing: 0.5px;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+@keyframes msc-fadein {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 
 /* ═══════════════════════════
    RICH REFERRAL MODAL (mrr-*)

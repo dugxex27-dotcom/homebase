@@ -182,21 +182,49 @@ export default function Landing() {
                   className="mhb-referral-popover"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <button
-                    className="mhb-referral-close"
-                    onClick={() => setClaimsOpen(false)}
-                    aria-label="Close"
-                  >✕</button>
-                  <div className="mhb-referral-popover-title">The numbers behind 42%</div>
-                  <div className="mhb-referral-popover-body">
-                    <strong>42%</strong> of claims denied or underpaid nationally<br />
-                    <strong>$18,311</strong> average cost of a denied property claim<br />
-                    <strong>$88,000</strong> average fire and lightning claim payout<br />
-                    <strong>#1 reason</strong> for denial — no maintenance records<br />
-                    <strong>$5/month</strong> — what MyHomeBase costs to protect yourself
-                  </div>
-                  <div className="mhb-referral-popover-footer">
-                    Source: Weiss Ratings
+                  <button className="mhb-referral-close" onClick={() => setClaimsOpen(false)} aria-label="Close">✕</button>
+                  <div className="msc-inner">
+                    <div className="msc-bar" />
+                    <div className="msc-header">
+                      <p className="msc-eyebrow">Insurance Reality Check</p>
+                      <h2 className="msc-heading">The numbers behind 42%</h2>
+                      <p className="msc-subtitle">Most homeowners don't know these numbers until it's too late.</p>
+                      <div className="msc-divider" />
+                    </div>
+                    <div className="msc-cards">
+                      <div className="msc-card msc-card-purple" style={{ animationDelay: '0.05s' }}>
+                        <div className="msc-icon msc-icon-purple"><span className="msc-icon-stat">42%</span></div>
+                        <div><p className="msc-card-title">of claims denied or underpaid nationally</p><p className="msc-card-sub">Nearly half of all property claims</p></div>
+                      </div>
+                      <div className="msc-card msc-card-dark" style={{ animationDelay: '0.15s' }}>
+                        <div className="msc-icon msc-icon-dark"><span className="msc-icon-avg">avg</span><span className="msc-icon-stat">$18K</span></div>
+                        <div><p className="msc-card-title">average cost of a denied property claim</p><p className="msc-card-sub">$18,311 left on the table</p></div>
+                      </div>
+                      <div className="msc-card msc-card-dark" style={{ animationDelay: '0.25s' }}>
+                        <div className="msc-icon msc-icon-dark"><span className="msc-icon-avg">avg</span><span className="msc-icon-stat">$88K</span></div>
+                        <div><p className="msc-card-title">average fire and lightning claim payout</p><p className="msc-card-sub">The stakes are real</p></div>
+                      </div>
+                      <div className="msc-card msc-card-purple" style={{ animationDelay: '0.35s' }}>
+                        <div className="msc-icon msc-icon-purple"><span className="msc-icon-stat">#1</span></div>
+                        <div><p className="msc-card-title">reason for denial — no maintenance records</p><p className="msc-card-sub">The most preventable reason</p></div>
+                      </div>
+                    </div>
+                    <div style={{ margin: '14px 20px 0' }}><div className="msc-divider" /></div>
+                    <div className="msc-cta-wrap" style={{ animationDelay: '0.45s' }}>
+                      <div>
+                        <p className="msc-cta-price">$5/month</p>
+                        <p className="msc-cta-desc">What MyHomeBase costs<br />to protect yourself</p>
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <p className="msc-cta-vs">vs. denied claim</p>
+                        <p className="msc-cta-amount">$18,311</p>
+                      </div>
+                    </div>
+                    <div className="msc-source-row">
+                      <div className="msc-source-line" />
+                      <p className="msc-source-text">Source: Weiss Ratings</p>
+                      <div className="msc-source-line" />
+                    </div>
                   </div>
                 </div>
               )}
