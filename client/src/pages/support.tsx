@@ -14,8 +14,9 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { HelpCircle, MessageCircle, CheckCircle, Clock, AlertCircle, Ticket } from "lucide-react";
+import { HelpCircle, MessageCircle, CheckCircle, Clock, AlertCircle, Ticket, Mail } from "lucide-react";
 import { Link } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 import logoHomeowner from "@assets/my-homebase-logo-tm-howner-white-final_1776538414393.png";
 import "./home.css";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -28,6 +29,15 @@ const ticketFormSchema = insertSupportTicketSchema.extend({
 }).omit({ userId: true });
 
 type TicketFormData = z.infer<typeof ticketFormSchema>;
+
+const contactFormSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Please enter a valid email address"),
+  category: z.enum(['billing', 'technical', 'feature_request', 'account', 'contractor', 'general']),
+  subject: z.string().min(5, "Subject must be at least 5 characters").max(200),
+  message: z.string().min(10, "Message must be at least 10 characters").max(5000),
+});
+type ContactFormData = z.infer<typeof contactFormSchema>;
 
 const faqs = [
   // Payment & Billing
@@ -159,7 +169,9 @@ const statusColors = {
 
 export default function SupportPage() {
   const { toast } = useToast();
+  const { user, isAuthenticated } = useAuth();
   const [showTicketForm, setShowTicketForm] = useState(false);
+  const [contactSubmitted, setContactSubmitted] = useState(false);
 
   const { data: tickets = [], isLoading: ticketsLoading } = useQuery<SupportTicket[]>({
     queryKey: ['/api/support/tickets'],
@@ -201,6 +213,40 @@ export default function SupportPage() {
     createTicketMutation.mutate(data);
   };
 
+  const contactForm = useForm<ContactFormData>({
+    resolver: zodResolver(contactFormSchema),
+    defaultValues: {
+      name: user ? `${(user as any).firstName || ''} ${(user as any).lastName || ''}`.trim() : '',
+      email: (user as any)?.email || '',
+      category: 'general',
+      subject: '',
+      message: '',
+    },
+  });
+
+  const contactMutation = useMutation({
+    mutationFn: async (data: ContactFormData) => {
+      if (isAuthenticated) {
+        return await apiRequest('/api/support/tickets', 'POST', {
+          category: data.category,
+          priority: 'medium',
+          subject: data.subject,
+          description: `From: ${data.name} (${data.email})\n\n${data.message}`,
+        });
+      } else {
+        return await apiRequest('/api/contact', 'POST', data);
+      }
+    },
+    onSuccess: () => {
+      setContactSubmitted(true);
+      queryClient.invalidateQueries({ queryKey: ['/api/support/tickets'] });
+      toast({ title: "Message Sent!", description: "We'll get back to you within 24-48 hours." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to send message.", variant: "destructive" });
+    },
+  });
+
   return (
     <div className="min-h-screen" style={{ background: '#ffffff' }}>
 
@@ -230,16 +276,21 @@ export default function SupportPage() {
 
       <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-5xl">
       <Tabs defaultValue="faq" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 h-auto" style={{ backgroundColor: '#f0ebfa' }}>
+        <TabsList className="grid w-full grid-cols-3 h-auto" style={{ backgroundColor: '#f0ebfa' }}>
           <TabsTrigger value="faq" data-testid="tab-faq" className="text-xs sm:text-sm py-2 sm:py-2.5">
             <HelpCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-            <span className="hidden sm:inline">Frequently Asked Questions</span>
+            <span className="hidden sm:inline">FAQs</span>
             <span className="sm:hidden">FAQs</span>
           </TabsTrigger>
           <TabsTrigger value="tickets" data-testid="tab-tickets" className="text-xs sm:text-sm py-2 sm:py-2.5">
             <Ticket className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
             <span className="hidden sm:inline">My Tickets ({tickets.length})</span>
             <span className="sm:hidden">Tickets ({tickets.length})</span>
+          </TabsTrigger>
+          <TabsTrigger value="contact" data-testid="tab-contact" className="text-xs sm:text-sm py-2 sm:py-2.5">
+            <Mail className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Contact Us</span>
+            <span className="sm:hidden">Contact</span>
           </TabsTrigger>
         </TabsList>
 
@@ -475,6 +526,144 @@ export default function SupportPage() {
               })
             )}
           </div>
+        </TabsContent>
+
+        {/* ── Contact Us Tab ───────────────────── */}
+        <TabsContent value="contact" className="mt-6">
+          {contactSubmitted ? (
+            <Card style={{ border: '1px solid #ede9f8' }}>
+              <CardContent className="py-12 text-center">
+                <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4" style={{ backgroundColor: '#f0fdf4' }}>
+                  <CheckCircle className="w-8 h-8 text-green-600" />
+                </div>
+                <h2 className="text-xl font-bold mb-2" style={{ color: '#2c0f5b' }}>Message Sent!</h2>
+                <p className="mb-6" style={{ color: '#4a3670' }}>
+                  Thank you for reaching out. We'll review your message and get back to you within 24-48 hours.
+                </p>
+                <Button
+                  onClick={() => { setContactSubmitted(false); contactForm.reset(); }}
+                  style={{ backgroundColor: '#2c0f5b', color: '#fff' }}
+                >
+                  Send Another Message
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card style={{ border: '1px solid #ede9f8', boxShadow: '0 2px 12px rgba(44,15,91,0.06)' }}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2" style={{ color: '#2c0f5b' }}>
+                  <Mail className="w-5 h-5" />
+                  Send Us a Message
+                </CardTitle>
+                <CardDescription>
+                  Fill out the form below and our team will respond within 24-48 hours.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Form {...contactForm}>
+                  <form onSubmit={contactForm.handleSubmit(d => contactMutation.mutate(d))} className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FormField
+                        control={contactForm.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Your Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="John Smith" {...field} data-testid="input-contact-name" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={contactForm.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email Address</FormLabel>
+                            <FormControl>
+                              <Input type="email" placeholder="you@example.com" {...field} data-testid="input-contact-email" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={contactForm.control}
+                      name="category"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Category</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-contact-category">
+                                <SelectValue placeholder="Select a category" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="general">General Inquiry</SelectItem>
+                              <SelectItem value="billing">Billing & Payments</SelectItem>
+                              <SelectItem value="technical">Technical Issue</SelectItem>
+                              <SelectItem value="account">Account Help</SelectItem>
+                              <SelectItem value="contractor">Contractor Services</SelectItem>
+                              <SelectItem value="feature_request">Feature Request</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={contactForm.control}
+                      name="subject"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Subject</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Brief description of your inquiry" {...field} data-testid="input-contact-subject" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={contactForm.control}
+                      name="message"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Message</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Please describe your question or issue in detail..."
+                              className="min-h-[150px]"
+                              {...field}
+                              data-testid="textarea-contact-message"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <Button
+                      type="submit"
+                      className="w-full text-white"
+                      style={{ backgroundColor: '#2c0f5b' }}
+                      disabled={contactMutation.isPending}
+                      data-testid="button-contact-submit"
+                    >
+                      {contactMutation.isPending ? 'Sending...' : 'Send Message'}
+                    </Button>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
       </div>
