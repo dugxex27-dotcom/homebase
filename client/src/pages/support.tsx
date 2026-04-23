@@ -274,7 +274,7 @@ export default function SupportPage() {
         </div>
 
         {/* Role tiles */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '7px', marginTop: '4px', paddingBottom: '6px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '7px', marginTop: '4px', paddingBottom: '10px' }}>
           {roleTiles.map(({ key, label, icon: Icon }) => {
             const isActive = selectedRole === key;
             return (
