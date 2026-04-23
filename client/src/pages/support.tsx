@@ -250,7 +250,7 @@ export default function SupportPage() {
 
   /* ── render ──────────────────────────────────────────────── */
   return (
-    <div style={{ background: '#f8f7fd', minHeight: '100vh' }}>
+    <div style={{ background: '#fff', minHeight: '100vh' }}>
 
       {/* ── HEADER ── */}
       <div className="dash-header" style={{ background: palette.bg }}>
