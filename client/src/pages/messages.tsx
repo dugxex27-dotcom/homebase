@@ -20,7 +20,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MessageCircle, Send, User, Calendar, Plus, Users, FileText, DollarSign, Clock, Star, Image as ImageIcon, X, File, Paperclip, Wifi, WifiOff, CheckCheck, Check, Sparkles, Loader2 } from "lucide-react";
-import { PageHero } from "@/components/page-hero";
+import logoHomeowner from "@assets/my-homebase-logo-tm-howner-white-final_1776538414393.png";
+import "./home.css";
 import { insertProposalSchema } from "@shared/schema";
 import { z } from "zod";
 import type { User as UserType, Conversation, Message, Contractor, Proposal, ContractorReview } from "@shared/schema";
@@ -528,28 +529,52 @@ export default function Messages() {
     );
   }
 
+  const totalUnread = conversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+
   return (
-    <div className="min-h-screen">
-      <PageHero
-        eyebrow={typedUser.role === 'homeowner' ? 'Homeowner' : 'Contractor'}
-        title="Messages"
-        subtitle={`Chat in real-time with ${typedUser.role === 'homeowner' ? 'contractors' : 'homeowners'}`}
-        action={
-          <div className="flex items-center gap-1.5" data-testid="websocket-status">
+    <div className="min-h-screen" style={{ background: '#ffffff' }}>
+
+      {/* ── PAGE HEADER ─────────────────────────── */}
+      <div className="dash-header">
+        <div className="dash-header-top">
+          <img src={logoHomeowner} alt="MyHomeBase™" className="dash-logo" />
+          <div className="dash-header-actions" data-testid="websocket-status">
             {wsConnected ? (
-              <>
-                <Wifi className="h-4 w-4" style={{ color: 'rgba(255,255,255,0.7)' }} />
-                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>Live</span>
-              </>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span className="ai-status-dot" />
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.8)', fontWeight: 600 }}>Live</span>
+              </div>
             ) : (
-              <>
-                <WifiOff className="h-4 w-4" style={{ color: 'rgba(255,120,120,0.9)' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 14, height: 14, borderRadius: '50%', background: 'rgba(255,120,120,0.9)', display: 'inline-block' }} />
                 <span style={{ fontSize: 10, color: 'rgba(255,120,120,0.9)', fontWeight: 600 }}>Offline</span>
-              </>
+              </div>
             )}
           </div>
-        }
-      />
+        </div>
+        <span className="dash-eyebrow">{typedUser.role === 'homeowner' ? 'Homeowner' : 'Contractor'}</span>
+        <div className="dash-title">Messages</div>
+        <div className="dash-subtitle">Chat in real-time with {typedUser.role === 'homeowner' ? 'your contractors' : 'homeowners'}</div>
+        <div className="dash-chips">
+          <div className="dash-chip">
+            <div className={`dash-chip-num${conversations.length > 0 ? ' good' : ''}`}>{conversations.length}</div>
+            <div className="dash-chip-label">Conversations</div>
+          </div>
+          <div className="dash-chip">
+            <div className={`dash-chip-num${totalUnread > 0 ? ' warn' : ''}`}>{totalUnread}</div>
+            <div className="dash-chip-label">Unread</div>
+          </div>
+          <div className="dash-chip">
+            <div className="dash-chip-num" style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              {wsConnected
+                ? <><span className="ai-status-dot" /><span>Live</span></>
+                : <span style={{ color: 'rgba(255,120,120,0.9)' }}>Off</span>
+              }
+            </div>
+            <div className="dash-chip-label">Connection</div>
+          </div>
+        </div>
+      </div>
 
       {/* Main Content - Two-Panel Messenger Layout */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-8">

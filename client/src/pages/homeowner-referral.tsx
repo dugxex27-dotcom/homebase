@@ -14,7 +14,8 @@ import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
 import instagramPostImg from '@assets/homebase-homeowner-homeowner-ig-post_1768410840843.png';
 import instagramStoryImg from '@assets/homebase-homeowner-homeowner-ig-story_1768411215294.png';
 import facebookTwitterImg from '@assets/homebase-homeowner-referral_(3)_1768267382477.png';
-import { PageHero } from "@/components/page-hero";
+import logoHomeowner from "@assets/my-homebase-logo-tm-howner-white-final_1776538414393.png";
+import "./home.css";
 
 export default function HomeownerReferral() {
   const { toast } = useToast();
@@ -96,12 +97,32 @@ export default function HomeownerReferral() {
   }
 
   return (
-    <div className="min-h-screen">
-      <PageHero
-        eyebrow="Homeowner"
-        title="Referral Program"
-        subtitle="Share MyHomeBase™ and earn free months"
-      />
+    <div className="min-h-screen" style={{ background: '#ffffff' }}>
+
+      {/* ── PAGE HEADER ─────────────────────────── */}
+      <div className="dash-header">
+        <div className="dash-header-top">
+          <img src={logoHomeowner} alt="MyHomeBase™" className="dash-logo" />
+        </div>
+        <span className="dash-eyebrow">Homeowner</span>
+        <div className="dash-title">Refer & Earn</div>
+        <div className="dash-subtitle">Share MyHomeBase™ and earn free months</div>
+        <div className="dash-chips">
+          <div className="dash-chip">
+            <div className={`dash-chip-num${activeReferrals > 0 ? ' good' : ''}`}>{activeReferrals}</div>
+            <div className="dash-chip-label">Active Referrals</div>
+          </div>
+          <div className="dash-chip">
+            <div className={`dash-chip-num${creditBalance > 0 ? ' good' : ''}`}>{creditBalance}</div>
+            <div className="dash-chip-label">Credits Earned</div>
+          </div>
+          <div className="dash-chip">
+            <div className={`dash-chip-num${freeMonthsTotal > 0 ? ' good' : ''}`}>{freeMonthsTotal}</div>
+            <div className="dash-chip-label">Free Months</div>
+          </div>
+        </div>
+      </div>
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         <PaidSubscriberGate featureName="Referral Rewards">

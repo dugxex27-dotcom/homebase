@@ -16,6 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { HelpCircle, MessageCircle, CheckCircle, Clock, AlertCircle, Ticket } from "lucide-react";
 import { Link } from "wouter";
+import logoHomeowner from "@assets/my-homebase-logo-tm-howner-white-final_1776538414393.png";
+import "./home.css";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const ticketFormSchema = insertSupportTicketSchema.extend({
@@ -200,14 +202,35 @@ export default function SupportPage() {
   };
 
   return (
-    <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-5xl">
-      <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
-        <HelpCircle className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Support Center</h1>
+    <div className="min-h-screen" style={{ background: '#ffffff' }}>
+
+      {/* ── PAGE HEADER ─────────────────────────── */}
+      <div className="dash-header">
+        <div className="dash-header-top">
+          <img src={logoHomeowner} alt="MyHomeBase™" className="dash-logo" />
+        </div>
+        <span className="dash-eyebrow">Homeowner</span>
+        <div className="dash-title">Support Center</div>
+        <div className="dash-subtitle">Get answers or open a ticket with our team</div>
+        <div className="dash-chips">
+          <div className="dash-chip">
+            <div className="dash-chip-num">{faqs.length}</div>
+            <div className="dash-chip-label">FAQs</div>
+          </div>
+          <div className="dash-chip">
+            <div className={`dash-chip-num${tickets.length > 0 ? ' warn' : ''}`}>{tickets.length}</div>
+            <div className="dash-chip-label">My Tickets</div>
+          </div>
+          <div className="dash-chip">
+            <div className="dash-chip-num good">24h</div>
+            <div className="dash-chip-label">Response Time</div>
+          </div>
+        </div>
       </div>
 
+      <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-5xl">
       <Tabs defaultValue="faq" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 h-auto">
+        <TabsList className="grid w-full grid-cols-2 h-auto" style={{ backgroundColor: '#f0ebfa' }}>
           <TabsTrigger value="faq" data-testid="tab-faq" className="text-xs sm:text-sm py-2 sm:py-2.5">
             <HelpCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
             <span className="hidden sm:inline">Frequently Asked Questions</span>
@@ -454,6 +477,7 @@ export default function SupportPage() {
           </div>
         </TabsContent>
       </Tabs>
+      </div>
     </div>
   );
 }

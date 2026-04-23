@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Wrench, FileText, User, LayoutDashboard, MessageCircle, Users, Gift, Grid2x2, Trophy, ShoppingBag, HardHat, Sparkles, X, ClipboardList } from "lucide-react";
+import { Home, Wrench, FileText, User, LayoutDashboard, MessageCircle, Users, Gift, Grid2x2, Trophy, ShoppingBag, HardHat, Sparkles, X, ClipboardList, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import type { User as UserType } from "@shared/schema";
@@ -8,12 +8,15 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, useRef } from "react";
 
 const toolsItems = [
-  { href: "/maintenance",   icon: Wrench,         label: "Your Tasks",          description: "View your maintenance schedule" },
-  { href: "/contractors",   icon: HardHat,        label: "Find Contractor",     description: "Search local professionals" },
-  { href: "/achievements",  icon: Trophy,          label: "Explore Achievements", description: "Earn badges & rewards" },
-  { href: "/products",      icon: ShoppingBag,     label: "Shop Products",       description: "Browse home products" },
-  { href: "/ai-help",       icon: Sparkles,        label: "Ask AI",              description: "Get instant home advice" },
-  { href: "/documents",     icon: ClipboardList,   label: "Documents",           description: "Documents & disclosure wizard" },
+  { href: "/maintenance",         icon: Wrench,         label: "Your Tasks",           description: "View your maintenance schedule" },
+  { href: "/contractors",         icon: HardHat,        label: "Find Contractor",      description: "Search local professionals" },
+  { href: "/achievements",        icon: Trophy,         label: "Explore Achievements", description: "Earn badges & rewards" },
+  { href: "/products",            icon: ShoppingBag,    label: "Shop Products",        description: "Browse home products" },
+  { href: "/ai-help",             icon: Sparkles,       label: "Ask AI",               description: "Get instant home advice" },
+  { href: "/documents",           icon: ClipboardList,  label: "Documents",            description: "Documents & disclosure wizard" },
+  { href: "/messages",            icon: MessageCircle,  label: "Messages",             description: "Chat with your contractors" },
+  { href: "/homeowner-referral",  icon: Gift,           label: "Refer & Earn",         description: "Earn free months by referring friends" },
+  { href: "/support",             icon: HelpCircle,     label: "Support",              description: "Get help from our team" },
 ];
 
 export default function BottomNav() {
