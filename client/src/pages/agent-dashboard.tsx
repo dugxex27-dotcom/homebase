@@ -433,51 +433,108 @@ export default function AgentDashboard() {
         </Card>
 
         {/* Payout History */}
-        {payouts.length > 0 && (
-          <Card className="mb-8 bg-white dark:bg-gray-800 shadow rounded-2xl">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-                <DollarSign className="h-5 w-5" />
-                Payout History
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {payouts.map((payout) => (
-                  <div 
-                    key={payout.id} 
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-                    data-testid={`payout-${payout.id}`}
-                  >
-                    <div>
-                      <p className="font-medium">{payout.refereeName}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {new Date(payout.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-emerald-600">${parseFloat(payout.amount).toFixed(2)}</p>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        payout.status === 'paid' 
-                          ? 'bg-green-100 text-green-800' 
-                          : payout.status === 'pending' 
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : payout.status === 'failed'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {payout.status === 'paid' ? 'Paid' : 
-                         payout.status === 'pending' ? 'Pending' :
-                         payout.status === 'processing' ? 'Processing' :
-                         payout.status === 'failed' ? 'Failed' : payout.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+        <Card className="mb-8 bg-white dark:bg-gray-800 shadow rounded-2xl">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+              <DollarSign className="h-5 w-5" />
+              Payout History
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {payouts.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <DollarSign className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                <p className="font-medium">No payouts yet</p>
+                <p className="text-sm mt-1">Payouts appear here once a referred user completes 4 months of paid subscription.</p>
               </div>
-            </CardContent>
-          </Card>
-        )}
+            ) : (
+              <div className="space-y-3">
+                {payouts.map((payout) => {
+                  const isPaid = payout.status === 'paid';
+                  const isPending = payout.status === 'pending';
+                  const isProcessing = payout.status === 'processing';
+                  const isFailed = payout.status === 'failed';
+
+                  const dateLabel = isPaid && payout.paidAt
+                    ? `Paid out ${new Date(payout.paidAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                    : `Initiated ${new Date(payout.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+
+                  const pendingNote = isPending && !stripeStatus?.onboardingComplete
+                    ? 'Awaiting bank account connection'
+                    : isPending
+                      ? 'Transfer in progress'
+                      : null;
+
+                  return (
+                    <div
+                      key={payout.id}
+                      className={`flex items-start justify-between p-4 rounded-lg border ${
+                        isPaid
+                          ? 'bg-green-50 border-green-100 dark:bg-green-900/10 dark:border-green-900/30'
+                          : isPending || isProcessing
+                            ? 'bg-yellow-50 border-yellow-100 dark:bg-yellow-900/10 dark:border-yellow-900/30'
+                            : isFailed
+                              ? 'bg-red-50 border-red-100 dark:bg-red-900/10 dark:border-red-900/30'
+                              : 'bg-gray-50 border-gray-100 dark:bg-gray-700/20 dark:border-gray-700/40'
+                      }`}
+                      data-testid={`payout-${payout.id}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`mt-0.5 rounded-full p-1.5 ${
+                          isPaid ? 'bg-green-100 dark:bg-green-800/40' :
+                          isPending || isProcessing ? 'bg-yellow-100 dark:bg-yellow-800/40' :
+                          isFailed ? 'bg-red-100 dark:bg-red-800/40' :
+                          'bg-gray-100 dark:bg-gray-600/40'
+                        }`}>
+                          {isPaid ? (
+                            <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                          ) : isPending || isProcessing ? (
+                            <Clock className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                          ) : isFailed ? (
+                            <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                          ) : (
+                            <DollarSign className="h-4 w-4 text-gray-500" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-white">{payout.refereeName}</p>
+                          <p className="text-sm text-muted-foreground">{dateLabel}</p>
+                          {pendingNote && (
+                            <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-0.5">{pendingNote}</p>
+                          )}
+                          {isFailed && payout.errorMessage && (
+                            <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">{payout.errorMessage}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right flex-shrink-0 ml-4">
+                        <p className={`font-bold text-lg ${isPaid ? 'text-green-600 dark:text-green-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                          ${parseFloat(payout.amount).toFixed(2)}
+                        </p>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          isPaid
+                            ? 'bg-green-100 text-green-800 dark:bg-green-800/40 dark:text-green-300'
+                            : isPending
+                              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800/40 dark:text-yellow-300'
+                              : isProcessing
+                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-800/40 dark:text-blue-300'
+                                : isFailed
+                                  ? 'bg-red-100 text-red-800 dark:bg-red-800/40 dark:text-red-300'
+                                  : 'bg-gray-100 text-gray-800 dark:bg-gray-600/40 dark:text-gray-300'
+                        }`}>
+                          {isPaid ? 'Paid' :
+                           isPending ? 'Pending' :
+                           isProcessing ? 'Processing' :
+                           isFailed ? 'Failed' : payout.status}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Referrals List */}
         <Card className="bg-white dark:bg-gray-800 shadow rounded-2xl">

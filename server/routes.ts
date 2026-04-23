@@ -8823,6 +8823,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
 
+      // Sort by most recent first
+      payoutsWithDetails.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
       res.json(payoutsWithDetails);
     } catch (error) {
       console.error("Error fetching agent payouts:", error);
