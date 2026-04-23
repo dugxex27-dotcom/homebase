@@ -10,11 +10,21 @@ import { Check, CreditCard, Home, Zap, Crown, Loader2, ShieldCheck } from "lucid
 import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
+const PLAN_SLUG_MAP: Record<string, string> = {
+  base: 'base',
+  premium: 'premium',
+  plus: 'premium_plus',
+  premium_plus: 'premium_plus',
+};
+
 export default function HomeownerPricing() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [location] = useLocation();
-  const isOnboarding = new URLSearchParams(location.split('?')[1] || '').get('onboarding') === 'true';
+  const urlParams = new URLSearchParams(location.split('?')[1] || '');
+  const isOnboarding = urlParams.get('onboarding') === 'true';
+  const rawPlanParam = urlParams.get('plan') ?? '';
+  const preSelectedPlan = PLAN_SLUG_MAP[rawPlanParam] ?? null;
   const [checkoutPlan, setCheckoutPlan] = useState<string | null>(null);
   const { 
     hasActiveSubscription, 
@@ -148,12 +158,16 @@ export default function HomeownerPricing() {
         {/* Pricing Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
           {/* Base Plan */}
-          <Card className={`relative transition-all hover:shadow-lg ${hasActiveSubscription && actualPlan === 'base' ? 'border-4 border-purple-600 shadow-xl' : 'border-2'}`}>
-            {hasActiveSubscription && actualPlan === 'base' && (
+          <Card className={`relative transition-all hover:shadow-lg ${hasActiveSubscription && actualPlan === 'base' ? 'border-4 border-purple-600 shadow-xl' : preSelectedPlan === 'base' && !hasActiveSubscription ? 'border-4 border-purple-500 shadow-xl' : 'border-2'}`}>
+            {hasActiveSubscription && actualPlan === 'base' ? (
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                 <Badge className="bg-purple-600 text-white px-4 py-1" data-testid="badge-base-plan-current">Current Plan</Badge>
               </div>
-            )}
+            ) : preSelectedPlan === 'base' && !hasActiveSubscription ? (
+              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                <Badge className="bg-purple-500 text-white px-4 py-1" data-testid="badge-base-plan-selected">Your Selection</Badge>
+              </div>
+            ) : null}
             <CardHeader className="text-center pb-4">
               <div className="flex justify-center mb-4">
                 <div className="p-3 rounded-full bg-purple-100">
@@ -223,12 +237,16 @@ export default function HomeownerPricing() {
           </Card>
 
           {/* Premium Plan */}
-          <Card className={`relative transition-all hover:shadow-lg ${hasActiveSubscription && actualPlan === 'premium' ? 'border-4 border-purple-600 shadow-xl' : 'border-2'}`}>
-            {hasActiveSubscription && actualPlan === 'premium' && (
+          <Card className={`relative transition-all hover:shadow-lg ${hasActiveSubscription && actualPlan === 'premium' ? 'border-4 border-purple-600 shadow-xl' : preSelectedPlan === 'premium' && !hasActiveSubscription ? 'border-4 border-purple-500 shadow-xl' : 'border-2'}`}>
+            {hasActiveSubscription && actualPlan === 'premium' ? (
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                 <Badge className="bg-purple-600 text-white px-4 py-1" data-testid="badge-premium-plan-current">Current Plan</Badge>
               </div>
-            )}
+            ) : preSelectedPlan === 'premium' && !hasActiveSubscription ? (
+              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                <Badge className="bg-purple-500 text-white px-4 py-1" data-testid="badge-premium-plan-selected">Your Selection</Badge>
+              </div>
+            ) : null}
             <CardHeader className="text-center pb-4">
               <div className="flex justify-center mb-4">
                 <div className="p-3 rounded-full bg-purple-100">
@@ -278,12 +296,16 @@ export default function HomeownerPricing() {
           </Card>
 
           {/* Premium Plus Plan */}
-          <Card className={`relative transition-all hover:shadow-lg ${hasActiveSubscription && actualPlan === 'premium_plus' ? 'border-4 border-purple-600 shadow-xl' : 'border-2'}`}>
-            {hasActiveSubscription && actualPlan === 'premium_plus' && (
+          <Card className={`relative transition-all hover:shadow-lg ${hasActiveSubscription && actualPlan === 'premium_plus' ? 'border-4 border-purple-600 shadow-xl' : preSelectedPlan === 'premium_plus' && !hasActiveSubscription ? 'border-4 border-purple-500 shadow-xl' : 'border-2'}`}>
+            {hasActiveSubscription && actualPlan === 'premium_plus' ? (
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                 <Badge className="bg-purple-600 text-white px-4 py-1" data-testid="badge-premium-plus-plan-current">Current Plan</Badge>
               </div>
-            )}
+            ) : preSelectedPlan === 'premium_plus' && !hasActiveSubscription ? (
+              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                <Badge className="bg-purple-500 text-white px-4 py-1" data-testid="badge-premium-plus-plan-selected">Your Selection</Badge>
+              </div>
+            ) : null}
             <CardHeader className="text-center pb-4">
               <div className="flex justify-center mb-4">
                 <div className="p-3 rounded-full bg-purple-100">
