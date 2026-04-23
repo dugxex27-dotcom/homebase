@@ -133,6 +133,8 @@ function Router() {
           <Route path="/terms-of-service" component={TermsOfService} />
           <Route path="/privacy-policy" component={PrivacyPolicy} />
           <Route path="/legal-disclaimer" component={LegalDisclaimer} />
+          <Route path="/support/:id" component={SupportTicketDetail} />
+          <Route path="/support" component={Support} />
           <Route path="/contact" component={Contact} />
           <Route path="/faq" component={FAQ} />
           <Route path="/pay/invoice/:invoiceId" component={PayInvoice} />

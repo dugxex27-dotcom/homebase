@@ -177,6 +177,7 @@ export default function SupportPage() {
 
   const { data: tickets = [], isLoading: ticketsLoading } = useQuery<SupportTicket[]>({
     queryKey: ['/api/support/tickets'],
+    enabled: isAuthenticated,
   });
 
   const form = useForm<TicketFormData>({
