@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, apiFileUpload, queryClient } from "@/lib/queryClient";
 import { CheckCircle, Clock, XCircle, Upload, AlertCircle, FileCheck, User, Camera, Mail } from "lucide-react";
-import { PageHero } from "@/components/page-hero";
+import "./home.css";
 
 const US_STATES = [
   { code: "AL", name: "Alabama" }, { code: "AK", name: "Alaska" }, { code: "AZ", name: "Arizona" },
@@ -343,24 +343,28 @@ export default function AgentAccount() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen">
-        <PageHero eyebrow="Real Estate Agent" title="Account Verification" subtitle="Loading your profile..." />
+      <div className="min-h-screen" style={{ background: '#ffffff' }}>
+        <div className="dash-header" style={{ background: '#1b5e20' }}>
+          <span className="dash-eyebrow" style={{ color: '#a7f3d0' }}>Real Estate Agent</span>
+          <div className="dash-title">Account Verification</div>
+          <div className="dash-subtitle">Loading your profile...</div>
+        </div>
         <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen">
-      <PageHero
-        eyebrow="Real Estate Agent"
-        title="Account Verification"
-        subtitle="Verify your license to start earning referral commissions"
-      />
+    <div className="min-h-screen" style={{ background: '#ffffff' }}>
+      <div className="dash-header" style={{ background: '#1b5e20' }}>
+        <span className="dash-eyebrow" style={{ color: '#a7f3d0' }}>Real Estate Agent</span>
+        <div className="dash-title">Account Verification</div>
+        <div className="dash-subtitle">Verify your license to start earning referral commissions</div>
+      </div>
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         {/* Profile Settings */}
-        <Card className="mb-8 bg-white dark:bg-gray-800 border-emerald-200 shadow-lg">
+        <Card className="mb-8 bg-white dark:bg-gray-800 shadow rounded-2xl">
           <CardHeader>
             <CardTitle className="text-gray-900 dark:text-white">Profile Settings</CardTitle>
             <CardDescription className="text-gray-600 dark:text-gray-400">
@@ -427,7 +431,7 @@ export default function AgentAccount() {
         </Card>
 
         {/* Contact Information */}
-        <Card className="mb-8 bg-white dark:bg-gray-800 border-emerald-200 shadow-lg">
+        <Card className="mb-8 bg-white dark:bg-gray-800 shadow rounded-2xl">
           <CardHeader>
             <CardTitle className="text-gray-900 dark:text-white">Contact Information</CardTitle>
             <CardDescription className="text-gray-600 dark:text-gray-400">
@@ -515,7 +519,7 @@ export default function AgentAccount() {
         </Card>
 
         {/* Status Banner */}
-        <Card className="mb-8 bg-white dark:bg-gray-800 border-emerald-200 shadow-lg">
+        <Card className="mb-8 bg-white dark:bg-gray-800 shadow rounded-2xl">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -570,7 +574,7 @@ export default function AgentAccount() {
 
         {/* Verification Form */}
         {verificationStatus?.verificationStatus !== 'approved' && verificationStatus?.verificationStatus !== 'pending_review' && (
-          <Card className="bg-white dark:bg-gray-800 border-emerald-200 shadow-lg">
+          <Card className="bg-white dark:bg-gray-800 shadow rounded-2xl">
             <CardHeader>
               <CardTitle className="text-gray-900 dark:text-white">Submit Verification</CardTitle>
               <CardDescription className="text-gray-600 dark:text-gray-400">

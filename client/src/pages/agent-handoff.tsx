@@ -14,7 +14,7 @@ import {
   FileText, Trash2, Edit2, Copy, ExternalLink, Package
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { PageHero } from "@/components/page-hero";
+import "./home.css";
 
 interface HandoffPackage {
   id: string;
@@ -203,26 +203,22 @@ export default function AgentHandoff() {
     : null;
 
   return (
-    <div className="min-h-screen">
-      <PageHero
-        eyebrow="Real Estate Agent"
-        title="Home Handoffs"
-        subtitle={
-          view === "list" ? "Create packages to hand off home data to new buyers" :
-          view === "create" ? "Create a new handoff package" :
-          "Package detail"
-        }
-        action={
-          view !== "list" ? (
-            <button
-              onClick={() => { setView("list"); setSelectedId(null); }}
-              style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 9, padding: '5px 10px', fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer' }}
-            >
-              ← Back
-            </button>
-          ) : undefined
-        }
-      />
+    <div className="min-h-screen" style={{ background: '#ffffff' }}>
+      <div className="dash-header" style={{ background: '#1b5e20' }}>
+        <span className="dash-eyebrow" style={{ color: '#a7f3d0' }}>Real Estate Agent</span>
+        <div className="dash-title">Home Handoffs</div>
+        <div className="dash-subtitle">
+          {view === "list" ? "Create packages to hand off home data to new buyers" :
+           view === "create" ? "Create a new handoff package" :
+           "Package detail"}
+        </div>
+        {view !== "list" && (
+          <button
+            onClick={() => { setView("list"); setSelectedId(null); }}
+            style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 9, padding: '5px 10px', fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer', marginTop: 8, alignSelf: 'flex-start' }}
+          >← Back</button>
+        )}
+      </div>
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         {/* Header */}
@@ -245,10 +241,10 @@ export default function AgentHandoff() {
         {view === "list" && (
           <div className="space-y-4">
             {isLoading && (
-              <Card><CardContent className="py-12 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto text-emerald-600" /></CardContent></Card>
+              <Card className="shadow rounded-2xl bg-white"><CardContent className="py-12 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto text-emerald-600" /></CardContent></Card>
             )}
             {!isLoading && packages.length === 0 && (
-              <Card className="bg-white border-emerald-200">
+              <Card className="bg-white shadow rounded-2xl">
                 <CardContent className="py-16 text-center">
                   <Package className="w-12 h-12 mx-auto mb-4 text-emerald-300" />
                   <p className="text-gray-500 font-medium mb-2">No handoff packages yet</p>
@@ -260,7 +256,7 @@ export default function AgentHandoff() {
               </Card>
             )}
             {packages.map(pkg => (
-              <Card key={pkg.id} className="bg-white border-emerald-200 shadow hover:shadow-md transition-shadow cursor-pointer" onClick={() => openDetail(pkg.id)}>
+              <Card key={pkg.id} className="bg-white shadow hover:shadow-md transition-shadow cursor-pointer rounded-2xl" onClick={() => openDetail(pkg.id)}>
                 <CardContent className="p-5 flex items-center justify-between gap-4">
                   <div className="flex items-start gap-4">
                     <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
@@ -284,7 +280,7 @@ export default function AgentHandoff() {
 
         {/* CREATE VIEW */}
         {view === "create" && (
-          <Card className="bg-white border-emerald-200">
+          <Card className="bg-white shadow rounded-2xl">
             <CardHeader>
               <CardTitle>New Handoff Package</CardTitle>
             </CardHeader>
@@ -322,7 +318,7 @@ export default function AgentHandoff() {
         {view === "detail" && detail && (
           <div className="space-y-6">
             {/* Package header */}
-            <Card className="bg-white border-emerald-200">
+            <Card className="bg-white shadow rounded-2xl">
               <CardContent className="p-5">
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div>
@@ -359,7 +355,7 @@ export default function AgentHandoff() {
 
             {/* Document Upload */}
             {detail.status !== "claimed" && (
-              <Card className="bg-white border-emerald-200">
+              <Card className="bg-white shadow rounded-2xl">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base flex items-center gap-2"><FileText className="w-4 h-4 text-emerald-600" /> Upload Documents</CardTitle>
                   <p className="text-sm text-gray-500">Upload closing documents, inspection reports, or disclosure forms. AI will automatically extract home system and appliance data.</p>
@@ -404,7 +400,7 @@ export default function AgentHandoff() {
             )}
 
             {/* Extracted Data */}
-            <Card className="bg-white border-emerald-200">
+            <Card className="bg-white shadow rounded-2xl">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base flex items-center gap-2"><Home className="w-4 h-4 text-emerald-600" /> Extracted Home Data</CardTitle>

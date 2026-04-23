@@ -14,7 +14,7 @@ import facebookTwitterImg from '@assets/homebase-rea-rea-facebook-twitter_176843
 import homeownerFacebookTwitterImg from '@assets/homebase-rea-homeowner-facebook-twitter_1768432226209.png';
 import homeownerInstagramStoryImg from '@assets/homebase-rea-homeowner-ig-story_1768432753751.png';
 import homeownerInstagramPostImg from '@assets/homebase-rea-homeowner-ig-post_1768431892928.png';
-import { PageHero } from "@/components/page-hero";
+import "./home.css";
 
 export default function AgentReferral() {
   const { toast } = useToast();
@@ -109,24 +109,28 @@ export default function AgentReferral() {
 
   if (!typedUser) {
     return (
-      <div className="min-h-screen">
-        <PageHero eyebrow="Real Estate Agent" title="Referral Program" subtitle="Loading..." />
+      <div className="min-h-screen" style={{ background: '#ffffff' }}>
+        <div className="dash-header" style={{ background: '#1b5e20' }}>
+          <span className="dash-eyebrow" style={{ color: '#a7f3d0' }}>Real Estate Agent</span>
+          <div className="dash-title">Referral Program</div>
+          <div className="dash-subtitle">Loading...</div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen">
-      <PageHero
-        eyebrow="Real Estate Agent"
-        title="Referral Program"
-        subtitle="Share MyHomeBase™ and earn commissions"
-      />
+    <div className="min-h-screen" style={{ background: '#ffffff' }}>
+      <div className="dash-header" style={{ background: '#1b5e20' }}>
+        <span className="dash-eyebrow" style={{ color: '#a7f3d0' }}>Real Estate Agent</span>
+        <div className="dash-title">Referral Program</div>
+        <div className="dash-subtitle">Share MyHomeBase™ and earn commissions</div>
+      </div>
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         <div className="space-y-8">
           {/* Referral Rewards Card */}
-          <Card className="shadow-lg">
+          <Card className="shadow rounded-2xl bg-white">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-green-600">
                 <Gift className="w-5 h-5" />
@@ -138,13 +142,13 @@ export default function AgentReferral() {
               
               {/* Referral Stats */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+                <div className="text-center p-4 bg-green-50 rounded-lg">
                   <div className="text-3xl font-bold text-green-700">
                     {referralCount}
                   </div>
                   <div className="text-sm text-green-600 mt-1">Clients Referred</div>
                 </div>
-                <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+                <div className="text-center p-4 bg-green-50 rounded-lg">
                   <div className="text-3xl font-bold text-green-700">
                     ${estimatedEarnings}
                   </div>
@@ -269,7 +273,7 @@ export default function AgentReferral() {
           </Card>
 
           {/* Shareable Graphics for Homeowners */}
-          <Card className="shadow-lg">
+          <Card className="shadow rounded-2xl bg-white">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-green-600">
                 <ImageIcon className="w-5 h-5" />
@@ -358,7 +362,7 @@ export default function AgentReferral() {
           </Card>
 
           {/* Shareable Graphics for Real Estate Agents */}
-          <Card className="shadow-lg">
+          <Card className="shadow rounded-2xl bg-white">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-green-600">
                 <ImageIcon className="w-5 h-5" />

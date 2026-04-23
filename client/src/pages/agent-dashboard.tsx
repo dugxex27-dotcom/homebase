@@ -269,7 +269,7 @@ export default function AgentDashboard() {
         )}
 
         {/* Referral Link Section */}
-        <Card className="mb-8 bg-white dark:bg-gray-800 border-emerald-200 shadow-lg rounded-2xl">
+        <Card className="mb-8 bg-white dark:bg-gray-800 shadow rounded-2xl">
           <CardHeader>
             <CardTitle className="text-gray-900 dark:text-white">Your Referral Link</CardTitle>
           </CardHeader>
@@ -325,7 +325,7 @@ export default function AgentDashboard() {
         </Card>
 
         {/* Home Handoffs Section */}
-        <Card className="mb-8 bg-white dark:bg-gray-800 border-emerald-200 shadow-lg rounded-2xl">
+        <Card className="mb-8 bg-white dark:bg-gray-800 shadow rounded-2xl">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span className="flex items-center gap-2 text-gray-900 dark:text-white">
@@ -361,7 +361,7 @@ export default function AgentDashboard() {
         </Card>
 
         {/* Stripe Connect Section */}
-        <Card className="mb-8 bg-white dark:bg-gray-800 border-emerald-200 shadow-lg rounded-2xl">
+        <Card className="mb-8 bg-white dark:bg-gray-800 shadow rounded-2xl">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
               <CreditCard className="h-5 w-5" />
@@ -425,7 +425,7 @@ export default function AgentDashboard() {
 
         {/* Payout History */}
         {payouts.length > 0 && (
-          <Card className="mb-8 bg-white dark:bg-gray-800 border-emerald-200 shadow-lg rounded-2xl">
+          <Card className="mb-8 bg-white dark:bg-gray-800 shadow rounded-2xl">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
                 <DollarSign className="h-5 w-5" />
@@ -437,7 +437,7 @@ export default function AgentDashboard() {
                 {payouts.map((payout) => (
                   <div 
                     key={payout.id} 
-                    className="flex items-center justify-between p-4 border rounded-lg"
+                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
                     data-testid={`payout-${payout.id}`}
                   >
                     <div>
@@ -471,7 +471,7 @@ export default function AgentDashboard() {
         )}
 
         {/* Referrals List */}
-        <Card className="bg-white dark:bg-gray-800 border-emerald-200 shadow-lg rounded-2xl">
+        <Card className="bg-white dark:bg-gray-800 shadow rounded-2xl">
           <CardHeader>
             <CardTitle className="text-gray-900 dark:text-white">Your Referrals</CardTitle>
           </CardHeader>
@@ -486,7 +486,7 @@ export default function AgentDashboard() {
                 {referrals.map((referral) => (
                   <div
                     key={referral.id}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                     data-testid={`referral-${referral.id}`}
                   >
                     <div className="flex-1">
