@@ -54,8 +54,9 @@ export default function Landing() {
     return () => document.removeEventListener('click', close);
   }, [plansOpen]);
 
-  const handleRoleSelection = (role: 'homeowner' | 'contractor' | 'agent') => {
-    window.location.href = `/signin/${role}`;
+  const handleRoleSelection = (role: 'homeowner' | 'contractor' | 'agent', plan?: 'base' | 'premium' | 'plus') => {
+    const url = plan ? `/signin/${role}?plan=${plan}` : `/signin/${role}`;
+    window.location.href = url;
   };
 
   const handleDemoLogin = async (role: 'homeowner' | 'contractor' | 'agent') => {
@@ -263,7 +264,7 @@ export default function Landing() {
                           </div>
                           <button
                             className={`mpr-plan-btn ${selectedPlanCard === 'base' ? 'mpr-plan-btn-selected' : 'mpr-plan-btn-ghost'}`}
-                            onClick={(e) => { e.stopPropagation(); handleRoleSelection('homeowner'); }}
+                            onClick={(e) => { e.stopPropagation(); handleRoleSelection('homeowner', 'base'); }}
                           >Select Base Plan</button>
                         </div>
 
@@ -289,7 +290,7 @@ export default function Landing() {
                           </div>
                           <button
                             className="mpr-plan-btn mpr-plan-btn-primary"
-                            onClick={(e) => { e.stopPropagation(); handleRoleSelection('homeowner'); }}
+                            onClick={(e) => { e.stopPropagation(); handleRoleSelection('homeowner', 'premium'); }}
                           >Select Premium Plan</button>
                         </div>
 
@@ -314,7 +315,7 @@ export default function Landing() {
                           </div>
                           <button
                             className={`mpr-plan-btn ${selectedPlanCard === 'plus' ? 'mpr-plan-btn-selected' : 'mpr-plan-btn-ghost'}`}
-                            onClick={(e) => { e.stopPropagation(); handleRoleSelection('homeowner'); }}
+                            onClick={(e) => { e.stopPropagation(); handleRoleSelection('homeowner', 'plus'); }}
                           >Select Premium Plus</button>
                         </div>
                       </div>

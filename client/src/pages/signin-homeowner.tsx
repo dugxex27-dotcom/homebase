@@ -65,6 +65,12 @@ const GoogleSVG = () => (
   </svg>
 );
 
+const PLAN_LABELS: Record<string, { name: string; price: string }> = {
+  base: { name: 'Base Plan', price: '$5/mo' },
+  premium: { name: 'Premium Plan', price: '$20/mo' },
+  plus: { name: 'Premium Plus', price: '$40/mo' },
+};
+
 export default function SignInHomeowner() {
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
@@ -76,6 +82,11 @@ export default function SignInHomeowner() {
   const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+
+  const selectedPlan = (() => {
+    const slug = new URLSearchParams(window.location.search).get('plan') ?? '';
+    return PLAN_LABELS[slug] ? { slug, ...PLAN_LABELS[slug] } : null;
+  })();
 
   useEffect(() => {
     document.body.classList.add('signin-page');
@@ -117,7 +128,13 @@ export default function SignInHomeowner() {
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
       const pendingHandoff = resolvePostAuthRedirect('');
       if (pendingHandoff) { toast({ title: "Account created!" }); setLocation(pendingHandoff); }
-      else if (data.requiresPaymentSetup) { toast({ title: "Account created!", description: "Choose your plan to start your free 14-day trial." }); setLocation('/homeowner-pricing?onboarding=true'); }
+      else if (data.requiresPaymentSetup) {
+        toast({ title: "Account created!", description: "Choose your plan to start your free 14-day trial." });
+        const pricingUrl = selectedPlan
+          ? `/homeowner-pricing?onboarding=true&plan=${selectedPlan.slug}`
+          : '/homeowner-pricing?onboarding=true';
+        setLocation(pricingUrl);
+      }
       else { toast({ title: "Account created!", description: "Welcome to MyHomeBase™." }); setLocation('/'); }
     },
     onError: (e: Error) => toast({ title: "Registration failed", description: e.message, variant: "destructive" }),
@@ -188,6 +205,17 @@ export default function SignInHomeowner() {
             <button type="button" onClick={() => setActiveTab('login')} style={toggleBtn(activeTab === 'login')} data-testid="tab-login-homeowner">Sign in</button>
             <button type="button" onClick={() => setActiveTab('register')} style={toggleBtn(activeTab === 'register')} data-testid="tab-register-homeowner">Register</button>
           </div>
+
+          {/* Plan selection banner */}
+          {selectedPlan && (
+            <div data-testid="plan-selection-banner" style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(83,74,183,0.08)', border: '1.5px solid rgba(83,74,183,0.2)', borderRadius: 12, padding: '10px 14px', marginBottom: 18 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.primary, flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: C.label, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Selected plan</p>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.primary }}>{selectedPlan.name} — {selectedPlan.price}</p>
+              </div>
+            </div>
+          )}
 
           {/* ── LOGIN ── */}
           {activeTab === 'login' && (
