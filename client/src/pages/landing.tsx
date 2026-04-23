@@ -19,6 +19,9 @@ export default function Landing() {
   const [referralOpen, setReferralOpen] = useState(false);
   const [claimsOpen, setClaimsOpen] = useState(false);
   const [signinOpen, setSigninOpen] = useState(false);
+  const [referralTab, setReferralTab] = useState<'hw' | 'ct'>('hw');
+  const [hwSlider, setHwSlider] = useState(0);
+  const [ctSlider, setCtSlider] = useState(0);
 
   useEffect(() => {
     if (!referralOpen) return;
@@ -208,18 +211,120 @@ export default function Landing() {
                 ><Info size={11} strokeWidth={2.5} /></button>
               </div>
               {referralOpen && (
-                <div
-                  className="mhb-referral-popover"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <button
-                    className="mhb-referral-close"
-                    onClick={() => setReferralOpen(false)}
-                    aria-label="Close"
-                  >✕</button>
-                  <div className="mhb-referral-popover-title">How it works</div>
-                  <div className="mhb-referral-popover-body">
-                    The more homeowners you bring to MyHomeBase, the less your subscription costs. Bring enough and it's free — for as long as they're a paid subscriber.
+                <div className="mhb-referral-popover mrr-popover" onClick={(e) => e.stopPropagation()}>
+                  <button className="mhb-referral-close" onClick={() => setReferralOpen(false)} aria-label="Close">✕</button>
+
+                  {/* Tabs */}
+                  <div className="mrr-tabs">
+                    <button
+                      className={`mrr-tab ${referralTab === 'hw' ? 'mrr-tab-active-hw' : 'mrr-tab-inactive'}`}
+                      onClick={() => setReferralTab('hw')}
+                    >Homeowner — $5/mo</button>
+                    <button
+                      className={`mrr-tab ${referralTab === 'ct' ? 'mrr-tab-active-ct' : 'mrr-tab-inactive'}`}
+                      onClick={() => setReferralTab('ct')}
+                    >Contractor — $20/mo</button>
+                  </div>
+
+                  {/* Card wrapper */}
+                  <div className="mrr-card-wrap">
+
+                    {/* ── HOMEOWNER ── */}
+                    {referralTab === 'hw' && (
+                      <div className="mrr-card mrr-card-hw">
+                        <div className="mrr-bar mrr-bar-hw" />
+                        <div className="mrr-header">
+                          <p className="mrr-eyebrow mrr-eyebrow-hw">How it works</p>
+                          <h2 className="mrr-heading">Refer a neighbor.<br />Pay less. Refer five. Pay nothing.</h2>
+                          <p className="mrr-body-text">Every homeowner you refer knocks $1 off your monthly plan. Refer 5 and your subscription is completely free — for as long as they stay subscribed.</p>
+                          <div className="mrr-divider mrr-divider-hw" />
+                        </div>
+                        <div className="mrr-steps-section">
+                          <p className="mrr-steps-label mrr-steps-label-hw">Your monthly cost</p>
+                          <div className="mrr-steps">
+                            {[0,1,2,3,4,5].map(i => {
+                              const cost = 5 - i;
+                              const free = cost === 0;
+                              const pct = Math.round((cost / 5) * 100);
+                              return (
+                                <div key={i} className="mrr-step-row" style={{ opacity: hwSlider >= i ? 1 : 0.3 }}>
+                                  <span className="mrr-step-ref">{i} ref{i !== 1 ? 's' : ''}</span>
+                                  <div className="mrr-step-bar-wrap mrr-step-bar-wrap-hw">
+                                    <div className="mrr-step-bar" style={{ width: `${pct}%`, background: free ? '#0F6E56' : '#534AB7' }} />
+                                  </div>
+                                  <span className="mrr-step-cost" style={{ color: free ? '#0F6E56' : '#534AB7' }}>{free ? 'Free' : `$${cost}`}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        <div className="mrr-slider-box mrr-slider-box-hw">
+                          <div className="mrr-slider-header">
+                            <span className="mrr-slider-label mrr-slider-label-hw">Homeowners referred</span>
+                            <span className="mrr-slider-count mrr-slider-count-hw">{hwSlider}</span>
+                          </div>
+                          <input type="range" min="0" max="5" value={hwSlider} step="1" className="mrr-range mrr-range-hw" onChange={e => setHwSlider(Number(e.target.value))} />
+                          <div className="mrr-cost-row">
+                            <span className="mrr-cost-label mrr-cost-label-hw">Your cost</span>
+                            <span className="mrr-cost-value" style={{ color: hwSlider === 5 ? '#0F6E56' : '#3C3489' }}>
+                              {hwSlider === 5 ? 'Free' : `$${5 - hwSlider}`}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="mrr-cta">
+                          <button className="mrr-cta-btn mrr-cta-btn-hw">Start referring homeowners →</button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ── CONTRACTOR ── */}
+                    {referralTab === 'ct' && (
+                      <div className="mrr-card mrr-card-ct">
+                        <div className="mrr-bar mrr-bar-ct" />
+                        <div className="mrr-header">
+                          <p className="mrr-eyebrow mrr-eyebrow-ct">How it works</p>
+                          <h2 className="mrr-heading">Bring homeowners.<br />Pay less. Or nothing.</h2>
+                          <p className="mrr-body-text">Every homeowner you bring to MyHomeBase takes $1 off your monthly plan. Refer 20 and your subscription is completely free — for as long as they stay subscribed.</p>
+                          <div className="mrr-divider mrr-divider-ct" />
+                        </div>
+                        <div className="mrr-steps-section">
+                          <p className="mrr-steps-label mrr-steps-label-ct">Your monthly cost</p>
+                          <div className="mrr-steps">
+                            {[0,5,10,15,20].map(i => {
+                              const cost = 20 - i;
+                              const free = cost === 0;
+                              const pct = Math.round((cost / 20) * 100);
+                              return (
+                                <div key={i} className="mrr-step-row" style={{ opacity: ctSlider >= i ? 1 : 0.3 }}>
+                                  <span className="mrr-step-ref">{i} ref{i !== 1 ? 's' : ''}</span>
+                                  <div className="mrr-step-bar-wrap mrr-step-bar-wrap-ct">
+                                    <div className="mrr-step-bar" style={{ width: `${pct}%`, background: free ? '#0F6E56' : '#185FA5' }} />
+                                  </div>
+                                  <span className="mrr-step-cost" style={{ color: free ? '#0F6E56' : '#185FA5' }}>{free ? 'Free' : `$${cost}`}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        <div className="mrr-slider-box mrr-slider-box-ct">
+                          <div className="mrr-slider-header">
+                            <span className="mrr-slider-label mrr-slider-label-ct">Homeowners referred</span>
+                            <span className="mrr-slider-count mrr-slider-count-ct">{ctSlider}</span>
+                          </div>
+                          <input type="range" min="0" max="20" value={ctSlider} step="1" className="mrr-range mrr-range-ct" onChange={e => setCtSlider(Number(e.target.value))} />
+                          <div className="mrr-cost-row">
+                            <span className="mrr-cost-label mrr-cost-label-ct">Your cost</span>
+                            <span className="mrr-cost-value" style={{ color: ctSlider === 20 ? '#0F6E56' : '#0C447C' }}>
+                              {ctSlider === 20 ? 'Free' : `$${20 - ctSlider}`}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="mrr-cta">
+                          <button className="mrr-cta-btn mrr-cta-btn-ct">Start referring homeowners →</button>
+                        </div>
+                      </div>
+                    )}
+
                   </div>
                 </div>
               )}

@@ -2,6 +2,8 @@
    MyHomeBase — Welcome Screen Styles
    ============================================ */
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 /* On mobile & tablet: hide the public header (landing fills the viewport) */
 @media (max-width: 1023px) {
   body.mhb-landing-active > div > div > header,
@@ -578,6 +580,304 @@
 }
 
 .mhb-referral-close:hover { background: #e4e1f5; }
+
+/* ═══════════════════════════
+   RICH REFERRAL MODAL (mrr-*)
+   Font: Inter
+   ═══════════════════════════ */
+
+.mrr-popover {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  padding: 40px 0 0;
+  width: 300px;
+  overflow: visible;
+}
+
+/* Tabs */
+.mrr-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 0 0 16px;
+}
+
+.mrr-tab {
+  flex: 1;
+  padding: 9px 0;
+  border-radius: 8px;
+  border: 0.5px solid rgba(83,74,183,0.18);
+  font-size: 12px;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.mrr-tab-active-hw {
+  background: #534AB7;
+  color: #fff;
+  border-color: #534AB7;
+}
+
+.mrr-tab-active-ct {
+  background: #185FA5;
+  color: #fff;
+  border-color: #185FA5;
+}
+
+.mrr-tab-inactive {
+  background: #f5f4fd;
+  color: #9b97c4;
+}
+
+/* Card wrapper */
+.mrr-card-wrap {
+  background: #f5f4fd;
+  border-radius: 20px;
+  padding: 2px;
+}
+
+/* Card base */
+.mrr-card {
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.mrr-card-hw {
+  background: #fff;
+  border: 0.5px solid #AFA9EC;
+}
+
+.mrr-card-ct {
+  background: #fff;
+  border: 0.5px solid #85B7EB;
+}
+
+/* Gradient top bar */
+.mrr-bar {
+  height: 4px;
+}
+
+.mrr-bar-hw {
+  background: linear-gradient(90deg, #534AB7, #7F77DD);
+}
+
+.mrr-bar-ct {
+  background: linear-gradient(90deg, #185FA5, #378ADD);
+}
+
+/* Header */
+.mrr-header {
+  padding: 20px 18px 0;
+}
+
+.mrr-eyebrow {
+  font-size: 10px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  margin: 0 0 6px;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 500;
+}
+
+.mrr-eyebrow-hw { color: #7F77DD; }
+.mrr-eyebrow-ct { color: #378ADD; }
+
+.mrr-heading {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 0 0 8px;
+  color: #1a1a2e;
+  line-height: 1.25;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.mrr-body-text {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0 0 16px;
+  line-height: 1.6;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 400;
+}
+
+.mrr-divider {
+  border: none;
+  height: 0.5px;
+  margin: 0;
+}
+
+.mrr-divider-hw { background: #CECBF6; }
+.mrr-divider-ct { background: #B5D4F4; }
+
+/* Step bars */
+.mrr-steps-section {
+  padding: 14px 18px 0;
+}
+
+.mrr-steps-label {
+  font-size: 11px;
+  margin: 0 0 10px;
+  letter-spacing: 0.5px;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 500;
+}
+
+.mrr-steps-label-hw { color: #7F77DD; }
+.mrr-steps-label-ct { color: #378ADD; }
+
+.mrr-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.mrr-step-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: opacity 0.2s;
+}
+
+.mrr-step-ref {
+  font-size: 10px;
+  color: #AFA9EC;
+  width: 36px;
+  flex-shrink: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.mrr-card-ct .mrr-step-ref { color: #85B7EB; }
+
+.mrr-step-bar-wrap {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.mrr-step-bar-wrap-hw {
+  background: #EEEDFE;
+  border: 0.5px solid #CECBF6;
+}
+
+.mrr-step-bar-wrap-ct {
+  background: #E6F1FB;
+  border: 0.5px solid #B5D4F4;
+}
+
+.mrr-step-bar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.25s;
+}
+
+.mrr-step-cost {
+  font-size: 11px;
+  font-weight: 500;
+  width: 30px;
+  text-align: right;
+  flex-shrink: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Slider box */
+.mrr-slider-box {
+  margin: 14px 18px;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.mrr-slider-box-hw {
+  background: #EEEDFE;
+  border: 0.5px solid #CECBF6;
+}
+
+.mrr-slider-box-ct {
+  background: #E6F1FB;
+  border: 0.5px solid #B5D4F4;
+}
+
+.mrr-slider-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.mrr-slider-label {
+  font-size: 12px;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-weight: 400;
+}
+
+.mrr-slider-label-hw { color: #534AB7; }
+.mrr-slider-label-ct { color: #185FA5; }
+
+.mrr-slider-count {
+  font-size: 13px;
+  font-weight: 500;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.mrr-slider-count-hw { color: #3C3489; }
+.mrr-slider-count-ct { color: #0C447C; }
+
+.mrr-range {
+  width: 100%;
+  margin-bottom: 10px;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.mrr-range-hw { accent-color: #534AB7; }
+.mrr-range-ct { accent-color: #185FA5; }
+
+.mrr-cost-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.mrr-cost-label {
+  font-size: 13px;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.mrr-cost-label-hw { color: #534AB7; }
+.mrr-cost-label-ct { color: #185FA5; }
+
+.mrr-cost-value {
+  font-size: 24px;
+  font-weight: 500;
+  font-family: 'Inter', system-ui, sans-serif;
+  transition: color 0.3s;
+}
+
+/* CTA */
+.mrr-cta {
+  padding: 0 18px 18px;
+}
+
+.mrr-cta-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: #fff;
+  transition: opacity 0.15s;
+}
+
+.mrr-cta-btn:hover { opacity: 0.88; }
+
+.mrr-cta-btn-hw { background: #534AB7; }
+.mrr-cta-btn-ct { background: #185FA5; }
 
 /* ═══════════════════════════
    RESPONSIVE — Viewport breakpoints
