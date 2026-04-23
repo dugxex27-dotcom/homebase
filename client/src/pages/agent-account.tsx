@@ -346,7 +346,7 @@ export default function AgentAccount() {
       <div className="min-h-screen" style={{ background: '#ffffff' }}>
         <div className="dash-header" style={{ background: '#1b5e20' }}>
           <span className="dash-eyebrow" style={{ color: '#a7f3d0' }}>Real Estate Agent</span>
-          <div className="dash-title">Account Verification</div>
+          <div className="dash-title">Account Settings</div>
           <div className="dash-subtitle">Loading your profile...</div>
         </div>
         <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8" />
@@ -358,13 +358,13 @@ export default function AgentAccount() {
     <div className="min-h-screen" style={{ background: '#ffffff' }}>
       <div className="dash-header" style={{ background: '#1b5e20' }}>
         <span className="dash-eyebrow" style={{ color: '#a7f3d0' }}>Real Estate Agent</span>
-        <div className="dash-title">Account Verification</div>
+        <div className="dash-title">Account Settings</div>
         <div className="dash-subtitle">Verify your license to start earning referral commissions</div>
       </div>
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         {/* Profile Settings */}
-        <Card className="mb-8 bg-white dark:bg-gray-800 shadow rounded-2xl">
+        <Card className="mb-8 bg-white dark:bg-gray-800 border-emerald-200 rounded-2xl shadow-lg">
           <CardHeader>
             <CardTitle className="text-gray-900 dark:text-white">Profile Settings</CardTitle>
             <CardDescription className="text-gray-600 dark:text-gray-400">
@@ -431,7 +431,7 @@ export default function AgentAccount() {
         </Card>
 
         {/* Contact Information */}
-        <Card className="mb-8 bg-white dark:bg-gray-800 shadow rounded-2xl">
+        <Card className="mb-8 bg-white dark:bg-gray-800 border-emerald-200 rounded-2xl shadow-lg">
           <CardHeader>
             <CardTitle className="text-gray-900 dark:text-white">Contact Information</CardTitle>
             <CardDescription className="text-gray-600 dark:text-gray-400">
@@ -519,7 +519,7 @@ export default function AgentAccount() {
         </Card>
 
         {/* Status Banner */}
-        <Card className="mb-8 bg-white dark:bg-gray-800 shadow rounded-2xl">
+        <Card className="mb-8 bg-white dark:bg-gray-800 border-emerald-200 rounded-2xl shadow-lg">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -574,7 +574,7 @@ export default function AgentAccount() {
 
         {/* Verification Form */}
         {verificationStatus?.verificationStatus !== 'approved' && verificationStatus?.verificationStatus !== 'pending_review' && (
-          <Card className="bg-white dark:bg-gray-800 shadow rounded-2xl">
+          <Card className="bg-white dark:bg-gray-800 border-emerald-200 rounded-2xl shadow-lg">
             <CardHeader>
               <CardTitle className="text-gray-900 dark:text-white">Submit Verification</CardTitle>
               <CardDescription className="text-gray-600 dark:text-gray-400">
@@ -715,7 +715,7 @@ export default function AgentAccount() {
         )}
 
         {/* Cancel Account */}
-        <Card className="border-red-200 shadow-lg">
+        <Card className="border-red-200 rounded-2xl shadow-lg">
           <CardHeader>
             <CardTitle className="text-red-600">Cancel Account</CardTitle>
             <CardDescription className="text-gray-600 dark:text-gray-400">
