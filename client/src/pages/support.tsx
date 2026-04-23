@@ -14,7 +14,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { HelpCircle, MessageCircle, CheckCircle, Clock, AlertCircle, Ticket, Mail } from "lucide-react";
+import { HelpCircle, MessageCircle, CheckCircle, Clock, AlertCircle, Ticket, Mail, Home, Wrench, UserCheck } from "lucide-react";
 import { Link, useSearch } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import logoHomeowner from "@assets/my-homebase-logo-tm-howner-white-final_1776538414393.png";
@@ -39,101 +39,92 @@ const contactFormSchema = z.object({
 });
 type ContactFormData = z.infer<typeof contactFormSchema>;
 
-const faqs = [
-  // Payment & Billing
-  {
-    question: "How do I pay a contractor's invoice?",
-    answer: "When a contractor sends you an invoice, you'll receive a payment link via email or can access it directly from your messages. Click the link to view the invoice details and pay securely with your credit card through Stripe. You'll receive a confirmation once payment is complete."
+type RoleKey = 'homeowner' | 'contractor' | 'agent';
+
+const roleConfig: Record<RoleKey, {
+  label: string;
+  icon: React.ElementType;
+  faqs: { question: string; answer: string }[];
+  contactCategories: { value: string; label: string }[];
+}> = {
+  homeowner: {
+    label: 'Homeowner',
+    icon: Home,
+    faqs: [
+      { question: "How do I pay a contractor's invoice?", answer: "When a contractor sends you an invoice, you'll receive a payment link via email or can access it directly from your messages. Click the link to view the invoice details and pay securely with your credit card through Stripe. You'll receive a confirmation once payment is complete." },
+      { question: "What payment methods are accepted?", answer: "We accept all major credit and debit cards including Visa, Mastercard, American Express, and Discover. Payments are processed securely through Stripe, so your card information is never stored on our servers." },
+      { question: "How does the 14-day free trial work?", answer: "All new users get 14 days of free access to all features. After 14 days, you'll need to choose a subscription plan based on the number of properties you manage. You can cancel anytime during the trial with no charge." },
+      { question: "What are the homeowner subscription plans?", answer: "We offer three homeowner plans: Base ($5/month for up to 2 homes), Premium ($20/month for 3-6 homes), and Premium Plus ($40/month for 7+ homes). All plans include our referral rewards program and full maintenance tracking." },
+      { question: "How do referral rewards work?", answer: "Share your unique referral code with friends. For each person who signs up and maintains an active subscription, you earn $1/month credit toward your subscription. Earn enough referrals and your subscription becomes completely free!" },
+      { question: "How do I cancel my subscription?", answer: "Go to Settings > Billing and click 'Cancel Subscription'. Your access will continue until the end of your current billing period. You can reactivate anytime to restore your data." },
+      { question: "How do I add a new house to my account?", answer: "Go to the Houses page and click 'Add House'. Fill in your address, climate zone, and home details. Your house will be added to your dashboard where you can track maintenance tasks and service records." },
+      { question: "How do I add multiple properties?", answer: "MyHomeBase™ supports multiple properties! Simply go to the Houses page and click 'Add House' for each property. You can switch between properties from your dashboard. Higher subscription tiers support more properties." },
+      { question: "What is the Home Wellness Score™?", answer: "Your Home Wellness Score™ is a gamified metric (0-100) based on completed vs. missed maintenance tasks. Complete seasonal tasks to improve your score and unlock achievements. It helps you track how well you're maintaining your property." },
+      { question: "How do I find contractors in my area?", answer: "Click 'Find Contractors' from your dashboard or any maintenance task. We'll show you verified contractors within 20 miles of your property who specialize in the service you need. You can view their profiles, ratings, and request quotes directly." },
+      { question: "How does the connection code work?", answer: "Your unique 8-character Connection Code lets you securely share your home's service history with contractors. Give your code to a contractor, and they can access your records to provide more accurate quotes. You control who has access and can revoke it anytime." },
+      { question: "Can I transfer my house to a new owner?", answer: "Yes! If you're selling your home, you can transfer all service records and maintenance history to the new owner. Go to your house settings and select 'Transfer Ownership'. The new owner will receive a secure link to accept the transfer and claim the property history." },
+      { question: "How does the DIY Savings Tracker work?", answer: "When you mark a maintenance task as DIY-completed, we estimate the professional cost based on your region and task type. Your total DIY savings show how much money you've saved by doing tasks yourself instead of hiring contractors." },
+      { question: "Is my data secure?", answer: "Absolutely! We use enterprise-grade security including encrypted connections (HTTPS), secure session management, SQL injection and XSS prevention, and rate limiting. Your payment information is processed through Stripe's PCI-compliant system and never stored on our servers." },
+    ],
+    contactCategories: [
+      { value: 'general', label: 'General Inquiry' },
+      { value: 'billing', label: 'Billing & Payments' },
+      { value: 'technical', label: 'Technical Issue' },
+      { value: 'account', label: 'Account Help' },
+      { value: 'contractor', label: 'Contractor Services' },
+      { value: 'feature_request', label: 'Feature Request' },
+    ],
   },
-  {
-    question: "How do contractors receive payments?",
-    answer: "Contractors connect their bank account through Stripe Connect in their profile settings. When you pay an invoice, the payment goes directly to their connected bank account. Contractors can track all payments in their CRM dashboard."
+  contractor: {
+    label: 'Contractor',
+    icon: Wrench,
+    faqs: [
+      { question: "How do I set up payments to receive money?", answer: "Go to your Profile page and scroll down to 'Payment Settings', or access it through the CRM Billing & Payments tab. Click 'Connect with Stripe' to link your bank account. Once verified, you can accept credit card payments directly through your invoices." },
+      { question: "Are there any fees for using MyHomeBase™ payments?", answer: "MyHomeBase™ does not charge any platform fees on payments! You keep 100% of what you charge. Only standard Stripe credit card processing fees apply, which are handled by Stripe directly." },
+      { question: "How do contractors receive payments?", answer: "Contractors connect their bank account through Stripe Connect in their profile settings. When a homeowner pays an invoice, the payment goes directly to your connected bank account. You can track all payments in your CRM dashboard." },
+      { question: "What's included in the Contractor Basic plan?", answer: "The Basic plan ($20/month) gives you access to your contractor profile, the ability to connect with homeowners, send invoices, and earn referral credits. It's ideal for independent contractors who want a simple, professional presence." },
+      { question: "What's included in the Contractor Pro plan?", answer: "The Pro plan ($40/month) includes full CRM access: client management, job scheduling, quotes and invoices, Stripe payment processing, team management, dashboard analytics, and external CRM imports. You also get double the referral credit cap compared to Basic." },
+      { question: "How do I import leads from other CRMs?", answer: "In the CRM tab, go to Integrations and set up a webhook connection. We support imports from popular CRMs like Jobber, ServiceTitan, and Housecall Pro. Leads sync automatically once connected, so you never miss a potential customer." },
+      { question: "How do I create and send invoices?", answer: "From the CRM Invoices tab, click 'Create Invoice'. Add line items, set the due date, and save. Then click 'Send' to email a payment link to your client. They can pay online with a credit card, and you'll be notified when payment is received." },
+      { question: "How do I manage my team?", answer: "Go to the Team tab in your CRM dashboard. You can invite team members by email, assign them roles, and control their access level. Team members can help manage jobs, customers, and scheduling under your account." },
+      { question: "How do referral rewards work for contractors?", answer: "Share your unique referral code with homeowners or other contractors. For each person who signs up and maintains an active subscription, you earn $1/month credit. Pro plan contractors earn up to $40/month in credits — enough to make your plan free!" },
+      { question: "How do I connect with homeowners?", answer: "Homeowners search for contractors by location and specialty. Keep your profile complete with your services, coverage area, and photos to appear in more searches. You can also receive leads directly when a homeowner uses your connection code." },
+      { question: "Is my business data secure?", answer: "Absolutely. All customer data, invoices, and payment details are encrypted and stored securely. Payment processing is handled by Stripe's PCI-compliant system. We never share your business data with third parties." },
+    ],
+    contactCategories: [
+      { value: 'general', label: 'General Inquiry' },
+      { value: 'billing', label: 'Billing & Payments' },
+      { value: 'technical', label: 'Technical Issue' },
+      { value: 'account', label: 'Account Help' },
+      { value: 'contractor', label: 'CRM & Tools' },
+      { value: 'feature_request', label: 'Feature Request' },
+    ],
   },
-  {
-    question: "Are there any fees for using MyHomeBase™ payments?",
-    answer: "MyHomeBase™ does not charge any platform fees on payments! Contractors keep 100% of what they charge. Only standard Stripe credit card processing fees apply, which are handled by Stripe directly."
+  agent: {
+    label: 'RE Agent',
+    icon: UserCheck,
+    faqs: [
+      { question: "How does the RE Agent referral program work?", answer: "Sign up as a Real Estate Agent to get a unique referral code and shareable QR code. Share it with homeowners you work with. When they sign up and maintain an active subscription for 4 consecutive months, you earn a $15 referral payout." },
+      { question: "When and how do I get paid?", answer: "Referral payouts are processed monthly. Once a referred homeowner completes 4 consecutive months of paid subscription, your $15 commission is queued for payment. Payouts are sent to your registered payment method on the first business day of the following month." },
+      { question: "How do I track my referrals?", answer: "Your Agent Dashboard shows all your referrals in real time — pending, active, and paid. You can see each referral's status, how many months they've been subscribed, and your cumulative earnings all in one place." },
+      { question: "Is there a limit to how much I can earn?", answer: "There's no cap on your earnings! Every homeowner you refer who meets the 4-month threshold earns you $15. Refer 10 homeowners a month and earn $150/month in passive income — all from clients you're already working with." },
+      { question: "How do I share my referral code?", answer: "In your Agent Dashboard, go to the Referrals tab to find your unique code and a downloadable QR code. You can share the code verbally, via email, or print the QR code on business cards and flyers for easy sharing at open houses." },
+      { question: "Can I refer other real estate agents?", answer: "The program is currently designed for referring homeowners. If you'd like to refer other agents, reach out to our support team — we'd love to explore partnership opportunities with active agents." },
+      { question: "What value does MyHomeBase™ provide to my clients?", answer: "MyHomeBase™ gives homeowners a complete digital record of their home — maintenance history, service records, contractor contacts, and documents. This is a powerful tool for resale: a well-documented home history can increase buyer confidence and transaction value." },
+      { question: "How does the home handoff feature work?", answer: "When one of your clients sells, MyHomeBase™ generates a shareable link so the seller can transfer their full home history to the new buyer. This creates a seamless, professional experience at closing and is a great selling point for your listings." },
+      { question: "Do I need to pay anything to be an RE Agent affiliate?", answer: "No! Creating a Real Estate Agent account and participating in the referral program is completely free. You earn $15 for every qualified referral with no subscription required on your end." },
+      { question: "Is my client data protected?", answer: "Yes. We only collect information directly from homeowners who sign up — we never share your clients' personal data. Your referral dashboard shows only anonymized status information to protect everyone's privacy." },
+    ],
+    contactCategories: [
+      { value: 'general', label: 'General Inquiry' },
+      { value: 'billing', label: 'Payouts & Earnings' },
+      { value: 'technical', label: 'Technical Issue' },
+      { value: 'account', label: 'Account Help' },
+      { value: 'contractor', label: 'Referral Program' },
+      { value: 'feature_request', label: 'Feature Request' },
+    ],
   },
-  {
-    question: "What payment methods are accepted?",
-    answer: "We accept all major credit and debit cards including Visa, Mastercard, American Express, and Discover. Payments are processed securely through Stripe, so your card information is never stored on our servers."
-  },
-  // Subscriptions
-  {
-    question: "How does the 14-day free trial work?",
-    answer: "All new users get 14 days of free access to all features. After 14 days, you'll need to choose a subscription plan based on the number of properties you manage. You can cancel anytime during the trial with no charge."
-  },
-  {
-    question: "What are the subscription plans?",
-    answer: "We offer three homeowner plans: Base ($5/month for up to 2 homes), Premium ($20/month for 3-6 homes), and Premium Plus ($40/month for 7+ homes). Contractors have Basic ($20/month) and Pro ($40/month) plans. All plans include our referral rewards program."
-  },
-  {
-    question: "How do referral rewards work?",
-    answer: "Share your unique referral code with friends. For each person who signs up and maintains an active subscription, you earn $1/month credit toward your subscription. Earn enough referrals and your subscription becomes completely free! Your referral credit cap matches your plan price."
-  },
-  {
-    question: "How do I cancel my subscription?",
-    answer: "Go to Settings > Billing and click 'Cancel Subscription'. Your access will continue until the end of your current billing period. You can reactivate anytime to restore your data."
-  },
-  // Homeowner Features
-  {
-    question: "How do I add a new house to my account?",
-    answer: "Go to the Houses page and click 'Add House'. Fill in your address, climate zone, and home details. Your house will be added to your dashboard where you can track maintenance tasks and service records."
-  },
-  {
-    question: "How do I add multiple properties?",
-    answer: "MyHomeBase™ supports multiple properties! Simply go to the Houses page and click 'Add House' for each property. You can switch between properties from your dashboard. Higher subscription tiers are recommended for managing more properties and unlock additional features."
-  },
-  {
-    question: "What is the Home Wellness Score™?",
-    answer: "Your Home Wellness Score™ is a gamified metric (0-100) based on completed vs. missed maintenance tasks. Complete seasonal tasks to improve your score and unlock achievements. It helps you track how well you're maintaining your property."
-  },
-  {
-    question: "How do I find contractors in my area?",
-    answer: "Click 'Find Contractors' from your dashboard or any maintenance task. We'll show you verified contractors within 20 miles of your property who specialize in the service you need. You can view their profiles, ratings, and request quotes directly."
-  },
-  {
-    question: "How does the connection code work?",
-    answer: "Your unique 8-character Connection Code lets you securely share your home's service history with contractors. Give your code to a contractor, and they can access your records to provide more accurate quotes. You control who has access and can revoke it anytime."
-  },
-  // Contractor Features
-  {
-    question: "How do I set up payments to receive money?",
-    answer: "Go to your Profile page and scroll down to 'Payment Settings', or access it through the CRM Billing & Payments tab. Click 'Connect with Stripe' to link your bank account. Once verified, you can accept credit card payments directly through your invoices."
-  },
-  {
-    question: "What's included in the Contractor Pro plan?",
-    answer: "The Pro plan ($40/month) includes full CRM access: client management, job scheduling, quotes and invoices, Stripe payment processing, team management, dashboard analytics, and external CRM imports. You also get double the referral credit cap compared to Basic."
-  },
-  {
-    question: "How do I import leads from other CRMs?",
-    answer: "In the CRM tab, go to Integrations and set up a webhook connection. We support imports from popular CRMs like Jobber, ServiceTitan, and Housecall Pro. Leads sync automatically once connected, so you never miss a potential customer."
-  },
-  {
-    question: "How do I create and send invoices?",
-    answer: "From the CRM Invoices tab, click 'Create Invoice'. Add line items, set the due date, and save. Then click 'Send' to email a payment link to your client. They can pay online with a credit card, and you'll be notified when payment is received."
-  },
-  // General
-  {
-    question: "Is my data secure?",
-    answer: "Absolutely! We use enterprise-grade security including encrypted connections (HTTPS), secure session management, SQL injection and XSS prevention, and rate limiting. Your payment information is processed through Stripe's PCI-compliant system and never stored on our servers."
-  },
-  {
-    question: "How do I contact support?",
-    answer: "You can submit a support ticket right here on this page! Select your issue category, describe your problem, and we'll respond within 24-48 hours. For urgent issues, mark your ticket as high priority and we'll prioritize your request."
-  },
-  {
-    question: "Can I transfer my house to a new owner?",
-    answer: "Yes! If you're selling your home, you can transfer all service records and maintenance history to the new owner. Go to your house settings and select 'Transfer Ownership'. The new owner will receive a secure link to accept the transfer and claim the property history."
-  },
-  {
-    question: "How does the DIY Savings Tracker work?",
-    answer: "When you mark a maintenance task as DIY-completed, we estimate the professional cost based on your region and task type. Your total DIY savings show how much money you've saved by doing tasks yourself instead of hiring contractors."
-  },
-  {
-    question: "Can I become a Real Estate Agent affiliate?",
-    answer: "Yes! Sign up as a Real Estate Agent to get a unique referral code and shareable QR code. Earn $15 for each referral after they complete 4 consecutive months of paid subscription. Track your referrals and payouts in the Agent Dashboard."
-  }
-];
+};
 
 const categoryLabels = {
   billing: "Billing & Payments",
@@ -172,8 +163,12 @@ export default function SupportPage() {
   const { user, isAuthenticated } = useAuth();
   const search = useSearch();
   const initialTab = new URLSearchParams(search).get('tab') || 'faq';
+  const userRole = (user as any)?.role as RoleKey | undefined;
+  const [selectedRole, setSelectedRole] = useState<RoleKey>(userRole && roleConfig[userRole] ? userRole : 'homeowner');
   const [showTicketForm, setShowTicketForm] = useState(false);
   const [contactSubmitted, setContactSubmitted] = useState(false);
+
+  const currentRole = roleConfig[selectedRole];
 
   const { data: tickets = [], isLoading: ticketsLoading } = useQuery<SupportTicket[]>({
     queryKey: ['/api/support/tickets'],
@@ -263,7 +258,7 @@ export default function SupportPage() {
         <div className="dash-subtitle">Get answers or open a ticket with our team</div>
         <div className="dash-chips">
           <div className="dash-chip">
-            <div className="dash-chip-num">{faqs.length}</div>
+            <div className="dash-chip-num">{currentRole.faqs.length}</div>
             <div className="dash-chip-label">FAQs</div>
           </div>
           <div className="dash-chip">
@@ -278,6 +273,35 @@ export default function SupportPage() {
       </div>
 
       <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8 max-w-5xl">
+
+        {/* ── Role Selector ───────────────────────── */}
+        <div className="mb-6">
+          <p className="text-center text-sm font-medium mb-3" style={{ color: '#7c6fa0' }}>I am a…</p>
+          <div className="grid grid-cols-3 gap-3">
+            {(Object.keys(roleConfig) as RoleKey[]).map((role) => {
+              const RoleIcon = roleConfig[role].icon;
+              const isActive = selectedRole === role;
+              return (
+                <button
+                  key={role}
+                  onClick={() => setSelectedRole(role)}
+                  className="flex flex-col items-center gap-2 py-4 px-2 rounded-2xl border-2 transition-all font-medium text-sm"
+                  style={{
+                    backgroundColor: isActive ? '#2c0f5b' : '#faf8ff',
+                    borderColor: isActive ? '#2c0f5b' : '#ede9f8',
+                    color: isActive ? '#ffffff' : '#4a3670',
+                    boxShadow: isActive ? '0 4px 16px rgba(44,15,91,0.18)' : 'none',
+                  }}
+                  data-testid={`role-btn-${role}`}
+                >
+                  <RoleIcon style={{ width: 22, height: 22, opacity: isActive ? 1 : 0.6 }} />
+                  <span>{roleConfig[role].label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
       <Tabs defaultValue={initialTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3 h-auto" style={{ backgroundColor: '#f0ebfa' }}>
           <TabsTrigger value="faq" data-testid="tab-faq" className="text-xs sm:text-sm py-2 sm:py-2.5">
@@ -307,7 +331,7 @@ export default function SupportPage() {
             </CardHeader>
             <CardContent>
               <Accordion type="single" collapsible className="w-full">
-                {faqs.map((faq, index) => (
+                {currentRole.faqs.map((faq, index) => (
                   <AccordionItem key={index} value={`item-${index}`}>
                     <AccordionTrigger data-testid={`faq-question-${index}`}>
                       {faq.question}
@@ -607,12 +631,9 @@ export default function SupportPage() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="general">General Inquiry</SelectItem>
-                              <SelectItem value="billing">Billing & Payments</SelectItem>
-                              <SelectItem value="technical">Technical Issue</SelectItem>
-                              <SelectItem value="account">Account Help</SelectItem>
-                              <SelectItem value="contractor">Contractor Services</SelectItem>
-                              <SelectItem value="feature_request">Feature Request</SelectItem>
+                              {currentRole.contactCategories.map(cat => (
+                                <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                           <FormMessage />
