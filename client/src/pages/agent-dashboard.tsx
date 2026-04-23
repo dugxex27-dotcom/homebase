@@ -4,13 +4,13 @@ import { Link, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { PageHero } from "@/components/page-hero";
 import { useAuth } from "@/hooks/useAuth";
 import { Users, DollarSign, TrendingUp, Copy, Share2, CheckCircle, Clock, XCircle, AlertCircle, ArrowRight, CreditCard, ExternalLink, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import QRCode from "qrcode";
 import type { User as UserType } from "@shared/schema";
+import "./home.css";
 
 interface AgentProfile {
   id: string;
@@ -220,12 +220,29 @@ export default function AgentDashboard() {
   };
 
   return (
-    <div className="min-h-screen">
-      <PageHero
-        eyebrow="Real Estate Agent"
-        title="Agent Dashboard"
-        subtitle="Track your referrals and earnings"
-      />
+    <div className="min-h-screen" style={{ background: '#ffffff' }}>
+
+      {/* ── DASH HEADER ─────────────────────────── */}
+      <div className="dash-header" style={{ background: '#1b5e20' }}>
+        <span className="dash-eyebrow" style={{ color: '#a7f3d0' }}>Real Estate Agent</span>
+        <div className="dash-title">Agent Dashboard</div>
+        <div className="dash-subtitle">Track your referrals and earnings</div>
+        <div className="dash-chips">
+          <div className="dash-chip">
+            <div className={`dash-chip-num${(stats?.totalReferrals || 0) > 0 ? ' good' : ''}`}>{stats?.totalReferrals || 0}</div>
+            <div className="dash-chip-label">Total Referrals</div>
+          </div>
+          <div className="dash-chip">
+            <div className={`dash-chip-num${(stats?.activeReferrals || 0) > 0 ? ' good' : ''}`}>{stats?.activeReferrals || 0}</div>
+            <div className="dash-chip-label">Active Subscribers</div>
+          </div>
+          <div className="dash-chip">
+            <div className={`dash-chip-num${(stats?.totalEarnings || 0) > 0 ? ' good' : ''}`}>${(stats?.totalEarnings || 0).toFixed(2)}</div>
+            <div className="dash-chip-label">Total Earnings</div>
+          </div>
+        </div>
+      </div>
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         {/* Verification Status Banner */}
@@ -251,63 +268,8 @@ export default function AgentDashboard() {
           </Alert>
         )}
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-white dark:bg-gray-800 border-emerald-200 shadow-lg">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-200">Total Referrals</CardTitle>
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#059669' }}>
-                <Users className="h-5 w-5 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats?.totalReferrals || 0}</div>
-              <p className="text-xs text-gray-600 dark:text-gray-400">All time</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white dark:bg-gray-800 border-emerald-200 shadow-lg">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-200">Active Subscribers</CardTitle>
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#059669' }}>
-                <CheckCircle className="h-5 w-5 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats?.activeReferrals || 0}</div>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Paying customers</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white dark:bg-gray-800 border-emerald-200 shadow-lg">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-200">Total Earnings</CardTitle>
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#059669' }}>
-                <DollarSign className="h-5 w-5 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-emerald-600">${(stats?.totalEarnings || 0).toFixed(2)}</div>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Paid out</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white dark:bg-gray-800 border-emerald-200 shadow-lg">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-200">Pending Earnings</CardTitle>
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#059669' }}>
-                <TrendingUp className="h-5 w-5 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-emerald-600">${(stats?.pendingEarnings || 0).toFixed(2)}</div>
-              <p className="text-xs text-gray-600 dark:text-gray-400">In progress</p>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Referral Link Section */}
-        <Card className="mb-8 bg-white dark:bg-gray-800 border-emerald-200 shadow-lg">
+        <Card className="mb-8 bg-white dark:bg-gray-800 border-emerald-200 shadow-lg rounded-2xl">
           <CardHeader>
             <CardTitle className="text-gray-900 dark:text-white">Your Referral Link</CardTitle>
           </CardHeader>
@@ -363,7 +325,7 @@ export default function AgentDashboard() {
         </Card>
 
         {/* Home Handoffs Section */}
-        <Card className="mb-8 bg-white dark:bg-gray-800 border-emerald-200 shadow-lg">
+        <Card className="mb-8 bg-white dark:bg-gray-800 border-emerald-200 shadow-lg rounded-2xl">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span className="flex items-center gap-2 text-gray-900 dark:text-white">
@@ -399,7 +361,7 @@ export default function AgentDashboard() {
         </Card>
 
         {/* Stripe Connect Section */}
-        <Card className="mb-8 bg-white dark:bg-gray-800 border-emerald-200 shadow-lg">
+        <Card className="mb-8 bg-white dark:bg-gray-800 border-emerald-200 shadow-lg rounded-2xl">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
               <CreditCard className="h-5 w-5" />
@@ -463,7 +425,7 @@ export default function AgentDashboard() {
 
         {/* Payout History */}
         {payouts.length > 0 && (
-          <Card className="mb-8 bg-white dark:bg-gray-800 border-emerald-200 shadow-lg">
+          <Card className="mb-8 bg-white dark:bg-gray-800 border-emerald-200 shadow-lg rounded-2xl">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
                 <DollarSign className="h-5 w-5" />
@@ -509,7 +471,7 @@ export default function AgentDashboard() {
         )}
 
         {/* Referrals List */}
-        <Card className="bg-white dark:bg-gray-800 border-emerald-200 shadow-lg">
+        <Card className="bg-white dark:bg-gray-800 border-emerald-200 shadow-lg rounded-2xl">
           <CardHeader>
             <CardTitle className="text-gray-900 dark:text-white">Your Referrals</CardTitle>
           </CardHeader>
