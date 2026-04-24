@@ -12,7 +12,6 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Eye, EyeOff } from "lucide-react";
 import logoContractor from '@assets/my-homebase-logo-tm-contractor-white-final_1776538414391.png';
-import iconContractor from '@assets/myhomebase-icon-contractor_1776539226017.png';
 
 const C = {
   header: '#1560A2',
@@ -53,7 +52,7 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
 
-const inpStyle = { background: '#fff', border: `1.5px solid ${C.border}`, borderRadius: 12, padding: '12px 14px', fontSize: 13, fontWeight: 500, color: C.label, height: 'auto', boxShadow: 'none', outline: 'none' } as React.CSSProperties;
+const inpStyle = { background: '#F3F5F7', border: `1.5px solid ${C.border}`, borderRadius: 12, padding: '12px 14px', fontSize: 13, fontWeight: 500, color: C.label, height: 'auto', boxShadow: 'none', outline: 'none' } as React.CSSProperties;
 const labelStyle = { fontSize: 11, fontWeight: 700, color: C.label, letterSpacing: '0.03em', marginBottom: 4, display: 'block' } as React.CSSProperties;
 
 const GoogleSVG = () => (
@@ -161,11 +160,10 @@ export default function SignInContractor() {
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: C.bg }}>
 
       {/* ── Role header ── */}
-      <div style={{ background: C.header, padding: '40px 24px 44px', textAlign: 'center', flexShrink: 0, position: 'relative', overflow: 'hidden' }}>
-        <img src={iconContractor} alt="" aria-hidden style={{ width: 130, height: 'auto', position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)', opacity: 0.18, pointerEvents: 'none' }} />
+      <div style={{ background: C.header, padding: '40px 24px 44px', textAlign: 'center', flexShrink: 0, position: 'relative' }}>
         <div style={{ marginBottom: 18, position: 'relative', zIndex: 2, display: 'flex', justifyContent: 'center' }}>
           <a href="/" style={{ display: 'inline-block' }}>
-            <img src={logoContractor} alt="MyHomeBase™ — go to home" style={{ width: 200, height: 'auto' }} />
+            <img src={logoContractor} alt="MyHomeBase™ — go to home" style={{ width: 200, height: 'auto', display: 'block' }} />
           </a>
         </div>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 20, padding: '4px 12px', marginBottom: 14, position: 'relative', zIndex: 2, background: 'rgba(255,255,255,0.1)' }}>
