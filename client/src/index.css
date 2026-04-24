@@ -935,3 +935,12 @@ body.signin-page footer:last-of-type {
     break-inside: avoid;
   }
 }
+
+/* ════════════════════════════════════
+   MODAL / DIALOG FONT — Inter
+   ════════════════════════════════════ */
+[role="dialog"],
+[data-radix-dialog-content],
+[data-radix-popper-content-wrapper] {
+  font-family: 'Inter', system-ui, sans-serif;
+}

@@ -165,7 +165,6 @@ export default function Landing() {
 
             <div
               className="mhb-stat-chip mhb-referral-chip mhb-claims-chip"
-              onMouseLeave={() => setClaimsOpen(false)}
             >
               <div className="mhb-stat-num"><strong>42</strong><span>%</span></div>
               <div className="mhb-referral-footer">
@@ -173,7 +172,6 @@ export default function Landing() {
                 <button
                   className="mhb-referral-trigger"
                   onClick={(e) => { e.stopPropagation(); setClaimsOpen(v => !v); }}
-                  onMouseEnter={() => setClaimsOpen(true)}
                   aria-label="The numbers behind 42%"
                 ><Info size={11} strokeWidth={2.5} /></button>
               </div>
@@ -231,7 +229,6 @@ export default function Landing() {
             </div>
             <div
               className="mhb-stat-chip mhb-referral-chip"
-              onMouseLeave={() => setPlansOpen(false)}
             >
               <div className="mhb-stat-num"><strong>$5</strong><span>/mo</span></div>
               <div className="mhb-referral-footer">
@@ -239,7 +236,6 @@ export default function Landing() {
                 <button
                   className="mhb-referral-trigger"
                   onClick={(e) => { e.stopPropagation(); setPlansOpen(v => !v); }}
-                  onMouseEnter={() => setPlansOpen(true)}
                   aria-label="View pricing plans"
                 ><Info size={11} strokeWidth={2.5} /></button>
               </div>
@@ -389,7 +385,6 @@ export default function Landing() {
             </div>
             <div
               className="mhb-stat-chip mhb-referral-chip"
-              onMouseLeave={() => setReferralOpen(false)}
             >
               <div className="mhb-stat-num mhb-referral-headline">
                 Refer 5.<br />Pay nothing.
@@ -399,7 +394,6 @@ export default function Landing() {
                 <button
                   className="mhb-referral-trigger"
                   onClick={(e) => { e.stopPropagation(); setReferralOpen(v => !v); }}
-                  onMouseEnter={() => setReferralOpen(true)}
                   aria-label="Learn more about referrals"
                 ><Info size={11} strokeWidth={2.5} /></button>
               </div>
