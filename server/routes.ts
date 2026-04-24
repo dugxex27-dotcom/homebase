@@ -4948,6 +4948,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI support chat
+  app.post('/api/support/ai-chat', async (req: any, res) => {
+    try {
+      const { question, role } = req.body;
+      if (!question || typeof question !== 'string' || question.trim().length === 0) {
+        return res.status(400).json({ message: 'Question is required' });
+      }
+      const safeRole = ['homeowner', 'contractor', 'agent'].includes(role) ? role : 'homeowner';
+      const roleLabel = safeRole === 'homeowner' ? 'Homeowner' : safeRole === 'contractor' ? 'Contractor' : 'RE Agent';
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || process.env.REPLIT_OPENAI_API_KEY });
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        max_tokens: 300,
+        messages: [
+          {
+            role: 'system',
+            content: `You are the MyHomeBase™ AI Support Assistant for ${roleLabel}s. MyHomeBase is a home management platform featuring the Home Wellness Score™, maintenance scheduling, contractor directory, and service record tracking. Answer support questions helpfully and concisely in 2-4 sentences. Stay focused on ${roleLabel}-relevant topics. Be warm, professional, and solution-oriented.`,
+          },
+          { role: 'user', content: question.trim() },
+        ],
+      });
+      const answer = completion.choices[0]?.message?.content || "I couldn't find an answer. Please open a support ticket and our team will help you shortly.";
+      res.json({ answer });
+    } catch (error: any) {
+      res.status(500).json({ answer: "Something went wrong. Please try again or open a support ticket." });
+    }
+  });
+
   // Support ticket routes - User endpoints
   app.get('/api/support/tickets', isAuthenticated, async (req: any, res) => {
     try {
