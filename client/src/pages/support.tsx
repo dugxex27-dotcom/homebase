@@ -336,7 +336,7 @@ export default function SupportPage() {
       {/* ── HEADER ── */}
       <div style={{
         background: `linear-gradient(160deg, ${r.dark} 0%, ${r.mid} 100%)`,
-        padding: '22px 18px 0',
+        padding: '16px 18px 0',
         position: 'relative',
         overflow: 'hidden',
       }}>
@@ -347,23 +347,24 @@ export default function SupportPage() {
           pointerEvents: 'none',
         }} />
 
-        <p style={{ fontSize: 10, letterSpacing: '2.5px', textTransform: 'uppercase', color: r.light, margin: '0 0 4px' }}>Help &amp; Support</p>
-        <h1 style={{ fontSize: 24, fontWeight: 'normal', color: '#fff', margin: '0 0 4px', lineHeight: 1.2 }}>Support Center</h1>
-        <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', margin: '0 0 18px', lineHeight: 1.5 }}>{r.greeting}</p>
+        <span style={{ display: 'block', fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: r.light, marginBottom: 5 }}>Help &amp; Support</span>
+        <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', letterSpacing: '-0.4px', lineHeight: 1.15, marginBottom: 4 }}>Support Center</div>
+        <div style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', marginBottom: 18 }}>{r.greeting}</div>
 
         {/* Stats */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 18 }}>
+        <div style={{ display: 'flex', gap: 8, paddingBottom: 18 }}>
           {[
             { val: r.faqs.length, label: 'FAQs' },
             { val: tickets.length, label: 'My Tickets' },
             { val: '24h', label: 'Response', accent: true },
           ].map(({ val, label, accent }) => (
             <div key={label} style={{
-              flex: 1, background: 'rgba(255,255,255,0.1)', borderRadius: 10,
-              padding: 10, textAlign: 'center',
+              flex: 1, background: 'rgba(255,255,255,0.08)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 13, padding: '10px 14px',
             }}>
-              <p style={{ fontSize: 18, fontWeight: 600, color: accent ? r.light : '#fff', margin: '0 0 2px' }}>{val}</p>
-              <p style={{ fontSize: 9, letterSpacing: '1px', color: 'rgba(255,255,255,0.6)', margin: 0, textTransform: 'uppercase' }}>{label}</p>
+              <div style={{ fontSize: 20, fontWeight: 800, color: accent ? r.light : '#fff', letterSpacing: '-0.5px', lineHeight: 1 }}>{val}</div>
+              <div style={{ fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.45)', marginTop: 4, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{label}</div>
             </div>
           ))}
         </div>
