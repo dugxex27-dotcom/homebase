@@ -797,6 +797,7 @@ export default function HouseMap({
               background: "#fff", borderRadius: "16px",
               padding: "18px", width: "100%", maxWidth: "380px",
               position: "relative",
+              maxHeight: "90dvh", overflowY: "auto",
             }}
             onClick={e => e.stopPropagation()}
           >
