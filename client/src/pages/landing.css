@@ -634,7 +634,7 @@
   margin: 0 0 5px;
   color: #1a1340;
   line-height: 1.25;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: 'Inter', system-ui, sans-serif;
 }
 
 .msc-subtitle {
@@ -738,7 +738,7 @@
   font-weight: 500;
   color: #fff;
   margin: 0 0 2px;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: 'Inter', system-ui, sans-serif;
 }
 
 .msc-cta-desc {
