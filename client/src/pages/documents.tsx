@@ -86,13 +86,6 @@ export default function Documents() {
   const [editDoc, setEditDoc] = useState<{ fileName: string; notes: string; category: string } | null>(null);
   const [editingHouseId, setEditingHouseId] = useState<string | null>(null);
   const [topSection, setTopSection] = useState<"documents" | "disclosures" | "insurance">("documents");
-  const [showBackToTop, setShowBackToTop] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => setShowBackToTop(window.scrollY > 320);
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   const { data: documents = [], isLoading } = useQuery<HomeDocument[]>({
     queryKey: ["/api/home-documents"],
@@ -809,21 +802,6 @@ export default function Documents() {
         </DialogContent>
       </Dialog>
 
-      {showBackToTop && (
-        <button
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          data-testid="button-back-to-top"
-          style={{
-            position: 'fixed', bottom: 88, right: 16, zIndex: 50,
-            width: 44, height: 44, borderRadius: '50%',
-            background: '#2c0f5b', border: 'none', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 16px rgba(44,15,91,0.35)',
-          }}
-          aria-label="Back to top"
-        >
-          <ChevronUp style={{ width: 20, height: 20, color: '#fff' }} />
-        </button>
       )}
     </div>
   );

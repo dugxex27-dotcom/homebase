@@ -5,6 +5,7 @@ import PublicHeader from '@/components/public-header';
 import Footer from '@/components/footer';
 import LoadingFallback from '@/components/loading-fallback';
 import ErrorBoundary from '@/components/error-boundary';
+import BackToTop from '@/components/back-to-top';
 
 interface UnauthenticatedLayoutProps {
   children: ReactNode;
@@ -33,6 +34,7 @@ export default function UnauthenticatedLayout({ children, hideHeader = false }: 
           </Suspense>
         </ErrorBoundary>
         <Footer />
+        <BackToTop bottom={24} />
       </motion.div>
     </AnimatePresence>
   );

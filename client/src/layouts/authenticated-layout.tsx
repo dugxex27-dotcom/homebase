@@ -6,6 +6,7 @@ import Sidebar from '@/components/sidebar';
 import BottomNav from '@/components/bottom-nav';
 import LoadingFallback from '@/components/loading-fallback';
 import ErrorBoundary from '@/components/error-boundary';
+import BackToTop from '@/components/back-to-top';
 
 interface AuthenticatedLayoutProps {
   children: ReactNode;
@@ -46,6 +47,9 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
 
       {/* Mobile bottom nav (< md) */}
       <BottomNav />
+
+      {/* Back-to-top — appears on all screens after scrolling down */}
+      <BackToTop bottom={88} />
     </div>
   );
 }

@@ -261,13 +261,6 @@ export default function Contractors() {
     }
   };
 
-  // Back-to-top button
-  const [showBackToTop, setShowBackToTop] = useState(false);
-  useEffect(() => {
-    const onScroll = () => setShowBackToTop(window.scrollY > 320);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
 
   // Track if filters have been applied at least once
   const [hasAppliedFilters, setHasAppliedFilters] = useState(false);
@@ -743,11 +736,6 @@ export default function Contractors() {
             )}
       </div>
 
-      {showBackToTop && (
-        <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} aria-label="Back to top" data-testid="button-back-to-top" style={{ position: 'fixed', bottom: '88px', right: '16px', zIndex: 50, width: 44, height: 44, borderRadius: '50%', backgroundColor: '#2c0f5b', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(44,15,91,0.45)' }}>
-          <ChevronUp style={{ width: 20, height: 20 }} />
-        </button>
-      )}
     </div>
   );
 }
