@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyHomeBase™ — Home Wellness Score</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f0f0f5;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 40px 16px;
+    }
+    :root {
+      --color-background-primary: #ffffff;
+      --color-background-secondary: #f3f4f6;
+      --color-text-primary: #1a1a2e;
+      --color-text-secondary: #4a5568;
+      --color-text-tertiary: #9ca3af;
+      --color-border-tertiary: #e5e7eb;
+    }
+  </style>
+</head>
+<body>
+
+<div style="font-family:'Inter',sans-serif;max-width:400px;width:100%;margin:0 auto;">
+<div style="background:#f3f4f6;border-radius:20px;padding:2px;">
+<div style="background:#ffffff;border-radius:18px;border:0.5px solid #e5e7eb;overflow:hidden;">
+
+  <div style="height:4px;background:linear-gradient(90deg,#534AB7,#185FA5);"></div>
+
+  <div style="padding:24px 22px 0;">
+    <p style="font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:#9ca3af;margin:0 0 6px;">MyHomeBase™</p>
+    <h2 style="font-size:20px;font-weight:500;margin:0 0 6px;color:#1a1a2e;line-height:1.25;">Home Wellness Score™</h2>
+    <p style="font-size:13px;color:#4a5568;margin:0 0 16px;line-height:1.5;">Your home's health, measured in real time. Starts at 1,000 — keep it high, keep your home protected.</p>
+    <div style="border-top:0.5px solid #e5e7eb;"></div>
+  </div>
+
+  <!-- Score Range -->
+  <div style="padding:18px 22px 0;">
+    <p style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#9ca3af;margin:0 0 12px;">Score Range — 0 to 1,000</p>
+    <div style="border:0.5px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+
+      <div style="background:#F0FAF4;border-bottom:0.5px solid #A7D7B8;padding:12px 16px;display:flex;align-items:flex-start;gap:12px;">
+        <div style="flex-shrink:0;margin-top:4px;width:10px;height:10px;border-radius:50%;background:#079669;"></div>
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">
+            <span style="font-size:13px;font-weight:600;color:#079669;">Excellent</span>
+            <span style="font-size:11px;color:#079669;font-weight:500;">800–1000 pts</span>
+          </div>
+          <p style="font-size:12px;color:#4a5568;margin:0;line-height:1.5;">Your home is well maintained. Systems are current, tasks are complete, and records are solid.</p>
+        </div>
+      </div>
+
+      <div style="background:#EEEDFE;border-bottom:0.5px solid #CECBF6;padding:12px 16px;display:flex;align-items:flex-start;gap:12px;">
+        <div style="flex-shrink:0;margin-top:4px;width:10px;height:10px;border-radius:50%;background:#3C258E;"></div>
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">
+            <span style="font-size:13px;font-weight:600;color:#3C258E;">Good</span>
+            <span style="font-size:11px;color:#3C258E;font-weight:500;">600–799 pts</span>
+          </div>
+          <p style="font-size:12px;color:#4a5568;margin:0;line-height:1.5;">Minor items pending. A few tasks or aging systems need attention to keep your score climbing.</p>
+        </div>
+      </div>
+
+      <div style="background:#FFFBEB;border-bottom:0.5px solid #FDE68A;padding:12px 16px;display:flex;align-items:flex-start;gap:12px;">
+        <div style="flex-shrink:0;margin-top:4px;width:10px;height:10px;border-radius:50%;background:#D97706;"></div>
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">
+            <span style="font-size:13px;font-weight:600;color:#D97706;">Fair</span>
+            <span style="font-size:11px;color:#D97706;font-weight:500;">400–599 pts</span>
+          </div>
+          <p style="font-size:12px;color:#4a5568;margin:0;line-height:1.5;">Attention needed. Several overdue tasks or older systems are pulling your score down.</p>
+        </div>
+      </div>
+
+      <div style="background:#FEF2F2;padding:12px 16px;display:flex;align-items:flex-start;gap:12px;">
+        <div style="flex-shrink:0;margin-top:4px;width:10px;height:10px;border-radius:50%;background:#DC2626;"></div>
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">
+            <span style="font-size:13px;font-weight:600;color:#DC2626;">Critical</span>
+            <span style="font-size:11px;color:#DC2626;font-weight:500;">0–399 pts</span>
+          </div>
+          <p style="font-size:12px;color:#4a5568;margin:0;line-height:1.5;">Immediate action required. Significant deferred maintenance or unknown system ages are affecting your score.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- What Affects Score -->
+  <div style="padding:18px 22px 0;">
+    <p style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#9ca3af;margin:0 0 12px;">What affects your score</p>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+
+      <div style="border-radius:12px;border:0.5px solid #FECACA;overflow:hidden;">
+        <button onclick="toggleFactor(0)" style="width:100%;padding:12px 14px;background:#FEF2F2;border:none;cursor:pointer;display:flex;align-items:center;gap:10px;text-align:left;font-family:'Inter',sans-serif;">
+          <span style="font-size:18px;flex-shrink:0;">📉</span>
+          <span style="font-size:13px;font-weight:500;color:#1a1a2e;flex:1;">System Age Depreciation</span>
+          <span id="fi-0" style="color:#DC2626;font-size:11px;flex-shrink:0;transition:transform 0.2s;display:inline-block;">▼</span>
+        </button>
+        <div id="fb-0" style="display:none;padding:10px 14px 12px 42px;font-size:12px;color:#4a5568;line-height:1.6;background:#fff;border-top:0.5px solid #FECACA;">HVAC, roof, plumbing, electrical, and water heater all lose points annually based on expected lifespan. Older systems cost you more.</div>
+      </div>
+
+      <div style="border-radius:12px;border:0.5px solid #FDE68A;overflow:hidden;">
+        <button onclick="toggleFactor(1)" style="width:100%;padding:12px 14px;background:#FFFBEB;border:none;cursor:pointer;display:flex;align-items:center;gap:10px;text-align:left;font-family:'Inter',sans-serif;">
+          <span style="font-size:18px;flex-shrink:0;">⏰</span>
+          <span style="font-size:13px;font-weight:500;color:#1a1a2e;flex:1;">Overdue Maintenance</span>
+          <span id="fi-1" style="color:#D97706;font-size:11px;flex-shrink:0;transition:transform 0.2s;display:inline-block;">▼</span>
+        </button>
+        <div id="fb-1" style="display:none;padding:10px 14px 12px 42px;font-size:12px;color:#4a5568;line-height:1.6;background:#fff;border-top:0.5px solid #FDE68A;">Tasks past their due date subtract points daily. The longer they sit unresolved, the steeper the penalty.</div>
+      </div>
+
+      <div style="border-radius:12px;border:0.5px solid #A7D7B8;overflow:hidden;">
+        <button onclick="toggleFactor(2)" style="width:100%;padding:12px 14px;background:#F0FAF4;border:none;cursor:pointer;display:flex;align-items:center;gap:10px;text-align:left;font-family:'Inter',sans-serif;">
+          <span style="font-size:18px;flex-shrink:0;">✅</span>
+          <span style="font-size:13px;font-weight:500;color:#1a1a2e;flex:1;">Task Completion</span>
+          <span id="fi-2" style="color:#079669;font-size:11px;flex-shrink:0;transition:transform 0.2s;display:inline-block;">▼</span>
+        </button>
+        <div id="fb-2" style="display:none;padding:10px 14px 12px 42px;font-size:12px;color:#4a5568;line-height:1.6;background:#fff;border-top:0.5px solid #A7D7B8;">Completing scheduled maintenance recovers points and builds a verified track record for buyers and insurers.</div>
+      </div>
+
+      <div style="border-radius:12px;border:0.5px solid #B5D4F4;overflow:hidden;">
+        <button onclick="toggleFactor(3)" style="width:100%;padding:12px 14px;background:#E6F1FB;border:none;cursor:pointer;display:flex;align-items:center;gap:10px;text-align:left;font-family:'Inter',sans-serif;">
+          <span style="font-size:18px;flex-shrink:0;">🔧</span>
+          <span style="font-size:13px;font-weight:500;color:#1a1a2e;flex:1;">Contractor & DIY Logs</span>
+          <span id="fi-3" style="color:#1560A2;font-size:11px;flex-shrink:0;transition:transform 0.2s;display:inline-block;">▼</span>
+        </button>
+        <div id="fb-3" style="display:none;padding:10px 14px 12px 42px;font-size:12px;color:#4a5568;line-height:1.6;background:#fff;border-top:0.5px solid #B5D4F4;">Logging verified work — by a pro or yourself — protects your score from depreciation and builds your home's history.</div>
+      </div>
+
+      <div style="border-radius:12px;border:0.5px solid #CECBF6;overflow:hidden;">
+        <button onclick="toggleFactor(4)" style="width:100%;padding:12px 14px;background:#EEEDFE;border:none;cursor:pointer;display:flex;align-items:center;gap:10px;text-align:left;font-family:'Inter',sans-serif;">
+          <span style="font-size:18px;flex-shrink:0;">🔄</span>
+          <span style="font-size:13px;font-weight:500;color:#1a1a2e;flex:1;">System Replacements</span>
+          <span id="fi-4" style="color:#3C258E;font-size:11px;flex-shrink:0;transition:transform 0.2s;display:inline-block;">▼</span>
+        </button>
+        <div id="fb-4" style="display:none;padding:10px 14px 12px 42px;font-size:12px;color:#4a5568;line-height:1.6;background:#fff;border-top:0.5px solid #CECBF6;">Replacing an aging system resets its depreciation clock and delivers a significant one-time score boost.</div>
+      </div>
+
+      <div style="border-radius:12px;border:0.5px solid #A7D7B8;overflow:hidden;">
+        <button onclick="toggleFactor(5)" style="width:100%;padding:12px 14px;background:#F0FAF4;border:none;cursor:pointer;display:flex;align-items:center;gap:10px;text-align:left;font-family:'Inter',sans-serif;">
+          <span style="font-size:18px;flex-shrink:0;">📋</span>
+          <span style="font-size:13px;font-weight:500;color:#1a1a2e;flex:1;">Record Completeness</span>
+          <span id="fi-5" style="color:#079669;font-size:11px;flex-shrink:0;transition:transform 0.2s;display:inline-block;">▼</span>
+        </button>
+        <div id="fb-5" style="display:none;padding:10px 14px 12px 42px;font-size:12px;color:#4a5568;line-height:1.6;background:#fff;border-top:0.5px solid #A7D7B8;">Unknown system ages are penalized until documented. Complete records across all systems score significantly higher.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- How to Improve -->
+  <div style="padding:18px 22px 0;">
+    <p style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#9ca3af;margin:0 0 12px;">How to improve your score</p>
+    <div style="border:0.5px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:#fff;border-bottom:0.5px solid #e5e7eb;">
+        <div style="width:26px;height:26px;border-radius:50%;background:#534AB7;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">1</div>
+        <p style="font-size:12px;color:#4a5568;margin:0;flex:1;line-height:1.4;">Complete your seasonal maintenance checklist</p>
+        <span style="font-size:11px;font-weight:600;color:#534AB7;white-space:nowrap;flex-shrink:0;">+20–50 pts</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:#fff;border-bottom:0.5px solid #e5e7eb;">
+        <div style="width:26px;height:26px;border-radius:50%;background:#534AB7;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</div>
+        <p style="font-size:12px;color:#4a5568;margin:0;flex:1;line-height:1.4;">Log all past contractor and DIY work</p>
+        <span style="font-size:11px;font-weight:600;color:#534AB7;white-space:nowrap;flex-shrink:0;">+15–40 pts</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:#fff;border-bottom:0.5px solid #e5e7eb;">
+        <div style="width:26px;height:26px;border-radius:50%;background:#534AB7;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</div>
+        <p style="font-size:12px;color:#4a5568;margin:0;flex:1;line-height:1.4;">Document the ages of all major home systems</p>
+        <span style="font-size:11px;font-weight:600;color:#534AB7;white-space:nowrap;flex-shrink:0;">+10–30 pts</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:#fff;border-bottom:0.5px solid #e5e7eb;">
+        <div style="width:26px;height:26px;border-radius:50%;background:#079669;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">4</div>
+        <p style="font-size:12px;color:#4a5568;margin:0;flex:1;line-height:1.4;">Replace aging systems before they reach end of life</p>
+        <span style="font-size:11px;font-weight:600;color:#079669;white-space:nowrap;flex-shrink:0;">+50–150 pts</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:#fff;border-bottom:0.5px solid #e5e7eb;">
+        <div style="width:26px;height:26px;border-radius:50%;background:#534AB7;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">5</div>
+        <p style="font-size:12px;color:#4a5568;margin:0;flex:1;line-height:1.4;">Clear overdue tasks — tackle the oldest ones first</p>
+        <span style="font-size:11px;font-weight:600;color:#534AB7;white-space:nowrap;flex-shrink:0;">+10–25 pts</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:#fff;">
+        <div style="width:26px;height:26px;border-radius:50%;background:#1560A2;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">6</div>
+        <p style="font-size:12px;color:#4a5568;margin:0;flex:1;line-height:1.4;">Stay consistent — your score compounds over time</p>
+        <span style="font-size:11px;font-weight:600;color:#1560A2;white-space:nowrap;flex-shrink:0;">Long-term</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Why It Matters -->
+  <div style="margin:18px 22px 28px;">
+    <div style="background:#EEEDFE;border:0.5px solid #CECBF6;border-radius:12px;padding:14px 16px;">
+      <p style="font-size:11px;font-weight:600;color:#3C258E;margin:0 0 6px;letter-spacing:0.5px;text-transform:uppercase;">Why it matters</p>
+      <p style="font-size:12px;color:#3C3489;margin:0;line-height:1.6;">A strong Home Wellness Score™ protects your insurance claims, increases resale value, and gives buyers confidence — the same way a Carfax report does for a car. It's the first transferable home health record of its kind.</p>
+    </div>
+  </div>
+
+</div>
+</div>
+</div>
+
+<script>
+function toggleFactor(i) {
+  const body = document.getElementById('fb-' + i);
+  const icon = document.getElementById('fi-' + i);
+  const open = body.style.display === 'block';
+  body.style.display = open ? 'none' : 'block';
+  icon.style.transform = open ? 'rotate(0deg)' : 'rotate(180deg)';
+}
+</script>
+
+</body>
+</html>

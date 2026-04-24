@@ -41,7 +41,7 @@ app.use(helmet({
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
       formAction: ["'self'"],
-      frameAncestors: ["'none'"], // Prevent clickjacking
+      frameAncestors: ["'self'"], // Prevent third-party clickjacking; allow same-origin iframes
       upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null,
     },
   },

@@ -78,6 +78,7 @@ const FAQ = lazy(() => import("./pages/faq"));
 const TermsOfService = lazy(() => import("./pages/terms-of-service"));
 const PrivacyPolicy = lazy(() => import("./pages/privacy-policy"));
 const LegalDisclaimer = lazy(() => import("./pages/legal-disclaimer"));
+const HwsModalPage = lazy(() => import("./pages/hws-modal"));
 
 // Lazy-loaded pages - Auth
 const Landing = lazy(() => import("./pages/landing"));
@@ -135,6 +136,7 @@ function Router() {
           <Route path="/legal-disclaimer" component={LegalDisclaimer} />
           <Route path="/support/:id" component={SupportTicketDetail} />
           <Route path="/support" component={Support} />
+          <Route path="/hws-modal" component={HwsModalPage} />
           <Route path="/contact" component={Contact} />
           <Route path="/faq" component={FAQ} />
           <Route path="/pay/invoice/:invoiceId" component={PayInvoice} />

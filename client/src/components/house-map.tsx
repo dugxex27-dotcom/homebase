@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { X, Thermometer, Zap, Droplets, Shield, Sun, Home, Wrench, Wind, Flame, Snowflake, Waves, Info, ClipboardList, Star, TrendingUp } from "lucide-react";
+import { X, Thermometer, Zap, Droplets, Shield, Sun, Home, Wrench, Wind, Flame, Snowflake, Waves, Info } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -619,7 +619,7 @@ export default function HouseMap({
                 background: "none", border: "none", cursor: "pointer",
                 padding: "2px 4px", marginTop: "2px",
               }}
-              title="How to improve your score"
+              title="Home Wellness Score™ — tap to learn more"
             >
               <span style={{
                 fontSize: "9px", color: "#9b97c4",
@@ -628,40 +628,46 @@ export default function HouseMap({
               <Info size={10} color="#b6a6f4" />
             </button>
 
-            {/* Info popover */}
+            {/* HWS full-screen modal overlay */}
             {showHwsInfo && (
               <div
+                onClick={() => setShowHwsInfo(false)}
                 style={{
-                  position: "absolute", top: "64px", right: 0, zIndex: 200,
-                  background: "#fff", borderRadius: "12px",
-                  boxShadow: "0 8px 32px rgba(45,31,110,0.18)",
-                  border: "1px solid rgba(83,74,183,0.12)",
-                  padding: "14px", width: "220px",
+                  position: "fixed", inset: 0, zIndex: 2000,
+                  background: "rgba(45,31,110,0.55)",
+                  display: "flex", alignItems: "flex-end", justifyContent: "center",
+                  padding: "0",
                 }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                  <span style={{ fontSize: "11px", fontWeight: 700, color: "#2d1f6e", letterSpacing: "0.04em" }}>
-                    Improve Your Score
-                  </span>
+                <div
+                  onClick={e => e.stopPropagation()}
+                  style={{
+                    width: "100%", maxWidth: "480px",
+                    height: "90vh",
+                    borderRadius: "20px 20px 0 0",
+                    overflow: "hidden",
+                    boxShadow: "0 -8px 40px rgba(45,31,110,0.25)",
+                    position: "relative",
+                    background: "#fff",
+                  }}
+                >
                   <button
                     onClick={() => setShowHwsInfo(false)}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: "#9b97c4", padding: 0 }}
+                    style={{
+                      position: "absolute", top: 12, right: 12, zIndex: 10,
+                      width: 28, height: 28, borderRadius: "50%",
+                      background: "rgba(83,74,183,0.1)", border: "none",
+                      cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                      color: "#534AB7",
+                    }}
                   >
-                    <X size={12} />
+                    <X size={14} />
                   </button>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  {[
-                    { Icon: ClipboardList, color: "#7c3aed", bg: "#f5f3ff", text: "Complete seasonal maintenance tasks" },
-                    { Icon: Wrench, color: "#2563eb", bg: "#eff6ff", text: "Log contractor or DIY work" },
-                    { Icon: Star, color: "#d97706", bg: "#fffbeb", text: "Stay consistent — score is cumulative" },
-                    { Icon: TrendingUp, color: "#059669", bg: "#ecfdf5", text: "Fix aging or unknown systems" },
-                  ].map(({ Icon, color, bg, text }) => (
-                    <div key={text} style={{ display: "flex", alignItems: "center", gap: "8px", background: bg, borderRadius: "8px", padding: "7px 9px" }}>
-                      <Icon size={13} color={color} style={{ flexShrink: 0 }} />
-                      <span style={{ fontSize: "11px", color: "#374151", fontWeight: 500, lineHeight: "1.4" }}>{text}</span>
-                    </div>
-                  ))}
+                  <iframe
+                    src="/hws-modal.html"
+                    title="Home Wellness Score™"
+                    style={{ width: "100%", height: "100%", border: "none", display: "block" }}
+                  />
                 </div>
               </div>
             )}
