@@ -229,14 +229,10 @@ function FaqItem({ q, a, r, index }: { q: string; a: string; r: typeof ROLES[Rol
 export default function SupportPage() {
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
-  const search = useSearch();
-  const roleParam = new URLSearchParams(search).get('role');
 
   const userRole = (user as any)?.role as RoleKey | undefined;
-  const safeUserRole: RoleKey = userRole && ROLES[userRole] ? userRole : 'homeowner';
-  const initialRole: RoleKey = (roleParam && ROLES[roleParam as RoleKey]) ? roleParam as RoleKey : safeUserRole;
+  const selectedRole: RoleKey = userRole && ROLES[userRole] ? userRole : 'homeowner';
 
-  const [selectedRole, setSelectedRole] = useState<RoleKey>(initialRole);
   const [activeTab, setActiveTab] = useState('faqs');
   const [searchQuery, setSearchQuery] = useState('');
   const [aiInput, setAiInput] = useState('');
@@ -327,12 +323,6 @@ export default function SupportPage() {
     },
   });
 
-  const roleTiles: { key: RoleKey; label: string; icon: React.ElementType; tileBg: string }[] = [
-    { key: 'homeowner', label: 'Homeowner', icon: Home,      tileBg: '#3C258E' },
-    { key: 'contractor', label: 'Contractor', icon: Wrench,  tileBg: '#1560A2' },
-    { key: 'agent',     label: 'RE Agent',   icon: UserCheck, tileBg: '#079669' },
-  ];
-
   const tabs = ['faqs', 'tickets', 'contact'] as const;
   const tabLabels: Record<string, string> = {
     faqs: 'FAQs',
@@ -376,34 +366,6 @@ export default function SupportPage() {
               <p style={{ fontSize: 9, letterSpacing: '1px', color: 'rgba(255,255,255,0.6)', margin: 0, textTransform: 'uppercase' }}>{label}</p>
             </div>
           ))}
-        </div>
-
-        {/* Role tiles */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 7, marginBottom: 18 }}>
-          {roleTiles.map(({ key, label, icon: Icon, tileBg }) => {
-            const isActive = selectedRole === key;
-            return (
-              <button
-                key={key}
-                onClick={() => { setSelectedRole(key); setSearchQuery(''); setAiResponse(null); setAiInput(''); }}
-                data-testid={`role-btn-${key}`}
-                style={{
-                  background: tileBg,
-                  border: isActive ? '2px solid rgba(255,255,255,0.5)' : '2px solid transparent',
-                  borderRadius: 13, padding: '11px 8px 13px',
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7,
-                  cursor: 'pointer',
-                  opacity: isActive ? 1 : 0.7,
-                  transition: 'opacity 0.15s, border-color 0.15s',
-                }}
-              >
-                <div style={{ width: 32, height: 32, background: 'rgba(255,255,255,0.15)', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon style={{ width: 15, height: 15, color: '#fff' }} />
-                </div>
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#fff', lineHeight: 1.2, textAlign: 'center' }}>{label}</span>
-              </button>
-            );
-          })}
         </div>
 
         {/* Search bar */}
