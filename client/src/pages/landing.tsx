@@ -443,9 +443,9 @@ export default function Landing() {
                                 <div key={i} className="mrr-step-row" style={{ opacity: hwSlider >= i ? 1 : 0.3 }}>
                                   <span className="mrr-step-ref">{i} ref{i !== 1 ? 's' : ''}</span>
                                   <div className="mrr-step-bar-wrap mrr-step-bar-wrap-hw">
-                                    <div className="mrr-step-bar" style={{ width: `${pct}%`, background: free ? '#0F6E56' : '#534AB7' }} />
+                                    <div className="mrr-step-bar" style={{ width: `${pct}%`, background: free ? '#09694A' : '#3C258E' }} />
                                   </div>
-                                  <span className="mrr-step-cost" style={{ color: free ? '#0F6E56' : '#534AB7' }}>{free ? 'Free' : `$${cost}`}</span>
+                                  <span className="mrr-step-cost" style={{ color: free ? '#09694A' : '#3C258E' }}>{free ? 'Free' : `$${cost}`}</span>
                                 </div>
                               );
                             })}
@@ -459,7 +459,7 @@ export default function Landing() {
                           <input type="range" min="0" max="5" value={hwSlider} step="1" className="mrr-range mrr-range-hw" onChange={e => setHwSlider(Number(e.target.value))} />
                           <div className="mrr-cost-row">
                             <span className="mrr-cost-label mrr-cost-label-hw">Your cost</span>
-                            <span className="mrr-cost-value" style={{ color: hwSlider === 5 ? '#0F6E56' : '#3C3489' }}>
+                            <span className="mrr-cost-value" style={{ color: hwSlider === 5 ? '#09694A' : '#3C3489' }}>
                               {hwSlider === 5 ? 'Free' : `$${5 - hwSlider}`}
                             </span>
                           </div>
@@ -491,9 +491,9 @@ export default function Landing() {
                                 <div key={i} className="mrr-step-row" style={{ opacity: ctSlider >= i ? 1 : 0.3 }}>
                                   <span className="mrr-step-ref">{i} ref{i !== 1 ? 's' : ''}</span>
                                   <div className="mrr-step-bar-wrap mrr-step-bar-wrap-ct">
-                                    <div className="mrr-step-bar" style={{ width: `${pct}%`, background: free ? '#0F6E56' : '#185FA5' }} />
+                                    <div className="mrr-step-bar" style={{ width: `${pct}%`, background: free ? '#09694A' : '#1560A2' }} />
                                   </div>
-                                  <span className="mrr-step-cost" style={{ color: free ? '#0F6E56' : '#185FA5' }}>{free ? 'Free' : `$${cost}`}</span>
+                                  <span className="mrr-step-cost" style={{ color: free ? '#09694A' : '#1560A2' }}>{free ? 'Free' : `$${cost}`}</span>
                                 </div>
                               );
                             })}
@@ -507,7 +507,7 @@ export default function Landing() {
                           <input type="range" min="0" max="20" value={ctSlider} step="1" className="mrr-range mrr-range-ct" onChange={e => setCtSlider(Number(e.target.value))} />
                           <div className="mrr-cost-row">
                             <span className="mrr-cost-label mrr-cost-label-ct">Your cost</span>
-                            <span className="mrr-cost-value" style={{ color: ctSlider === 20 ? '#0F6E56' : '#0C447C' }}>
+                            <span className="mrr-cost-value" style={{ color: ctSlider === 20 ? '#09694A' : '#0C447C' }}>
                               {ctSlider === 20 ? 'Free' : `$${20 - ctSlider}`}
                             </span>
                           </div>

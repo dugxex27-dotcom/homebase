@@ -28,9 +28,9 @@ import type { User as UserType, Conversation, Message, Contractor, Proposal, Con
 import { formatDistanceToNow } from "date-fns";
 
 const ROLE_PALETTE = {
-  homeowner: { bg: '#2d1f6e', eyebrow: '#CECBF6', label: 'Homeowner' },
-  contractor: { bg: '#0c2461', eyebrow: '#93c5fd', label: 'Contractor' },
-  agent:      { bg: '#064e3b', eyebrow: '#6ee7b7', label: 'RE Agent'  },
+  homeowner: { bg: '#3C258E', eyebrow: '#B6A6F4', label: 'Homeowner' },
+  contractor: { bg: '#1560A2', eyebrow: '#AFD6F9', label: 'Contractor' },
+  agent:      { bg: '#09694A', eyebrow: '#D4EBDE', label: 'RE Agent'  },
 } as const;
 
 interface ConversationWithDetails extends Conversation {

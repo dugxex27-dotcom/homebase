@@ -344,8 +344,8 @@ export default function AgentAccount() {
   if (isLoading) {
     return (
       <div className="min-h-screen" style={{ background: '#ffffff' }}>
-        <div className="dash-header" style={{ background: '#1b5e20' }}>
-          <span className="dash-eyebrow" style={{ color: '#a7f3d0' }}>Real Estate Agent</span>
+        <div className="dash-header" style={{ background: '#09694A' }}>
+          <span className="dash-eyebrow" style={{ color: '#D4EBDE' }}>Real Estate Agent</span>
           <div className="dash-title">Account Settings</div>
           <div className="dash-subtitle">Loading your profile...</div>
         </div>
@@ -356,8 +356,8 @@ export default function AgentAccount() {
 
   return (
     <div className="min-h-screen" style={{ background: '#ffffff' }}>
-      <div className="dash-header" style={{ background: '#1b5e20' }}>
-        <span className="dash-eyebrow" style={{ color: '#a7f3d0' }}>Real Estate Agent</span>
+      <div className="dash-header" style={{ background: '#09694A' }}>
+        <span className="dash-eyebrow" style={{ color: '#D4EBDE' }}>Real Estate Agent</span>
         <div className="dash-title">Account Settings</div>
         <div className="dash-subtitle">Verify your license to start earning referral commissions</div>
       </div>

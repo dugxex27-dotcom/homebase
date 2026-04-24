@@ -15,14 +15,14 @@ import logoAgent from '@assets/my-homebase-logo-tm-re-white-final_1776538414394.
 import iconAgent from '@assets/myhomebase-icon-re_1776539226017.png';
 
 const C = {
-  header: '#173404',
+  header: '#09694A',
   bg: '#f0f7e8',
-  primary: '#3B6D11',
+  primary: '#079669',
   border: 'rgba(59,109,17,0.15)',
   cardBorder: 'rgba(59,109,17,0.1)',
   eyebrow: '#C0DD97',
   inactive: '#7aaa55',
-  label: '#173404',
+  label: '#09694A',
 };
 
 const loginSchema = z.object({

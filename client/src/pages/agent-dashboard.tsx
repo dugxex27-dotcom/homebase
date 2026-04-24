@@ -224,8 +224,8 @@ export default function AgentDashboard() {
     <div className="min-h-screen" style={{ background: '#ffffff' }}>
 
       {/* ── DASH HEADER ─────────────────────────── */}
-      <div className="dash-header" style={{ background: '#1b5e20' }}>
-        <span className="dash-eyebrow" style={{ color: '#a7f3d0' }}>Real Estate Agent</span>
+      <div className="dash-header" style={{ background: '#09694A' }}>
+        <span className="dash-eyebrow" style={{ color: '#D4EBDE' }}>Real Estate Agent</span>
         <div className="dash-title">Agent Dashboard</div>
         <div className="dash-subtitle">Track your referrals and earnings</div>
         <div className="dash-chips">

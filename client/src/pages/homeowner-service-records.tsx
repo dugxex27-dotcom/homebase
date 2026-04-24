@@ -710,11 +710,11 @@ export default function HomeownerServiceRecords() {
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-start gap-3">
                       <div style={{ background: '#EEEDFE', padding: 8, borderRadius: 10, flexShrink: 0 }}>
-                        <Wrench style={{ width: 18, height: 18, color: '#534AB7' }} />
+                        <Wrench style={{ width: 18, height: 18, color: '#3C258E' }} />
                       </div>
                       <div style={{ minWidth: 0 }}>
                         <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <h4 style={{ fontWeight: 700, fontSize: 13, color: '#2d1f6e', lineHeight: 1.3 }}>
+                          <h4 style={{ fontWeight: 700, fontSize: 13, color: '#2C0F5B', lineHeight: 1.3 }}>
                             {log.serviceDescription}
                           </h4>
                           {aiVerifiedLogIds.has(log.id) && (
@@ -723,7 +723,7 @@ export default function HomeownerServiceRecords() {
                             </Badge>
                           )}
                         </div>
-                        <div className="flex items-center flex-wrap gap-3" style={{ fontSize: 11, color: '#534AB7', marginTop: 3 }}>
+                        <div className="flex items-center flex-wrap gap-3" style={{ fontSize: 11, color: '#3C258E', marginTop: 3 }}>
                           <span className="flex items-center gap-1">
                             <Calendar style={{ width: 13, height: 13 }} />
                             {new Date(log.serviceDate).toLocaleDateString()}
@@ -734,7 +734,7 @@ export default function HomeownerServiceRecords() {
                               {getHomeAreaLabel(log.homeArea)}
                             </span>
                           )}
-                          <span style={{ background: '#EEEDFE', color: '#534AB7', borderRadius: 5, padding: '2px 7px', fontSize: 10, fontWeight: 600 }}>
+                          <span style={{ background: '#EEEDFE', color: '#3C258E', borderRadius: 5, padding: '2px 7px', fontSize: 10, fontWeight: 600 }}>
                             {getServiceTypeLabel(log.serviceType)}
                           </span>
                         </div>
@@ -745,7 +745,7 @@ export default function HomeownerServiceRecords() {
                         size="sm" 
                         variant="ghost" 
                         onClick={() => handleEditMaintenanceLog(log)}
-                        style={{ color: '#534AB7' }}
+                        style={{ color: '#3C258E' }}
                         data-testid={`button-edit-record-${log.id}`}
                       >
                         <Edit className="w-4 h-4" />
@@ -767,7 +767,7 @@ export default function HomeownerServiceRecords() {
                       {log.cost && (
                         <span className="flex items-center gap-1">
                           <DollarSign style={{ width: 13, height: 13 }} />
-                          <span style={{ fontWeight: 600, color: '#2d1f6e' }}>${log.cost}</span>
+                          <span style={{ fontWeight: 600, color: '#2C0F5B' }}>${log.cost}</span>
                         </span>
                       )}
                       {log.contractorName && (
@@ -802,7 +802,7 @@ export default function HomeownerServiceRecords() {
                     <div className="mt-4 space-y-3">
                       {log.receiptUrls && log.receiptUrls.length > 0 && (
                         <div>
-                          <h5 style={{ fontSize: 11, fontWeight: 700, color: '#534AB7', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <h5 style={{ fontSize: 11, fontWeight: 700, color: '#3C258E', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
                             <FileText style={{ width: 13, height: 13 }} />
                             Receipts ({log.receiptUrls.length})
                           </h5>
@@ -826,7 +826,7 @@ export default function HomeownerServiceRecords() {
                       )}
                       {log.beforePhotoUrls && log.beforePhotoUrls.length > 0 && (
                         <div>
-                          <h5 style={{ fontSize: 11, fontWeight: 700, color: '#534AB7', marginBottom: 6 }}>Before Photos ({log.beforePhotoUrls.length})</h5>
+                          <h5 style={{ fontSize: 11, fontWeight: 700, color: '#3C258E', marginBottom: 6 }}>Before Photos ({log.beforePhotoUrls.length})</h5>
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             {log.beforePhotoUrls.map((url: string, index: number) => (
                               <a key={index} href={url} target="_blank" rel="noopener noreferrer"
@@ -839,7 +839,7 @@ export default function HomeownerServiceRecords() {
                       )}
                       {log.afterPhotoUrls && log.afterPhotoUrls.length > 0 && (
                         <div>
-                          <h5 style={{ fontSize: 11, fontWeight: 700, color: '#534AB7', marginBottom: 6 }}>After Photos ({log.afterPhotoUrls.length})</h5>
+                          <h5 style={{ fontSize: 11, fontWeight: 700, color: '#3C258E', marginBottom: 6 }}>After Photos ({log.afterPhotoUrls.length})</h5>
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             {log.afterPhotoUrls.map((url: string, index: number) => (
                               <a key={index} href={url} target="_blank" rel="noopener noreferrer"
@@ -854,7 +854,7 @@ export default function HomeownerServiceRecords() {
                   )}
                   
                   {log.createdAt && (
-                    <div style={{ marginTop: 10, fontSize: 10, color: '#9b97c4', borderTop: '1px solid #EEEDFE', paddingTop: 8 }}>
+                    <div style={{ marginTop: 10, fontSize: 10, color: '#B6A6F4', borderTop: '1px solid #EEEDFE', paddingTop: 8 }}>
                       Record added on {new Date(log.createdAt).toLocaleDateString('en-US', { 
                         year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
                       })}
@@ -905,7 +905,7 @@ export default function HomeownerServiceRecords() {
         ) : (
           <div className="dash-light-card" style={{ textAlign: 'center', padding: '32px 20px' }}>
             <div style={{ width: 52, height: 52, background: '#EEEDFE', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
-              <FileText style={{ width: 24, height: 24, color: '#534AB7' }} />
+              <FileText style={{ width: 24, height: 24, color: '#3C258E' }} />
             </div>
             <div className="dash-light-card-title" style={{ marginBottom: 6 }}>No service records yet</div>
             <div className="dash-light-card-sub" style={{ marginBottom: 18 }}>

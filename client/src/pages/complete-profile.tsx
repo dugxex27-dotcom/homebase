@@ -127,10 +127,10 @@ export default function CompleteProfile() {
               marginBottom: 16,
             }}
           >
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#534AB7', flexShrink: 0 }} />
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#3C258E', flexShrink: 0 }} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: '#2d1f6e', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Selected plan</p>
-              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#534AB7' }}>{pendingPlan.name} — {pendingPlan.price}</p>
+              <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: '#2C0F5B', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Selected plan</p>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#3C258E' }}>{pendingPlan.name} — {pendingPlan.price}</p>
             </div>
           </div>
         )}

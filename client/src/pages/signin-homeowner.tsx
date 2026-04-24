@@ -16,14 +16,14 @@ import iconHomeowner from '@assets/myhomebase-icon-homeowner_1776539226013.png';
 import { PLAN_LABELS } from '@/lib/planLabels';
 
 const C = {
-  header: '#2d1f6e',
+  header: '#2C0F5B',
   bg: '#f0eef8',
-  primary: '#534AB7',
+  primary: '#3C258E',
   border: 'rgba(83,74,183,0.12)',
   cardBorder: 'rgba(83,74,183,0.1)',
-  eyebrow: '#CECBF6',
-  inactive: '#9b97c4',
-  label: '#2d1f6e',
+  eyebrow: '#B6A6F4',
+  inactive: '#B6A6F4',
+  label: '#2C0F5B',
 };
 
 const loginSchema = z.object({
@@ -183,8 +183,8 @@ export default function SignInHomeowner() {
           </a>
         </div>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 20, padding: '4px 12px', marginBottom: 14, position: 'relative', zIndex: 2, background: 'rgba(255,255,255,0.1)' }}>
-          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#CECBF6' }} />
-          <span style={{ fontSize: 10, fontWeight: 700, color: '#CECBF6', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Homeowner</span>
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#B6A6F4' }} />
+          <span style={{ fontSize: 10, fontWeight: 700, color: '#B6A6F4', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Homeowner</span>
         </div>
         <div style={{ fontSize: 26, fontWeight: 800, color: '#fff', letterSpacing: '-0.5px', lineHeight: 1.15, position: 'relative', zIndex: 2, marginBottom: 8 }}>Welcome back</div>
         <div style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', position: 'relative', zIndex: 2, lineHeight: 1.5 }}>Sign in to your homeowner account</div>

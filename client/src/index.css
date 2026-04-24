@@ -59,40 +59,40 @@
 
   /* ── Per-role palette tokens (spec §3) ── */
   /* Homeowner — Purple */
-  --hw-primary:   #2d1f6e;
-  --hw-accent:    #534AB7;
-  --hw-accent-lt: #7F77DD;
+  --hw-primary:   #2C0F5B;
+  --hw-accent:    #3C258E;
+  --hw-accent-lt: #B6A6F4;
   --hw-fill:      #EEEDFE;
   --hw-bg:        #f0eef8;
-  --hw-muted:     #9b97c4;
-  --hw-border:    rgba(83,74,183,0.1);
-  --hw-border-h:  rgba(83,74,183,0.35);
-  --hw-modal-bg:  rgba(45,31,110,0.6);
-  --hw-eyebrow:   #CECBF6;
+  --hw-muted:     #B6A6F4;
+  --hw-border:    rgba(60,37,142,0.1);
+  --hw-border-h:  rgba(60,37,142,0.35);
+  --hw-modal-bg:  rgba(44,15,91,0.6);
+  --hw-eyebrow:   #B6A6F4;
 
   /* Contractor — Blue */
-  --co-primary:   #042C53;
-  --co-accent:    #185FA5;
-  --co-accent-lt: #378ADD;
-  --co-fill:      #E6F1FB;
-  --co-bg:        #eef4fc;
-  --co-muted:     #7badd4;
-  --co-border:    rgba(24,95,165,0.1);
-  --co-border-h:  rgba(24,95,165,0.35);
-  --co-modal-bg:  rgba(4,44,83,0.6);
-  --co-eyebrow:   #B5D4F4;
+  --co-primary:   #1560A2;
+  --co-accent:    #1560A2;
+  --co-accent-lt: #3798EF;
+  --co-fill:      #EAF4FD;
+  --co-bg:        #F0F7FE;
+  --co-muted:     #518EBC;
+  --co-border:    rgba(21,96,162,0.1);
+  --co-border-h:  rgba(21,96,162,0.35);
+  --co-modal-bg:  rgba(21,96,162,0.6);
+  --co-eyebrow:   #AFD6F9;
 
   /* Agent — Green */
-  --ag-primary:   #173404;
-  --ag-accent:    #3B6D11;
-  --ag-accent-lt: #639922;
-  --ag-fill:      #EAF3DE;
-  --ag-bg:        #f0f7e8;
-  --ag-muted:     #7aaa4a;
-  --ag-border:    rgba(59,109,17,0.1);
-  --ag-border-h:  rgba(59,109,17,0.35);
-  --ag-modal-bg:  rgba(23,52,4,0.6);
-  --ag-eyebrow:   #C0DD97;
+  --ag-primary:   #09694A;
+  --ag-accent:    #079669;
+  --ag-accent-lt: #D4EBDE;
+  --ag-fill:      #E8F5EE;
+  --ag-bg:        #F0F8F3;
+  --ag-muted:     #079669;
+  --ag-border:    rgba(7,150,105,0.1);
+  --ag-border-h:  rgba(7,150,105,0.35);
+  --ag-modal-bg:  rgba(9,105,74,0.6);
+  --ag-eyebrow:   #D4EBDE;
 
   /* Status colors — same for all user types */
   --s-good-bg:     #EAF3DE;
@@ -152,13 +152,13 @@ body[data-role="homeowner"],
 
   /* Shadcn semantic tokens */
   --background:          #ffffff;
-  --foreground:          var(--hw-primary);
+  --foreground:          #000000;
   --muted:               var(--hw-bg);
   --muted-foreground:    var(--hw-muted);
   --popover:             #ffffff;
-  --popover-foreground:  var(--hw-primary);
+  --popover-foreground:  #000000;
   --card:                #ffffff;
-  --card-foreground:     var(--hw-primary);
+  --card-foreground:     #000000;
   --border:              rgba(0, 0, 0, 0.07);
   --input:               var(--hw-fill);
   --primary:             var(--hw-accent);
@@ -173,13 +173,13 @@ body[data-role="homeowner"],
   --ring-offset:         #ffffff;
   --page-background:     var(--hw-bg);
   --sidebar-bg:          #ffffff;
-  --sidebar-border:      rgba(83, 74, 183, 0.12);
+  --sidebar-border:      rgba(60, 37, 142, 0.12);
   --sidebar-active:      var(--hw-accent);
   --sidebar-active-bg:   var(--hw-fill);
   --footer-bg:           var(--hw-primary);
 
   /* Charts */
-  --chart-1: #534AB7;
+  --chart-1: #3C258E;
   --chart-2: hsl(199, 89%, 48%);
   --chart-3: hsl(142, 71%, 45%);
   --chart-4: hsl(45, 93%, 47%);
@@ -203,13 +203,13 @@ body[data-role="contractor"],
   --theme-eyebrow:        var(--co-eyebrow);
 
   --background:           #ffffff;
-  --foreground:           var(--co-primary);
+  --foreground:           #000000;
   --muted:                var(--co-bg);
   --muted-foreground:     var(--co-muted);
   --popover:              #ffffff;
-  --popover-foreground:   var(--co-primary);
+  --popover-foreground:   #000000;
   --card:                 #ffffff;
-  --card-foreground:      var(--co-primary);
+  --card-foreground:      #000000;
   --border:               rgba(0, 0, 0, 0.07);
   --input:                var(--co-fill);
   --primary:              var(--co-accent);
@@ -222,12 +222,12 @@ body[data-role="contractor"],
   --ring-offset:          #ffffff;
   --page-background:      var(--co-bg);
   --sidebar-bg:           #ffffff;
-  --sidebar-border:       rgba(24, 95, 165, 0.12);
+  --sidebar-border:       rgba(21, 96, 162, 0.12);
   --sidebar-active:       var(--co-accent);
   --sidebar-active-bg:    var(--co-fill);
   --footer-bg:            var(--co-primary);
 
-  --chart-1: #185FA5;
+  --chart-1: #1560A2;
   --chart-2: hsl(199, 89%, 48%);
   --chart-3: hsl(142, 71%, 45%);
   --chart-4: hsl(45, 93%, 47%);
@@ -251,13 +251,13 @@ body[data-role="agent"],
   --theme-eyebrow:        var(--ag-eyebrow);
 
   --background:           #ffffff;
-  --foreground:           var(--ag-primary);
+  --foreground:           #000000;
   --muted:                var(--ag-bg);
   --muted-foreground:     var(--ag-muted);
   --popover:              #ffffff;
-  --popover-foreground:   var(--ag-primary);
+  --popover-foreground:   #000000;
   --card:                 #ffffff;
-  --card-foreground:      var(--ag-primary);
+  --card-foreground:      #000000;
   --border:               rgba(0, 0, 0, 0.07);
   --input:                var(--ag-fill);
   --primary:              var(--ag-accent);
@@ -270,12 +270,12 @@ body[data-role="agent"],
   --ring-offset:          #ffffff;
   --page-background:      var(--ag-bg);
   --sidebar-bg:           #ffffff;
-  --sidebar-border:       rgba(59, 109, 17, 0.12);
+  --sidebar-border:       rgba(7, 150, 105, 0.12);
   --sidebar-active:       var(--ag-accent);
   --sidebar-active-bg:    var(--ag-fill);
   --footer-bg:            var(--ag-primary);
 
-  --chart-1: #3B6D11;
+  --chart-1: #079669;
   --chart-2: hsl(199, 89%, 48%);
   --chart-3: hsl(142, 71%, 45%);
   --chart-4: hsl(45, 93%, 47%);

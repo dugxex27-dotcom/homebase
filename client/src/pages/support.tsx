@@ -39,9 +39,9 @@ type ContactFormData = z.infer<typeof contactFormSchema>;
 type RoleKey = 'homeowner' | 'contractor' | 'agent';
 
 const ROLE_PALETTE: Record<RoleKey, { bg: string; eyebrow: string; tileBg: string }> = {
-  homeowner: { bg: '#2d1f6e', eyebrow: '#CECBF6', tileBg: '#534AB7' },
-  contractor: { bg: '#0c2461', eyebrow: '#93c5fd', tileBg: '#185FA5' },
-  agent:      { bg: '#064e3b', eyebrow: '#6ee7b7', tileBg: '#3B6D11' },
+  homeowner: { bg: '#2C0F5B', eyebrow: '#B6A6F4', tileBg: '#3C258E' },
+  contractor: { bg: '#2C0F5B', eyebrow: '#AFD6F9', tileBg: '#1560A2' },
+  agent:      { bg: '#2C0F5B', eyebrow: '#D4EBDE', tileBg: '#079669' },
 };
 
 const roleConfig: Record<RoleKey, {
@@ -313,12 +313,12 @@ export default function SupportPage() {
 
         {/* Search */}
         <div style={{ background: '#fff', borderRadius: 12, padding: '11px 14px', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid rgba(83,74,183,0.12)' }}>
-          <Search style={{ width: 14, height: 14, color: '#9b97c4', flexShrink: 0 }} />
+          <Search style={{ width: 14, height: 14, color: '#B6A6F4', flexShrink: 0 }} />
           <input
             value={searchQuery}
             onChange={e => { setSearchQuery(e.target.value); setShowAllFaqs(true); setExpandedFaq(null); }}
             placeholder="Search FAQs..."
-            style={{ background: 'transparent', border: 'none', outline: 'none', flex: 1, fontSize: 13, fontWeight: 500, color: '#2d1f6e' }}
+            style={{ background: 'transparent', border: 'none', outline: 'none', flex: 1, fontSize: 13, fontWeight: 500, color: '#000000' }}
           />
         </div>
 
@@ -388,7 +388,7 @@ export default function SupportPage() {
               </div>
 
               {filteredFaqs.length === 0 ? (
-                <div style={{ padding: '20px 14px', textAlign: 'center', color: '#9b97c4', fontSize: 13 }}>
+                <div style={{ padding: '20px 14px', textAlign: 'center', color: '#B6A6F4', fontSize: 13 }}>
                   No FAQs match your search.
                 </div>
               ) : (
@@ -401,7 +401,7 @@ export default function SupportPage() {
                     >
                       <span style={{ fontSize: 12, fontWeight: 600, color: palette.bg, flex: 1, marginRight: 10, lineHeight: 1.4 }}>{faq.question}</span>
                       <ChevronRight
-                        style={{ width: 14, height: 14, color: '#9b97c4', flexShrink: 0, transform: expandedFaq === idx ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}
+                        style={{ width: 14, height: 14, color: '#B6A6F4', flexShrink: 0, transform: expandedFaq === idx ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}
                       />
                     </button>
                     {expandedFaq === idx && (
@@ -533,12 +533,12 @@ export default function SupportPage() {
             )}
 
             {ticketsLoading ? (
-              <div style={{ textAlign: 'center', padding: '24px 0', color: '#9b97c4', fontSize: 13 }}>Loading tickets…</div>
+              <div style={{ textAlign: 'center', padding: '24px 0', color: '#B6A6F4', fontSize: 13 }}>Loading tickets…</div>
             ) : tickets.length === 0 ? (
               <div style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(83,74,183,0.1)', padding: '32px 16px', textAlign: 'center' }}>
                 <Ticket style={{ width: 36, height: 36, margin: '0 auto 12px', color: '#c4c1e0' }} />
                 <div style={{ fontSize: 13, fontWeight: 700, color: palette.bg, marginBottom: 4 }}>No tickets yet</div>
-                <div style={{ fontSize: 12, color: '#9b97c4' }}>Create a ticket to get help from our team</div>
+                <div style={{ fontSize: 12, color: '#B6A6F4' }}>Create a ticket to get help from our team</div>
               </div>
             ) : (
               tickets.map(ticket => {
@@ -551,13 +551,13 @@ export default function SupportPage() {
                       style={{ background: '#fff', borderRadius: 14, border: '1px solid rgba(83,74,183,0.1)', padding: '14px', cursor: 'pointer' }}
                     >
                       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
-                        <div data-testid={`ticket-subject-${ticket.id}`} style={{ fontSize: 13, fontWeight: 700, color: '#2d1f6e', flex: 1 }}>{ticket.subject}</div>
+                        <div data-testid={`ticket-subject-${ticket.id}`} style={{ fontSize: 13, fontWeight: 700, color: '#000000', flex: 1 }}>{ticket.subject}</div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                           <div className={`h-2 w-2 rounded-full ${statusColor}`} />
-                          <StatusIcon style={{ width: 13, height: 13, color: '#9b97c4' }} />
+                          <StatusIcon style={{ width: 13, height: 13, color: '#B6A6F4' }} />
                         </div>
                       </div>
-                      <div style={{ fontSize: 11, color: '#9b97c4' }}>
+                      <div style={{ fontSize: 11, color: '#B6A6F4' }}>
                         {categoryLabels[ticket.category as keyof typeof categoryLabels]} · {priorityLabels[ticket.priority as keyof typeof priorityLabels]} priority
                       </div>
                       <div style={{ fontSize: 11, color: '#c4c1e0', marginTop: 4 }}>

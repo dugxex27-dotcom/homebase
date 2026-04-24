@@ -1163,8 +1163,8 @@ export default function ContractorProfile() {
     <div className="min-h-screen" style={{ background: '#f8fafc' }}>
 
       {/* ── DASH HEADER ─────────────────────────── */}
-      <div className="dash-header" style={{ background: '#0c2461' }}>
-        <span className="dash-eyebrow" style={{ color: '#93c5fd' }}>Contractor</span>
+      <div className="dash-header" style={{ background: '#1560A2' }}>
+        <span className="dash-eyebrow" style={{ color: '#AFD6F9' }}>Contractor</span>
         <div className="dash-title">My Profile</div>
         <div className="dash-subtitle">Manage your business info and credentials</div>
         <div className="dash-chips">

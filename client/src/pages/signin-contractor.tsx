@@ -15,14 +15,14 @@ import logoContractor from '@assets/my-homebase-logo-tm-contractor-white-final_1
 import iconContractor from '@assets/myhomebase-icon-contractor_1776539226017.png';
 
 const C = {
-  header: '#042C53',
+  header: '#1560A2',
   bg: '#eef4fc',
-  primary: '#185FA5',
+  primary: '#1560A2',
   border: 'rgba(24,95,165,0.12)',
   cardBorder: 'rgba(24,95,165,0.1)',
   eyebrow: '#B5D4F4',
   inactive: '#7badd4',
-  label: '#042C53',
+  label: '#1560A2',
 };
 
 const loginSchema = z.object({

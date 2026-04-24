@@ -110,8 +110,8 @@ export default function AgentReferral() {
   if (!typedUser) {
     return (
       <div className="min-h-screen" style={{ background: '#ffffff' }}>
-        <div className="dash-header" style={{ background: '#1b5e20' }}>
-          <span className="dash-eyebrow" style={{ color: '#a7f3d0' }}>Real Estate Agent</span>
+        <div className="dash-header" style={{ background: '#09694A' }}>
+          <span className="dash-eyebrow" style={{ color: '#D4EBDE' }}>Real Estate Agent</span>
           <div className="dash-title">Referral Program</div>
           <div className="dash-subtitle">Loading...</div>
         </div>
@@ -121,8 +121,8 @@ export default function AgentReferral() {
 
   return (
     <div className="min-h-screen" style={{ background: '#ffffff' }}>
-      <div className="dash-header" style={{ background: '#1b5e20' }}>
-        <span className="dash-eyebrow" style={{ color: '#a7f3d0' }}>Real Estate Agent</span>
+      <div className="dash-header" style={{ background: '#09694A' }}>
+        <span className="dash-eyebrow" style={{ color: '#D4EBDE' }}>Real Estate Agent</span>
         <div className="dash-title">Referral Program</div>
         <div className="dash-subtitle">Share MyHomeBase™ and earn commissions</div>
       </div>

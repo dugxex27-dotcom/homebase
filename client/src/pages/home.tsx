@@ -171,10 +171,10 @@ export default function Home() {
       {typedUser?.role === "homeowner" && houses.length === 0 && (
         <div className="dash-body">
           <div style={{ textAlign: "center", padding: "40px 0" }}>
-            <h2 style={{ fontSize: 22, fontWeight: 800, color: "#2d1f6e", marginBottom: 12 }}>
+            <h2 style={{ fontSize: 22, fontWeight: 800, color: "#2C0F5B", marginBottom: 12 }}>
               Welcome to MyHomeBase™!
             </h2>
-            <p style={{ fontSize: 14, color: "#9b97c4", marginBottom: 24, lineHeight: 1.6 }}>
+            <p style={{ fontSize: 14, color: "#B6A6F4", marginBottom: 24, lineHeight: 1.6 }}>
               Create a living record of your home — systems, maintenance, upgrades, and health.
             </p>
             <Link href="/maintenance">

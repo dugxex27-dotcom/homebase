@@ -204,8 +204,8 @@ export default function AgentHandoff() {
 
   return (
     <div className="min-h-screen" style={{ background: '#ffffff' }}>
-      <div className="dash-header" style={{ background: '#1b5e20' }}>
-        <span className="dash-eyebrow" style={{ color: '#a7f3d0' }}>Real Estate Agent</span>
+      <div className="dash-header" style={{ background: '#09694A' }}>
+        <span className="dash-eyebrow" style={{ color: '#D4EBDE' }}>Real Estate Agent</span>
         <div className="dash-title">Home Handoffs</div>
         <div className="dash-subtitle">
           {view === "list" ? "Create packages to hand off home data to new buyers" :
