@@ -734,7 +734,7 @@ export default function SupportPage() {
         {activeTab === 'contact' && !contactSubmitted && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
             {[
-              { icon: '📧', label: 'Email Support', val: `${selectedRole}s@gotohomebase.com`, sub: 'Response within 24 hours' },
+              { icon: '📧', label: 'Email Support', val: 'gotohomebase2025@gmail.com', sub: 'Response within 24 hours' },
               { icon: '💬', label: 'Live Chat', val: 'Available 9am–6pm EST', sub: 'Mon–Fri' },
             ].map(({ icon, label, val, sub }) => (
               <div key={label} style={{

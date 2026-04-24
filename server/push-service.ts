@@ -38,7 +38,7 @@ try {
 }
 
 webpush.setVapidDetails(
-  'mailto:support@homebase.com',
+  'mailto:gotohomebase2025@gmail.com',
   vapidKeys.publicKey,
   vapidKeys.privateKey
 );

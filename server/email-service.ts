@@ -144,12 +144,12 @@ export async function sendWelcomeEmail(userId: string, userName: string, userRol
       <div style="text-align: center; margin: 30px 0;">
         <a href="https://gotohomebase.com" style="background: #6B46C1; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Get Started</a>
       </div>
-      <p>Questions? Email us at <a href="mailto:gotohomebase@gmail.com">gotohomebase@gmail.com</a> and we'll be happy to help!</p>
+      <p>Questions? Email us at <a href="mailto:gotohomebase2025@gmail.com">gotohomebase2025@gmail.com</a> and we'll be happy to help!</p>
       <p>- The HomeBase Team</p>
     `
   );
 
-  const text = `Welcome to HomeBase, ${userName || 'there'}! Thanks for joining - think of us as CARFAX for your home. You have a 14-day free trial to explore all our premium features. Visit gotohomebase.com to get started. Questions? Email us at gotohomebase@gmail.com.`;
+  const text = `Welcome to HomeBase, ${userName || 'there'}! Thanks for joining - think of us as CARFAX for your home. You have a 14-day free trial to explore all our premium features. Visit gotohomebase.com to get started. Questions? Email us at gotohomebase2025@gmail.com.`;
 
   return sendEmail({
     to: user.email,
@@ -912,7 +912,7 @@ export async function sendExpiredTrialReengagementEmail(
       <div style="text-align: center; margin: 30px 0;">
         <a href="https://gotohomebase.com/billing" style="background: #6B46C1; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Subscribe Now</a>
       </div>
-      <p style="color: #666; font-size: 14px;">Questions? Reply to this email or reach us at <a href="mailto:gotohomebase@gmail.com">gotohomebase@gmail.com</a>.</p>
+      <p style="color: #666; font-size: 14px;">Questions? Reply to this email or reach us at <a href="mailto:gotohomebase2025@gmail.com">gotohomebase2025@gmail.com</a>.</p>
       <p>- The HomeBase Team</p>
     `
   );

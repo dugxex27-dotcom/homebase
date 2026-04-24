@@ -327,7 +327,7 @@ export function ContractorTrialExpiredPaywall() {
           </div>
 
           <p className="text-center text-sm text-gray-500">
-            Questions? Contact us at support@gotohomebase.com
+            Questions? Contact us at gotohomebase2025@gmail.com
           </p>
         </CardContent>
       </Card>
