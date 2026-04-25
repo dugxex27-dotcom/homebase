@@ -61,28 +61,12 @@ const QUIZ_HTML = `<!DOCTYPE html>
     .quiz-hero-logo {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
       text-decoration: none;
       margin-bottom: 16px;
     }
-    .quiz-hero-logo-icon {
-      width: 34px; height: 34px;
-      background: rgba(255,255,255,0.15);
-      border-radius: 9px;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .quiz-hero-logo-icon svg { width: 20px; height: 20px; }
-    .quiz-hero-logo-text {
-      font-size: 1.15rem;
-      font-weight: 800;
-      color: #fff;
-      letter-spacing: -0.02em;
-    }
-    .quiz-hero-logo-tm {
-      font-size: 0.55rem;
-      vertical-align: super;
-      font-weight: 600;
-      color: var(--accent-lt);
+    .quiz-hero-logo img {
+      height: 32px;
+      width: auto;
     }
     .quiz-hero-eyebrow {
       display: inline-flex;
@@ -537,12 +521,7 @@ const QUIZ_HTML = `<!DOCTYPE html>
 
   <div class="quiz-hero">
     <a class="quiz-hero-logo" href="/" target="_top">
-      <div class="quiz-hero-logo-icon">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M3 10.5L12 3L21 10.5V20C21 20.55 20.55 21 20 21H15V15H9V21H4C3.45 21 3 20.55 3 20V10.5Z" fill="white"/>
-        </svg>
-      </div>
-      <span class="quiz-hero-logo-text">MyHomeBase<sup class="quiz-hero-logo-tm">™</sup></span>
+      <img src="${import.meta.env.BASE_URL}logo.png" alt="MyHomeBase" />
     </a>
     <div>
       <div class="quiz-hero-eyebrow">
