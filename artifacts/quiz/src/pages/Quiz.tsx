@@ -710,13 +710,13 @@ const QUIZ_HTML = `<!DOCTYPE html>
         ]
       },
       {
-        text: "Can you locate the individual shutoff valves for your toilets and sinks?",
+        text: "When did you last check the caulking around your windows for cracks or gaps?",
         weight: 2.5, risk: "medium-high", riskLabel: "Medium-High Risk",
         answers: [
-          { text: "No — I've never looked for them", score: 0 },
-          { text: "I think so, but I haven't confirmed", score: 1 },
-          { text: "Yes, I know where most of them are", score: 2 },
-          { text: "Yes, and I've checked they all work", score: 3 },
+          { text: "Never — I didn't know I should", score: 0 },
+          { text: "A few years ago, or I can't remember", score: 1 },
+          { text: "Within the last year or two", score: 2 },
+          { text: "Recently — I check and re-caulk as needed", score: 3 },
         ]
       },
       {
