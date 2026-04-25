@@ -864,7 +864,7 @@ const QUIZ_HTML = `<!DOCTYPE html>
         score: pct,
         tier: tier,
         completedAt: new Date().toISOString()
-      }, '*');
+      }, window.location.origin);
     }
 
     function retakeQuiz() {
@@ -895,6 +895,7 @@ export default function Quiz() {
 
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
+      if (event.origin !== window.location.origin) return;
       if (event.data && event.data.type === 'mhb_quiz_result') {
         const result = {
           score: event.data.score,
