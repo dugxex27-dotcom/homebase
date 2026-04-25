@@ -16,6 +16,7 @@ export default function Landing() {
   useLandingBodyClass();
   const { toast } = useToast();
   const [demoLoading, setDemoLoading] = useState<string | null>(null);
+  const [quizOpen, setQuizOpen] = useState(() => !sessionStorage.getItem('mhb_quiz_dismissed'));
   const [referralOpen, setReferralOpen] = useState(false);
   const [claimsOpen, setClaimsOpen] = useState(false);
   const [signinOpen, setSigninOpen] = useState(false);
@@ -25,6 +26,18 @@ export default function Landing() {
   const [plansOpen, setPlansOpen] = useState(false);
   const [selectedPlanCard, setSelectedPlanCard] = useState<'base' | 'premium' | 'plus'>('premium');
   const [openFaqIdx, setOpenFaqIdx] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!quizOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeQuiz(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [quizOpen]);
+
+  const closeQuiz = () => {
+    sessionStorage.setItem('mhb_quiz_dismissed', '1');
+    setQuizOpen(false);
+  };
 
   useEffect(() => {
     if (!referralOpen) return;
@@ -84,6 +97,21 @@ export default function Landing() {
 
   return (
     <div className="mhb-welcome">
+
+      {/* Quiz full-page modal */}
+      {quizOpen && (
+        <div className="mhb-quiz-modal" role="dialog" aria-modal="true" aria-label="Home Health Score Quiz">
+          <button className="mhb-quiz-modal-close" onClick={closeQuiz} aria-label="Close quiz">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+          <iframe
+            className="mhb-quiz-modal-frame"
+            src="/quiz.html"
+            title="Home Health Score Quiz"
+          />
+        </div>
+      )}
+
       <div className="mhb-status-spacer" />
 
       {/* Hero */}

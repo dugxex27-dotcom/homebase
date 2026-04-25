@@ -1643,3 +1643,60 @@
 
   .mhb-sheet-label { font-size: 12px; margin-bottom: 16px; }
 }
+
+/* ── Quiz full-page modal ─────────────────────────────────────────────────── */
+.mhb-quiz-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(15, 12, 30, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: mhb-quiz-fadein 0.3s ease both;
+}
+
+@keyframes mhb-quiz-fadein {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.mhb-quiz-modal-frame {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  inset: 0;
+  border: none;
+  background: #FAF8F5;
+}
+
+.mhb-quiz-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 10000;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(4px);
+  color: #2C2C2C;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+  transition: background 0.15s, transform 0.12s;
+}
+
+.mhb-quiz-modal-close:hover {
+  background: #ffffff;
+  transform: scale(1.08);
+}
+
+.mhb-quiz-modal-close svg {
+  display: block;
+}
