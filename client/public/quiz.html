@@ -52,7 +52,7 @@
     .quiz-hero {
       width: 100%;
       background: var(--primary);
-      padding: 36px 24px 52px;
+      padding: 40px 12% 64px;
       text-align: center;
       position: relative;
       flex-shrink: 0;
@@ -105,17 +105,20 @@
       text-transform: uppercase;
     }
     .quiz-hero-title {
-      font-size: clamp(1.35rem, 4vw, 1.75rem);
+      font-size: clamp(2rem, 5.5vw, 3.75rem);
       font-weight: 800;
       color: #fff;
-      letter-spacing: -0.03em;
-      line-height: 1.2;
-      margin-bottom: 8px;
+      letter-spacing: -0.04em;
+      line-height: 1.1;
+      margin-bottom: 14px;
+      max-width: 75%;
+      margin-left: auto;
+      margin-right: auto;
     }
     .quiz-hero-sub {
-      font-size: 12px;
+      font-size: clamp(0.85rem, 1.6vw, 1.1rem);
       font-weight: 500;
-      color: rgba(255,255,255,0.5);
+      color: rgba(255,255,255,0.55);
       line-height: 1.5;
     }
     /* Arch cutout at bottom of hero */
@@ -129,9 +132,9 @@
 
     /* ── Main content area ── */
     .quiz-body {
-      width: 100%;
-      max-width: 520px;
-      padding: 24px 16px 64px;
+      width: 75%;
+      max-width: 960px;
+      padding: 28px 0 64px;
       display: flex;
       flex-direction: column;
       align-items: center;
