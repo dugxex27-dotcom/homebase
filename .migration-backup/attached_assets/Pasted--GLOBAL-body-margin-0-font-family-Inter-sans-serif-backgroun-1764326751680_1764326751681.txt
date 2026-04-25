@@ -1,0 +1,136 @@
+/* ------ GLOBAL ------ */
+
+body {
+  margin: 0;
+  font-family: "Inter", sans-serif;
+  background: #f8f5ff;
+  color: #1B1B1F;
+}
+
+/* ------ HERO SECTION ------ */
+
+.hero {
+  position: relative;
+  padding: 60px 24px 70px 24px;
+  text-align: center;
+  background: linear-gradient(180deg, #6B28FF 0%, #A78BFA 100%);
+  color: white;
+  overflow: hidden;
+}
+
+/* faint blueprint home outline */
+.hero-overlay {
+  background-image: url("https://i.imgur.com/Cq0Vx4M.png"); /* faint outline */
+  opacity: 0.04;
+  background-size: 80%;
+  background-repeat: no-repeat;
+  background-position: center;
+  position: absolute;
+  inset: 0;
+}
+
+.hero-content {
+  position: relative;
+  z-index: 2;
+}
+
+.hero h1 {
+  font-size: 34px;
+  font-weight: 800;
+  margin-bottom: 16px;
+}
+
+.subheadline {
+  font-size: 18px;
+  font-weight: 500;
+  opacity: 0.9;
+  margin-bottom: 18px;
+}
+
+.bodytext {
+  font-size: 16px;
+  opacity: 0.9;
+  margin-bottom: 28px;
+}
+
+.cta-btn {
+  width: 100%;
+  padding: 16px;
+  background: white;
+  color: #5B2EFF;
+  font-size: 17px;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  font-weight: 600;
+  box-shadow: 0px 6px 16px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s;
+}
+
+.cta-btn:hover {
+  transform: translateY(-2px);
+}
+
+/* ------ REFERRAL CARD ------ */
+
+.referral {
+  padding: 24px;
+}
+
+.referral-card {
+  background: white;
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0px 6px 18px rgba(0, 0, 0, 0.12);
+}
+
+.referral-card h2 {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: #5B2EFF;
+}
+
+.subtitle {
+  color: #5C5C70;
+  margin-bottom: 20px;
+}
+
+/* progress numbers row */
+.progress-container {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 14px;
+  color: #5C5C70;
+}
+
+/* progress bar */
+.progress-bar {
+  background: #E9E0FF;
+  height: 10px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: #5B2EFF;
+  border-radius: 12px;
+  transition: width 0.4s ease;
+}
+
+.progress-text {
+  font-weight: 500;
+  color: #5B2EFF;
+  margin-bottom: 14px;
+}
+
+.share-link {
+  color: #5B2EFF;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 15px;
+}

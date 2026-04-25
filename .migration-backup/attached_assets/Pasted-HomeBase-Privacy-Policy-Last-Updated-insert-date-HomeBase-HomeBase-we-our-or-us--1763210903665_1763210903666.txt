@@ -1,0 +1,234 @@
+HomeBase – Privacy Policy
+
+Last Updated: [insert date]
+
+HomeBase (“HomeBase,” “we,” “our,” or “us”) is committed to protecting your privacy.
+This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use the HomeBase mobile application, website, or related services (the “Service”).
+
+By using HomeBase, you agree to the practices described in this Privacy Policy.
+
+1. Information We Collect
+
+We may collect the following types of information when you use HomeBase:
+
+1.1 Account Information
+
+Name
+
+Email address
+
+Password (encrypted)
+
+Referral information
+
+1.2 Home Information
+
+Home address
+
+Home details such as size, age, number of rooms, and features
+
+Maintenance tasks you create or complete
+
+1.3 Contractor Information
+
+(For contractor accounts)
+
+Business name
+
+License details
+
+Insurance documents
+
+Location and service area
+
+Business description and specialties
+
+1.4 Usage Information
+
+App interactions
+
+Features used
+
+Completed tasks
+
+Clicks, screens visited, and action logs (for improving performance)
+
+1.5 Device Information
+
+Device model
+
+Operating system
+
+App version
+
+IP address
+
+2. How We Use Your Information
+
+We use your information only for internal purposes, including:
+
+Providing and improving the Service
+
+Operating features such as task tracking, reminders, and contractor messaging
+
+Suggesting maintenance tasks or contractors
+
+Preventing fraud and abuse
+
+Monitoring app health and performance
+
+Communicating with you about updates, reminders, or support
+
+Analyzing usage trends to improve user experience
+
+We do not sell your personal information — ever.
+We do not share personal information with third parties for marketing purposes.
+
+3. How We Share Information
+
+We may share information only in limited situations:
+
+3.1 With Contractors
+
+If you contact a contractor through HomeBase, we may share:
+
+Your name
+
+Your home location (general area, not full address unless you provide it)
+
+Details about the task or issue
+
+3.2 With Service Providers
+
+Only when necessary for:
+
+Hosting
+
+Data storage
+
+App analytics
+
+Technical support
+
+These vendors are required to protect your data and cannot use it for their own purposes.
+
+3.3 Legal Requirements
+
+We may disclose information if required to:
+
+Comply with a lawful request
+
+Respond to a subpoena
+
+Protect the rights, property, or safety of HomeBase or users
+
+We never voluntarily share data with law enforcement without proper legal process.
+
+4. Data Retention
+
+We retain data only as long as it is necessary to:
+
+Provide the Service
+
+Comply with legal obligations
+
+Resolve disputes
+
+Enforce our agreements
+
+You may request data deletion at any time (see Section 9).
+
+5. Data Security
+
+We use industry-standard safeguards to protect your information, including:
+
+Encrypted passwords
+
+Secure data transmission (HTTPS)
+
+Restricted internal access
+
+Monitoring for unauthorized access
+
+However, no system is completely secure.
+You use the Service at your own risk, but we take reasonable measures to protect your information.
+
+6. Children’s Privacy
+
+HomeBase is not intended for children under 13.
+We do not knowingly collect information from children under 13.
+
+If you believe we have collected information from a child, contact us and we will remove it.
+
+7. Third-Party Links
+
+HomeBase may contain links to:
+
+Contractor websites
+
+External resources
+
+How-to videos
+
+Third-party tools
+
+We are not responsible for the privacy practices of these external sites.
+
+8. Cookies & Tracking
+
+HomeBase may use:
+
+Cookies
+
+Local storage
+
+Device identifiers
+
+Analytics tools
+
+These are used only to improve app performance — not to track you across other apps or sell your data.
+
+9. Your Privacy Rights
+
+Depending on your location, you may have the right to:
+
+Access your data
+
+Correct inaccurate data
+
+Request deletion
+
+Export your data
+
+Opt out of certain data uses
+
+To exercise any of these rights, contact us at:
+[insert support email]
+
+We will respond within a reasonable time.
+
+10. Data Not Sold or Shared for Marketing
+
+HomeBase does not:
+
+Sell personal data
+
+Share personal data with advertising networks
+
+Track users outside the HomeBase platform
+
+Share homeowner or contractor data for commercial purposes
+
+Your data is used exclusively to operate and improve the app.
+
+11. Changes to This Privacy Policy
+
+We may update this Privacy Policy as needed.
+When we make changes, we will update the “Last Updated” date.
+
+Continued use of the Service means you accept the updated policy.
+
+12. Contact Us
+
+If you have questions about this Privacy Policy, contact us at:
+[insert support email]

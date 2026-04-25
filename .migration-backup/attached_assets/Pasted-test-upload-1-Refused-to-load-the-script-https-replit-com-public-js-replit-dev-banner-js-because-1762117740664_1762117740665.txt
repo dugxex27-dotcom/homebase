@@ -1,0 +1,42 @@
+test-upload:1 Refused to load the script 'https://replit.com/public/js/replit-dev-banner.js' because it violates the following Content Security Policy directive: "script-src 'self' 'unsafe-inline' 'unsafe-eval'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+Understand this error
+index-nS0N5DSI.js:488 ========================================
+index-nS0N5DSI.js:488 [TEST UPLOAD] Starting upload test!
+index-nS0N5DSI.js:488 ========================================
+index-nS0N5DSI.js:488 [TEST UPLOAD] File selected: 631-364-2680_20250803_141931_0000.png Size: 2738053
+index-nS0N5DSI.js:488 [TEST UPLOAD] Starting compression...
+index-nS0N5DSI.js:488 [TEST UPLOAD] Compressed to 161767 characters
+index-nS0N5DSI.js:488 [TEST UPLOAD] Using email: freshandcleangutters@gmail.com
+index-nS0N5DSI.js:488 [TEST UPLOAD] Sending POST to /api/contractor/upload-logo
+index-nS0N5DSI.js:488  POST https://gotohomebase.replit.app/api/contractor/upload-logo 400 (Bad Request)
+a @ index-nS0N5DSI.js:488
+await in a
+RR @ index-nS0N5DSI.js:37
+IR @ index-nS0N5DSI.js:37
+OR @ index-nS0N5DSI.js:37
+tv @ index-nS0N5DSI.js:37
+P2 @ index-nS0N5DSI.js:37
+(anonymous) @ index-nS0N5DSI.js:37
+Bg @ index-nS0N5DSI.js:40
+X1 @ index-nS0N5DSI.js:37
+zm @ index-nS0N5DSI.js:37
+xg @ index-nS0N5DSI.js:37
+YR @ index-nS0N5DSI.js:37Understand this error
+index-nS0N5DSI.js:488 [TEST UPLOAD] Response status: 400
+index-nS0N5DSI.js:488 [TEST UPLOAD] Response ok: false
+index-nS0N5DSI.js:488 [TEST UPLOAD ERROR] {"message":"User must belong to a company to upload logo"}
+a @ index-nS0N5DSI.js:488
+await in a
+RR @ index-nS0N5DSI.js:37
+IR @ index-nS0N5DSI.js:37
+OR @ index-nS0N5DSI.js:37
+tv @ index-nS0N5DSI.js:37
+P2 @ index-nS0N5DSI.js:37
+(anonymous) @ index-nS0N5DSI.js:37
+Bg @ index-nS0N5DSI.js:40
+X1 @ index-nS0N5DSI.js:37
+zm @ index-nS0N5DSI.js:37
+xg @ index-nS0N5DSI.js:37
+YR @ index-nS0N5DSI.js:37Understand this error
+index-nS0N5DSI.js:488 [TEST UPLOAD FAILED] Error: {"message":"User must belong to a company to upload logo"}
+    at a (index-nS0N5DSI.js:488:12672)

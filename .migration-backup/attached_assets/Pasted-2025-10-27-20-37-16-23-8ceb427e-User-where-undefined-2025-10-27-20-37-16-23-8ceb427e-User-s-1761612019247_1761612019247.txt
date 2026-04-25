@@ -1,0 +1,132 @@
+2025-10-27 20:37:16.23
+8ceb427e
+User
+where: undefined,
+2025-10-27 20:37:16.23
+8ceb427e
+User
+schema: undefined,
+2025-10-27 20:37:16.23
+8ceb427e
+User
+table: undefined,
+2025-10-27 20:37:16.23
+8ceb427e
+User
+column: undefined,
+2025-10-27 20:37:16.23
+8ceb427e
+User
+dataType: undefined,
+2025-10-27 20:37:16.23
+8ceb427e
+User
+constraint: undefined,
+2025-10-27 20:37:16.23
+8ceb427e
+User
+file: 'index.c',
+2025-10-27 20:37:16.23
+8ceb427e
+User
+line: '885',
+2025-10-27 20:37:16.23
+8ceb427e
+User
+routine: 'index_create'
+2025-10-27 20:37:16.23
+8ceb427e
+User
+}
+2025-10-27 20:37:17.58
+8ceb427e
+User
+Server error: error: relation "IDX_session_expire" already exists
+2025-10-27 20:37:17.58
+8ceb427e
+User
+at /home/runner/workspace/node_modules/pg-pool/index.js:45:11
+2025-10-27 20:37:17.58
+8ceb427e
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+2025-10-27 20:37:17.58
+8ceb427e
+User
+at async PGStore._asyncQuery (/home/runner/workspace/node_modules/connect-pg-simple/index.js:322:21)
+2025-10-27 20:37:17.58
+8ceb427e
+User
+at async PGStore._rawEnsureSessionStoreTable (/home/runner/workspace/node_modules/connect-pg-simple/index.js:186:9) {
+2025-10-27 20:37:17.58
+8ceb427e
+User
+length: 100,
+2025-10-27 20:37:17.58
+8ceb427e
+User
+severity: 'ERROR',
+2025-10-27 20:37:17.58
+8ceb427e
+User
+code: '42P07',
+2025-10-27 20:37:17.58
+8ceb427e
+User
+detail: undefined,
+2025-10-27 20:37:17.58
+8ceb427e
+User
+hint: undefined,
+2025-10-27 20:37:17.58
+8ceb427e
+User
+position: undefined,
+2025-10-27 20:37:17.58
+8ceb427e
+User
+internalPosition: undefined,
+2025-10-27 20:37:17.58
+8ceb427e
+User
+internalQuery: undefined,
+2025-10-27 20:37:17.58
+8ceb427e
+User
+where: undefined,
+2025-10-27 20:37:17.58
+8ceb427e
+User
+schema: undefined,
+2025-10-27 20:37:17.58
+8ceb427e
+User
+table: undefined,
+2025-10-27 20:37:17.58
+8ceb427e
+User
+column: undefined,
+2025-10-27 20:37:17.58
+8ceb427e
+User
+dataType: undefined,
+2025-10-27 20:37:17.58
+8ceb427e
+User
+constraint: undefined,
+2025-10-27 20:37:17.58
+8ceb427e
+User
+file: 'index.c',
+2025-10-27 20:37:17.58
+8ceb427e
+User
+line: '885',
+2025-10-27 20:37:17.58
+8ceb427e
+User
+routine: 'index_create'
+2025-10-27 20:37:17.58
+8ceb427e
+User
+}

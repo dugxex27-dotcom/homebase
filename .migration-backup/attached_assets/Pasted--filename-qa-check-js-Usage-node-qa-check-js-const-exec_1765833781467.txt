@@ -1,0 +1,62 @@
+// filename: qa-check.js
+// Usage: node qa-check.js
+const { exec } = require('child_process');
+const fetch = require('node-fetch');
+
+const log = (msg) => console.log(`[QA] ${msg}`);
+
+// 1️⃣ Backend Startup Check
+log("Step 1: Checking backend server startup...");
+
+// Attempt to ping /api/health endpoint after server should be running
+const API_URL = process.env.API_URL || "http://localhost:3000/api/health";
+
+// 2️⃣ API Health Check
+(async () => {
+  try {
+    log(`Step 2: Pinging API at ${API_URL} ...`);
+    const res = await fetch(API_URL);
+    if (res.status === 200) {
+      const data = await res.json();
+      log(`API Health Check Passed: ${JSON.stringify(data)}`);
+    } else {
+      log(`API Health Check Failed: Status ${res.status}`);
+    }
+  } catch (err) {
+    log(`API Health Check Error: ${err.message}`);
+  }
+
+  // 3️⃣ Database Connectivity Check
+  log("Step 3: Checking database connectivity...");
+  // Example for Postgres; adjust if using MySQL/SQLite
+  exec('psql $DATABASE_URL -c "\\dt"', (err, stdout, stderr) => {
+    if (err) {
+      log(`Database Connection Failed: ${stderr}`);
+    } else {
+      log(`Database Connected. Tables:\n${stdout}`);
+    }
+
+    // 4️⃣ Dependency Audit
+    log("Step 4: Running npm audit...");
+    exec('npm audit --audit-level=moderate', (err, stdout, stderr) => {
+      if (err) {
+        log(`npm audit found vulnerabilities:\n${stdout}`);
+      } else {
+        log("npm audit passed. No major vulnerabilities detected.");
+      }
+
+      // 5️⃣ Optional Load Test (simple)
+      log("Step 5: Running simple load test with 10 requests...");
+      let passed = 0;
+      const requests = Array.from({ length: 10 }, (_, i) =>
+        fetch(API_URL)
+          .then(r => r.status === 200 ? passed++ : null)
+          .catch(() => null)
+      );
+      Promise.all(requests).then(() => {
+        log(`Load Test Passed: ${passed}/10 requests succeeded.`);
+        log("✅ QA Check Complete!");
+      });
+    });
+  });
+})();

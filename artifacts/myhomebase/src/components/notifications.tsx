@@ -1,0 +1,266 @@
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Bell, X, Clock, Calendar, User, Building2, Wrench, AlertTriangle, CheckCircle, MessageCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import type { Notification, User as UserType } from "@shared/schema";
+import { useAuth } from "@/hooks/useAuth";
+
+interface NotificationsProps {
+  homeownerId?: string;
+}
+
+export function Notifications({ homeownerId }: NotificationsProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const typedUser = user as UserType | undefined;
+
+  // Fetch unread notifications
+  const { data: unreadNotifications = [], isLoading } = useQuery<Notification[]>({
+    queryKey: ['/api/notifications/unread'],
+    refetchInterval: 30000, // Check for new notifications every 30 seconds
+  });
+
+  // Fetch all notifications when popover is open
+  const { data: allNotifications = [] } = useQuery<Notification[]>({
+    queryKey: ['/api/notifications'],
+    enabled: isOpen,
+  });
+
+  // Mark notification as read
+  const markAsReadMutation = useMutation({
+    mutationFn: async (notificationId: string) => {
+      const response = await fetch(`/api/notifications/${notificationId}/read`, {
+        method: 'PATCH',
+      });
+      if (!response.ok) throw new Error('Failed to mark notification as read');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications/unread'] });
+    },
+  });
+
+  // Delete notification
+  const deleteNotificationMutation = useMutation({
+    mutationFn: async (notificationId: string) => {
+      const response = await fetch(`/api/notifications/${notificationId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) throw new Error('Failed to delete notification');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications/unread'] });
+    },
+  });
+
+  const handleMarkAsRead = (notificationId: string) => {
+    markAsReadMutation.mutate(notificationId);
+  };
+
+  const handleDelete = (notificationId: string) => {
+    deleteNotificationMutation.mutate(notificationId);
+  };
+
+  const getNotificationIcon = (notification: Notification) => {
+    if (notification.type === "message") {
+      return <MessageCircle className="w-4 h-4 text-blue-600" />;
+    } else if (notification.category === "maintenance") {
+      switch (notification.type) {
+        case "maintenance_overdue":
+          return <AlertTriangle className="w-4 h-4 text-red-800" />;
+        case "maintenance_due":
+          return <Wrench className="w-4 h-4 text-blue-600" />;
+        default:
+          return <Wrench className="w-4 h-4 text-blue-600" />;
+      }
+    } else {
+      // Appointment notifications
+      switch (notification.type) {
+        case "24_hour":
+          return <Calendar className="w-4 h-4 text-blue-600" />;
+        case "4_hour":
+          return <Clock className="w-4 h-4 text-orange-600" />;
+        case "1_hour":
+          return <Bell className="w-4 h-4 text-red-800" />;
+        default:
+          return <Bell className="w-4 h-4 text-gray-600" />;
+      }
+    }
+  };
+
+  const getNotificationColor = (notification: Notification) => {
+    if (notification.category === "maintenance") {
+      switch (notification.type) {
+        case "maintenance_overdue":
+          return "border-l-red-800";
+        case "maintenance_due":
+          return "border-l-blue-500";
+        default:
+          return "border-l-blue-500";
+      }
+    } else {
+      // Appointment notifications
+      switch (notification.type) {
+        case "24_hour":
+          return "border-l-blue-500";
+        case "4_hour":
+          return "border-l-orange-500";
+        case "1_hour":
+          return "border-l-red-800";
+        default:
+          return "border-l-gray-500";
+      }
+    }
+  };
+
+  const formatRelativeTime = (notification: Notification) => {
+    if (notification.category === "maintenance") {
+      // For maintenance tasks, show current status
+      if (notification.type === "maintenance_overdue") {
+        return "Overdue";
+      } else {
+        return "Due this month";
+      }
+    } else {
+      // For appointments, show time remaining
+      const date = new Date(notification.scheduledFor);
+      const now = new Date();
+      const diffInHours = (date.getTime() - now.getTime()) / (1000 * 60 * 60);
+      
+      if (diffInHours < 0) {
+        return "Overdue";
+      } else if (diffInHours < 1) {
+        const minutes = Math.floor(diffInHours * 60);
+        return `in ${minutes} min`;
+      } else if (diffInHours < 24) {
+        return `in ${Math.floor(diffInHours)} hours`;
+      } else {
+        const days = Math.floor(diffInHours / 24);
+        return `in ${days} day${days === 1 ? '' : 's'}`;
+      }
+    }
+  };
+
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="sm" className="relative text-white hover:bg-white/10 hover:text-white">
+          <Bell className="w-5 h-5" />
+          {unreadNotifications.length > 0 && (
+            <Badge 
+              variant="destructive" 
+              className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+            >
+              {unreadNotifications.length}
+            </Badge>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 p-0" align="end">
+        <div className="border-b p-4">
+          <h3 className="font-semibold">Notifications</h3>
+          <p className="text-sm text-muted-foreground">
+            {unreadNotifications.length} unread
+          </p>
+        </div>
+        
+        <ScrollArea className="h-96">
+          {isLoading ? (
+            <div className="p-4 text-center text-sm text-muted-foreground">
+              Loading notifications...
+            </div>
+          ) : allNotifications.length === 0 ? (
+            <div className="p-4 text-center text-sm text-muted-foreground">
+              No notifications yet
+            </div>
+          ) : (
+            <div className="p-2">
+              {allNotifications.map((notification) => (
+                <Card 
+                  key={notification.id} 
+                  className={`mb-2 border-l-4 ${getNotificationColor(notification)} ${
+                    !notification.isRead ? 'bg-muted/50' : ''
+                  }`}
+                >
+                  <CardContent className="p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2 flex-1">
+                        {getNotificationIcon(notification)}
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-medium text-sm">{notification.title}</h4>
+                            {!notification.isRead && (
+                              <Badge variant="secondary" className="text-xs">New</Badge>
+                            )}
+                            {notification.priority === "high" && (
+                              <Badge variant="destructive" className="text-xs">High Priority</Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground mb-2">
+                            {notification.message}
+                          </p>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>
+                              {notification.category === "maintenance" ? 
+                                formatRelativeTime(notification) :
+                                `Scheduled ${formatRelativeTime(notification)}`
+                              }
+                            </span>
+                            <div className="flex gap-1">
+                              {notification.actionUrl && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 px-2 text-xs"
+                                  onClick={() => {
+                                    window.location.href = notification.actionUrl!;
+                                    handleMarkAsRead(notification.id);
+                                  }}
+                                >
+                                  View
+                                </Button>
+                              )}
+                              {!notification.isRead && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 px-2 text-xs"
+                                  onClick={() => handleMarkAsRead(notification.id)}
+                                >
+                                  Mark read
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0"
+                                onClick={() => handleDelete(notification.id)}
+                              >
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </ScrollArea>
+      </PopoverContent>
+    </Popover>
+  );
+}

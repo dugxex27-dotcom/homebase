@@ -1,0 +1,246 @@
+HomeBase – Terms of Service
+
+Last Updated: [insert date]
+
+Welcome to HomeBase (“HomeBase,” “we,” “our,” or “us”).
+These Terms of Service (“Terms”) govern your use of the HomeBase mobile application, website, and related services (collectively, the “Service”).
+By accessing or using HomeBase, you agree to be bound by these Terms.
+
+If you do not agree with these Terms, do not use the Service.
+
+1. Eligibility
+
+You must be at least 18 years old to use HomeBase.
+By using the Service, you represent that you meet this requirement.
+
+2. Description of Service
+
+HomeBase provides tools for homeowners to track home maintenance tasks, receive reminders, store records, connect with contractors, and access contractor listings. Contractors may create profiles, receive inquiries, and manage customer interactions.
+
+HomeBase is not a contractor, service provider, or real estate professional.
+
+3. User Accounts
+
+You are responsible for:
+
+Maintaining the confidentiality of your account
+
+Keeping your information accurate
+
+Any activity that occurs under your login
+
+We may suspend or terminate accounts that violate these Terms.
+
+4. Acceptable Use Policy
+
+You agree NOT to engage in any of the following activities while using HomeBase:
+
+4.1 Abusive or Harmful Behavior
+
+Users may not:
+
+Use abusive, harassing, threatening, or discriminatory language
+
+Send messages containing slurs, hate speech, bullying, or personal attacks
+
+Engage in harassment of contractors, homeowners, or support staff
+
+4.2 Lewd or Offensive Content
+
+Users may not upload, send, or share:
+
+Lewd, pornographic, or sexually explicit images
+
+Graphic violence
+
+Offensive or disturbing imagery
+
+4.3 Misrepresentation & Fraud
+
+Users may not:
+
+Submit false information
+
+Create fake accounts
+
+Impersonate another person or business
+
+Post or solicit fake reviews, misleading ratings, or deceptive endorsements
+
+4.4 Spam & Unauthorized Promotion
+
+Users may not:
+
+Send spam or repetitive unwanted messages
+
+Post advertisements without permission
+
+Use HomeBase to solicit illegal or unrelated services
+
+4.5 Security Violations
+
+Users may not:
+
+Attempt to access data not intended for them
+
+Attempt to interfere with servers or security features
+
+Upload malicious code, viruses, worms, or exploits
+
+Violation of this section may result in:
+
+Temporary suspension
+
+Permanent account termination
+
+Reporting to authorities (if applicable)
+
+5. Contractor Responsibilities
+
+Contractors using HomeBase agree to:
+
+Provide accurate business information
+
+Maintain valid licenses, insurance, or certifications as required by local law
+
+Not post misleading claims about their services
+
+Not manipulate reviews or ratings
+
+Not harass or pressure homeowners
+
+HomeBase does not verify contractor credentials and is not responsible for contractor performance.
+
+6. Homeowner Responsibilities
+
+Homeowners agree to:
+
+Provide truthful information about their home
+
+Not use the Service to harass, discriminate against, or threaten contractors
+
+Not create duplicate or fake inquiries
+
+7. Reviews and Ratings
+
+Users may leave reviews and ratings only when:
+
+They are based on genuine personal experience
+
+They reflect truthful information
+
+They are not posted in exchange for compensation or incentives (unless disclosed)
+
+HomeBase may remove reviews that violate this section.
+
+8. AI Features
+
+HomeBase may provide AI-powered suggestions regarding home maintenance or contractor categories.
+These suggestions:
+
+Are general informational advice
+
+Are not professional, legal, or technical recommendations
+
+Should not replace licensed professional guidance
+
+You acknowledge and agree that all decisions based on AI suggestions are made at your own discretion and risk.
+
+9. Payments & Subscriptions
+
+Subscription plans, pricing, and payment terms will be displayed within the app. By subscribing, you agree to pay all applicable fees.
+
+HomeBase may:
+
+Change pricing with notice
+
+Suspend accounts for failed payments
+
+Revoke referral bonuses for fraudulent referrals
+
+Subscriptions renew automatically unless canceled.
+
+10. Third-Party Contractors
+
+HomeBase is not responsible for:
+
+The quality of contractor work
+
+Missed appointments
+
+Property damage
+
+Pricing disputes
+
+Communication issues
+
+Any agreements made between homeowners and contractors are strictly between those parties.
+
+11. Data & Privacy
+
+Use of HomeBase is also governed by our Privacy Policy.
+You agree that we may collect and use data as described there.
+
+12. Termination
+
+We may suspend or permanently terminate any account for:
+
+Violations of these Terms
+
+Abusive behavior
+
+Fraud or manipulation
+
+Illegal activity
+
+You may stop using the Service at any time.
+
+13. Disclaimer of Warranties
+
+HomeBase is provided “as is” and “as available.”
+
+We do not guarantee:
+
+Accuracy of content
+
+Availability or uptime of the app
+
+That tasks, reminders, or notifications will be timely
+
+That contractor listings are accurate or updated
+
+Use the Service at your own risk.
+
+14. Limitation of Liability
+
+To the fullest extent permitted by law, HomeBase is not liable for:
+
+Damages related to contractor performance
+
+Loss of data
+
+Loss of profits
+
+Home damage
+
+Emotional distress
+
+Bugs, errors, or outages
+
+Unauthorized access to your account
+
+Your only remedy for dissatisfaction is to stop using the Service.
+
+15. Dispute Resolution & Arbitration
+
+Any dispute arising under these Terms will be settled through binding arbitration, not a court trial.
+You waive your right to participate in class-action lawsuits.
+
+16. Changes to Terms
+
+HomeBase may update these Terms at any time. Continued use of the Service constitutes acceptance of the revised Terms.
+
+17. Contact Information
+
+For questions about these Terms, email us at:
+[insert support email]

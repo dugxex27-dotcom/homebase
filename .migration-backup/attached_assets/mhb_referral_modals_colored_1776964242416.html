@@ -1,0 +1,144 @@
+
+<div style="display:flex;flex-direction:column;gap:16px;padding:8px 0;">
+
+  <div style="display:flex;gap:8px;">
+    <button onclick="show('hw')" id="tab-hw" style="flex:1;padding:9px 0;border-radius:8px;border:0.5px solid var(--color-border-secondary);font-size:12px;cursor:pointer;font-family:var(--font-sans);background:#534AB7;color:#fff;font-weight:500;">Homeowner — $5/mo</button>
+    <button onclick="show('ct')" id="tab-ct" style="flex:1;padding:9px 0;border-radius:8px;border:0.5px solid var(--color-border-secondary);font-size:12px;cursor:pointer;font-family:var(--font-sans);background:var(--color-background-secondary);color:var(--color-text-secondary);">Contractor — $20/mo</button>
+  </div>
+
+  <div style="background:var(--color-background-secondary);border-radius:20px;padding:2px;">
+
+    <!-- HOMEOWNER — PURPLE -->
+    <div id="modal-hw" style="background:var(--color-background-primary);border-radius:18px;border:0.5px solid #AFA9EC;overflow:hidden;">
+      <div style="height:4px;background:linear-gradient(90deg,#534AB7,#7F77DD);"></div>
+      <div style="padding:24px 22px 0;">
+        <p style="font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:#7F77DD;margin:0 0 6px;">How it works</p>
+        <h2 style="font-size:20px;font-weight:500;margin:0 0 8px;color:var(--color-text-primary);line-height:1.25;font-family:var(--font-serif);">Refer a neighbor.<br>Pay less. Refer five. Pay nothing.</h2>
+        <p style="font-size:13px;color:var(--color-text-secondary);margin:0 0 20px;line-height:1.6;">Every homeowner you refer knocks $1 off your monthly plan. Refer 5 and your subscription is completely free — for as long as they stay subscribed.</p>
+        <div style="border-top:0.5px solid #CECBF6;"></div>
+      </div>
+      <div style="padding:18px 22px 0;">
+        <p style="font-size:11px;color:#7F77DD;margin:0 0 12px;letter-spacing:0.5px;">Your monthly cost</p>
+        <div id="hw-steps" style="display:flex;flex-direction:column;gap:8px;"></div>
+      </div>
+      <div style="margin:18px 22px;background:#EEEDFE;border-radius:var(--border-radius-lg);padding:14px;border:0.5px solid #CECBF6;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+          <span style="font-size:12px;color:#534AB7;">Homeowners referred</span>
+          <span id="hw-count" style="font-size:13px;font-weight:500;color:#3C3489;">0</span>
+        </div>
+        <input type="range" min="0" max="5" value="0" step="1" style="width:100%;margin-bottom:10px;accent-color:#534AB7;" oninput="updateHW(this.value)">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;">
+          <span style="font-size:13px;color:#534AB7;">Your cost</span>
+          <span id="hw-cost" style="font-size:24px;font-weight:500;color:#3C3489;transition:color 0.3s;">$5</span>
+        </div>
+      </div>
+      <div style="padding:0 22px 24px;">
+        <button style="width:100%;padding:12px;border-radius:10px;border:none;background:#534AB7;color:#fff;font-size:14px;font-weight:500;cursor:pointer;font-family:var(--font-sans);">Start referring homeowners →</button>
+      </div>
+    </div>
+
+    <!-- CONTRACTOR — BLUE -->
+    <div id="modal-ct" style="display:none;background:var(--color-background-primary);border-radius:18px;border:0.5px solid #85B7EB;overflow:hidden;">
+      <div style="height:4px;background:linear-gradient(90deg,#185FA5,#378ADD);"></div>
+      <div style="padding:24px 22px 0;">
+        <p style="font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:#378ADD;margin:0 0 6px;">How it works</p>
+        <h2 style="font-size:20px;font-weight:500;margin:0 0 8px;color:var(--color-text-primary);line-height:1.25;font-family:var(--font-serif);">Bring homeowners.<br>Pay less. Or nothing.</h2>
+        <p style="font-size:13px;color:var(--color-text-secondary);margin:0 0 20px;line-height:1.6;">Every homeowner you bring to MyHomeBase takes $1 off your monthly plan. Refer 20 and your subscription is completely free — for as long as they stay subscribed.</p>
+        <div style="border-top:0.5px solid #B5D4F4;"></div>
+      </div>
+      <div style="padding:18px 22px 0;">
+        <p style="font-size:11px;color:#378ADD;margin:0 0 12px;letter-spacing:0.5px;">Your monthly cost</p>
+        <div id="ct-steps" style="display:flex;flex-direction:column;gap:4px;"></div>
+      </div>
+      <div style="margin:18px 22px;background:#E6F1FB;border-radius:var(--border-radius-lg);padding:14px;border:0.5px solid #B5D4F4;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+          <span style="font-size:12px;color:#185FA5;">Homeowners referred</span>
+          <span id="ct-count" style="font-size:13px;font-weight:500;color:#0C447C;">0</span>
+        </div>
+        <input type="range" min="0" max="20" value="0" step="1" style="width:100%;margin-bottom:10px;accent-color:#185FA5;" oninput="updateCT(this.value)">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;">
+          <span style="font-size:13px;color:#185FA5;">Your cost</span>
+          <span id="ct-cost" style="font-size:24px;font-weight:500;color:#0C447C;transition:color 0.3s;">$20</span>
+        </div>
+      </div>
+      <div style="padding:0 22px 24px;">
+        <button style="width:100%;padding:12px;border-radius:10px;border:none;background:#185FA5;color:#fff;font-size:14px;font-weight:500;cursor:pointer;font-family:var(--font-sans);">Start referring homeowners →</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+.srow{display:flex;align-items:center;gap:10px;opacity:0;animation:fu 0.3s forwards;}
+.sbar-wrap{flex:1;height:5px;border-radius:3px;overflow:hidden;}
+.sbar{height:100%;border-radius:3px;transition:opacity 0.25s;}
+@keyframes fu{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+</style>
+
+<script>
+function makeSteps(max, containerId, barColor, wrapBg, wrapBorder, freeColor, dimColor) {
+  const c = document.getElementById(containerId);
+  for (let i = 0; i <= max; i++) {
+    const cost = max - i;
+    const free = cost === 0;
+    const pct = Math.round((cost / max) * 100);
+    const show = (max === 5) || (i % 5 === 0);
+    if (!show) continue;
+    const row = document.createElement('div');
+    row.className = 'srow';
+    row.dataset.maxref = i;
+    row.style.animationDelay = (Math.floor(i / Math.max(1, max / 5)) * 60) + 'ms';
+    row.innerHTML = `
+      <span style="font-size:10px;color:${dimColor};width:36px;flex-shrink:0;">${i} ref${i!==1?'s':''}</span>
+      <div class="sbar-wrap" style="background:${wrapBg};border:0.5px solid ${wrapBorder};">
+        <div class="sbar" style="width:${pct}%;background:${free?freeColor:barColor};"></div>
+      </div>
+      <span style="font-size:12px;font-weight:500;width:32px;text-align:right;flex-shrink:0;color:${free?freeColor:barColor};">${free?'Free':'$'+cost}</span>
+    `;
+    c.appendChild(row);
+  }
+}
+
+makeSteps(5,  'hw-steps', '#534AB7', '#EEEDFE', '#CECBF6', '#0F6E56', '#AFA9EC');
+makeSteps(20, 'ct-steps', '#185FA5', '#E6F1FB', '#B5D4F4', '#0F6E56', '#85B7EB');
+
+function updateHW(val) {
+  val = parseInt(val);
+  document.getElementById('hw-count').textContent = val;
+  const cost = 5 - val;
+  const free = cost === 0;
+  const el = document.getElementById('hw-cost');
+  el.textContent = free ? 'Free' : '$' + cost;
+  el.style.color = free ? '#0F6E56' : '#3C3489';
+  document.querySelectorAll('#hw-steps .srow').forEach(row => {
+    row.style.opacity = val >= parseInt(row.dataset.maxref) ? '1' : '0.3';
+  });
+}
+
+function updateCT(val) {
+  val = parseInt(val);
+  document.getElementById('ct-count').textContent = val;
+  const cost = 20 - val;
+  const free = cost === 0;
+  const el = document.getElementById('ct-cost');
+  el.textContent = free ? 'Free' : '$' + cost;
+  el.style.color = free ? '#0F6E56' : '#0C447C';
+  document.querySelectorAll('#ct-steps .srow').forEach(row => {
+    row.style.opacity = val >= parseInt(row.dataset.maxref) ? '1' : '0.3';
+  });
+}
+
+function show(type) {
+  document.getElementById('modal-hw').style.display = type === 'hw' ? 'block' : 'none';
+  document.getElementById('modal-ct').style.display = type === 'ct' ? 'block' : 'none';
+  const hw = document.getElementById('tab-hw');
+  const ct = document.getElementById('tab-ct');
+  hw.style.background = type === 'hw' ? '#534AB7' : 'var(--color-background-secondary)';
+  hw.style.color = type === 'hw' ? '#fff' : 'var(--color-text-secondary)';
+  ct.style.background = type === 'ct' ? '#185FA5' : 'var(--color-background-secondary)';
+  ct.style.color = type === 'ct' ? '#fff' : 'var(--color-text-secondary)';
+}
+
+updateHW(0); updateCT(0);
+</script>

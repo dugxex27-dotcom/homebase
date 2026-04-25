@@ -1,0 +1,202 @@
+import React from "react";
+import { Bell, Menu, Gift, FileText, Calendar, DollarSign, Users } from "lucide-react";
+
+// Single-file React component mockup using Tailwind CSS.
+// Default export so you can paste this into a React app that understands Tailwind.
+
+export default function ContractorDashboardMockup() {
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
+      {/* Top nav */}
+      <header className="bg-gradient-to-r from-blue-700 to-blue-600 text-white">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button className="p-2 rounded-lg bg-white/8 backdrop-blur-sm" aria-label="menu">
+              <Menu size={18} />
+            </button>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center font-bold">HB</div>
+              <div>
+                <div className="text-sm font-semibold">HomeBase</div>
+                <div className="text-xs text-blue-100/80">Contractor Dashboard</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <button className="flex items-center gap-3 bg-white/12 px-3 py-2 rounded-lg"> 
+              <Bell size={16} />
+              <span className="text-sm">Notifications</span>
+            </button>
+            <div className="text-sm">
+              <div className="font-medium">Douglas</div>
+              <div className="text-xs text-blue-100/80">Pro Contractor</div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-6 py-8">
+        <div className="grid grid-cols-12 gap-6">
+          {/* Left column / sidebar */}
+          <aside className="col-span-3">
+            <div className="bg-white rounded-2xl p-5 shadow-sm">
+              <h3 className="text-lg font-semibold mb-3">Overview</h3>
+              <ul className="space-y-3 text-sm text-slate-600">
+                <li className="flex items-center gap-3">
+                  <DollarSign size={18} className="text-blue-600" />
+                  <div>
+                    <div className="text-xs text-slate-400">This month</div>
+                    <div className="font-medium">$6,420</div>
+                  </div>
+                </li>
+                <li className="flex items-center gap-3">
+                  <Users size={18} className="text-emerald-600" />
+                  <div>
+                    <div className="text-xs text-slate-400">New leads</div>
+                    <div className="font-medium">12</div>
+                  </div>
+                </li>
+                <li className="flex items-center gap-3">
+                  <FileText size={18} className="text-amber-500" />
+                  <div>
+                    <div className="text-xs text-slate-400">Proposals</div>
+                    <div className="font-medium">3 pending</div>
+                  </div>
+                </li>
+              </ul>
+
+              <div className="mt-6 pt-4 border-t border-slate-100">
+                <button className="w-full px-4 py-2 bg-gradient-to-r from-emerald-500 to-emerald-400 text-white rounded-lg font-semibold">Create Proposal</button>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <div className="bg-white rounded-2xl p-5 shadow-sm">
+                <h4 className="text-sm font-semibold mb-2">Quick Actions</h4>
+                <div className="grid grid-cols-1 gap-2">
+                  <button className="text-sm text-left px-3 py-2 rounded-lg hover:bg-slate-50">Message Client</button>
+                  <button className="text-sm text-left px-3 py-2 rounded-lg hover:bg-slate-50">Schedule Visit</button>
+                  <button className="text-sm text-left px-3 py-2 rounded-lg hover:bg-slate-50">Mark Job Complete</button>
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          {/* Main content */}
+          <section className="col-span-9">
+            {/* Welcome banner */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm mb-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold">Welcome back, Douglas</h2>
+                <p className="text-slate-500 mt-1">Quick snapshot of your business. Keep doing great work — we’ll handle the busywork.</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="text-xs text-slate-400">Subscription</div>
+                <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white px-3 py-2 rounded-lg font-semibold">Pro</div>
+              </div>
+            </div>
+
+            {/* Metric cards */}
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="bg-white rounded-2xl p-5 shadow-sm">
+                <div className="text-xs text-slate-400">Earnings (30d)</div>
+                <div className="text-xl font-semibold mt-2">$6,420</div>
+                <div className="text-sm text-slate-500 mt-1">+8% from last month</div>
+              </div>
+
+              <div className="bg-white rounded-2xl p-5 shadow-sm">
+                <div className="text-xs text-slate-400">Active Jobs</div>
+                <div className="text-xl font-semibold mt-2">5</div>
+                <div className="text-sm text-slate-500 mt-1">2 starting this week</div>
+              </div>
+
+              <div className="bg-white rounded-2xl p-5 shadow-sm">
+                <div className="text-xs text-slate-400">Avg Response Time</div>
+                <div className="text-xl font-semibold mt-2">2h 12m</div>
+                <div className="text-sm text-slate-500 mt-1">Keep response rate high to win more leads</div>
+              </div>
+            </div>
+
+            {/* Referral / Progress Card */}
+            <div className="bg-gradient-to-r from-emerald-50 via-white to-emerald-50 rounded-2xl p-6 shadow-sm mb-6 border border-emerald-100">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-lg bg-emerald-100"><Gift size={22} className="text-emerald-700" /></div>
+                  <div>
+                    <div className="text-sm text-slate-600 font-semibold">Get your subscription FREE</div>
+                    <div className="mt-1 text-slate-700 font-bold text-lg">Just 20 referrals to go</div>
+                    <div className="text-xs text-slate-500 mt-1">Share your referral code to earn $1 per signup.</div>
+                  </div>
+                </div>
+                <div style={{width: 220}}>
+                  <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden mt-2">
+                    <div className="h-3 rounded-full bg-emerald-400" style={{width: '0%'}}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Proposals + Calendar row */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div className="bg-white rounded-2xl p-6 shadow-sm">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold">Proposals</h3>
+                    <p className="text-sm text-slate-500 mt-1">No proposals yet. Create your first proposal to get started.</p>
+                  </div>
+                  <button className="text-sm bg-gradient-to-r from-blue-600 to-blue-500 text-white px-3 py-2 rounded-lg">New Proposal</button>
+                </div>
+
+                <div className="mt-4 border-t pt-4 text-sm text-slate-600">
+                  <div className="py-2">
+                    <div className="font-medium">Gutter Replacement - Smith</div>
+                    <div className="text-xs text-slate-400">Sent • $1,200</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl p-6 shadow-sm">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold">Calendar</h3>
+                    <p className="text-sm text-slate-500 mt-1">Next appointment: Nov 28 • 10:30 AM</p>
+                  </div>
+                  <button className="text-sm px-3 py-2 rounded-lg border">View Calendar</button>
+                </div>
+
+                <div className="mt-4">
+                  <div className="text-sm text-slate-600">Nov 28</div>
+                  <div className="mt-2 bg-slate-50 p-3 rounded-lg">Gutter cleaning • 10:30 AM • 2 hrs</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Jobs list */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm">
+              <h3 className="text-lg font-semibold">Jobs</h3>
+              <div className="mt-4 grid gap-3">
+                <div className="p-4 border rounded-lg flex items-center justify-between">
+                  <div>
+                    <div className="font-medium">Johnson - Gutter Guard Install</div>
+                    <div className="text-xs text-slate-500 mt-1">2 days left • $850</div>
+                  </div>
+                  <div className="text-sm text-slate-500">Scheduled</div>
+                </div>
+
+                <div className="p-4 border rounded-lg flex items-center justify-between">
+                  <div>
+                    <div className="font-medium">Lee - Gutter Cleaning</div>
+                    <div className="text-xs text-slate-500 mt-1">Nov 30 • $150</div>
+                  </div>
+                  <div className="text-sm text-amber-500">Needs Attention</div>
+                </div>
+              </div>
+            </div>
+
+          </section>
+        </div>
+      </main>
+    </div>
+  );
+}

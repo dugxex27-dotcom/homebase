@@ -1,0 +1,97 @@
+contractor-dashboard:1 Refused to load the script 'https://replit.com/public/js/replit-dev-banner.js' because it violates the following Content Security Policy directive: "script-src 'self' 'unsafe-inline' 'unsafe-eval'". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback.
+Understand this error
+index-B0noDne5.js:48  GET https://gotohomebase.replit.app/api/contractors/google_103315263202734374496/contacted-homeowners 500 (Internal Server Error)
+(anonymous) @ index-B0noDne5.js:48
+o @ index-B0noDne5.js:48
+v @ index-B0noDne5.js:48
+start @ index-B0noDne5.js:48
+fetch @ index-B0noDne5.js:48
+Gl @ index-B0noDne5.js:48
+onSubscribe @ index-B0noDne5.js:48
+subscribe @ index-B0noDne5.js:48
+(anonymous) @ index-B0noDne5.js:48
+V2 @ index-B0noDne5.js:38
+Rf @ index-B0noDne5.js:40
+_i @ index-B0noDne5.js:40
+f6 @ index-B0noDne5.js:40
+uo @ index-B0noDne5.js:40
+Tv @ index-B0noDne5.js:40
+eo @ index-B0noDne5.js:38
+(anonymous) @ index-B0noDne5.js:40
+setTimeout
+a @ index-B0noDne5.js:48
+i @ index-B0noDne5.js:48
+batch @ index-B0noDne5.js:48
+Mn @ index-B0noDne5.js:48
+setData @ index-B0noDne5.js:48
+onSuccess @ index-B0noDne5.js:48
+m @ index-B0noDne5.js:48
+Promise.then
+v @ index-B0noDne5.js:48
+start @ index-B0noDne5.js:48
+fetch @ index-B0noDne5.js:48
+Gl @ index-B0noDne5.js:48
+onSubscribe @ index-B0noDne5.js:48
+subscribe @ index-B0noDne5.js:48
+(anonymous) @ index-B0noDne5.js:48
+V2 @ index-B0noDne5.js:38
+Rf @ index-B0noDne5.js:40
+_i @ index-B0noDne5.js:40
+Tv @ index-B0noDne5.js:40
+eo @ index-B0noDne5.js:38
+f6 @ index-B0noDne5.js:40
+uo @ index-B0noDne5.js:40
+vC @ index-B0noDne5.js:40
+C @ index-B0noDne5.js:25
+q @ index-B0noDne5.js:25Understand this error
+index-B0noDne5.js:48  GET https://gotohomebase.replit.app/api/proposals/google_103315263202734374496 404 (Not Found)
+(anonymous) @ index-B0noDne5.js:48
+o @ index-B0noDne5.js:48
+v @ index-B0noDne5.js:48
+start @ index-B0noDne5.js:48
+fetch @ index-B0noDne5.js:48
+Gl @ index-B0noDne5.js:48
+onSubscribe @ index-B0noDne5.js:48
+subscribe @ index-B0noDne5.js:48
+(anonymous) @ index-B0noDne5.js:48
+V2 @ index-B0noDne5.js:38
+Rf @ index-B0noDne5.js:40
+_i @ index-B0noDne5.js:40
+f6 @ index-B0noDne5.js:40
+uo @ index-B0noDne5.js:40
+Tv @ index-B0noDne5.js:40
+eo @ index-B0noDne5.js:38
+(anonymous) @ index-B0noDne5.js:40
+setTimeout
+a @ index-B0noDne5.js:48
+i @ index-B0noDne5.js:48
+batch @ index-B0noDne5.js:48
+Mn @ index-B0noDne5.js:48
+setData @ index-B0noDne5.js:48
+onSuccess @ index-B0noDne5.js:48
+m @ index-B0noDne5.js:48
+Promise.then
+v @ index-B0noDne5.js:48
+start @ index-B0noDne5.js:48
+fetch @ index-B0noDne5.js:48
+Gl @ index-B0noDne5.js:48
+onSubscribe @ index-B0noDne5.js:48
+subscribe @ index-B0noDne5.js:48
+(anonymous) @ index-B0noDne5.js:48
+V2 @ index-B0noDne5.js:38
+Rf @ index-B0noDne5.js:40
+_i @ index-B0noDne5.js:40
+Tv @ index-B0noDne5.js:40
+eo @ index-B0noDne5.js:38
+f6 @ index-B0noDne5.js:40
+uo @ index-B0noDne5.js:40
+vC @ index-B0noDne5.js:40
+C @ index-B0noDne5.js:25
+q @ index-B0noDne5.js:25Understand this error
+index-B0noDne5.js:477 [DEBUG] Starting profile update mutation
+index-B0noDne5.js:477 [DEBUG] User companyId: null
+index-B0noDne5.js:477 [DEBUG] Has businessLogo: true
+index-B0noDne5.js:477 [DEBUG] Project photos count: 0
+index-B0noDne5.js:477 [DEBUG] Updating contractor profile...
+index-B0noDne5.js:477 [DEBUG] Profile updated successfully
+index-B0noDne5.js:477 [DEBUG] No companyId found - skipping company image update
