@@ -741,8 +741,8 @@
         answersEl.appendChild(btn);
       });
 
-      // Progress bar & counter
-      const pct = (index / QUESTIONS.length) * 100;
+      // Progress bar & counter (shows fill for current question, 100% on final)
+      const pct = ((index + 1) / QUESTIONS.length) * 100;
       progressFill.style.width = pct + '%';
       progressCtr.textContent = (index + 1) + ' of ' + QUESTIONS.length;
 
