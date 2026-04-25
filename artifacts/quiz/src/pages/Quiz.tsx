@@ -680,13 +680,13 @@ const QUIZ_HTML = `<!DOCTYPE html>
         ]
       },
       {
-        text: "Do you check under your sinks for slow leaks or moisture?",
+        text: "When was the last time you made sure the shutoff valves under your sink and toilet were working correctly?",
         weight: 2, risk: "medium", riskLabel: "Medium Risk",
         answers: [
-          { text: "No — out of sight, out of mind", score: 0 },
-          { text: "Only when something seems wrong", score: 1 },
-          { text: "Once a year or so", score: 2 },
-          { text: "Every few months — it's a habit", score: 3 },
+          { text: "I've never checked them", score: 0 },
+          { text: "A few years ago — or honestly can't remember", score: 1 },
+          { text: "Within the last year", score: 2 },
+          { text: "Recently — I test them regularly", score: 3 },
         ]
       },
       {
