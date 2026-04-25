@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 const QUIZ_HTML = `<!DOCTYPE html>
 <html lang="en">
@@ -864,7 +864,7 @@ const QUIZ_HTML = `<!DOCTYPE html>
         score: pct,
         tier: tier,
         completedAt: new Date().toISOString()
-      }, window.location.origin);
+      }, '*');
     }
 
     function retakeQuiz() {
@@ -881,39 +881,21 @@ const QUIZ_HTML = `<!DOCTYPE html>
 </html>`;
 
 export default function Quiz() {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-
-  useEffect(() => {
-    const iframe = iframeRef.current;
-    if (!iframe) return;
-    const doc = iframe.contentDocument || iframe.contentWindow?.document;
-    if (!doc) return;
-    doc.open();
-    doc.write(QUIZ_HTML);
-    doc.close();
-  }, []);
-
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
-      if (event.origin !== window.location.origin) return;
-      if (event.data && event.data.type === 'mhb_quiz_result') {
-        const result = {
-          score: event.data.score,
-          tier: event.data.tier,
-          completedAt: event.data.completedAt,
-        };
-        // Always persist to localStorage so the signup page can pre-fill context
-        localStorage.setItem('mhb_quiz_result', JSON.stringify(result));
-        // Also persist to the database (fire-and-forget; works anonymously or authenticated)
-        fetch('/api/quiz-result', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(result),
-        }).catch(() => {
-          // Non-critical — localStorage already has the result
-        });
-      }
+      if (!event.data || event.data.type !== 'mhb_quiz_result') return;
+      const result = {
+        score: event.data.score,
+        tier: event.data.tier,
+        completedAt: event.data.completedAt,
+      };
+      localStorage.setItem('mhb_quiz_result', JSON.stringify(result));
+      fetch('/api/quiz-result', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(result),
+      }).catch(() => {});
     }
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
@@ -921,7 +903,7 @@ export default function Quiz() {
 
   return (
     <iframe
-      ref={iframeRef}
+      srcDoc={QUIZ_HTML}
       style={{
         width: "100%",
         height: "100vh",
