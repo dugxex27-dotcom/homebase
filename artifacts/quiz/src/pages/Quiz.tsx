@@ -832,27 +832,39 @@ const QUIZ_HTML = `<!DOCTYPE html>
         scoreBarFill.className = 'score-bar-fill ' + (good ? 'good' : 'improve');
       }, 100);
 
+      var tier;
       if (pct >= 80) {
+        tier = 'Home Pro';
         resultBadge.textContent = '🏠 Home Pro';
         resultBadge.className   = 'result-badge good';
         resultHeadline.textContent = "You know your home — now keep it that way.";
         resultMsg.textContent      = "You're ahead of most homeowners. MyHomeBase helps you stay on top of maintenance, track your home's health over time, and connect with trusted pros when you need them.";
       } else if (pct >= 60) {
+        tier = 'Solid Foundation';
         resultBadge.textContent = '👍 Solid Foundation';
         resultBadge.className   = 'result-badge good';
         resultHeadline.textContent = "Good start — a few gaps to close.";
         resultMsg.textContent      = "You're doing well, but there are a few blind spots that could cost you. MyHomeBase helps you fill them in with personalised maintenance reminders and a full picture of your home's health.";
       } else if (pct >= 40) {
+        tier = 'Needs Attention';
         resultBadge.textContent = '⚠️ Needs Attention';
         resultBadge.className   = 'result-badge improve';
         resultHeadline.textContent = "Your home may need more attention than it's getting.";
         resultMsg.textContent      = "Several key maintenance tasks are being missed. MyHomeBase gives you a personalised checklist, seasonal reminders, and a record of everything you've done — so nothing falls through the cracks.";
       } else {
+        tier = 'High Risk';
         resultBadge.textContent = '🔴 High Risk';
         resultBadge.className   = 'result-badge improve';
         resultHeadline.textContent = "Your home may be at risk right now.";
         resultMsg.textContent      = "Several critical maintenance areas haven't been addressed. MyHomeBase will help you prioritise what matters most and take control of your home's health before a small problem becomes a big one.";
       }
+
+      window.parent.postMessage({
+        type: 'mhb_quiz_result',
+        score: pct,
+        tier: tier,
+        completedAt: new Date().toISOString()
+      }, '*');
     }
 
     function retakeQuiz() {
@@ -879,6 +891,21 @@ export default function Quiz() {
     doc.open();
     doc.write(QUIZ_HTML);
     doc.close();
+  }, []);
+
+  useEffect(() => {
+    function handleMessage(event: MessageEvent) {
+      if (event.data && event.data.type === 'mhb_quiz_result') {
+        const result = {
+          score: event.data.score,
+          tier: event.data.tier,
+          completedAt: event.data.completedAt,
+        };
+        localStorage.setItem('mhb_quiz_result', JSON.stringify(result));
+      }
+    }
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
   }, []);
 
   return (
