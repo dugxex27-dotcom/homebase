@@ -560,7 +560,7 @@ const QUIZ_HTML = `<!DOCTYPE html>
     <div class="intro-card" id="introCard">
       <div class="intro-badge">
         <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L3.09 8.26L4 21h16l.91-12.74L12 2z" opacity=".2"/><path d="M12 2l-1 6h2L12 2z"/></svg>
-        Home Health Score
+        Home Health Quiz
       </div>
       <h1>Find out where your home stands</h1>
       <p>10 quick questions about your home maintenance habits. Discover your score and where you might be leaving your biggest investment at risk.</p>
