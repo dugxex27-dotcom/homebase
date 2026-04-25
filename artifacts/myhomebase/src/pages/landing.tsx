@@ -39,6 +39,26 @@ export default function Landing() {
   };
 
   useEffect(() => {
+    function handleQuizMessage(event: MessageEvent) {
+      if (!event.data || event.data.type !== 'mhb_quiz_result') return;
+      const result = {
+        score: event.data.score,
+        tier: event.data.tier,
+        completedAt: event.data.completedAt,
+      };
+      localStorage.setItem('mhb_quiz_result', JSON.stringify(result));
+      fetch('/api/quiz-result', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(result),
+      }).catch(() => {});
+    }
+    window.addEventListener('message', handleQuizMessage);
+    return () => window.removeEventListener('message', handleQuizMessage);
+  }, []);
+
+  useEffect(() => {
     if (!referralOpen) return;
     const close = () => setReferralOpen(false);
     document.addEventListener('click', close);
@@ -105,7 +125,7 @@ export default function Landing() {
           </button>
           <iframe
             className="mhb-quiz-modal-frame"
-            src="/quiz/"
+            src="/quiz/quiz.html"
             title="Home Health Score Quiz"
           />
         </div>
