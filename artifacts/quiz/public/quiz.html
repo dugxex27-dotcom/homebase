@@ -615,6 +615,16 @@
   </div>
 
   <script>
+    (function() {
+      var inIframe = window.self !== window.top;
+      if (inIframe) {
+        var logoLink = document.querySelector('.quiz-hero-logo');
+        if (logoLink) { logoLink.removeAttribute('href'); logoLink.removeAttribute('target'); logoLink.style.cursor = 'default'; logoLink.style.pointerEvents = 'none'; }
+        var footerLink = document.querySelector('.page-footer a[href="/"]');
+        if (footerLink) { footerLink.removeAttribute('href'); footerLink.removeAttribute('target'); footerLink.style.pointerEvents = 'none'; footerLink.style.opacity = '0.4'; }
+      }
+    })();
+
     const QUESTIONS = [
       {
         text: "How often do you clean your gutters?",
