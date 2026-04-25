@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Check, CreditCard, Home, Zap, Crown, Loader2, ShieldCheck } from "lucide-react";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
 const PLAN_SLUG_MAP: Record<string, string> = {
@@ -17,11 +17,16 @@ const PLAN_SLUG_MAP: Record<string, string> = {
   premium_plus: 'premium_plus',
 };
 
+const PRICING_PLAN_INFO: Record<string, { name: string; price: string }> = {
+  base: { name: 'Base Plan', price: '$5/mo' },
+  premium: { name: 'Premium Plan', price: '$20/mo' },
+  premium_plus: { name: 'Premium Plus', price: '$40/mo' },
+};
+
 export default function HomeownerPricing() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [location] = useLocation();
-  const urlParams = new URLSearchParams(location.split('?')[1] || '');
+  const urlParams = new URLSearchParams(window.location.search);
   const isOnboarding = urlParams.get('onboarding') === 'true';
   const rawPlanParam = urlParams.get('plan') ?? '';
   const preSelectedPlan = PLAN_SLUG_MAP[rawPlanParam] ?? null;
@@ -144,6 +149,23 @@ export default function HomeownerPricing() {
             </>
           )}
         </div>
+
+        {/* Pre-selected plan banner — shown when arriving from onboarding with a plan param */}
+        {preSelectedPlan && !hasActiveSubscription && PRICING_PLAN_INFO[preSelectedPlan] && (
+          <div
+            data-testid="pricing-selected-plan-banner"
+            className="flex items-center gap-3 max-w-md mx-auto rounded-xl px-4 py-3"
+            style={{ background: 'rgba(83,74,183,0.08)', border: '1.5px solid rgba(83,74,183,0.2)' }}
+          >
+            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: '#534AB7' }} />
+            <div className="flex-1 min-w-0">
+              <p className="m-0 text-xs font-bold uppercase tracking-widest" style={{ color: '#2d1f6e', letterSpacing: '0.07em' }}>Your selected plan</p>
+              <p className="m-0 text-sm font-bold" style={{ color: '#534AB7' }}>
+                {PRICING_PLAN_INFO[preSelectedPlan].name} — {PRICING_PLAN_INFO[preSelectedPlan].price}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Current Plan Badge */}
         {hasActiveSubscription && !isOnboarding && (
