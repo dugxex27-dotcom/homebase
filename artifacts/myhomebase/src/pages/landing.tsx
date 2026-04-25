@@ -16,7 +16,7 @@ export default function Landing() {
   useLandingBodyClass();
   const { toast } = useToast();
   const [demoLoading, setDemoLoading] = useState<string | null>(null);
-  const [quizOpen, setQuizOpen] = useState(() => !sessionStorage.getItem('mhb_quiz_dismissed'));
+  const [quizOpen, setQuizOpen] = useState(false);
   const [referralOpen, setReferralOpen] = useState(false);
   const [claimsOpen, setClaimsOpen] = useState(false);
   const [signinOpen, setSigninOpen] = useState(false);
@@ -35,7 +35,6 @@ export default function Landing() {
   }, [quizOpen]);
 
   const closeQuiz = () => {
-    sessionStorage.setItem('mhb_quiz_dismissed', '1');
     setQuizOpen(false);
   };
 
@@ -106,7 +105,7 @@ export default function Landing() {
           </button>
           <iframe
             className="mhb-quiz-modal-frame"
-            src="/quiz.html"
+            src="/quiz/"
             title="Home Health Score Quiz"
           />
         </div>
@@ -173,12 +172,12 @@ export default function Landing() {
             </div>
 
             {/* CTA link */}
-            <a
-              href="/quiz/"
+            <button
+              onClick={() => setQuizOpen(true)}
               className="mhb-cta-link"
             >
-              Home Maintenance Info →
-            </a>
+              Check Your Homeownership IQ →
+            </button>
           </div>
 
           {/* Stat chips — stacked, right column */}

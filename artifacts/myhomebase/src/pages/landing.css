@@ -481,6 +481,11 @@
   text-decoration: none;
   letter-spacing: 0.01em;
   transition: color 0.15s;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
 }
 
 .mhb-cta-link:hover { color: #ffffff; }
