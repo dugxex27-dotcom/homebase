@@ -551,7 +551,7 @@ const QUIZ_HTML = `<!DOCTYPE html>
       </div>
     </div>
     <div class="quiz-hero-title">How Well Do You Know Your Home?</div>
-    <div class="quiz-hero-sub">10 questions · Personalised Home Health Score</div>
+    <div class="quiz-hero-sub">10 questions · Personalized Home Health Quiz</div>
     <div class="quiz-hero-arch"></div>
   </div>
 
