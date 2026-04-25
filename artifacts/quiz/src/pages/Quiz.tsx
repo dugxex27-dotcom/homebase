@@ -536,7 +536,7 @@ const QUIZ_HTML = `<!DOCTYPE html>
 <body>
 
   <div class="quiz-hero">
-    <a class="quiz-hero-logo" href="https://gotohomebase.com" target="_blank" rel="noopener">
+    <a class="quiz-hero-logo" href="/" target="_top">
       <div class="quiz-hero-logo-icon">
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M3 10.5L12 3L21 10.5V20C21 20.55 20.55 21 20 21H15V15H9V21H4C3.45 21 3 20.55 3 20V10.5Z" fill="white"/>
@@ -624,15 +624,15 @@ const QUIZ_HTML = `<!DOCTYPE html>
         </div>
       </div>
 
-      <a class="cta-btn" href="https://gotohomebase.com/signin/homeowner" target="_blank" rel="noopener" id="ctaBtn">Get Started with MyHomeBase →</a>
+      <a class="cta-btn" href="/signin/homeowner" target="_top" id="ctaBtn">Get Started with MyHomeBase →</a>
       <div class="cta-sub">
-        Already have an account? <a href="https://gotohomebase.com/signin/homeowner" target="_blank" rel="noopener">Sign in</a>
+        Already have an account? <a href="/signin/homeowner" target="_top">Sign in</a>
       </div>
       <button class="retake-link" onclick="retakeQuiz()">Retake the quiz</button>
     </div>
 
     <footer class="page-footer">
-      &copy; 2025 MyHomeBase &nbsp;·&nbsp; <a href="https://gotohomebase.com" target="_blank" rel="noopener">Back to home</a>
+      &copy; 2025 MyHomeBase &nbsp;·&nbsp; <a href="/" target="_top">Back to home</a>
     </footer>
 
   </div>
