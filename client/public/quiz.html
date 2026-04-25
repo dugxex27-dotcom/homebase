@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>How Well Do You Know Your Home? | MyHomeBase</title>
+  <meta name="description" content="Take our 2-minute home maintenance quiz to find out how well you're protecting your biggest investment." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #FAF8F5;
+      --card:      #FFFFFF;
+      --accent:    #B5935A;
+      --accent-lt: #F5EDDF;
+      --purple:    #4F3B8B;
+      --purple-dk: #3D2D6F;
+      --text:      #2C2C2C;
+      --muted:     #7A7369;
+      --border:    #E8E2D9;
+      --good:      #2E7D5A;
+      --good-lt:   #EAF5EF;
+      --warn:      #C05C1A;
+      --warn-lt:   #FDF0E6;
+      --radius:    14px;
+      --shadow:    0 4px 32px rgba(44,44,44,0.09);
+    }
+
+    html, body {
+      min-height: 100%;
+      background: var(--bg);
+      font-family: 'Inter', system-ui, sans-serif;
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 32px 16px 64px;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .site-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 36px;
+      text-decoration: none;
+      color: var(--text);
+    }
+    .site-header .logo-icon {
+      width: 38px; height: 38px;
+      background: var(--purple);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .site-header .logo-icon svg { width: 22px; height: 22px; }
+    .site-header .logo-text {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    .site-header .logo-tm {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.6rem;
+      vertical-align: super;
+      font-weight: 500;
+      color: var(--muted);
+    }
+
+    /* ── Intro card ── */
+    .intro-card {
+      width: 100%; max-width: 600px;
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 48px 40px 44px;
+      text-align: center;
+    }
+    .intro-badge {
+      display: inline-block;
+      background: var(--accent-lt);
+      color: var(--accent);
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+    }
+    .intro-card h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.6rem, 4vw, 2.1rem);
+      font-weight: 700;
+      line-height: 1.2;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+    .intro-card p {
+      font-size: 1rem;
+      color: var(--muted);
+      line-height: 1.65;
+      max-width: 400px;
+      margin: 0 auto 32px;
+    }
+    .intro-meta {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin-bottom: 32px;
+    }
+    .intro-meta span {
+      font-size: 0.82rem;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .intro-meta svg { opacity: 0.65; }
+
+    /* ── Quiz card ── */
+    .quiz-wrap {
+      width: 100%; max-width: 600px;
+      display: none;
+    }
+
+    /* Progress */
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .progress-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .progress-counter {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--purple);
+    }
+    .progress-track {
+      height: 5px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-bottom: 28px;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--purple) 0%, var(--accent) 100%);
+      border-radius: 99px;
+      width: 0%;
+      transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* Question card */
+    .question-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 40px 36px 36px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .q-risk-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 20px;
+      margin-bottom: 16px;
+    }
+    .q-risk-badge.high   { background: #FDE8E8; color: #B91C1C; }
+    .q-risk-badge.medium-high { background: #FEF3C7; color: #92400E; }
+    .q-risk-badge.medium { background: #E0F2FE; color: #0369A1; }
+    .q-risk-badge.low    { background: var(--border); color: var(--muted); }
+
+    .question-text {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.15rem, 3vw, 1.45rem);
+      font-weight: 600;
+      line-height: 1.35;
+      color: var(--text);
+      margin-bottom: 28px;
+    }
+
+    .answers {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .answer-btn {
+      width: 100%;
+      text-align: left;
+      padding: 15px 20px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      background: var(--card);
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.96rem;
+      font-weight: 500;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      transition: border-color 0.15s, background 0.15s, transform 0.1s;
+    }
+    .answer-btn:hover {
+      border-color: var(--purple);
+      background: #F5F2FA;
+      transform: translateX(3px);
+    }
+    .answer-btn .answer-letter {
+      width: 28px; height: 28px;
+      min-width: 28px;
+      border-radius: 50%;
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--muted);
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .answer-btn:hover .answer-letter {
+      background: var(--purple);
+      border-color: var(--purple);
+      color: #fff;
+    }
+    .answer-btn.selected {
+      border-color: var(--purple);
+      background: #F0EBF8;
+    }
+    .answer-btn.selected .answer-letter {
+      background: var(--purple);
+      border-color: var(--purple);
+      color: #fff;
+    }
+    .answer-btn:disabled { cursor: default; }
+
+    /* Slide transition */
+    @keyframes slideIn  { from { opacity:0; transform: translateX(40px); } to { opacity:1; transform: translateX(0); } }
+    @keyframes slideOut { from { opacity:1; transform: translateX(0); }     to { opacity:0; transform: translateX(-40px); } }
+    .slide-in  { animation: slideIn  0.35s cubic-bezier(0.22,1,0.36,1) both; }
+    .slide-out { animation: slideOut 0.25s ease-in both; }
+
+    /* ── Results card ── */
+    .results-card {
+      width: 100%; max-width: 600px;
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 48px 40px 44px;
+      text-align: center;
+      display: none;
+    }
+
+    .score-ring {
+      width: 120px; height: 120px;
+      margin: 0 auto 28px;
+      position: relative;
+    }
+    .score-ring svg { transform: rotate(-90deg); }
+    .score-ring .ring-bg { fill: none; stroke: var(--border); stroke-width: 8; }
+    .score-ring .ring-fill {
+      fill: none;
+      stroke-width: 8;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 1.2s cubic-bezier(0.34,1.2,0.64,1);
+    }
+    .score-number {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: 'Playfair Display', serif;
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .score-label {
+      position: absolute;
+      bottom: 12px; left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .result-badge {
+      display: inline-block;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .result-badge.good { background: var(--good-lt); color: var(--good); }
+    .result-badge.improve { background: var(--warn-lt); color: var(--warn); }
+
+    .results-card h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.3rem, 3.5vw, 1.7rem);
+      font-weight: 700;
+      line-height: 1.3;
+      color: var(--text);
+      margin-bottom: 14px;
+    }
+    .results-card .result-msg {
+      font-size: 0.98rem;
+      color: var(--muted);
+      line-height: 1.65;
+      max-width: 420px;
+      margin: 0 auto 32px;
+    }
+
+    /* Score breakdown bar */
+    .score-breakdown {
+      background: var(--bg);
+      border-radius: 10px;
+      padding: 18px 20px;
+      margin-bottom: 32px;
+      text-align: left;
+    }
+    .score-breakdown-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .score-bar-track {
+      height: 8px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .score-bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width 1.2s cubic-bezier(0.34,1.2,0.64,1);
+    }
+    .score-bar-fill.good    { background: linear-gradient(90deg, var(--good) 0%, #4ADE80 100%); }
+    .score-bar-fill.improve { background: linear-gradient(90deg, var(--warn) 0%, #FB923C 100%); }
+    .score-range-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 6px;
+    }
+    .score-range-labels span {
+      font-size: 0.68rem;
+      color: var(--muted);
+    }
+
+    /* CTA button */
+    .cta-btn {
+      display: inline-block;
+      width: 100%;
+      max-width: 340px;
+      padding: 17px 32px;
+      background: var(--purple);
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      text-decoration: none;
+      border-radius: 10px;
+      letter-spacing: -0.01em;
+      transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+      box-shadow: 0 4px 16px rgba(79,59,139,0.28);
+      margin-bottom: 16px;
+    }
+    .cta-btn:hover {
+      background: var(--purple-dk);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 22px rgba(79,59,139,0.38);
+    }
+    .cta-sub {
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .cta-sub a {
+      color: var(--purple);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .cta-sub a:hover { text-decoration: underline; }
+
+    /* Start / shared buttons */
+    .btn-primary {
+      display: inline-block;
+      padding: 16px 36px;
+      background: var(--purple);
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      letter-spacing: -0.01em;
+      transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+      box-shadow: 0 4px 16px rgba(79,59,139,0.28);
+      text-decoration: none;
+    }
+    .btn-primary:hover {
+      background: var(--purple-dk);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 22px rgba(79,59,139,0.38);
+    }
+
+    .retake-link {
+      display: block;
+      margin-top: 20px;
+      font-size: 0.82rem;
+      color: var(--muted);
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-family: 'Inter', sans-serif;
+    }
+    .retake-link:hover { color: var(--purple); text-decoration: underline; }
+
+    /* Footer */
+    .page-footer {
+      margin-top: 48px;
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-align: center;
+    }
+    .page-footer a { color: var(--muted); text-decoration: underline; }
+
+    /* Responsive */
+    @media (max-width: 520px) {
+      .intro-card, .question-card, .results-card { padding: 32px 22px 28px; }
+      .intro-meta { gap: 14px; flex-wrap: wrap; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Logo -->
+  <a class="site-header" href="/">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3 10.5L12 3L21 10.5V20C21 20.55 20.55 21 20 21H15V15H9V21H4C3.45 21 3 20.55 3 20V10.5Z" fill="white"/>
+      </svg>
+    </div>
+    <span class="logo-text">MyHomeBase<sup class="logo-tm">™</sup></span>
+  </a>
+
+  <!-- Intro screen -->
+  <div class="intro-card" id="introCard">
+    <div class="intro-badge">Free 2-minute quiz</div>
+    <h1>How Well Do You Know<br>Your Home?</h1>
+    <p>10 quick questions about your home maintenance habits. Find out your Home Health Score and discover where you might be leaving your biggest investment at risk.</p>
+    <div class="intro-meta">
+      <span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        ~2 minutes
+      </span>
+      <span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        10 questions
+      </span>
+      <span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Personalised result
+      </span>
+    </div>
+    <button class="btn-primary" onclick="startQuiz()">Start the Quiz →</button>
+  </div>
+
+  <!-- Quiz screen -->
+  <div class="quiz-wrap" id="quizWrap">
+    <div class="progress-header">
+      <span class="progress-label">Your Progress</span>
+      <span class="progress-counter" id="progressCounter">1 of 10</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <div class="question-card" id="questionCard">
+      <div class="q-risk-badge" id="riskBadge"></div>
+      <div class="question-text" id="questionText"></div>
+      <div class="answers" id="answersContainer"></div>
+    </div>
+  </div>
+
+  <!-- Results screen -->
+  <div class="results-card" id="resultsCard">
+    <div class="score-ring" id="scoreRing">
+      <svg width="120" height="120" viewBox="0 0 120 120">
+        <circle class="ring-bg" cx="60" cy="60" r="52"/>
+        <circle class="ring-fill" id="ringFill" cx="60" cy="60" r="52"
+          stroke-dasharray="326.7"
+          stroke-dashoffset="326.7"/>
+      </svg>
+      <div class="score-number" id="scoreNumber">0</div>
+      <div class="score-label">out of 100</div>
+    </div>
+
+    <div class="result-badge" id="resultBadge"></div>
+    <h2 id="resultHeadline"></h2>
+    <p class="result-msg" id="resultMsg"></p>
+
+    <div class="score-breakdown">
+      <div class="score-breakdown-label">Your Home Health Score</div>
+      <div class="score-bar-track">
+        <div class="score-bar-fill" id="scoreBarFill" style="width:0%"></div>
+      </div>
+      <div class="score-range-labels">
+        <span>Needs work</span>
+        <span>Good</span>
+        <span>Excellent</span>
+      </div>
+    </div>
+
+    <a class="cta-btn" href="/signin/homeowner" id="ctaBtn">Get Started with MyHomeBase →</a>
+    <div class="cta-sub">
+      Already have an account? <a href="/signin/homeowner">Sign in</a>
+    </div>
+    <button class="retake-link" onclick="retakeQuiz()">Retake the quiz</button>
+  </div>
+
+  <footer class="page-footer">
+    &copy; 2025 MyHomeBase &nbsp;·&nbsp; <a href="/">Back to home</a>
+  </footer>
+
+  <script>
+    // ── Quiz data ──────────────────────────────────────────────────────────────
+    // weight: risk multiplier (higher = more harmful if neglected)
+    // answers: { text, score } where score is the raw 0-3 value for that choice
+    const QUESTIONS = [
+      {
+        text: "How often do you clean your gutters?",
+        weight: 2,
+        risk: "medium",
+        riskLabel: "Medium Risk",
+        answers: [
+          { text: "Never — I don't think about it", score: 0 },
+          { text: "Once every few years", score: 1 },
+          { text: "Once a year", score: 2 },
+          { text: "Twice a year or more", score: 3 },
+        ]
+      },
+      {
+        text: "Do you know where your main water shutoff valve is located?",
+        weight: 3,
+        risk: "high",
+        riskLabel: "High Risk",
+        answers: [
+          { text: "No idea — I've never looked", score: 0 },
+          { text: "I think I know, but I'm not sure", score: 1 },
+          { text: "Yes, I know where it is", score: 2 },
+          { text: "Yes, and I've tested it recently", score: 3 },
+        ]
+      },
+      {
+        text: "How often do you change your HVAC air filter?",
+        weight: 2.5,
+        risk: "medium-high",
+        riskLabel: "Medium-High Risk",
+        answers: [
+          { text: "I'm not sure I ever have", score: 0 },
+          { text: "Once a year or less", score: 1 },
+          { text: "Every 3–6 months", score: 2 },
+          { text: "Every 1–2 months as recommended", score: 3 },
+        ]
+      },
+      {
+        text: "When did you last test your smoke and carbon monoxide detectors?",
+        weight: 3,
+        risk: "high",
+        riskLabel: "High Risk",
+        answers: [
+          { text: "I've never tested them", score: 0 },
+          { text: "A couple of years ago", score: 1 },
+          { text: "Within the past year", score: 2 },
+          { text: "Within the past 6 months", score: 3 },
+        ]
+      },
+      {
+        text: "Do you check under your sinks for slow leaks or moisture?",
+        weight: 2,
+        risk: "medium",
+        riskLabel: "Medium Risk",
+        answers: [
+          { text: "No — out of sight, out of mind", score: 0 },
+          { text: "Only when something seems wrong", score: 1 },
+          { text: "Once a year or so", score: 2 },
+          { text: "Every few months — it's a habit", score: 3 },
+        ]
+      },
+      {
+        text: "Do you know how old your water heater is?",
+        weight: 2.5,
+        risk: "medium-high",
+        riskLabel: "Medium-High Risk",
+        answers: [
+          { text: "No clue — it was here when I moved in", score: 0 },
+          { text: "Roughly, but I'm not sure of the year", score: 1 },
+          { text: "Yes, and it's under 10 years old", score: 2 },
+          { text: "Yes, and I have it serviced regularly", score: 3 },
+        ]
+      },
+      {
+        text: "How often do you clean your dryer vent duct?",
+        weight: 2.5,
+        risk: "medium-high",
+        riskLabel: "Medium-High Risk",
+        answers: [
+          { text: "I didn't know that was a thing", score: 0 },
+          { text: "Once every few years", score: 1 },
+          { text: "Once a year", score: 2 },
+          { text: "Every 6 months — I know it's a fire risk", score: 3 },
+        ]
+      },
+      {
+        text: "Can you locate the individual shutoff valves for your toilets and sinks?",
+        weight: 2.5,
+        risk: "medium-high",
+        riskLabel: "Medium-High Risk",
+        answers: [
+          { text: "No — I've never looked for them", score: 0 },
+          { text: "I think so, but I haven't confirmed", score: 1 },
+          { text: "Yes, I know where most of them are", score: 2 },
+          { text: "Yes, and I've checked they all work", score: 3 },
+        ]
+      },
+      {
+        text: "How often do you have your roof inspected?",
+        weight: 2,
+        risk: "medium",
+        riskLabel: "Medium Risk",
+        answers: [
+          { text: "Never — I'll deal with it when there's a problem", score: 0 },
+          { text: "Only after a major storm", score: 1 },
+          { text: "Every 3–5 years", score: 2 },
+          { text: "Every 1–2 years as recommended", score: 3 },
+        ]
+      },
+      {
+        text: "Do you have the name and contact info of a trusted plumber or handyman?",
+        weight: 1,
+        risk: "low",
+        riskLabel: "Lower Risk",
+        answers: [
+          { text: "No — I'd have to search online in a crisis", score: 0 },
+          { text: "I might have a business card somewhere", score: 1 },
+          { text: "Yes, I have someone I call", score: 2 },
+          { text: "Yes, and I have several trusted contacts", score: 3 },
+        ]
+      },
+    ];
+
+    // Compute max possible score for normalisation
+    const MAX_SCORE = QUESTIONS.reduce((sum, q) => sum + 3 * q.weight, 0);
+
+    // ── State ──────────────────────────────────────────────────────────────────
+    let currentIndex = 0;
+    let totalScore   = 0;
+
+    // ── Elements ───────────────────────────────────────────────────────────────
+    const introCard     = document.getElementById('introCard');
+    const quizWrap      = document.getElementById('quizWrap');
+    const resultsCard   = document.getElementById('resultsCard');
+    const questionCard  = document.getElementById('questionCard');
+    const riskBadge     = document.getElementById('riskBadge');
+    const questionText  = document.getElementById('questionText');
+    const answersEl     = document.getElementById('answersContainer');
+    const progressFill  = document.getElementById('progressFill');
+    const progressCtr   = document.getElementById('progressCounter');
+    const ringFill      = document.getElementById('ringFill');
+    const scoreNumber   = document.getElementById('scoreNumber');
+    const resultBadge   = document.getElementById('resultBadge');
+    const resultHeadline = document.getElementById('resultHeadline');
+    const resultMsg     = document.getElementById('resultMsg');
+    const scoreBarFill  = document.getElementById('scoreBarFill');
+
+    // ── Start ──────────────────────────────────────────────────────────────────
+    function startQuiz() {
+      currentIndex = 0;
+      totalScore   = 0;
+      introCard.style.display = 'none';
+      quizWrap.style.display  = 'block';
+      resultsCard.style.display = 'none';
+      renderQuestion(0, true);
+    }
+
+    function retakeQuiz() {
+      resultsCard.style.display = 'none';
+      introCard.style.display   = 'block';
+    }
+
+    // ── Render question ────────────────────────────────────────────────────────
+    function renderQuestion(index, instant) {
+      const q = QUESTIONS[index];
+
+      // Risk badge
+      riskBadge.className = 'q-risk-badge ' + q.risk;
+      riskBadge.innerHTML = riskIcon(q.risk) + q.riskLabel;
+
+      // Question text
+      questionText.textContent = q.text;
+
+      // Answers
+      const letters = ['A','B','C','D'];
+      answersEl.innerHTML = '';
+      q.answers.forEach((ans, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'answer-btn';
+        btn.innerHTML = `<span class="answer-letter">${letters[i]}</span>${ans.text}`;
+        btn.addEventListener('click', () => selectAnswer(btn, ans.score, q.weight));
+        answersEl.appendChild(btn);
+      });
+
+      // Progress bar & counter
+      const pct = (index / QUESTIONS.length) * 100;
+      progressFill.style.width = pct + '%';
+      progressCtr.textContent = (index + 1) + ' of ' + QUESTIONS.length;
+
+      // Animate in
+      if (!instant) {
+        questionCard.classList.remove('slide-out');
+        questionCard.classList.add('slide-in');
+        questionCard.addEventListener('animationend', () => questionCard.classList.remove('slide-in'), { once: true });
+      }
+    }
+
+    // ── Select answer ──────────────────────────────────────────────────────────
+    function selectAnswer(btn, rawScore, weight) {
+      // Highlight selection
+      document.querySelectorAll('.answer-btn').forEach(b => b.disabled = true);
+      btn.classList.add('selected');
+
+      // Accumulate score
+      totalScore += rawScore * weight;
+
+      // Advance after short pause
+      setTimeout(() => {
+        currentIndex++;
+        if (currentIndex < QUESTIONS.length) {
+          // Slide out then in
+          questionCard.classList.add('slide-out');
+          questionCard.addEventListener('animationend', () => {
+            questionCard.classList.remove('slide-out');
+            renderQuestion(currentIndex, false);
+          }, { once: true });
+        } else {
+          showResults();
+        }
+      }, 340);
+    }
+
+    // ── Show results ───────────────────────────────────────────────────────────
+    function showResults() {
+      quizWrap.style.display    = 'none';
+      resultsCard.style.display = 'block';
+
+      const score = Math.round((totalScore / MAX_SCORE) * 100);
+      const isGood = score >= 70;
+
+      // Score ring
+      const circumference = 2 * Math.PI * 52; // ≈ 326.7
+      const offset = circumference - (score / 100) * circumference;
+      ringFill.style.stroke = isGood ? '#2E7D5A' : '#C05C1A';
+      // Animate after paint
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        ringFill.style.strokeDashoffset = offset;
+      }));
+
+      // Animate score number
+      animateNumber(scoreNumber, 0, score, 1200);
+
+      // Badge
+      resultBadge.className = 'result-badge ' + (isGood ? 'good' : 'improve');
+      resultBadge.textContent = isGood ? '🏡 Great Homeowner' : '🔧 Room to Improve';
+
+      // Headline & message
+      if (isGood) {
+        resultHeadline.textContent = "You're doing great!";
+        resultMsg.textContent = "You're doing great — use MyHomeBase to stay organised and never miss a thing. Keep your winning habits going with smart reminders, a full maintenance log, and a home value history in one place.";
+      } else {
+        resultHeadline.textContent = "There's room to improve.";
+        resultMsg.textContent = "There's room to improve — use MyHomeBase to build better home maintenance habits and protect your investment. Our guided checklists, smart alerts, and AI maintenance coach will help you catch issues before they become expensive problems.";
+      }
+
+      // Score bar
+      scoreBarFill.className = 'score-bar-fill ' + (isGood ? 'good' : 'improve');
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        scoreBarFill.style.width = score + '%';
+      }));
+    }
+
+    // ── Utility: animate counting number ──────────────────────────────────────
+    function animateNumber(el, from, to, duration) {
+      const start = performance.now();
+      function step(now) {
+        const t = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
+        el.textContent = Math.round(from + (to - from) * eased);
+        if (t < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+
+    // ── Risk icon SVG snippets ─────────────────────────────────────────────────
+    function riskIcon(risk) {
+      const icons = {
+        high: '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="margin-right:3px"><path d="M12 2L1 21h22L12 2zm0 4l7.5 13h-15L12 6zm-1 5v4h2v-4h-2zm0 6v2h2v-2h-2z"/></svg>',
+        'medium-high': '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="margin-right:3px"><circle cx="12" cy="12" r="10"/><rect x="11" y="7" width="2" height="6"/><rect x="11" y="15" width="2" height="2"/></svg>',
+        medium: '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="margin-right:3px"><circle cx="12" cy="12" r="10"/><rect x="11" y="7" width="2" height="6"/><rect x="11" y="15" width="2" height="2"/></svg>',
+        low: '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="margin-right:3px"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>',
+      };
+      return icons[risk] || '';
+    }
+  </script>
+</body>
+</html>
