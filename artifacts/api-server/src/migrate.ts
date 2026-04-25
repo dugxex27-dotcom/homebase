@@ -111,6 +111,23 @@ export async function runMigrations() {
     console.warn('[MIGRATE] insurance_email_logs FK constraint warning (non-fatal):', err?.message ?? err);
   }
 
+  // Ensure quiz_results table exists
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS "quiz_results" (
+        "id" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+        "user_id" varchar REFERENCES "users"("id") ON DELETE SET NULL,
+        "score" integer NOT NULL,
+        "tier" text NOT NULL,
+        "completed_at" timestamp NOT NULL,
+        "created_at" timestamp DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS "IDX_quiz_results_user_id" ON "quiz_results"("user_id");
+    `);
+  } catch (err: any) {
+    console.warn('[MIGRATE] quiz_results table setup warning (non-fatal):', err?.message ?? err);
+  }
+
   await pool.end();
 }
 

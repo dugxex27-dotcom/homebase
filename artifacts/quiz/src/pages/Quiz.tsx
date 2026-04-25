@@ -902,7 +902,17 @@ export default function Quiz() {
           tier: event.data.tier,
           completedAt: event.data.completedAt,
         };
+        // Always persist to localStorage so the signup page can pre-fill context
         localStorage.setItem('mhb_quiz_result', JSON.stringify(result));
+        // Also persist to the database (fire-and-forget; works anonymously or authenticated)
+        fetch('/api/quiz-result', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(result),
+        }).catch(() => {
+          // Non-critical — localStorage already has the result
+        });
       }
     }
     window.addEventListener('message', handleMessage);

@@ -2306,3 +2306,22 @@ export const insuranceEmailLogs = pgTable("insurance_email_logs", {
 export const insertInsuranceEmailLogSchema = createInsertSchema(insuranceEmailLogs).omit({ id: true, sentAt: true });
 export type InsertInsuranceEmailLog = z.infer<typeof insertInsuranceEmailLogSchema>;
 export type InsuranceEmailLog = typeof insuranceEmailLogs.$inferSelect;
+
+// ─── Quiz Results ──────────────────────────────────────────────────────────────
+// Persists Home Health Score quiz completions. userId is nullable so anonymous
+// results can be stored before signup and later claimed by a registered user.
+
+export const quizResults = pgTable("quiz_results", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
+  score: integer("score").notNull(),
+  tier: text("tier").notNull(),
+  completedAt: timestamp("completed_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_quiz_results_user_id").on(table.userId),
+]);
+
+export const insertQuizResultSchema = createInsertSchema(quizResults).omit({ id: true, createdAt: true });
+export type InsertQuizResult = z.infer<typeof insertQuizResultSchema>;
+export type QuizResult = typeof quizResults.$inferSelect;

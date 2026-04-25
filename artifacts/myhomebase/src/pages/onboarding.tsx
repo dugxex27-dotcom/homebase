@@ -37,7 +37,28 @@ export default function Onboarding() {
     onSuccess: (data) => {
       // Invalidate auth query to refresh user state
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
-      
+
+      // If the user completed the quiz before signing up, associate their result
+      // with their new account now that they are authenticated.
+      try {
+        const raw = localStorage.getItem('mhb_quiz_result');
+        if (raw) {
+          const quizResult = JSON.parse(raw);
+          if (quizResult?.score !== undefined && quizResult?.tier && quizResult?.completedAt) {
+            fetch('/api/quiz-result', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify(quizResult),
+            }).catch(() => {
+              // Non-critical — the anonymous result is already in the database
+            });
+          }
+        }
+      } catch {
+        // Ignore parse errors
+      }
+
       toast({
         title: "Welcome to MyHomeBase™!",
         description: "Your account has been created successfully. Let's get started!",
