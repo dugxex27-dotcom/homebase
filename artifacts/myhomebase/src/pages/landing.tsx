@@ -174,9 +174,7 @@ export default function Landing() {
 
             {/* CTA link */}
             <a
-              href="https://gotohomebase.com/info"
-              target="_blank"
-              rel="noopener noreferrer"
+              href="/quiz/"
               className="mhb-cta-link"
             >
               Home Maintenance Info →
