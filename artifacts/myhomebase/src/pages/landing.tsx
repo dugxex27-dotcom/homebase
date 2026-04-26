@@ -777,29 +777,6 @@ export default function Landing() {
       </section>
 
       {/* ═══════════════════════════════════════
-          SECTION 06 — SOCIAL PROOF
-      ═══════════════════════════════════════ */}
-      <section className="mhb-proof-section">
-        <div className="mhb-proof-inner">
-          <h2 className="mhb-proof-heading">The homeowners who never get burned have one thing in common.</h2>
-          <p className="mhb-proof-sub">They have records. Start yours today.</p>
-          <div className="mhb-testimonials">
-            {[
-              { name: 'Sarah M., Phoenix AZ', quote: '"When a burst pipe damaged our kitchen, I had every plumbing inspection report ready to send. Claim approved in 48 hours."', note: '[REPLACE WITH REAL TESTIMONIAL]' },
-              { name: 'James T., Atlanta GA', quote: '"I sold my house for $22K over asking because I could prove the roof, HVAC, and foundation had been maintained. The buyer\'s inspector had nothing to flag."', note: '[REPLACE WITH REAL TESTIMONIAL]' },
-              { name: 'Maria L., Denver CO', quote: '"I had no idea my Home Wellness Score was 340. Now it\'s 780. I know exactly what to fix and when — and my insurance premium actually went down."', note: '[REPLACE WITH REAL TESTIMONIAL]' },
-            ].map(t => (
-              <div key={t.name} className="mhb-testimonial-card">
-                <p className="mhb-testimonial-replace">{t.note}</p>
-                <p className="mhb-testimonial-quote">{t.quote}</p>
-                <p className="mhb-testimonial-name">— {t.name}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════
           SECTION 07 — ROLE SELECTION
       ═══════════════════════════════════════ */}
       <section className="mhb-role-section">
