@@ -724,13 +724,50 @@ export default function Landing() {
                 <h3 className="mhb-how-feature-title">Geo-Located Task List</h3>
                 <p className="mhb-how-feature-body">Seasonal maintenance reminders based on your actual location and your home's specific systems. No generic checklists — just what your home needs, when it needs it.</p>
               </div>
-              <div className="mhb-how-screenshot-placeholder">
-                <div className="mhb-screenshot-label">📱 Screenshot placeholder</div>
-                <div className="mhb-screenshot-hint">App screenshot: Geo-located task list</div>
-                <div className="mhb-screenshot-mock">
-                  {['☀️ Clean gutters before fall rain', '❄️ Winterize exterior hose bibs', '🌿 HVAC filter replacement due'].map(t => (
-                    <div key={t} className="mhb-mock-task-row">{t}</div>
-                  ))}
+              <div className="mhb-phone-frame">
+                <div className="mhb-phone-screen">
+                  <div className="mhb-phone-status">
+                    <span>9:41</span>
+                    <span className="mhb-phone-status-icons">●●●</span>
+                  </div>
+                  <div className="mhb-phone-header">
+                    <span className="mhb-phone-header-title">My Task List</span>
+                    <span className="mhb-phone-header-address">📍 Phoenix, AZ · Fall Season</span>
+                  </div>
+                  <div className="mhb-phone-tasks">
+                    <div className="mhb-task-section-label">Due this month</div>
+                    {[
+                      { emoji: '🍂', text: 'Clean gutters before fall rain', priority: 'High', done: false },
+                      { emoji: '❄️', text: 'Winterize exterior hose bibs', priority: 'High', done: false },
+                      { emoji: '🌿', text: 'HVAC filter replacement', priority: 'Med', done: false },
+                    ].map(t => (
+                      <div key={t.text} className="mhb-task-item">
+                        <div className="mhb-task-checkbox" />
+                        <div className="mhb-task-content">
+                          <span className="mhb-task-emoji">{t.emoji}</span>
+                          <span className="mhb-task-text">{t.text}</span>
+                        </div>
+                        <span className={`mhb-task-priority mhb-task-priority-${t.priority.toLowerCase()}`}>{t.priority}</span>
+                      </div>
+                    ))}
+                    <div className="mhb-task-section-label mhb-task-section-done">Completed</div>
+                    {[
+                      { emoji: '🔧', text: 'Test smoke detectors', done: true },
+                      { emoji: '🪟', text: 'Seal window weatherstripping', done: true },
+                    ].map(t => (
+                      <div key={t.text} className="mhb-task-item mhb-task-item-done">
+                        <div className="mhb-task-checkbox mhb-task-checkbox-done">✓</div>
+                        <div className="mhb-task-content">
+                          <span className="mhb-task-emoji">{t.emoji}</span>
+                          <span className="mhb-task-text">{t.text}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mhb-phone-badge" style={{ background: '#fff7ed', borderColor: '#fed7aa' }}>
+                    <span className="mhb-phone-badge-dot" style={{ background: '#f97316' }} />
+                    <span style={{ color: '#c2410c' }}>3 tasks need attention</span>
+                  </div>
                 </div>
               </div>
             </div>
