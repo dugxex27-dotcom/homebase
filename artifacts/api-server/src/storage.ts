@@ -8776,6 +8776,40 @@ class DbStorage implements IStorage {
       .orderBy(desc(insuranceEmailLogs.sentAt));
   }
 
+  async getReferringAgentForHomeowner(homeownerId: string): Promise<{ firstName: string; lastName: string; email: string | null; phone: string | null; website: string | null; officeAddress: string | null; referralCode: string | null; profileImageUrl: string | null; } | undefined> {
+    if (homeownerId === 'demo-homeowner-permanent-id') {
+      return {
+        firstName: 'Jessica',
+        lastName: 'Morgan',
+        email: 'jessica.morgan@seattlerealty.com',
+        phone: '(206) 555-0142',
+        website: 'https://seattlerealty.com/jessica-morgan',
+        officeAddress: '1201 Third Ave, Suite 900, Seattle, WA 98101',
+        referralCode: 'JESSICA2024',
+        profileImageUrl: '/demo-agent-jessica.png',
+      };
+    }
+
+    const referral = await this.getAffiliateReferralByUserId(homeownerId);
+    if (!referral) return undefined;
+
+    const agent = await this.getUser(referral.agentId);
+    if (!agent) return undefined;
+
+    const agentProfile = await this.getAgentProfile(referral.agentId);
+
+    return {
+      firstName: agent.firstName || 'Agent',
+      lastName: agent.lastName || '',
+      email: agent.email,
+      phone: agentProfile?.phone || null,
+      website: agentProfile?.website || null,
+      officeAddress: agentProfile?.officeAddress || null,
+      referralCode: agent.referralCode,
+      profileImageUrl: agent.profileImageUrl,
+    };
+  }
+
   // Methods delegated to MemStorage (bound in constructor)
 }
 
