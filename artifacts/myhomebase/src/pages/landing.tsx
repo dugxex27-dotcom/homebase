@@ -622,7 +622,6 @@ export default function Landing() {
             <div className="mhb-nav-links">
               <button className="mhb-nav-link" onClick={() => scrollTo('how-it-works')}>How It Works</button>
               <button className="mhb-nav-link" onClick={() => scrollTo('pricing')}>Pricing</button>
-              <button className="mhb-nav-link" onClick={() => scrollTo('faq')}>FAQ</button>
             </div>
           </div>
           <div className="mhb-nav-right">
@@ -639,7 +638,6 @@ export default function Landing() {
           <div className="mhb-mobile-menu">
             <button className="mhb-mobile-link" onClick={() => scrollTo('how-it-works')}>How It Works</button>
             <button className="mhb-mobile-link" onClick={() => scrollTo('pricing')}>Pricing</button>
-            <button className="mhb-mobile-link" onClick={() => scrollTo('faq')}>FAQ</button>
             <div className="mhb-mobile-divider" />
             <a href="/signin/homeowner" className="mhb-mobile-link">Homeowner Sign In</a>
             <a href="/signin/contractor" className="mhb-mobile-link">Contractor Sign In</a>
