@@ -6,16 +6,27 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 // relative paths are used as-is.
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string) || '';
 
+// Public paths where a 401 should NOT trigger a redirect (user is already unauthenticated)
+const PUBLIC_PATHS = ['/', '/signin', '/faq', '/contact', '/terms-of-service',
+  '/privacy-policy', '/legal-disclaimer', '/support', '/hws-modal',
+  '/onboarding', '/pay', '/handoff'];
+
+function isPublicPath(pathname: string) {
+  return PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'));
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    // Handle 401 Unauthorized - clear cache and redirect to signin
+    // Handle 401 Unauthorized
     if (res.status === 401) {
-      console.log('[Auth] 401 Unauthorized - clearing cache and redirecting to signin');
-      // Clear all cached data
-      queryClient.clear();
-      // Redirect to signin page
-      window.location.href = '/signin';
-      throw new Error('Unauthorized - redirecting to signin');
+      // Only perform session cleanup + redirect when on a protected route.
+      // On public routes the user is already unauthenticated — clearing the
+      // cache or redirecting here creates an infinite reload loop.
+      if (!isPublicPath(window.location.pathname)) {
+        queryClient.clear();
+        window.location.href = '/signin';
+      }
+      throw new Error('Unauthorized');
     }
     
     const text = (await res.text()) || res.statusText;
