@@ -1,23 +1,7 @@
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
-
-function wsKeepAlive(): Plugin {
-  return {
-    name: "ws-keep-alive",
-    configureServer(server) {
-      server.ws.on("connection", (socket: any) => {
-        const interval = setInterval(() => {
-          if (socket.readyState === 1) {
-            socket.ping();
-          }
-        }, 500);
-        socket.on("close", () => clearInterval(interval));
-      });
-    },
-  };
-}
 
 const rawPort = process.env.PORT;
 
@@ -46,7 +30,6 @@ export default defineConfig({
   plugins: [
     react(),
     runtimeErrorOverlay(),
-    wsKeepAlive(),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [
@@ -92,9 +75,7 @@ export default defineConfig({
       strict: false,
     },
     hmr: {
-      path: "/__vite_hmr",
-      clientPort: 443,
-      timeout: 500,
+      timeout: 30000,
     },
   },
   preview: {
