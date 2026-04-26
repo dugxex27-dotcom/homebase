@@ -2205,12 +2205,12 @@ html {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 20px;
-  font-size: 13px;
-  color: rgba(255,255,255,0.55);
+  font-size: 19.5px;
+  color: #ffffff;
 }
 
 .mhb-quiz-trust-item { white-space: nowrap; }
-.mhb-quiz-trust-dot { opacity: 0.4; }
+.mhb-quiz-trust-dot { opacity: 0.6; }
 
 /* ══════════════════════════════════════
    SECTION 05 — HOW IT WORKS
