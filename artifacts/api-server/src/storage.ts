@@ -5718,7 +5718,7 @@ export class MemStorage implements IStorage {
         website: 'https://seattlerealty.com/jessica-morgan',
         officeAddress: '1201 Third Ave, Suite 900, Seattle, WA 98101',
         referralCode: 'JESSICA2024',
-        profileImageUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&h=200&fit=crop&crop=face',
+        profileImageUrl: '/demo-agent-jessica.png',
       };
     }
 
