@@ -131,19 +131,6 @@ export default function Home() {
       {/* ── DASHBOARD HEADER (homeowners only) ──────────────── */}
       {typedUser?.role === "homeowner" && (
         <div className="dash-header">
-          <div className="dash-header-top">
-            <div />
-            <div className="dash-header-actions">
-              {referringAgent && (
-                <button className="dash-agent-photo-btn" onClick={() => setAgentModalOpen(true)} aria-label="Your agent">
-                  {referringAgent.profileImageUrl
-                    ? <img src={referringAgent.profileImageUrl} alt={`${referringAgent.firstName} ${referringAgent.lastName}`} className="dash-agent-photo-img" />
-                    : <span className="dash-agent-photo-initial">{referringAgent.firstName?.[0]?.toUpperCase() ?? "A"}</span>}
-                </button>
-              )}
-            </div>
-          </div>
-
           <span className="dash-eyebrow">
             {getGreeting()}{firstName ? `, ${firstName}` : ""}
           </span>
@@ -173,6 +160,21 @@ export default function Home() {
                 <div className="dash-chip-label">Systems tracked</div>
               </div>
             </div>
+          )}
+
+          {referringAgent && (
+            <button className="dash-agent-banner" onClick={() => setAgentModalOpen(true)} aria-label="View your agent">
+              <div className="dash-agent-banner-photo">
+                {referringAgent.profileImageUrl
+                  ? <img src={referringAgent.profileImageUrl} alt={`${referringAgent.firstName} ${referringAgent.lastName}`} className="dash-agent-banner-img" />
+                  : <span className="dash-agent-banner-initial">{referringAgent.firstName?.[0]?.toUpperCase() ?? "A"}</span>}
+              </div>
+              <div className="dash-agent-banner-copy">
+                <div className="dash-agent-banner-label">Your Real Estate Agent</div>
+                <div className="dash-agent-banner-name">{referringAgent.firstName} {referringAgent.lastName}</div>
+              </div>
+              <div className="dash-agent-banner-cta">View info →</div>
+            </button>
           )}
         </div>
       )}
