@@ -37,6 +37,7 @@ export default function Landing() {
   const [homeownerModalOpen, setHomeownerModalOpen] = useState(false);
   const [contractorModalOpen, setContractorModalOpen] = useState(false);
   const [agentModalOpen, setAgentModalOpen] = useState(false);
+  const [faqOpen, setFaqOpen] = useState(false);
 
   // ── Quiz escape key ──
   useEffect(() => {
@@ -66,10 +67,10 @@ export default function Landing() {
   // ── Lock body scroll when any overlay modal is open ──
   useEffect(() => {
     const anyOpen = quizOpen || claimsOpen || deniedOpen || costOpen || plansOpen || referralOpen ||
-      homeownerModalOpen || contractorModalOpen || agentModalOpen;
+      homeownerModalOpen || contractorModalOpen || agentModalOpen || faqOpen;
     document.body.style.overflow = anyOpen ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
-  }, [quizOpen, claimsOpen, deniedOpen, costOpen, plansOpen, referralOpen, homeownerModalOpen, contractorModalOpen, agentModalOpen]);
+  }, [quizOpen, claimsOpen, deniedOpen, costOpen, plansOpen, referralOpen, homeownerModalOpen, contractorModalOpen, agentModalOpen, faqOpen]);
 
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -610,6 +611,67 @@ export default function Landing() {
         </div>
       )}
 
+      {/* ═══ FAQ MODAL ═══ */}
+      {faqOpen && (
+        <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setFaqOpen(false)}>
+          <div className="mhb-faq-modal" onClick={e => e.stopPropagation()}>
+            <button className="mhb-modal-close" onClick={() => setFaqOpen(false)} aria-label="Close"><X size={20} strokeWidth={2.5} /></button>
+            <div className="mhb-faq-modal-bar" />
+            <div className="mhb-faq-modal-inner">
+              <p className="mhb-faq-modal-eyebrow">Frequently Asked Questions</p>
+              <h2 className="mhb-faq-modal-heading">Everything you want to know.</h2>
+              <div className="mhb-faq-list">
+                {[
+                  {
+                    q: 'What is MyHomeBase™?',
+                    a: 'MyHomeBase™ is a home documentation and protection platform. It gives your home a permanent, verifiable record — maintenance history, service logs, inspection reports, and more — organized in one place and accessible the moment you need it.'
+                  },
+                  {
+                    q: 'How does it help with insurance claims?',
+                    a: 'The #1 reason home insurance claims are denied is a lack of documented maintenance records. MyHomeBase™ lets you log every repair, inspection, and upgrade so that when an adjuster asks for proof of maintenance, you have it ready instantly.'
+                  },
+                  {
+                    q: 'What is the Home Wellness Score™?',
+                    a: 'The Home Wellness Score™ is a 0–1,000 score for your home — updated in real time based on system age, maintenance history, and completed tasks. Think of it like a credit score, but for your house. A higher score means a better-documented, better-maintained home.'
+                  },
+                  {
+                    q: 'How much does MyHomeBase™ cost?',
+                    a: 'MyHomeBase™ is $5/month for homeowners. Contractors and real estate agents have separate plans starting at $20/month, with referral credits that can bring your cost to $0.'
+                  },
+                  {
+                    q: 'Is there a free trial?',
+                    a: 'Yes — all plans include a 14-day free trial. No credit card required to get started.'
+                  },
+                  {
+                    q: 'Can I cancel anytime?',
+                    a: 'Absolutely. There are no contracts or cancellation fees. You can cancel your subscription at any time from your account settings.'
+                  },
+                  {
+                    q: 'How does the referral program work?',
+                    a: 'Contractors and real estate agents can refer homeowners to MyHomeBase™. Each active paid homeowner you refer reduces your monthly plan cost by $1. Refer 20 and your subscription is completely free — for as long as they are paid subscribers.'
+                  },
+                  {
+                    q: 'Who else can use MyHomeBase™?',
+                    a: 'MyHomeBase™ is built for three groups: homeowners who want to protect their investment, contractors who want to grow their business and manage client records, and real estate agents who want to offer verified home histories with their listings.'
+                  },
+                ].map((item, i) => (
+                  <div key={i} className={`mhb-faq-item ${openFaqIdx === i ? 'mhb-faq-item-open' : ''}`}>
+                    <button className="mhb-faq-q" onClick={() => setOpenFaqIdx(openFaqIdx === i ? null : i)}>
+                      <span>{item.q}</span>
+                      <span className="mhb-faq-chevron">{openFaqIdx === i ? '▲' : '▼'}</span>
+                    </button>
+                    {openFaqIdx === i && <p className="mhb-faq-a">{item.a}</p>}
+                  </div>
+                ))}
+              </div>
+              <div className="mhb-faq-cta-row">
+                <a href="/quiz" className="mhb-faq-cta">Check my home's risk — free →</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ═══════════════════════════════════════
           SECTION 01 — NAVIGATION
       ═══════════════════════════════════════ */}
@@ -622,7 +684,7 @@ export default function Landing() {
             <div className="mhb-nav-links">
               <button className="mhb-nav-link" onClick={() => scrollTo('how-it-works')}>How It Works</button>
               <button className="mhb-nav-link" onClick={() => scrollTo('pricing')}>Pricing</button>
-              <button className="mhb-nav-link" onClick={() => scrollTo('faq')}>FAQ</button>
+              <button className="mhb-nav-link" onClick={() => setFaqOpen(true)}>FAQ</button>
             </div>
           </div>
           <div className="mhb-nav-right">
@@ -639,7 +701,7 @@ export default function Landing() {
           <div className="mhb-mobile-menu">
             <button className="mhb-mobile-link" onClick={() => scrollTo('how-it-works')}>How It Works</button>
             <button className="mhb-mobile-link" onClick={() => scrollTo('pricing')}>Pricing</button>
-            <button className="mhb-mobile-link" onClick={() => scrollTo('faq')}>FAQ</button>
+            <button className="mhb-mobile-link" onClick={() => { setFaqOpen(true); setMobileNavOpen(false); }}>FAQ</button>
             <div className="mhb-mobile-divider" />
             <a href="/signin/homeowner" className="mhb-mobile-link">Homeowner Sign In</a>
             <a href="/signin/contractor" className="mhb-mobile-link">Contractor Sign In</a>

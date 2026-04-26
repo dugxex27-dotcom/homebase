@@ -3786,3 +3786,119 @@ html {
   white-space: nowrap;
   margin: 0;
 }
+
+/* ══════════════════════════════════════
+   FAQ MODAL
+══════════════════════════════════════ */
+.mhb-faq-modal {
+  background: #fff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 640px;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 24px 60px rgba(44,15,91,0.18);
+  display: flex;
+  flex-direction: column;
+}
+
+.mhb-faq-modal-bar {
+  height: 5px;
+  background: linear-gradient(90deg, #2C0F5B, #3C258E);
+  border-radius: 20px 20px 0 0;
+  flex-shrink: 0;
+}
+
+.mhb-faq-modal-inner {
+  padding: 32px 36px 36px;
+}
+
+.mhb-faq-modal-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #7c3aed;
+  margin: 0 0 10px;
+}
+
+.mhb-faq-modal-heading {
+  font-size: 26px;
+  font-weight: 800;
+  color: #1a0a3e;
+  margin: 0 0 28px;
+  line-height: 1.2;
+}
+
+.mhb-faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-top: 1px solid #ede9fe;
+}
+
+.mhb-faq-item {
+  border-bottom: 1px solid #ede9fe;
+}
+
+.mhb-faq-q {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: none;
+  border: none;
+  padding: 16px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a0a3e;
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.mhb-faq-q:hover { color: #3C258E; }
+
+.mhb-faq-item-open .mhb-faq-q { color: #3C258E; }
+
+.mhb-faq-chevron {
+  font-size: 10px;
+  color: #7c3aed;
+  flex-shrink: 0;
+}
+
+.mhb-faq-a {
+  font-size: 14px;
+  line-height: 1.65;
+  color: #4a4060;
+  margin: 0 0 16px;
+  padding-right: 24px;
+}
+
+.mhb-faq-cta-row {
+  margin-top: 28px;
+  display: flex;
+  justify-content: center;
+}
+
+.mhb-faq-cta {
+  display: inline-block;
+  text-decoration: none;
+  background: linear-gradient(135deg, #2C0F5B, #3C258E);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 14px 28px;
+  border-radius: 10px;
+  transition: opacity 0.2s;
+}
+
+.mhb-faq-cta:hover { opacity: 0.88; }
+
+@media (max-width: 600px) {
+  .mhb-faq-modal-inner { padding: 24px 20px 28px; }
+  .mhb-faq-modal-heading { font-size: 21px; }
+  .mhb-faq-q { font-size: 14px; }
+}
