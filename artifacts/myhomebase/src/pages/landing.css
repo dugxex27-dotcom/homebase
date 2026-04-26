@@ -3405,3 +3405,177 @@ html {
   background: #fef3c7;
   color: #d97706;
 }
+
+/* ============================================
+   DENIED CLAIMS MODAL (.mdn-*)
+   ============================================ */
+
+.mdn-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding-bottom: 8px;
+}
+
+.mdn-bar {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #7c3aed, #3C258E);
+  margin: 20px auto 0;
+}
+
+.mdn-header {
+  padding: 16px 20px 0;
+}
+
+.mdn-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7c3aed;
+  margin: 0 0 8px;
+}
+
+.mdn-heading {
+  font-size: 22px;
+  font-weight: 800;
+  color: #1a0a3e;
+  line-height: 1.25;
+  margin: 0 0 8px;
+}
+
+.mdn-subtitle {
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+
+.mdn-divider {
+  height: 1px;
+  background: #ede9fe;
+  margin: 0 0 16px;
+}
+
+.mdn-reason-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0 20px;
+  margin-bottom: 16px;
+}
+
+.mdn-reason {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 14px 0;
+  border-bottom: 1px solid #f3f0ff;
+}
+
+.mdn-reason-top {
+  background: #faf5ff;
+  border-radius: 10px;
+  padding: 14px 12px;
+  border-bottom: none;
+  margin-bottom: 4px;
+}
+
+.mdn-reason-badge {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed, #3C258E);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: -0.02em;
+}
+
+.mdn-reason-badge-gray {
+  background: #e5e7eb;
+  color: #6b7280;
+}
+
+.mdn-reason-body {
+  flex: 1;
+}
+
+.mdn-reason-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a0a3e;
+  margin: 0 0 3px;
+}
+
+.mdn-reason-desc {
+  font-size: 12.5px;
+  color: #6b7280;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.mdn-fix-row {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #f5f3ff, #ede9fe);
+  margin: 16px 20px 8px;
+  border-radius: 12px;
+  border: 1px solid #ddd6fe;
+}
+
+.mdn-fix-icon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #7c3aed;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mdn-fix-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #4c1d95;
+  margin: 0 0 4px;
+}
+
+.mdn-fix-desc {
+  font-size: 12.5px;
+  color: #5b21b6;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.mdn-source-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px 16px;
+}
+
+.mdn-source-line {
+  flex: 1;
+  height: 1px;
+  background: #e5e7eb;
+}
+
+.mdn-source-text {
+  font-size: 10px;
+  color: #9ca3af;
+  white-space: nowrap;
+  margin: 0;
+}

@@ -20,6 +20,7 @@ export default function Landing() {
   const [demoLoading, setDemoLoading] = useState<string | null>(null);
   const [quizOpen, setQuizOpen] = useState(false);
   const [claimsOpen, setClaimsOpen] = useState(false);
+  const [deniedOpen, setDeniedOpen] = useState(false);
   const [plansOpen, setPlansOpen] = useState(false);
   const [referralOpen, setReferralOpen] = useState(false);
   const [signinOpen, setSigninOpen] = useState(false);
@@ -63,11 +64,11 @@ export default function Landing() {
 
   // ── Lock body scroll when any overlay modal is open ──
   useEffect(() => {
-    const anyOpen = quizOpen || claimsOpen || plansOpen || referralOpen ||
+    const anyOpen = quizOpen || claimsOpen || deniedOpen || plansOpen || referralOpen ||
       homeownerModalOpen || contractorModalOpen || agentModalOpen;
     document.body.style.overflow = anyOpen ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
-  }, [quizOpen, claimsOpen, plansOpen, referralOpen, homeownerModalOpen, contractorModalOpen, agentModalOpen]);
+  }, [quizOpen, claimsOpen, deniedOpen, plansOpen, referralOpen, homeownerModalOpen, contractorModalOpen, agentModalOpen]);
 
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -118,7 +119,73 @@ export default function Landing() {
         </div>
       )}
 
-      {/* ═══ INSURANCE REALITY CHECK MODAL ═══ */}
+      {/* ═══ 42% DENIED MODAL ═══ */}
+      {deniedOpen && (
+        <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setDeniedOpen(false)}>
+          <div className="mhb-modal-card" onClick={e => e.stopPropagation()}>
+            <button className="mhb-modal-close" onClick={() => setDeniedOpen(false)} aria-label="Close">
+              <X size={20} strokeWidth={2.5} />
+            </button>
+            <div className="mdn-wrap">
+              <div className="mdn-bar" />
+              <div className="mdn-header">
+                <p className="mdn-eyebrow">Why Claims Get Denied</p>
+                <h2 className="mdn-heading">42% of claims are denied or underpaid.</h2>
+                <p className="mdn-subtitle">That's not a rounding error — it's nearly every other homeowner who files a claim.</p>
+                <div className="mdn-divider" />
+              </div>
+
+              <div className="mdn-reason-list">
+                <div className="mdn-reason mdn-reason-top">
+                  <div className="mdn-reason-badge">#1</div>
+                  <div className="mdn-reason-body">
+                    <p className="mdn-reason-title">No maintenance records</p>
+                    <p className="mdn-reason-desc">Insurers require proof that the affected system was properly maintained. Without service history, they assume neglect — and deny.</p>
+                  </div>
+                </div>
+                <div className="mdn-reason">
+                  <div className="mdn-reason-badge mdn-reason-badge-gray">#2</div>
+                  <div className="mdn-reason-body">
+                    <p className="mdn-reason-title">Late or incomplete documentation</p>
+                    <p className="mdn-reason-desc">Receipts, contractor invoices, and inspection reports submitted after the fact are often rejected. Timing and completeness matter.</p>
+                  </div>
+                </div>
+                <div className="mdn-reason">
+                  <div className="mdn-reason-badge mdn-reason-badge-gray">#3</div>
+                  <div className="mdn-reason-body">
+                    <p className="mdn-reason-title">Pre-existing condition ruling</p>
+                    <p className="mdn-reason-desc">Without a dated maintenance log, adjusters can claim the damage was pre-existing — shifting the burden of proof to you.</p>
+                  </div>
+                </div>
+                <div className="mdn-reason">
+                  <div className="mdn-reason-badge mdn-reason-badge-gray">#4</div>
+                  <div className="mdn-reason-body">
+                    <p className="mdn-reason-title">Policy exclusions triggered by neglect</p>
+                    <p className="mdn-reason-desc">Most homeowner policies explicitly exclude damage resulting from deferred maintenance. One missed service call can void coverage.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mdn-divider" style={{ margin: '0 20px' }} />
+
+              <div className="mdn-fix-row">
+                <div className="mdn-fix-icon">✓</div>
+                <div>
+                  <p className="mdn-fix-title">MyHomeBase solves all four.</p>
+                  <p className="mdn-fix-desc">Every service record, inspection, and contractor invoice — logged, dated, and stored permanently. When an adjuster asks, you have the answer.</p>
+                </div>
+              </div>
+
+              <div className="mdn-source-row">
+                <div className="mdn-source-line" />
+                <p className="mdn-source-text">Source: Weiss Ratings · IRC Property Claims Study</p>
+                <div className="mdn-source-line" />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {claimsOpen && (
         <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setClaimsOpen(false)}>
           <div className="mhb-modal-card" onClick={e => e.stopPropagation()}>
@@ -556,7 +623,7 @@ export default function Landing() {
       ═══════════════════════════════════════ */}
       <section className="mhb-stats-section">
         <div className="mhb-stats-grid">
-          <button className="mhb-stat-tile" onClick={() => setClaimsOpen(true)} aria-label="Insurance Reality Check">
+          <button className="mhb-stat-tile" onClick={() => setDeniedOpen(true)} aria-label="Claims denied nationally">
             <div className="mhb-stat-tile-num">42%</div>
             <div className="mhb-stat-tile-label">Claims denied nationally</div>
             <div className="mhb-stat-tile-hint"><Info size={12} strokeWidth={2.5} /> Tap to learn more</div>
