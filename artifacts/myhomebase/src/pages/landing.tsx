@@ -461,7 +461,7 @@ export default function Landing() {
                   <div className="mrr-header">
                     <p className="mrr-eyebrow mrr-eyebrow-ct">How it works</p>
                     <h2 className="mrr-heading">Bring homeowners.<br />Pay less. Or nothing.</h2>
-                    <p className="mrr-body-text">Every homeowner you bring to MyHomeBase takes $1 off your monthly plan. Refer 20 and your subscription is completely free — for as long as they stay subscribed.</p>
+                    <p className="mrr-body-text">Every homeowner you bring to MyHomeBase takes $1 off your monthly plan. Refer 20 and your subscription is completely free — for as long as they are paid subscribers.</p>
                     <div className="mrr-divider mrr-divider-ct" />
                   </div>
                   <div className="mrr-steps-section">
