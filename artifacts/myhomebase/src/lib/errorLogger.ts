@@ -1,4 +1,3 @@
-import { apiRequest } from './queryClient';
 
 interface Breadcrumb {
   timestamp: Date;
@@ -139,9 +138,14 @@ class ErrorLogger {
       };
 
       // Send to backend (don't await to avoid blocking)
-      apiRequest('/api/errors', 'POST', errorData).catch(err => {
+      // Use plain fetch — NOT apiRequest — to avoid triggering auth redirects on 401
+      fetch('/api/errors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(errorData),
+      }).catch(() => {
         // Silently fail if error logging fails
-        console.error('Failed to log error to backend:', err);
       });
 
       // Add this error as a breadcrumb for future errors
