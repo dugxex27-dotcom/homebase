@@ -227,12 +227,6 @@ export default function Landing() {
               <div className="mco-divider" style={{ margin: '0 20px' }} />
 
               <div className="mco-compare">
-                <div className="mco-compare-col mco-compare-bad">
-                  <p className="mco-compare-label">Without records</p>
-                  <p className="mco-compare-amount mco-compare-amount-red">$0</p>
-                  <p className="mco-compare-note">Claim denied. Adjuster cites lack of maintenance proof.</p>
-                </div>
-                <div className="mco-compare-divider" />
                 <div className="mco-compare-col mco-compare-good">
                   <p className="mco-compare-label">With MyHomeBase</p>
                   <p className="mco-compare-amount mco-compare-amount-green">Full payout</p>
