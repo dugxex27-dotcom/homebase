@@ -47,7 +47,33 @@ const inReplitIDE =
 
 // Minimal stub satisfying every import from /@vite/client without opening any
 // WebSocket connections.
+//
+// CRITICAL: updateStyle / removeStyle must actually manipulate <style> tags.
+// Every CSS module Vite compiles calls `__vite__updateStyle(id, cssText)`.
+// If that is a no-op the entire stylesheet is silently dropped, breaking the UI.
 const VITE_CLIENT_STUB = `
+const __sheets__ = new Map();
+
+export function updateStyle(id, content) {
+  let el = __sheets__.get(id);
+  if (!el) {
+    el = document.createElement('style');
+    el.setAttribute('type', 'text/css');
+    el.setAttribute('data-vite-stub', id);
+    document.head.appendChild(el);
+    __sheets__.set(id, el);
+  }
+  el.textContent = content;
+}
+
+export function removeStyle(id) {
+  const el = __sheets__.get(id);
+  if (el) {
+    el.remove();
+    __sheets__.delete(id);
+  }
+}
+
 export function createHotContext() {
   return {
     accept() {},
@@ -61,9 +87,8 @@ export function createHotContext() {
     send() {},
   };
 }
+
 export function injectQuery(url) { return url; }
-export function removeStyle() {}
-export function updateStyle() {}
 export const hmrClient = null;
 `;
 
