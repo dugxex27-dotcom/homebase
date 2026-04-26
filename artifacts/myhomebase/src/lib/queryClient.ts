@@ -6,25 +6,44 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 // relative paths are used as-is.
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string) || '';
 
+// The Vite base path (e.g. "/myhomebase" in dev, "/" in production).
+// window.location.pathname includes this prefix, so we must strip it before
+// comparing against our public-path list.
+const VITE_BASE = (import.meta.env.BASE_URL as string).replace(/\/$/, '');
+
 // Public paths where a 401 should NOT trigger a redirect (user is already unauthenticated)
 const PUBLIC_PATHS = ['/', '/signin', '/faq', '/contact', '/terms-of-service',
   '/privacy-policy', '/legal-disclaimer', '/support', '/hws-modal',
-  '/onboarding', '/pay', '/handoff'];
+  '/onboarding', '/pay', '/handoff', '/invite'];
 
 function isPublicPath(pathname: string) {
-  return PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'));
+  // Strip the Vite base prefix so we compare app-relative paths
+  const rel = (VITE_BASE && pathname.startsWith(VITE_BASE))
+    ? pathname.slice(VITE_BASE.length) || '/'
+    : pathname;
+  return PUBLIC_PATHS.some(p => rel === p || rel.startsWith(p + '/'));
 }
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     // Handle 401 Unauthorized
     if (res.status === 401) {
+      const pathname = window.location.pathname;
+      const isPublic = isPublicPath(pathname);
+
+      // Debug: log every 401 so we can identify the culprit query
+      console.warn(
+        `[queryClient] 401 on ${res.url} | pathname=${pathname} | isPublic=${isPublic}`
+      );
+
       // Only perform session cleanup + redirect when on a protected route.
       // On public routes the user is already unauthenticated — clearing the
       // cache or redirecting here creates an infinite reload loop.
-      if (!isPublicPath(window.location.pathname)) {
+      if (!isPublic) {
+        console.warn('[queryClient] Clearing cache and redirecting to signin');
         queryClient.clear();
-        window.location.href = '/signin';
+        // Use VITE_BASE so the redirect works in both dev (/myhomebase) and prod (/)
+        window.location.href = `${VITE_BASE}/signin`;
       }
       throw new Error('Unauthorized');
     }
@@ -70,7 +89,9 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(`${API_BASE}${queryKey.join("/") as string}`, {
+    const url = `${API_BASE}${queryKey.join("/") as string}`;
+
+    const res = await fetch(url, {
       credentials: "include",
     });
 
