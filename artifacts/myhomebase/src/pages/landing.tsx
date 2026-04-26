@@ -618,13 +618,54 @@ export default function Landing() {
                 <h3 className="mhb-how-feature-title">Home Wellness Score™</h3>
                 <p className="mhb-how-feature-body">Your home gets a score from 0 to 1,000 — updated in real time based on system age, maintenance history, and completed tasks. Like a credit score, but for your house. Know it. Improve it. Show it when you sell.</p>
               </div>
-              <div className="mhb-how-screenshot-placeholder">
-                <div className="mhb-screenshot-label">📱 Screenshot placeholder</div>
-                <div className="mhb-screenshot-hint">App screenshot: Home Wellness Score dashboard</div>
-                <div className="mhb-screenshot-mock">
-                  <div className="mhb-mock-score-ring">
-                    <span className="mhb-mock-score-num">742</span>
-                    <span className="mhb-mock-score-sub">Home Score</span>
+              <div className="mhb-phone-frame">
+                <div className="mhb-phone-screen">
+                  <div className="mhb-phone-status">
+                    <span>9:41</span>
+                    <span className="mhb-phone-status-icons">●●●</span>
+                  </div>
+                  <div className="mhb-phone-header">
+                    <span className="mhb-phone-header-title">Home Wellness Score™</span>
+                    <span className="mhb-phone-header-address">123 Maple St</span>
+                  </div>
+                  <div className="mhb-phone-score-area">
+                    <svg className="mhb-score-ring-svg" viewBox="0 0 160 160">
+                      <circle cx="80" cy="80" r="66" fill="none" stroke="#ede9fe" strokeWidth="10"/>
+                      <circle cx="80" cy="80" r="66" fill="none" stroke="url(#scoreGrad)" strokeWidth="10"
+                        strokeLinecap="round"
+                        strokeDasharray="414.69"
+                        strokeDashoffset="82.94"
+                        transform="rotate(-90 80 80)"/>
+                      <defs>
+                        <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="#7c3aed"/>
+                          <stop offset="100%" stopColor="#3C258E"/>
+                        </linearGradient>
+                      </defs>
+                      <text x="80" y="72" textAnchor="middle" fontSize="36" fontWeight="800" fill="#1a0a3e">801</text>
+                      <text x="80" y="92" textAnchor="middle" fontSize="11" fontWeight="700" fill="#7c3aed" letterSpacing="1">EXCELLENT</text>
+                      <text x="80" y="108" textAnchor="middle" fontSize="9" fill="#9090b0">out of 1,000</text>
+                    </svg>
+                  </div>
+                  <div className="mhb-phone-bars">
+                    {[
+                      { label: 'HVAC Systems', pct: 92, color: '#7c3aed' },
+                      { label: 'Roof & Structure', pct: 85, color: '#3C258E' },
+                      { label: 'Plumbing', pct: 78, color: '#5b21b6' },
+                      { label: 'Electrical', pct: 95, color: '#7c3aed' },
+                    ].map(b => (
+                      <div key={b.label} className="mhb-phone-bar-row">
+                        <span className="mhb-phone-bar-label">{b.label}</span>
+                        <div className="mhb-phone-bar-track">
+                          <div className="mhb-phone-bar-fill" style={{ width: `${b.pct}%`, background: b.color }} />
+                        </div>
+                        <span className="mhb-phone-bar-val">{b.pct}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mhb-phone-badge">
+                    <span className="mhb-phone-badge-dot" />
+                    Last updated today
                   </div>
                 </div>
               </div>
