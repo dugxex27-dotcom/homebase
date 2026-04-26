@@ -1890,6 +1890,26 @@ html {
 
 .mhb-nav-signin-btn:hover { background: rgba(255,255,255,0.22); }
 
+.mhb-nav-demo-btn {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #2C0F5B;
+  background: rgba(255,255,255,0.92);
+  border: none;
+  padding: 7px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+  white-space: nowrap;
+}
+.mhb-nav-demo-btn:hover { background: #fff; }
+.mhb-nav-demo-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.mhb-mobile-demo-link {
+  color: #3C258E !important;
+  font-weight: 700 !important;
+}
+
 .mhb-nav-hamburger {
   display: none;
   background: none;

@@ -691,6 +691,9 @@ export default function Landing() {
             <a href="/signin/homeowner" className="mhb-nav-role-link mhb-nav-homeowner">Homeowner</a>
             <a href="/signin/contractor" className="mhb-nav-role-link mhb-nav-contractor">Contractor</a>
             <a href="/signin/agent" className="mhb-nav-role-link mhb-nav-agent">Agent</a>
+            <button className="mhb-nav-demo-btn" onClick={() => handleDemoLogin('homeowner')} disabled={demoLoading === 'homeowner'}>
+              {demoLoading === 'homeowner' ? 'Loading…' : 'Try Demo'}
+            </button>
             <a href="/signin" className="mhb-nav-signin-btn">Sign In</a>
           </div>
           <button className="mhb-nav-hamburger" onClick={() => setMobileNavOpen(v => !v)} aria-label="Menu">
@@ -703,6 +706,9 @@ export default function Landing() {
             <button className="mhb-mobile-link" onClick={() => scrollTo('pricing')}>Pricing</button>
             <button className="mhb-mobile-link" onClick={() => { setFaqOpen(true); setMobileNavOpen(false); }}>FAQ</button>
             <div className="mhb-mobile-divider" />
+            <button className="mhb-mobile-link mhb-mobile-demo-link" onClick={() => { handleDemoLogin('homeowner'); setMobileNavOpen(false); }} disabled={demoLoading === 'homeowner'}>
+              {demoLoading === 'homeowner' ? 'Loading…' : '▶ Homeowner Demo'}
+            </button>
             <a href="/signin/homeowner" className="mhb-mobile-link">Homeowner Sign In</a>
             <a href="/signin/contractor" className="mhb-mobile-link">Contractor Sign In</a>
             <a href="/signin/agent" className="mhb-mobile-link">Agent Sign In</a>
