@@ -677,16 +677,43 @@ export default function Landing() {
                 <h3 className="mhb-how-feature-title">Service Record Tracking</h3>
                 <p className="mhb-how-feature-body">Every repair, inspection, and upgrade — logged, dated, and stored permanently. When an insurance adjuster asks for proof, you'll have it. When a buyer asks for history, you'll have that too.</p>
               </div>
-              <div className="mhb-how-screenshot-placeholder">
-                <div className="mhb-screenshot-label">📱 Screenshot placeholder</div>
-                <div className="mhb-screenshot-hint">App screenshot: Service record timeline</div>
-                <div className="mhb-screenshot-mock">
-                  {['HVAC Service — Mar 2025', 'Roof Inspection — Jan 2025', 'Plumbing Fix — Nov 2024'].map(r => (
-                    <div key={r} className="mhb-mock-record-row">
-                      <span className="mhb-mock-record-dot" />
-                      <span className="mhb-mock-record-text">{r}</span>
-                    </div>
-                  ))}
+              <div className="mhb-phone-frame">
+                <div className="mhb-phone-screen">
+                  <div className="mhb-phone-status">
+                    <span>9:41</span>
+                    <span className="mhb-phone-status-icons">●●●</span>
+                  </div>
+                  <div className="mhb-phone-header">
+                    <span className="mhb-phone-header-title">Service Records</span>
+                    <span className="mhb-phone-header-address">123 Maple St · 14 records</span>
+                  </div>
+                  <div className="mhb-phone-records">
+                    {[
+                      { label: 'HVAC Tune-Up', date: 'Mar 12, 2025', tag: 'HVAC', color: '#7c3aed' },
+                      { label: 'Roof Inspection', date: 'Jan 4, 2025', tag: 'Roof', color: '#1560A2' },
+                      { label: 'Plumbing Repair', date: 'Nov 18, 2024', tag: 'Plumbing', color: '#09694A' },
+                      { label: 'Electrical Panel Check', date: 'Sep 2, 2024', tag: 'Electrical', color: '#b45309' },
+                      { label: 'Gutter Cleaning', date: 'Aug 15, 2024', tag: 'Exterior', color: '#5b21b6' },
+                    ].map((r, i) => (
+                      <div key={r.label} className="mhb-record-item">
+                        <div className="mhb-record-timeline">
+                          <div className="mhb-record-dot" style={{ background: r.color }} />
+                          {i < 4 && <div className="mhb-record-line" />}
+                        </div>
+                        <div className="mhb-record-body">
+                          <div className="mhb-record-top">
+                            <span className="mhb-record-name">{r.label}</span>
+                            <span className="mhb-record-tag" style={{ color: r.color, background: r.color + '18' }}>{r.tag}</span>
+                          </div>
+                          <span className="mhb-record-date">{r.date}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mhb-phone-badge">
+                    <span className="mhb-phone-badge-dot" style={{ background: '#1560A2' }} />
+                    All records verified
+                  </div>
                 </div>
               </div>
             </div>
