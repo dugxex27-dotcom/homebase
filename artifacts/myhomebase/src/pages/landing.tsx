@@ -21,6 +21,7 @@ export default function Landing() {
   const [quizOpen, setQuizOpen] = useState(false);
   const [claimsOpen, setClaimsOpen] = useState(false);
   const [deniedOpen, setDeniedOpen] = useState(false);
+  const [costOpen, setCostOpen] = useState(false);
   const [plansOpen, setPlansOpen] = useState(false);
   const [referralOpen, setReferralOpen] = useState(false);
   const [signinOpen, setSigninOpen] = useState(false);
@@ -64,11 +65,11 @@ export default function Landing() {
 
   // ── Lock body scroll when any overlay modal is open ──
   useEffect(() => {
-    const anyOpen = quizOpen || claimsOpen || deniedOpen || plansOpen || referralOpen ||
+    const anyOpen = quizOpen || claimsOpen || deniedOpen || costOpen || plansOpen || referralOpen ||
       homeownerModalOpen || contractorModalOpen || agentModalOpen;
     document.body.style.overflow = anyOpen ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
-  }, [quizOpen, claimsOpen, deniedOpen, plansOpen, referralOpen, homeownerModalOpen, contractorModalOpen, agentModalOpen]);
+  }, [quizOpen, claimsOpen, deniedOpen, costOpen, plansOpen, referralOpen, homeownerModalOpen, contractorModalOpen, agentModalOpen]);
 
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -180,6 +181,74 @@ export default function Landing() {
                 <div className="mdn-source-line" />
                 <p className="mdn-source-text">Source: Weiss Ratings · IRC Property Claims Study</p>
                 <div className="mdn-source-line" />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ $18K COST MODAL ═══ */}
+      {costOpen && (
+        <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setCostOpen(false)}>
+          <div className="mhb-modal-card" onClick={e => e.stopPropagation()}>
+            <button className="mhb-modal-close" onClick={() => setCostOpen(false)} aria-label="Close">
+              <X size={20} strokeWidth={2.5} />
+            </button>
+            <div className="mco-wrap">
+              <div className="mco-bar" />
+              <div className="mco-header">
+                <p className="mco-eyebrow">The Real Cost of a Denied Claim</p>
+                <h2 className="mco-heading">$18,311 — left on the table.</h2>
+                <p className="mco-subtitle">That's the average amount homeowners lose when a property claim is denied or underpaid. Here's what's actually at stake.</p>
+                <div className="mco-divider" />
+              </div>
+
+              <div className="mco-breakdown">
+                <p className="mco-breakdown-label">Common claim categories & average payouts</p>
+                {[
+                  { label: 'Fire & lightning damage', amount: '$88,000', pct: 100, color: '#dc2626' },
+                  { label: 'Wind & hail damage',      amount: '$13,000', pct: 15,  color: '#d97706' },
+                  { label: 'Water damage & freezing', amount: '$12,500', pct: 14,  color: '#2563eb' },
+                  { label: 'Theft & burglary',        amount: '$4,400',  pct: 5,   color: '#7c3aed' },
+                  { label: 'Liability claims',        amount: '$30,000', pct: 34,  color: '#059669' },
+                ].map(row => (
+                  <div key={row.label} className="mco-bar-row">
+                    <div className="mco-bar-meta">
+                      <span className="mco-bar-name">{row.label}</span>
+                      <span className="mco-bar-amt">{row.amount}</span>
+                    </div>
+                    <div className="mco-bar-track">
+                      <div className="mco-bar-fill" style={{ width: `${row.pct}%`, background: row.color }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mco-divider" style={{ margin: '0 20px' }} />
+
+              <div className="mco-compare">
+                <div className="mco-compare-col mco-compare-bad">
+                  <p className="mco-compare-label">Without records</p>
+                  <p className="mco-compare-amount mco-compare-amount-red">$0</p>
+                  <p className="mco-compare-note">Claim denied. Adjuster cites lack of maintenance proof.</p>
+                </div>
+                <div className="mco-compare-divider" />
+                <div className="mco-compare-col mco-compare-good">
+                  <p className="mco-compare-label">With MyHomeBase</p>
+                  <p className="mco-compare-amount mco-compare-amount-green">Full payout</p>
+                  <p className="mco-compare-note">Complete service history submitted. Claim approved in days.</p>
+                </div>
+              </div>
+
+              <div className="mco-footer-note">
+                <span className="mco-footer-icon">💡</span>
+                <p className="mco-footer-text">MyHomeBase costs $5/month. The average denied claim costs $18,311. Documentation is the difference.</p>
+              </div>
+
+              <div className="mco-source-row">
+                <div className="mco-source-line" />
+                <p className="mco-source-text">Source: III Property Claims Study · NAIC Data</p>
+                <div className="mco-source-line" />
               </div>
             </div>
           </div>
@@ -628,7 +697,7 @@ export default function Landing() {
             <div className="mhb-stat-tile-label">Claims denied nationally</div>
             <div className="mhb-stat-tile-hint"><Info size={12} strokeWidth={2.5} /> Tap to learn more</div>
           </button>
-          <button className="mhb-stat-tile" onClick={() => setClaimsOpen(true)} aria-label="Average denied claim cost">
+          <button className="mhb-stat-tile" onClick={() => setCostOpen(true)} aria-label="Average denied claim cost">
             <div className="mhb-stat-tile-num">$18K</div>
             <div className="mhb-stat-tile-label">Average denied claim cost</div>
             <div className="mhb-stat-tile-hint"><Info size={12} strokeWidth={2.5} /> Tap to learn more</div>
