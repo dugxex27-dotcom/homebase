@@ -1890,6 +1890,15 @@ html {
 
 .mhb-nav-signin-btn:hover { background: rgba(255,255,255,0.22); }
 
+.mhb-nav-sep {
+  display: inline-block;
+  width: 1px;
+  height: 18px;
+  background: rgba(255,255,255,0.2);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
 .mhb-nav-demo-btn {
   font-size: 12.5px;
   font-weight: 700;

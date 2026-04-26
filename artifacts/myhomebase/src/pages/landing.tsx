@@ -691,6 +691,7 @@ export default function Landing() {
             <a href="/signin/homeowner" className="mhb-nav-role-link mhb-nav-homeowner">Homeowner</a>
             <a href="/signin/contractor" className="mhb-nav-role-link mhb-nav-contractor">Contractor</a>
             <a href="/signin/agent" className="mhb-nav-role-link mhb-nav-agent">Agent</a>
+            <span className="mhb-nav-sep" />
             <button className="mhb-nav-demo-btn" onClick={() => handleDemoLogin('homeowner')} disabled={demoLoading === 'homeowner'}>
               {demoLoading === 'homeowner' ? 'Loading…' : 'Homeowner Demo'}
             </button>
