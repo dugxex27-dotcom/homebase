@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Users, Calendar, Search, Star, TrendingUp, Gift, Sparkles, FileText, AlertTriangle, ClipboardList, Bell, User, ChevronRight, ChevronUp, Key } from "lucide-react";
+import { Users, Calendar, Search, Star, TrendingUp, Gift, Sparkles, FileText, AlertTriangle, ClipboardList, Bell, User, ChevronRight, ChevronUp, Info, Phone, Mail, Globe, MapPin, X as XIcon } from "lucide-react";
 import HouseMap from "@/components/house-map";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -92,6 +92,18 @@ export default function Home() {
     enabled: !!houses[0]?.id && typedUser?.role === "homeowner",
   });
 
+  // Referring agent (only present if agent brought this user onto the app)
+  const { data: referringAgent } = useQuery<{
+    firstName: string; lastName: string; email: string | null;
+    phone: string | null; website: string | null; officeAddress: string | null;
+    referralCode: string | null; profileImageUrl: string | null;
+  } | null>({
+    queryKey: ["/api/referring-agent"],
+    enabled: typedUser?.role === "homeowner",
+  });
+
+  const [agentModalOpen, setAgentModalOpen] = useState(false);
+
   // Referral progress
   const referralCount = (referralData as any)?.referralCount || 0;
   const maxHouses = (userData as any)?.maxHousesAllowed ?? 2;
@@ -120,6 +132,18 @@ export default function Home() {
       {typedUser?.role === "homeowner" && (
         <div className="dash-header">
           <div className="dash-header-top">
+            {referringAgent ? (
+              <button className="dash-agent-tile" onClick={() => setAgentModalOpen(true)} aria-label="Your agent">
+                <div className="dash-agent-avatar">
+                  {referringAgent.firstName?.[0]?.toUpperCase() ?? "A"}
+                </div>
+                <div className="dash-agent-copy">
+                  <div className="dash-agent-label">Your Agent</div>
+                  <div className="dash-agent-name">{referringAgent.firstName} {referringAgent.lastName}</div>
+                </div>
+                <Info size={13} className="dash-agent-info-icon" />
+              </button>
+            ) : <div />}
             <div className="dash-header-actions">
               <Link href="/account" className="dash-icon-btn" aria-label="Account">
                 <User size={15} />
@@ -303,26 +327,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Real Estate Agent Card */}
-            <div className="dash-light-card">
-              <div className="dash-light-card-row">
-                <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
-                  <div className="dash-light-card-icon" style={{ background: "#DCFCE7", color: "#16a34a" }}>
-                    <Key size={18} />
-                  </div>
-                  <div style={{ minWidth: 0 }}>
-                    <div className="dash-light-card-title">Ready to sell?</div>
-                    <div className="dash-light-card-sub">Connect with a trusted real estate agent</div>
-                  </div>
-                </div>
-                <Link href="/agent-handoff">
-                  <button className="dash-light-card-btn" style={{ flexShrink: 0 }}>
-                    Find Agent →
-                  </button>
-                </Link>
-              </div>
-            </div>
-
             {/* Referral Card — paid subscribers only */}
             {isPaidSubscriber && (
               <div className="dash-light-card" data-tour-id="referral">
@@ -350,6 +354,51 @@ export default function Home() {
 
           </div>
         </HomeownerFeatureGate>
+      )}
+
+      {/* ── REFERRING AGENT MODAL ───────────────────────── */}
+      {agentModalOpen && referringAgent && (
+        <div className="dash-agent-modal-overlay" onClick={() => setAgentModalOpen(false)}>
+          <div className="dash-agent-modal" onClick={e => e.stopPropagation()}>
+            <button className="dash-agent-modal-close" onClick={() => setAgentModalOpen(false)} aria-label="Close">
+              <XIcon size={18} />
+            </button>
+            <div className="dash-agent-modal-avatar">
+              {referringAgent.profileImageUrl
+                ? <img src={referringAgent.profileImageUrl} alt={referringAgent.firstName} className="dash-agent-modal-photo" />
+                : <span>{referringAgent.firstName?.[0]?.toUpperCase() ?? "A"}</span>}
+            </div>
+            <div className="dash-agent-modal-name">{referringAgent.firstName} {referringAgent.lastName}</div>
+            <div className="dash-agent-modal-role">Real Estate Agent</div>
+            <div className="dash-agent-modal-divider" />
+            <div className="dash-agent-modal-details">
+              {referringAgent.email && (
+                <a href={`mailto:${referringAgent.email}`} className="dash-agent-modal-row">
+                  <Mail size={14} className="dash-agent-modal-row-icon" />
+                  <span>{referringAgent.email}</span>
+                </a>
+              )}
+              {referringAgent.phone && (
+                <a href={`tel:${referringAgent.phone}`} className="dash-agent-modal-row">
+                  <Phone size={14} className="dash-agent-modal-row-icon" />
+                  <span>{referringAgent.phone}</span>
+                </a>
+              )}
+              {referringAgent.website && (
+                <a href={referringAgent.website} target="_blank" rel="noopener noreferrer" className="dash-agent-modal-row">
+                  <Globe size={14} className="dash-agent-modal-row-icon" />
+                  <span>{referringAgent.website.replace(/^https?:\/\//, "")}</span>
+                </a>
+              )}
+              {referringAgent.officeAddress && (
+                <div className="dash-agent-modal-row">
+                  <MapPin size={14} className="dash-agent-modal-row-icon" />
+                  <span>{referringAgent.officeAddress}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── CONTRACTOR SECTION (unchanged) ──────────────────── */}
