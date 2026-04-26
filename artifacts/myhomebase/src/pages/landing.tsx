@@ -535,7 +535,7 @@ export default function Landing() {
       <section className="mhb-hero-section">
         <div className="mhb-hero-content">
           <p className="mhb-hero-eyebrow">42% of home insurance claims get denied.</p>
-          <h1 className="mhb-hero-h1">The reason is always the same.<br />No maintenance records.</h1>
+          <h1 className="mhb-hero-h1">The most common reason is lack of home maintenance records.</h1>
           <p className="mhb-hero-sub">
             MyHomeBase™ gives your home a verifiable history — so when something goes wrong, you're protected. For $5 a month.
           </p>
