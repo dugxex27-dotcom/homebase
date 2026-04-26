@@ -337,6 +337,42 @@
 
 .dash-light-card-btn:hover { background: #dddcfc; }
 
+/* ─── AGENT PHOTO BUTTON (in header actions) ─────────────────── */
+.dash-agent-photo-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  background: #16a34a;
+  cursor: pointer;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s, transform 0.1s;
+  flex-shrink: 0;
+}
+
+.dash-agent-photo-btn:hover {
+  border-color: rgba(255, 255, 255, 0.65);
+  transform: scale(1.05);
+}
+
+.dash-agent-photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.dash-agent-photo-initial {
+  font-size: 13px;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1;
+}
+
 /* ─── REFERRING AGENT TILE (in header) ───────────────────────── */
 .dash-agent-tile {
   display: flex;

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Users, Calendar, Search, Star, TrendingUp, Gift, Sparkles, FileText, AlertTriangle, ClipboardList, Bell, User, ChevronRight, ChevronUp, Info, Phone, Mail, Globe, MapPin, X as XIcon } from "lucide-react";
+import { Users, Calendar, Search, Star, TrendingUp, Gift, Sparkles, FileText, AlertTriangle, ClipboardList, Bell, User, ChevronRight, ChevronUp, Phone, Mail, Globe, MapPin, X as XIcon } from "lucide-react";
 import HouseMap from "@/components/house-map";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -132,22 +132,19 @@ export default function Home() {
       {typedUser?.role === "homeowner" && (
         <div className="dash-header">
           <div className="dash-header-top">
-            {referringAgent ? (
-              <button className="dash-agent-tile" onClick={() => setAgentModalOpen(true)} aria-label="Your agent">
-                <div className="dash-agent-avatar">
-                  {referringAgent.firstName?.[0]?.toUpperCase() ?? "A"}
-                </div>
-                <div className="dash-agent-copy">
-                  <div className="dash-agent-label">Your Agent</div>
-                  <div className="dash-agent-name">{referringAgent.firstName} {referringAgent.lastName}</div>
-                </div>
-                <Info size={13} className="dash-agent-info-icon" />
-              </button>
-            ) : <div />}
+            <div />
             <div className="dash-header-actions">
-              <Link href="/account" className="dash-icon-btn" aria-label="Account">
-                <User size={15} />
-              </Link>
+              {referringAgent ? (
+                <button className="dash-agent-photo-btn" onClick={() => setAgentModalOpen(true)} aria-label="Your agent">
+                  {referringAgent.profileImageUrl
+                    ? <img src={referringAgent.profileImageUrl} alt={`${referringAgent.firstName} ${referringAgent.lastName}`} className="dash-agent-photo-img" />
+                    : <span className="dash-agent-photo-initial">{referringAgent.firstName?.[0]?.toUpperCase() ?? "A"}</span>}
+                </button>
+              ) : (
+                <Link href="/account" className="dash-icon-btn" aria-label="Account">
+                  <User size={15} />
+                </Link>
+              )}
             </div>
           </div>
 
