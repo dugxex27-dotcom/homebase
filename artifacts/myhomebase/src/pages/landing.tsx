@@ -297,7 +297,7 @@ export default function Landing() {
                   <div className="mrr-header">
                     <p className="mrr-eyebrow mrr-eyebrow-hw">How it works</p>
                     <h2 className="mrr-heading">Refer a neighbor.<br />Pay less. Refer five. Pay nothing.</h2>
-                    <p className="mrr-body-text">Every homeowner you refer knocks $1 off your monthly plan. Refer 5 and your subscription is completely free — for as long as they stay subscribed.</p>
+                    <p className="mrr-body-text">Every homeowner you refer knocks $1 off your monthly plan. Refer 5 and your subscription is completely free — for as long as they stay paid subscribers.</p>
                     <div className="mrr-divider mrr-divider-hw" />
                   </div>
                   <div className="mrr-steps-section">
