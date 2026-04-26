@@ -224,16 +224,6 @@ export default function Landing() {
                 ))}
               </div>
 
-              <div className="mco-divider" style={{ margin: '0 20px' }} />
-
-              <div className="mco-compare">
-                <div className="mco-compare-col mco-compare-good">
-                  <p className="mco-compare-label">With MyHomeBase</p>
-                  <p className="mco-compare-amount mco-compare-amount-green">Full payout</p>
-                  <p className="mco-compare-note">Complete service history submitted. Claim approved in days.</p>
-                </div>
-              </div>
-
               <div className="mco-footer-note">
                 <span className="mco-footer-icon">💡</span>
                 <p className="mco-footer-text">MyHomeBase costs $5/month. The average denied claim costs $18,311. Documentation is the difference.</p>
