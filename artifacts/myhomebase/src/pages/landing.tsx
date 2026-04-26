@@ -540,9 +540,9 @@ export default function Landing() {
             MyHomeBase™ gives your home a verifiable history — so when something goes wrong, you're protected. For $5 a month.
           </p>
           <div className="mhb-hero-ctas">
-            <button className="mhb-hero-cta-primary" onClick={() => scrollTo('quiz')}>
+            <a href="/quiz" className="mhb-hero-cta-primary">
               Check your home's risk — free →
-            </button>
+            </a>
             <button className="mhb-hero-cta-secondary" onClick={() => scrollTo('how-it-works')}>
               See how it works ↓
             </button>
