@@ -732,7 +732,7 @@ export default function Landing() {
                   </div>
                   <div className="mhb-phone-header">
                     <span className="mhb-phone-header-title">My Task List</span>
-                    <span className="mhb-phone-header-address">📍 Phoenix, AZ · Fall Season</span>
+                    <span className="mhb-phone-header-address">📍 Seattle, WA · Fall Season</span>
                   </div>
                   <div className="mhb-phone-tasks">
                     <div className="mhb-task-section-label">Due this month</div>
