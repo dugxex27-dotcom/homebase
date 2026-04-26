@@ -648,7 +648,7 @@ export default function Landing() {
                   },
                   {
                     q: 'How does the referral program work?',
-                    a: 'Contractors and real estate agents can refer homeowners to MyHomeBase™. Each active paid homeowner you refer reduces your monthly plan cost by $1. Refer 20 and your subscription is completely free — for as long as they are paid subscribers.'
+                    a: 'Both homeowners and contractors can refer others to MyHomeBase™. Each person you refer who becomes a paid subscriber takes $1 off your monthly plan. Refer enough people and your subscription is completely free.'
                   },
                   {
                     q: 'Who else can use MyHomeBase™?',
