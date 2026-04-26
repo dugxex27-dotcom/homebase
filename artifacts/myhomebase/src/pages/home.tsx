@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Users, Calendar, Search, Star, TrendingUp, Gift, Sparkles, FileText, AlertTriangle, ClipboardList, Bell, User, ChevronRight, ChevronUp } from "lucide-react";
+import { Users, Calendar, Search, Star, TrendingUp, Gift, Sparkles, FileText, AlertTriangle, ClipboardList, Bell, User, ChevronRight, ChevronUp, Key } from "lucide-react";
 import HouseMap from "@/components/house-map";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -300,6 +300,26 @@ export default function Home() {
                     </Link>
                   ))}
                 </div>
+              </div>
+            </div>
+
+            {/* Real Estate Agent Card */}
+            <div className="dash-light-card">
+              <div className="dash-light-card-row">
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
+                  <div className="dash-light-card-icon" style={{ background: "#DCFCE7", color: "#16a34a" }}>
+                    <Key size={18} />
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div className="dash-light-card-title">Ready to sell?</div>
+                    <div className="dash-light-card-sub">Connect with a trusted real estate agent</div>
+                  </div>
+                </div>
+                <Link href="/agent-handoff">
+                  <button className="dash-light-card-btn" style={{ flexShrink: 0 }}>
+                    Find Agent →
+                  </button>
+                </Link>
               </div>
             </div>
 
