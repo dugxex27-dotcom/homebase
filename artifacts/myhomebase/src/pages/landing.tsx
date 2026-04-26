@@ -73,7 +73,6 @@ export default function Landing() {
 
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
-    setMobileNavOpen(false);
   };
 
   const handleRoleSelection = (role: 'homeowner' | 'contractor' | 'agent', plan?: string) => {
@@ -690,7 +689,7 @@ export default function Landing() {
             <button className="mhb-nav-demo-btn" onClick={() => handleDemoLogin('homeowner')} disabled={demoLoading === 'homeowner'}>
               {demoLoading === 'homeowner' ? 'Loading…' : 'Homeowner Demo'}
             </button>
-            <a href="/signin" className="mhb-nav-signin-btn">Sign In</a>
+            <a href="#role-section" className="mhb-nav-signin-btn" onClick={e => { e.preventDefault(); scrollTo('role-section'); }}>Sign In</a>
           </div>
         </div>
       </nav>
@@ -945,7 +944,7 @@ export default function Landing() {
       {/* ═══════════════════════════════════════
           SECTION 07 — ROLE SELECTION
       ═══════════════════════════════════════ */}
-      <section className="mhb-role-section">
+      <section id="role-section" className="mhb-role-section">
         <div className="mhb-role-inner">
           <h2 className="mhb-role-heading">I am a…</h2>
           <div className="mhb-role-tiles">
