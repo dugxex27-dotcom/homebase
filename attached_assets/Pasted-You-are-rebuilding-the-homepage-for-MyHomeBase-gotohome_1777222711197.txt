@@ -1,0 +1,99 @@
+You are rebuilding the homepage for MyHomeBase™ (gotohomebase.com). This is a home maintenance documentation app that costs $5/month. The entire homepage needs to be restructured following a specific conversion architecture: Problem → Stakes → Villain → Hero → Proof → CTA. Below are the exact copy, layout, and structural requirements. Implement everything as production-ready HTML/CSS/JS (or update the existing Node.js/Express stack accordingly). Every section, every word, and every interaction described below is intentional — do not simplify or omit anything.
+
+BRAND COLORS & DESIGN
+
+Hero background: deep purple gradient #2C0F5B → #3C258E
+White headline text on hero
+The quiz is the primary CTA — not registration. Don't show a signup form above the fold.
+Show real app screenshots in the "How It Works" section (use placeholder mockup divs if images aren't available yet)
+
+
+SECTION 01 — NAVIGATION
+Logo: MyHomeBase™ wordmark (left)
+Left nav links: How It Works · Pricing · FAQ (both scroll to on-page sections)
+Right nav links: Homeowner · Contractor · Agent · Sign In
+
+SECTION 02 — HERO (above the fold)
+Eyebrow text (bold, prominent): 42% of home insurance claims get denied.
+H1 headline: The reason is always the same. No maintenance records.
+Subheadline: MyHomeBase™ gives your home a verifiable history — so when something goes wrong, you're protected. For $5 a month.
+Primary CTA button: Check your home's risk — free → (links to the quiz section on this page)
+Secondary CTA (text link below button): See how it works ↓ (smooth scrolls to How It Works section)
+
+SECTION 03 — STAT TILES (social proof bar, 4 tiles)
+Every tile is tappable/clickable and opens a modal. Build all 4 modals.
+
+Tile 1: Stat 42% · Label Claims denied nationally → opens modal: "Insurance Reality Check" explaining denied claims
+Tile 2: Stat $18K · Label Average denied claim cost → opens same "Insurance Reality Check" modal
+Tile 3: Stat $5/mo · Label Full protection → opens "Plans" modal showing pricing tiers
+Tile 4: Stat Refer 5. · Label Free for life → opens "Referral Program" modal explaining the referral offer
+
+
+SECTION 04 — QUIZ ENTRY
+Section eyebrow: Free 2-minute quiz
+Headline: How well do you know your home?
+Body copy: 10 questions about your home's systems and maintenance habits. Get a personalized risk score — and find out exactly where you might be leaving your biggest investment exposed.
+Trust signals below button: ~2 minutes  ·  No account needed  ·  Personalized result
+CTA button: Start the quiz → (anchors to or launches the quiz component)
+This section sits between the hero and the sign-up card. It is the primary conversion moment.
+
+SECTION 05 — HOW IT WORKS (id="how-it-works")
+Section eyebrow: How MyHomeBase works
+Section headline: Your home, documented. Your claims, protected.
+Feature 1 — Home Wellness Score™
+Copy: Your home gets a score from 0 to 1,000 — updated in real time based on system age, maintenance history, and completed tasks. Like a credit score, but for your house. Know it. Improve it. Show it when you sell.
+Feature 2 — Service Record Tracking
+Copy: Every repair, inspection, and upgrade — logged, dated, and stored permanently. When an insurance adjuster asks for proof, you'll have it. When a buyer asks for history, you'll have that too.
+Feature 3 — Geo-Located Task List
+Copy: Seasonal maintenance reminders based on your actual location and your home's specific systems. No generic checklists — just what your home needs, when it needs it.
+Each feature shows a placeholder app screenshot mockup div to the side. Label them clearly as screenshot placeholders.
+
+SECTION 06 — SOCIAL PROOF
+Headline: The homeowners who never get burned have one thing in common.
+Subhead: They have records. Start yours today.
+Below: render 3 placeholder testimonial cards with dummy names/copy. Mark them clearly as [REPLACE WITH REAL TESTIMONIAL].
+
+SECTION 07 — ROLE SELECTION / SIGN-UP CARD
+Card headline: I am a...
+Role tiles: Homeowner — Track, protect & document · Contractor — Grow your business · Real Estate Agent — Refer and earn
+After a role tile is clicked, show THREE options: Register · Sign In · Learn more first →
+The Learn more first → option opens a role-specific modal with a feature overview for that role. Build all 3 role modals.
+Below card: All plans include a 14-day free trial. No credit card required to start.
+
+SECTION 08 — PRICING (id="pricing")
+Section eyebrow: Simple, honest pricing
+Section headline: Less than a cup of coffee. More than you'd pay out of pocket.
+Pricing comparison line: $5/month vs. $18,311 average denied claim. Do the math.
+Include a button: See full plan details → which triggers the same Plans modal from Section 03 Tile 3.
+
+SECTION 09 — PRE-FOOTER CTA
+Headline: Your home is probably your biggest investment.
+Subhead: Treat it like one. Start your free home health check — takes 2 minutes.
+CTA button: Check my home's risk — free → (mirrors the hero CTA, links to quiz)
+
+SECTION 10 — FOOTER
+Brand statement: MyHomeBase™ keeps your home's complete history organized, protected, and ready — so you're never caught without the records that matter.
+Support links: Help Center (link to /help or a placeholder page — must NOT be a dead link) · Contact Us
+Legal links: Terms of Service · Privacy Policy · Legal Disclaimer
+Social links: Facebook · Instagram
+Copyright: © 2026 MyHomeBase™. All rights reserved.
+Critical: Every footer link must go somewhere. Use /coming-soon as a placeholder route if pages don't exist yet. A broken link on a homepage is a credibility killer.
+
+MODALS TO BUILD (6 total)
+
+Insurance Reality Check (triggered by 42% and $18K tiles)
+Plans/Pricing modal (triggered by $5/mo tile and pricing section)
+Referral Program modal (triggered by Refer 5. tile)
+Homeowner "Learn More" modal
+Contractor "Learn More" modal
+Real Estate Agent "Learn More" modal
+
+All modals: include a close button (X), dark overlay backdrop, centered card layout, and mobile-friendly sizing.
+
+ALSO REQUIRED
+
+Smooth scroll behavior for all anchor links
+Mobile responsive layout (all sections stack vertically on small screens)
+The quiz section must be reachable by anchor link from both the hero CTA and the pre-footer CTA
+/coming-soon route: a simple placeholder page that says "This page is coming soon. Return to homepage." with a back link
+The tagline Your home has a record. Now it has a score. should appear somewhere subtle on the page (hero subtext, footer, or a section divider)

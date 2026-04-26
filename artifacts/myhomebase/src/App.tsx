@@ -82,6 +82,7 @@ const HwsModalPage = lazy(() => import("./pages/hws-modal"));
 
 // Lazy-loaded pages - Auth
 const Landing = lazy(() => import("./pages/landing"));
+const ComingSoon = lazy(() => import("./pages/coming-soon"));
 const SignIn = lazy(() => import("./pages/signin"));
 const SignInHomeowner = lazy(() => import("./pages/signin-homeowner"));
 const SignInContractor = lazy(() => import("./pages/signin-contractor"));
@@ -143,6 +144,7 @@ function Router() {
           <Route path="/pay/success" component={PaymentSuccess} />
           <Route path="/pay/cancelled" component={PaymentCancelled} />
           <Route path="/handoff/:token" component={HandoffClaim} />
+          <Route path="/coming-soon" component={ComingSoon} />
           <Route path="/" component={Landing} />
           <Route component={Landing} />
         </Switch>

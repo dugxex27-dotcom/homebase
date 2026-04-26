@@ -26,6 +26,38 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
 
+## Landing Page Architecture (artifacts/myhomebase)
+
+The landing page (`artifacts/myhomebase/src/pages/landing.tsx` + `landing.css`) follows the conversion architecture: Problem → Stakes → Villain → Hero → Proof → CTA.
+
+### 10 Sections
+1. **Navigation** — sticky nav, logo left, `How It Works / Pricing / FAQ` smooth-scroll links, `Homeowner / Contractor / Agent / Sign In` right
+2. **Hero** — amber eyebrow, bold H1, subheadline, primary quiz CTA, secondary scroll link, italic tagline
+3. **Stat Tiles** — 4 tiles (42%, $18K, $5/mo, Refer 5.) each opening full-screen overlay modals
+4. **Quiz Entry** (`id="quiz"`) — primary conversion section, opens quiz iframe modal
+5. **How It Works** (`id="how-it-works"`) — 3 features with alternating layout + screenshot placeholder mockups
+6. **Social Proof** — 3 placeholder testimonials (marked for replacement)
+7. **Role Selection** — expandable role tiles (Homeowner/Contractor/Agent) → 3 options (Register/Sign In/Learn More)
+8. **Pricing** (`id="pricing"`) — comparison $5/mo vs $18,311, opens Plans modal
+9. **Pre-footer CTA** — mirrors hero CTA
+10. **Footer** (`id="faq"`) — brand statement, Support/Legal/Social links, copyright
+
+### 6 Modals (full-screen overlay with dark backdrop)
+- **Insurance Reality Check** — 42% and $18K tiles (existing content, now full-screen)
+- **Plans/Pricing** — $5/mo tile and pricing section button (existing content, now full-screen)
+- **Referral Program** — Refer 5. tile (existing content, now full-screen)
+- **Homeowner Learn More** — feature overview for homeowners
+- **Contractor Learn More** — feature overview for contractors
+- **Agent Learn More** — feature overview for real estate agents
+
+### /coming-soon Route
+`artifacts/myhomebase/src/pages/coming-soon.tsx` — placeholder page for footer links (Facebook, Instagram). Message: "This page is coming soon. Return to homepage."
+
+### CSS
+`landing.css` — all existing modal styles (msc-*, mpr-*, mrr-*) preserved at top; new section styles appended at bottom (~800 new lines). `html { scroll-behavior: smooth }` added for anchor scrolling.
+
+---
+
 ## Replit IDE Preview — HMR Loop Fix
 
 `artifacts/myhomebase/vite.config.ts` contains a custom Vite plugin (`replitIdeHmrKillerPlugin`) that is active only in the Replit IDE (`inReplitIDE = NODE_ENV !== "production" && REPL_ID !== undefined`).

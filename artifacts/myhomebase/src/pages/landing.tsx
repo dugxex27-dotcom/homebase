@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Info, UserCircle } from "lucide-react";
+import { Info, UserCircle, Menu, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import logoWhite from "@assets/my-homebase-logo-tm-white-final_1776357152257.png";
@@ -15,37 +15,40 @@ function useLandingBodyClass() {
 export default function Landing() {
   useLandingBodyClass();
   const { toast } = useToast();
+
+  // ── Existing modal/UI state ──
   const [demoLoading, setDemoLoading] = useState<string | null>(null);
   const [quizOpen, setQuizOpen] = useState(false);
-  const [referralOpen, setReferralOpen] = useState(false);
   const [claimsOpen, setClaimsOpen] = useState(false);
+  const [plansOpen, setPlansOpen] = useState(false);
+  const [referralOpen, setReferralOpen] = useState(false);
   const [signinOpen, setSigninOpen] = useState(false);
   const [referralTab, setReferralTab] = useState<'hw' | 'ct'>('hw');
   const [hwSlider, setHwSlider] = useState(0);
   const [ctSlider, setCtSlider] = useState(0);
-  const [plansOpen, setPlansOpen] = useState(false);
   const [selectedPlanCard, setSelectedPlanCard] = useState<'base' | 'premium' | 'plus'>('premium');
   const [openFaqIdx, setOpenFaqIdx] = useState<number | null>(null);
 
+  // ── New state ──
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<'homeowner' | 'contractor' | 'agent' | null>(null);
+  const [homeownerModalOpen, setHomeownerModalOpen] = useState(false);
+  const [contractorModalOpen, setContractorModalOpen] = useState(false);
+  const [agentModalOpen, setAgentModalOpen] = useState(false);
+
+  // ── Quiz escape key ──
   useEffect(() => {
     if (!quizOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') closeQuiz(); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setQuizOpen(false); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [quizOpen]);
 
-  const closeQuiz = () => {
-    setQuizOpen(false);
-  };
-
+  // ── Quiz postMessage ──
   useEffect(() => {
     function handleQuizMessage(event: MessageEvent) {
       if (!event.data || event.data.type !== 'mhb_quiz_result') return;
-      const result = {
-        score: event.data.score,
-        tier: event.data.tier,
-        completedAt: event.data.completedAt,
-      };
+      const result = { score: event.data.score, tier: event.data.tier, completedAt: event.data.completedAt };
       localStorage.setItem('mhb_quiz_result', JSON.stringify(result));
       fetch('/api/quiz-result', {
         method: 'POST',
@@ -58,35 +61,20 @@ export default function Landing() {
     return () => window.removeEventListener('message', handleQuizMessage);
   }, []);
 
+  // ── Lock body scroll when any overlay modal is open ──
   useEffect(() => {
-    if (!referralOpen) return;
-    const close = () => setReferralOpen(false);
-    document.addEventListener('click', close);
-    return () => document.removeEventListener('click', close);
-  }, [referralOpen]);
+    const anyOpen = quizOpen || claimsOpen || plansOpen || referralOpen ||
+      homeownerModalOpen || contractorModalOpen || agentModalOpen;
+    document.body.style.overflow = anyOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [quizOpen, claimsOpen, plansOpen, referralOpen, homeownerModalOpen, contractorModalOpen, agentModalOpen]);
 
-  useEffect(() => {
-    if (!claimsOpen) return;
-    const close = () => setClaimsOpen(false);
-    document.addEventListener('click', close);
-    return () => document.removeEventListener('click', close);
-  }, [claimsOpen]);
+  const scrollTo = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+    setMobileNavOpen(false);
+  };
 
-  useEffect(() => {
-    if (!signinOpen) return;
-    const close = () => setSigninOpen(false);
-    document.addEventListener('click', close);
-    return () => document.removeEventListener('click', close);
-  }, [signinOpen]);
-
-  useEffect(() => {
-    if (!plansOpen) return;
-    const close = () => setPlansOpen(false);
-    document.addEventListener('click', close);
-    return () => document.removeEventListener('click', close);
-  }, [plansOpen]);
-
-  const handleRoleSelection = (role: 'homeowner' | 'contractor' | 'agent', plan?: 'base' | 'premium' | 'plus') => {
+  const handleRoleSelection = (role: 'homeowner' | 'contractor' | 'agent', plan?: string) => {
     const url = plan ? `/signin/${role}?plan=${plan}` : `/signin/${role}`;
     window.location.href = url;
   };
@@ -98,11 +86,8 @@ export default function Landing() {
         role === 'homeowner' ? '/api/auth/homeowner-demo-login' :
         role === 'contractor' ? '/api/auth/contractor-demo-login' :
         '/api/auth/agent-demo-login';
-
       await apiRequest(endpoint, 'POST', {});
-
       toast({ title: "Demo login successful", description: `Welcome to the ${role} demo!` });
-
       const redirect =
         role === 'homeowner' ? '/' :
         role === 'contractor' ? '/contractor-dashboard' :
@@ -115,576 +100,798 @@ export default function Landing() {
   };
 
   return (
-    <div className="mhb-welcome">
+    <div className="mhb-landing">
 
-      {/* Quiz full-page modal */}
+      {/* ═══ QUIZ FULL-SCREEN MODAL ═══ */}
       {quizOpen && (
-        <div className="mhb-quiz-modal" role="dialog" aria-modal="true" aria-label="Home Health Score Quiz">
-          <button className="mhb-quiz-modal-close" onClick={closeQuiz} aria-label="Close quiz">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-          <iframe
-            className="mhb-quiz-modal-frame"
-            src="/quiz/quiz.html"
-            title="Home Health Score Quiz"
-          />
+        <div className="mhb-overlay" role="dialog" aria-modal="true" aria-label="Home Health Score Quiz" onClick={() => setQuizOpen(false)}>
+          <div className="mhb-quiz-modal" onClick={e => e.stopPropagation()}>
+            <button className="mhb-modal-close" onClick={() => setQuizOpen(false)} aria-label="Close quiz">
+              <X size={20} strokeWidth={2.5} />
+            </button>
+            <iframe
+              className="mhb-quiz-frame"
+              src="/quiz/quiz.html"
+              title="Home Health Score Quiz"
+            />
+          </div>
         </div>
       )}
 
-      <div className="mhb-status-spacer" />
-
-      {/* Hero */}
-      <div className="mhb-hero">
-        {/* Top bar: logo left, sign-in right */}
-        <div className="mhb-hero-topbar">
-          <img
-            src={logoWhite}
-            alt="MyHomeBase — Home Wellness Score and Home Record App"
-            className="mhb-logo"
-          />
-          <div className="mhb-signin-flyout-wrap">
-            <button
-              className="mhb-hero-signin"
-              aria-label="Sign In"
-              aria-expanded={signinOpen}
-              onClick={(e) => { e.stopPropagation(); setSigninOpen(v => !v); }}
-            >
-              <UserCircle size={26} strokeWidth={1.75} />
-              <span>Sign in</span>
+      {/* ═══ INSURANCE REALITY CHECK MODAL ═══ */}
+      {claimsOpen && (
+        <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setClaimsOpen(false)}>
+          <div className="mhb-modal-card" onClick={e => e.stopPropagation()}>
+            <button className="mhb-modal-close" onClick={() => setClaimsOpen(false)} aria-label="Close">
+              <X size={20} strokeWidth={2.5} />
             </button>
-            {signinOpen && (
-              <div className="mhb-signin-flyout" onClick={(e) => e.stopPropagation()}>
-                <div className="mhb-signin-flyout-title">Sign in as…</div>
-                <a href="/signin/homeowner" className="mhb-signin-flyout-item mhb-signin-flyout-purple">
-                  <span className="mhb-signin-flyout-dot" />
-                  <span className="mhb-signin-flyout-label">Homeowner</span>
-                  <span className="mhb-signin-flyout-arrow">›</span>
-                </a>
-                <a href="/signin/contractor" className="mhb-signin-flyout-item mhb-signin-flyout-blue">
-                  <span className="mhb-signin-flyout-dot" />
-                  <span className="mhb-signin-flyout-label">Contractor</span>
-                  <span className="mhb-signin-flyout-arrow">›</span>
-                </a>
-                <a href="/signin/agent" className="mhb-signin-flyout-item mhb-signin-flyout-green">
-                  <span className="mhb-signin-flyout-dot" />
-                  <span className="mhb-signin-flyout-label">Real Estate Agent</span>
-                  <span className="mhb-signin-flyout-arrow">›</span>
-                </a>
+            <div className="msc-card-wrap"><div className="msc-inner">
+              <div className="msc-bar" />
+              <div className="msc-header">
+                <p className="msc-eyebrow">Insurance Reality Check</p>
+                <h2 className="msc-heading">The numbers behind 42%</h2>
+                <p className="msc-subtitle">Most homeowners don't know these numbers until it's too late.</p>
+                <div className="msc-divider" />
               </div>
-            )}
+              <div className="msc-cards">
+                <div className="msc-card msc-card-purple" style={{ animationDelay: '0.05s' }}>
+                  <div className="msc-icon msc-icon-purple"><span className="msc-icon-stat">42%</span></div>
+                  <div><p className="msc-card-title">of claims denied or underpaid nationally</p><p className="msc-card-sub">Nearly half of all property claims</p></div>
+                </div>
+                <div className="msc-card msc-card-dark" style={{ animationDelay: '0.15s' }}>
+                  <div className="msc-icon msc-icon-dark"><span className="msc-icon-avg">avg</span><span className="msc-icon-stat">$18K</span></div>
+                  <div><p className="msc-card-title">average cost of a denied property claim</p><p className="msc-card-sub">$18,311 left on the table</p></div>
+                </div>
+                <div className="msc-card msc-card-dark" style={{ animationDelay: '0.25s' }}>
+                  <div className="msc-icon msc-icon-dark"><span className="msc-icon-avg">avg</span><span className="msc-icon-stat">$88K</span></div>
+                  <div><p className="msc-card-title">average fire and lightning claim payout</p><p className="msc-card-sub">The stakes are real</p></div>
+                </div>
+                <div className="msc-card msc-card-purple" style={{ animationDelay: '0.35s' }}>
+                  <div className="msc-icon msc-icon-purple"><span className="msc-icon-stat">#1</span></div>
+                  <div><p className="msc-card-title">reason for denial — no maintenance records</p><p className="msc-card-sub">The most preventable reason</p></div>
+                </div>
+              </div>
+              <div style={{ margin: '14px 20px 0' }}><div className="msc-divider" /></div>
+              <div className="msc-cta-wrap" style={{ animationDelay: '0.45s' }}>
+                <div>
+                  <p className="msc-cta-price">$5/month</p>
+                  <p className="msc-cta-desc">What MyHomeBase costs<br />to protect yourself</p>
+                </div>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <p className="msc-cta-vs">vs. denied claim</p>
+                  <p className="msc-cta-amount">$18,311</p>
+                </div>
+              </div>
+              <div className="msc-source-row">
+                <div className="msc-source-line" />
+                <p className="msc-source-text">Source: Weiss Ratings</p>
+                <div className="msc-source-line" />
+              </div>
+            </div></div>
           </div>
         </div>
+      )}
 
-        {/* Two-column layout: copy left, stats right */}
-        <div className="mhb-hero-body">
-          <div className="mhb-hero-copy">
-            {/* Headline */}
-            <h1 className="mhb-headline">
-              <span style={{ display: 'block', marginBottom: '3.5px' }}>Your home's<br />complete record.</span>
-              <span className="mhb-headline-accent">Finally.</span>
-            </h1>
-
-            {/* Sub */}
-            <div className="mhb-sub">
-              <span className="mhb-sub-highlight">Nearly half of insurance claims get denied.</span><br />
-              The reason? No maintenance records.<br />
-              We fix that. For $5 a month.
-            </div>
-
-            {/* CTA link */}
-            <button
-              onClick={() => setQuizOpen(true)}
-              className="mhb-cta-link"
-            >
-              Check Your Homeownership IQ →
+      {/* ═══ PLANS MODAL ═══ */}
+      {plansOpen && (
+        <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setPlansOpen(false)}>
+          <div className="mhb-modal-card" onClick={e => e.stopPropagation()}>
+            <button className="mhb-modal-close" onClick={() => setPlansOpen(false)} aria-label="Close">
+              <X size={20} strokeWidth={2.5} />
             </button>
-          </div>
-
-          {/* Stat chips — stacked, right column */}
-          <div className="mhb-stat-stack">
-            {/* Coming soon badge — sits above tiles */}
-            <div className="mhb-badge">
-              <div className="mhb-badge-dot" />
-              <div className="mhb-badge-text">Coming soon to iOS & Android</div>
-            </div>
-
-            <div
-              className="mhb-stat-chip mhb-referral-chip mhb-claims-chip"
-            >
-              <div className="mhb-stat-num"><strong>42</strong><span>%</span></div>
-              <div className="mhb-referral-footer">
-                <div className="mhb-stat-label">Claims denied</div>
-                <button
-                  className="mhb-referral-trigger"
-                  onClick={(e) => { e.stopPropagation(); setClaimsOpen(v => !v); }}
-                  aria-label="The numbers behind 42%"
-                ><Info size={11} strokeWidth={2.5} /></button>
-              </div>
-              {claimsOpen && (
-                <div
-                  className="mhb-referral-popover"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <button className="mhb-referral-close" onClick={() => setClaimsOpen(false)} aria-label="Close">✕</button>
-                  <div className="msc-card-wrap"><div className="msc-inner">
-                    <div className="msc-bar" />
-                    <div className="msc-header">
-                      <p className="msc-eyebrow">Insurance Reality Check</p>
-                      <h2 className="msc-heading">The numbers behind 42%</h2>
-                      <p className="msc-subtitle">Most homeowners don't know these numbers until it's too late.</p>
-                      <div className="msc-divider" />
-                    </div>
-                    <div className="msc-cards">
-                      <div className="msc-card msc-card-purple" style={{ animationDelay: '0.05s' }}>
-                        <div className="msc-icon msc-icon-purple"><span className="msc-icon-stat">42%</span></div>
-                        <div><p className="msc-card-title">of claims denied or underpaid nationally</p><p className="msc-card-sub">Nearly half of all property claims</p></div>
-                      </div>
-                      <div className="msc-card msc-card-dark" style={{ animationDelay: '0.15s' }}>
-                        <div className="msc-icon msc-icon-dark"><span className="msc-icon-avg">avg</span><span className="msc-icon-stat">$18K</span></div>
-                        <div><p className="msc-card-title">average cost of a denied property claim</p><p className="msc-card-sub">$18,311 left on the table</p></div>
-                      </div>
-                      <div className="msc-card msc-card-dark" style={{ animationDelay: '0.25s' }}>
-                        <div className="msc-icon msc-icon-dark"><span className="msc-icon-avg">avg</span><span className="msc-icon-stat">$88K</span></div>
-                        <div><p className="msc-card-title">average fire and lightning claim payout</p><p className="msc-card-sub">The stakes are real</p></div>
-                      </div>
-                      <div className="msc-card msc-card-purple" style={{ animationDelay: '0.35s' }}>
-                        <div className="msc-icon msc-icon-purple"><span className="msc-icon-stat">#1</span></div>
-                        <div><p className="msc-card-title">reason for denial — no maintenance records</p><p className="msc-card-sub">The most preventable reason</p></div>
-                      </div>
-                    </div>
-                    <div style={{ margin: '14px 20px 0' }}><div className="msc-divider" /></div>
-                    <div className="msc-cta-wrap" style={{ animationDelay: '0.45s' }}>
+            <div className="mpr-card-wrap">
+              <div className="mpr-card">
+                <div className="mpr-bar" />
+                <div className="mpr-header">
+                  <p className="mpr-eyebrow">Subscription</p>
+                  <h2 className="mpr-heading">Choose Your Plan</h2>
+                  <p className="mpr-body">Select the plan that fits your property management needs. Upgrade or downgrade anytime.</p>
+                  <div className="mpr-divider" />
+                </div>
+                <div className="mpr-plans">
+                  <div className={`mpr-plan-card ${selectedPlanCard === 'base' ? 'mpr-plan-selected' : ''}`} onClick={() => setSelectedPlanCard('base')}>
+                    <div className="mpr-plan-header">
                       <div>
-                        <p className="msc-cta-price">$5/month</p>
-                        <p className="msc-cta-desc">What MyHomeBase costs<br />to protect yourself</p>
+                        <p className="mpr-plan-name">Base Plan</p>
+                        <p className="mpr-plan-sub">Perfect for getting started</p>
                       </div>
-                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        <p className="msc-cta-vs">vs. denied claim</p>
-                        <p className="msc-cta-amount">$18,311</p>
+                      <div className="mpr-plan-price-wrap">
+                        <p className="mpr-plan-price">$5</p>
+                        <p className="mpr-plan-per">/month</p>
                       </div>
                     </div>
-                    <div className="msc-source-row">
-                      <div className="msc-source-line" />
-                      <p className="msc-source-text">Source: Weiss Ratings</p>
-                      <div className="msc-source-line" />
+                    <div className="mpr-plan-features">
+                      {['Up to 2 properties','Full maintenance scheduling','Contractor directory access','Service record tracking','Home Wellness Score™','DIY savings tracker','Email support'].map(f => (
+                        <div key={f} className="mpr-feature-row"><span className="mpr-check">✓</span>{f}</div>
+                      ))}
                     </div>
-                  </div></div>
+                    <button className={`mpr-plan-btn ${selectedPlanCard === 'base' ? 'mpr-plan-btn-selected' : 'mpr-plan-btn-ghost'}`}
+                      onClick={(e) => { e.stopPropagation(); handleRoleSelection('homeowner', 'base'); }}>Select Base Plan</button>
+                  </div>
+                  <div className={`mpr-plan-card mpr-plan-featured ${selectedPlanCard === 'premium' ? 'mpr-plan-selected' : ''}`} onClick={() => setSelectedPlanCard('premium')}>
+                    <div className="mpr-popular-badge">Most Popular</div>
+                    <div className="mpr-plan-header mpr-plan-header-featured">
+                      <div>
+                        <p className="mpr-plan-name">Premium Plan</p>
+                        <p className="mpr-plan-sub">For active property managers</p>
+                      </div>
+                      <div className="mpr-plan-price-wrap">
+                        <p className="mpr-plan-price">$20</p>
+                        <p className="mpr-plan-per">/month</p>
+                      </div>
+                    </div>
+                    <div className="mpr-plan-features mpr-plan-features-featured">
+                      <div className="mpr-feature-row"><span className="mpr-check">✓</span>3–6 properties</div>
+                      <div className="mpr-feature-row"><span className="mpr-plus">+</span>Everything in Base</div>
+                    </div>
+                    <button className="mpr-plan-btn mpr-plan-btn-primary"
+                      onClick={(e) => { e.stopPropagation(); handleRoleSelection('homeowner', 'premium'); }}>Select Premium Plan</button>
+                  </div>
+                  <div className={`mpr-plan-card ${selectedPlanCard === 'plus' ? 'mpr-plan-selected' : ''}`} onClick={() => setSelectedPlanCard('plus')}>
+                    <div className="mpr-plan-header">
+                      <div>
+                        <p className="mpr-plan-name">Premium Plus</p>
+                        <p className="mpr-plan-sub">For serious property portfolios</p>
+                      </div>
+                      <div className="mpr-plan-price-wrap">
+                        <p className="mpr-plan-price">$40</p>
+                        <p className="mpr-plan-per">/month</p>
+                      </div>
+                    </div>
+                    <div className="mpr-plan-features">
+                      <div className="mpr-feature-row"><span className="mpr-check">✓</span>7+ properties</div>
+                      <div className="mpr-feature-row"><span className="mpr-plus">+</span>Everything in Premium</div>
+                    </div>
+                    <button className={`mpr-plan-btn ${selectedPlanCard === 'plus' ? 'mpr-plan-btn-selected' : 'mpr-plan-btn-ghost'}`}
+                      onClick={(e) => { e.stopPropagation(); handleRoleSelection('homeowner', 'plus'); }}>Select Premium Plus</button>
+                  </div>
                 </div>
-              )}
-            </div>
-            <div
-              className="mhb-stat-chip mhb-referral-chip"
-            >
-              <div className="mhb-stat-num"><strong>$5</strong><span>/mo</span></div>
-              <div className="mhb-referral-footer">
-                <div className="mhb-stat-label">Full protection</div>
-                <button
-                  className="mhb-referral-trigger"
-                  onClick={(e) => { e.stopPropagation(); setPlansOpen(v => !v); }}
-                  aria-label="View pricing plans"
-                ><Info size={11} strokeWidth={2.5} /></button>
+                <div className="mpr-free-banner">
+                  <p className="mpr-free-title">All Plans Include a 14-Day Free Trial</p>
+                  <p className="mpr-free-sub">Try MyHomeBase™ risk-free. Cancel anytime during your trial with no charges.</p>
+                </div>
+                <div className="mpr-manage-row">
+                  <button className="mpr-manage-btn mpr-manage-btn-left">Manage Subscription</button>
+                  <button className="mpr-manage-btn">View Billing History</button>
+                </div>
+                <div className="mpr-faq">
+                  <p className="mpr-faq-label">Frequently Asked Questions</p>
+                  <div className="mpr-faq-list">
+                    {[
+                      { q: 'Can I change my plan at any time?', a: 'Yes! You can upgrade or downgrade your plan at any time. Changes take effect immediately, and we\'ll prorate any charges.' },
+                      { q: 'What happens if I exceed my property limit?', a: 'You\'ll be prompted to upgrade to the next tier when you try to add a property beyond your current plan\'s limit. Your existing properties remain accessible.' },
+                      { q: 'Do you offer refunds?', a: 'Every new account includes a 14-day free trial. Your card is saved securely but not charged during the trial. If you cancel before the trial ends, you won\'t be charged at all. After the trial, subscriptions are billed monthly with no long-term contracts.' },
+                    ].map((item, i) => (
+                      <div key={i} className={`mpr-faq-item ${i < 2 ? 'mpr-faq-item-border' : ''}`}
+                        onClick={(e) => { e.stopPropagation(); setOpenFaqIdx(openFaqIdx === i ? null : i); }}>
+                        <div className="mpr-faq-q-row">
+                          <p className="mpr-faq-q">{item.q}</p>
+                          <span className="mpr-faq-chevron" style={{ transform: openFaqIdx === i ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+                        </div>
+                        {openFaqIdx === i && <p className="mpr-faq-a">{item.a}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
 
-              {plansOpen && (
-                <div className="mhb-referral-popover mpr-popover" onClick={(e) => e.stopPropagation()}>
-                  <button className="mhb-referral-close" onClick={() => setPlansOpen(false)} aria-label="Close">✕</button>
-
-                  {/* Card shell */}
-                  <div className="mpr-card-wrap">
-                    <div className="mpr-card">
-
-                      {/* Gradient bar */}
-                      <div className="mpr-bar" />
-
-                      {/* Header */}
-                      <div className="mpr-header">
-                        <p className="mpr-eyebrow">Subscription</p>
-                        <h2 className="mpr-heading">Choose Your Plan</h2>
-                        <p className="mpr-body">Select the plan that fits your property management needs. Upgrade or downgrade anytime.</p>
-                        <div className="mpr-divider" />
-                      </div>
-
-                      {/* Plan cards */}
-                      <div className="mpr-plans">
-
-                        {/* Base */}
-                        <div
-                          className={`mpr-plan-card ${selectedPlanCard === 'base' ? 'mpr-plan-selected' : ''}`}
-                          onClick={() => setSelectedPlanCard('base')}
-                        >
-                          <div className="mpr-plan-header">
-                            <div>
-                              <p className="mpr-plan-name">Base Plan</p>
-                              <p className="mpr-plan-sub">Perfect for getting started</p>
+      {/* ═══ REFERRAL MODAL ═══ */}
+      {referralOpen && (
+        <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setReferralOpen(false)}>
+          <div className="mhb-modal-card" onClick={e => e.stopPropagation()}>
+            <button className="mhb-modal-close" onClick={() => setReferralOpen(false)} aria-label="Close">
+              <X size={20} strokeWidth={2.5} />
+            </button>
+            <div className="mrr-tabs">
+              <button className={`mrr-tab ${referralTab === 'hw' ? 'mrr-tab-active-hw' : 'mrr-tab-inactive'}`} onClick={() => setReferralTab('hw')}>Homeowner — $5/mo</button>
+              <button className={`mrr-tab ${referralTab === 'ct' ? 'mrr-tab-active-ct' : 'mrr-tab-inactive'}`} onClick={() => setReferralTab('ct')}>Contractor — $20/mo</button>
+            </div>
+            <div className="mrr-card-wrap">
+              {referralTab === 'hw' && (
+                <div className="mrr-card mrr-card-hw">
+                  <div className="mrr-bar mrr-bar-hw" />
+                  <div className="mrr-header">
+                    <p className="mrr-eyebrow mrr-eyebrow-hw">How it works</p>
+                    <h2 className="mrr-heading">Refer a neighbor.<br />Pay less. Refer five. Pay nothing.</h2>
+                    <p className="mrr-body-text">Every homeowner you refer knocks $1 off your monthly plan. Refer 5 and your subscription is completely free — for as long as they stay subscribed.</p>
+                    <div className="mrr-divider mrr-divider-hw" />
+                  </div>
+                  <div className="mrr-steps-section">
+                    <p className="mrr-steps-label mrr-steps-label-hw">Your monthly cost</p>
+                    <div className="mrr-steps">
+                      {[0,1,2,3,4,5].map(i => {
+                        const cost = 5 - i; const free = cost === 0; const pct = Math.round((cost / 5) * 100);
+                        return (
+                          <div key={i} className="mrr-step-row" style={{ opacity: hwSlider >= i ? 1 : 0.3 }}>
+                            <span className="mrr-step-ref">{i} ref{i !== 1 ? 's' : ''}</span>
+                            <div className="mrr-step-bar-wrap mrr-step-bar-wrap-hw">
+                              <div className="mrr-step-bar" style={{ width: `${pct}%`, background: free ? '#09694A' : '#3C258E' }} />
                             </div>
-                            <div className="mpr-plan-price-wrap">
-                              <p className="mpr-plan-price">$5</p>
-                              <p className="mpr-plan-per">/month</p>
-                            </div>
+                            <span className="mrr-step-cost" style={{ color: free ? '#09694A' : '#3C258E' }}>{free ? 'Free' : `$${cost}`}</span>
                           </div>
-                          <div className="mpr-plan-features">
-                            {['Up to 2 properties','Full maintenance scheduling','Contractor directory access','Service record tracking','Home Wellness Score™','DIY savings tracker','Email support'].map(f => (
-                              <div key={f} className="mpr-feature-row"><span className="mpr-check">✓</span>{f}</div>
-                            ))}
-                          </div>
-                          <button
-                            className={`mpr-plan-btn ${selectedPlanCard === 'base' ? 'mpr-plan-btn-selected' : 'mpr-plan-btn-ghost'}`}
-                            onClick={(e) => { e.stopPropagation(); handleRoleSelection('homeowner', 'base'); }}
-                          >Select Base Plan</button>
-                        </div>
-
-                        {/* Premium — featured */}
-                        <div
-                          className={`mpr-plan-card mpr-plan-featured ${selectedPlanCard === 'premium' ? 'mpr-plan-selected' : ''}`}
-                          onClick={() => setSelectedPlanCard('premium')}
-                        >
-                          <div className="mpr-popular-badge">Most Popular</div>
-                          <div className="mpr-plan-header mpr-plan-header-featured">
-                            <div>
-                              <p className="mpr-plan-name">Premium Plan</p>
-                              <p className="mpr-plan-sub">For active property managers</p>
-                            </div>
-                            <div className="mpr-plan-price-wrap">
-                              <p className="mpr-plan-price">$20</p>
-                              <p className="mpr-plan-per">/month</p>
-                            </div>
-                          </div>
-                          <div className="mpr-plan-features mpr-plan-features-featured">
-                            <div className="mpr-feature-row"><span className="mpr-check">✓</span>3–6 properties</div>
-                            <div className="mpr-feature-row"><span className="mpr-plus">+</span>Everything in Base</div>
-                          </div>
-                          <button
-                            className="mpr-plan-btn mpr-plan-btn-primary"
-                            onClick={(e) => { e.stopPropagation(); handleRoleSelection('homeowner', 'premium'); }}
-                          >Select Premium Plan</button>
-                        </div>
-
-                        {/* Premium Plus */}
-                        <div
-                          className={`mpr-plan-card ${selectedPlanCard === 'plus' ? 'mpr-plan-selected' : ''}`}
-                          onClick={() => setSelectedPlanCard('plus')}
-                        >
-                          <div className="mpr-plan-header">
-                            <div>
-                              <p className="mpr-plan-name">Premium Plus</p>
-                              <p className="mpr-plan-sub">For serious property portfolios</p>
-                            </div>
-                            <div className="mpr-plan-price-wrap">
-                              <p className="mpr-plan-price">$40</p>
-                              <p className="mpr-plan-per">/month</p>
-                            </div>
-                          </div>
-                          <div className="mpr-plan-features">
-                            <div className="mpr-feature-row"><span className="mpr-check">✓</span>7+ properties</div>
-                            <div className="mpr-feature-row"><span className="mpr-plus">+</span>Everything in Premium</div>
-                          </div>
-                          <button
-                            className={`mpr-plan-btn ${selectedPlanCard === 'plus' ? 'mpr-plan-btn-selected' : 'mpr-plan-btn-ghost'}`}
-                            onClick={(e) => { e.stopPropagation(); handleRoleSelection('homeowner', 'plus'); }}
-                          >Select Premium Plus</button>
-                        </div>
-                      </div>
-
-                      {/* 14-day trial note */}
-                      <div className="mpr-free-banner">
-                        <p className="mpr-free-title">All Plans Include a 14-Day Free Trial</p>
-                        <p className="mpr-free-sub">Try MyHomeBase™ risk-free. Cancel anytime during your trial with no charges.</p>
-                      </div>
-
-                      {/* Manage / Billing */}
-                      <div className="mpr-manage-row">
-                        <button className="mpr-manage-btn mpr-manage-btn-left">Manage Subscription</button>
-                        <button className="mpr-manage-btn">View Billing History</button>
-                      </div>
-
-                      {/* FAQ */}
-                      <div className="mpr-faq">
-                        <p className="mpr-faq-label">Frequently Asked Questions</p>
-                        <div className="mpr-faq-list">
-                          {[
-                            { q: 'Can I change my plan at any time?', a: 'Yes! You can upgrade or downgrade your plan at any time. Changes take effect immediately, and we\'ll prorate any charges.' },
-                            { q: 'What happens if I exceed my property limit?', a: 'You\'ll be prompted to upgrade to the next tier when you try to add a property beyond your current plan\'s limit. Your existing properties remain accessible.' },
-                            { q: 'Do you offer refunds?', a: 'Every new account includes a 14-day free trial. Your card is saved securely but not charged during the trial. If you cancel before the trial ends, you won\'t be charged at all. After the trial, subscriptions are billed monthly with no long-term contracts.' },
-                          ].map((item, i) => (
-                            <div
-                              key={i}
-                              className={`mpr-faq-item ${i < 2 ? 'mpr-faq-item-border' : ''}`}
-                              onClick={(e) => { e.stopPropagation(); setOpenFaqIdx(openFaqIdx === i ? null : i); }}
-                            >
-                              <div className="mpr-faq-q-row">
-                                <p className="mpr-faq-q">{item.q}</p>
-                                <span className="mpr-faq-chevron" style={{ transform: openFaqIdx === i ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
-                              </div>
-                              {openFaqIdx === i && (
-                                <p className="mpr-faq-a">{item.a}</p>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
+                        );
+                      })}
                     </div>
+                  </div>
+                  <div className="mrr-slider-box mrr-slider-box-hw">
+                    <div className="mrr-slider-header">
+                      <span className="mrr-slider-label mrr-slider-label-hw">Homeowners referred</span>
+                      <span className="mrr-slider-count mrr-slider-count-hw">{hwSlider}</span>
+                    </div>
+                    <input type="range" min="0" max="5" value={hwSlider} step="1" className="mrr-range mrr-range-hw" onChange={e => setHwSlider(Number(e.target.value))} />
+                    <div className="mrr-cost-row">
+                      <span className="mrr-cost-label mrr-cost-label-hw">Your cost</span>
+                      <span className="mrr-cost-value" style={{ color: hwSlider === 5 ? '#09694A' : '#3C3489' }}>
+                        {hwSlider === 5 ? 'Free' : `$${5 - hwSlider}`}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mrr-cta">
+                    <button className="mrr-cta-btn mrr-cta-btn-hw" onClick={() => handleRoleSelection('homeowner')}>Start referring homeowners →</button>
                   </div>
                 </div>
               )}
-            </div>
-            <div
-              className="mhb-stat-chip mhb-referral-chip"
-            >
-              <div className="mhb-stat-num mhb-referral-headline">
-                Refer 5.<br />Pay nothing.
-              </div>
-              <div className="mhb-referral-footer">
-                <div className="mhb-stat-label">Free for life</div>
-                <button
-                  className="mhb-referral-trigger"
-                  onClick={(e) => { e.stopPropagation(); setReferralOpen(v => !v); }}
-                  aria-label="Learn more about referrals"
-                ><Info size={11} strokeWidth={2.5} /></button>
-              </div>
-              {referralOpen && (
-                <div className="mhb-referral-popover mrr-popover" onClick={(e) => e.stopPropagation()}>
-                  <button className="mhb-referral-close" onClick={() => setReferralOpen(false)} aria-label="Close">✕</button>
-
-                  {/* Tabs */}
-                  <div className="mrr-tabs">
-                    <button
-                      className={`mrr-tab ${referralTab === 'hw' ? 'mrr-tab-active-hw' : 'mrr-tab-inactive'}`}
-                      onClick={() => setReferralTab('hw')}
-                    >Homeowner — $5/mo</button>
-                    <button
-                      className={`mrr-tab ${referralTab === 'ct' ? 'mrr-tab-active-ct' : 'mrr-tab-inactive'}`}
-                      onClick={() => setReferralTab('ct')}
-                    >Contractor — $20/mo</button>
+              {referralTab === 'ct' && (
+                <div className="mrr-card mrr-card-ct">
+                  <div className="mrr-bar mrr-bar-ct" />
+                  <div className="mrr-header">
+                    <p className="mrr-eyebrow mrr-eyebrow-ct">How it works</p>
+                    <h2 className="mrr-heading">Bring homeowners.<br />Pay less. Or nothing.</h2>
+                    <p className="mrr-body-text">Every homeowner you bring to MyHomeBase takes $1 off your monthly plan. Refer 20 and your subscription is completely free — for as long as they stay subscribed.</p>
+                    <div className="mrr-divider mrr-divider-ct" />
                   </div>
-
-                  {/* Card wrapper */}
-                  <div className="mrr-card-wrap">
-
-                    {/* ── HOMEOWNER ── */}
-                    {referralTab === 'hw' && (
-                      <div className="mrr-card mrr-card-hw">
-                        <div className="mrr-bar mrr-bar-hw" />
-                        <div className="mrr-header">
-                          <p className="mrr-eyebrow mrr-eyebrow-hw">How it works</p>
-                          <h2 className="mrr-heading">Refer a neighbor.<br />Pay less. Refer five. Pay nothing.</h2>
-                          <p className="mrr-body-text">Every homeowner you refer knocks $1 off your monthly plan. Refer 5 and your subscription is completely free — for as long as they stay subscribed.</p>
-                          <div className="mrr-divider mrr-divider-hw" />
-                        </div>
-                        <div className="mrr-steps-section">
-                          <p className="mrr-steps-label mrr-steps-label-hw">Your monthly cost</p>
-                          <div className="mrr-steps">
-                            {[0,1,2,3,4,5].map(i => {
-                              const cost = 5 - i;
-                              const free = cost === 0;
-                              const pct = Math.round((cost / 5) * 100);
-                              return (
-                                <div key={i} className="mrr-step-row" style={{ opacity: hwSlider >= i ? 1 : 0.3 }}>
-                                  <span className="mrr-step-ref">{i} ref{i !== 1 ? 's' : ''}</span>
-                                  <div className="mrr-step-bar-wrap mrr-step-bar-wrap-hw">
-                                    <div className="mrr-step-bar" style={{ width: `${pct}%`, background: free ? '#09694A' : '#3C258E' }} />
-                                  </div>
-                                  <span className="mrr-step-cost" style={{ color: free ? '#09694A' : '#3C258E' }}>{free ? 'Free' : `$${cost}`}</span>
-                                </div>
-                              );
-                            })}
+                  <div className="mrr-steps-section">
+                    <p className="mrr-steps-label mrr-steps-label-ct">Your monthly cost</p>
+                    <div className="mrr-steps">
+                      {[0,5,10,15,20].map(i => {
+                        const cost = 20 - i; const free = cost === 0; const pct = Math.round((cost / 20) * 100);
+                        return (
+                          <div key={i} className="mrr-step-row" style={{ opacity: ctSlider >= i ? 1 : 0.3 }}>
+                            <span className="mrr-step-ref">{i} ref{i !== 1 ? 's' : ''}</span>
+                            <div className="mrr-step-bar-wrap mrr-step-bar-wrap-ct">
+                              <div className="mrr-step-bar" style={{ width: `${pct}%`, background: free ? '#09694A' : '#1560A2' }} />
+                            </div>
+                            <span className="mrr-step-cost" style={{ color: free ? '#09694A' : '#1560A2' }}>{free ? 'Free' : `$${cost}`}</span>
                           </div>
-                        </div>
-                        <div className="mrr-slider-box mrr-slider-box-hw">
-                          <div className="mrr-slider-header">
-                            <span className="mrr-slider-label mrr-slider-label-hw">Homeowners referred</span>
-                            <span className="mrr-slider-count mrr-slider-count-hw">{hwSlider}</span>
-                          </div>
-                          <input type="range" min="0" max="5" value={hwSlider} step="1" className="mrr-range mrr-range-hw" onChange={e => setHwSlider(Number(e.target.value))} />
-                          <div className="mrr-cost-row">
-                            <span className="mrr-cost-label mrr-cost-label-hw">Your cost</span>
-                            <span className="mrr-cost-value" style={{ color: hwSlider === 5 ? '#09694A' : '#3C3489' }}>
-                              {hwSlider === 5 ? 'Free' : `$${5 - hwSlider}`}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="mrr-cta">
-                          <button className="mrr-cta-btn mrr-cta-btn-hw">Start referring homeowners →</button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* ── CONTRACTOR ── */}
-                    {referralTab === 'ct' && (
-                      <div className="mrr-card mrr-card-ct">
-                        <div className="mrr-bar mrr-bar-ct" />
-                        <div className="mrr-header">
-                          <p className="mrr-eyebrow mrr-eyebrow-ct">How it works</p>
-                          <h2 className="mrr-heading">Bring homeowners.<br />Pay less. Or nothing.</h2>
-                          <p className="mrr-body-text">Every homeowner you bring to MyHomeBase takes $1 off your monthly plan. Refer 20 and your subscription is completely free — for as long as they stay subscribed.</p>
-                          <div className="mrr-divider mrr-divider-ct" />
-                        </div>
-                        <div className="mrr-steps-section">
-                          <p className="mrr-steps-label mrr-steps-label-ct">Your monthly cost</p>
-                          <div className="mrr-steps">
-                            {[0,5,10,15,20].map(i => {
-                              const cost = 20 - i;
-                              const free = cost === 0;
-                              const pct = Math.round((cost / 20) * 100);
-                              return (
-                                <div key={i} className="mrr-step-row" style={{ opacity: ctSlider >= i ? 1 : 0.3 }}>
-                                  <span className="mrr-step-ref">{i} ref{i !== 1 ? 's' : ''}</span>
-                                  <div className="mrr-step-bar-wrap mrr-step-bar-wrap-ct">
-                                    <div className="mrr-step-bar" style={{ width: `${pct}%`, background: free ? '#09694A' : '#1560A2' }} />
-                                  </div>
-                                  <span className="mrr-step-cost" style={{ color: free ? '#09694A' : '#1560A2' }}>{free ? 'Free' : `$${cost}`}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                        <div className="mrr-slider-box mrr-slider-box-ct">
-                          <div className="mrr-slider-header">
-                            <span className="mrr-slider-label mrr-slider-label-ct">Homeowners referred</span>
-                            <span className="mrr-slider-count mrr-slider-count-ct">{ctSlider}</span>
-                          </div>
-                          <input type="range" min="0" max="20" value={ctSlider} step="1" className="mrr-range mrr-range-ct" onChange={e => setCtSlider(Number(e.target.value))} />
-                          <div className="mrr-cost-row">
-                            <span className="mrr-cost-label mrr-cost-label-ct">Your cost</span>
-                            <span className="mrr-cost-value" style={{ color: ctSlider === 20 ? '#09694A' : '#0C447C' }}>
-                              {ctSlider === 20 ? 'Free' : `$${20 - ctSlider}`}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="mrr-cta">
-                          <button className="mrr-cta-btn mrr-cta-btn-ct">Start referring homeowners →</button>
-                        </div>
-                      </div>
-                    )}
-
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="mrr-slider-box mrr-slider-box-ct">
+                    <div className="mrr-slider-header">
+                      <span className="mrr-slider-label mrr-slider-label-ct">Homeowners referred</span>
+                      <span className="mrr-slider-count mrr-slider-count-ct">{ctSlider}</span>
+                    </div>
+                    <input type="range" min="0" max="20" value={ctSlider} step="1" className="mrr-range mrr-range-ct" onChange={e => setCtSlider(Number(e.target.value))} />
+                    <div className="mrr-cost-row">
+                      <span className="mrr-cost-label mrr-cost-label-ct">Your cost</span>
+                      <span className="mrr-cost-value" style={{ color: ctSlider === 20 ? '#09694A' : '#0C447C' }}>
+                        {ctSlider === 20 ? 'Free' : `$${20 - ctSlider}`}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mrr-cta">
+                    <button className="mrr-cta-btn mrr-cta-btn-ct" onClick={() => handleRoleSelection('contractor')}>Start referring homeowners →</button>
                   </div>
                 </div>
               )}
             </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Bottom sheet */}
-      <div className="mhb-sheet">
-        <div className="mhb-handle" />
-        <div className="mhb-sheet-label">I am a...</div>
-
-        <div className="mhb-user-types">
-          {/* Homeowner */}
-          <button
-            className="mhb-utb mhb-utb-purple"
-            onClick={() => handleRoleSelection('homeowner')}
-            data-testid="button-homeowner-signup"
-            aria-label="Sign up as a Homeowner"
-          >
-            <div className="mhb-utb-icon">
-              <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M9 2L2 7v9h4v-5h6v5h4V7z" stroke="#fff" strokeWidth="1.5" strokeLinejoin="round" />
-              </svg>
+      {/* ═══ HOMEOWNER LEARN MORE MODAL ═══ */}
+      {homeownerModalOpen && (
+        <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setHomeownerModalOpen(false)}>
+          <div className="mhb-modal-card mhb-role-modal" onClick={e => e.stopPropagation()}>
+            <button className="mhb-modal-close" onClick={() => setHomeownerModalOpen(false)} aria-label="Close"><X size={20} strokeWidth={2.5} /></button>
+            <div className="mhb-role-modal-bar mhb-role-modal-bar-purple" />
+            <div className="mhb-role-modal-inner">
+              <p className="mhb-role-modal-eyebrow">For Homeowners</p>
+              <h2 className="mhb-role-modal-heading">Your home has a record.<br />Now it has a score.</h2>
+              <p className="mhb-role-modal-body">MyHomeBase™ is your home's permanent record book — built for the moment you need it most. Whether you're filing an insurance claim, selling your house, or just staying on top of seasonal maintenance, every document, every repair, every inspection lives here.</p>
+              <div className="mhb-role-modal-features">
+                {[
+                  { icon: '📊', title: 'Home Wellness Score™', desc: 'A live score from 0–1,000 based on system age, maintenance history, and task completion. Know it. Improve it. Show it when you sell.' },
+                  { icon: '📋', title: 'Service Record Tracking', desc: 'Log every repair, inspection, and upgrade — dated, documented, and retrievable in seconds when an adjuster comes calling.' },
+                  { icon: '📍', title: 'Geo-Located Task List', desc: "Seasonal reminders built around your location and your home's specific systems — not a generic checklist." },
+                  { icon: '🔒', title: 'Claim Protection', desc: 'Build the paper trail insurers require. The #1 reason claims are denied is missing maintenance records. Fix that for $5/month.' },
+                ].map(f => (
+                  <div key={f.title} className="mhb-role-modal-feature">
+                    <span className="mhb-role-modal-feature-icon">{f.icon}</span>
+                    <div>
+                      <p className="mhb-role-modal-feature-title">{f.title}</p>
+                      <p className="mhb-role-modal-feature-desc">{f.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mhb-role-modal-cta-row">
+                <button className="mhb-role-modal-cta-primary" onClick={() => { setHomeownerModalOpen(false); handleRoleSelection('homeowner'); }}>Create my account →</button>
+                <button className="mhb-role-modal-cta-ghost" onClick={() => { setHomeownerModalOpen(false); setQuizOpen(true); }}>Take the quiz first</button>
+              </div>
+              <p className="mhb-role-modal-trial">14-day free trial · No credit card required</p>
             </div>
-            <div className="mhb-utb-text">
-              <div className="mhb-utb-title">Homeowner</div>
-              <div className="mhb-utb-sub">Track, protect &amp; document</div>
-            </div>
-            <div className="mhb-utb-arrow">›</div>
-          </button>
-
-          {/* Contractor */}
-          <button
-            className="mhb-utb mhb-utb-blue"
-            onClick={() => handleRoleSelection('contractor')}
-            data-testid="button-contractor-signup"
-            aria-label="Sign up as a Contractor"
-          >
-            <div className="mhb-utb-icon">
-              <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3 13l3-6 3 3 3-5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                <circle cx="13" cy="5" r="2" stroke="#fff" strokeWidth="1.5" />
-              </svg>
-            </div>
-            <div className="mhb-utb-text">
-              <div className="mhb-utb-title">Contractor</div>
-              <div className="mhb-utb-sub">Grow your business</div>
-            </div>
-            <div className="mhb-utb-arrow">›</div>
-          </button>
-
-          {/* Real estate agent */}
-          <button
-            className="mhb-utb mhb-utb-green"
-            onClick={() => handleRoleSelection('agent')}
-            data-testid="button-agent-signup"
-            aria-label="Sign up as a Real Estate Agent"
-          >
-            <div className="mhb-utb-icon">
-              <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="2" y="8" width="14" height="8" rx="1.5" stroke="#fff" strokeWidth="1.5" />
-                <path d="M5 8V6a4 4 0 018 0v2" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-            </div>
-            <div className="mhb-utb-text">
-              <div className="mhb-utb-title">Real Estate Agent</div>
-              <div className="mhb-utb-sub">Refer and earn</div>
-            </div>
-            <div className="mhb-utb-arrow">›</div>
-          </button>
-        </div>
-
-        {/* Google Sign-In */}
-        <div className="mhb-google-section">
-          <div className="mhb-or-divider">
-            <div className="mhb-or-line" />
-            <div className="mhb-or-text">or</div>
-            <div className="mhb-or-line" />
           </div>
-          <a href="/auth/google" className="mhb-google-btn">
-            <svg className="mhb-google-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-            </svg>
-            Continue with Google
-          </a>
         </div>
+      )}
 
-        {/* Demo strip */}
-        <div className="mhb-demo-strip">
-          <button
-            className="mhb-demo-link"
-            onClick={() => handleDemoLogin('homeowner')}
-            disabled={demoLoading === 'homeowner'}
-            data-testid="button-homeowner-demo"
-          >
-            {demoLoading === 'homeowner' ? 'Loading…' : 'Homeowner demo'}
-          </button>
-          <button
-            className="mhb-demo-link"
-            onClick={() => handleDemoLogin('contractor')}
-            disabled={demoLoading === 'contractor'}
-            data-testid="button-contractor-demo"
-          >
-            {demoLoading === 'contractor' ? 'Loading…' : 'Contractor demo'}
-          </button>
-          <button
-            className="mhb-demo-link"
-            onClick={() => handleDemoLogin('agent')}
-            disabled={demoLoading === 'agent'}
-            data-testid="button-agent-demo"
-          >
-            {demoLoading === 'agent' ? 'Loading…' : 'Agent demo'}
-          </button>
+      {/* ═══ CONTRACTOR LEARN MORE MODAL ═══ */}
+      {contractorModalOpen && (
+        <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setContractorModalOpen(false)}>
+          <div className="mhb-modal-card mhb-role-modal" onClick={e => e.stopPropagation()}>
+            <button className="mhb-modal-close" onClick={() => setContractorModalOpen(false)} aria-label="Close"><X size={20} strokeWidth={2.5} /></button>
+            <div className="mhb-role-modal-bar mhb-role-modal-bar-blue" />
+            <div className="mhb-role-modal-inner">
+              <p className="mhb-role-modal-eyebrow mhb-role-modal-eyebrow-blue">For Contractors</p>
+              <h2 className="mhb-role-modal-heading">Your next client is already in the app.</h2>
+              <p className="mhb-role-modal-body">MyHomeBase™ connects you with homeowners who are actively maintaining their properties. Get listed in a trusted directory, manage your client relationships, and grow your business through referrals.</p>
+              <div className="mhb-role-modal-features">
+                {[
+                  { icon: '📂', title: 'Contractor Directory Listing', desc: 'Be found by homeowners who are already investing in their properties. Your profile appears alongside relevant service records.' },
+                  { icon: '👥', title: 'CRM & Lead Management', desc: 'Track your homeowner clients, manage active jobs, and follow up on leads — all in one place.' },
+                  { icon: '📄', title: 'Service Record Integration', desc: "When you complete a job, the record is logged directly into the homeowner's history. Builds trust and repeat business." },
+                  { icon: '💰', title: 'Referral Revenue', desc: 'Refer homeowners and earn $1/month off your plan for each one — refer 20 and your subscription is free.' },
+                ].map(f => (
+                  <div key={f.title} className="mhb-role-modal-feature">
+                    <span className="mhb-role-modal-feature-icon">{f.icon}</span>
+                    <div>
+                      <p className="mhb-role-modal-feature-title">{f.title}</p>
+                      <p className="mhb-role-modal-feature-desc">{f.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mhb-role-modal-cta-row">
+                <button className="mhb-role-modal-cta-primary mhb-role-modal-cta-blue" onClick={() => { setContractorModalOpen(false); handleRoleSelection('contractor'); }}>Create my account →</button>
+              </div>
+              <p className="mhb-role-modal-trial">14-day free trial · No credit card required</p>
+            </div>
+          </div>
         </div>
+      )}
 
-        {/* Sign in */}
-        <div className="mhb-signin-row">
-          Already have an account?
-          <a className="mhb-signin-link" href="/signin" data-testid="link-signin">
-            Sign in
-          </a>
+      {/* ═══ AGENT LEARN MORE MODAL ═══ */}
+      {agentModalOpen && (
+        <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setAgentModalOpen(false)}>
+          <div className="mhb-modal-card mhb-role-modal" onClick={e => e.stopPropagation()}>
+            <button className="mhb-modal-close" onClick={() => setAgentModalOpen(false)} aria-label="Close"><X size={20} strokeWidth={2.5} /></button>
+            <div className="mhb-role-modal-bar mhb-role-modal-bar-green" />
+            <div className="mhb-role-modal-inner">
+              <p className="mhb-role-modal-eyebrow mhb-role-modal-eyebrow-green">For Real Estate Agents</p>
+              <h2 className="mhb-role-modal-heading">Give every listing a verifiable history.</h2>
+              <p className="mhb-role-modal-body">MyHomeBase™ lets you offer your clients something no other agent can — a documented, scored home history that builds buyer confidence, reduces inspection surprises, and closes deals faster.</p>
+              <div className="mhb-role-modal-features">
+                {[
+                  { icon: '🏡', title: 'Home Wellness Score™ for Listings', desc: 'Attach a verified Home Wellness Score to every listing. Buyers see it as transparency. Sellers see it as value.' },
+                  { icon: '📤', title: 'Handoff Reports', desc: 'Generate a comprehensive handoff report at closing — every maintenance record, every upgrade, verified and ready for the buyer.' },
+                  { icon: '🤝', title: 'Referral Earnings', desc: "Refer homeowners to MyHomeBase and earn recurring monthly revenue for as long as they're subscribed." },
+                  { icon: '⭐', title: 'Differentiate Your Services', desc: "Stand out in a crowded market. Offering a documented home history is a competitive advantage most agents don't have." },
+                ].map(f => (
+                  <div key={f.title} className="mhb-role-modal-feature">
+                    <span className="mhb-role-modal-feature-icon">{f.icon}</span>
+                    <div>
+                      <p className="mhb-role-modal-feature-title">{f.title}</p>
+                      <p className="mhb-role-modal-feature-desc">{f.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mhb-role-modal-cta-row">
+                <button className="mhb-role-modal-cta-primary mhb-role-modal-cta-green" onClick={() => { setAgentModalOpen(false); handleRoleSelection('agent'); }}>Create my account →</button>
+              </div>
+              <p className="mhb-role-modal-trial">14-day free trial · No credit card required</p>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* ═══════════════════════════════════════
+          SECTION 01 — NAVIGATION
+      ═══════════════════════════════════════ */}
+      <nav className="mhb-nav">
+        <div className="mhb-nav-inner">
+          <div className="mhb-nav-left">
+            <a href="/" className="mhb-nav-logo-link">
+              <img src={logoWhite} alt="MyHomeBase" className="mhb-nav-logo" />
+            </a>
+            <div className="mhb-nav-links">
+              <button className="mhb-nav-link" onClick={() => scrollTo('how-it-works')}>How It Works</button>
+              <button className="mhb-nav-link" onClick={() => scrollTo('pricing')}>Pricing</button>
+              <button className="mhb-nav-link" onClick={() => scrollTo('faq')}>FAQ</button>
+            </div>
+          </div>
+          <div className="mhb-nav-right">
+            <a href="/signin/homeowner" className="mhb-nav-role-link mhb-nav-homeowner">Homeowner</a>
+            <a href="/signin/contractor" className="mhb-nav-role-link mhb-nav-contractor">Contractor</a>
+            <a href="/signin/agent" className="mhb-nav-role-link mhb-nav-agent">Agent</a>
+            <a href="/signin" className="mhb-nav-signin-btn">Sign In</a>
+          </div>
+          <button className="mhb-nav-hamburger" onClick={() => setMobileNavOpen(v => !v)} aria-label="Menu">
+            {mobileNavOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </div>
+        {mobileNavOpen && (
+          <div className="mhb-mobile-menu">
+            <button className="mhb-mobile-link" onClick={() => scrollTo('how-it-works')}>How It Works</button>
+            <button className="mhb-mobile-link" onClick={() => scrollTo('pricing')}>Pricing</button>
+            <button className="mhb-mobile-link" onClick={() => scrollTo('faq')}>FAQ</button>
+            <div className="mhb-mobile-divider" />
+            <a href="/signin/homeowner" className="mhb-mobile-link">Homeowner Sign In</a>
+            <a href="/signin/contractor" className="mhb-mobile-link">Contractor Sign In</a>
+            <a href="/signin/agent" className="mhb-mobile-link">Agent Sign In</a>
+            <a href="/signin" className="mhb-mobile-signin">Sign In</a>
+          </div>
+        )}
+      </nav>
+
+      {/* ═══════════════════════════════════════
+          SECTION 02 — HERO
+      ═══════════════════════════════════════ */}
+      <section className="mhb-hero-section">
+        <div className="mhb-hero-content">
+          <p className="mhb-hero-eyebrow">42% of home insurance claims get denied.</p>
+          <h1 className="mhb-hero-h1">The reason is always the same.<br />No maintenance records.</h1>
+          <p className="mhb-hero-sub">
+            MyHomeBase™ gives your home a verifiable history — so when something goes wrong, you're protected. For $5 a month.
+          </p>
+          <div className="mhb-hero-ctas">
+            <button className="mhb-hero-cta-primary" onClick={() => scrollTo('quiz')}>
+              Check your home's risk — free →
+            </button>
+            <button className="mhb-hero-cta-secondary" onClick={() => scrollTo('how-it-works')}>
+              See how it works ↓
+            </button>
+          </div>
+          <p className="mhb-hero-tagline">Your home has a record. Now it has a score.</p>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════
+          SECTION 03 — STAT TILES
+      ═══════════════════════════════════════ */}
+      <section className="mhb-stats-section">
+        <div className="mhb-stats-grid">
+          <button className="mhb-stat-tile" onClick={() => setClaimsOpen(true)} aria-label="Insurance Reality Check">
+            <div className="mhb-stat-tile-num">42%</div>
+            <div className="mhb-stat-tile-label">Claims denied nationally</div>
+            <div className="mhb-stat-tile-hint"><Info size={12} strokeWidth={2.5} /> Tap to learn more</div>
+          </button>
+          <button className="mhb-stat-tile" onClick={() => setClaimsOpen(true)} aria-label="Average denied claim cost">
+            <div className="mhb-stat-tile-num">$18K</div>
+            <div className="mhb-stat-tile-label">Average denied claim cost</div>
+            <div className="mhb-stat-tile-hint"><Info size={12} strokeWidth={2.5} /> Tap to learn more</div>
+          </button>
+          <button className="mhb-stat-tile mhb-stat-tile-accent" onClick={() => setPlansOpen(true)} aria-label="View pricing plans">
+            <div className="mhb-stat-tile-num">$5<span className="mhb-stat-tile-per">/mo</span></div>
+            <div className="mhb-stat-tile-label">Full protection</div>
+            <div className="mhb-stat-tile-hint"><Info size={12} strokeWidth={2.5} /> See plans</div>
+          </button>
+          <button className="mhb-stat-tile mhb-stat-tile-green" onClick={() => setReferralOpen(true)} aria-label="Referral program">
+            <div className="mhb-stat-tile-num mhb-stat-tile-refer">Refer 5.</div>
+            <div className="mhb-stat-tile-label">Free for life</div>
+            <div className="mhb-stat-tile-hint"><Info size={12} strokeWidth={2.5} /> How it works</div>
+          </button>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════
+          SECTION 04 — QUIZ ENTRY
+      ═══════════════════════════════════════ */}
+      <section id="quiz" className="mhb-quiz-entry-section">
+        <div className="mhb-quiz-entry-inner">
+          <p className="mhb-section-eyebrow mhb-quiz-eyebrow">Free 2-minute quiz</p>
+          <h2 className="mhb-quiz-entry-heading">How well do you know your home?</h2>
+          <p className="mhb-quiz-entry-body">
+            10 questions about your home's systems and maintenance habits. Get a personalized risk score — and find out exactly where you might be leaving your biggest investment exposed.
+          </p>
+          <button className="mhb-quiz-entry-cta" onClick={() => setQuizOpen(true)}>
+            Start the quiz →
+          </button>
+          <div className="mhb-quiz-trust">
+            <span className="mhb-quiz-trust-item">⏱ ~2 minutes</span>
+            <span className="mhb-quiz-trust-dot">·</span>
+            <span className="mhb-quiz-trust-item">🔓 No account needed</span>
+            <span className="mhb-quiz-trust-dot">·</span>
+            <span className="mhb-quiz-trust-item">📊 Personalized result</span>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════
+          SECTION 05 — HOW IT WORKS
+      ═══════════════════════════════════════ */}
+      <section id="how-it-works" className="mhb-how-section">
+        <div className="mhb-how-inner">
+          <p className="mhb-section-eyebrow">How MyHomeBase works</p>
+          <h2 className="mhb-section-heading">Your home, documented.<br />Your claims, protected.</h2>
+
+          <div className="mhb-how-features">
+
+            <div className="mhb-how-feature">
+              <div className="mhb-how-feature-copy">
+                <div className="mhb-how-feature-num">01</div>
+                <h3 className="mhb-how-feature-title">Home Wellness Score™</h3>
+                <p className="mhb-how-feature-body">Your home gets a score from 0 to 1,000 — updated in real time based on system age, maintenance history, and completed tasks. Like a credit score, but for your house. Know it. Improve it. Show it when you sell.</p>
+              </div>
+              <div className="mhb-how-screenshot-placeholder">
+                <div className="mhb-screenshot-label">📱 Screenshot placeholder</div>
+                <div className="mhb-screenshot-hint">App screenshot: Home Wellness Score dashboard</div>
+                <div className="mhb-screenshot-mock">
+                  <div className="mhb-mock-score-ring">
+                    <span className="mhb-mock-score-num">742</span>
+                    <span className="mhb-mock-score-sub">Home Score</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mhb-how-feature mhb-how-feature-reverse">
+              <div className="mhb-how-feature-copy">
+                <div className="mhb-how-feature-num">02</div>
+                <h3 className="mhb-how-feature-title">Service Record Tracking</h3>
+                <p className="mhb-how-feature-body">Every repair, inspection, and upgrade — logged, dated, and stored permanently. When an insurance adjuster asks for proof, you'll have it. When a buyer asks for history, you'll have that too.</p>
+              </div>
+              <div className="mhb-how-screenshot-placeholder">
+                <div className="mhb-screenshot-label">📱 Screenshot placeholder</div>
+                <div className="mhb-screenshot-hint">App screenshot: Service record timeline</div>
+                <div className="mhb-screenshot-mock">
+                  {['HVAC Service — Mar 2025', 'Roof Inspection — Jan 2025', 'Plumbing Fix — Nov 2024'].map(r => (
+                    <div key={r} className="mhb-mock-record-row">
+                      <span className="mhb-mock-record-dot" />
+                      <span className="mhb-mock-record-text">{r}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="mhb-how-feature">
+              <div className="mhb-how-feature-copy">
+                <div className="mhb-how-feature-num">03</div>
+                <h3 className="mhb-how-feature-title">Geo-Located Task List</h3>
+                <p className="mhb-how-feature-body">Seasonal maintenance reminders based on your actual location and your home's specific systems. No generic checklists — just what your home needs, when it needs it.</p>
+              </div>
+              <div className="mhb-how-screenshot-placeholder">
+                <div className="mhb-screenshot-label">📱 Screenshot placeholder</div>
+                <div className="mhb-screenshot-hint">App screenshot: Geo-located task list</div>
+                <div className="mhb-screenshot-mock">
+                  {['☀️ Clean gutters before fall rain', '❄️ Winterize exterior hose bibs', '🌿 HVAC filter replacement due'].map(t => (
+                    <div key={t} className="mhb-mock-task-row">{t}</div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════
+          SECTION 06 — SOCIAL PROOF
+      ═══════════════════════════════════════ */}
+      <section className="mhb-proof-section">
+        <div className="mhb-proof-inner">
+          <h2 className="mhb-proof-heading">The homeowners who never get burned have one thing in common.</h2>
+          <p className="mhb-proof-sub">They have records. Start yours today.</p>
+          <div className="mhb-testimonials">
+            {[
+              { name: 'Sarah M., Phoenix AZ', quote: '"When a burst pipe damaged our kitchen, I had every plumbing inspection report ready to send. Claim approved in 48 hours."', note: '[REPLACE WITH REAL TESTIMONIAL]' },
+              { name: 'James T., Atlanta GA', quote: '"I sold my house for $22K over asking because I could prove the roof, HVAC, and foundation had been maintained. The buyer\'s inspector had nothing to flag."', note: '[REPLACE WITH REAL TESTIMONIAL]' },
+              { name: 'Maria L., Denver CO', quote: '"I had no idea my Home Wellness Score was 340. Now it\'s 780. I know exactly what to fix and when — and my insurance premium actually went down."', note: '[REPLACE WITH REAL TESTIMONIAL]' },
+            ].map(t => (
+              <div key={t.name} className="mhb-testimonial-card">
+                <p className="mhb-testimonial-replace">{t.note}</p>
+                <p className="mhb-testimonial-quote">{t.quote}</p>
+                <p className="mhb-testimonial-name">— {t.name}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════
+          SECTION 07 — ROLE SELECTION
+      ═══════════════════════════════════════ */}
+      <section className="mhb-role-section">
+        <div className="mhb-role-inner">
+          <h2 className="mhb-role-heading">I am a…</h2>
+          <div className="mhb-role-tiles">
+
+            {/* Homeowner */}
+            <div className={`mhb-role-tile mhb-role-tile-purple ${selectedRole === 'homeowner' ? 'mhb-role-tile-expanded' : ''}`}>
+              <button
+                className="mhb-role-tile-btn"
+                onClick={() => setSelectedRole(selectedRole === 'homeowner' ? null : 'homeowner')}
+              >
+                <div className="mhb-role-tile-icon">
+                  <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M9 2L2 7v9h4v-5h6v5h4V7z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <div className="mhb-role-tile-text">
+                  <div className="mhb-role-tile-title">Homeowner</div>
+                  <div className="mhb-role-tile-sub">Track, protect &amp; document</div>
+                </div>
+                <div className="mhb-role-tile-chevron" style={{ transform: selectedRole === 'homeowner' ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</div>
+              </button>
+              {selectedRole === 'homeowner' && (
+                <div className="mhb-role-actions">
+                  <button className="mhb-role-action mhb-role-action-primary" onClick={() => handleRoleSelection('homeowner')} data-testid="button-homeowner-signup">Register</button>
+                  <a href="/signin/homeowner" className="mhb-role-action mhb-role-action-ghost">Sign In</a>
+                  <button className="mhb-role-action mhb-role-action-text" onClick={() => setHomeownerModalOpen(true)}>Learn more first →</button>
+                </div>
+              )}
+            </div>
+
+            {/* Contractor */}
+            <div className={`mhb-role-tile mhb-role-tile-blue ${selectedRole === 'contractor' ? 'mhb-role-tile-expanded' : ''}`}>
+              <button
+                className="mhb-role-tile-btn"
+                onClick={() => setSelectedRole(selectedRole === 'contractor' ? null : 'contractor')}
+              >
+                <div className="mhb-role-tile-icon">
+                  <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 13l3-6 3 3 3-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <circle cx="13" cy="5" r="2" stroke="currentColor" strokeWidth="1.5" />
+                  </svg>
+                </div>
+                <div className="mhb-role-tile-text">
+                  <div className="mhb-role-tile-title">Contractor</div>
+                  <div className="mhb-role-tile-sub">Grow your business</div>
+                </div>
+                <div className="mhb-role-tile-chevron" style={{ transform: selectedRole === 'contractor' ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</div>
+              </button>
+              {selectedRole === 'contractor' && (
+                <div className="mhb-role-actions">
+                  <button className="mhb-role-action mhb-role-action-blue" onClick={() => handleRoleSelection('contractor')} data-testid="button-contractor-signup">Register</button>
+                  <a href="/signin/contractor" className="mhb-role-action mhb-role-action-ghost">Sign In</a>
+                  <button className="mhb-role-action mhb-role-action-text" onClick={() => setContractorModalOpen(true)}>Learn more first →</button>
+                </div>
+              )}
+            </div>
+
+            {/* Agent */}
+            <div className={`mhb-role-tile mhb-role-tile-green ${selectedRole === 'agent' ? 'mhb-role-tile-expanded' : ''}`}>
+              <button
+                className="mhb-role-tile-btn"
+                onClick={() => setSelectedRole(selectedRole === 'agent' ? null : 'agent')}
+              >
+                <div className="mhb-role-tile-icon">
+                  <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="2" y="8" width="14" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+                    <path d="M5 8V6a4 4 0 018 0v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                </div>
+                <div className="mhb-role-tile-text">
+                  <div className="mhb-role-tile-title">Real Estate Agent</div>
+                  <div className="mhb-role-tile-sub">Refer and earn</div>
+                </div>
+                <div className="mhb-role-tile-chevron" style={{ transform: selectedRole === 'agent' ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</div>
+              </button>
+              {selectedRole === 'agent' && (
+                <div className="mhb-role-actions">
+                  <button className="mhb-role-action mhb-role-action-green" onClick={() => handleRoleSelection('agent')} data-testid="button-agent-signup">Register</button>
+                  <a href="/signin/agent" className="mhb-role-action mhb-role-action-ghost">Sign In</a>
+                  <button className="mhb-role-action mhb-role-action-text" onClick={() => setAgentModalOpen(true)}>Learn more first →</button>
+                </div>
+              )}
+            </div>
+
+          </div>
+
+          {/* Google Sign-In */}
+          <div className="mhb-google-section">
+            <div className="mhb-or-divider">
+              <div className="mhb-or-line" />
+              <div className="mhb-or-text">or</div>
+              <div className="mhb-or-line" />
+            </div>
+            <a href="/auth/google" className="mhb-google-btn">
+              <svg className="mhb-google-logo" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+              </svg>
+              Continue with Google
+            </a>
+          </div>
+
+          {/* Demo strip */}
+          <div className="mhb-demo-strip">
+            <button className="mhb-demo-link" onClick={() => handleDemoLogin('homeowner')} disabled={demoLoading === 'homeowner'} data-testid="button-homeowner-demo">
+              {demoLoading === 'homeowner' ? 'Loading…' : 'Homeowner demo'}
+            </button>
+            <button className="mhb-demo-link" onClick={() => handleDemoLogin('contractor')} disabled={demoLoading === 'contractor'} data-testid="button-contractor-demo">
+              {demoLoading === 'contractor' ? 'Loading…' : 'Contractor demo'}
+            </button>
+            <button className="mhb-demo-link" onClick={() => handleDemoLogin('agent')} disabled={demoLoading === 'agent'} data-testid="button-agent-demo">
+              {demoLoading === 'agent' ? 'Loading…' : 'Agent demo'}
+            </button>
+          </div>
+
+          <p className="mhb-role-trial-note">All plans include a 14-day free trial. No credit card required to start.</p>
+          <p className="mhb-role-signin-row">Already have an account? <a className="mhb-role-signin-link" href="/signin" data-testid="link-signin">Sign in</a></p>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════
+          SECTION 08 — PRICING
+      ═══════════════════════════════════════ */}
+      <section id="pricing" className="mhb-pricing-section">
+        <div className="mhb-pricing-inner">
+          <p className="mhb-section-eyebrow">Simple, honest pricing</p>
+          <h2 className="mhb-section-heading">Less than a cup of coffee.<br />More than you'd pay out of pocket.</h2>
+          <div className="mhb-pricing-compare">
+            <div className="mhb-pricing-left">
+              <p className="mhb-pricing-amount">$5<span>/month</span></p>
+              <p className="mhb-pricing-label">MyHomeBase™</p>
+            </div>
+            <div className="mhb-pricing-vs">vs.</div>
+            <div className="mhb-pricing-right">
+              <p className="mhb-pricing-amount mhb-pricing-amount-red">$18,311</p>
+              <p className="mhb-pricing-label">Average denied claim</p>
+            </div>
+          </div>
+          <p className="mhb-pricing-tagline">Do the math.</p>
+          <button className="mhb-pricing-details-btn" onClick={() => setPlansOpen(true)}>
+            See full plan details →
+          </button>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════
+          SECTION 09 — PRE-FOOTER CTA
+      ═══════════════════════════════════════ */}
+      <section className="mhb-prefooter-section">
+        <div className="mhb-prefooter-inner">
+          <h2 className="mhb-prefooter-heading">Your home is probably your biggest investment.</h2>
+          <p className="mhb-prefooter-sub">Treat it like one. Start your free home health check — takes 2 minutes.</p>
+          <button className="mhb-prefooter-cta" onClick={() => scrollTo('quiz')}>
+            Check my home's risk — free →
+          </button>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════
+          SECTION 10 — FOOTER
+      ═══════════════════════════════════════ */}
+      <footer id="faq" className="mhb-footer">
+        <div className="mhb-footer-inner">
+          <div className="mhb-footer-brand">
+            <img src={logoWhite} alt="MyHomeBase" className="mhb-footer-logo" />
+            <p className="mhb-footer-tagline">MyHomeBase™ keeps your home's complete history organized, protected, and ready — so you're never caught without the records that matter.</p>
+          </div>
+          <div className="mhb-footer-links">
+            <div className="mhb-footer-col">
+              <p className="mhb-footer-col-title">Support</p>
+              <a href="/faq" className="mhb-footer-link">Help Center</a>
+              <a href="/contact" className="mhb-footer-link">Contact Us</a>
+            </div>
+            <div className="mhb-footer-col">
+              <p className="mhb-footer-col-title">Legal</p>
+              <a href="/terms-of-service" className="mhb-footer-link">Terms of Service</a>
+              <a href="/privacy-policy" className="mhb-footer-link">Privacy Policy</a>
+              <a href="/legal-disclaimer" className="mhb-footer-link">Legal Disclaimer</a>
+            </div>
+            <div className="mhb-footer-col">
+              <p className="mhb-footer-col-title">Follow Us</p>
+              <a href="/coming-soon" className="mhb-footer-link">Facebook</a>
+              <a href="/coming-soon" className="mhb-footer-link">Instagram</a>
+            </div>
+          </div>
+        </div>
+        <div className="mhb-footer-bottom">
+          <p className="mhb-footer-copyright">© 2026 MyHomeBase™. All rights reserved.</p>
+          <p className="mhb-footer-sub-tagline">Your home has a record. Now it has a score.</p>
+        </div>
+      </footer>
+
     </div>
   );
 }
