@@ -636,7 +636,7 @@ export default function Landing() {
                   },
                   {
                     q: 'How much does MyHomeBase™ cost?',
-                    a: 'MyHomeBase™ is $5/month for homeowners. Contractors and real estate agents have separate plans starting at $20/month, with referral credits that can bring your cost to $0.'
+                    a: 'MyHomeBase™ is $5/month for homeowners, contractors  plans starting at $20/month, with referral credits that can bring your cost to $0.'
                   },
                   {
                     q: 'Is there a free trial?',
