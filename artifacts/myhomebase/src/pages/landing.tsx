@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Info, UserCircle, Menu, X } from "lucide-react";
+import { Info, UserCircle, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import logoWhite from "@assets/my-homebase-logo-tm-white-final_1776357152257.png";
@@ -32,7 +32,6 @@ export default function Landing() {
   const [openFaqIdx, setOpenFaqIdx] = useState<number | null>(null);
 
   // ── New state ──
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<'homeowner' | 'contractor' | 'agent' | null>(null);
   const [homeownerModalOpen, setHomeownerModalOpen] = useState(false);
   const [contractorModalOpen, setContractorModalOpen] = useState(false);
@@ -688,34 +687,12 @@ export default function Landing() {
             </div>
           </div>
           <div className="mhb-nav-right">
-            <a href="/signin/homeowner" className="mhb-nav-role-link mhb-nav-homeowner">Homeowner</a>
-            <a href="/signin/contractor" className="mhb-nav-role-link mhb-nav-contractor">Contractor</a>
-            <a href="/signin/agent" className="mhb-nav-role-link mhb-nav-agent">Agent</a>
-            <span className="mhb-nav-sep" />
             <button className="mhb-nav-demo-btn" onClick={() => handleDemoLogin('homeowner')} disabled={demoLoading === 'homeowner'}>
               {demoLoading === 'homeowner' ? 'Loading…' : 'Homeowner Demo'}
             </button>
             <a href="/signin" className="mhb-nav-signin-btn">Sign In</a>
           </div>
-          <button className="mhb-nav-hamburger" onClick={() => setMobileNavOpen(v => !v)} aria-label="Menu">
-            {mobileNavOpen ? <X size={22} /> : <Menu size={22} />}
-          </button>
         </div>
-        {mobileNavOpen && (
-          <div className="mhb-mobile-menu">
-            <button className="mhb-mobile-link" onClick={() => scrollTo('how-it-works')}>How It Works</button>
-            <button className="mhb-mobile-link" onClick={() => scrollTo('pricing')}>Pricing</button>
-            <button className="mhb-mobile-link" onClick={() => { setFaqOpen(true); setMobileNavOpen(false); }}>FAQ</button>
-            <div className="mhb-mobile-divider" />
-            <button className="mhb-mobile-link mhb-mobile-demo-link" onClick={() => { handleDemoLogin('homeowner'); setMobileNavOpen(false); }} disabled={demoLoading === 'homeowner'}>
-              {demoLoading === 'homeowner' ? 'Loading…' : '▶ Homeowner Demo'}
-            </button>
-            <a href="/signin/homeowner" className="mhb-mobile-link">Homeowner Sign In</a>
-            <a href="/signin/contractor" className="mhb-mobile-link">Contractor Sign In</a>
-            <a href="/signin/agent" className="mhb-mobile-link">Agent Sign In</a>
-            <a href="/signin" className="mhb-mobile-signin">Sign In</a>
-          </div>
-        )}
       </nav>
 
       {/* ═══════════════════════════════════════

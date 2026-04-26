@@ -1975,10 +1975,8 @@ html {
   text-align: center;
 }
 
-@media (max-width: 1023px) {
-  .mhb-nav-links,
-  .mhb-nav-right { display: none; }
-  .mhb-nav-hamburger { display: flex; }
+@media (max-width: 767px) {
+  .mhb-nav-links { display: none; }
 }
 
 /* ══════════════════════════════════════
