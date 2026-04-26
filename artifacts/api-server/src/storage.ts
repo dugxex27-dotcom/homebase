@@ -5708,6 +5708,20 @@ export class MemStorage implements IStorage {
   }
 
   async getReferringAgentForHomeowner(homeownerId: string): Promise<{ firstName: string; lastName: string; email: string | null; phone: string | null; website: string | null; officeAddress: string | null; referralCode: string | null; profileImageUrl: string | null; } | undefined> {
+    // Demo: return a realistic mock agent for the demo homeowner
+    if (homeownerId === 'demo-homeowner-permanent-id') {
+      return {
+        firstName: 'Jessica',
+        lastName: 'Morgan',
+        email: 'jessica.morgan@seattlerealty.com',
+        phone: '(206) 555-0142',
+        website: 'https://seattlerealty.com/jessica-morgan',
+        officeAddress: '1201 Third Ave, Suite 900, Seattle, WA 98101',
+        referralCode: 'JESSICA2024',
+        profileImageUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&h=200&fit=crop&crop=face',
+      };
+    }
+
     // Get the affiliate referral record for this homeowner
     const referral = await this.getAffiliateReferralByUserId(homeownerId);
     if (!referral) {

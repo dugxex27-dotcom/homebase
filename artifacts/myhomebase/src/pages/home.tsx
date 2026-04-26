@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Users, Calendar, Search, Star, TrendingUp, Gift, Sparkles, FileText, AlertTriangle, ClipboardList, Bell, User, ChevronRight, ChevronUp, Phone, Mail, Globe, MapPin, X as XIcon } from "lucide-react";
+import { Users, Calendar, Search, Star, TrendingUp, Gift, Sparkles, FileText, AlertTriangle, ClipboardList, Bell, ChevronRight, ChevronUp, Phone, Mail, Globe, MapPin, X as XIcon } from "lucide-react";
 import HouseMap from "@/components/house-map";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -134,16 +134,12 @@ export default function Home() {
           <div className="dash-header-top">
             <div />
             <div className="dash-header-actions">
-              {referringAgent ? (
+              {referringAgent && (
                 <button className="dash-agent-photo-btn" onClick={() => setAgentModalOpen(true)} aria-label="Your agent">
                   {referringAgent.profileImageUrl
                     ? <img src={referringAgent.profileImageUrl} alt={`${referringAgent.firstName} ${referringAgent.lastName}`} className="dash-agent-photo-img" />
                     : <span className="dash-agent-photo-initial">{referringAgent.firstName?.[0]?.toUpperCase() ?? "A"}</span>}
                 </button>
-              ) : (
-                <Link href="/account" className="dash-icon-btn" aria-label="Account">
-                  <User size={15} />
-                </Link>
               )}
             </div>
           </div>
