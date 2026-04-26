@@ -858,39 +858,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════
-          SECTION 10 — FOOTER
-      ═══════════════════════════════════════ */}
-      <footer id="faq" className="mhb-footer">
-        <div className="mhb-footer-inner">
-          <div className="mhb-footer-brand">
-            <img src={logoWhite} alt="MyHomeBase" className="mhb-footer-logo" />
-            <p className="mhb-footer-tagline">MyHomeBase™ keeps your home's complete history organized, protected, and ready — so you're never caught without the records that matter.</p>
-          </div>
-          <div className="mhb-footer-links">
-            <div className="mhb-footer-col">
-              <p className="mhb-footer-col-title">Support</p>
-              <a href="/faq" className="mhb-footer-link">Help Center</a>
-              <a href="/contact" className="mhb-footer-link">Contact Us</a>
-            </div>
-            <div className="mhb-footer-col">
-              <p className="mhb-footer-col-title">Legal</p>
-              <a href="/terms-of-service" className="mhb-footer-link">Terms of Service</a>
-              <a href="/privacy-policy" className="mhb-footer-link">Privacy Policy</a>
-              <a href="/legal-disclaimer" className="mhb-footer-link">Legal Disclaimer</a>
-            </div>
-            <div className="mhb-footer-col">
-              <p className="mhb-footer-col-title">Follow Us</p>
-              <a href="/coming-soon" className="mhb-footer-link">Facebook</a>
-              <a href="/coming-soon" className="mhb-footer-link">Instagram</a>
-            </div>
-          </div>
-        </div>
-        <div className="mhb-footer-bottom">
-          <p className="mhb-footer-copyright">© 2026 MyHomeBase™. All rights reserved.</p>
-          <p className="mhb-footer-sub-tagline">Your home has a record. Now it has a score.</p>
-        </div>
-      </footer>
 
     </div>
   );
