@@ -2953,6 +2953,8 @@ html {
 }
 
 .mhb-prefooter-cta {
+  display: inline-block;
+  text-decoration: none;
   background: #fff;
   color: #2C0F5B;
   border: none;

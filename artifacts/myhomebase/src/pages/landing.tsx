@@ -957,9 +957,9 @@ export default function Landing() {
         <div className="mhb-prefooter-inner">
           <h2 className="mhb-prefooter-heading">Your home is probably your biggest investment.</h2>
           <p className="mhb-prefooter-sub">Treat it like one. Start your free home health check — takes 2 minutes.</p>
-          <button className="mhb-prefooter-cta" onClick={() => scrollTo('quiz')}>
+          <a href="/quiz" className="mhb-prefooter-cta">
             Check my home's risk — free →
-          </button>
+          </a>
         </div>
       </section>
 
