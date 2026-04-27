@@ -6879,30 +6879,29 @@ class DbStorage implements IStorage {
     this.updateCrmNote = this.memStorage.updateCrmNote.bind(this.memStorage);
     this.deleteCrmNote = this.memStorage.deleteCrmNote.bind(this.memStorage);
     this.getCrmLeadWithNotes = this.memStorage.getCrmLeadWithNotes.bind(this.memStorage);
-    // CRM Pro tier methods — memStorage backed (data lives in-session; service records are persisted to DB when claimed)
-    this.getCrmClients = this.memStorage.getCrmClients.bind(this.memStorage);
-    this.getCrmClient = this.memStorage.getCrmClient.bind(this.memStorage);
-    this.createCrmClient = this.memStorage.createCrmClient.bind(this.memStorage);
-    this.updateCrmClient = this.memStorage.updateCrmClient.bind(this.memStorage);
-    this.deleteCrmClient = this.memStorage.deleteCrmClient.bind(this.memStorage);
-    this.getCrmJobs = this.memStorage.getCrmJobs.bind(this.memStorage);
-    this.getCrmJob = this.memStorage.getCrmJob.bind(this.memStorage);
-    this.createCrmJob = this.memStorage.createCrmJob.bind(this.memStorage);
-    this.updateCrmJob = this.memStorage.updateCrmJob.bind(this.memStorage);
-    this.deleteCrmJob = this.memStorage.deleteCrmJob.bind(this.memStorage);
-    this.getCrmQuotes = this.memStorage.getCrmQuotes.bind(this.memStorage);
-    this.getCrmQuote = this.memStorage.getCrmQuote.bind(this.memStorage);
-    this.createCrmQuote = this.memStorage.createCrmQuote.bind(this.memStorage);
-    this.updateCrmQuote = this.memStorage.updateCrmQuote.bind(this.memStorage);
-    this.deleteCrmQuote = this.memStorage.deleteCrmQuote.bind(this.memStorage);
-    this.getCrmInvoices = this.memStorage.getCrmInvoices.bind(this.memStorage);
-    this.getCrmInvoice = this.memStorage.getCrmInvoice.bind(this.memStorage);
-    this.createCrmInvoice = this.memStorage.createCrmInvoice.bind(this.memStorage);
-    this.updateCrmInvoice = this.memStorage.updateCrmInvoice.bind(this.memStorage);
-    this.deleteCrmInvoice = this.memStorage.deleteCrmInvoice.bind(this.memStorage);
-    this.getCrmDashboardStats = this.memStorage.getCrmDashboardStats.bind(this.memStorage);
-    // Linked invoices: read from same memStorage so the homeowner sees whatever the contractor saved in-session
-    this.getLinkedInvoicesForHomeowner = this.memStorage.getLinkedInvoicesForHomeowner.bind(this.memStorage);
+    // CRM Pro tier methods — DATABASE BACKED for persistence and FK consistency
+    this.getCrmClients = this.getCrmClientsDb.bind(this);
+    this.getCrmClient = this.getCrmClientDb.bind(this);
+    this.createCrmClient = this.createCrmClientDb.bind(this);
+    this.updateCrmClient = this.updateCrmClientDb.bind(this);
+    this.deleteCrmClient = this.deleteCrmClientDb.bind(this);
+    this.getCrmJobs = this.getCrmJobsDb.bind(this);
+    this.getCrmJob = this.getCrmJobDb.bind(this);
+    this.createCrmJob = this.createCrmJobDb.bind(this);
+    this.updateCrmJob = this.updateCrmJobDb.bind(this);
+    this.deleteCrmJob = this.deleteCrmJobDb.bind(this);
+    this.getCrmQuotes = this.getCrmQuotesDb.bind(this);
+    this.getCrmQuote = this.getCrmQuoteDb.bind(this);
+    this.createCrmQuote = this.createCrmQuoteDb.bind(this);
+    this.updateCrmQuote = this.updateCrmQuoteDb.bind(this);
+    this.deleteCrmQuote = this.deleteCrmQuoteDb.bind(this);
+    this.getCrmInvoices = this.getCrmInvoicesDb.bind(this);
+    this.getCrmInvoice = this.getCrmInvoiceDb.bind(this);
+    this.createCrmInvoice = this.createCrmInvoiceDb.bind(this);
+    this.updateCrmInvoice = this.updateCrmInvoiceDb.bind(this);
+    this.deleteCrmInvoice = this.deleteCrmInvoiceDb.bind(this);
+    this.getCrmDashboardStats = this.getCrmDashboardStatsDb.bind(this);
+    this.getLinkedInvoicesForHomeowner = this.getLinkedInvoicesForHomeownerDb.bind(this);
   }
 
   async getLinkedInvoicesForHomeownerDb(homeownerId: string): Promise<CrmInvoice[]> {
@@ -7103,6 +7102,57 @@ class DbStorage implements IStorage {
   async deleteCrmQuoteDb(id: string): Promise<boolean> {
     const result = await db.delete(crmQuotes).where(eq(crmQuotes.id, id)).returning({ id: crmQuotes.id });
     return result.length > 0;
+  }
+
+  // CRM Dashboard Stats — DATABASE BACKED so it reads from same source as CRUD
+  async getCrmDashboardStatsDb(contractorUserId: string): Promise<{
+    totalClients: number; activeJobs: number; pendingQuotes: number; outstandingInvoices: number;
+    totalRevenue: string; revenueThisMonth: string; jobsThisMonth: number; conversionRate: number;
+  }> {
+    const user = await this.getUser(contractorUserId);
+    const companyId = user?.companyId;
+
+    const clientConditions = companyId
+      ? or(eq(crmClients.contractorUserId, contractorUserId), eq(crmClients.companyId, companyId))
+      : eq(crmClients.contractorUserId, contractorUserId);
+    const jobConditions = companyId
+      ? or(eq(crmJobs.contractorUserId, contractorUserId), eq(crmJobs.companyId, companyId))
+      : eq(crmJobs.contractorUserId, contractorUserId);
+    const quoteConditions = companyId
+      ? or(eq(crmQuotes.contractorUserId, contractorUserId), eq(crmQuotes.companyId, companyId))
+      : eq(crmQuotes.contractorUserId, contractorUserId);
+    const invoiceConditions = companyId
+      ? or(eq(crmInvoices.contractorUserId, contractorUserId), eq(crmInvoices.companyId, companyId))
+      : eq(crmInvoices.contractorUserId, contractorUserId);
+
+    const [clients, jobs, quotes, invoices] = await Promise.all([
+      db.select().from(crmClients).where(clientConditions),
+      db.select().from(crmJobs).where(jobConditions),
+      db.select().from(crmQuotes).where(quoteConditions),
+      db.select().from(crmInvoices).where(invoiceConditions),
+    ]);
+
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const activeJobs = jobs.filter(j => j.status === 'scheduled' || j.status === 'in_progress').length;
+    const pendingQuotes = quotes.filter(q => q.status === 'draft' || q.status === 'sent').length;
+    const outstandingInvoices = invoices.filter(i => i.status !== 'paid' && i.status !== 'cancelled').length;
+
+    const paidInvoices = invoices.filter(i => i.status === 'paid');
+    const totalRevenue = paidInvoices.reduce((sum, i) => sum + parseFloat(i.amountPaid || '0'), 0);
+    const paidThisMonth = paidInvoices.filter(i => i.paidAt && new Date(i.paidAt) >= startOfMonth);
+    const revenueThisMonth = paidThisMonth.reduce((sum, i) => sum + parseFloat(i.amountPaid || '0'), 0);
+    const jobsThisMonth = jobs.filter(j => j.createdAt && new Date(j.createdAt) >= startOfMonth).length;
+    const acceptedQuotes = quotes.filter(q => q.status === 'accepted').length;
+    const sentQuotes = quotes.filter(q => q.status !== 'draft').length;
+    const conversionRate = sentQuotes > 0 ? Math.round((acceptedQuotes / sentQuotes) * 100) : 0;
+
+    return {
+      totalClients: clients.length, activeJobs, pendingQuotes, outstandingInvoices,
+      totalRevenue: totalRevenue.toFixed(2), revenueThisMonth: revenueThisMonth.toFixed(2),
+      jobsThisMonth, conversionRate,
+    };
   }
 
   // User operations - DATABASE BACKED for persistence

@@ -13084,9 +13084,12 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
           : contractor?.email || 'Contractor');
 
       // Create a service record from the invoice
-      const lineItems = Array.isArray(invoice.lineItems) ? invoice.lineItems as any[] : [];
+      type LineItem = { description?: string; quantity?: number; unitPrice?: number; total?: number };
+      const lineItems: LineItem[] = Array.isArray(invoice.lineItems)
+        ? (invoice.lineItems as unknown as LineItem[])
+        : [];
       const serviceDescription = lineItems.length > 0
-        ? lineItems.map((li: any) => li.description).filter(Boolean).join(', ')
+        ? lineItems.map(li => li.description).filter((d): d is string => typeof d === 'string').join(', ')
         : (invoice.description || invoice.title);
 
       const serviceRecord = await storage.createServiceRecord({
