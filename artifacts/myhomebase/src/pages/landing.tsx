@@ -694,6 +694,13 @@ export default function Landing() {
         </div>
       </nav>
 
+      {/* Mobile-only demo text link below nav */}
+      <div className="mhb-nav-demo-underbar">
+        <button className="mhb-nav-demo-underbar-btn" onClick={() => handleDemoLogin('homeowner')} disabled={demoLoading === 'homeowner'}>
+          {demoLoading === 'homeowner' ? 'Loading…' : 'Try the homeowner demo →'}
+        </button>
+      </div>
+
       {/* ═══════════════════════════════════════
           SECTION 02 — HERO
       ═══════════════════════════════════════ */}

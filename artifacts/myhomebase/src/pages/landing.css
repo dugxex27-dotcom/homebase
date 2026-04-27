@@ -1915,20 +1915,38 @@ html {
 .mhb-nav-demo-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 @media (max-width: 767px) {
-  .mhb-nav-right {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
-  }
-  .mhb-nav-signin-btn {
-    order: 1;
-    text-align: center;
-  }
-  .mhb-nav-demo-btn {
-    order: 2;
-    text-align: center;
+  .mhb-nav-demo-btn { display: none; }
+}
+
+/* Demo text link strip below nav (mobile only) */
+.mhb-nav-demo-underbar {
+  display: none;
+}
+@media (max-width: 767px) {
+  .mhb-nav-demo-underbar {
+    display: flex;
+    justify-content: center;
+    background: rgba(44, 15, 91, 0.96);
+    padding: 7px 16px 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   }
 }
+.mhb-nav-demo-underbar-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+  font-family: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(255, 255, 255, 0.3);
+  transition: color 0.15s;
+}
+.mhb-nav-demo-underbar-btn:hover { color: #fff; }
+.mhb-nav-demo-underbar-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .mhb-mobile-demo-link {
   color: #3C258E !important;
