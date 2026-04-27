@@ -98,7 +98,12 @@ const SubscriptionSuccess = lazy(() => import("./pages/subscription-success"));
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
-  
+
+  // Detect if running as installed PWA / from App Store (standalone mode)
+  const isStandalone =
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+
   // Set data-role attribute and theme class on body for role-based theming
   useEffect(() => {
     const typedUser = user as { role?: string } | undefined;
@@ -145,8 +150,8 @@ function Router() {
           <Route path="/pay/cancelled" component={PaymentCancelled} />
           <Route path="/handoff/:token" component={HandoffClaim} />
           <Route path="/coming-soon" component={ComingSoon} />
-          <Route path="/" component={Landing} />
-          <Route component={Landing} />
+          <Route path="/" component={isStandalone ? SignIn : Landing} />
+          <Route component={isStandalone ? SignIn : Landing} />
         </Switch>
       </UnauthenticatedLayout>
     );
