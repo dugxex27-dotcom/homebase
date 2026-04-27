@@ -15,7 +15,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   Plus, Phone, MessageCircle, Calendar, Search, Filter, Plug, Copy, Check, Trash2, 
   ExternalLink, Users, Briefcase, FileText, Receipt, LayoutDashboard, Crown, 
-  Send, DollarSign, Clock, Edit, Eye, CheckCircle, XCircle, AlertTriangle
+  Send, DollarSign, Clock, Edit, Eye, CheckCircle, XCircle, AlertTriangle, User
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -381,6 +381,13 @@ export default function ContractorCRMPage() {
   const [isAddInvoiceOpen, setIsAddInvoiceOpen] = useState(false);
   const [invoiceLineItems, setInvoiceLineItems] = useState<QuoteLineItem[]>([]);
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState("all");
+  const [invoiceConnectionCode, setInvoiceConnectionCode] = useState('');
+  const [invoiceLinkedHomeowner, setInvoiceLinkedHomeowner] = useState<{
+    id: string; name: string; email: string;
+    houses: Array<{ id: string; name: string; address: string }>;
+  } | null>(null);
+  const [isValidatingInvoice, setIsValidatingInvoice] = useState(false);
+  const [invoiceLinkedHouseId, setInvoiceLinkedHouseId] = useState('');
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [paymentInvoice, setPaymentInvoice] = useState<CrmInvoice | null>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
@@ -617,6 +624,9 @@ export default function ContractorCRMPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/crm/invoices'] });
       setIsAddInvoiceOpen(false);
       setInvoiceLineItems([]);
+      setInvoiceConnectionCode('');
+      setInvoiceLinkedHomeowner(null);
+      setInvoiceLinkedHouseId('');
       toast({ title: "Invoice created", description: "New invoice has been created successfully." });
       invoiceForm.reset();
     },
@@ -791,7 +801,35 @@ export default function ContractorCRMPage() {
       taxAmount: taxAmount.toFixed(2),
       total: total.toFixed(2),
       amountDue: total.toFixed(2),
+      ...(invoiceLinkedHomeowner ? {
+        homeownerId: invoiceLinkedHomeowner.id,
+        houseId: invoiceLinkedHouseId || (invoiceLinkedHomeowner.houses[0]?.id ?? undefined),
+      } : {}),
     });
+  };
+
+  const validateInvoiceConnectionCode = async () => {
+    if (!invoiceConnectionCode || invoiceConnectionCode.length !== 8) {
+      toast({ title: "Invalid Code", description: "Please enter an 8-character connection code.", variant: "destructive" });
+      return;
+    }
+    setIsValidatingInvoice(true);
+    try {
+      const response = await fetch('/api/permanent-connection-code/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: invoiceConnectionCode.toUpperCase() }),
+      });
+      if (!response.ok) throw new Error('Invalid connection code');
+      const data = await response.json();
+      setInvoiceLinkedHomeowner({ id: data.homeownerId, name: data.homeownerName, email: data.homeownerEmail, houses: data.houses || [] });
+      setInvoiceLinkedHouseId(data.houses?.length === 1 ? data.houses[0].id : '');
+      toast({ title: "Connection Successful", description: `Linked to ${data.homeownerName}'s account.` });
+    } catch {
+      toast({ title: "Validation Failed", description: "Invalid connection code. Please check and try again.", variant: "destructive" });
+    } finally {
+      setIsValidatingInvoice(false);
+    }
   };
 
   const addLineItem = (setter: typeof setQuoteLineItems) => {
@@ -1973,7 +2011,7 @@ export default function ContractorCRMPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <Dialog open={isAddInvoiceOpen} onOpenChange={(open) => { setIsAddInvoiceOpen(open); if (!open) { setInvoiceLineItems([]); invoiceForm.reset(); } }}>
+                <Dialog open={isAddInvoiceOpen} onOpenChange={(open) => { setIsAddInvoiceOpen(open); if (!open) { setInvoiceLineItems([]); invoiceForm.reset(); setInvoiceConnectionCode(''); setInvoiceLinkedHomeowner(null); setInvoiceLinkedHouseId(''); } }}>
                   <DialogTrigger asChild>
                     <Button data-testid="button-add-invoice"><Plus className="h-4 w-4 mr-2" />Create Invoice</Button>
                   </DialogTrigger>
@@ -2085,8 +2123,88 @@ export default function ContractorCRMPage() {
                           </FormItem>
                         )} />
 
+                        {/* Link to Homeowner Account via connection code */}
+                        <Card style={{ backgroundColor: '#f2f2f2', border: '2px solid #1560a2' }}>
+                          <CardHeader className="pb-2">
+                            <CardTitle className="flex items-center gap-2 text-base" style={{ color: '#1560a2' }}>
+                              <User className="w-4 h-4" style={{ color: '#1560a2' }} />
+                              Link to Homeowner Account (Optional)
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
+                            {!invoiceLinkedHomeowner ? (
+                              <>
+                                <p className="text-sm text-gray-600">
+                                  If the homeowner is on MyHomeBase, enter their 8-character connection code so this invoice appears in their home history.
+                                </p>
+                                <div className="flex gap-2">
+                                  <Input
+                                    value={invoiceConnectionCode}
+                                    onChange={(e) => setInvoiceConnectionCode(e.target.value.toUpperCase())}
+                                    placeholder="ABC12345"
+                                    maxLength={8}
+                                    style={{ backgroundColor: '#ffffff' }}
+                                    data-testid="input-invoice-connection-code"
+                                  />
+                                  <Button
+                                    type="button"
+                                    onClick={validateInvoiceConnectionCode}
+                                    disabled={isValidatingInvoice || invoiceConnectionCode.length !== 8}
+                                    style={{ backgroundColor: '#1560a2', color: 'white' }}
+                                    className="hover:opacity-90 shrink-0"
+                                    data-testid="button-validate-invoice-code"
+                                  >
+                                    {isValidatingInvoice ? 'Linking...' : 'Link Account'}
+                                  </Button>
+                                </div>
+                              </>
+                            ) : (
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                                  <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-green-100 rounded-full">
+                                      <User className="w-4 h-4 text-green-600" />
+                                    </div>
+                                    <div>
+                                      <p className="font-semibold text-green-900">{invoiceLinkedHomeowner.name}</p>
+                                      <p className="text-sm text-green-700">{invoiceLinkedHomeowner.email}</p>
+                                    </div>
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => { setInvoiceLinkedHomeowner(null); setInvoiceConnectionCode(''); setInvoiceLinkedHouseId(''); }}
+                                    data-testid="button-unlink-invoice"
+                                  >
+                                    Unlink
+                                  </Button>
+                                </div>
+                                {invoiceLinkedHomeowner.houses.length > 1 && (
+                                  <div>
+                                    <label className="text-sm font-medium mb-1 block" style={{ color: '#1560a2' }}>Select Property</label>
+                                    <Select value={invoiceLinkedHouseId} onValueChange={setInvoiceLinkedHouseId}>
+                                      <SelectTrigger data-testid="select-invoice-linked-house">
+                                        <SelectValue placeholder="Choose a property" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {invoiceLinkedHomeowner.houses.map(h => (
+                                          <SelectItem key={h.id} value={h.id}>{h.name || h.address}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                )}
+                                {invoiceLinkedHomeowner.houses.length === 1 && (
+                                  <p className="text-sm text-green-700">Property: {invoiceLinkedHomeowner.houses[0].name || invoiceLinkedHomeowner.houses[0].address}</p>
+                                )}
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+
                         <DialogFooter>
-                          <Button type="button" variant="outline" onClick={() => { setIsAddInvoiceOpen(false); setInvoiceLineItems([]); invoiceForm.reset(); }} data-testid="button-cancel-invoice">Cancel</Button>
+                          <Button type="button" variant="outline" onClick={() => { setIsAddInvoiceOpen(false); setInvoiceLineItems([]); invoiceForm.reset(); setInvoiceConnectionCode(''); setInvoiceLinkedHomeowner(null); setInvoiceLinkedHouseId(''); }} data-testid="button-cancel-invoice">Cancel</Button>
                           <Button type="submit" disabled={createInvoiceMutation.isPending || invoiceLineItems.length === 0} data-testid="button-submit-invoice">
                             {createInvoiceMutation.isPending ? "Creating..." : "Create Invoice"}
                           </Button>

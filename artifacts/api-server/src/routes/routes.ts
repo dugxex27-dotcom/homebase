@@ -1441,6 +1441,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           : contractor?.email,
         companyName: company?.businessName,
         companyLogo: company?.businessLogo,
+        homeownerId: invoice.homeownerId || null,
+        houseId: invoice.houseId || null,
       });
     } catch (error: any) {
       console.error('[PAYMENT] Error fetching invoice:', error);
@@ -12993,6 +12995,118 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
         return res.status(400).json({ message: "Invalid code format", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to validate connection code" });
+    }
+  });
+
+  // Get invoices linked to the authenticated homeowner via connection code
+  app.get('/api/homeowner/linked-invoices', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.user.id;
+      const userRole = req.session.user.role;
+
+      if (userRole !== 'homeowner') {
+        return res.status(403).json({ message: "Only homeowners can view linked invoices" });
+      }
+
+      const invoices = await storage.getLinkedInvoicesForHomeowner(userId);
+
+      // Enrich with contractor/company names
+      const enriched = await Promise.all(invoices.map(async (inv) => {
+        const contractor = await storage.getUser(inv.contractorUserId);
+        const company = inv.companyId ? await storage.getCompany(inv.companyId) : null;
+        return {
+          id: inv.id,
+          invoiceNumber: inv.invoiceNumber,
+          title: inv.title,
+          status: inv.status,
+          total: inv.total,
+          amountDue: inv.amountDue,
+          dueDate: inv.dueDate,
+          createdAt: inv.createdAt,
+          houseId: inv.houseId,
+          contractorName: contractor?.firstName && contractor?.lastName
+            ? `${contractor.firstName} ${contractor.lastName}`
+            : contractor?.email || 'Contractor',
+          companyName: company?.businessName || null,
+        };
+      }));
+
+      res.json(enriched);
+    } catch (error) {
+      console.error("Error fetching linked invoices:", error);
+      res.status(500).json({ message: "Failed to fetch linked invoices" });
+    }
+  });
+
+  // Claim a linked invoice into the homeowner's home history as a service record
+  app.post('/api/claim-invoice/:invoiceId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.user.id;
+      const userRole = req.session.user.role;
+      const { invoiceId } = req.params;
+      const { houseId } = req.body;
+
+      if (userRole !== 'homeowner') {
+        return res.status(403).json({ message: "Only homeowners can claim invoices" });
+      }
+
+      if (!houseId) {
+        return res.status(400).json({ message: "houseId is required" });
+      }
+
+      const invoice = await storage.getCrmInvoice(invoiceId);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+
+      if (invoice.homeownerId !== userId) {
+        return res.status(403).json({ message: "This invoice is not linked to your account" });
+      }
+
+      // Verify the house belongs to this homeowner
+      const house = await storage.getHouse(houseId);
+      if (!house || house.homeownerId !== userId) {
+        return res.status(403).json({ message: "House not found or does not belong to you" });
+      }
+
+      const contractor = await storage.getUser(invoice.contractorUserId);
+      const company = invoice.companyId ? await storage.getCompany(invoice.companyId) : null;
+      const contractorName = company?.businessName
+        || (contractor?.firstName && contractor?.lastName
+          ? `${contractor.firstName} ${contractor.lastName}`
+          : contractor?.email || 'Contractor');
+
+      // Create a service record from the invoice
+      const lineItems = Array.isArray(invoice.lineItems) ? invoice.lineItems as any[] : [];
+      const serviceDescription = lineItems.length > 0
+        ? lineItems.map((li: any) => li.description).filter(Boolean).join(', ')
+        : (invoice.description || invoice.title);
+
+      const serviceRecord = await storage.createServiceRecord({
+        contractorId: invoice.contractorUserId,
+        homeownerId: userId,
+        houseId,
+        customerName: '',
+        customerAddress: house.address || '',
+        customerPhone: '',
+        customerEmail: '',
+        serviceType: invoice.title,
+        serviceDescription,
+        homeArea: '',
+        serviceDate: invoice.paidAt ? invoice.paidAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        duration: '',
+        cost: parseFloat(invoice.total) || 0,
+        status: 'completed',
+        notes: `Claimed from invoice ${invoice.invoiceNumber} (${contractorName})`,
+        materialsUsed: [],
+        warrantyPeriod: '',
+        followUpDate: '',
+      });
+
+      res.status(201).json({ serviceRecord, message: "Invoice saved to your home history" });
+    } catch (error) {
+      console.error("Error claiming invoice:", error);
+      res.status(500).json({ message: "Failed to claim invoice" });
     }
   });
 

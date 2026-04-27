@@ -1890,6 +1890,8 @@ export const crmInvoices = pgTable("crm_invoices", {
   paymentNotes: text("payment_notes"),
   notes: text("notes"),
   termsAndConditions: text("terms_and_conditions"),
+  homeownerId: varchar("homeowner_id").references(() => users.id, { onDelete: 'set null' }),
+  houseId: varchar("house_id").references(() => houses.id, { onDelete: 'set null' }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -1899,6 +1901,7 @@ export const crmInvoices = pgTable("crm_invoices", {
   index("IDX_crm_invoices_job").on(table.jobId),
   index("IDX_crm_invoices_status").on(table.status),
   index("IDX_crm_invoices_due_date").on(table.dueDate),
+  index("IDX_crm_invoices_homeowner").on(table.homeownerId),
   uniqueIndex("UX_crm_invoices_number").on(table.contractorUserId, table.invoiceNumber),
 ]);
 

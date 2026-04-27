@@ -572,6 +572,7 @@ export interface IStorage {
   createCrmInvoice(invoice: InsertCrmInvoice): Promise<CrmInvoice>;
   updateCrmInvoice(id: string, invoice: Partial<InsertCrmInvoice>): Promise<CrmInvoice | undefined>;
   deleteCrmInvoice(id: string): Promise<boolean>;
+  getLinkedInvoicesForHomeowner(homeownerId: string): Promise<CrmInvoice[]>;
   
   // CRM Dashboard Stats (Pro tier feature)
   getCrmDashboardStats(contractorUserId: string): Promise<{
@@ -6574,6 +6575,10 @@ export class MemStorage implements IStorage {
     return this.crmInvoicesMap.delete(id);
   }
 
+  async getLinkedInvoicesForHomeowner(homeownerId: string): Promise<CrmInvoice[]> {
+    return Array.from(this.crmInvoicesMap.values()).filter(inv => inv.homeownerId === homeownerId);
+  }
+
   // CRM Dashboard Stats (Pro tier feature)
   async getCrmDashboardStats(contractorUserId: string): Promise<{
     totalClients: number;
@@ -6896,6 +6901,16 @@ class DbStorage implements IStorage {
     this.updateCrmInvoice = this.memStorage.updateCrmInvoice.bind(this.memStorage);
     this.deleteCrmInvoice = this.memStorage.deleteCrmInvoice.bind(this.memStorage);
     this.getCrmDashboardStats = this.memStorage.getCrmDashboardStats.bind(this.memStorage);
+    this.getLinkedInvoicesForHomeowner = this.getLinkedInvoicesForHomeownerDb.bind(this);
+  }
+
+  async getLinkedInvoicesForHomeownerDb(homeownerId: string): Promise<CrmInvoice[]> {
+    const rows = await db
+      .select()
+      .from(crmInvoices)
+      .where(eq(crmInvoices.homeownerId, homeownerId))
+      .orderBy(crmInvoices.createdAt);
+    return rows as CrmInvoice[];
   }
 
   // User operations - DATABASE BACKED for persistence

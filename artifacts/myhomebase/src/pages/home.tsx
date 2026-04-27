@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Users, Calendar, Search, Star, TrendingUp, Gift, Sparkles, FileText, AlertTriangle, ClipboardList, Bell, ChevronRight, ChevronUp, Phone, Mail, Globe, MapPin, X as XIcon } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Users, Calendar, Search, Star, TrendingUp, Gift, Sparkles, FileText, AlertTriangle, ClipboardList, Bell, ChevronRight, ChevronDown, ChevronUp, Phone, Mail, Globe, MapPin, X as XIcon, Wrench, DollarSign } from "lucide-react";
 import HouseMap from "@/components/house-map";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -102,7 +102,34 @@ export default function Home() {
     enabled: typedUser?.role === "homeowner",
   });
 
+  // Linked invoices from contractors (via connection code)
+  const { data: linkedInvoices = [] } = useQuery<Array<{
+    id: string; invoiceNumber: string; title: string; status: string;
+    total: string; amountDue: string; dueDate: string | null;
+    createdAt: string; contractorName: string; companyName: string | null; houseId: string | null;
+  }>>({
+    queryKey: ["/api/homeowner/linked-invoices"],
+    enabled: typedUser?.role === "homeowner",
+  });
+
+  const claimInvoiceMutation = useMutation({
+    mutationFn: async ({ invoiceId, houseId }: { invoiceId: string; houseId: string }) => {
+      const res = await fetch(`/api/claim-invoice/${invoiceId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ houseId }),
+      });
+      if (!res.ok) throw new Error((await res.json()).message || 'Failed to claim invoice');
+      return res.json();
+    },
+    onSuccess: (_, { invoiceId }) => {
+      setClaimedInvoiceIds(prev => new Set(prev).add(invoiceId));
+    },
+  });
+
   const [agentModalOpen, setAgentModalOpen] = useState(false);
+  const [contractorInvoicesExpanded, setContractorInvoicesExpanded] = useState(false);
+  const [claimedInvoiceIds, setClaimedInvoiceIds] = useState<Set<string>>(new Set());
 
   // Referral progress
   const referralCount = (referralData as any)?.referralCount || 0;
@@ -344,6 +371,77 @@ export default function Home() {
                     Share Your Invite Link →
                   </button>
                 </Link>
+              </div>
+            )}
+
+            {/* From Your Contractors — linked invoices */}
+            {linkedInvoices.length > 0 && (
+              <div className="dash-light-card" data-tour-id="contractor-invoices">
+                <button
+                  className="dash-light-card-row"
+                  style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                  onClick={() => setContractorInvoicesExpanded(prev => !prev)}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
+                    <div className="dash-light-card-icon">
+                      <Wrench size={18} />
+                    </div>
+                    <div>
+                      <div className="dash-light-card-title">From Your Contractors</div>
+                      <div className="dash-light-card-sub">{linkedInvoices.length} invoice{linkedInvoices.length !== 1 ? 's' : ''} linked to your account</div>
+                    </div>
+                  </div>
+                  {contractorInvoicesExpanded ? <ChevronUp size={16} style={{ color: '#2C0F5B', flexShrink: 0 }} /> : <ChevronDown size={16} style={{ color: '#2C0F5B', flexShrink: 0 }} />}
+                </button>
+
+                {contractorInvoicesExpanded && (
+                  <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {linkedInvoices.map(inv => {
+                      const isClaimed = claimedInvoiceIds.has(inv.id);
+                      const claimHouseId = inv.houseId || houses[0]?.id;
+                      return (
+                        <div key={inv.id} style={{
+                          background: '#F9F7FF', border: '1px solid #E5DDF7', borderRadius: 10,
+                          padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10,
+                        }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: '#2C0F5B', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {inv.title}
+                            </div>
+                            <div style={{ fontSize: 11, color: '#7B6FA0', marginTop: 2 }}>
+                              {inv.companyName || inv.contractorName} · ${parseFloat(inv.total).toFixed(2)}
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                            <a
+                              href={`/pay/invoice/${inv.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="dash-light-card-btn"
+                              style={{ fontSize: 11, padding: '4px 8px' }}
+                            >
+                              View →
+                            </a>
+                            {!isClaimed && claimHouseId && (
+                              <button
+                                className="btn-primary"
+                                style={{ fontSize: 11, padding: '4px 10px', borderRadius: 7 }}
+                                disabled={claimInvoiceMutation.isPending}
+                                onClick={() => claimInvoiceMutation.mutate({ invoiceId: inv.id, houseId: claimHouseId })}
+                                data-testid={`button-claim-invoice-${inv.id}`}
+                              >
+                                Save to history
+                              </button>
+                            )}
+                            {isClaimed && (
+                              <span style={{ fontSize: 11, color: '#22c55e', fontWeight: 600 }}>✓ Saved</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 

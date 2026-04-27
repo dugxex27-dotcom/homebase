@@ -1,12 +1,16 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CreditCard, CheckCircle2, XCircle, Loader2, Building2, Calendar, FileText } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CreditCard, CheckCircle2, XCircle, Loader2, Building2, Calendar, FileText, BookmarkPlus } from "lucide-react";
 import { format } from "date-fns";
 import { Helmet } from "react-helmet";
+import { useAuth } from "@/hooks/useAuth";
+import type { House } from "@shared/schema";
 
 interface InvoiceDetails {
   id: string;
@@ -21,15 +25,26 @@ interface InvoiceDetails {
   contractorName: string;
   companyName: string | null;
   companyLogo: string | null;
+  homeownerId: string | null;
+  houseId: string | null;
 }
 
 export default function PayInvoicePage() {
   const { invoiceId } = useParams<{ invoiceId: string }>();
   const [location] = useLocation();
+  const { user } = useAuth();
+
+  const [selectedHouseId, setSelectedHouseId] = useState('');
+  const [isClaimed, setIsClaimed] = useState(false);
 
   const { data: invoice, isLoading, error } = useQuery<InvoiceDetails>({
     queryKey: ['/api/pay/invoice', invoiceId],
     enabled: !!invoiceId,
+  });
+
+  const { data: houses = [] } = useQuery<House[]>({
+    queryKey: ['/api/houses'],
+    enabled: !!(user as any)?.id,
   });
 
   const checkoutMutation = useMutation({
@@ -50,6 +65,28 @@ export default function PayInvoicePage() {
       }
     },
   });
+
+  const claimMutation = useMutation({
+    mutationFn: async () => {
+      const houseId = selectedHouseId || houses[0]?.id;
+      const response = await fetch(`/api/claim-invoice/${invoiceId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ houseId }),
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || 'Failed to save invoice');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      setIsClaimed(true);
+    },
+  });
+
+  const userId = (user as any)?.id;
+  const isLinkedToMe = !!(invoice?.homeownerId && userId && invoice.homeownerId === userId);
 
   if (isLoading) {
     return (
@@ -105,7 +142,7 @@ export default function PayInvoicePage() {
         <title>Pay Invoice {invoice.invoiceNumber} | Home Base</title>
       </Helmet>
       
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-2xl mx-auto space-y-4">
         <Card>
           <CardHeader className="text-center border-b">
             {invoice.companyLogo ? (
@@ -193,6 +230,60 @@ export default function PayInvoicePage() {
             </p>
           </CardContent>
         </Card>
+
+        {/* Save to home history — only shown when logged in and invoice is linked to this homeowner */}
+        {isLinkedToMe && houses.length > 0 && (
+          <Card className="border-purple-200 bg-purple-50">
+            <CardContent className="pt-4 pb-4">
+              {isClaimed ? (
+                <div className="flex items-center gap-3 text-green-700">
+                  <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
+                  <div>
+                    <p className="font-semibold text-sm">Saved to your home history</p>
+                    <p className="text-xs text-green-600">This record is now in your maintenance history.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <BookmarkPlus className="h-5 w-5 text-purple-600 shrink-0" />
+                    <p className="text-sm font-semibold text-purple-900">Save this record to your home history</p>
+                  </div>
+                  <p className="text-xs text-purple-700">This invoice is linked to your MyHomeBase account. Save it to keep a permanent record of this work.</p>
+                  {houses.length > 1 && (
+                    <Select value={selectedHouseId} onValueChange={setSelectedHouseId}>
+                      <SelectTrigger className="bg-white text-sm" data-testid="select-claim-house">
+                        <SelectValue placeholder="Choose a property" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {houses.map(h => (
+                          <SelectItem key={h.id} value={h.id}>{h.name || h.address}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  <Button
+                    size="sm"
+                    className="w-full bg-purple-600 hover:bg-purple-700"
+                    onClick={() => claimMutation.mutate()}
+                    disabled={claimMutation.isPending || (houses.length > 1 && !selectedHouseId)}
+                    data-testid="button-save-to-history"
+                  >
+                    {claimMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <BookmarkPlus className="h-4 w-4 mr-2" />
+                    )}
+                    Save to My Home History
+                  </Button>
+                  {claimMutation.isError && (
+                    <p className="text-xs text-red-600">{(claimMutation.error as Error).message}</p>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
