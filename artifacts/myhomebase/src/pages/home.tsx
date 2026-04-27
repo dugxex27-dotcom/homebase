@@ -398,7 +398,9 @@ export default function Home() {
                   <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {linkedInvoices.map(inv => {
                       const isClaimed = claimedInvoiceIds.has(inv.id);
-                      const claimHouseId = inv.houseId || houses[0]?.id;
+                      // Use house from invoice when set; fall back to sole house for single-property homeowners.
+                      // For multi-house homeowners without a specific house on the invoice, direct to the pay page.
+                      const claimHouseId = inv.houseId || (houses.length === 1 ? houses[0]?.id : null);
                       return (
                         <div key={inv.id} style={{
                           background: '#F9F7FF', border: '1px solid #E5DDF7', borderRadius: 10,
