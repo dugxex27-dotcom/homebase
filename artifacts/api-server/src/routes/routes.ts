@@ -13063,6 +13063,13 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
         return res.status(403).json({ message: "This invoice is not linked to your account" });
       }
 
+      // Idempotency: check if already claimed (service record with same invoice number exists)
+      const existingRecords = await storage.getServiceRecordsByHomeowner(userId, houseId);
+      const alreadyClaimed = existingRecords.some(r => r.notes?.includes(invoice.invoiceNumber));
+      if (alreadyClaimed) {
+        return res.status(200).json({ message: "Invoice already saved to your home history" });
+      }
+
       // Verify the house belongs to this homeowner
       const house = await storage.getHouse(houseId);
       if (!house || house.homeownerId !== userId) {

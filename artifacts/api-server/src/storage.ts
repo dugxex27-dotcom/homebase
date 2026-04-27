@@ -6879,29 +6879,30 @@ class DbStorage implements IStorage {
     this.updateCrmNote = this.memStorage.updateCrmNote.bind(this.memStorage);
     this.deleteCrmNote = this.memStorage.deleteCrmNote.bind(this.memStorage);
     this.getCrmLeadWithNotes = this.memStorage.getCrmLeadWithNotes.bind(this.memStorage);
-    // CRM Pro tier methods — DATABASE BACKED for FK consistency
-    this.getCrmClients = this.getCrmClientsDb.bind(this);
-    this.getCrmClient = this.getCrmClientDb.bind(this);
-    this.createCrmClient = this.createCrmClientDb.bind(this);
-    this.updateCrmClient = this.updateCrmClientDb.bind(this);
-    this.deleteCrmClient = this.deleteCrmClientDb.bind(this);
-    this.getCrmJobs = this.getCrmJobsDb.bind(this);
-    this.getCrmJob = this.getCrmJobDb.bind(this);
-    this.createCrmJob = this.createCrmJobDb.bind(this);
-    this.updateCrmJob = this.updateCrmJobDb.bind(this);
-    this.deleteCrmJob = this.deleteCrmJobDb.bind(this);
-    this.getCrmQuotes = this.getCrmQuotesDb.bind(this);
-    this.getCrmQuote = this.getCrmQuoteDb.bind(this);
-    this.createCrmQuote = this.createCrmQuoteDb.bind(this);
-    this.updateCrmQuote = this.updateCrmQuoteDb.bind(this);
-    this.deleteCrmQuote = this.deleteCrmQuoteDb.bind(this);
-    this.getCrmInvoices = this.getCrmInvoicesDb.bind(this);
-    this.getCrmInvoice = this.getCrmInvoiceDb.bind(this);
-    this.createCrmInvoice = this.createCrmInvoiceDb.bind(this);
-    this.updateCrmInvoice = this.updateCrmInvoiceDb.bind(this);
-    this.deleteCrmInvoice = this.deleteCrmInvoiceDb.bind(this);
+    // CRM Pro tier methods — memStorage backed (data lives in-session; service records are persisted to DB when claimed)
+    this.getCrmClients = this.memStorage.getCrmClients.bind(this.memStorage);
+    this.getCrmClient = this.memStorage.getCrmClient.bind(this.memStorage);
+    this.createCrmClient = this.memStorage.createCrmClient.bind(this.memStorage);
+    this.updateCrmClient = this.memStorage.updateCrmClient.bind(this.memStorage);
+    this.deleteCrmClient = this.memStorage.deleteCrmClient.bind(this.memStorage);
+    this.getCrmJobs = this.memStorage.getCrmJobs.bind(this.memStorage);
+    this.getCrmJob = this.memStorage.getCrmJob.bind(this.memStorage);
+    this.createCrmJob = this.memStorage.createCrmJob.bind(this.memStorage);
+    this.updateCrmJob = this.memStorage.updateCrmJob.bind(this.memStorage);
+    this.deleteCrmJob = this.memStorage.deleteCrmJob.bind(this.memStorage);
+    this.getCrmQuotes = this.memStorage.getCrmQuotes.bind(this.memStorage);
+    this.getCrmQuote = this.memStorage.getCrmQuote.bind(this.memStorage);
+    this.createCrmQuote = this.memStorage.createCrmQuote.bind(this.memStorage);
+    this.updateCrmQuote = this.memStorage.updateCrmQuote.bind(this.memStorage);
+    this.deleteCrmQuote = this.memStorage.deleteCrmQuote.bind(this.memStorage);
+    this.getCrmInvoices = this.memStorage.getCrmInvoices.bind(this.memStorage);
+    this.getCrmInvoice = this.memStorage.getCrmInvoice.bind(this.memStorage);
+    this.createCrmInvoice = this.memStorage.createCrmInvoice.bind(this.memStorage);
+    this.updateCrmInvoice = this.memStorage.updateCrmInvoice.bind(this.memStorage);
+    this.deleteCrmInvoice = this.memStorage.deleteCrmInvoice.bind(this.memStorage);
     this.getCrmDashboardStats = this.memStorage.getCrmDashboardStats.bind(this.memStorage);
-    this.getLinkedInvoicesForHomeowner = this.getLinkedInvoicesForHomeownerDb.bind(this);
+    // Linked invoices: read from same memStorage so the homeowner sees whatever the contractor saved in-session
+    this.getLinkedInvoicesForHomeowner = this.memStorage.getLinkedInvoicesForHomeowner.bind(this.memStorage);
   }
 
   async getLinkedInvoicesForHomeownerDb(homeownerId: string): Promise<CrmInvoice[]> {
