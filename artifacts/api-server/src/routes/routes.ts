@@ -6584,11 +6584,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const invoiceCount = existingInvoices.length + 1;
       const invoiceNumber = `INV-${year}-${invoiceCount.toString().padStart(4, '0')}`;
 
+      // Resolve homeowner linkage server-side via connection code.
+      // Never trust homeownerId/houseId from client payload directly.
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { connectionCode, houseId: requestedHouseId, homeownerId: _ignored, ...invoiceBody } = req.body;
+      let resolvedHomeownerId: string | null = null;
+      let resolvedHouseId: string | null = null;
+
+      if (connectionCode) {
+        const codeResult = await storage.validatePermanentConnectionCode(connectionCode);
+        if (!codeResult) {
+          return res.status(400).json({ message: "Invalid connection code" });
+        }
+        resolvedHomeownerId = codeResult.homeownerId;
+
+        if (requestedHouseId) {
+          const validHouse = codeResult.houses.find((h) => h.id === requestedHouseId);
+          if (!validHouse) {
+            return res.status(400).json({ message: "Selected property does not belong to this homeowner" });
+          }
+          resolvedHouseId = requestedHouseId;
+        } else if (codeResult.houses.length === 1) {
+          resolvedHouseId = codeResult.houses[0].id;
+        }
+      }
+
       const validationResult = insertCrmInvoiceSchema.safeParse({
-        ...req.body,
+        ...invoiceBody,
         contractorUserId: req.session.user.id,
         companyId: req.session.user.companyId || null,
         invoiceNumber,
+        homeownerId: resolvedHomeownerId,
+        houseId: resolvedHouseId,
       });
 
       if (!validationResult.success) {

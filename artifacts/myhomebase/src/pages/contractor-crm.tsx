@@ -817,7 +817,7 @@ export default function ContractorCRMPage() {
       total: total.toFixed(2),
       amountDue: total.toFixed(2),
       ...(invoiceLinkedHomeowner ? {
-        homeownerId: invoiceLinkedHomeowner.id,
+        connectionCode: invoiceConnectionCode.toUpperCase(),
         houseId: linkedHouseId,
       } : {}),
     });

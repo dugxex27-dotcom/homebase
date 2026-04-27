@@ -6879,7 +6879,7 @@ class DbStorage implements IStorage {
     this.updateCrmNote = this.memStorage.updateCrmNote.bind(this.memStorage);
     this.deleteCrmNote = this.memStorage.deleteCrmNote.bind(this.memStorage);
     this.getCrmLeadWithNotes = this.memStorage.getCrmLeadWithNotes.bind(this.memStorage);
-    // CRM Pro tier methods — memStorage backed (same as before this task)
+    // CRM Pro tier methods — in-memory backed
     this.getCrmClients = this.memStorage.getCrmClients.bind(this.memStorage);
     this.getCrmClient = this.memStorage.getCrmClient.bind(this.memStorage);
     this.createCrmClient = this.memStorage.createCrmClient.bind(this.memStorage);
@@ -6901,7 +6901,6 @@ class DbStorage implements IStorage {
     this.updateCrmInvoice = this.memStorage.updateCrmInvoice.bind(this.memStorage);
     this.deleteCrmInvoice = this.memStorage.deleteCrmInvoice.bind(this.memStorage);
     this.getCrmDashboardStats = this.memStorage.getCrmDashboardStats.bind(this.memStorage);
-    // New for this task: homeowner-linked invoice read from same memStorage for data consistency
     this.getLinkedInvoicesForHomeowner = this.memStorage.getLinkedInvoicesForHomeowner.bind(this.memStorage);
   }
 
