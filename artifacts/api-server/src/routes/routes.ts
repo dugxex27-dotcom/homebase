@@ -1426,6 +1426,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const contractor = await storage.getUser(invoice.contractorUserId);
       const company = invoice.companyId ? await storage.getCompany(invoice.companyId) : null;
 
+      // Determine if the authenticated session user is the linked homeowner
+      const sessionUserId: string | undefined = req.session?.user?.id;
+      const canSaveToHistory = !!(invoice.homeownerId && sessionUserId && invoice.homeownerId === sessionUserId);
+
       res.json({
         id: invoice.id,
         invoiceNumber: invoice.invoiceNumber,
@@ -1441,8 +1445,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           : contractor?.email,
         companyName: company?.businessName,
         companyLogo: company?.businessLogo,
-        homeownerId: invoice.homeownerId || null,
-        houseId: invoice.houseId || null,
+        canSaveToHistory,
+        houseId: canSaveToHistory ? (invoice.houseId || null) : null,
       });
     } catch (error: any) {
       console.error('[PAYMENT] Error fetching invoice:', error);

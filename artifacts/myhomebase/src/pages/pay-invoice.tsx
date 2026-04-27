@@ -3,13 +3,11 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CreditCard, CheckCircle2, XCircle, Loader2, Building2, Calendar, FileText, BookmarkPlus } from "lucide-react";
 import { format } from "date-fns";
 import { Helmet } from "react-helmet";
-import { useAuth } from "@/hooks/useAuth";
 import type { House } from "@shared/schema";
 
 interface InvoiceDetails {
@@ -20,31 +18,104 @@ interface InvoiceDetails {
   status: string;
   totalAmount: string;
   dueDate: string | null;
-  lineItems: any[] | null;
+  lineItems: Array<{ description?: string; quantity?: number; unitPrice?: string; total?: string }> | null;
   clientName: string;
   contractorName: string;
   companyName: string | null;
   companyLogo: string | null;
-  homeownerId: string | null;
+  canSaveToHistory: boolean;
   houseId: string | null;
+}
+
+function SaveToHistoryCard({ invoiceId, invoiceHouseId }: { invoiceId: string; invoiceHouseId: string | null }) {
+  const [selectedHouseId, setSelectedHouseId] = useState('');
+  const [isClaimed, setIsClaimed] = useState(false);
+
+  const { data: houses = [] } = useQuery<House[]>({ queryKey: ['/api/houses'] });
+
+  const claimMutation = useMutation({
+    mutationFn: async () => {
+      const houseId = selectedHouseId || invoiceHouseId || houses[0]?.id;
+      const response = await fetch(`/api/claim-invoice/${invoiceId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ houseId }),
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || 'Failed to save invoice');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      setIsClaimed(true);
+    },
+  });
+
+  if (isClaimed) {
+    return (
+      <Card className="border-green-200 bg-green-50">
+        <CardContent className="pt-4 pb-4">
+          <div className="flex items-center gap-3 text-green-700">
+            <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
+            <div>
+              <p className="font-semibold text-sm">Saved to your home history</p>
+              <p className="text-xs text-green-600">This record is now in your maintenance history.</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="border-purple-200 bg-purple-50">
+      <CardContent className="pt-4 pb-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <BookmarkPlus className="h-5 w-5 text-purple-600 shrink-0" />
+          <p className="text-sm font-semibold text-purple-900">Save this record to your home history</p>
+        </div>
+        <p className="text-xs text-purple-700">This invoice is linked to your MyHomeBase account. Save it to keep a permanent record of this work.</p>
+        {houses.length > 1 && (
+          <Select value={selectedHouseId} onValueChange={setSelectedHouseId}>
+            <SelectTrigger className="bg-white text-sm" data-testid="select-claim-house">
+              <SelectValue placeholder="Choose a property" />
+            </SelectTrigger>
+            <SelectContent>
+              {houses.map(h => (
+                <SelectItem key={h.id} value={h.id}>{h.name || h.address}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        <Button
+          size="sm"
+          className="w-full bg-purple-600 hover:bg-purple-700"
+          onClick={() => claimMutation.mutate()}
+          disabled={claimMutation.isPending || (houses.length > 1 && !selectedHouseId)}
+          data-testid="button-save-to-history"
+        >
+          {claimMutation.isPending ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <BookmarkPlus className="h-4 w-4 mr-2" />
+          )}
+          Save to My Home History
+        </Button>
+        {claimMutation.isError && (
+          <p className="text-xs text-red-600">{(claimMutation.error as Error).message}</p>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function PayInvoicePage() {
   const { invoiceId } = useParams<{ invoiceId: string }>();
-  const [location] = useLocation();
-  const { user } = useAuth();
-
-  const [selectedHouseId, setSelectedHouseId] = useState('');
-  const [isClaimed, setIsClaimed] = useState(false);
 
   const { data: invoice, isLoading, error } = useQuery<InvoiceDetails>({
     queryKey: ['/api/pay/invoice', invoiceId],
     enabled: !!invoiceId,
-  });
-
-  const { data: houses = [] } = useQuery<House[]>({
-    queryKey: ['/api/houses'],
-    enabled: !!(user as any)?.id,
   });
 
   const checkoutMutation = useMutation({
@@ -65,28 +136,6 @@ export default function PayInvoicePage() {
       }
     },
   });
-
-  const claimMutation = useMutation({
-    mutationFn: async () => {
-      const houseId = selectedHouseId || houses[0]?.id;
-      const response = await fetch(`/api/claim-invoice/${invoiceId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ houseId }),
-      });
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.message || 'Failed to save invoice');
-      }
-      return response.json();
-    },
-    onSuccess: () => {
-      setIsClaimed(true);
-    },
-  });
-
-  const userId = (user as any)?.id;
-  const isLinkedToMe = !!(invoice?.homeownerId && userId && invoice.homeownerId === userId);
 
   if (isLoading) {
     return (
@@ -114,22 +163,25 @@ export default function PayInvoicePage() {
 
   if (invoice.status === 'paid') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-8 px-4">
         <Helmet>
           <title>Invoice Paid | Home Base</title>
         </Helmet>
-        <Card className="max-w-md">
-          <CardContent className="pt-6 text-center">
-            <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Invoice Already Paid</h2>
-            <p className="text-muted-foreground">
-              This invoice has already been paid. Thank you!
-            </p>
-            <Badge className="mt-4 bg-green-100 text-green-700">
-              {invoice.invoiceNumber}
-            </Badge>
-          </CardContent>
-        </Card>
+        <div className="max-w-md w-full space-y-4">
+          <Card>
+            <CardContent className="pt-6 text-center">
+              <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold mb-2">Invoice Already Paid</h2>
+              <p className="text-muted-foreground mb-4">
+                This invoice has already been paid. Thank you!
+              </p>
+              <p className="text-sm text-muted-foreground font-mono">{invoice.invoiceNumber}</p>
+            </CardContent>
+          </Card>
+          {invoice.canSaveToHistory && (
+            <SaveToHistoryCard invoiceId={invoice.id} invoiceHouseId={invoice.houseId} />
+          )}
+        </div>
       </div>
     );
   }
@@ -141,14 +193,14 @@ export default function PayInvoicePage() {
       <Helmet>
         <title>Pay Invoice {invoice.invoiceNumber} | Home Base</title>
       </Helmet>
-      
+
       <div className="max-w-2xl mx-auto space-y-4">
         <Card>
           <CardHeader className="text-center border-b">
             {invoice.companyLogo ? (
-              <img 
-                src={invoice.companyLogo} 
-                alt={invoice.companyName || 'Company'} 
+              <img
+                src={invoice.companyLogo}
+                alt={invoice.companyName || 'Company'}
                 className="h-16 w-auto mx-auto mb-4 object-contain"
               />
             ) : (
@@ -157,7 +209,7 @@ export default function PayInvoicePage() {
             <CardTitle className="text-2xl">{invoice.companyName || invoice.contractorName}</CardTitle>
             <CardDescription>Invoice {invoice.invoiceNumber}</CardDescription>
           </CardHeader>
-          
+
           <CardContent className="pt-6 space-y-6">
             <div className="flex justify-between items-start">
               <div>
@@ -185,17 +237,20 @@ export default function PayInvoicePage() {
               {invoice.description && (
                 <p className="text-muted-foreground text-sm mb-4">{invoice.description}</p>
               )}
-
               {lineItems.length > 0 && (
                 <div className="space-y-2 bg-gray-50 rounded-lg p-4">
-                  {lineItems.map((item: any, index: number) => (
+                  {lineItems.map((item, index) => (
                     <div key={index} className="flex justify-between text-sm">
                       <span>
                         {item.description}
-                        {item.quantity > 1 && ` (x${item.quantity})`}
+                        {item.quantity && item.quantity > 1 && ` (x${item.quantity})`}
                       </span>
                       <span className="font-medium">
-                        ${(parseFloat(item.unitPrice) * item.quantity).toFixed(2)}
+                        {item.total
+                          ? `$${parseFloat(item.total).toFixed(2)}`
+                          : item.unitPrice && item.quantity
+                            ? `$${(parseFloat(item.unitPrice) * item.quantity).toFixed(2)}`
+                            : ''}
                       </span>
                     </div>
                   ))}
@@ -210,8 +265,8 @@ export default function PayInvoicePage() {
               <span className="text-purple-600">${parseFloat(invoice.totalAmount).toFixed(2)}</span>
             </div>
 
-            <Button 
-              size="lg" 
+            <Button
+              size="lg"
               className="w-full bg-purple-600 hover:bg-purple-700"
               onClick={() => checkoutMutation.mutate()}
               disabled={checkoutMutation.isPending}
@@ -231,58 +286,8 @@ export default function PayInvoicePage() {
           </CardContent>
         </Card>
 
-        {/* Save to home history — only shown when logged in and invoice is linked to this homeowner */}
-        {isLinkedToMe && houses.length > 0 && (
-          <Card className="border-purple-200 bg-purple-50">
-            <CardContent className="pt-4 pb-4">
-              {isClaimed ? (
-                <div className="flex items-center gap-3 text-green-700">
-                  <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
-                  <div>
-                    <p className="font-semibold text-sm">Saved to your home history</p>
-                    <p className="text-xs text-green-600">This record is now in your maintenance history.</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <BookmarkPlus className="h-5 w-5 text-purple-600 shrink-0" />
-                    <p className="text-sm font-semibold text-purple-900">Save this record to your home history</p>
-                  </div>
-                  <p className="text-xs text-purple-700">This invoice is linked to your MyHomeBase account. Save it to keep a permanent record of this work.</p>
-                  {houses.length > 1 && (
-                    <Select value={selectedHouseId} onValueChange={setSelectedHouseId}>
-                      <SelectTrigger className="bg-white text-sm" data-testid="select-claim-house">
-                        <SelectValue placeholder="Choose a property" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {houses.map(h => (
-                          <SelectItem key={h.id} value={h.id}>{h.name || h.address}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                  <Button
-                    size="sm"
-                    className="w-full bg-purple-600 hover:bg-purple-700"
-                    onClick={() => claimMutation.mutate()}
-                    disabled={claimMutation.isPending || (houses.length > 1 && !selectedHouseId)}
-                    data-testid="button-save-to-history"
-                  >
-                    {claimMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <BookmarkPlus className="h-4 w-4 mr-2" />
-                    )}
-                    Save to My Home History
-                  </Button>
-                  {claimMutation.isError && (
-                    <p className="text-xs text-red-600">{(claimMutation.error as Error).message}</p>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        {invoice.canSaveToHistory && (
+          <SaveToHistoryCard invoiceId={invoice.id} invoiceHouseId={invoice.houseId} />
         )}
       </div>
     </div>
@@ -312,8 +317,6 @@ export function PaymentSuccessPage() {
 }
 
 export function PaymentCancelledPage() {
-  const [, setLocation] = useLocation();
-  
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <Helmet>
