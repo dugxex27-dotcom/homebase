@@ -6879,280 +6879,30 @@ class DbStorage implements IStorage {
     this.updateCrmNote = this.memStorage.updateCrmNote.bind(this.memStorage);
     this.deleteCrmNote = this.memStorage.deleteCrmNote.bind(this.memStorage);
     this.getCrmLeadWithNotes = this.memStorage.getCrmLeadWithNotes.bind(this.memStorage);
-    // CRM Pro tier methods — DATABASE BACKED for persistence and FK consistency
-    this.getCrmClients = this.getCrmClientsDb.bind(this);
-    this.getCrmClient = this.getCrmClientDb.bind(this);
-    this.createCrmClient = this.createCrmClientDb.bind(this);
-    this.updateCrmClient = this.updateCrmClientDb.bind(this);
-    this.deleteCrmClient = this.deleteCrmClientDb.bind(this);
-    this.getCrmJobs = this.getCrmJobsDb.bind(this);
-    this.getCrmJob = this.getCrmJobDb.bind(this);
-    this.createCrmJob = this.createCrmJobDb.bind(this);
-    this.updateCrmJob = this.updateCrmJobDb.bind(this);
-    this.deleteCrmJob = this.deleteCrmJobDb.bind(this);
-    this.getCrmQuotes = this.getCrmQuotesDb.bind(this);
-    this.getCrmQuote = this.getCrmQuoteDb.bind(this);
-    this.createCrmQuote = this.createCrmQuoteDb.bind(this);
-    this.updateCrmQuote = this.updateCrmQuoteDb.bind(this);
-    this.deleteCrmQuote = this.deleteCrmQuoteDb.bind(this);
-    this.getCrmInvoices = this.getCrmInvoicesDb.bind(this);
-    this.getCrmInvoice = this.getCrmInvoiceDb.bind(this);
-    this.createCrmInvoice = this.createCrmInvoiceDb.bind(this);
-    this.updateCrmInvoice = this.updateCrmInvoiceDb.bind(this);
-    this.deleteCrmInvoice = this.deleteCrmInvoiceDb.bind(this);
-    this.getCrmDashboardStats = this.getCrmDashboardStatsDb.bind(this);
-    this.getLinkedInvoicesForHomeowner = this.getLinkedInvoicesForHomeownerDb.bind(this);
-  }
-
-  async getLinkedInvoicesForHomeownerDb(homeownerId: string): Promise<CrmInvoice[]> {
-    const rows = await db
-      .select()
-      .from(crmInvoices)
-      .where(eq(crmInvoices.homeownerId, homeownerId))
-      .orderBy(crmInvoices.createdAt);
-    return rows as CrmInvoice[];
-  }
-
-  // CRM Invoice CRUD — DATABASE BACKED so homeowner linking works correctly
-  async getCrmInvoicesDb(contractorUserId: string, filters?: {
-    status?: string;
-    clientId?: string;
-    searchQuery?: string;
-  }): Promise<CrmInvoice[]> {
-    const user = await this.getUser(contractorUserId);
-    const companyId = user?.companyId;
-
-    const conditions = companyId
-      ? or(eq(crmInvoices.contractorUserId, contractorUserId), eq(crmInvoices.companyId, companyId))
-      : eq(crmInvoices.contractorUserId, contractorUserId);
-
-    let rows = await db.select().from(crmInvoices).where(conditions).orderBy(desc(crmInvoices.createdAt));
-
-    if (filters?.status && filters.status !== 'all') {
-      rows = rows.filter(r => r.status === filters.status);
-    }
-    if (filters?.clientId) {
-      rows = rows.filter(r => r.clientId === filters.clientId);
-    }
-    if (filters?.searchQuery) {
-      const q = filters.searchQuery.toLowerCase();
-      rows = rows.filter(r =>
-        r.title?.toLowerCase().includes(q) ||
-        r.description?.toLowerCase().includes(q) ||
-        r.invoiceNumber?.toLowerCase().includes(q)
-      );
-    }
-    return rows as CrmInvoice[];
-  }
-
-  async getCrmInvoiceDb(id: string): Promise<CrmInvoice | undefined> {
-    const rows = await db.select().from(crmInvoices).where(eq(crmInvoices.id, id)).limit(1);
-    return rows[0] as CrmInvoice | undefined;
-  }
-
-  async createCrmInvoiceDb(invoice: InsertCrmInvoice): Promise<CrmInvoice> {
-    const rows = await db.insert(crmInvoices).values(invoice).returning();
-    return rows[0] as CrmInvoice;
-  }
-
-  async updateCrmInvoiceDb(id: string, invoice: Partial<InsertCrmInvoice>): Promise<CrmInvoice | undefined> {
-    const existing = await this.getCrmInvoiceDb(id);
-    if (!existing) return undefined;
-
-    const patch: any = { ...invoice, updatedAt: new Date() };
-    if (invoice.status === 'sent' && !existing.sentAt) patch.sentAt = new Date();
-    if (invoice.status === 'viewed' && !existing.viewedAt) patch.viewedAt = new Date();
-    if (invoice.status === 'paid' && !existing.paidAt) patch.paidAt = new Date();
-
-    const rows = await db.update(crmInvoices).set(patch).where(eq(crmInvoices.id, id)).returning();
-    return rows[0] as CrmInvoice | undefined;
-  }
-
-  async deleteCrmInvoiceDb(id: string): Promise<boolean> {
-    const result = await db.delete(crmInvoices).where(eq(crmInvoices.id, id)).returning({ id: crmInvoices.id });
-    return result.length > 0;
-  }
-
-  // CRM Client CRUD — DATABASE BACKED
-  async getCrmClientsDb(contractorUserId: string, filters?: { status?: string; searchQuery?: string }): Promise<CrmClient[]> {
-    const user = await this.getUser(contractorUserId);
-    const companyId = user?.companyId;
-    const conditions = companyId
-      ? or(eq(crmClients.contractorUserId, contractorUserId), eq(crmClients.companyId, companyId))
-      : eq(crmClients.contractorUserId, contractorUserId);
-    let rows = await db.select().from(crmClients).where(conditions).orderBy(desc(crmClients.createdAt));
-    if (filters?.status && filters.status !== 'all') {
-      const isActive = filters.status === 'active';
-      rows = rows.filter(r => r.isActive === isActive);
-    }
-    if (filters?.searchQuery) {
-      const q = filters.searchQuery.toLowerCase();
-      rows = rows.filter(r =>
-        r.firstName?.toLowerCase().includes(q) || r.lastName?.toLowerCase().includes(q) ||
-        r.email?.toLowerCase().includes(q) || r.phone?.toLowerCase().includes(q)
-      );
-    }
-    return rows as CrmClient[];
-  }
-
-  async getCrmClientDb(id: string): Promise<CrmClient | undefined> {
-    const rows = await db.select().from(crmClients).where(eq(crmClients.id, id)).limit(1);
-    return rows[0] as CrmClient | undefined;
-  }
-
-  async createCrmClientDb(client: InsertCrmClient): Promise<CrmClient> {
-    const rows = await db.insert(crmClients).values(client).returning();
-    return rows[0] as CrmClient;
-  }
-
-  async updateCrmClientDb(id: string, client: Partial<InsertCrmClient>): Promise<CrmClient | undefined> {
-    const rows = await db.update(crmClients).set({ ...client, updatedAt: new Date() }).where(eq(crmClients.id, id)).returning();
-    return rows[0] as CrmClient | undefined;
-  }
-
-  async deleteCrmClientDb(id: string): Promise<boolean> {
-    const result = await db.delete(crmClients).where(eq(crmClients.id, id)).returning({ id: crmClients.id });
-    return result.length > 0;
-  }
-
-  // CRM Job CRUD — DATABASE BACKED
-  async getCrmJobsDb(contractorUserId: string, filters?: { status?: string; clientId?: string; priority?: string; searchQuery?: string; startDate?: Date; endDate?: Date }): Promise<CrmJob[]> {
-    const user = await this.getUser(contractorUserId);
-    const companyId = user?.companyId;
-    const conditions = companyId
-      ? or(eq(crmJobs.contractorUserId, contractorUserId), eq(crmJobs.companyId, companyId))
-      : eq(crmJobs.contractorUserId, contractorUserId);
-    let rows = await db.select().from(crmJobs).where(conditions).orderBy(desc(crmJobs.createdAt));
-    if (filters?.status && filters.status !== 'all') rows = rows.filter(r => r.status === filters.status);
-    if (filters?.clientId) rows = rows.filter(r => r.clientId === filters.clientId);
-    if (filters?.priority && filters.priority !== 'all') rows = rows.filter(r => r.priority === filters.priority);
-    if (filters?.startDate) rows = rows.filter(r => r.scheduledDate && new Date(r.scheduledDate) >= filters.startDate!);
-    if (filters?.endDate) rows = rows.filter(r => r.scheduledDate && new Date(r.scheduledDate) <= filters.endDate!);
-    if (filters?.searchQuery) {
-      const q = filters.searchQuery.toLowerCase();
-      rows = rows.filter(r => r.title?.toLowerCase().includes(q) || r.description?.toLowerCase().includes(q) || r.serviceType?.toLowerCase().includes(q));
-    }
-    return rows as CrmJob[];
-  }
-
-  async getCrmJobDb(id: string): Promise<CrmJob | undefined> {
-    const rows = await db.select().from(crmJobs).where(eq(crmJobs.id, id)).limit(1);
-    return rows[0] as CrmJob | undefined;
-  }
-
-  async createCrmJobDb(job: InsertCrmJob): Promise<CrmJob> {
-    const rows = await db.insert(crmJobs).values(job).returning();
-    return rows[0] as CrmJob;
-  }
-
-  async updateCrmJobDb(id: string, job: Partial<InsertCrmJob>): Promise<CrmJob | undefined> {
-    const existing = await this.getCrmJobDb(id);
-    if (!existing) return undefined;
-    const patch: any = { ...job, updatedAt: new Date() };
-    if (job.status === 'in_progress' && !existing.actualStartTime) patch.actualStartTime = new Date();
-    if (job.status === 'completed' && !existing.actualEndTime) patch.actualEndTime = new Date();
-    const rows = await db.update(crmJobs).set(patch).where(eq(crmJobs.id, id)).returning();
-    return rows[0] as CrmJob | undefined;
-  }
-
-  async deleteCrmJobDb(id: string): Promise<boolean> {
-    const result = await db.delete(crmJobs).where(eq(crmJobs.id, id)).returning({ id: crmJobs.id });
-    return result.length > 0;
-  }
-
-  // CRM Quote CRUD — DATABASE BACKED
-  async getCrmQuotesDb(contractorUserId: string, filters?: { status?: string; clientId?: string; searchQuery?: string }): Promise<CrmQuote[]> {
-    const user = await this.getUser(contractorUserId);
-    const companyId = user?.companyId;
-    const conditions = companyId
-      ? or(eq(crmQuotes.contractorUserId, contractorUserId), eq(crmQuotes.companyId, companyId))
-      : eq(crmQuotes.contractorUserId, contractorUserId);
-    let rows = await db.select().from(crmQuotes).where(conditions).orderBy(desc(crmQuotes.createdAt));
-    if (filters?.status && filters.status !== 'all') rows = rows.filter(r => r.status === filters.status);
-    if (filters?.clientId) rows = rows.filter(r => r.clientId === filters.clientId);
-    if (filters?.searchQuery) {
-      const q = filters.searchQuery.toLowerCase();
-      rows = rows.filter(r => r.title?.toLowerCase().includes(q) || r.quoteNumber?.toLowerCase().includes(q) || r.serviceType?.toLowerCase().includes(q));
-    }
-    return rows as CrmQuote[];
-  }
-
-  async getCrmQuoteDb(id: string): Promise<CrmQuote | undefined> {
-    const rows = await db.select().from(crmQuotes).where(eq(crmQuotes.id, id)).limit(1);
-    return rows[0] as CrmQuote | undefined;
-  }
-
-  async createCrmQuoteDb(quote: InsertCrmQuote): Promise<CrmQuote> {
-    const rows = await db.insert(crmQuotes).values(quote).returning();
-    return rows[0] as CrmQuote;
-  }
-
-  async updateCrmQuoteDb(id: string, quote: Partial<InsertCrmQuote>): Promise<CrmQuote | undefined> {
-    const existing = await this.getCrmQuoteDb(id);
-    if (!existing) return undefined;
-    const patch: any = { ...quote, updatedAt: new Date() };
-    if (quote.status === 'sent' && !existing.sentAt) patch.sentAt = new Date();
-    if (quote.status === 'viewed' && !existing.viewedAt) patch.viewedAt = new Date();
-    if (quote.status === 'accepted' && !existing.acceptedAt) patch.acceptedAt = new Date();
-    if (quote.status === 'declined' && !existing.declinedAt) patch.declinedAt = new Date();
-    const rows = await db.update(crmQuotes).set(patch).where(eq(crmQuotes.id, id)).returning();
-    return rows[0] as CrmQuote | undefined;
-  }
-
-  async deleteCrmQuoteDb(id: string): Promise<boolean> {
-    const result = await db.delete(crmQuotes).where(eq(crmQuotes.id, id)).returning({ id: crmQuotes.id });
-    return result.length > 0;
-  }
-
-  // CRM Dashboard Stats — DATABASE BACKED so it reads from same source as CRUD
-  async getCrmDashboardStatsDb(contractorUserId: string): Promise<{
-    totalClients: number; activeJobs: number; pendingQuotes: number; outstandingInvoices: number;
-    totalRevenue: string; revenueThisMonth: string; jobsThisMonth: number; conversionRate: number;
-  }> {
-    const user = await this.getUser(contractorUserId);
-    const companyId = user?.companyId;
-
-    const clientConditions = companyId
-      ? or(eq(crmClients.contractorUserId, contractorUserId), eq(crmClients.companyId, companyId))
-      : eq(crmClients.contractorUserId, contractorUserId);
-    const jobConditions = companyId
-      ? or(eq(crmJobs.contractorUserId, contractorUserId), eq(crmJobs.companyId, companyId))
-      : eq(crmJobs.contractorUserId, contractorUserId);
-    const quoteConditions = companyId
-      ? or(eq(crmQuotes.contractorUserId, contractorUserId), eq(crmQuotes.companyId, companyId))
-      : eq(crmQuotes.contractorUserId, contractorUserId);
-    const invoiceConditions = companyId
-      ? or(eq(crmInvoices.contractorUserId, contractorUserId), eq(crmInvoices.companyId, companyId))
-      : eq(crmInvoices.contractorUserId, contractorUserId);
-
-    const [clients, jobs, quotes, invoices] = await Promise.all([
-      db.select().from(crmClients).where(clientConditions),
-      db.select().from(crmJobs).where(jobConditions),
-      db.select().from(crmQuotes).where(quoteConditions),
-      db.select().from(crmInvoices).where(invoiceConditions),
-    ]);
-
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-    const activeJobs = jobs.filter(j => j.status === 'scheduled' || j.status === 'in_progress').length;
-    const pendingQuotes = quotes.filter(q => q.status === 'draft' || q.status === 'sent').length;
-    const outstandingInvoices = invoices.filter(i => i.status !== 'paid' && i.status !== 'cancelled').length;
-
-    const paidInvoices = invoices.filter(i => i.status === 'paid');
-    const totalRevenue = paidInvoices.reduce((sum, i) => sum + parseFloat(i.amountPaid || '0'), 0);
-    const paidThisMonth = paidInvoices.filter(i => i.paidAt && new Date(i.paidAt) >= startOfMonth);
-    const revenueThisMonth = paidThisMonth.reduce((sum, i) => sum + parseFloat(i.amountPaid || '0'), 0);
-    const jobsThisMonth = jobs.filter(j => j.createdAt && new Date(j.createdAt) >= startOfMonth).length;
-    const acceptedQuotes = quotes.filter(q => q.status === 'accepted').length;
-    const sentQuotes = quotes.filter(q => q.status !== 'draft').length;
-    const conversionRate = sentQuotes > 0 ? Math.round((acceptedQuotes / sentQuotes) * 100) : 0;
-
-    return {
-      totalClients: clients.length, activeJobs, pendingQuotes, outstandingInvoices,
-      totalRevenue: totalRevenue.toFixed(2), revenueThisMonth: revenueThisMonth.toFixed(2),
-      jobsThisMonth, conversionRate,
-    };
+    // CRM Pro tier methods — memStorage backed (same as before this task)
+    this.getCrmClients = this.memStorage.getCrmClients.bind(this.memStorage);
+    this.getCrmClient = this.memStorage.getCrmClient.bind(this.memStorage);
+    this.createCrmClient = this.memStorage.createCrmClient.bind(this.memStorage);
+    this.updateCrmClient = this.memStorage.updateCrmClient.bind(this.memStorage);
+    this.deleteCrmClient = this.memStorage.deleteCrmClient.bind(this.memStorage);
+    this.getCrmJobs = this.memStorage.getCrmJobs.bind(this.memStorage);
+    this.getCrmJob = this.memStorage.getCrmJob.bind(this.memStorage);
+    this.createCrmJob = this.memStorage.createCrmJob.bind(this.memStorage);
+    this.updateCrmJob = this.memStorage.updateCrmJob.bind(this.memStorage);
+    this.deleteCrmJob = this.memStorage.deleteCrmJob.bind(this.memStorage);
+    this.getCrmQuotes = this.memStorage.getCrmQuotes.bind(this.memStorage);
+    this.getCrmQuote = this.memStorage.getCrmQuote.bind(this.memStorage);
+    this.createCrmQuote = this.memStorage.createCrmQuote.bind(this.memStorage);
+    this.updateCrmQuote = this.memStorage.updateCrmQuote.bind(this.memStorage);
+    this.deleteCrmQuote = this.memStorage.deleteCrmQuote.bind(this.memStorage);
+    this.getCrmInvoices = this.memStorage.getCrmInvoices.bind(this.memStorage);
+    this.getCrmInvoice = this.memStorage.getCrmInvoice.bind(this.memStorage);
+    this.createCrmInvoice = this.memStorage.createCrmInvoice.bind(this.memStorage);
+    this.updateCrmInvoice = this.memStorage.updateCrmInvoice.bind(this.memStorage);
+    this.deleteCrmInvoice = this.memStorage.deleteCrmInvoice.bind(this.memStorage);
+    this.getCrmDashboardStats = this.memStorage.getCrmDashboardStats.bind(this.memStorage);
+    // New for this task: homeowner-linked invoice read from same memStorage for data consistency
+    this.getLinkedInvoicesForHomeowner = this.memStorage.getLinkedInvoicesForHomeowner.bind(this.memStorage);
   }
 
   // User operations - DATABASE BACKED for persistence
