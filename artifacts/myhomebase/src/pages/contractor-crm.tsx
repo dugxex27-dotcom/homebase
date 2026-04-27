@@ -789,10 +789,25 @@ export default function ContractorCRMPage() {
   };
 
   const handleSubmitInvoice = (data: CreateInvoiceForm) => {
+    // If linked to a homeowner with multiple houses, require explicit selection
+    if (invoiceLinkedHomeowner && invoiceLinkedHomeowner.houses.length > 1 && !invoiceLinkedHouseId) {
+      toast({
+        title: "Select a Property",
+        description: "Please choose which property this invoice is for before submitting.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const subtotal = invoiceLineItems.reduce((sum, item) => sum + item.total, 0);
     const taxAmount = subtotal * (parseFloat(data.taxRate) / 100);
     const discount = parseFloat(data.discount) || 0;
     const total = subtotal + taxAmount - discount;
+
+    // Determine houseId: use explicit selection, or the single house if only one, or undefined
+    const linkedHouseId = invoiceLinkedHomeowner
+      ? (invoiceLinkedHouseId || (invoiceLinkedHomeowner.houses.length === 1 ? invoiceLinkedHomeowner.houses[0].id : undefined))
+      : undefined;
 
     createInvoiceMutation.mutate({
       ...data,
@@ -803,7 +818,7 @@ export default function ContractorCRMPage() {
       amountDue: total.toFixed(2),
       ...(invoiceLinkedHomeowner ? {
         homeownerId: invoiceLinkedHomeowner.id,
-        houseId: invoiceLinkedHouseId || (invoiceLinkedHomeowner.houses[0]?.id ?? undefined),
+        houseId: linkedHouseId,
       } : {}),
     });
   };
