@@ -6895,11 +6895,11 @@ class DbStorage implements IStorage {
     this.createCrmQuote = this.memStorage.createCrmQuote.bind(this.memStorage);
     this.updateCrmQuote = this.memStorage.updateCrmQuote.bind(this.memStorage);
     this.deleteCrmQuote = this.memStorage.deleteCrmQuote.bind(this.memStorage);
-    this.getCrmInvoices = this.memStorage.getCrmInvoices.bind(this.memStorage);
-    this.getCrmInvoice = this.memStorage.getCrmInvoice.bind(this.memStorage);
-    this.createCrmInvoice = this.memStorage.createCrmInvoice.bind(this.memStorage);
-    this.updateCrmInvoice = this.memStorage.updateCrmInvoice.bind(this.memStorage);
-    this.deleteCrmInvoice = this.memStorage.deleteCrmInvoice.bind(this.memStorage);
+    this.getCrmInvoices = this.getCrmInvoicesDb.bind(this);
+    this.getCrmInvoice = this.getCrmInvoiceDb.bind(this);
+    this.createCrmInvoice = this.createCrmInvoiceDb.bind(this);
+    this.updateCrmInvoice = this.updateCrmInvoiceDb.bind(this);
+    this.deleteCrmInvoice = this.deleteCrmInvoiceDb.bind(this);
     this.getCrmDashboardStats = this.memStorage.getCrmDashboardStats.bind(this.memStorage);
     this.getLinkedInvoicesForHomeowner = this.getLinkedInvoicesForHomeownerDb.bind(this);
   }
@@ -6911,6 +6911,66 @@ class DbStorage implements IStorage {
       .where(eq(crmInvoices.homeownerId, homeownerId))
       .orderBy(crmInvoices.createdAt);
     return rows as CrmInvoice[];
+  }
+
+  // CRM Invoice CRUD — DATABASE BACKED so homeowner linking works correctly
+  async getCrmInvoicesDb(contractorUserId: string, filters?: {
+    status?: string;
+    clientId?: string;
+    searchQuery?: string;
+  }): Promise<CrmInvoice[]> {
+    const user = await this.getUser(contractorUserId);
+    const companyId = user?.companyId;
+
+    const conditions = companyId
+      ? or(eq(crmInvoices.contractorUserId, contractorUserId), eq(crmInvoices.companyId, companyId))
+      : eq(crmInvoices.contractorUserId, contractorUserId);
+
+    let rows = await db.select().from(crmInvoices).where(conditions).orderBy(desc(crmInvoices.createdAt));
+
+    if (filters?.status && filters.status !== 'all') {
+      rows = rows.filter(r => r.status === filters.status);
+    }
+    if (filters?.clientId) {
+      rows = rows.filter(r => r.clientId === filters.clientId);
+    }
+    if (filters?.searchQuery) {
+      const q = filters.searchQuery.toLowerCase();
+      rows = rows.filter(r =>
+        r.title?.toLowerCase().includes(q) ||
+        r.description?.toLowerCase().includes(q) ||
+        r.invoiceNumber?.toLowerCase().includes(q)
+      );
+    }
+    return rows as CrmInvoice[];
+  }
+
+  async getCrmInvoiceDb(id: string): Promise<CrmInvoice | undefined> {
+    const rows = await db.select().from(crmInvoices).where(eq(crmInvoices.id, id)).limit(1);
+    return rows[0] as CrmInvoice | undefined;
+  }
+
+  async createCrmInvoiceDb(invoice: InsertCrmInvoice): Promise<CrmInvoice> {
+    const rows = await db.insert(crmInvoices).values(invoice).returning();
+    return rows[0] as CrmInvoice;
+  }
+
+  async updateCrmInvoiceDb(id: string, invoice: Partial<InsertCrmInvoice>): Promise<CrmInvoice | undefined> {
+    const existing = await this.getCrmInvoiceDb(id);
+    if (!existing) return undefined;
+
+    const patch: any = { ...invoice, updatedAt: new Date() };
+    if (invoice.status === 'sent' && !existing.sentAt) patch.sentAt = new Date();
+    if (invoice.status === 'viewed' && !existing.viewedAt) patch.viewedAt = new Date();
+    if (invoice.status === 'paid' && !existing.paidAt) patch.paidAt = new Date();
+
+    const rows = await db.update(crmInvoices).set(patch).where(eq(crmInvoices.id, id)).returning();
+    return rows[0] as CrmInvoice | undefined;
+  }
+
+  async deleteCrmInvoiceDb(id: string): Promise<boolean> {
+    const result = await db.delete(crmInvoices).where(eq(crmInvoices.id, id)).returning({ id: crmInvoices.id });
+    return result.length > 0;
   }
 
   // User operations - DATABASE BACKED for persistence

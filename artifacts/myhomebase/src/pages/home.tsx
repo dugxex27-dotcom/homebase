@@ -405,8 +405,18 @@ export default function Home() {
                           padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10,
                         }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontWeight: 600, fontSize: 13, color: '#2C0F5B', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {inv.title}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              <div style={{ fontWeight: 600, fontSize: 13, color: '#2C0F5B', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {inv.title}
+                              </div>
+                              <span style={{
+                                fontSize: 10, fontWeight: 600, borderRadius: 5, padding: '1px 6px',
+                                background: inv.status === 'paid' ? '#dcfce7' : inv.status === 'overdue' ? '#fee2e2' : inv.status === 'sent' ? '#dbeafe' : '#f3f4f6',
+                                color: inv.status === 'paid' ? '#16a34a' : inv.status === 'overdue' ? '#dc2626' : inv.status === 'sent' ? '#1d4ed8' : '#6b7280',
+                                textTransform: 'uppercase',
+                              }}>
+                                {inv.status}
+                              </span>
                             </div>
                             <div style={{ fontSize: 11, color: '#7B6FA0', marginTop: 2 }}>
                               {inv.companyName || inv.contractorName} · ${parseFloat(inv.total).toFixed(2)}
