@@ -6861,20 +6861,8 @@ class DbStorage implements IStorage {
     this.checkAndAwardAchievements = this.memStorage.checkAndAwardAchievements.bind(this.memStorage);
     this.calculateAchievementsProgress = this.memStorage.calculateAchievementsProgress.bind(this.memStorage);
     this.getAchievementProgress = this.memStorage.getAchievementProgress.bind(this.memStorage);
-    this.validateAndUseInviteCode = this.memStorage.validateAndUseInviteCode.bind(this.memStorage);
-    this.getInviteCodes = this.memStorage.getInviteCodes.bind(this.memStorage);
-    this.createInviteCode = this.memStorage.createInviteCode.bind(this.memStorage);
-    this.deactivateInviteCode = this.memStorage.deactivateInviteCode.bind(this.memStorage);
-    this.trackSearch = this.memStorage.trackSearch.bind(this.memStorage);
-    this.getSearchAnalytics = this.memStorage.getSearchAnalytics.bind(this.memStorage);
     // getAdminStats is now database-backed - implemented below
-    this.getActiveUsersSeries = this.memStorage.getActiveUsersSeries.bind(this.memStorage);
-    this.getReferralGrowthSeries = this.memStorage.getReferralGrowthSeries.bind(this.memStorage);
-    this.getContractorSignupsSeries = this.memStorage.getContractorSignupsSeries.bind(this.memStorage);
-    this.getRevenueMetrics = this.memStorage.getRevenueMetrics.bind(this.memStorage);
-    this.getChurnMetrics = this.memStorage.getChurnMetrics.bind(this.memStorage);
-    this.getFeatureUsageStats = this.memStorage.getFeatureUsageStats.bind(this.memStorage);
-    // Agent methods are now database-backed - implemented below
+    // All remaining methods are now database-backed - implemented below
     // Support ticket methods are now database-backed - implemented below
   }
 
@@ -9282,159 +9270,6 @@ class DbStorage implements IStorage {
       .where(and(eq(crmInvoices.homeownerId, homeownerId), isNull(crmInvoices.viewedAt)));
   }
 
-  // Agent profile operations — DATABASE BACKED for persistence
-  async getAgentProfile(agentId: string): Promise<AgentProfile | undefined> {
-    const [profile] = await db
-      .select()
-      .from(agentProfiles)
-      .where(eq(agentProfiles.agentId, agentId))
-      .limit(1);
-    return profile;
-  }
-
-  async submitAgentVerification(agentId: string, data: {
-    licenseNumber: string;
-    licenseState: string;
-    licenseExpiration: Date;
-    stateIdStorageKey: string;
-    stateIdOriginalFilename: string;
-    stateIdMimeType: string;
-    stateIdFileSize: number;
-    stateIdChecksum: string;
-  }): Promise<AgentProfile | undefined> {
-    const now = new Date();
-    const [updated] = await db
-      .update(agentProfiles)
-      .set({
-        licenseNumber: data.licenseNumber,
-        licenseState: data.licenseState,
-        licenseExpiration: data.licenseExpiration,
-        stateIdStorageKey: data.stateIdStorageKey,
-        stateIdOriginalFilename: data.stateIdOriginalFilename,
-        stateIdMimeType: data.stateIdMimeType,
-        stateIdFileSize: data.stateIdFileSize,
-        stateIdChecksum: data.stateIdChecksum,
-        stateIdUploadedAt: now,
-        verificationStatus: 'pending_review',
-        verificationRequestedAt: now,
-        verifiedAt: null,
-        lastRejectedAt: null,
-        reviewedByAdminId: null,
-        reviewNotes: null,
-        updatedAt: now,
-      })
-      .where(eq(agentProfiles.agentId, agentId))
-      .returning();
-    return updated;
-  }
-
-  async getAgentVerificationStatus(agentId: string): Promise<{
-    verificationStatus: string;
-    licenseNumber?: string | null;
-    licenseState?: string | null;
-    licenseExpiration?: Date | null;
-    verificationRequestedAt?: Date | null;
-    reviewNotes?: string | null;
-  } | undefined> {
-    const [profile] = await db
-      .select({
-        verificationStatus: agentProfiles.verificationStatus,
-        licenseNumber: agentProfiles.licenseNumber,
-        licenseState: agentProfiles.licenseState,
-        licenseExpiration: agentProfiles.licenseExpiration,
-        verificationRequestedAt: agentProfiles.verificationRequestedAt,
-        reviewNotes: agentProfiles.reviewNotes,
-      })
-      .from(agentProfiles)
-      .where(eq(agentProfiles.agentId, agentId))
-      .limit(1);
-    return profile;
-  }
-
-  async getAffiliateReferrals(agentId: string): Promise<AffiliateReferral[]> {
-    return await db
-      .select()
-      .from(affiliateReferrals)
-      .where(eq(affiliateReferrals.agentId, agentId));
-  }
-
-  async getAgentStats(agentId: string): Promise<{
-    totalReferrals: number;
-    activeReferrals: number;
-    totalEarnings: number;
-    pendingEarnings: number;
-    nextPayoutDate: string | null;
-  }> {
-    const referrals = await db
-      .select()
-      .from(affiliateReferrals)
-      .where(eq(affiliateReferrals.agentId, agentId));
-
-    const payouts = await db
-      .select()
-      .from(affiliatePayouts)
-      .where(eq(affiliatePayouts.agentId, agentId));
-
-    const totalReferrals = referrals.length;
-    const activeReferrals = referrals.filter(r =>
-      r.status !== 'voided' && r.status !== 'paid'
-    ).length;
-
-    const paidPayouts = payouts.filter(p => p.status === 'paid');
-    const totalEarnings = paidPayouts.reduce((sum, p) =>
-      sum + parseFloat(p.amount || '0'), 0
-    );
-
-    const pendingPayoutsFiltered = payouts.filter(p => p.status === 'pending');
-    const pendingEarnings = pendingPayoutsFiltered.reduce((sum, p) =>
-      sum + parseFloat(p.amount || '0'), 0
-    );
-
-    const candidateDates: Date[] = [];
-
-    const hasPendingPayout = payouts.some(p => p.status === 'pending' || p.status === 'payout_pending' || p.status === 'processing');
-    if (hasPendingPayout) {
-      const now = new Date();
-      const firstOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-      candidateDates.push(firstOfNextMonth);
-    }
-
-    const inProgressReferrals = referrals.filter(r =>
-      r.firstPaymentDate !== null &&
-      r.consecutiveMonthsPaid < 4 &&
-      !['voided', 'paid', 'eligible'].includes(r.status)
-    );
-    for (const referral of inProgressReferrals) {
-      if (referral.firstPaymentDate) {
-        const monthsRemaining = 4 - (referral.consecutiveMonthsPaid || 0);
-        const estimatedDate = new Date(referral.firstPaymentDate);
-        estimatedDate.setMonth(estimatedDate.getMonth() + monthsRemaining);
-        candidateDates.push(estimatedDate);
-      }
-    }
-
-    const eligibleReferrals = referrals.filter(r => r.status === 'eligible' || r.status === 'payout_pending');
-    if (eligibleReferrals.length > 0) {
-      const now = new Date();
-      const firstOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-      candidateDates.push(firstOfNextMonth);
-    }
-
-    let nextPayoutDate: string | null = null;
-    if (candidateDates.length > 0) {
-      const earliest = candidateDates.reduce((a, b) => a < b ? a : b);
-      nextPayoutDate = earliest.toISOString().split('T')[0];
-    }
-
-    return {
-      totalReferrals,
-      activeReferrals,
-      totalEarnings,
-      pendingEarnings,
-      nextPayoutDate,
-    };
-  }
-
   // Support ticket operations - DATABASE BACKED for persistence
   async getSupportTickets(filters?: {
     userId?: string;
@@ -9566,7 +9401,317 @@ class DbStorage implements IStorage {
     return result[0];
   }
 
-  // Methods delegated to MemStorage (bound in constructor)
+  // Invite code operations - DATABASE BACKED
+  async validateAndUseInviteCode(code: string): Promise<boolean> {
+    const result = await db.select().from(inviteCodes).where(eq(inviteCodes.code, code)).limit(1);
+    const inviteCode = result[0];
+    if (!inviteCode || !inviteCode.isActive || inviteCode.currentUses >= inviteCode.maxUses) {
+      return false;
+    }
+    await db.update(inviteCodes)
+      .set({ currentUses: inviteCode.currentUses + 1, updatedAt: new Date() })
+      .where(eq(inviteCodes.code, code));
+    return true;
+  }
+
+  async getInviteCodes(): Promise<InviteCode[]> {
+    return db.select().from(inviteCodes);
+  }
+
+  async createInviteCode(data: InsertInviteCode): Promise<InviteCode> {
+    const [created] = await db.insert(inviteCodes).values({ ...data, id: randomUUID() }).returning();
+    return created;
+  }
+
+  async deactivateInviteCode(code: string): Promise<boolean> {
+    const result = await db.update(inviteCodes)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(inviteCodes.code, code))
+      .returning();
+    return result.length > 0;
+  }
+
+  // Search analytics operations - DATABASE BACKED
+  async trackSearch(data: InsertSearchAnalytics): Promise<SearchAnalytics> {
+    const [created] = await db.insert(searchAnalytics).values({ ...data, id: randomUUID() }).returning();
+    return created;
+  }
+
+  async getSearchAnalytics(filters?: { zipCode?: string; limit?: number }): Promise<SearchAnalytics[]> {
+    const allResults = await db.select().from(searchAnalytics).orderBy(desc(searchAnalytics.createdAt));
+    let filtered = allResults;
+    if (filters?.zipCode) {
+      filtered = filtered.filter(a => a.userZipCode === filters.zipCode);
+    }
+    if (filters?.limit) {
+      filtered = filtered.slice(0, filters.limit);
+    }
+    return filtered;
+  }
+
+  // Analytics series - DATABASE BACKED (derived from DB users table)
+  async getActiveUsersSeries(days: number): Promise<Array<{ date: string; count: number }>> {
+    const allUsers = await db.select({ createdAt: users.createdAt }).from(users);
+    const now = new Date();
+    const series: Array<{ date: string; count: number }> = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const targetDate = new Date(now);
+      targetDate.setDate(now.getDate() - i);
+      targetDate.setHours(0, 0, 0, 0);
+      const nextDate = new Date(targetDate);
+      nextDate.setDate(targetDate.getDate() + 1);
+      const count = allUsers.filter(user => {
+        if (!user.createdAt) return false;
+        const userDate = new Date(user.createdAt);
+        return userDate >= targetDate && userDate < nextDate;
+      }).length;
+      series.push({ date: `${targetDate.getMonth() + 1}/${targetDate.getDate()}`, count });
+    }
+    return series;
+  }
+
+  async getReferralGrowthSeries(days: number): Promise<Array<{ date: string; count: number }>> {
+    const referralCreditsArray = await db.select().from(referralCredits);
+    const now = new Date();
+    const series: Array<{ date: string; count: number }> = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const targetDate = new Date(now);
+      targetDate.setDate(now.getDate() - i);
+      targetDate.setHours(0, 0, 0, 0);
+      const nextDate = new Date(targetDate);
+      nextDate.setDate(targetDate.getDate() + 1);
+      const count = referralCreditsArray.filter(credit => {
+        if (!credit.earnedAt) return false;
+        const earnedDate = new Date(credit.earnedAt);
+        return earnedDate < nextDate;
+      }).length;
+      series.push({ date: `${targetDate.getMonth() + 1}/${targetDate.getDate()}`, count });
+    }
+    return series;
+  }
+
+  async getContractorSignupsSeries(days: number): Promise<Array<{ date: string; count: number }>> {
+    const allContractors = await db.select({ createdAt: users.createdAt }).from(users).where(eq(users.role, 'contractor'));
+    const now = new Date();
+    const series: Array<{ date: string; count: number }> = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const targetDate = new Date(now);
+      targetDate.setDate(now.getDate() - i);
+      targetDate.setHours(0, 0, 0, 0);
+      const nextDate = new Date(targetDate);
+      nextDate.setDate(targetDate.getDate() + 1);
+      const count = allContractors.filter(user => {
+        if (!user.createdAt) return false;
+        const userDate = new Date(user.createdAt);
+        return userDate >= targetDate && userDate < nextDate;
+      }).length;
+      series.push({ date: `${targetDate.getMonth() + 1}/${targetDate.getDate()}`, count });
+    }
+    return series;
+  }
+
+  // Revenue and churn metrics - DATABASE BACKED
+  async getRevenueMetrics(days: number): Promise<{
+    mrr: number;
+    totalRevenue: number;
+    revenueByPlan: Array<{ plan: string; revenue: number }>;
+    revenueSeries: Array<{ date: string; amount: number }>;
+  }> {
+    const activeSubscribers = await db.select().from(users).where(eq(users.subscriptionStatus, 'active'));
+    const cycleEvents = await db.select().from(subscriptionCycleEvents);
+    const mrr = activeSubscribers.length * 20;
+    const totalRevenue = cycleEvents
+      .filter(e => e.eventType === 'payment_succeeded')
+      .reduce((sum, e) => sum + (Number(e.amountInCents || 0) / 100), 0);
+    const revenueByPlan = [
+      { plan: 'Basic', revenue: activeSubscribers.filter(u => u.subscriptionTier === 'basic').length * 20 },
+      { plan: 'Super', revenue: activeSubscribers.filter(u => u.subscriptionTier === 'super').length * 35 },
+      { plan: 'Contractor', revenue: activeSubscribers.filter(u => u.role === 'contractor').length * 50 },
+    ];
+    const now = new Date();
+    const revenueSeries: Array<{ date: string; amount: number }> = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const targetDate = new Date(now);
+      targetDate.setDate(now.getDate() - i);
+      targetDate.setHours(0, 0, 0, 0);
+      const nextDate = new Date(targetDate);
+      nextDate.setDate(targetDate.getDate() + 1);
+      const dayRevenue = cycleEvents
+        .filter(e => {
+          if (!e.eventTimestamp || e.eventType !== 'payment_succeeded') return false;
+          const eventDate = new Date(e.eventTimestamp);
+          return eventDate >= targetDate && eventDate < nextDate;
+        })
+        .reduce((sum, e) => sum + (Number(e.amountInCents || 0) / 100), 0);
+      revenueSeries.push({ date: `${targetDate.getMonth() + 1}/${targetDate.getDate()}`, amount: dayRevenue });
+    }
+    return { mrr, totalRevenue, revenueByPlan, revenueSeries };
+  }
+
+  async getChurnMetrics(days: number): Promise<{
+    churnRate: number;
+    churnedUsers: number;
+    totalActiveUsers: number;
+    churnSeries: Array<{ date: string; rate: number }>;
+  }> {
+    const allUsers = await db.select().from(users);
+    const churnedUsers = allUsers.filter(u => u.accountCancelledAt != null).length;
+    const totalActiveUsers = allUsers.filter(u => u.subscriptionStatus === 'active').length;
+    const churnRate = totalActiveUsers > 0 ? (churnedUsers / (churnedUsers + totalActiveUsers)) * 100 : 0;
+    const now = new Date();
+    const churnSeries: Array<{ date: string; rate: number }> = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const targetDate = new Date(now);
+      targetDate.setDate(now.getDate() - i);
+      targetDate.setHours(0, 0, 0, 0);
+      const nextDate = new Date(targetDate);
+      nextDate.setDate(targetDate.getDate() + 1);
+      const dayChurned = allUsers.filter(u => {
+        if (!u.accountCancelledAt) return false;
+        const cancelDate = new Date(u.accountCancelledAt);
+        return cancelDate >= targetDate && cancelDate < nextDate;
+      }).length;
+      const activeAtDate = allUsers.filter(u => {
+        if (!u.createdAt) return false;
+        const createDate = new Date(u.createdAt);
+        const isCancelled = u.accountCancelledAt && new Date(u.accountCancelledAt) <= targetDate;
+        return createDate <= targetDate && !isCancelled;
+      }).length;
+      const rate = activeAtDate > 0 ? (dayChurned / activeAtDate) * 100 : 0;
+      churnSeries.push({ date: `${targetDate.getMonth() + 1}/${targetDate.getDate()}`, rate: Math.min(rate, 5) });
+    }
+    return { churnRate, churnedUsers, totalActiveUsers, churnSeries };
+  }
+
+  // Feature usage stats - DATABASE BACKED
+  async getFeatureUsageStats(): Promise<Array<{ feature: string; count: number }>> {
+    const [taskCompletionsArr, messagesArr, proposalsArr, serviceRecordsArr, housesArr] = await Promise.all([
+      db.select({ id: taskCompletions.id }).from(taskCompletions),
+      db.select({ id: messages.id }).from(messages),
+      db.select({ id: proposals.id }).from(proposals),
+      db.select({ id: serviceRecords.id }).from(serviceRecords),
+      db.select({ id: houses.id }).from(houses),
+    ]);
+    return [
+      { feature: 'Task Completions', count: taskCompletionsArr.length },
+      { feature: 'Messages Sent', count: messagesArr.length },
+      { feature: 'Proposals Created', count: proposalsArr.length },
+      { feature: 'Contractor Boosts', count: 0 },
+      { feature: 'Service Records', count: serviceRecordsArr.length },
+      { feature: 'Houses Tracked', count: housesArr.length },
+    ];
+  }
+
+  // Agent profile operations - DATABASE BACKED
+  async getAgentProfile(agentId: string): Promise<AgentProfile | undefined> {
+    const [profile] = await db.select().from(agentProfiles).where(eq(agentProfiles.agentId, agentId)).limit(1);
+    return profile;
+  }
+
+  async getAffiliateReferrals(agentId: string): Promise<AffiliateReferral[]> {
+    return db.select().from(affiliateReferrals).where(eq(affiliateReferrals.agentId, agentId));
+  }
+
+  async getAgentStats(agentId: string): Promise<{
+    totalReferrals: number;
+    activeReferrals: number;
+    totalEarnings: number;
+    pendingEarnings: number;
+    nextPayoutDate: string | null;
+  }> {
+    const referrals = await db.select().from(affiliateReferrals).where(eq(affiliateReferrals.agentId, agentId));
+    const payouts = await db.select().from(affiliatePayouts).where(eq(affiliatePayouts.agentId, agentId));
+    const totalReferrals = referrals.length;
+    const activeReferrals = referrals.filter(r => r.status !== 'voided' && r.status !== 'paid').length;
+    const paidPayouts = payouts.filter(p => p.status === 'paid');
+    const totalEarnings = paidPayouts.reduce((sum, p) => sum + parseFloat(p.amount || '0'), 0);
+    const pendingPayoutsFiltered = payouts.filter(p => p.status === 'pending');
+    const pendingEarnings = pendingPayoutsFiltered.reduce((sum, p) => sum + parseFloat(p.amount || '0'), 0);
+    const candidateDates: Date[] = [];
+    const hasPendingPayout = payouts.some(p => p.status === 'pending' || p.status === 'payout_pending' || p.status === 'processing');
+    if (hasPendingPayout) {
+      const now = new Date();
+      candidateDates.push(new Date(now.getFullYear(), now.getMonth() + 1, 1));
+    }
+    const inProgressReferrals = referrals.filter(r =>
+      r.firstPaymentDate !== null &&
+      r.consecutiveMonthsPaid < 4 &&
+      !['voided', 'paid', 'eligible'].includes(r.status)
+    );
+    for (const referral of inProgressReferrals) {
+      if (referral.firstPaymentDate) {
+        const monthsRemaining = 4 - (referral.consecutiveMonthsPaid || 0);
+        const estimatedDate = new Date(referral.firstPaymentDate);
+        estimatedDate.setMonth(estimatedDate.getMonth() + monthsRemaining);
+        candidateDates.push(estimatedDate);
+      }
+    }
+    const eligibleReferrals = referrals.filter(r => r.status === 'eligible' || r.status === 'payout_pending');
+    if (eligibleReferrals.length > 0) {
+      const now = new Date();
+      candidateDates.push(new Date(now.getFullYear(), now.getMonth() + 1, 1));
+    }
+    let nextPayoutDate: string | null = null;
+    if (candidateDates.length > 0) {
+      const earliest = candidateDates.reduce((a, b) => a < b ? a : b);
+      nextPayoutDate = earliest.toISOString().split('T')[0];
+    }
+    return { totalReferrals, activeReferrals, totalEarnings, pendingEarnings, nextPayoutDate };
+  }
+
+  async submitAgentVerification(agentId: string, data: {
+    licenseNumber: string;
+    licenseState: string;
+    licenseExpiration: Date;
+    stateIdStorageKey: string;
+    stateIdOriginalFilename: string;
+    stateIdMimeType: string;
+    stateIdFileSize: number;
+    stateIdChecksum: string;
+  }): Promise<AgentProfile | undefined> {
+    const now = new Date();
+    const [updated] = await db.update(agentProfiles)
+      .set({
+        licenseNumber: data.licenseNumber,
+        licenseState: data.licenseState,
+        licenseExpiration: data.licenseExpiration,
+        stateIdStorageKey: data.stateIdStorageKey,
+        stateIdOriginalFilename: data.stateIdOriginalFilename,
+        stateIdMimeType: data.stateIdMimeType,
+        stateIdFileSize: data.stateIdFileSize,
+        stateIdChecksum: data.stateIdChecksum,
+        stateIdUploadedAt: now,
+        verificationStatus: 'pending_review',
+        verificationRequestedAt: now,
+        verifiedAt: null,
+        lastRejectedAt: null,
+        reviewedByAdminId: null,
+        reviewNotes: null,
+        updatedAt: now,
+      })
+      .where(eq(agentProfiles.agentId, agentId))
+      .returning();
+    return updated;
+  }
+
+  async getAgentVerificationStatus(agentId: string): Promise<{
+    verificationStatus: string;
+    licenseNumber?: string | null;
+    licenseState?: string | null;
+    licenseExpiration?: Date | null;
+    verificationRequestedAt?: Date | null;
+    reviewNotes?: string | null;
+  } | undefined> {
+    const [profile] = await db.select({
+      verificationStatus: agentProfiles.verificationStatus,
+      licenseNumber: agentProfiles.licenseNumber,
+      licenseState: agentProfiles.licenseState,
+      licenseExpiration: agentProfiles.licenseExpiration,
+      verificationRequestedAt: agentProfiles.verificationRequestedAt,
+      reviewNotes: agentProfiles.reviewNotes,
+    }).from(agentProfiles).where(eq(agentProfiles.agentId, agentId)).limit(1);
+    return profile;
+  }
 }
 
 export const storage = new DbStorage();
