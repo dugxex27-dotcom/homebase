@@ -128,6 +128,15 @@ export async function runMigrations() {
     console.warn('[MIGRATE] quiz_results table setup warning (non-fatal):', err?.message ?? err);
   }
 
+  // Ensure home_area column exists in maintenance_logs (added after initial schema push)
+  try {
+    await pool.query(`
+      ALTER TABLE "maintenance_logs" ADD COLUMN IF NOT EXISTS "home_area" text;
+    `);
+  } catch (err: any) {
+    console.warn('[MIGRATE] maintenance_logs home_area column warning (non-fatal):', err?.message ?? err);
+  }
+
   await pool.end();
 }
 

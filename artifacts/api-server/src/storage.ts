@@ -8200,37 +8200,15 @@ class DbStorage implements IStorage {
         )
       : db.select().from(serviceRecords).where(eq(serviceRecords.homeownerId, homeownerId));
     
-    // Explicitly select columns to avoid home_area which is in the schema but not yet in the DB
-    const maintenanceLogColumns = {
-      id: maintenanceLogs.id,
-      homeownerId: maintenanceLogs.homeownerId,
-      houseId: maintenanceLogs.houseId,
-      serviceDate: maintenanceLogs.serviceDate,
-      serviceType: maintenanceLogs.serviceType,
-      serviceDescription: maintenanceLogs.serviceDescription,
-      cost: maintenanceLogs.cost,
-      contractorName: maintenanceLogs.contractorName,
-      contractorCompany: maintenanceLogs.contractorCompany,
-      contractorId: maintenanceLogs.contractorId,
-      notes: maintenanceLogs.notes,
-      warrantyPeriod: maintenanceLogs.warrantyPeriod,
-      nextServiceDue: maintenanceLogs.nextServiceDue,
-      receiptUrls: maintenanceLogs.receiptUrls,
-      beforePhotoUrls: maintenanceLogs.beforePhotoUrls,
-      afterPhotoUrls: maintenanceLogs.afterPhotoUrls,
-      completionMethod: maintenanceLogs.completionMethod,
-      diySavingsAmount: maintenanceLogs.diySavingsAmount,
-      createdAt: maintenanceLogs.createdAt,
-    };
     const maintenanceLogsQuery = houseId
-      ? db.select(maintenanceLogColumns).from(maintenanceLogs).where(
+      ? db.select().from(maintenanceLogs).where(
           and(
             eq(maintenanceLogs.homeownerId, homeownerId),
             eq(maintenanceLogs.houseId, houseId),
             eq(maintenanceLogs.completionMethod, 'diy')
           )
         )
-      : db.select(maintenanceLogColumns).from(maintenanceLogs).where(
+      : db.select().from(maintenanceLogs).where(
           and(
             eq(maintenanceLogs.homeownerId, homeownerId),
             eq(maintenanceLogs.completionMethod, 'diy')
@@ -8253,7 +8231,7 @@ class DbStorage implements IStorage {
       customerEmail: null,
       serviceType: log.serviceType || 'General Maintenance',
       serviceDescription: log.serviceDescription || '',
-      homeArea: null, // home_area column not yet in DB; omitted from query to avoid SQL error
+      homeArea: log.homeArea ?? null,
       serviceDate: log.serviceDate,
       duration: null,
       cost: log.cost?.toString() || '0',
