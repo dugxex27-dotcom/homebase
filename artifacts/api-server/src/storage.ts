@@ -574,6 +574,7 @@ export interface IStorage {
   deleteCrmInvoice(id: string): Promise<boolean>;
   getLinkedInvoicesForHomeowner(homeownerId: string): Promise<CrmInvoice[]>;
   markInvoiceViewed(invoiceId: string, homeownerId: string): Promise<boolean>;
+  markAllInvoicesViewed(homeownerId: string): Promise<void>;
   
   // CRM Dashboard Stats (Pro tier feature)
   getCrmDashboardStats(contractorUserId: string): Promise<{
@@ -6589,6 +6590,15 @@ export class MemStorage implements IStorage {
     return true;
   }
 
+  async markAllInvoicesViewed(homeownerId: string): Promise<void> {
+    const now = new Date();
+    for (const [id, inv] of this.crmInvoicesMap.entries()) {
+      if (inv.homeownerId === homeownerId && !inv.viewedAt) {
+        this.crmInvoicesMap.set(id, { ...inv, viewedAt: now, updatedAt: now });
+      }
+    }
+  }
+
   // CRM Dashboard Stats (Pro tier feature)
   async getCrmDashboardStats(contractorUserId: string): Promise<{
     totalClients: number;
@@ -8815,6 +8825,7 @@ class DbStorage implements IStorage {
     return true;
   }
 
+<<<<<<< HEAD
   // CRM Lead methods — DATABASE BACKED for persistence
   async getCrmLeads(contractorUserId: string, filters?: {
     status?: string;
@@ -9275,6 +9286,13 @@ class DbStorage implements IStorage {
       jobsThisMonth,
       conversionRate,
     };
+=======
+  async markAllInvoicesViewed(homeownerId: string): Promise<void> {
+    await db
+      .update(crmInvoices)
+      .set({ viewedAt: new Date(), updatedAt: new Date() })
+      .where(and(eq(crmInvoices.homeownerId, homeownerId), isNull(crmInvoices.viewedAt)));
+>>>>>>> 10dd03d (feat: bulk mark-all-viewed endpoint clears invoice badge on tab open)
   }
 
   // Methods delegated to MemStorage (bound in constructor)

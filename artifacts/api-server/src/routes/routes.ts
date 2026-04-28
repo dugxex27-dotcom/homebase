@@ -13169,6 +13169,24 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
+  // Mark all linked invoices as viewed for the homeowner (bulk)
+  app.post('/api/homeowner/linked-invoices/mark-all-viewed', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.user.id;
+      const userRole = req.session.user.role;
+
+      if (userRole !== 'homeowner') {
+        return res.status(403).json({ message: "Only homeowners can mark invoices as viewed" });
+      }
+
+      await storage.markAllInvoicesViewed(userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking all invoices as viewed:", error);
+      res.status(500).json({ message: "Failed to mark invoices as viewed" });
+    }
+  });
+
   // Mark a linked invoice as viewed by the homeowner
   app.patch('/api/homeowner/linked-invoices/:id/mark-viewed', isAuthenticated, async (req: any, res) => {
     try {

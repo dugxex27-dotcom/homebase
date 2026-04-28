@@ -136,13 +136,9 @@ export default function Home() {
   });
 
   const markInvoicesViewedMutation = useMutation({
-    mutationFn: async (invoiceIds: string[]) => {
-      await Promise.all(
-        invoiceIds.map(async id => {
-          const res = await fetch(`/api/homeowner/linked-invoices/${id}/mark-viewed`, { method: 'PATCH' });
-          if (!res.ok) throw new Error(`Failed to mark invoice ${id} as viewed`);
-        })
-      );
+    mutationFn: async () => {
+      const res = await fetch(`/api/homeowner/linked-invoices/mark-all-viewed`, { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to mark invoices as viewed');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/homeowner/linked-invoices/unclaimed-count"] });
@@ -409,7 +405,7 @@ export default function Home() {
                     const expanding = !contractorInvoicesExpanded;
                     setContractorInvoicesExpanded(expanding);
                     if (expanding && linkedInvoices.length > 0) {
-                      markInvoicesViewedMutation.mutate(linkedInvoices.map(inv => inv.id));
+                      markInvoicesViewedMutation.mutate();
                     }
                   }}
                 >
