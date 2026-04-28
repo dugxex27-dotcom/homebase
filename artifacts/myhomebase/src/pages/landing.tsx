@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Info, UserCircle, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -30,6 +30,24 @@ export default function Landing() {
   const [ctSlider, setCtSlider] = useState(0);
   const [selectedPlanCard, setSelectedPlanCard] = useState<'base' | 'premium' | 'plus'>('premium');
   const [openFaqIdx, setOpenFaqIdx] = useState<number | null>(null);
+
+  // ── Sign-in flyout ──
+  const signinFlyoutRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!signinOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (signinFlyoutRef.current && !signinFlyoutRef.current.contains(e.target as Node)) {
+        setSigninOpen(false);
+      }
+    };
+    const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setSigninOpen(false); };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEsc);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEsc);
+    };
+  }, [signinOpen]);
 
   // ── New state ──
   const [selectedRole, setSelectedRole] = useState<'homeowner' | 'contractor' | 'agent' | null>(null);
@@ -689,7 +707,64 @@ export default function Landing() {
             <button className="mhb-nav-demo-btn" onClick={() => handleDemoLogin('homeowner')} disabled={demoLoading === 'homeowner'}>
               {demoLoading === 'homeowner' ? 'Loading…' : 'Homeowner Demo'}
             </button>
-            <a href="#role-section" className="mhb-nav-signin-btn" onClick={e => { e.preventDefault(); scrollTo('role-section'); }}>Sign In</a>
+            <div className="mhb-signin-flyout-wrap" ref={signinFlyoutRef}>
+              <button
+                className={`mhb-nav-signin-btn${signinOpen ? ' mhb-nav-signin-btn-active' : ''}`}
+                onClick={() => setSigninOpen(o => !o)}
+                aria-expanded={signinOpen}
+                aria-haspopup="true"
+              >
+                Sign In
+              </button>
+              {signinOpen && (
+                <div className="mhb-signin-flyout" role="menu">
+                  <div className="mhb-signin-flyout-header">
+                    <span>Sign in as…</span>
+                    <button className="mhb-signin-flyout-close" onClick={() => setSigninOpen(false)} aria-label="Close">
+                      <X size={14} />
+                    </button>
+                  </div>
+                  <a href="/signin/homeowner" className="mhb-signin-flyout-role mhb-signin-flyout-homeowner" role="menuitem">
+                    <div className="mhb-signin-flyout-icon">
+                      <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M9 2L2 7v9h4v-5h6v5h4V7z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+                      </svg>
+                    </div>
+                    <div className="mhb-signin-flyout-role-text">
+                      <span className="mhb-signin-flyout-role-title">Homeowner</span>
+                      <span className="mhb-signin-flyout-role-sub">Track, protect &amp; document</span>
+                    </div>
+                    <span className="mhb-signin-flyout-arrow">→</span>
+                  </a>
+                  <a href="/signin/contractor" className="mhb-signin-flyout-role mhb-signin-flyout-contractor" role="menuitem">
+                    <div className="mhb-signin-flyout-icon">
+                      <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 13l3-6 3 3 3-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        <circle cx="13" cy="5" r="2" stroke="currentColor" strokeWidth="1.5" />
+                      </svg>
+                    </div>
+                    <div className="mhb-signin-flyout-role-text">
+                      <span className="mhb-signin-flyout-role-title">Contractor</span>
+                      <span className="mhb-signin-flyout-role-sub">Grow your business</span>
+                    </div>
+                    <span className="mhb-signin-flyout-arrow">→</span>
+                  </a>
+                  <a href="/signin/agent" className="mhb-signin-flyout-role mhb-signin-flyout-agent" role="menuitem">
+                    <div className="mhb-signin-flyout-icon">
+                      <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="2" y="8" width="14" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+                        <path d="M5 8V6a4 4 0 018 0v2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                      </svg>
+                    </div>
+                    <div className="mhb-signin-flyout-role-text">
+                      <span className="mhb-signin-flyout-role-title">Real Estate Agent</span>
+                      <span className="mhb-signin-flyout-role-sub">Refer and earn</span>
+                    </div>
+                    <span className="mhb-signin-flyout-arrow">→</span>
+                  </a>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </nav>
