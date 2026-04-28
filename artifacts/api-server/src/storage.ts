@@ -1,5 +1,4 @@
-import { type Contractor, type InsertContractor, type Company, type InsertCompany, type CompanyInviteCode, type InsertCompanyInviteCode, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type HomeApplianceManual, type InsertHomeApplianceManual, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type HomeownerConnectionCode, type InsertHomeownerConnectionCode, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type PushToken, type InsertPushToken, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics, type TaskOverride, type InsertTaskOverride, type Country, type InsertCountry, type Region, type InsertRegion, type ClimateZone, type InsertClimateZone, type RegulatoryBody, type InsertRegulatoryBody, type RegionalMaintenanceTask, type InsertRegionalMaintenanceTask, type TaskCompletion, type InsertTaskCompletion, type Achievement, type InsertAchievement, type AchievementDefinition, type InsertAchievementDefinition, type UserAchievement, type InsertUserAchievement, type SearchAnalytics, type InsertSearchAnalytics, type InviteCode, type InsertInviteCode, type AgentProfile, type InsertAgentProfile, type AffiliateReferral, type InsertAffiliateReferral, type SubscriptionCycleEvent, type InsertSubscriptionCycleEvent, type AffiliatePayout, type InsertAffiliatePayout, type AgentVerificationAudit, type InsertAgentVerificationAudit, contractorAppointments, notifications, type SupportTicket, type InsertSupportTicket, type TicketReply, type InsertTicketReply, type SubscriptionPlan, users, contractors, companies, contractorLicenses, countries, regions, climateZones, regulatoryBodies, regionalMaintenanceTasks, taskCompletions, achievements, achievementDefinitions, userAchievements, maintenanceLogs, searchAnalytics, inviteCodes, agentProfiles, affiliateReferrals, subscriptionCycleEvents, affiliatePayouts, agentVerificationAudits, supportTickets, ticketReplies, houses, homeSystems, customMaintenanceTasks, taskOverrides, serviceRecords, homeownerConnectionCodes, conversations, messages, proposals, houseTransfers, subscriptionPlans, pushTokens, type CrmLead, type InsertCrmLead, type CrmNote, type InsertCrmNote, type ErrorLog, type InsertErrorLog, type ErrorBreadcrumb, type InsertErrorBreadcrumb, type CrmIntegration, type InsertCrmIntegration, type WebhookLog, type InsertWebhookLog, crmLeads, crmNotes, errorLogs, errorBreadcrumbs, crmIntegrations, webhookLogs, type CrmClient, type InsertCrmClient, type CrmJob, type InsertCrmJob, type CrmQuote, type InsertCrmQuote, type CrmInvoice, type InsertCrmInvoice, crmClients, crmJobs, crmQuotes, crmInvoices, referralCredits } from "@workspace/db";
-import { houseDisclosures, type HouseDisclosure, type InsertHouseDisclosure, homeDocuments, type HomeDocument, type InsertHomeDocument, insuranceClaimPackages, type InsuranceClaimPackage, type InsertInsuranceClaimPackage, insuranceEmailLogs, type InsuranceEmailLog, type InsertInsuranceEmailLog } from "@workspace/db";
+import { type Contractor, type InsertContractor, type Company, type InsertCompany, type CompanyInviteCode, type InsertCompanyInviteCode, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type HomeApplianceManual, type InsertHomeApplianceManual, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type HomeownerConnectionCode, type InsertHomeownerConnectionCode, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type PushToken, type InsertPushToken, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics, type TaskOverride, type InsertTaskOverride, type Country, type InsertCountry, type Region, type InsertRegion, type ClimateZone, type InsertClimateZone, type RegulatoryBody, type InsertRegulatoryBody, type RegionalMaintenanceTask, type InsertRegionalMaintenanceTask, type TaskCompletion, type InsertTaskCompletion, type Achievement, type InsertAchievement, type AchievementDefinition, type InsertAchievementDefinition, type UserAchievement, type InsertUserAchievement, type SearchAnalytics, type InsertSearchAnalytics, type InviteCode, type InsertInviteCode, type AgentProfile, type InsertAgentProfile, type AffiliateReferral, type InsertAffiliateReferral, type SubscriptionCycleEvent, type InsertSubscriptionCycleEvent, type AffiliatePayout, type InsertAffiliatePayout, type AgentVerificationAudit, type InsertAgentVerificationAudit, type SupportTicket, type InsertSupportTicket, type TicketReply, type InsertTicketReply, type SubscriptionPlan, users, contractors, companies, contractorLicenses, countries, regions, climateZones, regulatoryBodies, regionalMaintenanceTasks, taskCompletions, achievements, achievementDefinitions, userAchievements, maintenanceLogs, searchAnalytics, inviteCodes, agentProfiles, affiliateReferrals, subscriptionCycleEvents, affiliatePayouts, agentVerificationAudits, supportTickets, ticketReplies, houses, homeSystems, customMaintenanceTasks, taskOverrides, serviceRecords, homeownerConnectionCodes, conversations, messages, proposals, houseTransfers, subscriptionPlans, pushTokens, contractorBoosts, type CrmLead, type InsertCrmLead, type CrmNote, type InsertCrmNote, type ErrorLog, type InsertErrorLog, type ErrorBreadcrumb, type InsertErrorBreadcrumb, type CrmIntegration, type InsertCrmIntegration, type WebhookLog, type InsertWebhookLog, crmLeads, crmNotes, errorLogs, errorBreadcrumbs, crmIntegrations, webhookLogs, type CrmClient, type InsertCrmClient, type CrmJob, type InsertCrmJob, type CrmQuote, type InsertCrmQuote, type CrmInvoice, type InsertCrmInvoice, crmClients, crmJobs, crmQuotes, crmInvoices, referralCredits } from "@workspace/db";import { houseDisclosures, type HouseDisclosure, type InsertHouseDisclosure, homeDocuments, type HomeDocument, type InsertHomeDocument, insuranceClaimPackages, type InsuranceClaimPackage, type InsertInsuranceClaimPackage, insuranceEmailLogs, type InsuranceEmailLog, type InsertInsuranceEmailLog } from "@workspace/db";
 import { randomUUID, randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
@@ -6660,12 +6659,7 @@ class DbStorage implements IStorage {
     // getHousesByHomeowner now database-backed - implemented below (delegates to getHouses)
     this.getHomeSystemsByHomeowner = this.memStorage.getHomeSystemsByHomeowner.bind(this.memStorage);
     this.getMaintenanceLogsByHomeowner = this.memStorage.getMaintenanceLogsByHomeowner.bind(this.memStorage);
-    this.getActiveBoosts = this.memStorage.getActiveBoosts.bind(this.memStorage);
-    this.getContractorBoosts = this.memStorage.getContractorBoosts.bind(this.memStorage);
-    this.createContractorBoost = this.memStorage.createContractorBoost.bind(this.memStorage);
-    this.updateContractorBoost = this.memStorage.updateContractorBoost.bind(this.memStorage);
-    this.deleteContractorBoost = this.memStorage.deleteContractorBoost.bind(this.memStorage);
-    this.checkBoostConflict = this.memStorage.checkBoostConflict.bind(this.memStorage);
+    // Contractor boost operations now database-backed - implemented below
     this.createHouseTransfer = this.memStorage.createHouseTransfer.bind(this.memStorage);
     this.getHouseTransfer = this.memStorage.getHouseTransfer.bind(this.memStorage);
     this.getHouseTransferByToken = this.memStorage.getHouseTransferByToken.bind(this.memStorage);
@@ -9424,20 +9418,98 @@ class DbStorage implements IStorage {
     return { churnRate, churnedUsers, totalActiveUsers, churnSeries };
   }
 
+  // Contractor boost operations - DATABASE BACKED
+  private _calcBoostDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 3959;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  async getActiveBoosts(serviceCategory?: string, latitude?: number, longitude?: number): Promise<ContractorBoost[]> {
+    const now = new Date();
+    const conditions = [
+      eq(contractorBoosts.status, 'active'),
+      eq(contractorBoosts.isActive, true),
+    ];
+    if (serviceCategory) {
+      conditions.push(eq(contractorBoosts.serviceCategory, serviceCategory));
+    }
+    const rows = await db.select().from(contractorBoosts).where(and(...conditions));
+    return rows.filter(boost => {
+      if (new Date(boost.endDate) < now) return false;
+      if (latitude !== undefined && longitude !== undefined) {
+        const distance = this._calcBoostDistance(
+          latitude, longitude,
+          parseFloat(boost.businessLatitude), parseFloat(boost.businessLongitude)
+        );
+        if (distance > boost.boostRadius) return false;
+      }
+      return true;
+    });
+  }
+
+  async getContractorBoosts(contractorId: string): Promise<ContractorBoost[]> {
+    return db.select().from(contractorBoosts).where(eq(contractorBoosts.contractorId, contractorId));
+  }
+
+  async createContractorBoost(boostData: InsertContractorBoost): Promise<ContractorBoost> {
+    const [boost] = await db.insert(contractorBoosts).values({
+      ...boostData,
+      isActive: boostData.isActive ?? true,
+      status: boostData.status || 'active',
+      boostRadius: boostData.boostRadius ?? 10,
+      stripePaymentIntentId: boostData.stripePaymentIntentId || null,
+    }).returning();
+    return boost;
+  }
+
+  async updateContractorBoost(id: string, boostData: Partial<InsertContractorBoost>): Promise<ContractorBoost | undefined> {
+    const [updated] = await db.update(contractorBoosts)
+      .set({ ...boostData, updatedAt: new Date() })
+      .where(eq(contractorBoosts.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteContractorBoost(id: string): Promise<boolean> {
+    const result = await db.delete(contractorBoosts).where(eq(contractorBoosts.id, id)).returning({ id: contractorBoosts.id });
+    return result.length > 0;
+  }
+
+  async checkBoostConflict(serviceCategory: string, latitude: number, longitude: number, radius: number): Promise<ContractorBoost | null> {
+    const activeBoosts = await this.getActiveBoosts(serviceCategory);
+    for (const boost of activeBoosts) {
+      const distance = this._calcBoostDistance(
+        latitude, longitude,
+        parseFloat(boost.businessLatitude), parseFloat(boost.businessLongitude)
+      );
+      if ((radius + boost.boostRadius) > distance) {
+        return boost;
+      }
+    }
+    return null;
+  }
+
   // Feature usage stats - DATABASE BACKED
   async getFeatureUsageStats(): Promise<Array<{ feature: string; count: number }>> {
-    const [taskCompletionsArr, messagesArr, proposalsArr, serviceRecordsArr, housesArr] = await Promise.all([
+    const [taskCompletionsArr, messagesArr, proposalsArr, serviceRecordsArr, housesArr, boostsArr] = await Promise.all([
       db.select({ id: taskCompletions.id }).from(taskCompletions),
       db.select({ id: messages.id }).from(messages),
       db.select({ id: proposals.id }).from(proposals),
       db.select({ id: serviceRecords.id }).from(serviceRecords),
       db.select({ id: houses.id }).from(houses),
+      db.select({ id: contractorBoosts.id }).from(contractorBoosts),
     ]);
     return [
       { feature: 'Task Completions', count: taskCompletionsArr.length },
       { feature: 'Messages Sent', count: messagesArr.length },
       { feature: 'Proposals Created', count: proposalsArr.length },
-      { feature: 'Contractor Boosts', count: 0 },
+      { feature: 'Contractor Boosts', count: boostsArr.length },
       { feature: 'Service Records', count: serviceRecordsArr.length },
       { feature: 'Houses Tracked', count: housesArr.length },
     ];
