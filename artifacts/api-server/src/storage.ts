@@ -5499,30 +5499,24 @@ export class MemStorage implements IStorage {
     ];
   }
 
-  // Agent profile operations
+  // Agent profile operations (in-memory stubs — MemStorage is dev/test only)
+  private agentProfilesMap = new Map<string, AgentProfile>();
+
   async getAgentProfile(agentId: string): Promise<AgentProfile | undefined> {
-    const [profile] = await db
-      .select()
-      .from(agentProfiles)
-      .where(eq(agentProfiles.agentId, agentId))
-      .limit(1);
-    return profile;
+    return this.agentProfilesMap.get(agentId);
   }
 
   async createAgentProfile(profile: InsertAgentProfile): Promise<AgentProfile> {
-    const [created] = await db
-      .insert(agentProfiles)
-      .values(profile)
-      .returning();
+    const created = { ...profile, id: crypto.randomUUID(), createdAt: new Date(), updatedAt: new Date() } as AgentProfile;
+    this.agentProfilesMap.set(profile.agentId, created);
     return created;
   }
 
   async updateAgentProfile(agentId: string, profile: Partial<InsertAgentProfile>): Promise<AgentProfile | undefined> {
-    const [updated] = await db
-      .update(agentProfiles)
-      .set({ ...profile, updatedAt: new Date() })
-      .where(eq(agentProfiles.agentId, agentId))
-      .returning();
+    const existing = this.agentProfilesMap.get(agentId);
+    if (!existing) return undefined;
+    const updated = { ...existing, ...profile, updatedAt: new Date() } as AgentProfile;
+    this.agentProfilesMap.set(agentId, updated);
     return updated;
   }
 
@@ -5606,7 +5600,7 @@ export class MemStorage implements IStorage {
     this.uploadedFiles.delete(uploadId);
   }
 
-  // Agent verification operations
+  // Agent verification operations (in-memory stubs — MemStorage is dev/test only)
   async submitAgentVerification(agentId: string, data: {
     licenseNumber: string;
     licenseState: string;
@@ -5617,31 +5611,23 @@ export class MemStorage implements IStorage {
     stateIdFileSize: number;
     stateIdChecksum: string;
   }): Promise<AgentProfile | undefined> {
-    const now = new Date();
-    const [updated] = await db
-      .update(agentProfiles)
-      .set({
-        licenseNumber: data.licenseNumber,
-        licenseState: data.licenseState,
-        licenseExpiration: data.licenseExpiration,
-        stateIdStorageKey: data.stateIdStorageKey,
-        stateIdOriginalFilename: data.stateIdOriginalFilename,
-        stateIdMimeType: data.stateIdMimeType,
-        stateIdFileSize: data.stateIdFileSize,
-        stateIdChecksum: data.stateIdChecksum,
-        stateIdUploadedAt: now,
-        verificationStatus: 'pending_review',
-        verificationRequestedAt: now,
-        // Clear review metadata on resubmission
-        verifiedAt: null,
-        lastRejectedAt: null,
-        reviewedByAdminId: null,
-        reviewNotes: null,
-        updatedAt: now,
-      })
-      .where(eq(agentProfiles.agentId, agentId))
-      .returning();
-    return updated;
+    return this.updateAgentProfile(agentId, {
+      licenseNumber: data.licenseNumber,
+      licenseState: data.licenseState,
+      licenseExpiration: data.licenseExpiration,
+      stateIdStorageKey: data.stateIdStorageKey,
+      stateIdOriginalFilename: data.stateIdOriginalFilename,
+      stateIdMimeType: data.stateIdMimeType,
+      stateIdFileSize: data.stateIdFileSize,
+      stateIdChecksum: data.stateIdChecksum,
+      stateIdUploadedAt: new Date(),
+      verificationStatus: 'pending_review',
+      verificationRequestedAt: new Date(),
+      verifiedAt: null,
+      lastRejectedAt: null,
+      reviewedByAdminId: null,
+      reviewNotes: null,
+    });
   }
 
   async getAgentVerificationStatus(agentId: string): Promise<{
@@ -5652,66 +5638,49 @@ export class MemStorage implements IStorage {
     verificationRequestedAt?: Date | null;
     reviewNotes?: string | null;
   } | undefined> {
-    const [profile] = await db
-      .select({
-        verificationStatus: agentProfiles.verificationStatus,
-        licenseNumber: agentProfiles.licenseNumber,
-        licenseState: agentProfiles.licenseState,
-        licenseExpiration: agentProfiles.licenseExpiration,
-        verificationRequestedAt: agentProfiles.verificationRequestedAt,
-        reviewNotes: agentProfiles.reviewNotes,
-      })
-      .from(agentProfiles)
-      .where(eq(agentProfiles.agentId, agentId))
-      .limit(1);
-    return profile;
+    const profile = this.agentProfilesMap.get(agentId);
+    if (!profile) return undefined;
+    return {
+      verificationStatus: profile.verificationStatus,
+      licenseNumber: profile.licenseNumber,
+      licenseState: profile.licenseState,
+      licenseExpiration: profile.licenseExpiration,
+      verificationRequestedAt: profile.verificationRequestedAt,
+      reviewNotes: profile.reviewNotes,
+    };
   }
 
-  // Agent verification audit operations
+  // Agent verification audit operations (in-memory stubs — MemStorage is dev/test only)
+  private agentVerificationAuditsArr: AgentVerificationAudit[] = [];
+
   async createVerificationAudit(audit: InsertAgentVerificationAudit): Promise<AgentVerificationAudit> {
-    const [created] = await db
-      .insert(agentVerificationAudits)
-      .values(audit)
-      .returning();
+    const created = { ...audit, id: crypto.randomUUID(), createdAt: new Date() } as AgentVerificationAudit;
+    this.agentVerificationAuditsArr.push(created);
     return created;
   }
 
   async getVerificationAudits(agentId: string): Promise<AgentVerificationAudit[]> {
-    return await db
-      .select()
-      .from(agentVerificationAudits)
-      .where(eq(agentVerificationAudits.agentId, agentId))
-      .orderBy(desc(agentVerificationAudits.createdAt));
+    return this.agentVerificationAuditsArr
+      .filter(a => a.agentId === agentId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
-  // Affiliate referral operations
+  // Affiliate referral operations (in-memory stubs — MemStorage is dev/test only)
+  private affiliateReferralsMap = new Map<string, AffiliateReferral>();
+
   async getAffiliateReferrals(agentId: string): Promise<AffiliateReferral[]> {
-    return await db
-      .select()
-      .from(affiliateReferrals)
-      .where(eq(affiliateReferrals.agentId, agentId));
+    return Array.from(this.affiliateReferralsMap.values()).filter(r => r.agentId === agentId);
   }
 
   async getAffiliateReferral(id: string): Promise<AffiliateReferral | undefined> {
-    const [referral] = await db
-      .select()
-      .from(affiliateReferrals)
-      .where(eq(affiliateReferrals.id, id))
-      .limit(1);
-    return referral;
+    return this.affiliateReferralsMap.get(id);
   }
 
   async getAffiliateReferralByUserId(userId: string): Promise<AffiliateReferral | undefined> {
-    const [referral] = await db
-      .select()
-      .from(affiliateReferrals)
-      .where(eq(affiliateReferrals.referredUserId, userId))
-      .limit(1);
-    return referral;
+    return Array.from(this.affiliateReferralsMap.values()).find(r => r.referredUserId === userId);
   }
 
   async getReferringAgentForHomeowner(homeownerId: string): Promise<{ firstName: string; lastName: string; email: string | null; phone: string | null; website: string | null; officeAddress: string | null; referralCode: string | null; profileImageUrl: string | null; } | undefined> {
-    // Demo: return a realistic mock agent for the demo homeowner
     if (homeownerId === 'demo-homeowner-permanent-id') {
       return {
         firstName: 'Jessica',
@@ -5725,19 +5694,12 @@ export class MemStorage implements IStorage {
       };
     }
 
-    // Get the affiliate referral record for this homeowner
     const referral = await this.getAffiliateReferralByUserId(homeownerId);
-    if (!referral) {
-      return undefined;
-    }
+    if (!referral) return undefined;
 
-    // Get the agent's user information
     const agent = await this.getUser(referral.agentId);
-    if (!agent) {
-      return undefined;
-    }
+    if (!agent) return undefined;
 
-    // Get the agent's profile for contact information
     const agentProfile = await this.getAgentProfile(referral.agentId);
 
     return {
@@ -5753,93 +5715,68 @@ export class MemStorage implements IStorage {
   }
 
   async createAffiliateReferral(referral: InsertAffiliateReferral): Promise<AffiliateReferral> {
-    const [created] = await db
-      .insert(affiliateReferrals)
-      .values(referral)
-      .returning();
+    const created = { ...referral, id: crypto.randomUUID(), createdAt: new Date(), updatedAt: new Date() } as AffiliateReferral;
+    this.affiliateReferralsMap.set(created.id, created);
     return created;
   }
 
   async updateAffiliateReferral(id: string, referral: Partial<InsertAffiliateReferral>): Promise<AffiliateReferral | undefined> {
-    const [updated] = await db
-      .update(affiliateReferrals)
-      .set({ ...referral, updatedAt: new Date() })
-      .where(eq(affiliateReferrals.id, id))
-      .returning();
+    const existing = this.affiliateReferralsMap.get(id);
+    if (!existing) return undefined;
+    const updated = { ...existing, ...referral, updatedAt: new Date() } as AffiliateReferral;
+    this.affiliateReferralsMap.set(id, updated);
     return updated;
   }
 
-  // Subscription cycle event operations
+  // Subscription cycle event operations (in-memory stubs — MemStorage is dev/test only)
+  private subscriptionCycleEventsArr: SubscriptionCycleEvent[] = [];
+
   async getSubscriptionCycleEvents(userId: string): Promise<SubscriptionCycleEvent[]> {
-    return await db
-      .select()
-      .from(subscriptionCycleEvents)
-      .where(eq(subscriptionCycleEvents.userId, userId));
+    return this.subscriptionCycleEventsArr.filter(e => e.userId === userId);
   }
 
   async createSubscriptionCycleEvent(event: InsertSubscriptionCycleEvent): Promise<SubscriptionCycleEvent> {
-    const [created] = await db
-      .insert(subscriptionCycleEvents)
-      .values(event)
-      .returning();
+    const created = { ...event, id: crypto.randomUUID(), createdAt: new Date() } as SubscriptionCycleEvent;
+    this.subscriptionCycleEventsArr.push(created);
     return created;
   }
 
   async getLastPaymentEvent(userId: string): Promise<SubscriptionCycleEvent | undefined> {
-    const [lastEvent] = await db
-      .select()
-      .from(subscriptionCycleEvents)
-      .where(and(
-        eq(subscriptionCycleEvents.userId, userId),
-        eq(subscriptionCycleEvents.status, 'paid')
-      ))
-      .orderBy(desc(subscriptionCycleEvents.periodStart))
-      .limit(1);
-    return lastEvent;
+    return this.subscriptionCycleEventsArr
+      .filter(e => e.userId === userId && e.status === 'paid')
+      .sort((a, b) => new Date(b.periodStart).getTime() - new Date(a.periodStart).getTime())[0];
   }
 
-  // Affiliate payout operations
+  // Affiliate payout operations (in-memory stubs — MemStorage is dev/test only)
+  private affiliatePayoutsMap = new Map<string, AffiliatePayout>();
+
   async getAffiliatePayouts(agentId: string): Promise<AffiliatePayout[]> {
-    return await db
-      .select()
-      .from(affiliatePayouts)
-      .where(eq(affiliatePayouts.agentId, agentId));
+    return Array.from(this.affiliatePayoutsMap.values()).filter(p => p.agentId === agentId);
   }
 
   async getAffiliatePayout(id: string): Promise<AffiliatePayout | undefined> {
-    const [payout] = await db
-      .select()
-      .from(affiliatePayouts)
-      .where(eq(affiliatePayouts.id, id))
-      .limit(1);
-    return payout;
+    return this.affiliatePayoutsMap.get(id);
   }
 
   async createAffiliatePayout(payout: InsertAffiliatePayout): Promise<AffiliatePayout> {
-    const [created] = await db
-      .insert(affiliatePayouts)
-      .values(payout)
-      .returning();
+    const created = { ...payout, id: crypto.randomUUID(), createdAt: new Date(), updatedAt: new Date() } as AffiliatePayout;
+    this.affiliatePayoutsMap.set(created.id, created);
     return created;
   }
 
   async updateAffiliatePayout(id: string, payout: Partial<InsertAffiliatePayout>): Promise<AffiliatePayout | undefined> {
-    const [updated] = await db
-      .update(affiliatePayouts)
-      .set({ ...payout, updatedAt: new Date() })
-      .where(eq(affiliatePayouts.id, id))
-      .returning();
+    const existing = this.affiliatePayoutsMap.get(id);
+    if (!existing) return undefined;
+    const updated = { ...existing, ...payout, updatedAt: new Date() } as AffiliatePayout;
+    this.affiliatePayoutsMap.set(id, updated);
     return updated;
   }
 
   async getPendingPayouts(): Promise<AffiliatePayout[]> {
-    return await db
-      .select()
-      .from(affiliatePayouts)
-      .where(eq(affiliatePayouts.status, 'pending'));
+    return Array.from(this.affiliatePayoutsMap.values()).filter(p => p.status === 'pending');
   }
 
-  // Agent dashboard stats
+  // Agent dashboard stats (in-memory stubs — MemStorage is dev/test only)
   async getAgentStats(agentId: string): Promise<{
     totalReferrals: number;
     activeReferrals: number;
@@ -5847,79 +5784,19 @@ export class MemStorage implements IStorage {
     pendingEarnings: number;
     nextPayoutDate: string | null;
   }> {
-    const referrals = await db
-      .select()
-      .from(affiliateReferrals)
-      .where(eq(affiliateReferrals.agentId, agentId));
-
-    const payouts = await db
-      .select()
-      .from(affiliatePayouts)
-      .where(eq(affiliatePayouts.agentId, agentId));
+    const referrals = await this.getAffiliateReferrals(agentId);
+    const payouts = await this.getAffiliatePayouts(agentId);
 
     const totalReferrals = referrals.length;
-    const activeReferrals = referrals.filter(r => 
-      r.status !== 'voided' && r.status !== 'paid'
-    ).length;
+    const activeReferrals = referrals.filter(r => r.status !== 'voided' && r.status !== 'paid').length;
+    const totalEarnings = payouts
+      .filter(p => p.status === 'paid')
+      .reduce((sum, p) => sum + parseFloat(p.amount || '0'), 0);
+    const pendingEarnings = payouts
+      .filter(p => p.status === 'pending')
+      .reduce((sum, p) => sum + parseFloat(p.amount || '0'), 0);
 
-    const paidPayouts = payouts.filter(p => p.status === 'paid');
-    const totalEarnings = paidPayouts.reduce((sum, p) => 
-      sum + parseFloat(p.amount || '0'), 0
-    );
-
-    const pendingPayoutsFiltered = payouts.filter(p => p.status === 'pending');
-    const pendingEarnings = pendingPayoutsFiltered.reduce((sum, p) => 
-      sum + parseFloat(p.amount || '0'), 0
-    );
-
-    // Compute nextPayoutDate: earliest estimated date agent will receive money
-    const candidateDates: Date[] = [];
-
-    // Pending payouts (status='pending' or 'payout_pending') that are queued to process:
-    // estimate 1st of next month as the processing date
-    const hasPendingPayout = payouts.some(p => p.status === 'pending' || p.status === 'payout_pending' || p.status === 'processing');
-    if (hasPendingPayout) {
-      const now = new Date();
-      const firstOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-      candidateDates.push(firstOfNextMonth);
-    }
-
-    // Referrals in progress: estimate payout date as firstPaymentDate + (4 - consecutiveMonthsPaid) months
-    const inProgressReferrals = referrals.filter(r =>
-      r.firstPaymentDate !== null &&
-      r.consecutiveMonthsPaid < 4 &&
-      !['voided', 'paid', 'eligible'].includes(r.status)
-    );
-    for (const referral of inProgressReferrals) {
-      if (referral.firstPaymentDate) {
-        const monthsRemaining = 4 - (referral.consecutiveMonthsPaid || 0);
-        const estimatedDate = new Date(referral.firstPaymentDate);
-        estimatedDate.setMonth(estimatedDate.getMonth() + monthsRemaining);
-        candidateDates.push(estimatedDate);
-      }
-    }
-
-    // Eligible referrals not yet paid (milestone reached, waiting for payout)
-    const eligibleReferrals = referrals.filter(r => r.status === 'eligible' || r.status === 'payout_pending');
-    if (eligibleReferrals.length > 0) {
-      const now = new Date();
-      const firstOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-      candidateDates.push(firstOfNextMonth);
-    }
-
-    let nextPayoutDate: string | null = null;
-    if (candidateDates.length > 0) {
-      const earliest = candidateDates.reduce((a, b) => a < b ? a : b);
-      nextPayoutDate = earliest.toISOString().split('T')[0]; // YYYY-MM-DD
-    }
-
-    return {
-      totalReferrals,
-      activeReferrals,
-      totalEarnings,
-      pendingEarnings,
-      nextPayoutDate,
-    };
+    return { totalReferrals, activeReferrals, totalEarnings, pendingEarnings, nextPayoutDate: null };
   }
 
   // Support ticket operations
