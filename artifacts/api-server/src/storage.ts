@@ -1,4 +1,4 @@
-import { type Contractor, type InsertContractor, type Company, type InsertCompany, type CompanyInviteCode, type InsertCompanyInviteCode, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type HomeApplianceManual, type InsertHomeApplianceManual, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type HomeownerConnectionCode, type InsertHomeownerConnectionCode, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type PushToken, type InsertPushToken, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics, type TaskOverride, type InsertTaskOverride, type Country, type InsertCountry, type Region, type InsertRegion, type ClimateZone, type InsertClimateZone, type RegulatoryBody, type InsertRegulatoryBody, type RegionalMaintenanceTask, type InsertRegionalMaintenanceTask, type TaskCompletion, type InsertTaskCompletion, type Achievement, type InsertAchievement, type AchievementDefinition, type InsertAchievementDefinition, type UserAchievement, type InsertUserAchievement, type SearchAnalytics, type InsertSearchAnalytics, type InviteCode, type InsertInviteCode, type AgentProfile, type InsertAgentProfile, type AffiliateReferral, type InsertAffiliateReferral, type SubscriptionCycleEvent, type InsertSubscriptionCycleEvent, type AffiliatePayout, type InsertAffiliatePayout, type AgentVerificationAudit, type InsertAgentVerificationAudit, type SupportTicket, type InsertSupportTicket, type TicketReply, type InsertTicketReply, type SubscriptionPlan, users, contractors, companies, contractorLicenses, countries, regions, climateZones, regulatoryBodies, regionalMaintenanceTasks, taskCompletions, achievements, achievementDefinitions, userAchievements, maintenanceLogs, searchAnalytics, inviteCodes, agentProfiles, affiliateReferrals, subscriptionCycleEvents, affiliatePayouts, agentVerificationAudits, supportTickets, ticketReplies, houses, homeSystems, customMaintenanceTasks, taskOverrides, serviceRecords, homeownerConnectionCodes, conversations, messages, proposals, houseTransfers, subscriptionPlans, pushTokens, type CrmLead, type InsertCrmLead, type CrmNote, type InsertCrmNote, type ErrorLog, type InsertErrorLog, type ErrorBreadcrumb, type InsertErrorBreadcrumb, type CrmIntegration, type InsertCrmIntegration, type WebhookLog, type InsertWebhookLog, crmLeads, crmNotes, errorLogs, errorBreadcrumbs, crmIntegrations, webhookLogs, type CrmClient, type InsertCrmClient, type CrmJob, type InsertCrmJob, type CrmQuote, type InsertCrmQuote, type CrmInvoice, type InsertCrmInvoice, crmClients, crmJobs, crmQuotes, crmInvoices, referralCredits } from "@workspace/db";
+import { type Contractor, type InsertContractor, type Company, type InsertCompany, type CompanyInviteCode, type InsertCompanyInviteCode, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type HomeApplianceManual, type InsertHomeApplianceManual, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type HomeownerConnectionCode, type InsertHomeownerConnectionCode, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type PushToken, type InsertPushToken, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics, type TaskOverride, type InsertTaskOverride, type Country, type InsertCountry, type Region, type InsertRegion, type ClimateZone, type InsertClimateZone, type RegulatoryBody, type InsertRegulatoryBody, type RegionalMaintenanceTask, type InsertRegionalMaintenanceTask, type TaskCompletion, type InsertTaskCompletion, type Achievement, type InsertAchievement, type AchievementDefinition, type InsertAchievementDefinition, type UserAchievement, type InsertUserAchievement, type SearchAnalytics, type InsertSearchAnalytics, type InviteCode, type InsertInviteCode, type AgentProfile, type InsertAgentProfile, type AffiliateReferral, type InsertAffiliateReferral, type SubscriptionCycleEvent, type InsertSubscriptionCycleEvent, type AffiliatePayout, type InsertAffiliatePayout, type AgentVerificationAudit, type InsertAgentVerificationAudit, contractorAppointments, notifications, type SupportTicket, type InsertSupportTicket, type TicketReply, type InsertTicketReply, type SubscriptionPlan, users, contractors, companies, contractorLicenses, countries, regions, climateZones, regulatoryBodies, regionalMaintenanceTasks, taskCompletions, achievements, achievementDefinitions, userAchievements, maintenanceLogs, searchAnalytics, inviteCodes, agentProfiles, affiliateReferrals, subscriptionCycleEvents, affiliatePayouts, agentVerificationAudits, supportTickets, ticketReplies, houses, homeSystems, customMaintenanceTasks, taskOverrides, serviceRecords, homeownerConnectionCodes, conversations, messages, proposals, houseTransfers, subscriptionPlans, pushTokens, type CrmLead, type InsertCrmLead, type CrmNote, type InsertCrmNote, type ErrorLog, type InsertErrorLog, type ErrorBreadcrumb, type InsertErrorBreadcrumb, type CrmIntegration, type InsertCrmIntegration, type WebhookLog, type InsertWebhookLog, crmLeads, crmNotes, errorLogs, errorBreadcrumbs, crmIntegrations, webhookLogs, type CrmClient, type InsertCrmClient, type CrmJob, type InsertCrmJob, type CrmQuote, type InsertCrmQuote, type CrmInvoice, type InsertCrmInvoice, crmClients, crmJobs, crmQuotes, crmInvoices, referralCredits } from "@workspace/db";
 import { houseDisclosures, type HouseDisclosure, type InsertHouseDisclosure, homeDocuments, type HomeDocument, type InsertHomeDocument, insuranceClaimPackages, type InsuranceClaimPackage, type InsertInsuranceClaimPackage, insuranceEmailLogs, type InsuranceEmailLog, type InsertInsuranceEmailLog } from "@workspace/db";
 import { randomUUID, randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
@@ -6629,20 +6629,7 @@ class DbStorage implements IStorage {
     // Maintenance logs and custom tasks now database-backed - implemented below
     // Home systems, custom tasks, maintenance logs, and service records are now database-backed
     this.getDefaultHouse = this.memStorage.getDefaultHouse.bind(this.memStorage);
-    this.getContractorAppointments = this.memStorage.getContractorAppointments.bind(this.memStorage);
-    this.getContractorAppointment = this.memStorage.getContractorAppointment.bind(this.memStorage);
-    this.createContractorAppointment = this.memStorage.createContractorAppointment.bind(this.memStorage);
-    this.updateContractorAppointment = this.memStorage.updateContractorAppointment.bind(this.memStorage);
-    this.deleteContractorAppointment = this.memStorage.deleteContractorAppointment.bind(this.memStorage);
-    this.getNotifications = this.memStorage.getNotifications.bind(this.memStorage);
-    this.getNotification = this.memStorage.getNotification.bind(this.memStorage);
-    this.createNotification = this.memStorage.createNotification.bind(this.memStorage);
-    this.updateNotification = this.memStorage.updateNotification.bind(this.memStorage);
-    this.deleteNotification = this.memStorage.deleteNotification.bind(this.memStorage);
-    this.getUnreadNotifications = this.memStorage.getUnreadNotifications.bind(this.memStorage);
-    this.getContractorNotifications = this.memStorage.getContractorNotifications.bind(this.memStorage);
-    this.getUnreadContractorNotifications = this.memStorage.getUnreadContractorNotifications.bind(this.memStorage);
-    this.markNotificationAsRead = this.memStorage.markNotificationAsRead.bind(this.memStorage);
+    // contractorAppointments and notifications are now database-backed (implemented below)
     // searchContractors, getContractorProfile, updateContractorProfile, and getConversations now use database-backed methods (defined below)
     this.searchProducts = this.memStorage.searchProducts.bind(this.memStorage);
     // Service records now database-backed - implemented below
@@ -9588,6 +9575,182 @@ class DbStorage implements IStorage {
       reviewNotes: agentProfiles.reviewNotes,
     }).from(agentProfiles).where(eq(agentProfiles.agentId, agentId)).limit(1);
     return profile;
+  }
+
+  // Contractor Appointment methods — DATABASE BACKED for persistence
+  async getContractorAppointments(homeownerId?: string, houseId?: string): Promise<ContractorAppointment[]> {
+    const conditions = [];
+    if (homeownerId) conditions.push(eq(contractorAppointments.homeownerId, homeownerId));
+    if (houseId) conditions.push(eq(contractorAppointments.houseId, houseId));
+
+    const results = conditions.length > 0
+      ? await db.select().from(contractorAppointments).where(and(...conditions))
+      : await db.select().from(contractorAppointments);
+
+    return results.sort((a, b) =>
+      new Date(a.scheduledDateTime).getTime() - new Date(b.scheduledDateTime).getTime()
+    );
+  }
+
+  async getContractorAppointment(id: string): Promise<ContractorAppointment | undefined> {
+    const result = await db.select().from(contractorAppointments).where(eq(contractorAppointments.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createContractorAppointment(appointment: InsertContractorAppointment): Promise<ContractorAppointment> {
+    const result = await db.insert(contractorAppointments).values(appointment).returning();
+    const newAppointment = result[0];
+    await this.createAppointmentNotificationsDb(newAppointment);
+    return newAppointment;
+  }
+
+  async updateContractorAppointment(id: string, appointment: Partial<InsertContractorAppointment>): Promise<ContractorAppointment | undefined> {
+    const existing = await this.getContractorAppointment(id);
+    if (!existing) return undefined;
+
+    const result = await db.update(contractorAppointments).set(appointment).where(eq(contractorAppointments.id, id)).returning();
+    const updated = result[0];
+
+    if (appointment.scheduledDateTime && appointment.scheduledDateTime !== existing.scheduledDateTime) {
+      await this.updateAppointmentNotificationsDb(updated);
+    }
+
+    return updated;
+  }
+
+  async deleteContractorAppointment(id: string): Promise<boolean> {
+    await db.delete(notifications).where(eq(notifications.appointmentId, id));
+    const result = await db.delete(contractorAppointments).where(eq(contractorAppointments.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Notification methods — DATABASE BACKED for persistence
+  async getNotifications(homeownerId?: string): Promise<Notification[]> {
+    if (homeownerId) {
+      return await db.select().from(notifications)
+        .where(eq(notifications.homeownerId, homeownerId))
+        .orderBy(desc(notifications.createdAt));
+    }
+    return await db.select().from(notifications).orderBy(desc(notifications.createdAt));
+  }
+
+  async getNotification(id: string): Promise<Notification | undefined> {
+    const result = await db.select().from(notifications).where(eq(notifications.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createNotification(notification: InsertNotification): Promise<Notification> {
+    const result = await db.insert(notifications).values(notification).returning();
+    return result[0];
+  }
+
+  async updateNotification(id: string, notification: Partial<InsertNotification>): Promise<Notification | undefined> {
+    const existing = await this.getNotification(id);
+    if (!existing) return undefined;
+    const result = await db.update(notifications).set(notification).where(eq(notifications.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteNotification(id: string): Promise<boolean> {
+    const result = await db.delete(notifications).where(eq(notifications.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getUnreadNotifications(homeownerId: string): Promise<Notification[]> {
+    return await db.select().from(notifications)
+      .where(and(eq(notifications.homeownerId, homeownerId), eq(notifications.isRead, false)))
+      .orderBy(asc(notifications.scheduledFor));
+  }
+
+  async getContractorNotifications(contractorId: string): Promise<Notification[]> {
+    const rows = await db
+      .select({ notification: notifications })
+      .from(notifications)
+      .innerJoin(contractorAppointments, eq(notifications.appointmentId, contractorAppointments.id))
+      .where(eq(contractorAppointments.contractorId, contractorId))
+      .orderBy(desc(notifications.createdAt));
+    return rows.map(r => r.notification);
+  }
+
+  async getUnreadContractorNotifications(contractorId: string): Promise<Notification[]> {
+    const rows = await db
+      .select({ notification: notifications })
+      .from(notifications)
+      .innerJoin(contractorAppointments, eq(notifications.appointmentId, contractorAppointments.id))
+      .where(and(eq(contractorAppointments.contractorId, contractorId), eq(notifications.isRead, false)));
+    return rows.map(r => r.notification);
+  }
+
+  async markNotificationAsRead(id: string): Promise<boolean> {
+    const result = await db.update(notifications).set({ isRead: true }).where(eq(notifications.id, id)).returning();
+    return result.length > 0;
+  }
+
+  private async createAppointmentNotificationsDb(appointment: ContractorAppointment): Promise<void> {
+    const appointmentDateTime = new Date(appointment.scheduledDateTime);
+    const now = new Date();
+
+    const twentyFourHour = new Date(appointmentDateTime.getTime() - 24 * 60 * 60 * 1000);
+    if (twentyFourHour > now) {
+      await this.createNotification({
+        homeownerId: appointment.homeownerId,
+        houseId: appointment.houseId ?? null,
+        appointmentId: appointment.id,
+        maintenanceTaskId: null,
+        type: "24_hour",
+        category: "appointment",
+        title: "Contractor Visit Tomorrow",
+        message: `${appointment.contractorName} is scheduled to visit tomorrow at ${appointmentDateTime.toLocaleTimeString()} for ${appointment.serviceDescription}.`,
+        scheduledFor: twentyFourHour.toISOString(),
+        isRead: false,
+        sentAt: null,
+        priority: "medium",
+        actionUrl: null,
+      });
+    }
+
+    const fourHour = new Date(appointmentDateTime.getTime() - 4 * 60 * 60 * 1000);
+    if (fourHour > now) {
+      await this.createNotification({
+        homeownerId: appointment.homeownerId,
+        houseId: appointment.houseId ?? null,
+        appointmentId: appointment.id,
+        maintenanceTaskId: null,
+        type: "4_hour",
+        category: "appointment",
+        title: "Contractor Visit in 4 Hours",
+        message: `${appointment.contractorName} will arrive in 4 hours at ${appointmentDateTime.toLocaleTimeString()} for ${appointment.serviceDescription}.`,
+        scheduledFor: fourHour.toISOString(),
+        isRead: false,
+        sentAt: null,
+        priority: "high",
+        actionUrl: null,
+      });
+    }
+
+    const oneHour = new Date(appointmentDateTime.getTime() - 60 * 60 * 1000);
+    if (oneHour > now) {
+      await this.createNotification({
+        homeownerId: appointment.homeownerId,
+        houseId: appointment.houseId ?? null,
+        appointmentId: appointment.id,
+        maintenanceTaskId: null,
+        type: "1_hour",
+        category: "appointment",
+        title: "Contractor Arriving Soon",
+        message: `${appointment.contractorName} will arrive in 1 hour at ${appointmentDateTime.toLocaleTimeString()}. Please ensure someone is home to let them in.`,
+        scheduledFor: oneHour.toISOString(),
+        isRead: false,
+        sentAt: null,
+        priority: "high",
+        actionUrl: null,
+      });
+    }
+  }
+
+  private async updateAppointmentNotificationsDb(appointment: ContractorAppointment): Promise<void> {
+    await db.delete(notifications).where(eq(notifications.appointmentId, appointment.id));
+    await this.createAppointmentNotificationsDb(appointment);
   }
 }
 
