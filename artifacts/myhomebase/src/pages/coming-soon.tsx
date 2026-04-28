@@ -11,7 +11,7 @@ export default function ComingSoon() {
       alignItems: 'center',
       justifyContent: 'center',
       padding: '40px 24px',
-      fontFamily: "'Plus Jakarta Sans', 'Inter', system-ui, sans-serif",
+      fontFamily: "'Inter', 'Inter', system-ui, sans-serif",
       textAlign: 'center',
       color: '#fff',
     }}>

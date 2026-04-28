@@ -1,7 +1,7 @@
 export const theme = {
 
   font: {
-    family: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+    family: "'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif",
     weight: { medium: 500, semibold: 600, bold: 700 },
     size: {
       micro: '9px',

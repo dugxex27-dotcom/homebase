@@ -78,7 +78,7 @@ export default function ContractorReferral() {
         ctx?.drawImage(img, 0, 0);
         
         if (ctx) {
-          ctx.font = `700 ${fontSize}px "Plus Jakarta Sans", "Segoe UI", sans-serif`;
+          ctx.font = `700 ${fontSize}px "Inter", "Segoe UI", sans-serif`;
           ctx.fillStyle = textColor;
           ctx.textAlign = textAlign;
           ctx.fillText(referralCode, codePosition.x, codePosition.y);

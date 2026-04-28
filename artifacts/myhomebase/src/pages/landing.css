@@ -13,14 +13,14 @@ body.mhb-landing-active header:first-of-type {
 /* ── Font system ── */
 .mhb-welcome,
 .mhb-welcome * {
-  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
 }
 
 .mhb-headline,
 .mhb-headline-accent,
 .mhb-utb-title,
 .mhb-referral-popover-title {
-  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
 }
 
 .mhb-welcome {
@@ -405,7 +405,7 @@ body.mhb-landing-active header:first-of-type {
   border: none;
   cursor: pointer;
   text-decoration: underline;
-  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   padding: 4px 2px;
   -webkit-tap-highlight-color: transparent;
 }
@@ -433,7 +433,7 @@ body.mhb-landing-active header:first-of-type {
   font-size: 11px;
   font-weight: 700;
   color: #B6A6F4;
-  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
 }
 
 .mhb-google-btn {
@@ -446,7 +446,7 @@ body.mhb-landing-active header:first-of-type {
   border: 1.5px solid rgba(0, 0, 0, 0.12);
   border-radius: 13px;
   padding: 13px 16px;
-  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   font-size: 14px;
   font-weight: 600;
   color: #1a1a1a;
@@ -580,7 +580,7 @@ body.mhb-landing-active header:first-of-type {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   line-height: 1;
   -webkit-tap-highlight-color: transparent;
 }
@@ -1711,7 +1711,7 @@ html {
   display: flex;
   flex-direction: column;
   background: #0f0c1a;
-  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  font-family: 'Inter', 'Inter', system-ui, sans-serif;
   color: #1a1a2e;
 }
 
@@ -3091,7 +3091,24 @@ html {
 .mhb-pricing-vs {
   font-size: 22px;
   font-weight: 700;
-  color: #c4b5fd;
+  color: #2C0F5B;
+}
+
+@media (max-width: 600px) {
+  .mhb-pricing-compare {
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .mhb-pricing-vs {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    opacity: 0.55;
+    margin: 4px 0;
+  }
 }
 
 .mhb-pricing-tagline {
