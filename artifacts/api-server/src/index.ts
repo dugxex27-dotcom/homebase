@@ -3,6 +3,7 @@ import app from "./app";
 import { registerRoutes } from "./routes/routes";
 import { logger } from "./lib/logger";
 import { runMigrations } from "./migrate";
+import { seedRegionalData } from "./seed-regional-data";
 import { trialReminderScheduler } from "./trial-reminder-scheduler";
 import { profileViewReportScheduler } from "./profile-view-report-scheduler";
 import { weeklyTaskReminderScheduler } from "./weekly-task-reminder-scheduler";
@@ -94,6 +95,11 @@ app.get("/info/*path", proxyToSquarespace);
 
 (async () => {
   await runMigrations();
+  try {
+    await seedRegionalData();
+  } catch (err) {
+    logger.warn({ err }, "[seed-regional-data] Seeding failed — server will still start");
+  }
 
   const server = await registerRoutes(app);
 
