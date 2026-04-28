@@ -2462,13 +2462,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Simple homeowner demo login with realistic profile
   app.post('/api/auth/homeowner-demo-login', authLimiter, async (req, res) => {
     try {
-      // DEMO DATA PROTECTION: Block demo login in production unless explicitly enabled
-      if (!isDemoDataEnabled()) {
-        console.log('🛡️ DEMO DATA PROTECTION: Demo login blocked in production environment');
-        return res.status(403).json({ 
-          message: "Demo login is not available in production. Please create a real account." 
-        });
-      }
       
       const demoEmail = 'sarah.anderson@homebase.com';
       const demoId = 'demo-homeowner-permanent-id';
@@ -2919,13 +2912,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Simple contractor demo login with realistic company profile
   app.post('/api/auth/contractor-demo-login', authLimiter, async (req, res) => {
     try {
-      // DEMO DATA PROTECTION: Block demo login in production unless explicitly enabled
-      if (!isDemoDataEnabled()) {
-        console.log('🛡️ DEMO DATA PROTECTION: Contractor demo login blocked in production environment');
-        return res.status(403).json({ 
-          message: "Demo login is not available in production. Please create a real account." 
-        });
-      }
       
       const demoEmail = 'david.martinez@precisionhvac.com';
       const demoId = 'demo-contractor-permanent-id';
