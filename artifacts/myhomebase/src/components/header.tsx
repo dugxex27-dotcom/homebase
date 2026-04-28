@@ -11,7 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { User, Notification } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
-import logoWhite from '@assets/my-homebase-logo-tm-final-white_1777413931548.png';
+import logoWhite from '@assets/my-homebase-logo-tm-final-white_1777417516350.png';
 import logoColor from '@assets/my-homebase-logo-tm-final_1776295160061.png';
 
 interface BeforeInstallPromptEvent extends Event {

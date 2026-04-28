@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { FreeUserUpgradePrompt, HomeownerTrialBanner } from "@/components/homeowner-feature-gate";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
-import logoHomeowner from "@assets/my-homebase-logo-tm-final-white_1777413931548.png";
+import logoHomeowner from "@assets/my-homebase-logo-tm-final-white_1777417516350.png";
 import "./home.css";
 import { apiRequest } from "@/lib/queryClient";
 import { 

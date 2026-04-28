@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import logoWhite from "@assets/my-homebase-logo-tm-final-white_1777413931548.png";
+import logoWhite from "@assets/my-homebase-logo-tm-final-white_1777417516350.png";
 
 export default function ComingSoon() {
   return (
