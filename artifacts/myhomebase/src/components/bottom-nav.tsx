@@ -42,6 +42,13 @@ export default function BottomNav() {
     ? conversations.filter((c: any) => c.unreadCount > 0).length
     : 0;
 
+  const { data: unclaimedInvoiceData } = useQuery<{ count: number }>({
+    queryKey: ['/api/homeowner/linked-invoices/unclaimed-count'],
+    enabled: !!user && typedUser?.role === 'homeowner',
+    refetchInterval: 60000,
+  });
+  const unclaimedInvoiceCount = unclaimedInvoiceData?.count ?? 0;
+
   const isActive = (paths: string | string[]) => {
     const arr = Array.isArray(paths) ? paths : [paths];
     return arr.some(p => location === p || location.startsWith(p + '/'));
@@ -71,7 +78,7 @@ export default function BottomNav() {
   const navItems =
     typedUser?.role === 'homeowner'
       ? [
-          { href: '/',                icon: Home,     label: 'Home',    active: isActive('/') },
+          { href: '/',                icon: Home,     label: 'Home',    active: isActive('/'), badge: unclaimedInvoiceCount },
           { href: '/service-records', icon: FileText, label: 'Records', active: isActive(['/service-records', '/documents']) },
           { href: '/account',         icon: User,     label: 'Account', active: isActive(['/account', '/billing', '/homeowner-referral']) },
         ]

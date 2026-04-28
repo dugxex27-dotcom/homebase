@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Users, Calendar, Search, Star, TrendingUp, Gift, Sparkles, FileText, AlertTriangle, ClipboardList, Bell, ChevronRight, ChevronDown, ChevronUp, Phone, Mail, Globe, MapPin, X as XIcon, Wrench, DollarSign } from "lucide-react";
 import HouseMap from "@/components/house-map";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ export default function Home() {
   const typedUser = user as UserType | undefined;
   const [, setLocation] = useLocation();
   const { isPaidSubscriber, subscriptionStatus, isLoading: subLoading } = useHomeownerSubscription();
+  const queryClient = useQueryClient();
 
   // Redirect contractors and agents to their dashboards; redirect inactive homeowners to trial setup
   useEffect(() => {
@@ -112,6 +113,12 @@ export default function Home() {
     enabled: typedUser?.role === "homeowner",
   });
 
+  // Count of unclaimed linked invoices for badge notification
+  const { data: unclaimedInvoiceData } = useQuery<{ count: number }>({
+    queryKey: ["/api/homeowner/linked-invoices/unclaimed-count"],
+    enabled: typedUser?.role === "homeowner",
+    refetchInterval: 60000,
+  });
   const claimInvoiceMutation = useMutation({
     mutationFn: async ({ invoiceId, houseId }: { invoiceId: string; houseId: string }) => {
       const res = await fetch(`/api/claim-invoice/${invoiceId}`, {
@@ -124,12 +131,16 @@ export default function Home() {
     },
     onSuccess: (_, { invoiceId }) => {
       setClaimedInvoiceIds(prev => new Set(prev).add(invoiceId));
+      queryClient.invalidateQueries({ queryKey: ["/api/homeowner/linked-invoices/unclaimed-count"] });
     },
   });
 
   const [agentModalOpen, setAgentModalOpen] = useState(false);
   const [contractorInvoicesExpanded, setContractorInvoicesExpanded] = useState(false);
   const [claimedInvoiceIds, setClaimedInvoiceIds] = useState<Set<string>>(new Set());
+
+  // Use server count directly; query is invalidated on every claim so it stays accurate
+  const unclaimedInvoiceCount = unclaimedInvoiceData?.count ?? 0;
 
   // Referral progress
   const referralCount = (referralData as any)?.referralCount || 0;
@@ -386,9 +397,26 @@ export default function Home() {
                     <div className="dash-light-card-icon">
                       <Wrench size={18} />
                     </div>
-                    <div>
-                      <div className="dash-light-card-title">From Your Contractors</div>
-                      <div className="dash-light-card-sub">{linkedInvoices.length} invoice{linkedInvoices.length !== 1 ? 's' : ''} linked to your account</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div>
+                        <div className="dash-light-card-title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          From Your Contractors
+                          {unclaimedInvoiceCount > 0 && (
+                            <span
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                minWidth: 18, height: 18, borderRadius: 9, padding: '0 5px',
+                                background: '#dc2626', color: '#fff',
+                                fontSize: 10, fontWeight: 700, lineHeight: 1,
+                              }}
+                              data-testid="badge-unclaimed-invoices"
+                            >
+                              {unclaimedInvoiceCount > 9 ? '9+' : unclaimedInvoiceCount}
+                            </span>
+                          )}
+                        </div>
+                        <div className="dash-light-card-sub">{linkedInvoices.length} invoice{linkedInvoices.length !== 1 ? 's' : ''} linked to your account</div>
+                      </div>
                     </div>
                   </div>
                   {contractorInvoicesExpanded ? <ChevronUp size={16} style={{ color: '#2C0F5B', flexShrink: 0 }} /> : <ChevronDown size={16} style={{ color: '#2C0F5B', flexShrink: 0 }} />}

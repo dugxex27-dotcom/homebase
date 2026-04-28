@@ -13029,6 +13029,30 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
+  // Get count of unclaimed linked invoices (unreviewed by homeowner)
+  app.get('/api/homeowner/linked-invoices/unclaimed-count', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.user.id;
+      const userRole = req.session.user.role;
+
+      if (userRole !== 'homeowner') {
+        return res.status(403).json({ message: "Only homeowners can view linked invoice counts" });
+      }
+
+      const invoices = await storage.getLinkedInvoicesForHomeowner(userId);
+      const serviceRecords = await storage.getServiceRecordsByHomeowner(userId);
+
+      const unclaimedCount = invoices.filter(inv => {
+        return !serviceRecords.some(r => r.notes?.includes(inv.invoiceNumber));
+      }).length;
+
+      res.json({ count: unclaimedCount });
+    } catch (error) {
+      console.error("Error fetching unclaimed invoice count:", error);
+      res.status(500).json({ message: "Failed to fetch unclaimed invoice count" });
+    }
+  });
+
   // Get invoices linked to the authenticated homeowner via connection code
   app.get('/api/homeowner/linked-invoices', isAuthenticated, async (req: any, res) => {
     try {
