@@ -4,6 +4,7 @@ import { registerRoutes } from "./routes/routes";
 import { logger } from "./lib/logger";
 import { runMigrations } from "./migrate";
 import { seedRegionalData } from "./seed-regional-data";
+import { storage } from "./storage";
 import { trialReminderScheduler } from "./trial-reminder-scheduler";
 import { profileViewReportScheduler } from "./profile-view-report-scheduler";
 import { weeklyTaskReminderScheduler } from "./weekly-task-reminder-scheduler";
@@ -101,7 +102,64 @@ app.get("/info/*path", proxyToSquarespace);
     logger.warn({ err }, "[seed-regional-data] Seeding failed — server will still start");
   }
 
+  // Emit an operator-visible notice about the MemStorage → DB transition for
+  // contractor boosts.  Any boosts created before this code change were stored
+  // only in the process-local MemStorage Map and are irrecoverable after a
+  // restart.  This log makes the potential loss explicit and documents the
+  // recovery path via the admin reconciliation endpoint.
+  try {
+    await storage.notifyLegacyBoostDataRisk();
+  } catch (err) {
+    logger.warn({ err }, '[BoostMigration] Could not emit legacy boost transition notice — continuing');
+  }
+
+  // Safety-net startup flush: in rolling-deploy scenarios the in-memory
+  // mirror may hold boosts created in this process since startup.  On a
+  // clean restart the mirror is empty and this is a confirmed no-op.
+  try {
+    const startupResult = await storage.migrateMemStorageBoosts();
+    if (startupResult.migrated > 0) {
+      logger.info(startupResult, '[BoostMigration] Startup flush persisted in-memory boosts to DB.');
+    }
+  } catch (err) {
+    logger.warn({ err }, '[BoostMigration] Startup flush failed — continuing without it');
+  }
+
   const server = await registerRoutes(app);
+
+  // Graceful shutdown — flush any in-memory boosts to the database before
+  // the process exits, then close the HTTP server cleanly.
+  // DbStorage.createContractorBoost() dual-writes to both DB and the
+  // MemStorage mirror; this flush is therefore idempotent for new boosts
+  // but critical for any boost that only made it into the mirror (legacy
+  // MemStorage code path).
+  let shuttingDown = false;
+  const gracefulShutdown = async (signal: string) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    logger.info(`${signal} received — flushing in-memory contractor boosts before shutdown...`);
+    try {
+      const { migrated, skipped } = await storage.migrateMemStorageBoosts();
+      logger.info(
+        { migrated, skipped },
+        '[BoostMigration] Pre-shutdown flush complete.',
+      );
+    } catch (err) {
+      logger.error(
+        { err },
+        '[BoostMigration] Pre-shutdown flush FAILED — some in-memory boost data may not have been persisted. ' +
+        'Use POST /api/admin/contractor-boosts/recover to re-import any missing records.',
+      );
+    }
+    server.close(() => {
+      logger.info('HTTP server closed. Exiting.');
+      process.exit(0);
+    });
+    setTimeout(() => process.exit(1), 10_000).unref();
+  };
+
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
   server.listen(port, () => {
     logger.info({ port }, "Server listening");

@@ -12,7 +12,7 @@ import { eq, and, or, lte, gte, sql as drizzleSql, isNull, isNotNull, desc, coun
 import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, maintenanceTasks, customMaintenanceTasks, insertSupportTicketSchema, insertSubscriptionCycleEventSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, crmClients, crmJobs, crmQuotes, crmInvoices, securitySessions, referralCredits, referralFreeMonths, agentProfiles, users, siteContent, insertSiteContentSchema, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, homeDocuments, insertHomeDocumentSchema, quizResults, insertQuizResultSchema, type House } from "@workspace/db";
 import { calculateDIYSavingsAmount } from "../shared/cost-helpers";
 import { extractInvoiceData, verifyDIYPhotos, type InvoiceExtraction } from "../invoice-analysis-service";
-import { invoiceAnalyses } from "@workspace/db";
+import { invoiceAnalyses, contractorBoosts } from "@workspace/db";
 import pushRoutes from "../push-routes";
 import { pushService } from "../push-service";
 import { ObjectStorageService, ObjectNotFoundError } from "../objectStorage";
@@ -8367,6 +8367,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting boost:", error);
       res.status(500).json({ message: "Failed to delete boost" });
+    }
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Admin endpoint: re-import lost contractor boosts
+  //
+  // WHEN TO USE
+  //   After a server restart where boosts were stored only in the process-local
+  //   MemStorage Map (before the dual-write migration was deployed), boosts that
+  //   were active at the time of the restart are NOT in the database.  This
+  //   endpoint re-imports them idempotently.
+  //
+  // RUNBOOK — recovering boosts from Stripe
+  //   1. Pull all payment intents tagged with boost metadata from the Stripe
+  //      Dashboard (or via the CLI):
+  //        stripe payment_intents list \
+  //          --expand data.metadata \
+  //          --limit 100 | jq '.data[] | select(.metadata.type == "contractor_boost")'
+  //   2. For each intent, construct a boost object:
+  //        {
+  //          "contractorId":       <metadata.contractorId>,
+  //          "serviceCategory":    <metadata.serviceCategory>,
+  //          "businessAddress":    <metadata.businessAddress>,
+  //          "businessLatitude":   <metadata.businessLatitude>,
+  //          "businessLongitude":  <metadata.businessLongitude>,
+  //          "boostRadius":        10,
+  //          "startDate":          <metadata.startDate>,
+  //          "endDate":            <metadata.endDate>,
+  //          "amount":             <intent.amount / 100>,
+  //          "stripePaymentIntentId": <intent.id>,
+  //          "status":             "active",
+  //          "isActive":           true
+  //        }
+  //   3. POST the array to this endpoint (admin credentials required):
+  //        curl -X POST /api/admin/contractor-boosts/recover \
+  //          -H 'Content-Type: application/json' \
+  //          -d '[{ ... }, { ... }]'
+  //
+  // IDEMPOTENCY
+  //   - Duplicate detection is two-tier:
+  //       (a) stripePaymentIntentId — globally unique; checked first.
+  //       (b) contractorId + serviceCategory + startDate — fallback for manually
+  //           created boosts without a Stripe PI.
+  //   - Safe to run multiple times; already-present records are counted as
+  //     "skipped" in the response, not inserted again.
+  // ─────────────────────────────────────────────────────────────────────
+  app.post("/api/admin/contractor-boosts/recover", requireAdmin, async (req: any, res) => {
+    try {
+      const boostArraySchema = z.array(insertContractorBoostSchema.extend({
+        id: z.string().uuid().optional(),
+      }));
+
+      const parsed = boostArraySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          message: "Invalid boost data",
+          errors: parsed.error.errors,
+        });
+      }
+
+      const boosts = parsed.data;
+      let imported = 0;
+      let skipped = 0;
+
+      for (const boostData of boosts) {
+        // Deterministic duplicate detection (two-tier):
+        //   1. Primary key: stripePaymentIntentId — most reliable, globally unique.
+        //   2. Composite fallback: contractorId + serviceCategory + startDate —
+        //      used when no Stripe PI is available (e.g. manually created boosts).
+        let alreadyExists = false;
+
+        if (boostData.stripePaymentIntentId) {
+          const [existing] = await db
+            .select({ id: contractorBoosts.id })
+            .from(contractorBoosts)
+            .where(eq(contractorBoosts.stripePaymentIntentId, boostData.stripePaymentIntentId))
+            .limit(1);
+          if (existing) alreadyExists = true;
+        }
+
+        if (!alreadyExists) {
+          // Composite key fallback: treat same contractor + category + startDate as a duplicate
+          const startDate = new Date(boostData.startDate);
+          const [existing] = await db
+            .select({ id: contractorBoosts.id })
+            .from(contractorBoosts)
+            .where(
+              and(
+                eq(contractorBoosts.contractorId, boostData.contractorId),
+                eq(contractorBoosts.serviceCategory, boostData.serviceCategory),
+                eq(contractorBoosts.startDate, startDate),
+              ),
+            )
+            .limit(1);
+          if (existing) alreadyExists = true;
+        }
+
+        if (!alreadyExists) {
+          await storage.createContractorBoost(boostData);
+          imported++;
+        } else {
+          skipped++;
+        }
+      }
+
+      res.json({
+        message: "Boost recovery complete",
+        imported,
+        skipped,
+        total: boosts.length,
+      });
+    } catch (error) {
+      console.error("Error recovering contractor boosts:", error);
+      res.status(500).json({ message: "Failed to recover contractor boosts" });
     }
   });
 

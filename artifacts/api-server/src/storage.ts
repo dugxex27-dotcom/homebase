@@ -3,7 +3,8 @@ import { houseDisclosures, type HouseDisclosure, type InsertHouseDisclosure, hom
 import { randomUUID, randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
-import { eq, ne, isNotNull, and, or, isNull, not, desc, asc, gte, lte, lt, sql, ilike, like } from "drizzle-orm";
+import { eq, ne, isNotNull, and, or, isNull, not, desc, asc, gte, lte, lt, sql, ilike, like, count } from "drizzle-orm";
+import { logger } from "./lib/logger";
 
 // DEMO DATA PROTECTION SYSTEM
 // Helper functions to identify demo accounts and prevent overwrites of real user data
@@ -3702,6 +3703,21 @@ export class MemStorage implements IStorage {
     return this.contractorBoosts.delete(id);
   }
 
+  /** Returns all boost records currently held in memory (regardless of status). */
+  getAllContractorBoostsFromMemory(): ContractorBoost[] {
+    return Array.from(this.contractorBoosts.values());
+  }
+
+  /** Upsert a boost record by ID (used for dual-write from DbStorage). */
+  setContractorBoostInMemory(boost: ContractorBoost): void {
+    this.contractorBoosts.set(boost.id, boost);
+  }
+
+  /** Remove a boost record by ID (used for sync from DbStorage delete). */
+  deleteContractorBoostFromMemory(id: string): void {
+    this.contractorBoosts.delete(id);
+  }
+
   async checkBoostConflict(serviceCategory: string, latitude: number, longitude: number, radius: number): Promise<ContractorBoost | null> {
     const activeBoosts = await this.getActiveBoosts(serviceCategory);
     
@@ -6929,8 +6945,19 @@ class DbStorage implements IStorage {
   }
 
   async createContractorBoost(boostData: InsertContractorBoost): Promise<ContractorBoost> {
-    const result = await db.insert(contractorBoosts).values({ ...boostData, id: randomUUID() }).returning();
-    return result[0];
+    const [boost] = await db
+      .insert(contractorBoosts)
+      .values({ ...boostData, id: randomUUID() })
+      .returning();
+    // Dual-write: mirror every DB boost into MemStorage so that:
+    //   (a) the SIGTERM flush handler can read and re-persist in-flight records
+    //       before the process exits, and
+    //   (b) any boost written via a legacy MemStorage code path (without a DB
+    //       write) is captured and persisted to the DB on the next flush.
+    // The flush is idempotent — DB already holds the record, so re-inserting
+    // is a no-op thanks to the ID-based duplicate check.
+    this.memStorage.setContractorBoostInMemory(boost);
+    return boost;
   }
 
   async updateContractorBoost(id: string, boostData: Partial<InsertContractorBoost>): Promise<ContractorBoost | undefined> {
@@ -6938,11 +6965,16 @@ class DbStorage implements IStorage {
       .set({ ...boostData, updatedAt: new Date() })
       .where(eq(contractorBoosts.id, id))
       .returning();
-    return result[0];
+    const updated = result[0];
+    if (updated) {
+      this.memStorage.setContractorBoostInMemory(updated);
+    }
+    return updated;
   }
 
   async deleteContractorBoost(id: string): Promise<boolean> {
     const result = await db.delete(contractorBoosts).where(eq(contractorBoosts.id, id)).returning();
+    this.memStorage.deleteContractorBoostFromMemory(id);
     return result.length > 0;
   }
 
@@ -7444,6 +7476,122 @@ class DbStorage implements IStorage {
   async createContractor(contractor: InsertContractor): Promise<Contractor> {
     const result = await db.insert(contractors).values({ ...contractor, id: randomUUID() }).returning();
     return result[0];
+  }
+
+  /**
+   * Emit a structured startup notice about the MemStorage → DB transition for
+   * contractor boosts.
+   *
+   * Any boosts created before the DB-backed migration are irrecoverable through
+   * code alone (they were stored only in the process-local MemStorage Map, which
+   * starts empty on every boot). This method makes the potential loss explicit
+   * in the operator log and documents the manual recovery path via the admin
+   * reconciliation endpoint.
+   *
+   * Safe to call on every startup — the DB query is lightweight and read-only.
+   * Throws on DB error so the caller can decide whether to treat it as fatal.
+   */
+  async notifyLegacyBoostDataRisk(): Promise<void> {
+    const [{ value: boostsInDb }] = await db
+      .select({ value: count() })
+      .from(contractorBoosts);
+
+    logger.warn(
+      {
+        boostsInDb,
+        action: 'LEGACY_BOOST_TRANSITION_CHECK',
+        recoveryEndpoint: 'POST /api/admin/contractor-boosts/recover',
+        remediation:
+          'Contractor boosts created before the MemStorage→DB migration were stored only in the ' +
+          'process-local memory map and are irrecoverable after a restart. ' +
+          'To re-import missing boosts: POST /api/admin/contractor-boosts/recover with a JSON array ' +
+          'of boost objects (fields: contractorId, serviceCategory, businessAddress, ' +
+          'businessLatitude, businessLongitude, boostRadius, startDate, endDate, amount, ' +
+          'stripePaymentIntentId, status, isActive). ' +
+          'Source of truth for missing records: Stripe payment intents with boost metadata.',
+      },
+      '[BoostMigration] TRANSITION NOTICE: Pre-DB-migration in-memory contractor boosts are ' +
+      `unrecoverable after restart. Database currently has ${boostsInDb} boost record(s). ` +
+      'Use POST /api/admin/contractor-boosts/recover to re-import any missing records.',
+    );
+  }
+
+  /**
+   * Flush any contractor boosts held in the in-memory mirror (this.memStorage)
+   * to the database.
+   *
+   * This is called:
+   *   1. On SIGTERM — while the process is still alive and the mirror is
+   *      populated.  Every boost created via DbStorage.createContractorBoost()
+   *      is dual-written to both the DB and the MemStorage mirror.  If any
+   *      boost was written via a legacy MemStorage path (bypassing the DB write),
+   *      this flush persists it to the DB before the process exits.
+   *   2. On startup — the mirror is empty after a clean restart (it has no
+   *      data source until the first boost is created in this process), so
+   *      this is a confirmed no-op for normal restarts.  For rolling-deploy
+   *      scenarios where both the old and new processes briefly share a
+   *      snapshot, it provides an extra safety net.
+   *
+   * The operation is idempotent: boosts already in the DB are skipped by
+   * ID check. Errors are thrown (not swallowed) so callers can handle them.
+   *
+   * @returns { migrated, skipped } counts for structured logging.
+   */
+  async migrateMemStorageBoosts(): Promise<{ migrated: number; skipped: number }> {
+    const memBoosts = this.memStorage.getAllContractorBoostsFromMemory();
+
+    if (memBoosts.length === 0) {
+      logger.info('[BoostMigration] No in-memory contractor boosts to flush — nothing to persist.');
+      return { migrated: 0, skipped: 0 };
+    }
+
+    logger.info(
+      { boostCount: memBoosts.length },
+      '[BoostMigration] Flushing in-memory contractor boost(s) to the database...',
+    );
+
+    let migrated = 0;
+    let skipped = 0;
+
+    for (const boost of memBoosts) {
+      const existing = await db
+        .select({ id: contractorBoosts.id })
+        .from(contractorBoosts)
+        .where(eq(contractorBoosts.id, boost.id))
+        .limit(1);
+
+      if (existing.length > 0) {
+        skipped++;
+        continue;
+      }
+
+      await db.insert(contractorBoosts).values({
+        id: boost.id,
+        contractorId: boost.contractorId,
+        serviceCategory: boost.serviceCategory,
+        businessAddress: boost.businessAddress,
+        businessLatitude: boost.businessLatitude,
+        businessLongitude: boost.businessLongitude,
+        boostRadius: boost.boostRadius,
+        startDate: boost.startDate,
+        endDate: boost.endDate,
+        amount: boost.amount,
+        stripePaymentIntentId: boost.stripePaymentIntentId ?? null,
+        status: boost.status,
+        isActive: boost.isActive,
+        createdAt: boost.createdAt ?? new Date(),
+        updatedAt: boost.updatedAt ?? new Date(),
+      });
+
+      logger.info(
+        { boostId: boost.id, contractorId: boost.contractorId, serviceCategory: boost.serviceCategory },
+        '[BoostMigration] Persisted boost from memory to database.',
+      );
+      migrated++;
+    }
+
+    logger.info({ migrated, skipped }, '[BoostMigration] Flush complete.');
+    return { migrated, skipped };
   }
 
   // User operations - DATABASE BACKED for persistence

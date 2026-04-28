@@ -761,7 +761,15 @@ export const contractorBoosts = pgTable("contractor_boosts", {
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (t) => ({
+  // Partial unique index: enforce Stripe PI ID uniqueness only when non-null.
+  // Using a partial index avoids false conflicts when stripePaymentIntentId is
+  // absent (e.g. manually created boosts). This also backs the app-layer
+  // duplicate detection in POST /api/admin/contractor-boosts/recover.
+  stripePaymentIntentIdUnique: uniqueIndex("contractor_boosts_stripe_pi_id_unique")
+    .on(t.stripePaymentIntentId)
+    .where(sql`${t.stripePaymentIntentId} IS NOT NULL`),
+}));
 
 // Task completions tracking for achievements and streak calculation
 export const taskCompletions = pgTable("task_completions", {
