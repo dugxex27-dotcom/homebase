@@ -3,7 +3,7 @@ import { houseDisclosures, type HouseDisclosure, type InsertHouseDisclosure, hom
 import { randomUUID, randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
-import { eq, ne, isNotNull, and, or, isNull, not, desc, sql } from "drizzle-orm";
+import { eq, ne, isNotNull, and, or, isNull, not, desc, asc, gte, sql } from "drizzle-orm";
 
 // DEMO DATA PROTECTION SYSTEM
 // Helper functions to identify demo accounts and prevent overwrites of real user data
@@ -6878,39 +6878,6 @@ class DbStorage implements IStorage {
     this.getTicketReplies = this.memStorage.getTicketReplies.bind(this.memStorage);
     this.createTicketReply = this.memStorage.createTicketReply.bind(this.memStorage);
     this.getSupportTicketWithReplies = this.memStorage.getSupportTicketWithReplies.bind(this.memStorage);
-    // CRM methods
-    this.getCrmLeads = this.memStorage.getCrmLeads.bind(this.memStorage);
-    this.getCrmLead = this.memStorage.getCrmLead.bind(this.memStorage);
-    this.createCrmLead = this.memStorage.createCrmLead.bind(this.memStorage);
-    this.updateCrmLead = this.memStorage.updateCrmLead.bind(this.memStorage);
-    this.deleteCrmLead = this.memStorage.deleteCrmLead.bind(this.memStorage);
-    this.getCrmNotes = this.memStorage.getCrmNotes.bind(this.memStorage);
-    this.createCrmNote = this.memStorage.createCrmNote.bind(this.memStorage);
-    this.updateCrmNote = this.memStorage.updateCrmNote.bind(this.memStorage);
-    this.deleteCrmNote = this.memStorage.deleteCrmNote.bind(this.memStorage);
-    this.getCrmLeadWithNotes = this.memStorage.getCrmLeadWithNotes.bind(this.memStorage);
-    // CRM Pro tier methods — in-memory backed
-    this.getCrmClients = this.memStorage.getCrmClients.bind(this.memStorage);
-    this.getCrmClient = this.memStorage.getCrmClient.bind(this.memStorage);
-    this.createCrmClient = this.memStorage.createCrmClient.bind(this.memStorage);
-    this.updateCrmClient = this.memStorage.updateCrmClient.bind(this.memStorage);
-    this.deleteCrmClient = this.memStorage.deleteCrmClient.bind(this.memStorage);
-    this.getCrmJobs = this.memStorage.getCrmJobs.bind(this.memStorage);
-    this.getCrmJob = this.memStorage.getCrmJob.bind(this.memStorage);
-    this.createCrmJob = this.memStorage.createCrmJob.bind(this.memStorage);
-    this.updateCrmJob = this.memStorage.updateCrmJob.bind(this.memStorage);
-    this.deleteCrmJob = this.memStorage.deleteCrmJob.bind(this.memStorage);
-    this.getCrmQuotes = this.memStorage.getCrmQuotes.bind(this.memStorage);
-    this.getCrmQuote = this.memStorage.getCrmQuote.bind(this.memStorage);
-    this.createCrmQuote = this.memStorage.createCrmQuote.bind(this.memStorage);
-    this.updateCrmQuote = this.memStorage.updateCrmQuote.bind(this.memStorage);
-    this.deleteCrmQuote = this.memStorage.deleteCrmQuote.bind(this.memStorage);
-    this.getCrmInvoices = this.memStorage.getCrmInvoices.bind(this.memStorage);
-    this.getCrmInvoice = this.memStorage.getCrmInvoice.bind(this.memStorage);
-    this.createCrmInvoice = this.memStorage.createCrmInvoice.bind(this.memStorage);
-    this.updateCrmInvoice = this.memStorage.updateCrmInvoice.bind(this.memStorage);
-    this.deleteCrmInvoice = this.memStorage.deleteCrmInvoice.bind(this.memStorage);
-    this.getCrmDashboardStats = this.memStorage.getCrmDashboardStats.bind(this.memStorage);
   }
 
   // User operations - DATABASE BACKED for persistence
@@ -8846,6 +8813,468 @@ class DbStorage implements IStorage {
       .where(and(eq(crmInvoices.id, invoiceId), eq(crmInvoices.homeownerId, homeownerId)));
 
     return true;
+  }
+
+  // CRM Lead methods — DATABASE BACKED for persistence
+  async getCrmLeads(contractorUserId: string, filters?: {
+    status?: string;
+    priority?: string;
+    source?: string;
+    searchQuery?: string;
+  }): Promise<CrmLead[]> {
+    const user = await this.getUser(contractorUserId);
+    const companyId = user?.companyId;
+
+    const conditions = companyId
+      ? or(eq(crmLeads.contractorUserId, contractorUserId), eq(crmLeads.companyId, companyId))
+      : eq(crmLeads.contractorUserId, contractorUserId);
+
+    let leads = await db.select().from(crmLeads).where(conditions);
+
+    if (filters?.status && filters.status !== 'all') {
+      leads = leads.filter(l => l.status === filters.status);
+    }
+    if (filters?.priority && filters.priority !== 'all') {
+      leads = leads.filter(l => l.priority === filters.priority);
+    }
+    if (filters?.source && filters.source !== 'all') {
+      leads = leads.filter(l => l.source === filters.source);
+    }
+    if (filters?.searchQuery) {
+      const query = filters.searchQuery.toLowerCase();
+      leads = leads.filter(l => {
+        const firstName = l.firstName?.toLowerCase() || '';
+        const lastName = l.lastName?.toLowerCase() || '';
+        const email = l.email?.toLowerCase() || '';
+        const phone = l.phone?.toLowerCase() || '';
+        const projectType = l.projectType?.toLowerCase() || '';
+        const tags = l.tags?.map(t => t.toLowerCase()).join(' ') || '';
+        return firstName.includes(query) || lastName.includes(query) || email.includes(query) ||
+          phone.includes(query) || projectType.includes(query) || tags.includes(query);
+      });
+    }
+
+    leads.sort((a, b) => {
+      if (a.followUpDate && b.followUpDate) {
+        return new Date(a.followUpDate).getTime() - new Date(b.followUpDate).getTime();
+      }
+      if (a.followUpDate) return -1;
+      if (b.followUpDate) return 1;
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+    });
+
+    return leads;
+  }
+
+  async getCrmLead(id: string): Promise<CrmLead | undefined> {
+    const result = await db.select().from(crmLeads).where(eq(crmLeads.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createCrmLead(lead: InsertCrmLead): Promise<CrmLead> {
+    const result = await db.insert(crmLeads).values(lead).returning();
+    return result[0];
+  }
+
+  async updateCrmLead(id: string, lead: Partial<InsertCrmLead>): Promise<CrmLead | undefined> {
+    const existing = await this.getCrmLead(id);
+    if (!existing) return undefined;
+
+    const updates: Partial<CrmLead> = {
+      ...lead,
+      updatedAt: new Date(),
+      wonAt: lead.status === 'won' && !existing.wonAt ? new Date() : existing.wonAt,
+      lostAt: lead.status === 'lost' && !existing.lostAt ? new Date() : existing.lostAt,
+    };
+
+    const result = await db.update(crmLeads).set(updates).where(eq(crmLeads.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteCrmLead(id: string): Promise<boolean> {
+    // Notes are cascade-deleted by FK constraint
+    const result = await db.delete(crmLeads).where(eq(crmLeads.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // CRM Note methods — DATABASE BACKED for persistence
+  async getCrmNotes(leadId: string): Promise<CrmNote[]> {
+    const notes = await db.select().from(crmNotes)
+      .where(eq(crmNotes.leadId, leadId));
+
+    notes.sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+    });
+
+    return notes;
+  }
+
+  async createCrmNote(note: InsertCrmNote): Promise<CrmNote> {
+    const result = await db.insert(crmNotes).values(note).returning();
+    return result[0];
+  }
+
+  async updateCrmNote(id: string, note: Partial<InsertCrmNote>): Promise<CrmNote | undefined> {
+    const result = await db.update(crmNotes)
+      .set({ ...note, updatedAt: new Date() })
+      .where(eq(crmNotes.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteCrmNote(id: string): Promise<boolean> {
+    const result = await db.delete(crmNotes).where(eq(crmNotes.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getCrmLeadWithNotes(id: string): Promise<{ lead: CrmLead; notes: CrmNote[] } | undefined> {
+    const lead = await this.getCrmLead(id);
+    if (!lead) return undefined;
+    const notes = await this.getCrmNotes(id);
+    return { lead, notes };
+  }
+
+  // CRM Client methods — DATABASE BACKED for persistence
+  async getCrmClients(contractorUserId: string, filters?: {
+    status?: string;
+    searchQuery?: string;
+  }): Promise<CrmClient[]> {
+    const user = await this.getUser(contractorUserId);
+    const companyId = user?.companyId;
+
+    const conditions = companyId
+      ? or(eq(crmClients.contractorUserId, contractorUserId), eq(crmClients.companyId, companyId))
+      : eq(crmClients.contractorUserId, contractorUserId);
+
+    let clients = await db.select().from(crmClients).where(conditions);
+
+    if (filters?.status && filters.status !== 'all') {
+      const isActive = filters.status === 'active';
+      clients = clients.filter(c => c.isActive === isActive);
+    }
+    if (filters?.searchQuery) {
+      const query = filters.searchQuery.toLowerCase();
+      clients = clients.filter(c => {
+        const firstName = c.firstName?.toLowerCase() || '';
+        const lastName = c.lastName?.toLowerCase() || '';
+        const email = c.email?.toLowerCase() || '';
+        const phone = c.phone?.toLowerCase() || '';
+        const tags = c.tags?.map(t => t.toLowerCase()).join(' ') || '';
+        return firstName.includes(query) || lastName.includes(query) || email.includes(query) ||
+          phone.includes(query) || tags.includes(query);
+      });
+    }
+
+    clients.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    return clients;
+  }
+
+  async getCrmClient(id: string): Promise<CrmClient | undefined> {
+    const result = await db.select().from(crmClients).where(eq(crmClients.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createCrmClient(client: InsertCrmClient): Promise<CrmClient> {
+    const result = await db.insert(crmClients).values(client).returning();
+    return result[0];
+  }
+
+  async updateCrmClient(id: string, client: Partial<InsertCrmClient>): Promise<CrmClient | undefined> {
+    const result = await db.update(crmClients)
+      .set({ ...client, updatedAt: new Date() })
+      .where(eq(crmClients.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteCrmClient(id: string): Promise<boolean> {
+    const result = await db.delete(crmClients).where(eq(crmClients.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // CRM Job methods — DATABASE BACKED for persistence
+  async getCrmJobs(contractorUserId: string, filters?: {
+    status?: string;
+    clientId?: string;
+    priority?: string;
+    searchQuery?: string;
+    startDate?: Date;
+    endDate?: Date;
+  }): Promise<CrmJob[]> {
+    const user = await this.getUser(contractorUserId);
+    const companyId = user?.companyId;
+
+    const conditions = companyId
+      ? or(eq(crmJobs.contractorUserId, contractorUserId), eq(crmJobs.companyId, companyId))
+      : eq(crmJobs.contractorUserId, contractorUserId);
+
+    let jobs = await db.select().from(crmJobs).where(conditions);
+
+    if (filters?.status && filters.status !== 'all') {
+      jobs = jobs.filter(j => j.status === filters.status);
+    }
+    if (filters?.clientId) {
+      jobs = jobs.filter(j => j.clientId === filters.clientId);
+    }
+    if (filters?.priority && filters.priority !== 'all') {
+      jobs = jobs.filter(j => j.priority === filters.priority);
+    }
+    if (filters?.startDate) {
+      jobs = jobs.filter(j => j.scheduledDate && new Date(j.scheduledDate) >= filters.startDate!);
+    }
+    if (filters?.endDate) {
+      jobs = jobs.filter(j => j.scheduledDate && new Date(j.scheduledDate) <= filters.endDate!);
+    }
+    if (filters?.searchQuery) {
+      const query = filters.searchQuery.toLowerCase();
+      jobs = jobs.filter(j => {
+        const title = j.title?.toLowerCase() || '';
+        const description = j.description?.toLowerCase() || '';
+        const serviceType = j.serviceType?.toLowerCase() || '';
+        const address = j.address?.toLowerCase() || '';
+        return title.includes(query) || description.includes(query) ||
+          serviceType.includes(query) || address.includes(query);
+      });
+    }
+
+    jobs.sort((a, b) => {
+      const dateA = a.scheduledDate ? new Date(a.scheduledDate).getTime() : 0;
+      const dateB = b.scheduledDate ? new Date(b.scheduledDate).getTime() : 0;
+      return dateA - dateB;
+    });
+    return jobs;
+  }
+
+  async getCrmJob(id: string): Promise<CrmJob | undefined> {
+    const result = await db.select().from(crmJobs).where(eq(crmJobs.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createCrmJob(job: InsertCrmJob): Promise<CrmJob> {
+    const result = await db.insert(crmJobs).values(job).returning();
+    return result[0];
+  }
+
+  async updateCrmJob(id: string, job: Partial<InsertCrmJob>): Promise<CrmJob | undefined> {
+    const existing = await this.getCrmJob(id);
+    if (!existing) return undefined;
+
+    const updates: Partial<CrmJob> = {
+      ...job,
+      updatedAt: new Date(),
+      actualStartTime: job.status === 'in_progress' && !existing.actualStartTime ? new Date() : existing.actualStartTime,
+      actualEndTime: job.status === 'completed' && !existing.actualEndTime ? new Date() : existing.actualEndTime,
+    };
+
+    const result = await db.update(crmJobs).set(updates).where(eq(crmJobs.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteCrmJob(id: string): Promise<boolean> {
+    const result = await db.delete(crmJobs).where(eq(crmJobs.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // CRM Quote methods — DATABASE BACKED for persistence
+  async getCrmQuotes(contractorUserId: string, filters?: {
+    status?: string;
+    clientId?: string;
+    searchQuery?: string;
+  }): Promise<CrmQuote[]> {
+    const user = await this.getUser(contractorUserId);
+    const companyId = user?.companyId;
+
+    const conditions = companyId
+      ? or(eq(crmQuotes.contractorUserId, contractorUserId), eq(crmQuotes.companyId, companyId))
+      : eq(crmQuotes.contractorUserId, contractorUserId);
+
+    let quotes = await db.select().from(crmQuotes).where(conditions);
+
+    if (filters?.status && filters.status !== 'all') {
+      quotes = quotes.filter(q => q.status === filters.status);
+    }
+    if (filters?.clientId) {
+      quotes = quotes.filter(q => q.clientId === filters.clientId);
+    }
+    if (filters?.searchQuery) {
+      const query = filters.searchQuery.toLowerCase();
+      quotes = quotes.filter(q => {
+        const title = q.title?.toLowerCase() || '';
+        const description = q.description?.toLowerCase() || '';
+        const quoteNumber = q.quoteNumber?.toLowerCase() || '';
+        const serviceType = q.serviceType?.toLowerCase() || '';
+        return title.includes(query) || description.includes(query) ||
+          quoteNumber.includes(query) || serviceType.includes(query);
+      });
+    }
+
+    quotes.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    return quotes;
+  }
+
+  async getCrmQuote(id: string): Promise<CrmQuote | undefined> {
+    const result = await db.select().from(crmQuotes).where(eq(crmQuotes.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createCrmQuote(quote: InsertCrmQuote): Promise<CrmQuote> {
+    const result = await db.insert(crmQuotes).values(quote).returning();
+    return result[0];
+  }
+
+  async updateCrmQuote(id: string, quote: Partial<InsertCrmQuote>): Promise<CrmQuote | undefined> {
+    const existing = await this.getCrmQuote(id);
+    if (!existing) return undefined;
+
+    const updates: Partial<CrmQuote> = {
+      ...quote,
+      updatedAt: new Date(),
+      sentAt: quote.status === 'sent' && !existing.sentAt ? new Date() : existing.sentAt,
+      viewedAt: quote.status === 'viewed' && !existing.viewedAt ? new Date() : existing.viewedAt,
+      acceptedAt: quote.status === 'accepted' && !existing.acceptedAt ? new Date() : existing.acceptedAt,
+      declinedAt: quote.status === 'declined' && !existing.declinedAt ? new Date() : existing.declinedAt,
+    };
+
+    const result = await db.update(crmQuotes).set(updates).where(eq(crmQuotes.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteCrmQuote(id: string): Promise<boolean> {
+    const result = await db.delete(crmQuotes).where(eq(crmQuotes.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // CRM Invoice methods — DATABASE BACKED for persistence
+  async getCrmInvoices(contractorUserId: string, filters?: {
+    status?: string;
+    clientId?: string;
+    searchQuery?: string;
+  }): Promise<CrmInvoice[]> {
+    const user = await this.getUser(contractorUserId);
+    const companyId = user?.companyId;
+
+    const conditions = companyId
+      ? or(eq(crmInvoices.contractorUserId, contractorUserId), eq(crmInvoices.companyId, companyId))
+      : eq(crmInvoices.contractorUserId, contractorUserId);
+
+    let invoices = await db.select().from(crmInvoices).where(conditions);
+
+    if (filters?.status && filters.status !== 'all') {
+      invoices = invoices.filter(i => i.status === filters.status);
+    }
+    if (filters?.clientId) {
+      invoices = invoices.filter(i => i.clientId === filters.clientId);
+    }
+    if (filters?.searchQuery) {
+      const query = filters.searchQuery.toLowerCase();
+      invoices = invoices.filter(i => {
+        const title = i.title?.toLowerCase() || '';
+        const description = i.description?.toLowerCase() || '';
+        const invoiceNumber = i.invoiceNumber?.toLowerCase() || '';
+        return title.includes(query) || description.includes(query) || invoiceNumber.includes(query);
+      });
+    }
+
+    invoices.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    return invoices;
+  }
+
+  async getCrmInvoice(id: string): Promise<CrmInvoice | undefined> {
+    const result = await db.select().from(crmInvoices).where(eq(crmInvoices.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createCrmInvoice(invoice: InsertCrmInvoice): Promise<CrmInvoice> {
+    const result = await db.insert(crmInvoices).values(invoice).returning();
+    return result[0];
+  }
+
+  async updateCrmInvoice(id: string, invoice: Partial<InsertCrmInvoice>): Promise<CrmInvoice | undefined> {
+    const existing = await this.getCrmInvoice(id);
+    if (!existing) return undefined;
+
+    const updates: Partial<CrmInvoice> = {
+      ...invoice,
+      updatedAt: new Date(),
+      sentAt: invoice.status === 'sent' && !existing.sentAt ? new Date() : existing.sentAt,
+      viewedAt: invoice.status === 'viewed' && !existing.viewedAt ? new Date() : existing.viewedAt,
+      paidAt: invoice.status === 'paid' && !existing.paidAt ? new Date() : existing.paidAt,
+    };
+
+    const result = await db.update(crmInvoices).set(updates).where(eq(crmInvoices.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteCrmInvoice(id: string): Promise<boolean> {
+    const result = await db.delete(crmInvoices).where(eq(crmInvoices.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // CRM Dashboard Stats — DATABASE BACKED for persistence
+  async getCrmDashboardStats(contractorUserId: string): Promise<{
+    totalClients: number;
+    activeJobs: number;
+    pendingQuotes: number;
+    outstandingInvoices: number;
+    totalRevenue: string;
+    revenueThisMonth: string;
+    jobsThisMonth: number;
+    conversionRate: number;
+  }> {
+    const user = await this.getUser(contractorUserId);
+    const companyId = user?.companyId;
+
+    const clientCond = companyId
+      ? or(eq(crmClients.contractorUserId, contractorUserId), eq(crmClients.companyId, companyId))
+      : eq(crmClients.contractorUserId, contractorUserId);
+    const jobCond = companyId
+      ? or(eq(crmJobs.contractorUserId, contractorUserId), eq(crmJobs.companyId, companyId))
+      : eq(crmJobs.contractorUserId, contractorUserId);
+    const quoteCond = companyId
+      ? or(eq(crmQuotes.contractorUserId, contractorUserId), eq(crmQuotes.companyId, companyId))
+      : eq(crmQuotes.contractorUserId, contractorUserId);
+    const invoiceCond = companyId
+      ? or(eq(crmInvoices.contractorUserId, contractorUserId), eq(crmInvoices.companyId, companyId))
+      : eq(crmInvoices.contractorUserId, contractorUserId);
+
+    const [clients, jobs, quotes, invoices] = await Promise.all([
+      db.select().from(crmClients).where(clientCond),
+      db.select().from(crmJobs).where(jobCond),
+      db.select().from(crmQuotes).where(quoteCond),
+      db.select().from(crmInvoices).where(invoiceCond),
+    ]);
+
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const activeJobs = jobs.filter(j => j.status === 'scheduled' || j.status === 'in_progress').length;
+    const pendingQuotes = quotes.filter(q => q.status === 'draft' || q.status === 'sent').length;
+    const outstandingInvoices = invoices.filter(i => i.status !== 'paid' && i.status !== 'cancelled').length;
+
+    const paidInvoices = invoices.filter(i => i.status === 'paid');
+    const totalRevenue = paidInvoices.reduce((sum, i) => sum + parseFloat(i.amountPaid || '0'), 0);
+
+    const paidThisMonth = paidInvoices.filter(i => i.paidAt && new Date(i.paidAt) >= startOfMonth);
+    const revenueThisMonth = paidThisMonth.reduce((sum, i) => sum + parseFloat(i.amountPaid || '0'), 0);
+
+    const jobsThisMonth = jobs.filter(j => j.createdAt && new Date(j.createdAt) >= startOfMonth).length;
+
+    const acceptedQuotes = quotes.filter(q => q.status === 'accepted').length;
+    const sentQuotes = quotes.filter(q => q.status !== 'draft').length;
+    const conversionRate = sentQuotes > 0 ? Math.round((acceptedQuotes / sentQuotes) * 100) : 0;
+
+    return {
+      totalClients: clients.length,
+      activeJobs,
+      pendingQuotes,
+      outstandingInvoices,
+      totalRevenue: totalRevenue.toFixed(2),
+      revenueThisMonth: revenueThisMonth.toFixed(2),
+      jobsThisMonth,
+      conversionRate,
+    };
   }
 
   // Methods delegated to MemStorage (bound in constructor)
