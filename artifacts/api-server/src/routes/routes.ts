@@ -13063,16 +13063,51 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       }
 
       const invoices = await storage.getLinkedInvoicesForHomeowner(userId);
-      const serviceRecords = await storage.getServiceRecordsByHomeowner(userId);
+
+      // Try to load service records for claimed detection; fall back gracefully on DB errors
+      let serviceRecords: Awaited<ReturnType<typeof storage.getServiceRecordsByHomeowner>> = [];
+      try {
+        serviceRecords = await storage.getServiceRecordsByHomeowner(userId);
+      } catch (srErr) {
+        console.warn("unclaimed-count: service-record fallback triggered", {
+          userId,
+          error: srErr instanceof Error ? srErr.message : String(srErr),
+        });
+      }
 
       const unclaimedCount = invoices.filter(inv => {
-        return !serviceRecords.some(r => r.notes?.includes(inv.invoiceNumber));
+        const isClaimed = serviceRecords.some(r => r.notes?.includes(inv.invoiceNumber));
+        const isViewed = inv.viewedAt != null;
+        return !isClaimed && !isViewed;
       }).length;
 
       res.json({ count: unclaimedCount });
     } catch (error) {
       console.error("Error fetching unclaimed invoice count:", error);
       res.status(500).json({ message: "Failed to fetch unclaimed invoice count" });
+    }
+  });
+
+  // Mark a linked invoice as viewed by the homeowner
+  app.patch('/api/homeowner/linked-invoices/:id/mark-viewed', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.user.id;
+      const userRole = req.session.user.role;
+      const { id } = req.params;
+
+      if (userRole !== 'homeowner') {
+        return res.status(403).json({ message: "Only homeowners can mark invoices as viewed" });
+      }
+
+      const ok = await storage.markInvoiceViewed(id, userId);
+      if (!ok) {
+        return res.status(404).json({ message: "Invoice not found or not linked to your account" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking invoice as viewed:", error);
+      res.status(500).json({ message: "Failed to mark invoice as viewed" });
     }
   });
 

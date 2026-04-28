@@ -135,6 +135,20 @@ export default function Home() {
     },
   });
 
+  const markInvoicesViewedMutation = useMutation({
+    mutationFn: async (invoiceIds: string[]) => {
+      await Promise.all(
+        invoiceIds.map(async id => {
+          const res = await fetch(`/api/homeowner/linked-invoices/${id}/mark-viewed`, { method: 'PATCH' });
+          if (!res.ok) throw new Error(`Failed to mark invoice ${id} as viewed`);
+        })
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/homeowner/linked-invoices/unclaimed-count"] });
+    },
+  });
+
   const [agentModalOpen, setAgentModalOpen] = useState(false);
   const [contractorInvoicesExpanded, setContractorInvoicesExpanded] = useState(false);
   const [claimedInvoiceIds, setClaimedInvoiceIds] = useState<Set<string>>(new Set());
@@ -391,7 +405,13 @@ export default function Home() {
                 <button
                   className="dash-light-card-row"
                   style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                  onClick={() => setContractorInvoicesExpanded(prev => !prev)}
+                  onClick={() => {
+                    const expanding = !contractorInvoicesExpanded;
+                    setContractorInvoicesExpanded(expanding);
+                    if (expanding && linkedInvoices.length > 0) {
+                      markInvoicesViewedMutation.mutate(linkedInvoices.map(inv => inv.id));
+                    }
+                  }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
                     <div className="dash-light-card-icon">

@@ -573,6 +573,7 @@ export interface IStorage {
   updateCrmInvoice(id: string, invoice: Partial<InsertCrmInvoice>): Promise<CrmInvoice | undefined>;
   deleteCrmInvoice(id: string): Promise<boolean>;
   getLinkedInvoicesForHomeowner(homeownerId: string): Promise<CrmInvoice[]>;
+  markInvoiceViewed(invoiceId: string, homeownerId: string): Promise<boolean>;
   
   // CRM Dashboard Stats (Pro tier feature)
   getCrmDashboardStats(contractorUserId: string): Promise<{
@@ -6579,6 +6580,15 @@ export class MemStorage implements IStorage {
     return Array.from(this.crmInvoicesMap.values()).filter(inv => inv.homeownerId === homeownerId);
   }
 
+  async markInvoiceViewed(invoiceId: string, homeownerId: string): Promise<boolean> {
+    const existing = this.crmInvoicesMap.get(invoiceId);
+    if (!existing || existing.homeownerId !== homeownerId) return false;
+    if (existing.viewedAt) return true;
+    const updated: CrmInvoice = { ...existing, viewedAt: new Date(), updatedAt: new Date() };
+    this.crmInvoicesMap.set(invoiceId, updated);
+    return true;
+  }
+
   // CRM Dashboard Stats (Pro tier feature)
   async getCrmDashboardStats(contractorUserId: string): Promise<{
     totalClients: number;
@@ -6902,6 +6912,7 @@ class DbStorage implements IStorage {
     this.deleteCrmInvoice = this.memStorage.deleteCrmInvoice.bind(this.memStorage);
     this.getCrmDashboardStats = this.memStorage.getCrmDashboardStats.bind(this.memStorage);
     this.getLinkedInvoicesForHomeowner = this.memStorage.getLinkedInvoicesForHomeowner.bind(this.memStorage);
+    this.markInvoiceViewed = this.memStorage.markInvoiceViewed.bind(this.memStorage);
   }
 
   // User operations - DATABASE BACKED for persistence
