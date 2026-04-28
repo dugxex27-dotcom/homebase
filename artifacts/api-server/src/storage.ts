@@ -6874,12 +6874,7 @@ class DbStorage implements IStorage {
     this.getRevenueMetrics = this.memStorage.getRevenueMetrics.bind(this.memStorage);
     this.getChurnMetrics = this.memStorage.getChurnMetrics.bind(this.memStorage);
     this.getFeatureUsageStats = this.memStorage.getFeatureUsageStats.bind(this.memStorage);
-    // Agent methods
-    this.getAgentProfile = this.memStorage.getAgentProfile.bind(this.memStorage);
-    this.getAffiliateReferrals = this.memStorage.getAffiliateReferrals.bind(this.memStorage);
-    this.getAgentStats = this.memStorage.getAgentStats.bind(this.memStorage);
-    this.submitAgentVerification = this.memStorage.submitAgentVerification.bind(this.memStorage);
-    this.getAgentVerificationStatus = this.memStorage.getAgentVerificationStatus.bind(this.memStorage);
+    // Agent methods are now database-backed - implemented below
     // Support ticket methods are now database-backed - implemented below
   }
 
@@ -8818,7 +8813,6 @@ class DbStorage implements IStorage {
     return true;
   }
 
-<<<<<<< HEAD
   // CRM Lead methods — DATABASE BACKED for persistence
   async getCrmLeads(contractorUserId: string, filters?: {
     status?: string;
@@ -9279,13 +9273,166 @@ class DbStorage implements IStorage {
       jobsThisMonth,
       conversionRate,
     };
-=======
+  }
+
   async markAllInvoicesViewed(homeownerId: string): Promise<void> {
     await db
       .update(crmInvoices)
       .set({ viewedAt: new Date(), updatedAt: new Date() })
       .where(and(eq(crmInvoices.homeownerId, homeownerId), isNull(crmInvoices.viewedAt)));
->>>>>>> 10dd03d (feat: bulk mark-all-viewed endpoint clears invoice badge on tab open)
+  }
+
+  // Agent profile operations — DATABASE BACKED for persistence
+  async getAgentProfile(agentId: string): Promise<AgentProfile | undefined> {
+    const [profile] = await db
+      .select()
+      .from(agentProfiles)
+      .where(eq(agentProfiles.agentId, agentId))
+      .limit(1);
+    return profile;
+  }
+
+  async submitAgentVerification(agentId: string, data: {
+    licenseNumber: string;
+    licenseState: string;
+    licenseExpiration: Date;
+    stateIdStorageKey: string;
+    stateIdOriginalFilename: string;
+    stateIdMimeType: string;
+    stateIdFileSize: number;
+    stateIdChecksum: string;
+  }): Promise<AgentProfile | undefined> {
+    const now = new Date();
+    const [updated] = await db
+      .update(agentProfiles)
+      .set({
+        licenseNumber: data.licenseNumber,
+        licenseState: data.licenseState,
+        licenseExpiration: data.licenseExpiration,
+        stateIdStorageKey: data.stateIdStorageKey,
+        stateIdOriginalFilename: data.stateIdOriginalFilename,
+        stateIdMimeType: data.stateIdMimeType,
+        stateIdFileSize: data.stateIdFileSize,
+        stateIdChecksum: data.stateIdChecksum,
+        stateIdUploadedAt: now,
+        verificationStatus: 'pending_review',
+        verificationRequestedAt: now,
+        verifiedAt: null,
+        lastRejectedAt: null,
+        reviewedByAdminId: null,
+        reviewNotes: null,
+        updatedAt: now,
+      })
+      .where(eq(agentProfiles.agentId, agentId))
+      .returning();
+    return updated;
+  }
+
+  async getAgentVerificationStatus(agentId: string): Promise<{
+    verificationStatus: string;
+    licenseNumber?: string | null;
+    licenseState?: string | null;
+    licenseExpiration?: Date | null;
+    verificationRequestedAt?: Date | null;
+    reviewNotes?: string | null;
+  } | undefined> {
+    const [profile] = await db
+      .select({
+        verificationStatus: agentProfiles.verificationStatus,
+        licenseNumber: agentProfiles.licenseNumber,
+        licenseState: agentProfiles.licenseState,
+        licenseExpiration: agentProfiles.licenseExpiration,
+        verificationRequestedAt: agentProfiles.verificationRequestedAt,
+        reviewNotes: agentProfiles.reviewNotes,
+      })
+      .from(agentProfiles)
+      .where(eq(agentProfiles.agentId, agentId))
+      .limit(1);
+    return profile;
+  }
+
+  async getAffiliateReferrals(agentId: string): Promise<AffiliateReferral[]> {
+    return await db
+      .select()
+      .from(affiliateReferrals)
+      .where(eq(affiliateReferrals.agentId, agentId));
+  }
+
+  async getAgentStats(agentId: string): Promise<{
+    totalReferrals: number;
+    activeReferrals: number;
+    totalEarnings: number;
+    pendingEarnings: number;
+    nextPayoutDate: string | null;
+  }> {
+    const referrals = await db
+      .select()
+      .from(affiliateReferrals)
+      .where(eq(affiliateReferrals.agentId, agentId));
+
+    const payouts = await db
+      .select()
+      .from(affiliatePayouts)
+      .where(eq(affiliatePayouts.agentId, agentId));
+
+    const totalReferrals = referrals.length;
+    const activeReferrals = referrals.filter(r =>
+      r.status !== 'voided' && r.status !== 'paid'
+    ).length;
+
+    const paidPayouts = payouts.filter(p => p.status === 'paid');
+    const totalEarnings = paidPayouts.reduce((sum, p) =>
+      sum + parseFloat(p.amount || '0'), 0
+    );
+
+    const pendingPayoutsFiltered = payouts.filter(p => p.status === 'pending');
+    const pendingEarnings = pendingPayoutsFiltered.reduce((sum, p) =>
+      sum + parseFloat(p.amount || '0'), 0
+    );
+
+    const candidateDates: Date[] = [];
+
+    const hasPendingPayout = payouts.some(p => p.status === 'pending' || p.status === 'payout_pending' || p.status === 'processing');
+    if (hasPendingPayout) {
+      const now = new Date();
+      const firstOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      candidateDates.push(firstOfNextMonth);
+    }
+
+    const inProgressReferrals = referrals.filter(r =>
+      r.firstPaymentDate !== null &&
+      r.consecutiveMonthsPaid < 4 &&
+      !['voided', 'paid', 'eligible'].includes(r.status)
+    );
+    for (const referral of inProgressReferrals) {
+      if (referral.firstPaymentDate) {
+        const monthsRemaining = 4 - (referral.consecutiveMonthsPaid || 0);
+        const estimatedDate = new Date(referral.firstPaymentDate);
+        estimatedDate.setMonth(estimatedDate.getMonth() + monthsRemaining);
+        candidateDates.push(estimatedDate);
+      }
+    }
+
+    const eligibleReferrals = referrals.filter(r => r.status === 'eligible' || r.status === 'payout_pending');
+    if (eligibleReferrals.length > 0) {
+      const now = new Date();
+      const firstOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      candidateDates.push(firstOfNextMonth);
+    }
+
+    let nextPayoutDate: string | null = null;
+    if (candidateDates.length > 0) {
+      const earliest = candidateDates.reduce((a, b) => a < b ? a : b);
+      nextPayoutDate = earliest.toISOString().split('T')[0];
+    }
+
+    return {
+      totalReferrals,
+      activeReferrals,
+      totalEarnings,
+      pendingEarnings,
+      nextPayoutDate,
+    };
   }
 
   // Support ticket operations - DATABASE BACKED for persistence
