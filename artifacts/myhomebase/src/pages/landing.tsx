@@ -790,7 +790,7 @@ export default function Landing() {
               See how it works ↓
             </button>
           </div>
-          <p className="mhb-hero-tagline">Your home has a record.<br />Now it has a score.</p>
+          <p className="mhb-hero-tagline">Build your home's record.<br />Watch your score grow.</p>
         </div>
       </section>
       {/* ═══════════════════════════════════════
