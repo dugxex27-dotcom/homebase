@@ -166,6 +166,7 @@ export interface IStorage {
   getContractorNotifications(contractorId: string): Promise<Notification[]>;
   getUnreadContractorNotifications(contractorId: string): Promise<Notification[]>;
   markNotificationAsRead(id: string): Promise<boolean>;
+  createMaintenanceNotifications(homeownerId: string, tasks: any[]): Promise<void>;
   
   // Search methods
   searchContractors(query: string, location?: string, services?: string[], maxDistance?: number): Promise<Contractor[]>;
@@ -9751,6 +9752,53 @@ class DbStorage implements IStorage {
   private async updateAppointmentNotificationsDb(appointment: ContractorAppointment): Promise<void> {
     await db.delete(notifications).where(eq(notifications.appointmentId, appointment.id));
     await this.createAppointmentNotificationsDb(appointment);
+  }
+
+  async createMaintenanceNotifications(homeownerId: string, tasks: any[]): Promise<void> {
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+
+    const pendingTasks = tasks.filter(task => task.month === currentMonth);
+
+    for (const task of pendingTasks) {
+      const existing = await db.select().from(notifications).where(
+        and(
+          eq(notifications.homeownerId, homeownerId),
+          eq(notifications.maintenanceTaskId, task.id),
+          eq(notifications.isRead, false)
+        )
+      );
+
+      if (existing.length === 0) {
+        const priority = task.priority === 'high' ? 'high' : task.priority === 'low' ? 'low' : 'medium';
+        const daysUntilEndOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate();
+
+        let notificationType = "maintenance_due";
+        let title = "Maintenance Task Due";
+        let message = `${task.title} is due this month. Estimated time: ${task.estimatedTime}.`;
+
+        if (daysUntilEndOfMonth <= 7) {
+          notificationType = "maintenance_overdue";
+          title = "Maintenance Task Overdue";
+          message = `${task.title} is overdue! Only ${daysUntilEndOfMonth} days left this month. Estimated time: ${task.estimatedTime}.`;
+        }
+
+        await this.createNotification({
+          homeownerId,
+          appointmentId: null,
+          maintenanceTaskId: task.id,
+          type: notificationType,
+          category: "maintenance",
+          title,
+          message,
+          scheduledFor: now.toISOString(),
+          isRead: false,
+          sentAt: null,
+          priority,
+          actionUrl: "/maintenance",
+        });
+      }
+    }
   }
 }
 
