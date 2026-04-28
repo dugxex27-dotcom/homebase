@@ -1431,6 +1431,159 @@ export async function sendNewLinkedInvoiceEmail(
   });
 }
 
+export interface InvoiceChangeSummary {
+  field: string;
+  oldValue: string;
+  newValue: string;
+}
+
+export async function sendInvoiceUpdatedEmail(
+  homeownerId: string,
+  invoiceId: string,
+  invoiceTitle: string,
+  invoiceAmount: string,
+  contractorName: string,
+  contractorCompany?: string,
+  changes?: InvoiceChangeSummary[]
+): Promise<boolean> {
+  if (!apiKey) {
+    console.log('[EMAIL] SendGrid not configured, skipping invoice updated email');
+    return false;
+  }
+
+  const canSend = await canSendEmail(homeownerId, 'messages');
+  if (!canSend) {
+    console.log('[EMAIL] Homeowner has disabled email notifications for contractor messages:', homeownerId);
+    return false;
+  }
+
+  const user = await storage.getUser(homeownerId);
+  if (!user?.email) {
+    console.log('[EMAIL] No email found for homeowner:', homeownerId);
+    return false;
+  }
+
+  const displayName = contractorCompany || contractorName;
+  const dashboardUrl = `https://gotohomebase.com/pay/invoice/${invoiceId}`;
+
+  const changesHtml = changes && changes.length > 0
+    ? `
+      <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+        <thead>
+          <tr style="background: #f3f4f6;">
+            <th style="padding: 10px; text-align: left; font-size: 13px;">Field</th>
+            <th style="padding: 10px; text-align: left; font-size: 13px;">Previous</th>
+            <th style="padding: 10px; text-align: left; font-size: 13px;">Updated</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${changes.map(c => `
+            <tr>
+              <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; font-weight: 600;">${escapeHtml(c.field)}</td>
+              <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; color: #888;">${escapeHtml(c.oldValue)}</td>
+              <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; color: #1e3a5f; font-weight: 600;">${escapeHtml(c.newValue)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `
+    : '';
+
+  const html = wrapEmailContent(
+    getEmailHeader(),
+    `
+      <p>Hi ${user.firstName || 'there'},</p>
+      <p><strong>${escapeHtml(displayName)}</strong> has updated an invoice on your account:</p>
+      <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 20px 0;">
+        <p><strong>Service:</strong> ${escapeHtml(invoiceTitle)}</p>
+        <p><strong>Current Amount:</strong> <span style="color: #1e3a5f; font-weight: bold; font-size: 18px;">${escapeHtml(invoiceAmount)}</span></p>
+        ${changesHtml}
+      </div>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${dashboardUrl}" style="background: #1e3a5f; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">View Invoice</a>
+      </div>
+      <p style="font-size: 12px; color: #666;">You can manage your notification preferences in your account settings.</p>
+    `
+  );
+
+  const changesSummary = changes && changes.length > 0
+    ? changes.map(c => `${c.field}: ${c.oldValue} → ${c.newValue}`).join(', ')
+    : '';
+
+  const text = `Hi ${user.firstName || 'there'}, ${displayName} has updated an invoice on your account. Service: ${invoiceTitle}. Current amount: ${invoiceAmount}.${changesSummary ? ` Changes: ${changesSummary}.` : ''} View it at ${dashboardUrl}`;
+
+  return sendEmail({
+    to: user.email,
+    subject: `Invoice updated by ${displayName} — ${invoiceAmount}`,
+    html,
+    text,
+  });
+}
+
+export async function sendInvoicePaymentConfirmationEmail(
+  homeownerId: string,
+  invoiceId: string,
+  invoiceTitle: string,
+  amountPaid: string,
+  totalAmount: string,
+  contractorName: string,
+  contractorCompany?: string,
+  isFullyPaid?: boolean
+): Promise<boolean> {
+  if (!apiKey) {
+    console.log('[EMAIL] SendGrid not configured, skipping invoice payment email');
+    return false;
+  }
+
+  const canSend = await canSendEmail(homeownerId, 'messages');
+  if (!canSend) {
+    console.log('[EMAIL] Homeowner has disabled email notifications for contractor messages:', homeownerId);
+    return false;
+  }
+
+  const user = await storage.getUser(homeownerId);
+  if (!user?.email) {
+    console.log('[EMAIL] No email found for homeowner:', homeownerId);
+    return false;
+  }
+
+  const displayName = contractorCompany || contractorName;
+  const dashboardUrl = `https://gotohomebase.com/pay/invoice/${invoiceId}`;
+  const statusLabel = isFullyPaid ? 'Paid in Full' : 'Partially Paid';
+  const statusColor = isFullyPaid ? '#22c55e' : '#f59e0b';
+
+  const html = wrapEmailContent(
+    getEmailHeader(),
+    `
+      <p>Hi ${user.firstName || 'there'},</p>
+      <p>A payment has been recorded on your invoice from <strong>${escapeHtml(displayName)}</strong>:</p>
+      <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 20px 0;">
+        <p><strong>Service:</strong> ${escapeHtml(invoiceTitle)}</p>
+        <p><strong>Payment Recorded:</strong> <span style="color: ${statusColor}; font-weight: bold; font-size: 18px;">${escapeHtml(amountPaid)}</span></p>
+        <p><strong>Invoice Total:</strong> ${escapeHtml(totalAmount)}</p>
+        <div style="display: inline-block; background: ${statusColor}; color: white; padding: 4px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; margin-top: 8px;">
+          ${statusLabel}
+        </div>
+      </div>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${dashboardUrl}" style="background: #1e3a5f; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">View Invoice</a>
+      </div>
+      <p style="font-size: 12px; color: #666;">You can manage your notification preferences in your account settings.</p>
+    `
+  );
+
+  const text = `Hi ${user.firstName || 'there'}, a payment of ${amountPaid} has been recorded on your invoice from ${displayName} for ${invoiceTitle} (total: ${totalAmount}). Status: ${statusLabel}. View it at ${dashboardUrl}`;
+
+  return sendEmail({
+    to: user.email,
+    subject: isFullyPaid
+      ? `Invoice paid in full — ${invoiceTitle}`
+      : `Payment recorded on your invoice — ${invoiceTitle}`,
+    html,
+    text,
+  });
+}
+
 export const emailService = {
   sendEmail,
   sendWelcomeEmail,
@@ -1449,6 +1602,8 @@ export const emailService = {
   sendReferralReminderEmail,
   sendWeatherAlertEmail,
   sendNewLinkedInvoiceEmail,
+  sendInvoiceUpdatedEmail,
+  sendInvoicePaymentConfirmationEmail,
   getEmailHeader,
   wrapEmailContent,
 };

@@ -6739,6 +6739,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updatedInvoice = await storage.updateCrmInvoice(req.params.id, validationResult.data);
+
+      // Notify homeowner if invoice is linked and material fields changed
+      if (existingInvoice.homeownerId) {
+        const update = validationResult.data;
+        const formatCurrencyOpt = (val: string | number | null | undefined) =>
+          val != null ? `$${parseFloat(String(val)).toFixed(2)}` : null;
+        const formatDateOpt = (val: Date | null | undefined) =>
+          val ? new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
+
+        const materialChanges: import('../email-service').InvoiceChangeSummary[] = [];
+
+        if (update.title !== undefined && update.title !== existingInvoice.title) {
+          materialChanges.push({ field: 'Service', oldValue: existingInvoice.title || '', newValue: update.title });
+        }
+        if (update.total !== undefined && parseFloat(String(update.total)) !== parseFloat(String(existingInvoice.total))) {
+          materialChanges.push({ field: 'Total', oldValue: formatCurrencyOpt(existingInvoice.total) || '', newValue: formatCurrencyOpt(update.total) || '' });
+        }
+        if (update.dueDate !== undefined) {
+          const oldDate = formatDateOpt(existingInvoice.dueDate);
+          const newDate = formatDateOpt(update.dueDate as Date | null);
+          if (oldDate !== newDate) {
+            materialChanges.push({ field: 'Due Date', oldValue: oldDate || 'None', newValue: newDate || 'None' });
+          }
+        }
+        if (update.status !== undefined && update.status !== existingInvoice.status) {
+          materialChanges.push({ field: 'Status', oldValue: existingInvoice.status || '', newValue: update.status });
+        }
+
+        if (materialChanges.length > 0) {
+          const contractorUser = req.session.user;
+          const contractorName = `${contractorUser.firstName || ''} ${contractorUser.lastName || ''}`.trim() || 'Your Contractor';
+          let contractorCompany: string | undefined;
+          if (contractorUser.companyId) {
+            try {
+              const company = await storage.getCompany(contractorUser.companyId);
+              contractorCompany = company?.name || undefined;
+            } catch { }
+          }
+          const currentAmount = `$${parseFloat(String(updatedInvoice?.amountDue ?? existingInvoice.amountDue)).toFixed(2)}`;
+          emailService.sendInvoiceUpdatedEmail(
+            existingInvoice.homeownerId,
+            existingInvoice.id,
+            updatedInvoice?.title || existingInvoice.title || 'Invoice',
+            currentAmount,
+            contractorName,
+            contractorCompany,
+            materialChanges
+          ).catch((err) => console.error('[EMAIL] Failed to send invoice updated email:', err));
+        }
+      }
+
       res.json(updatedInvoice);
     } catch (error) {
       console.error("Error updating CRM invoice:", error);
@@ -6928,6 +6979,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         paymentMethod: validationResult.data.paymentMethod || existingInvoice.paymentMethod,
         paymentNotes: validationResult.data.paymentNotes || existingInvoice.paymentNotes,
       });
+
+      // Notify homeowner if invoice is linked
+      if (existingInvoice.homeownerId) {
+        const contractorUser = req.session.user;
+        const contractorName = `${contractorUser.firstName || ''} ${contractorUser.lastName || ''}`.trim() || 'Your Contractor';
+        let contractorCompany: string | undefined;
+        if (contractorUser.companyId) {
+          try {
+            const company = await storage.getCompany(contractorUser.companyId);
+            contractorCompany = company?.name || undefined;
+          } catch { }
+        }
+        const formatAmount = (val: string | number) => `$${parseFloat(String(val)).toFixed(2)}`;
+        emailService.sendInvoicePaymentConfirmationEmail(
+          existingInvoice.homeownerId,
+          existingInvoice.id,
+          existingInvoice.title || 'Invoice',
+          formatAmount(paymentAmount),
+          formatAmount(totalAmount),
+          contractorName,
+          contractorCompany,
+          newStatus === 'paid'
+        ).catch((err) => console.error('[EMAIL] Failed to send invoice payment confirmation email:', err));
+      }
+
       res.json(updatedInvoice);
     } catch (error) {
       console.error("Error recording payment:", error);
