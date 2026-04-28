@@ -6911,8 +6911,6 @@ class DbStorage implements IStorage {
     this.updateCrmInvoice = this.memStorage.updateCrmInvoice.bind(this.memStorage);
     this.deleteCrmInvoice = this.memStorage.deleteCrmInvoice.bind(this.memStorage);
     this.getCrmDashboardStats = this.memStorage.getCrmDashboardStats.bind(this.memStorage);
-    this.getLinkedInvoicesForHomeowner = this.memStorage.getLinkedInvoicesForHomeowner.bind(this.memStorage);
-    this.markInvoiceViewed = this.memStorage.markInvoiceViewed.bind(this.memStorage);
   }
 
   // User operations - DATABASE BACKED for persistence
@@ -8847,6 +8845,29 @@ class DbStorage implements IStorage {
       referralCode: agent.referralCode,
       profileImageUrl: agent.profileImageUrl,
     };
+  }
+
+  // CRM invoice methods — DATABASE BACKED for persistence
+  async getLinkedInvoicesForHomeowner(homeownerId: string): Promise<CrmInvoice[]> {
+    return await db.select().from(crmInvoices).where(eq(crmInvoices.homeownerId, homeownerId));
+  }
+
+  async markInvoiceViewed(invoiceId: string, homeownerId: string): Promise<boolean> {
+    const existing = await db
+      .select()
+      .from(crmInvoices)
+      .where(and(eq(crmInvoices.id, invoiceId), eq(crmInvoices.homeownerId, homeownerId)))
+      .limit(1);
+
+    if (!existing[0]) return false;
+    if (existing[0].viewedAt) return true;
+
+    await db
+      .update(crmInvoices)
+      .set({ viewedAt: new Date(), updatedAt: new Date() })
+      .where(and(eq(crmInvoices.id, invoiceId), eq(crmInvoices.homeownerId, homeownerId)));
+
+    return true;
   }
 
   // Methods delegated to MemStorage (bound in constructor)
