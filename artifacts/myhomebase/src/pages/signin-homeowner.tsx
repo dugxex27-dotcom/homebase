@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Eye, EyeOff } from "lucide-react";
-import logoHomeowner from '@assets/my-homebase-logo-tm-howner-white-final_1776538414393.png';
+import logoHomeowner from '@assets/my-homebase-logo-tm-final-white_1777413931548.png';
 import { PLAN_LABELS } from '@/lib/planLabels';
 
 const C = {

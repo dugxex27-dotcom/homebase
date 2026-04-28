@@ -1,5 +1,5 @@
 import { Link } from 'wouter';
-import whiteLogoIcon from '@assets/my-homebase-logo-tm-white-final_1776295160060.png';
+import whiteLogoIcon from '@assets/my-homebase-logo-tm-final-white_1777413931548.png';
 import { useAuth } from '@/hooks/useAuth';
 import type { User } from '@shared/schema';
 import { SiFacebook, SiInstagram } from 'react-icons/si';

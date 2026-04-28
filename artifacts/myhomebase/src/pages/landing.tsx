@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Info, UserCircle, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import logoWhite from "@assets/my-homebase-logo-tm-white-final_1776357152257.png";
+import logoWhite from "@assets/my-homebase-logo-tm-final-white_1777413931548.png";
 import "./landing.css";
 
 function useLandingBodyClass() {

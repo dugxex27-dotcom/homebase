@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Eye, EyeOff } from "lucide-react";
-import logoContractor from '@assets/my-homebase-logo-tm-contractor-white-final_1776538414391.png';
+import logoContractor from '@assets/my-homebase-logo-tm-final-white_1777413931548.png';
 
 const C = {
   header: '#1560A2',

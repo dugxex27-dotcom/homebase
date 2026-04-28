@@ -11,7 +11,7 @@ import type { User as UserType, House } from "@shared/schema";
 import { Link, useLocation } from "wouter";
 import { HomeownerFeatureGate } from "@/components/homeowner-feature-gate";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
-import logoHomeowner from "@assets/my-homebase-logo-tm-howner-white-final_1776538414393.png";
+import logoHomeowner from "@assets/my-homebase-logo-tm-final-white_1777413931548.png";
 import "./home.css";
 
 function getGreeting() {
