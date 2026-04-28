@@ -706,14 +706,15 @@ export default function Landing() {
       ═══════════════════════════════════════ */}
       <section className="mhb-hero-section">
         <div className="mhb-hero-content">
-          <p className="mhb-hero-eyebrow">42% of home insurance claims get denied.</p>
-          <h1 className="mhb-hero-h1">The most common reason is lack of home maintenance records.</h1>
+          {/* Insurance stat: deploy mid-page or below the fold as a secondary proof point */}
+          {/* <p className="mhb-hero-eyebrow">42% of home insurance claims get denied.</p> */}
+          <h1 className="mhb-hero-h1">Finally. A system that runs your home so you don't have to.</h1>
           <p className="mhb-hero-sub">
-            MyHomeBase™ gives your home a verifiable history — so when something goes wrong, you're protected. For $5 a month.
+            Homeownership is a full-time job nobody trained you for. MyHomeBase tells you exactly what your home needs, when to do it, and who to call — so nothing falls through the cracks.
           </p>
           <div className="mhb-hero-ctas">
             <a href="/quiz" className="mhb-hero-cta-primary">
-              Check your home's risk — free →
+              Start for $5/month — No guesswork. No surprises.
             </a>
             <button className="mhb-hero-cta-secondary" onClick={() => scrollTo('how-it-works')}>
               See how it works ↓
