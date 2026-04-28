@@ -120,7 +120,6 @@ export default function Landing() {
 
   return (
     <div className="mhb-landing">
-
       {/* ═══ QUIZ FULL-SCREEN MODAL ═══ */}
       {quizOpen && (
         <div className="mhb-overlay" role="dialog" aria-modal="true" aria-label="Home Health Score Quiz" onClick={() => setQuizOpen(false)}>
@@ -136,7 +135,6 @@ export default function Landing() {
           </div>
         </div>
       )}
-
       {/* ═══ 42% DENIED MODAL ═══ */}
       {deniedOpen && (
         <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setDeniedOpen(false)}>
@@ -203,7 +201,6 @@ export default function Landing() {
           </div>
         </div>
       )}
-
       {/* ═══ $18K COST MODAL ═══ */}
       {costOpen && (
         <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setCostOpen(false)}>
@@ -255,7 +252,6 @@ export default function Landing() {
           </div>
         </div>
       )}
-
       {claimsOpen && (
         <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setClaimsOpen(false)}>
           <div className="mhb-modal-card" onClick={e => e.stopPropagation()}>
@@ -308,7 +304,6 @@ export default function Landing() {
           </div>
         </div>
       )}
-
       {/* ═══ PLANS MODAL ═══ */}
       {plansOpen && (
         <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setPlansOpen(false)}>
@@ -415,7 +410,6 @@ export default function Landing() {
           </div>
         </div>
       )}
-
       {/* ═══ REFERRAL MODAL ═══ */}
       {referralOpen && (
         <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setReferralOpen(false)}>
@@ -520,7 +514,6 @@ export default function Landing() {
           </div>
         </div>
       )}
-
       {/* ═══ HOMEOWNER LEARN MORE MODAL ═══ */}
       {homeownerModalOpen && (
         <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setHomeownerModalOpen(false)}>
@@ -556,7 +549,6 @@ export default function Landing() {
           </div>
         </div>
       )}
-
       {/* ═══ CONTRACTOR LEARN MORE MODAL ═══ */}
       {contractorModalOpen && (
         <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setContractorModalOpen(false)}>
@@ -591,7 +583,6 @@ export default function Landing() {
           </div>
         </div>
       )}
-
       {/* ═══ AGENT LEARN MORE MODAL ═══ */}
       {agentModalOpen && (
         <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setAgentModalOpen(false)}>
@@ -626,7 +617,6 @@ export default function Landing() {
           </div>
         </div>
       )}
-
       {/* ═══ FAQ MODAL ═══ */}
       {faqOpen && (
         <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setFaqOpen(false)}>
@@ -687,7 +677,6 @@ export default function Landing() {
           </div>
         </div>
       )}
-
       {/* ═══════════════════════════════════════
           SECTION 01 — NAVIGATION
       ═══════════════════════════════════════ */}
@@ -776,14 +765,12 @@ export default function Landing() {
           </div>
         </div>
       </nav>
-
       {/* Mobile-only demo text link below nav */}
       <div className="mhb-nav-demo-underbar">
         <button className="mhb-nav-demo-underbar-btn" onClick={() => handleDemoLogin('homeowner')} disabled={demoLoading === 'homeowner'}>
           {demoLoading === 'homeowner' ? 'Loading…' : 'Try the homeowner demo →'}
         </button>
       </div>
-
       {/* ═══════════════════════════════════════
           SECTION 02 — HERO
       ═══════════════════════════════════════ */}
@@ -803,10 +790,10 @@ export default function Landing() {
               See how it works ↓
             </button>
           </div>
-          <p className="mhb-hero-tagline">Your home has a record. Now it has a score.</p>
+          <p className="mhb-hero-tagline">Your home has a record. 
+          Now it has a score.</p>
         </div>
       </section>
-
       {/* ═══════════════════════════════════════
           SECTION 03 — STAT TILES
       ═══════════════════════════════════════ */}
@@ -834,7 +821,6 @@ export default function Landing() {
           </button>
         </div>
       </section>
-
       {/* ═══════════════════════════════════════
           SECTION 04 — QUIZ ENTRY
       ═══════════════════════════════════════ */}
@@ -857,7 +843,6 @@ export default function Landing() {
           </div>
         </div>
       </section>
-
       {/* ═══════════════════════════════════════
           SECTION 05 — HOW IT WORKS
       ═══════════════════════════════════════ */}
@@ -1031,7 +1016,6 @@ export default function Landing() {
           </div>
         </div>
       </section>
-
       {/* ═══════════════════════════════════════
           SECTION 07 — ROLE SELECTION
       ═══════════════════════════════════════ */}
@@ -1157,7 +1141,6 @@ export default function Landing() {
           <p className="mhb-role-signin-row">Already have an account? <a className="mhb-role-signin-link" href="/signin" data-testid="link-signin">Sign in</a></p>
         </div>
       </section>
-
       {/* ═══════════════════════════════════════
           SECTION 08 — PRICING
       ═══════════════════════════════════════ */}
@@ -1182,7 +1165,6 @@ export default function Landing() {
           </button>
         </div>
       </section>
-
       {/* ═══════════════════════════════════════
           SECTION 09 — PRE-FOOTER CTA
       ═══════════════════════════════════════ */}
@@ -1195,8 +1177,6 @@ export default function Landing() {
           </a>
         </div>
       </section>
-
-
     </div>
   );
 }
