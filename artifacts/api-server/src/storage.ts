@@ -6880,14 +6880,7 @@ class DbStorage implements IStorage {
     this.getAgentStats = this.memStorage.getAgentStats.bind(this.memStorage);
     this.submitAgentVerification = this.memStorage.submitAgentVerification.bind(this.memStorage);
     this.getAgentVerificationStatus = this.memStorage.getAgentVerificationStatus.bind(this.memStorage);
-    // Support ticket methods
-    this.getSupportTickets = this.memStorage.getSupportTickets.bind(this.memStorage);
-    this.getSupportTicket = this.memStorage.getSupportTicket.bind(this.memStorage);
-    this.createSupportTicket = this.memStorage.createSupportTicket.bind(this.memStorage);
-    this.updateSupportTicket = this.memStorage.updateSupportTicket.bind(this.memStorage);
-    this.getTicketReplies = this.memStorage.getTicketReplies.bind(this.memStorage);
-    this.createTicketReply = this.memStorage.createTicketReply.bind(this.memStorage);
-    this.getSupportTicketWithReplies = this.memStorage.getSupportTicketWithReplies.bind(this.memStorage);
+    // Support ticket methods are now database-backed - implemented below
   }
 
   // User operations - DATABASE BACKED for persistence
@@ -9293,6 +9286,87 @@ class DbStorage implements IStorage {
       .set({ viewedAt: new Date(), updatedAt: new Date() })
       .where(and(eq(crmInvoices.homeownerId, homeownerId), isNull(crmInvoices.viewedAt)));
 >>>>>>> 10dd03d (feat: bulk mark-all-viewed endpoint clears invoice badge on tab open)
+  }
+
+  // Support ticket operations - DATABASE BACKED for persistence
+  async getSupportTickets(filters?: {
+    userId?: string;
+    status?: string;
+    category?: string;
+    priority?: string;
+    assignedToAdminId?: string;
+  }): Promise<SupportTicket[]> {
+    const conditions: ReturnType<typeof eq>[] = [];
+    if (filters?.userId) conditions.push(eq(supportTickets.userId, filters.userId));
+    if (filters?.status) conditions.push(eq(supportTickets.status, filters.status));
+    if (filters?.category) conditions.push(eq(supportTickets.category, filters.category));
+    if (filters?.priority) conditions.push(eq(supportTickets.priority, filters.priority));
+    if (filters?.assignedToAdminId) conditions.push(eq(supportTickets.assignedToAdminId, filters.assignedToAdminId));
+
+    const query = conditions.length > 0
+      ? db.select().from(supportTickets).where(and(...conditions)).orderBy(desc(supportTickets.createdAt))
+      : db.select().from(supportTickets).orderBy(desc(supportTickets.createdAt));
+
+    return await query;
+  }
+
+  async getSupportTicket(id: string): Promise<SupportTicket | undefined> {
+    const result = await db.select().from(supportTickets).where(eq(supportTickets.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createSupportTicket(ticket: InsertSupportTicket): Promise<SupportTicket> {
+    const result = await db.insert(supportTickets).values(ticket).returning();
+    return result[0];
+  }
+
+  async updateSupportTicket(id: string, ticket: Partial<InsertSupportTicket>): Promise<SupportTicket | undefined> {
+    const now = new Date();
+    const closedAt = (ticket.status === 'closed' || ticket.status === 'resolved') ? now : undefined;
+    const updateValues: Record<string, unknown> = { ...ticket, updatedAt: now };
+    if (closedAt !== undefined) updateValues.closedAt = closedAt;
+
+    const result = await db.update(supportTickets)
+      .set(updateValues)
+      .where(eq(supportTickets.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async getTicketReplies(ticketId: string): Promise<TicketReply[]> {
+    return await db.select().from(ticketReplies)
+      .where(eq(ticketReplies.ticketId, ticketId))
+      .orderBy(asc(ticketReplies.createdAt));
+  }
+
+  async createTicketReply(reply: InsertTicketReply): Promise<TicketReply> {
+    const result = await db.insert(ticketReplies).values(reply).returning();
+    return result[0];
+  }
+
+  async getSupportTicketWithReplies(id: string): Promise<{
+    ticket: SupportTicket;
+    replies: TicketReply[];
+    user: { id: string; firstName: string | null; lastName: string | null; email: string | null };
+  } | undefined> {
+    const ticket = await this.getSupportTicket(id);
+    if (!ticket) return undefined;
+
+    const user = await this.getUser(ticket.userId);
+    if (!user) return undefined;
+
+    const replies = await this.getTicketReplies(id);
+
+    return {
+      ticket,
+      replies,
+      user: {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+      },
+    };
   }
 
   // Methods delegated to MemStorage (bound in constructor)
