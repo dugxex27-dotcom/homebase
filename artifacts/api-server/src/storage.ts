@@ -6702,30 +6702,6 @@ class DbStorage implements IStorage {
     this.getRegulatoryBody = this.memStorage.getRegulatoryBody.bind(this.memStorage);
     this.createRegulatoryBody = this.memStorage.createRegulatoryBody.bind(this.memStorage);
     this.updateRegulatoryBody = this.memStorage.updateRegulatoryBody.bind(this.memStorage);
-    this.getRegionalMaintenanceTasks = this.memStorage.getRegionalMaintenanceTasks.bind(this.memStorage);
-    this.getRegionalMaintenanceTask = this.memStorage.getRegionalMaintenanceTask.bind(this.memStorage);
-    this.createRegionalMaintenanceTask = this.memStorage.createRegionalMaintenanceTask.bind(this.memStorage);
-    this.updateRegionalMaintenanceTask = this.memStorage.updateRegionalMaintenanceTask.bind(this.memStorage);
-    this.getTaskCompletions = this.memStorage.getTaskCompletions.bind(this.memStorage);
-    this.getTaskCompletion = this.memStorage.getTaskCompletion.bind(this.memStorage);
-    this.createTaskCompletion = this.memStorage.createTaskCompletion.bind(this.memStorage);
-    this.getTaskCompletionsByMonth = this.memStorage.getTaskCompletionsByMonth.bind(this.memStorage);
-    this.getMonthlyStreak = this.memStorage.getMonthlyStreak.bind(this.memStorage);
-    this.getAchievements = this.memStorage.getAchievements.bind(this.memStorage);
-    this.getAchievement = this.memStorage.getAchievement.bind(this.memStorage);
-    this.createAchievement = this.memStorage.createAchievement.bind(this.memStorage);
-    this.hasAchievement = this.memStorage.hasAchievement.bind(this.memStorage);
-    this.getContractorHireCount = this.memStorage.getContractorHireCount.bind(this.memStorage);
-    this.getAllAchievementDefinitions = this.memStorage.getAllAchievementDefinitions.bind(this.memStorage);
-    this.getAchievementDefinitionsByCategory = this.memStorage.getAchievementDefinitionsByCategory.bind(this.memStorage);
-    this.getUserAchievements = this.memStorage.getUserAchievements.bind(this.memStorage);
-    this.getUserAchievement = this.memStorage.getUserAchievement.bind(this.memStorage);
-    this.createUserAchievement = this.memStorage.createUserAchievement.bind(this.memStorage);
-    this.updateUserAchievementProgress = this.memStorage.updateUserAchievementProgress.bind(this.memStorage);
-    this.unlockUserAchievement = this.memStorage.unlockUserAchievement.bind(this.memStorage);
-    this.checkAndAwardAchievements = this.memStorage.checkAndAwardAchievements.bind(this.memStorage);
-    this.calculateAchievementsProgress = this.memStorage.calculateAchievementsProgress.bind(this.memStorage);
-    this.getAchievementProgress = this.memStorage.getAchievementProgress.bind(this.memStorage);
     // getAdminStats is now database-backed - implemented below
     // All remaining methods are now database-backed - implemented below
     // Support ticket methods are now database-backed - implemented below
@@ -9799,6 +9775,596 @@ class DbStorage implements IStorage {
         });
       }
     }
+  }
+
+  // Regional Maintenance Task operations - DATABASE BACKED
+  async getRegionalMaintenanceTasks(countryId: string, climateZoneId?: string, month?: number): Promise<RegionalMaintenanceTask[]> {
+    let query = db.select().from(regionalMaintenanceTasks).where(eq(regionalMaintenanceTasks.countryId, countryId));
+    const rows = await query;
+    return rows.filter(task => {
+      if (climateZoneId && task.climateZoneId !== climateZoneId) return false;
+      if (month && task.months && !task.months.includes(month.toString())) return false;
+      return true;
+    });
+  }
+
+  async getRegionalMaintenanceTask(id: string): Promise<RegionalMaintenanceTask | undefined> {
+    const result = await db.select().from(regionalMaintenanceTasks).where(eq(regionalMaintenanceTasks.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createRegionalMaintenanceTask(taskData: InsertRegionalMaintenanceTask): Promise<RegionalMaintenanceTask> {
+    const result = await db.insert(regionalMaintenanceTasks).values(taskData).returning();
+    return result[0];
+  }
+
+  async updateRegionalMaintenanceTask(id: string, taskData: Partial<InsertRegionalMaintenanceTask>): Promise<RegionalMaintenanceTask | undefined> {
+    const result = await db.update(regionalMaintenanceTasks).set(taskData).where(eq(regionalMaintenanceTasks.id, id)).returning();
+    return result[0];
+  }
+
+  // Task Completion operations - DATABASE BACKED
+  async getTaskCompletions(homeownerId: string, houseId?: string): Promise<TaskCompletion[]> {
+    if (houseId) {
+      return db.select().from(taskCompletions)
+        .where(and(eq(taskCompletions.homeownerId, homeownerId), eq(taskCompletions.houseId, houseId)));
+    }
+    return db.select().from(taskCompletions).where(eq(taskCompletions.homeownerId, homeownerId));
+  }
+
+  async getTaskCompletion(id: string): Promise<TaskCompletion | undefined> {
+    const result = await db.select().from(taskCompletions).where(eq(taskCompletions.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createTaskCompletion(completion: InsertTaskCompletion): Promise<TaskCompletion> {
+    const result = await db.insert(taskCompletions).values(completion).returning();
+    return result[0];
+  }
+
+  async getTaskCompletionsByMonth(homeownerId: string, year: number, month: number): Promise<TaskCompletion[]> {
+    return db.select().from(taskCompletions)
+      .where(and(
+        eq(taskCompletions.homeownerId, homeownerId),
+        eq(taskCompletions.year, year),
+        eq(taskCompletions.month, month)
+      ));
+  }
+
+  async getMonthlyStreak(homeownerId: string): Promise<{ currentStreak: number; longestStreak: number }> {
+    const completions = await db.select().from(taskCompletions)
+      .where(eq(taskCompletions.homeownerId, homeownerId))
+      .orderBy(taskCompletions.year, taskCompletions.month);
+
+    if (completions.length === 0) return { currentStreak: 0, longestStreak: 0 };
+
+    const monthSet = new Set<string>();
+    completions.forEach(c => monthSet.add(`${c.year}-${c.month}`));
+    const months = Array.from(monthSet).sort();
+
+    let tempStreak = 1;
+    let longestStreak = 1;
+    for (let i = 1; i < months.length; i++) {
+      const [prevYear, prevMonth] = months[i - 1].split('-').map(Number);
+      const [currYear, currMonth] = months[i].split('-').map(Number);
+      const isConsecutive =
+        (currYear === prevYear && currMonth === prevMonth + 1) ||
+        (currYear === prevYear + 1 && prevMonth === 12 && currMonth === 1);
+      if (isConsecutive) {
+        tempStreak++;
+      } else {
+        longestStreak = Math.max(longestStreak, tempStreak);
+        tempStreak = 1;
+      }
+    }
+    longestStreak = Math.max(longestStreak, tempStreak);
+
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    let currentStreak = 0;
+    const lastMonth = months[months.length - 1];
+    const [lastYear, lastMonthNum] = lastMonth.split('-').map(Number);
+    if (lastYear === currentYear && lastMonthNum === currentMonth) {
+      currentStreak = 1;
+      for (let i = months.length - 2; i >= 0; i--) {
+        const [year, month] = months[i].split('-').map(Number);
+        const [nextYear, nextMonth] = months[i + 1].split('-').map(Number);
+        const isConsecutive =
+          (nextYear === year && nextMonth === month + 1) ||
+          (nextYear === year + 1 && month === 12 && nextMonth === 1);
+        if (isConsecutive) {
+          currentStreak++;
+        } else {
+          break;
+        }
+      }
+    }
+
+    return { currentStreak, longestStreak };
+  }
+
+  // Achievement operations - DATABASE BACKED
+  async getAchievements(homeownerId: string): Promise<Achievement[]> {
+    return db.select().from(achievements).where(eq(achievements.homeownerId, homeownerId));
+  }
+
+  async getAchievement(id: string): Promise<Achievement | undefined> {
+    const result = await db.select().from(achievements).where(eq(achievements.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createAchievement(achievement: InsertAchievement): Promise<Achievement> {
+    const result = await db.insert(achievements).values(achievement).returning();
+    return result[0];
+  }
+
+  async hasAchievement(homeownerId: string, achievementType: string): Promise<boolean> {
+    const result = await db.select().from(achievements)
+      .where(and(eq(achievements.homeownerId, homeownerId), eq(achievements.achievementType, achievementType)));
+    return result.length > 0;
+  }
+
+  async getContractorHireCount(homeownerId: string): Promise<number> {
+    const logs = await db.select().from(maintenanceLogs)
+      .where(and(eq(maintenanceLogs.homeownerId, homeownerId), isNotNull(maintenanceLogs.contractorId)));
+    const uniqueContractors = new Set(logs.map(log => log.contractorId).filter(Boolean));
+    return uniqueContractors.size;
+  }
+
+  // Achievement Definition operations - DATABASE BACKED
+  async getAllAchievementDefinitions(): Promise<AchievementDefinition[]> {
+    return db.select().from(achievementDefinitions).where(eq(achievementDefinitions.isActive, true));
+  }
+
+  async getAchievementDefinitionsByCategory(category: string): Promise<AchievementDefinition[]> {
+    return db.select().from(achievementDefinitions)
+      .where(and(eq(achievementDefinitions.category, category), eq(achievementDefinitions.isActive, true)));
+  }
+
+  // User Achievement operations - DATABASE BACKED
+  async getUserAchievements(homeownerId: string): Promise<UserAchievement[]> {
+    return db.select().from(userAchievements).where(eq(userAchievements.homeownerId, homeownerId));
+  }
+
+  async getUserAchievement(homeownerId: string, achievementKey: string): Promise<UserAchievement | undefined> {
+    const result = await db.select().from(userAchievements)
+      .where(and(eq(userAchievements.homeownerId, homeownerId), eq(userAchievements.achievementKey, achievementKey)));
+    return result[0];
+  }
+
+  async createUserAchievement(userAchievement: InsertUserAchievement): Promise<UserAchievement> {
+    const result = await db.insert(userAchievements).values(userAchievement).returning();
+    return result[0];
+  }
+
+  async updateUserAchievementProgress(homeownerId: string, achievementKey: string, progress: number, metadata?: string): Promise<UserAchievement | undefined> {
+    const updateFields: { progress: string; metadata?: string } = { progress: progress.toString() };
+    if (metadata) updateFields.metadata = metadata;
+    const result = await db.update(userAchievements)
+      .set(updateFields)
+      .where(and(eq(userAchievements.homeownerId, homeownerId), eq(userAchievements.achievementKey, achievementKey)))
+      .returning();
+    return result[0];
+  }
+
+  async unlockUserAchievement(homeownerId: string, achievementKey: string): Promise<UserAchievement | undefined> {
+    const result = await db.update(userAchievements)
+      .set({ isUnlocked: true, unlockedAt: new Date(), progress: "100" })
+      .where(and(eq(userAchievements.homeownerId, homeownerId), eq(userAchievements.achievementKey, achievementKey)))
+      .returning();
+    return result[0];
+  }
+
+  async checkAndAwardAchievements(homeownerId: string): Promise<UserAchievement[]> {
+    const newlyUnlocked: UserAchievement[] = [];
+    const definitions = await this.getAllAchievementDefinitions();
+    const userAchievs = await this.getUserAchievements(homeownerId);
+    const unlockedKeys = new Set(userAchievs.filter(a => a.isUnlocked).map(a => a.achievementKey));
+
+    const savingsCompletions = await db.select().from(taskCompletions)
+      .where(and(eq(taskCompletions.homeownerId, homeownerId), isNotNull(taskCompletions.costSavings)));
+    const tasksWithSavings = savingsCompletions.filter(c => c.costSavings && parseFloat(c.costSavings.toString()) > 0);
+
+    const savingsMetrics = {
+      totalSavings: tasksWithSavings.reduce((sum, c) => sum + parseFloat(c.costSavings!.toString()), 0),
+      underBudgetCount: tasksWithSavings.length,
+      avgSavingsPerTask: tasksWithSavings.length > 0
+        ? tasksWithSavings.reduce((sum, c) => sum + parseFloat(c.costSavings!.toString()), 0) / tasksWithSavings.length
+        : 0,
+      monthsWithSavings: new Map<string, number>(),
+      quarterSavings: new Map<string, number>(),
+      maxConsecutiveMonths: 0
+    };
+
+    for (const completion of tasksWithSavings) {
+      if (completion.completedAt) {
+        const year = completion.completedAt.getFullYear();
+        const month = completion.completedAt.getMonth() + 1;
+        const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+        const quarter = Math.floor((month - 1) / 3) + 1;
+        const quarterKey = `${year}-Q${quarter}`;
+        savingsMetrics.monthsWithSavings.set(monthKey, (savingsMetrics.monthsWithSavings.get(monthKey) || 0) + 1);
+        const savings = parseFloat(completion.costSavings!.toString());
+        savingsMetrics.quarterSavings.set(quarterKey, (savingsMetrics.quarterSavings.get(quarterKey) || 0) + savings);
+      }
+    }
+
+    if (savingsMetrics.monthsWithSavings.size > 0) {
+      const sortedMonths = Array.from(savingsMetrics.monthsWithSavings.keys()).sort();
+      let currentStreak = 1;
+      let maxStreak = 1;
+      for (let i = 1; i < sortedMonths.length; i++) {
+        const [prevYear, prevMonth] = sortedMonths[i - 1].split('-').map(Number);
+        const [currYear, currMonth] = sortedMonths[i].split('-').map(Number);
+        const isConsecutive =
+          (currYear === prevYear && currMonth === prevMonth + 1) ||
+          (currYear === prevYear + 1 && prevMonth === 12 && currMonth === 1);
+        if (isConsecutive) {
+          currentStreak++;
+          maxStreak = Math.max(maxStreak, currentStreak);
+        } else {
+          currentStreak = 1;
+        }
+      }
+      savingsMetrics.maxConsecutiveMonths = maxStreak;
+    }
+
+    for (const def of definitions) {
+      if (unlockedKeys.has(def.achievementKey)) continue;
+      const criteria = JSON.parse(def.criteria);
+      let isCompleted = false;
+      let progress = 0;
+
+      switch (criteria.type) {
+        case 'seasonal_tasks': {
+          const seasonMonths: Record<string, number[]> = { winter: [12, 1, 2], spring: [3, 4, 5], summer: [6, 7, 8], fall: [9, 10, 11] };
+          const months = seasonMonths[criteria.season] || [];
+          const currentYear = new Date().getFullYear();
+          const completions = await db.select().from(taskCompletions)
+            .where(and(eq(taskCompletions.homeownerId, homeownerId), eq(taskCompletions.year, currentYear)));
+          const seasonalCompletions = completions.filter(c => months.includes(c.month));
+          const requiredCount = criteria.count || 5;
+          progress = Math.min(100, (seasonalCompletions.length / requiredCount) * 100);
+          isCompleted = seasonalCompletions.length >= requiredCount;
+          break;
+        }
+        case 'all_seasons': {
+          const seasonMonths: Record<string, number[]> = { winter: [12, 1, 2], spring: [3, 4, 5], summer: [6, 7, 8], fall: [9, 10, 11] };
+          const currentYear = new Date().getFullYear();
+          const completions = await db.select().from(taskCompletions)
+            .where(and(eq(taskCompletions.homeownerId, homeownerId), eq(taskCompletions.year, currentYear)));
+          const seasonsCompleted = new Set<string>();
+          for (const completion of completions) {
+            for (const [season, months] of Object.entries(seasonMonths)) {
+              if (months.includes(completion.month)) seasonsCompleted.add(season);
+            }
+          }
+          progress = Math.min(100, (seasonsCompleted.size / 4) * 100);
+          isCompleted = seasonsCompleted.size === 4;
+          break;
+        }
+        case 'seasonal_peak': {
+          const seasonMonths: Record<string, number[]> = { winter: [12, 1, 2], spring: [3, 4, 5], summer: [6, 7, 8], fall: [9, 10, 11] };
+          const currentYear = new Date().getFullYear();
+          const completions = await db.select().from(taskCompletions)
+            .where(and(eq(taskCompletions.homeownerId, homeownerId), eq(taskCompletions.year, currentYear)));
+          const seasonCounts: Record<string, number> = { winter: 0, spring: 0, summer: 0, fall: 0 };
+          for (const completion of completions) {
+            for (const [season, months] of Object.entries(seasonMonths)) {
+              if (months.includes(completion.month)) seasonCounts[season]++;
+            }
+          }
+          const maxSeasonalTasks = Math.max(...Object.values(seasonCounts));
+          progress = Math.min(100, (maxSeasonalTasks / criteria.count) * 100);
+          isCompleted = maxSeasonalTasks >= criteria.count;
+          break;
+        }
+        case 'year_round':
+        case 'seasonal_consistency': {
+          const seasonMonths: Record<string, number[]> = { winter: [12, 1, 2], spring: [3, 4, 5], summer: [6, 7, 8], fall: [9, 10, 11] };
+          const currentYear = new Date().getFullYear();
+          const completions = await db.select().from(taskCompletions)
+            .where(and(eq(taskCompletions.homeownerId, homeownerId), eq(taskCompletions.year, currentYear)));
+          const seasonCounts: Record<string, number> = { winter: 0, spring: 0, summer: 0, fall: 0 };
+          for (const completion of completions) {
+            for (const [season, months] of Object.entries(seasonMonths)) {
+              if (months.includes(completion.month)) seasonCounts[season]++;
+            }
+          }
+          const minPerSeason = criteria.min_per_season || 3;
+          const seasonsMetTarget = Object.values(seasonCounts).filter(count => count >= minPerSeason).length;
+          progress = Math.min(100, (seasonsMetTarget / 4) * 100);
+          isCompleted = seasonsMetTarget === 4;
+          break;
+        }
+        case 'under_budget':
+          progress = Math.min(100, (savingsMetrics.underBudgetCount / criteria.count) * 100);
+          isCompleted = savingsMetrics.underBudgetCount >= criteria.count;
+          break;
+        case 'total_savings':
+          progress = Math.min(100, (savingsMetrics.totalSavings / criteria.amount) * 100);
+          isCompleted = savingsMetrics.totalSavings >= criteria.amount;
+          break;
+        case 'consecutive_savings_months':
+          progress = Math.min(100, (savingsMetrics.maxConsecutiveMonths / criteria.count) * 100);
+          isCompleted = savingsMetrics.maxConsecutiveMonths >= criteria.count;
+          break;
+        case 'average_savings_per_task': {
+          const minTasks = criteria.min_tasks || 10;
+          if (tasksWithSavings.length < minTasks) {
+            progress = (tasksWithSavings.length / minTasks) * 50;
+          } else {
+            progress = 50 + Math.min(50, (savingsMetrics.avgSavingsPerTask / criteria.amount) * 50);
+            isCompleted = savingsMetrics.avgSavingsPerTask >= criteria.amount;
+          }
+          break;
+        }
+        case 'quarterly_savings': {
+          const maxQuarterlySavings = savingsMetrics.quarterSavings.size > 0
+            ? Math.max(...Array.from(savingsMetrics.quarterSavings.values()))
+            : 0;
+          progress = Math.min(100, (maxQuarterlySavings / criteria.amount) * 100);
+          isCompleted = maxQuarterlySavings >= criteria.amount;
+          break;
+        }
+        case 'documents_uploaded': {
+          const logs = await db.select().from(maintenanceLogs).where(eq(maintenanceLogs.homeownerId, homeownerId));
+          const docsCount = logs.reduce((sum, log) => sum + (log.receiptUrls?.length || 0), 0);
+          progress = Math.min(100, (docsCount / criteria.count) * 100);
+          isCompleted = docsCount >= criteria.count;
+          break;
+        }
+        case 'logs_created': {
+          const logs = await db.select().from(maintenanceLogs).where(eq(maintenanceLogs.homeownerId, homeownerId));
+          progress = Math.min(100, (logs.length / criteria.count) * 100);
+          isCompleted = logs.length >= criteria.count;
+          break;
+        }
+        case 'detailed_logs': {
+          const logs = await db.select().from(maintenanceLogs).where(eq(maintenanceLogs.homeownerId, homeownerId));
+          const detailedLogs = logs.filter(log => log.description && log.description.length >= 50);
+          progress = Math.min(100, (detailedLogs.length / criteria.count) * 100);
+          isCompleted = detailedLogs.length >= criteria.count;
+          break;
+        }
+        case 'photos_uploaded': {
+          const logs = await db.select().from(maintenanceLogs).where(eq(maintenanceLogs.homeownerId, homeownerId));
+          const photosCount = logs.reduce((sum, log) =>
+            sum + (log.beforePhotoUrls?.length || 0) + (log.afterPhotoUrls?.length || 0), 0);
+          const pairsCount = Math.floor(photosCount / 2);
+          progress = Math.min(100, (pairsCount / criteria.count) * 100);
+          isCompleted = pairsCount >= criteria.count;
+          break;
+        }
+        case 'referrals': {
+          const user = await this.getUser(homeownerId);
+          const referralCount = user?.referralCount || 0;
+          progress = Math.min(100, (referralCount / criteria.count) * 100);
+          isCompleted = referralCount >= criteria.count;
+          break;
+        }
+        case 'contractor_hired': {
+          const acceptedProposals = await db.select().from(proposals)
+            .where(and(eq(proposals.homeownerId, homeownerId), eq(proposals.status, 'accepted')));
+          progress = Math.min(100, (acceptedProposals.length / criteria.count) * 100);
+          isCompleted = acceptedProposals.length >= criteria.count;
+          break;
+        }
+        case 'multi_property': {
+          const userHouses = await db.select().from(houses).where(eq(houses.homeownerId, homeownerId));
+          progress = Math.min(100, (userHouses.length / criteria.count) * 100);
+          isCompleted = userHouses.length >= criteria.count;
+          break;
+        }
+        case 'profile_complete': {
+          const userHouses = await db.select().from(houses).where(eq(houses.homeownerId, homeownerId));
+          if (userHouses.length === 0) { progress = 0; isCompleted = false; break; }
+          const systemsData = await db.select().from(homeSystems).where(eq(homeSystems.houseId, userHouses[0].id));
+          progress = Math.min(100, (systemsData.length / criteria.systems) * 100);
+          isCompleted = systemsData.length >= criteria.systems;
+          break;
+        }
+        case 'streak': {
+          const completions = await db.select().from(taskCompletions).where(eq(taskCompletions.homeownerId, homeownerId));
+          if (completions.length === 0) { progress = 0; isCompleted = false; break; }
+          const monthSet = new Set(completions.map(c => `${c.year}-${c.month}`));
+          const uniqueMonths = Array.from(monthSet).sort();
+          let currentStreak = 1;
+          let maxStreak = 1;
+          for (let i = 1; i < uniqueMonths.length; i++) {
+            const [prevYear, prevMonth] = uniqueMonths[i - 1].split('-').map(Number);
+            const [currYear, currMonth] = uniqueMonths[i].split('-').map(Number);
+            const isConsecutive =
+              (currYear === prevYear && currMonth === prevMonth + 1) ||
+              (currYear === prevYear + 1 && prevMonth === 12 && currMonth === 1);
+            if (isConsecutive) { currentStreak++; maxStreak = Math.max(maxStreak, currentStreak); }
+            else { currentStreak = 1; }
+          }
+          progress = Math.min(100, (maxStreak / criteria.months) * 100);
+          isCompleted = maxStreak >= criteria.months;
+          break;
+        }
+        case 'first_task': {
+          const completions = await db.select().from(taskCompletions).where(eq(taskCompletions.homeownerId, homeownerId));
+          progress = completions.length > 0 ? 100 : 0;
+          isCompleted = completions.length > 0;
+          break;
+        }
+        case 'total_tasks': {
+          const completions = await db.select().from(taskCompletions).where(eq(taskCompletions.homeownerId, homeownerId));
+          progress = Math.min(100, (completions.length / criteria.count) * 100);
+          isCompleted = completions.length >= criteria.count;
+          break;
+        }
+        case 'high_priority_safety': {
+          const completions = await db.select().from(taskCompletions).where(eq(taskCompletions.homeownerId, homeownerId));
+          const safetyTasks = completions.filter(c =>
+            c.taskTitle?.toLowerCase().includes('smoke') ||
+            c.taskTitle?.toLowerCase().includes('carbon') ||
+            c.taskTitle?.toLowerCase().includes('detector') ||
+            c.taskTitle?.toLowerCase().includes('safety') ||
+            c.taskTitle?.toLowerCase().includes('emergency')
+          );
+          progress = Math.min(100, (safetyTasks.length / criteria.count) * 100);
+          isCompleted = safetyTasks.length >= criteria.count;
+          break;
+        }
+        case 'early_adopter': {
+          const user = await this.getUser(homeownerId);
+          const cutoffDate = new Date(criteria.before);
+          const userCreatedAt = user?.createdAt ? new Date(user.createdAt) : new Date();
+          isCompleted = userCreatedAt < cutoffDate;
+          progress = isCompleted ? 100 : 0;
+          break;
+        }
+        case 'premium_subscription': {
+          const user = await this.getUser(homeownerId);
+          const isPremium = user?.subscriptionStatus === 'active' &&
+            (user?.subscriptionPlanId === 'premium' || user?.subscriptionPlanId === 'premium_plus');
+          isCompleted = isPremium;
+          progress = isPremium ? 100 : 0;
+          break;
+        }
+      }
+
+      const existing = userAchievs.find(a => a.achievementKey === def.achievementKey);
+      if (isCompleted) {
+        if (existing) {
+          const unlocked = await this.unlockUserAchievement(homeownerId, def.achievementKey);
+          if (unlocked) newlyUnlocked.push(unlocked);
+        } else {
+          const created = await this.createUserAchievement({
+            homeownerId,
+            achievementKey: def.achievementKey,
+            progress: "100",
+            isUnlocked: true,
+            unlockedAt: new Date()
+          });
+          newlyUnlocked.push(created);
+        }
+      } else if (!existing && progress > 0) {
+        await this.createUserAchievement({
+          homeownerId,
+          achievementKey: def.achievementKey,
+          progress: progress.toString(),
+          isUnlocked: false
+        });
+      } else if (existing && progress > parseFloat(existing.progress?.toString() || "0")) {
+        await this.updateUserAchievementProgress(homeownerId, def.achievementKey, progress);
+      }
+    }
+
+    return newlyUnlocked;
+  }
+
+  async calculateAchievementsProgress(
+    homeownerId: string,
+    houseId?: string
+  ): Promise<Array<{ achievementKey: string; progress: number; isUnlocked: boolean; unlockedAt?: Date; metadata?: string }>> {
+    const results: Array<{ achievementKey: string; progress: number; isUnlocked: boolean; unlockedAt?: Date; metadata?: string }> = [];
+    const definitions = await this.getAllAchievementDefinitions();
+    const userAchievs = await this.getUserAchievements(homeownerId);
+
+    if (!houseId) {
+      for (const def of definitions) {
+        const userAchiev = userAchievs.find(ua => ua.achievementKey === def.achievementKey);
+        results.push({
+          achievementKey: def.achievementKey,
+          progress: userAchiev ? parseFloat(userAchiev.progress?.toString() || "0") : 0,
+          isUnlocked: userAchiev?.isUnlocked || false,
+          unlockedAt: userAchiev?.unlockedAt,
+          metadata: userAchiev?.metadata
+        });
+      }
+      return results;
+    }
+
+    const houseTaskCompletions = await db.select().from(taskCompletions)
+      .where(and(eq(taskCompletions.homeownerId, homeownerId), eq(taskCompletions.houseId, houseId)));
+    const houseMaintenanceLogs = await db.select().from(maintenanceLogs)
+      .where(and(eq(maintenanceLogs.homeownerId, homeownerId), eq(maintenanceLogs.houseId, houseId)));
+
+    const tasksWithSavings = houseTaskCompletions.filter(c => c.costSavings && parseFloat(c.costSavings.toString()) > 0);
+    const houseSavingsMetrics = {
+      totalSavings: tasksWithSavings.reduce((sum, c) => sum + parseFloat(c.costSavings!.toString()), 0),
+      underBudgetCount: tasksWithSavings.length,
+      avgSavingsPerTask: tasksWithSavings.length > 0
+        ? tasksWithSavings.reduce((sum, c) => sum + parseFloat(c.costSavings!.toString()), 0) / tasksWithSavings.length
+        : 0,
+    };
+
+    for (const def of definitions) {
+      const criteria = typeof def.criteria === 'string' ? JSON.parse(def.criteria) : def.criteria;
+      let progress = 0;
+      const userAchiev = userAchievs.find(ua => ua.achievementKey === def.achievementKey);
+
+      switch (criteria.type) {
+        case 'seasonal_tasks': {
+          const seasonMap: Record<string, number[]> = { winter: [12, 1, 2], spring: [3, 4, 5], summer: [6, 7, 8], fall: [9, 10, 11] };
+          const months = seasonMap[criteria.season] || [];
+          const tasksForSeason = houseTaskCompletions.filter(c => {
+            if (!c.completedAt) return false;
+            const month = c.completedAt.getMonth() + 1;
+            return months.includes(month);
+          });
+          progress = Math.min(100, (tasksForSeason.length / criteria.count) * 100);
+          break;
+        }
+        case 'total_savings':
+          progress = Math.min(100, (houseSavingsMetrics.totalSavings / criteria.amount) * 100);
+          break;
+        case 'under_budget':
+          progress = Math.min(100, (houseSavingsMetrics.underBudgetCount / criteria.count) * 100);
+          break;
+        case 'logs_created':
+          progress = Math.min(100, (houseMaintenanceLogs.length / criteria.count) * 100);
+          break;
+        case 'documents_uploaded': {
+          const docsCount = houseMaintenanceLogs.filter(log => log.receiptUrls && log.receiptUrls.length > 0).length;
+          progress = Math.min(100, (docsCount / criteria.count) * 100);
+          break;
+        }
+        case 'photos_uploaded': {
+          const photosCount = houseMaintenanceLogs.reduce((sum, log) =>
+            sum + (log.beforePhotoUrls?.length || 0) + (log.afterPhotoUrls?.length || 0), 0);
+          const pairsCount = Math.floor(photosCount / 2);
+          progress = Math.min(100, (pairsCount / criteria.count) * 100);
+          break;
+        }
+        case 'detailed_logs': {
+          const detailedLogs = houseMaintenanceLogs.filter(log => log.description && log.description.length >= 50);
+          progress = Math.min(100, (detailedLogs.length / criteria.count) * 100);
+          break;
+        }
+        default:
+          progress = userAchiev ? parseFloat(userAchiev.progress?.toString() || "0") : 0;
+          break;
+      }
+
+      const isHouseUnlocked = progress >= 100;
+      results.push({
+        achievementKey: def.achievementKey,
+        progress,
+        isUnlocked: isHouseUnlocked,
+        unlockedAt: isHouseUnlocked && userAchiev?.isUnlocked ? userAchiev.unlockedAt : undefined,
+        metadata: userAchiev?.metadata
+      });
+    }
+
+    return results;
+  }
+
+  async getAchievementProgress(homeownerId: string, achievementKey: string): Promise<{ progress: number; isUnlocked: boolean; criteria: any }> {
+    const userAchiev = await this.getUserAchievement(homeownerId, achievementKey);
+    const definition = await db.select().from(achievementDefinitions)
+      .where(eq(achievementDefinitions.achievementKey, achievementKey));
+    if (!definition[0]) throw new Error('Achievement definition not found');
+    return {
+      progress: userAchiev ? parseFloat(userAchiev.progress?.toString() || "0") : 0,
+      isUnlocked: userAchiev?.isUnlocked || false,
+      criteria: JSON.parse(definition[0].criteria)
+    };
   }
 }
 
