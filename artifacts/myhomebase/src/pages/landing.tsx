@@ -189,7 +189,7 @@ export default function Landing() {
               <div className="mdn-fix-row">
                 <div className="mdn-fix-icon">✓</div>
                 <div>
-                  <p className="mdn-fix-title">MyHomeBase solves all four.</p>
+                  <p className="mdn-fix-title">MyHomeBase™ solves all four.</p>
                   <p className="mdn-fix-desc">Every service record, inspection, and contractor invoice — logged, dated, and stored permanently. When an adjuster asks, you have the answer.</p>
                 </div>
               </div>
@@ -243,7 +243,7 @@ export default function Landing() {
 
               <div className="mco-footer-note">
                 <span className="mco-footer-icon">💡</span>
-                <p className="mco-footer-text">MyHomeBase costs $5/month. The average denied claim costs $18,311. Documentation is the difference.</p>
+                <p className="mco-footer-text">MyHomeBase™ costs $5/month. The average denied claim costs $18,311. Documentation is the difference.</p>
               </div>
 
               <div className="mco-source-row">
@@ -292,7 +292,7 @@ export default function Landing() {
               <div className="msc-cta-wrap" style={{ animationDelay: '0.45s' }}>
                 <div>
                   <p className="msc-cta-price">$5/month</p>
-                  <p className="msc-cta-desc">What MyHomeBase costs<br />to protect yourself</p>
+                  <p className="msc-cta-desc">What MyHomeBase™ costs<br />to protect yourself</p>
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
                   <p className="msc-cta-vs">vs. denied claim</p>
@@ -478,7 +478,7 @@ export default function Landing() {
                   <div className="mrr-header">
                     <p className="mrr-eyebrow mrr-eyebrow-ct">How it works</p>
                     <h2 className="mrr-heading">Bring homeowners.<br />Pay less. Or nothing.</h2>
-                    <p className="mrr-body-text">Every homeowner you bring to MyHomeBase takes $1 off your monthly plan. Refer 20 and your subscription is completely free — for as long as they are paid subscribers.</p>
+                    <p className="mrr-body-text">Every homeowner you bring to MyHomeBase™ takes $1 off your monthly plan. Refer 20 and your subscription is completely free — for as long as they are paid subscribers.</p>
                     <div className="mrr-divider mrr-divider-ct" />
                   </div>
                   <div className="mrr-steps-section">
@@ -606,7 +606,7 @@ export default function Landing() {
                 {[
                   { icon: '🏡', title: 'Home Wellness Score™ for Listings', desc: 'Attach a verified Home Wellness Score to every listing. Buyers see it as transparency. Sellers see it as value.' },
                   { icon: '📤', title: 'Handoff Reports', desc: 'Generate a comprehensive handoff report at closing — every maintenance record, every upgrade, verified and ready for the buyer.' },
-                  { icon: '🤝', title: 'Referral Earnings', desc: "Refer homeowners to MyHomeBase and earn recurring monthly revenue for as long as they're subscribed." },
+                  { icon: '🤝', title: 'Referral Earnings', desc: "Refer homeowners to MyHomeBase™ and earn recurring monthly revenue for as long as they're subscribed." },
                   { icon: '⭐', title: 'Differentiate Your Services', desc: "Stand out in a crowded market. Offering a documented home history is a competitive advantage most agents don't have." },
                 ].map(f => (
                   <div key={f.title} className="mhb-role-modal-feature">
@@ -793,7 +793,7 @@ export default function Landing() {
           {/* <p className="mhb-hero-eyebrow">42% of home insurance claims get denied.</p> */}
           <h1 className="mhb-hero-h1">Finally. A system that runs your home so you don't have to.</h1>
           <p className="mhb-hero-sub">
-            Homeownership is a full-time job nobody trained you for. MyHomeBase tells you exactly what your home needs, when to do it, and who to call — so nothing falls through the cracks.
+            Homeownership is a full-time job nobody trained you for. MyHomeBase™ tells you exactly what your home needs, when to do it, and who to call — so nothing falls through the cracks.
           </p>
           <div className="mhb-hero-ctas">
             <a href="/signin" className="mhb-hero-cta-primary">
@@ -863,7 +863,7 @@ export default function Landing() {
       ═══════════════════════════════════════ */}
       <section id="how-it-works" className="mhb-how-section">
         <div className="mhb-how-inner">
-          <p className="mhb-section-eyebrow">How MyHomeBase works</p>
+          <p className="mhb-section-eyebrow">How MyHomeBase™ works</p>
           <h2 className="mhb-section-heading">Your home, documented.<br />Your claims, protected.</h2>
 
           <div className="mhb-how-features">
