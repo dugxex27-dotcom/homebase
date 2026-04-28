@@ -13154,17 +13154,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       }
 
       const invoices = await storage.getLinkedInvoicesForHomeowner(userId);
-
-      // Try to load service records for claimed detection; fall back gracefully on DB errors
-      let serviceRecords: Awaited<ReturnType<typeof storage.getServiceRecordsByHomeowner>> = [];
-      try {
-        serviceRecords = await storage.getServiceRecordsByHomeowner(userId);
-      } catch (srErr) {
-        console.warn("unclaimed-count: service-record fallback triggered", {
-          userId,
-          error: srErr instanceof Error ? srErr.message : String(srErr),
-        });
-      }
+      const serviceRecords = await storage.getServiceRecordsByHomeowner(userId);
 
       const unclaimedCount = invoices.filter(inv => {
         const isClaimed = serviceRecords.some(r => r.notes?.includes(inv.invoiceNumber));
