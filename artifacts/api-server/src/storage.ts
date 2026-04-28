@@ -6678,24 +6678,7 @@ class DbStorage implements IStorage {
     this.getTaskOverride = this.memStorage.getTaskOverride.bind(this.memStorage);
     this.upsertTaskOverride = this.memStorage.upsertTaskOverride.bind(this.memStorage);
     this.deleteTaskOverride = this.memStorage.deleteTaskOverride.bind(this.memStorage);
-    this.getCountries = this.memStorage.getCountries.bind(this.memStorage);
-    this.getCountry = this.memStorage.getCountry.bind(this.memStorage);
-    this.getCountryByCode = this.memStorage.getCountryByCode.bind(this.memStorage);
-    this.createCountry = this.memStorage.createCountry.bind(this.memStorage);
-    this.updateCountry = this.memStorage.updateCountry.bind(this.memStorage);
-    this.getRegionsByCountry = this.memStorage.getRegionsByCountry.bind(this.memStorage);
-    this.getRegion = this.memStorage.getRegion.bind(this.memStorage);
-    this.createRegion = this.memStorage.createRegion.bind(this.memStorage);
-    this.updateRegion = this.memStorage.updateRegion.bind(this.memStorage);
-    this.getClimateZonesByCountry = this.memStorage.getClimateZonesByCountry.bind(this.memStorage);
-    this.getClimateZone = this.memStorage.getClimateZone.bind(this.memStorage);
-    this.createClimateZone = this.memStorage.createClimateZone.bind(this.memStorage);
-    this.updateClimateZone = this.memStorage.updateClimateZone.bind(this.memStorage);
-    this.getRegulatoryBodiesByRegion = this.memStorage.getRegulatoryBodiesByRegion.bind(this.memStorage);
-    this.getRegulatoryBodiesByCountry = this.memStorage.getRegulatoryBodiesByCountry.bind(this.memStorage);
-    this.getRegulatoryBody = this.memStorage.getRegulatoryBody.bind(this.memStorage);
-    this.createRegulatoryBody = this.memStorage.createRegulatoryBody.bind(this.memStorage);
-    this.updateRegulatoryBody = this.memStorage.updateRegulatoryBody.bind(this.memStorage);
+    // Country, region, climate zone, and regulatory body methods are now DB-backed (implemented below)
     // getAdminStats is now database-backed - implemented below
     // All remaining methods are now database-backed - implemented below
     // Support ticket methods are now database-backed - implemented below
@@ -10437,6 +10420,99 @@ class DbStorage implements IStorage {
       isUnlocked: userAchiev?.isUnlocked || false,
       criteria: JSON.parse(definition[0].criteria)
     };
+  }
+
+  // ── Countries ─────────────────────────────────────────────────────────────
+
+  async getCountries(): Promise<Country[]> {
+    return db.select().from(countries);
+  }
+
+  async getCountry(id: string): Promise<Country | undefined> {
+    const result = await db.select().from(countries).where(eq(countries.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getCountryByCode(code: string): Promise<Country | undefined> {
+    const result = await db.select().from(countries).where(eq(countries.code, code)).limit(1);
+    return result[0];
+  }
+
+  async createCountry(countryData: InsertCountry): Promise<Country> {
+    const result = await db.insert(countries).values(countryData).returning();
+    return result[0];
+  }
+
+  async updateCountry(id: string, countryData: Partial<InsertCountry>): Promise<Country | undefined> {
+    const result = await db.update(countries).set(countryData).where(eq(countries.id, id)).returning();
+    return result[0];
+  }
+
+  // ── Regions ───────────────────────────────────────────────────────────────
+
+  async getRegionsByCountry(countryId: string): Promise<Region[]> {
+    return db.select().from(regions).where(eq(regions.countryId, countryId));
+  }
+
+  async getRegion(id: string): Promise<Region | undefined> {
+    const result = await db.select().from(regions).where(eq(regions.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createRegion(regionData: InsertRegion): Promise<Region> {
+    const result = await db.insert(regions).values(regionData).returning();
+    return result[0];
+  }
+
+  async updateRegion(id: string, regionData: Partial<InsertRegion>): Promise<Region | undefined> {
+    const result = await db.update(regions).set(regionData).where(eq(regions.id, id)).returning();
+    return result[0];
+  }
+
+  // ── Climate Zones ─────────────────────────────────────────────────────────
+
+  async getClimateZonesByCountry(countryId: string): Promise<ClimateZone[]> {
+    return db.select().from(climateZones).where(eq(climateZones.countryId, countryId));
+  }
+
+  async getClimateZone(id: string): Promise<ClimateZone | undefined> {
+    const result = await db.select().from(climateZones).where(eq(climateZones.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createClimateZone(zoneData: InsertClimateZone): Promise<ClimateZone> {
+    const result = await db.insert(climateZones).values(zoneData).returning();
+    return result[0];
+  }
+
+  async updateClimateZone(id: string, zoneData: Partial<InsertClimateZone>): Promise<ClimateZone | undefined> {
+    const result = await db.update(climateZones).set(zoneData).where(eq(climateZones.id, id)).returning();
+    return result[0];
+  }
+
+  // ── Regulatory Bodies ─────────────────────────────────────────────────────
+
+  async getRegulatoryBodiesByRegion(regionId: string): Promise<RegulatoryBody[]> {
+    return db.select().from(regulatoryBodies).where(eq(regulatoryBodies.regionId, regionId));
+  }
+
+  async getRegulatoryBodiesByCountry(countryId: string): Promise<RegulatoryBody[]> {
+    return db.select().from(regulatoryBodies).where(eq(regulatoryBodies.countryId, countryId));
+  }
+
+  async getRegulatoryBody(id: string): Promise<RegulatoryBody | undefined> {
+    const result = await db.select().from(regulatoryBodies).where(eq(regulatoryBodies.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createRegulatoryBody(bodyData: InsertRegulatoryBody): Promise<RegulatoryBody> {
+    const result = await db.insert(regulatoryBodies).values(bodyData).returning();
+    return result[0];
+  }
+
+  async updateRegulatoryBody(id: string, bodyData: Partial<InsertRegulatoryBody>): Promise<RegulatoryBody | undefined> {
+    const result = await db.update(regulatoryBodies).set(bodyData).where(eq(regulatoryBodies.id, id)).returning();
+    return result[0];
   }
 }
 
