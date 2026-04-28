@@ -1236,7 +1236,7 @@ The MyHomeBase™ Team`);
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart data-testid="chart-feature-usage">
                     <Pie
-                      data={analytics?.features || []}
+                      data={(analytics?.features || []).filter(f => !f.feature.startsWith('Boosts:'))}
                       cx="50%"
                       cy="45%"
                       outerRadius={70}
@@ -1244,7 +1244,7 @@ The MyHomeBase™ Team`);
                       dataKey="count"
                       nameKey="feature"
                     >
-                      {(analytics?.features || []).map((entry, index) => (
+                      {(analytics?.features || []).filter(f => !f.feature.startsWith('Boosts:')).map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                       ))}
                     </Pie>
@@ -1257,6 +1257,71 @@ The MyHomeBase™ Team`);
                     />
                   </PieChart>
                 </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Contractor Boost Status */}
+          <Card data-testid="card-boost-status">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Contractor Boost Status</CardTitle>
+                  <CardDescription>Breakdown of boosts by expiration status</CardDescription>
+                </div>
+                <TrendingUp className="h-5 w-5 text-blue-600" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              {analyticsLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              ) : (
+                <div className="space-y-3" data-testid="boost-status-breakdown">
+                  {[
+                    {
+                      label: 'Active',
+                      count: analytics?.features?.find(f => f.feature === 'Boosts: Active')?.count ?? 0,
+                      icon: <CheckCircle className="h-5 w-5 text-green-600" />,
+                      bg: 'bg-green-50 dark:bg-green-950',
+                      text: 'text-green-700 dark:text-green-300',
+                      badge: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+                      description: 'Boosts currently running and visible to homeowners',
+                    },
+                    {
+                      label: 'Expired',
+                      count: analytics?.features?.find(f => f.feature === 'Boosts: Expired')?.count ?? 0,
+                      icon: <Clock className="h-5 w-5 text-amber-600" />,
+                      bg: 'bg-amber-50 dark:bg-amber-950',
+                      text: 'text-amber-700 dark:text-amber-300',
+                      badge: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
+                      description: 'Boosts whose end date has passed',
+                    },
+                    {
+                      label: 'Cancelled',
+                      count: analytics?.features?.find(f => f.feature === 'Boosts: Cancelled')?.count ?? 0,
+                      icon: <XCircle className="h-5 w-5 text-gray-500" />,
+                      bg: 'bg-gray-50 dark:bg-gray-900',
+                      text: 'text-gray-600 dark:text-gray-400',
+                      badge: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+                      description: 'Boosts cancelled before their end date',
+                    },
+                  ].map(({ label, count, icon, bg, text, badge, description }) => (
+                    <div key={label} className={`flex items-center justify-between rounded-lg px-4 py-3 ${bg}`} data-testid={`boost-status-${label.toLowerCase()}`}>
+                      <div className="flex items-center gap-3">
+                        {icon}
+                        <div>
+                          <p className={`text-sm font-semibold ${text}`}>{label} Boosts</p>
+                          <p className="text-xs text-muted-foreground">{description}</p>
+                        </div>
+                      </div>
+                      <span className={`rounded-full px-3 py-1 text-sm font-bold ${badge}`}>{count}</span>
+                    </div>
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>

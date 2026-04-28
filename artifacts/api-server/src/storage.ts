@@ -5489,12 +5489,18 @@ export class MemStorage implements IStorage {
     const messagesArray = Array.from(this.messages.values());
     const proposalsArray = Array.from(this.proposals.values());
     const contractorBoostsArray = Array.from(this.contractorBoosts.values());
+    const now = new Date();
+    const activeBoosts = contractorBoostsArray.filter(b => b.status === 'active' && new Date(b.endDate) >= now);
+    const expiredBoosts = contractorBoostsArray.filter(b => b.status === 'expired' || (b.status === 'active' && new Date(b.endDate) < now));
+    const cancelledBoosts = contractorBoostsArray.filter(b => b.status === 'cancelled');
     
     return [
       { feature: 'Task Completions', count: taskCompletionsArray.length },
       { feature: 'Messages Sent', count: messagesArray.length },
       { feature: 'Proposals Created', count: proposalsArray.length },
-      { feature: 'Contractor Boosts', count: contractorBoostsArray.length },
+      { feature: 'Boosts: Active', count: activeBoosts.length },
+      { feature: 'Boosts: Expired', count: expiredBoosts.length },
+      { feature: 'Boosts: Cancelled', count: cancelledBoosts.length },
       { feature: 'Service Records', count: this.serviceRecords.length },
       { feature: 'Houses Tracked', count: this.houses.size },
     ];
@@ -9982,19 +9988,30 @@ class DbStorage implements IStorage {
 
   // Feature usage stats - DATABASE BACKED
   async getFeatureUsageStats(): Promise<Array<{ feature: string; count: number }>> {
-    const [taskCompletionsArr, messagesArr, proposalsArr, serviceRecordsArr, housesArr, boostsArr] = await Promise.all([
+    const now = new Date();
+    const [taskCompletionsArr, messagesArr, proposalsArr, serviceRecordsArr, housesArr, activeBoostsArr, expiredBoostsArr, cancelledBoostsArr] = await Promise.all([
       db.select({ id: taskCompletions.id }).from(taskCompletions),
       db.select({ id: messages.id }).from(messages),
       db.select({ id: proposals.id }).from(proposals),
       db.select({ id: serviceRecords.id }).from(serviceRecords),
       db.select({ id: houses.id }).from(houses),
-      db.select({ id: contractorBoosts.id }).from(contractorBoosts),
+      db.select({ id: contractorBoosts.id }).from(contractorBoosts).where(
+        and(eq(contractorBoosts.status, 'active'), gte(contractorBoosts.endDate, now))
+      ),
+      db.select({ id: contractorBoosts.id }).from(contractorBoosts).where(
+        or(eq(contractorBoosts.status, 'expired'), and(eq(contractorBoosts.status, 'active'), sql`${contractorBoosts.endDate} < ${now}`))
+      ),
+      db.select({ id: contractorBoosts.id }).from(contractorBoosts).where(
+        eq(contractorBoosts.status, 'cancelled')
+      ),
     ]);
     return [
       { feature: 'Task Completions', count: taskCompletionsArr.length },
       { feature: 'Messages Sent', count: messagesArr.length },
       { feature: 'Proposals Created', count: proposalsArr.length },
-      { feature: 'Contractor Boosts', count: boostsArr.length },
+      { feature: 'Boosts: Active', count: activeBoostsArr.length },
+      { feature: 'Boosts: Expired', count: expiredBoostsArr.length },
+      { feature: 'Boosts: Cancelled', count: cancelledBoostsArr.length },
       { feature: 'Service Records', count: serviceRecordsArr.length },
       { feature: 'Houses Tracked', count: housesArr.length },
     ];
