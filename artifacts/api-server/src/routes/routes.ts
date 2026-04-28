@@ -6628,25 +6628,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const invoice = await storage.createCrmInvoice(validationResult.data);
 
       if (resolvedHomeownerId) {
-        const contractorUser = req.session.user;
-        const contractorName = `${contractorUser.firstName || ''} ${contractorUser.lastName || ''}`.trim() || 'Your Contractor';
-        let contractorCompany: string | undefined;
-        if (contractorUser.companyId) {
-          try {
-            const company = await storage.getCompany(contractorUser.companyId);
-            contractorCompany = company?.name || undefined;
-          } catch {
+        const DEDUP_WINDOW_MS = 5 * 60 * 1000;
+        const now = Date.now();
+        const toNumeric = (v: string | number | null | undefined) => parseFloat(String(v ?? '0')) || 0;
+        const isDuplicate = existingInvoices.some((existing) => {
+          if (existing.homeownerId !== resolvedHomeownerId) return false;
+          if ((existing.title || '') !== (invoice.title || '')) return false;
+          if (toNumeric(existing.amountDue) !== toNumeric(invoice.amountDue)) return false;
+          const age = now - new Date(existing.createdAt || 0).getTime();
+          return age <= DEDUP_WINDOW_MS;
+        });
+
+        if (isDuplicate) {
+          console.warn('[EMAIL] Skipping duplicate linked invoice email: same contractor, homeowner, title, and amount within 5 minutes. Invoice ID:', invoice.id);
+        } else {
+          const contractorUser = req.session.user;
+          const contractorName = `${contractorUser.firstName || ''} ${contractorUser.lastName || ''}`.trim() || 'Your Contractor';
+          let contractorCompany: string | undefined;
+          if (contractorUser.companyId) {
+            try {
+              const company = await storage.getCompany(contractorUser.companyId);
+              contractorCompany = company?.name || undefined;
+            } catch {
+            }
           }
+          const formatAmount = (amount: string | number | null) => amount ? `$${parseFloat(String(amount)).toFixed(2)}` : '$0.00';
+          emailService.sendNewLinkedInvoiceEmail(
+            resolvedHomeownerId,
+            invoice.id,
+            invoice.title || 'Invoice',
+            formatAmount(invoice.amountDue),
+            contractorName,
+            contractorCompany
+          ).catch((err) => console.error('[EMAIL] Failed to send new linked invoice email:', err));
         }
-        const formatAmount = (amount: string | number | null) => amount ? `$${parseFloat(String(amount)).toFixed(2)}` : '$0.00';
-        emailService.sendNewLinkedInvoiceEmail(
-          resolvedHomeownerId,
-          invoice.id,
-          invoice.title || 'Invoice',
-          formatAmount(invoice.amountDue),
-          contractorName,
-          contractorCompany
-        ).catch((err) => console.error('[EMAIL] Failed to send new linked invoice email:', err));
       }
 
       res.status(201).json(invoice);
