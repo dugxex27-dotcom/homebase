@@ -1,8 +1,9 @@
-import { type Contractor, type InsertContractor, type Company, type InsertCompany, type CompanyInviteCode, type InsertCompanyInviteCode, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type HomeApplianceManual, type InsertHomeApplianceManual, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type HomeownerConnectionCode, type InsertHomeownerConnectionCode, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type PushToken, type InsertPushToken, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics, type TaskOverride, type InsertTaskOverride, type Country, type InsertCountry, type Region, type InsertRegion, type ClimateZone, type InsertClimateZone, type RegulatoryBody, type InsertRegulatoryBody, type RegionalMaintenanceTask, type InsertRegionalMaintenanceTask, type TaskCompletion, type InsertTaskCompletion, type Achievement, type InsertAchievement, type AchievementDefinition, type InsertAchievementDefinition, type UserAchievement, type InsertUserAchievement, type SearchAnalytics, type InsertSearchAnalytics, type InviteCode, type InsertInviteCode, type AgentProfile, type InsertAgentProfile, type AffiliateReferral, type InsertAffiliateReferral, type SubscriptionCycleEvent, type InsertSubscriptionCycleEvent, type AffiliatePayout, type InsertAffiliatePayout, type AgentVerificationAudit, type InsertAgentVerificationAudit, type SupportTicket, type InsertSupportTicket, type TicketReply, type InsertTicketReply, type SubscriptionPlan, users, contractors, companies, contractorLicenses, countries, regions, climateZones, regulatoryBodies, regionalMaintenanceTasks, taskCompletions, achievements, achievementDefinitions, userAchievements, maintenanceLogs, searchAnalytics, inviteCodes, agentProfiles, affiliateReferrals, subscriptionCycleEvents, affiliatePayouts, agentVerificationAudits, supportTickets, ticketReplies, houses, homeSystems, customMaintenanceTasks, taskOverrides, serviceRecords, homeownerConnectionCodes, conversations, messages, proposals, houseTransfers, subscriptionPlans, pushTokens, contractorBoosts, type CrmLead, type InsertCrmLead, type CrmNote, type InsertCrmNote, type ErrorLog, type InsertErrorLog, type ErrorBreadcrumb, type InsertErrorBreadcrumb, type CrmIntegration, type InsertCrmIntegration, type WebhookLog, type InsertWebhookLog, crmLeads, crmNotes, errorLogs, errorBreadcrumbs, crmIntegrations, webhookLogs, type CrmClient, type InsertCrmClient, type CrmJob, type InsertCrmJob, type CrmQuote, type InsertCrmQuote, type CrmInvoice, type InsertCrmInvoice, crmClients, crmJobs, crmQuotes, crmInvoices, referralCredits } from "@workspace/db";import { houseDisclosures, type HouseDisclosure, type InsertHouseDisclosure, homeDocuments, type HomeDocument, type InsertHomeDocument, insuranceClaimPackages, type InsuranceClaimPackage, type InsertInsuranceClaimPackage, insuranceEmailLogs, type InsuranceEmailLog, type InsertInsuranceEmailLog } from "@workspace/db";
+import { type Contractor, type InsertContractor, type Company, type InsertCompany, type CompanyInviteCode, type InsertCompanyInviteCode, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type HomeApplianceManual, type InsertHomeApplianceManual, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type HomeownerConnectionCode, type InsertHomeownerConnectionCode, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type PushToken, type InsertPushToken, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics, type TaskOverride, type InsertTaskOverride, type Country, type InsertCountry, type Region, type InsertRegion, type ClimateZone, type InsertClimateZone, type RegulatoryBody, type InsertRegulatoryBody, type RegionalMaintenanceTask, type InsertRegionalMaintenanceTask, type TaskCompletion, type InsertTaskCompletion, type Achievement, type InsertAchievement, type AchievementDefinition, type InsertAchievementDefinition, type UserAchievement, type InsertUserAchievement, type SearchAnalytics, type InsertSearchAnalytics, type InviteCode, type InsertInviteCode, type AgentProfile, type InsertAgentProfile, type AffiliateReferral, type InsertAffiliateReferral, type SubscriptionCycleEvent, type InsertSubscriptionCycleEvent, type AffiliatePayout, type InsertAffiliatePayout, type AgentVerificationAudit, type InsertAgentVerificationAudit, contractorAppointments, notifications, type SupportTicket, type InsertSupportTicket, type TicketReply, type InsertTicketReply, type SubscriptionPlan, users, contractors, companies, contractorLicenses, countries, regions, climateZones, regulatoryBodies, regionalMaintenanceTasks, taskCompletions, achievements, achievementDefinitions, userAchievements, maintenanceLogs, searchAnalytics, inviteCodes, agentProfiles, affiliateReferrals, subscriptionCycleEvents, affiliatePayouts, agentVerificationAudits, supportTickets, ticketReplies, houses, homeSystems, customMaintenanceTasks, taskOverrides, serviceRecords, homeownerConnectionCodes, conversations, messages, proposals, houseTransfers, subscriptionPlans, pushTokens, contractorAnalytics, contractorBoosts, pushSubscriptions, homeAppliances, homeApplianceManuals, companyInviteCodes, products, contractorReviews, type CrmLead, type InsertCrmLead, type CrmNote, type InsertCrmNote, type ErrorLog, type InsertErrorLog, type ErrorBreadcrumb, type InsertErrorBreadcrumb, type CrmIntegration, type InsertCrmIntegration, type WebhookLog, type InsertWebhookLog, crmLeads, crmNotes, errorLogs, errorBreadcrumbs, crmIntegrations, webhookLogs, type CrmClient, type InsertCrmClient, type CrmJob, type InsertCrmJob, type CrmQuote, type InsertCrmQuote, type CrmInvoice, type InsertCrmInvoice, crmClients, crmJobs, crmQuotes, crmInvoices, referralCredits } from "@workspace/db";
+import { houseDisclosures, type HouseDisclosure, type InsertHouseDisclosure, homeDocuments, type HomeDocument, type InsertHomeDocument, insuranceClaimPackages, type InsuranceClaimPackage, type InsertInsuranceClaimPackage, insuranceEmailLogs, type InsuranceEmailLog, type InsertInsuranceEmailLog } from "@workspace/db";
 import { randomUUID, randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
-import { eq, ne, isNotNull, and, or, isNull, not, desc, asc, gte, sql } from "drizzle-orm";
+import { eq, ne, isNotNull, and, or, isNull, not, desc, asc, gte, lte, lt, sql, ilike, like } from "drizzle-orm";
 
 // DEMO DATA PROTECTION SYSTEM
 // Helper functions to identify demo accounts and prevent overwrites of real user data
@@ -6602,86 +6603,787 @@ class DbStorage implements IStorage {
 
   constructor() {
     this.memStorage = new MemStorage();
-    
-    // Bind all MemStorage methods (except database-backed ones)
-    // getContractors and getContractor now use database-backed methods (defined below)
-    this.createContractor = this.memStorage.createContractor.bind(this.memStorage);
-    // Contractor licenses now database-backed - implemented below (getContractorLicenses, createContractorLicense, updateContractorLicense, deleteContractorLicense)
-    // Company methods - now database backed (getCompany, createCompany, updateCompany, getCompanyEmployees)
-    this.createCompanyInviteCode = this.memStorage.createCompanyInviteCode.bind(this.memStorage);
-    this.getCompanyInviteCode = this.memStorage.getCompanyInviteCode.bind(this.memStorage);
-    this.getCompanyInviteCodeByCode = this.memStorage.getCompanyInviteCodeByCode.bind(this.memStorage);
-    this.getCompanyInviteCodes = this.memStorage.getCompanyInviteCodes.bind(this.memStorage);
-    this.updateCompanyInviteCode = this.memStorage.updateCompanyInviteCode.bind(this.memStorage);
-    this.getProducts = this.memStorage.getProducts.bind(this.memStorage);
-    this.getProduct = this.memStorage.getProduct.bind(this.memStorage);
-    this.createProduct = this.memStorage.createProduct.bind(this.memStorage);
-    this.getHomeAppliances = this.memStorage.getHomeAppliances.bind(this.memStorage);
-    this.getHomeAppliance = this.memStorage.getHomeAppliance.bind(this.memStorage);
-    this.createHomeAppliance = this.memStorage.createHomeAppliance.bind(this.memStorage);
-    this.updateHomeAppliance = this.memStorage.updateHomeAppliance.bind(this.memStorage);
-    this.deleteHomeAppliance = this.memStorage.deleteHomeAppliance.bind(this.memStorage);
-    this.getHomeApplianceManuals = this.memStorage.getHomeApplianceManuals.bind(this.memStorage);
-    this.getHomeApplianceManual = this.memStorage.getHomeApplianceManual.bind(this.memStorage);
-    this.createHomeApplianceManual = this.memStorage.createHomeApplianceManual.bind(this.memStorage);
-    this.updateHomeApplianceManual = this.memStorage.updateHomeApplianceManual.bind(this.memStorage);
-    this.deleteHomeApplianceManual = this.memStorage.deleteHomeApplianceManual.bind(this.memStorage);
-    // Maintenance logs and custom tasks now database-backed - implemented below
-    // Home systems, custom tasks, maintenance logs, and service records are now database-backed
-    this.getDefaultHouse = this.memStorage.getDefaultHouse.bind(this.memStorage);
-    // contractorAppointments and notifications are now database-backed (implemented below)
-    // searchContractors, getContractorProfile, updateContractorProfile, and getConversations now use database-backed methods (defined below)
-    this.searchProducts = this.memStorage.searchProducts.bind(this.memStorage);
-    // Service records now database-backed - implemented below
-    this.getCustomerServiceRecords = this.memStorage.getCustomerServiceRecords.bind(this.memStorage);
-    // Messaging operations now database-backed - implemented below
-    this.getContactedHomeowners = this.memStorage.getContactedHomeowners.bind(this.memStorage);
-    this.getContractorReviews = this.memStorage.getContractorReviews.bind(this.memStorage);
-    this.getReviewsByHomeowner = this.memStorage.getReviewsByHomeowner.bind(this.memStorage);
-    this.createContractorReview = this.memStorage.createContractorReview.bind(this.memStorage);
-    this.updateContractorReview = this.memStorage.updateContractorReview.bind(this.memStorage);
-    this.deleteContractorReview = this.memStorage.deleteContractorReview.bind(this.memStorage);
-    this.getContractorAverageRating = this.memStorage.getContractorAverageRating.bind(this.memStorage);
-    // Proposal operations now database-backed - implemented below
-    // Home systems now database-backed - implemented below
-    this.getPushSubscriptions = this.memStorage.getPushSubscriptions.bind(this.memStorage);
-    this.getPushSubscription = this.memStorage.getPushSubscription.bind(this.memStorage);
-    this.createPushSubscription = this.memStorage.createPushSubscription.bind(this.memStorage);
-    this.updatePushSubscription = this.memStorage.updatePushSubscription.bind(this.memStorage);
-    this.deletePushSubscription = this.memStorage.deletePushSubscription.bind(this.memStorage);
-    this.deletePushSubscriptionByEndpoint = this.memStorage.deletePushSubscriptionByEndpoint.bind(this.memStorage);
-    // Mobile push token operations (Firebase)
-    this.getPushTokensForUser = this.memStorage.getPushTokensForUser.bind(this.memStorage);
-    this.createPushToken = this.memStorage.createPushToken.bind(this.memStorage);
-    this.updatePushToken = this.memStorage.updatePushToken.bind(this.memStorage);
-    this.deactivatePushToken = this.memStorage.deactivatePushToken.bind(this.memStorage);
-    this.deletePushToken = this.memStorage.deletePushToken.bind(this.memStorage);
-    // getHousesByHomeowner now database-backed - implemented below (delegates to getHouses)
-    this.getHomeSystemsByHomeowner = this.memStorage.getHomeSystemsByHomeowner.bind(this.memStorage);
-    this.getMaintenanceLogsByHomeowner = this.memStorage.getMaintenanceLogsByHomeowner.bind(this.memStorage);
-    // Contractor boost operations now database-backed - implemented below
-    this.createHouseTransfer = this.memStorage.createHouseTransfer.bind(this.memStorage);
-    this.getHouseTransfer = this.memStorage.getHouseTransfer.bind(this.memStorage);
-    this.getHouseTransferByToken = this.memStorage.getHouseTransferByToken.bind(this.memStorage);
-    this.getHouseTransfersForUser = this.memStorage.getHouseTransfersForUser.bind(this.memStorage);
-    this.updateHouseTransfer = this.memStorage.updateHouseTransfer.bind(this.memStorage);
-    this.transferHouseOwnership = this.memStorage.transferHouseOwnership.bind(this.memStorage);
-    this.getHousesCount = this.memStorage.getHousesCount.bind(this.memStorage);
-    this.getSubscriptionPlans = this.memStorage.getSubscriptionPlans.bind(this.memStorage);
-    this.getSubscriptionPlansByType = this.memStorage.getSubscriptionPlansByType.bind(this.memStorage);
-    this.getSubscriptionPlan = this.memStorage.getSubscriptionPlan.bind(this.memStorage);
-    this.getSubscriptionPlanByTier = this.memStorage.getSubscriptionPlanByTier.bind(this.memStorage);
-    this.trackContractorClick = this.memStorage.trackContractorClick.bind(this.memStorage);
-    this.getContractorAnalytics = this.memStorage.getContractorAnalytics.bind(this.memStorage);
-    this.getContractorMonthlyStats = this.memStorage.getContractorMonthlyStats.bind(this.memStorage);
-    this.getTaskOverrides = this.memStorage.getTaskOverrides.bind(this.memStorage);
-    this.getTaskOverride = this.memStorage.getTaskOverride.bind(this.memStorage);
-    this.upsertTaskOverride = this.memStorage.upsertTaskOverride.bind(this.memStorage);
-    this.deleteTaskOverride = this.memStorage.deleteTaskOverride.bind(this.memStorage);
-    // Country, region, climate zone, and regulatory body methods are now DB-backed (implemented below)
-    // getAdminStats is now database-backed - implemented below
-    // All remaining methods are now database-backed - implemented below
-    // Support ticket methods are now database-backed - implemented below
+    // All methods are now database-backed (implemented as class methods below)
+    // No MemStorage delegation needed
+  }
+
+  // ─── Company Invite Codes — DATABASE BACKED ───────────────────────────────
+  async createCompanyInviteCode(inviteCodeData: InsertCompanyInviteCode): Promise<CompanyInviteCode> {
+    const result = await db.insert(companyInviteCodes).values({
+      ...inviteCodeData,
+      id: randomUUID(),
+    }).returning();
+    return result[0];
+  }
+
+  async getCompanyInviteCode(id: string): Promise<CompanyInviteCode | undefined> {
+    const result = await db.select().from(companyInviteCodes).where(eq(companyInviteCodes.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getCompanyInviteCodeByCode(code: string): Promise<CompanyInviteCode | undefined> {
+    const result = await db.select().from(companyInviteCodes).where(eq(companyInviteCodes.code, code)).limit(1);
+    return result[0];
+  }
+
+  async getCompanyInviteCodes(companyId: string): Promise<CompanyInviteCode[]> {
+    return db.select().from(companyInviteCodes).where(eq(companyInviteCodes.companyId, companyId));
+  }
+
+  async updateCompanyInviteCode(id: string, inviteCodeData: Partial<InsertCompanyInviteCode>): Promise<CompanyInviteCode | undefined> {
+    const result = await db.update(companyInviteCodes).set(inviteCodeData).where(eq(companyInviteCodes.id, id)).returning();
+    return result[0];
+  }
+
+  // ─── Products — DATABASE BACKED ─────────────────────────────────────────
+  async getProducts(filters?: { category?: string; featured?: boolean; search?: string }): Promise<Product[]> {
+    let rows = await db.select().from(products);
+    if (filters?.category) {
+      rows = rows.filter(p => p.category.toLowerCase().includes(filters.category!.toLowerCase()));
+    }
+    if (filters?.featured !== undefined) {
+      rows = rows.filter(p => p.isFeatured === filters.featured);
+    }
+    if (filters?.search) {
+      const q = filters.search.toLowerCase();
+      rows = rows.filter(p => p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q));
+    }
+    return rows;
+  }
+
+  async getProduct(id: string): Promise<Product | undefined> {
+    const result = await db.select().from(products).where(eq(products.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createProduct(product: InsertProduct): Promise<Product> {
+    const result = await db.insert(products).values({ ...product, id: randomUUID() }).returning();
+    return result[0];
+  }
+
+  async searchProducts(query: string): Promise<Product[]> {
+    const q = query.toLowerCase();
+    const rows = await db.select().from(products);
+    return rows.filter(p => p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q));
+  }
+
+  // ─── Home Appliances — DATABASE BACKED ──────────────────────────────────
+  async getHomeAppliances(homeownerId?: string, houseId?: string): Promise<HomeAppliance[]> {
+    if (homeownerId && houseId) {
+      return db.select().from(homeAppliances).where(and(eq(homeAppliances.homeownerId, homeownerId), eq(homeAppliances.houseId, houseId)));
+    } else if (homeownerId) {
+      return db.select().from(homeAppliances).where(eq(homeAppliances.homeownerId, homeownerId));
+    } else if (houseId) {
+      return db.select().from(homeAppliances).where(eq(homeAppliances.houseId, houseId));
+    }
+    return db.select().from(homeAppliances);
+  }
+
+  async getHomeAppliance(id: string): Promise<HomeAppliance | undefined> {
+    const result = await db.select().from(homeAppliances).where(eq(homeAppliances.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createHomeAppliance(appliance: InsertHomeAppliance): Promise<HomeAppliance> {
+    const result = await db.insert(homeAppliances).values({ ...appliance, id: randomUUID() }).returning();
+    return result[0];
+  }
+
+  async updateHomeAppliance(id: string, appliance: Partial<InsertHomeAppliance>): Promise<HomeAppliance | undefined> {
+    const result = await db.update(homeAppliances).set(appliance).where(eq(homeAppliances.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteHomeAppliance(id: string): Promise<boolean> {
+    const result = await db.delete(homeAppliances).where(eq(homeAppliances.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // ─── Home Appliance Manuals — DATABASE BACKED ────────────────────────────
+  async getHomeApplianceManuals(applianceId: string): Promise<HomeApplianceManual[]> {
+    return db.select().from(homeApplianceManuals).where(eq(homeApplianceManuals.applianceId, applianceId));
+  }
+
+  async getHomeApplianceManual(id: string): Promise<HomeApplianceManual | undefined> {
+    const result = await db.select().from(homeApplianceManuals).where(eq(homeApplianceManuals.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createHomeApplianceManual(manual: InsertHomeApplianceManual): Promise<HomeApplianceManual> {
+    const result = await db.insert(homeApplianceManuals).values({ ...manual, id: randomUUID() }).returning();
+    return result[0];
+  }
+
+  async updateHomeApplianceManual(id: string, manual: Partial<InsertHomeApplianceManual>): Promise<HomeApplianceManual | undefined> {
+    const result = await db.update(homeApplianceManuals).set(manual).where(eq(homeApplianceManuals.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteHomeApplianceManual(id: string): Promise<boolean> {
+    const result = await db.delete(homeApplianceManuals).where(eq(homeApplianceManuals.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // ─── Contractor Reviews — DATABASE BACKED ────────────────────────────────
+  async getContractorReviews(contractorId: string): Promise<ContractorReview[]> {
+    return db.select().from(contractorReviews)
+      .where(eq(contractorReviews.contractorId, contractorId))
+      .orderBy(desc(contractorReviews.createdAt));
+  }
+
+  async getReviewsByHomeowner(homeownerId: string): Promise<ContractorReview[]> {
+    return db.select().from(contractorReviews)
+      .where(eq(contractorReviews.homeownerId, homeownerId))
+      .orderBy(desc(contractorReviews.createdAt));
+  }
+
+  async createContractorReview(reviewData: InsertContractorReview): Promise<ContractorReview> {
+    const result = await db.insert(contractorReviews).values({ ...reviewData, id: randomUUID() }).returning();
+    const review = result[0];
+    await this.dbUpdateContractorRating(review.contractorId);
+    return review;
+  }
+
+  async updateContractorReview(id: string, reviewData: Partial<InsertContractorReview>): Promise<ContractorReview | undefined> {
+    const result = await db.update(contractorReviews)
+      .set({ ...reviewData, updatedAt: new Date() })
+      .where(eq(contractorReviews.id, id))
+      .returning();
+    const updated = result[0];
+    if (updated) await this.dbUpdateContractorRating(updated.contractorId);
+    return updated;
+  }
+
+  async deleteContractorReview(id: string): Promise<boolean> {
+    const existing = await db.select().from(contractorReviews).where(eq(contractorReviews.id, id)).limit(1);
+    if (!existing[0]) return false;
+    const result = await db.delete(contractorReviews).where(eq(contractorReviews.id, id)).returning();
+    if (result.length > 0) await this.dbUpdateContractorRating(existing[0].contractorId);
+    return result.length > 0;
+  }
+
+  async getContractorAverageRating(contractorId: string): Promise<{ averageRating: number; totalReviews: number }> {
+    const reviews = await this.getContractorReviews(contractorId);
+    const totalReviews = reviews.length;
+    if (totalReviews === 0) return { averageRating: 0, totalReviews: 0 };
+    const sum = reviews.reduce((total, r) => total + r.rating, 0);
+    return { averageRating: Math.round((sum / totalReviews) * 10) / 10, totalReviews };
+  }
+
+  private async dbUpdateContractorRating(contractorId: string): Promise<void> {
+    const { averageRating, totalReviews } = await this.getContractorAverageRating(contractorId);
+    await db.update(contractors)
+      .set({ rating: averageRating.toString(), reviewCount: totalReviews })
+      .where(eq(contractors.id, contractorId));
+  }
+
+  // ─── Push Subscriptions — DATABASE BACKED ────────────────────────────────
+  async getPushSubscriptions(userId?: string): Promise<PushSubscription[]> {
+    if (userId) {
+      return db.select().from(pushSubscriptions)
+        .where(and(eq(pushSubscriptions.userId, userId), eq(pushSubscriptions.isActive, true)));
+    }
+    return db.select().from(pushSubscriptions).where(eq(pushSubscriptions.isActive, true));
+  }
+
+  async getPushSubscription(id: string): Promise<PushSubscription | undefined> {
+    const result = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createPushSubscription(subscriptionData: InsertPushSubscription): Promise<PushSubscription> {
+    const result = await db.insert(pushSubscriptions).values({ ...subscriptionData, id: randomUUID() }).returning();
+    return result[0];
+  }
+
+  async updatePushSubscription(id: string, subscriptionData: Partial<InsertPushSubscription>): Promise<PushSubscription | undefined> {
+    const result = await db.update(pushSubscriptions)
+      .set({ ...subscriptionData, updatedAt: new Date() })
+      .where(eq(pushSubscriptions.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deletePushSubscription(id: string): Promise<boolean> {
+    const result = await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async deletePushSubscriptionByEndpoint(endpoint: string): Promise<boolean> {
+    const result = await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, endpoint)).returning();
+    return result.length > 0;
+  }
+
+  // ─── Push Tokens — DATABASE BACKED ───────────────────────────────────────
+  async getPushTokensForUser(userId: string): Promise<PushToken[]> {
+    return db.select().from(pushTokens)
+      .where(and(eq(pushTokens.userId, userId), eq(pushTokens.isActive, true)));
+  }
+
+  async createPushToken(tokenData: InsertPushToken): Promise<PushToken> {
+    const result = await db.insert(pushTokens).values({ ...tokenData, id: randomUUID() }).returning();
+    return result[0];
+  }
+
+  async updatePushToken(id: string, tokenData: Partial<InsertPushToken>): Promise<PushToken | undefined> {
+    const result = await db.update(pushTokens)
+      .set({ ...tokenData, lastUsedAt: new Date() })
+      .where(eq(pushTokens.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deactivatePushToken(id: string): Promise<boolean> {
+    const result = await db.update(pushTokens).set({ isActive: false }).where(eq(pushTokens.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async deletePushToken(id: string): Promise<boolean> {
+    const result = await db.delete(pushTokens).where(eq(pushTokens.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // ─── Contractor Boosts — DATABASE BACKED ─────────────────────────────────
+  async getActiveBoosts(serviceCategory?: string, latitude?: number, longitude?: number): Promise<ContractorBoost[]> {
+    const now = new Date();
+    let rows = await db.select().from(contractorBoosts)
+      .where(and(
+        eq(contractorBoosts.status, 'active'),
+        eq(contractorBoosts.isActive, true),
+        gte(contractorBoosts.endDate, now)
+      ));
+    if (serviceCategory) {
+      rows = rows.filter(b => b.serviceCategory === serviceCategory);
+    }
+    if (latitude !== undefined && longitude !== undefined) {
+      rows = rows.filter(b => {
+        const dist = this.haversineDistance(latitude, longitude, parseFloat(b.businessLatitude), parseFloat(b.businessLongitude));
+        return dist <= b.boostRadius;
+      });
+    }
+    return rows;
+  }
+
+  async getContractorBoosts(contractorId: string): Promise<ContractorBoost[]> {
+    return db.select().from(contractorBoosts).where(eq(contractorBoosts.contractorId, contractorId));
+  }
+
+  async createContractorBoost(boostData: InsertContractorBoost): Promise<ContractorBoost> {
+    const result = await db.insert(contractorBoosts).values({ ...boostData, id: randomUUID() }).returning();
+    return result[0];
+  }
+
+  async updateContractorBoost(id: string, boostData: Partial<InsertContractorBoost>): Promise<ContractorBoost | undefined> {
+    const result = await db.update(contractorBoosts)
+      .set({ ...boostData, updatedAt: new Date() })
+      .where(eq(contractorBoosts.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteContractorBoost(id: string): Promise<boolean> {
+    const result = await db.delete(contractorBoosts).where(eq(contractorBoosts.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async checkBoostConflict(serviceCategory: string, latitude: number, longitude: number, radius: number): Promise<ContractorBoost | null> {
+    const activeBoosts = await this.getActiveBoosts(serviceCategory);
+    for (const boost of activeBoosts) {
+      const dist = this.haversineDistance(latitude, longitude, parseFloat(boost.businessLatitude), parseFloat(boost.businessLongitude));
+      if ((radius + boost.boostRadius) > dist) return boost;
+    }
+    return null;
+  }
+
+  private haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 3959;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  // ─── House Transfers — DATABASE BACKED ───────────────────────────────────
+  async createHouseTransfer(transferData: InsertHouseTransfer): Promise<HouseTransfer> {
+    const result = await db.insert(houseTransfers).values({ ...transferData, id: randomUUID() }).returning();
+    return result[0];
+  }
+
+  async getHouseTransfer(id: string): Promise<HouseTransfer | undefined> {
+    const result = await db.select().from(houseTransfers).where(eq(houseTransfers.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getHouseTransferByToken(token: string): Promise<HouseTransfer | undefined> {
+    const result = await db.select().from(houseTransfers).where(eq(houseTransfers.token, token)).limit(1);
+    return result[0];
+  }
+
+  async getHouseTransfersForUser(homeownerId: string): Promise<HouseTransfer[]> {
+    return db.select().from(houseTransfers).where(
+      or(eq(houseTransfers.fromHomeownerId, homeownerId), eq(houseTransfers.toHomeownerId, homeownerId))
+    );
+  }
+
+  async updateHouseTransfer(id: string, updateData: Partial<HouseTransfer>): Promise<HouseTransfer | undefined> {
+    const result = await db.update(houseTransfers).set(updateData).where(eq(houseTransfers.id, id)).returning();
+    return result[0];
+  }
+
+  async transferHouseOwnership(houseId: string, fromHomeownerId: string, toHomeownerId: string): Promise<{
+    maintenanceLogsTransferred: number;
+    appliancesTransferred: number;
+    appointmentsTransferred: number;
+    customTasksTransferred: number;
+    homeSystemsTransferred: number;
+    serviceRecordsTransferred: number;
+    taskCompletionsTransferred: number;
+    taskOverridesTransferred: number;
+  }> {
+    const houseRows = await db.select().from(houses).where(and(eq(houses.id, houseId), eq(houses.homeownerId, fromHomeownerId))).limit(1);
+    if (!houseRows[0]) throw new Error("House not found or ownership mismatch");
+
+    await db.update(houses).set({ homeownerId: toHomeownerId }).where(eq(houses.id, houseId));
+
+    const [logsResult, appResult, apptResult, customResult, sysResult, svcResult, completionsResult, overridesResult] = await Promise.all([
+      db.update(maintenanceLogs).set({ homeownerId: toHomeownerId }).where(and(eq(maintenanceLogs.houseId, houseId), eq(maintenanceLogs.homeownerId, fromHomeownerId))).returning(),
+      db.update(homeAppliances).set({ homeownerId: toHomeownerId }).where(and(eq(homeAppliances.houseId, houseId), eq(homeAppliances.homeownerId, fromHomeownerId))).returning(),
+      db.update(contractorAppointments).set({ homeownerId: toHomeownerId }).where(and(eq(contractorAppointments.houseId, houseId), eq(contractorAppointments.homeownerId, fromHomeownerId))).returning(),
+      db.update(customMaintenanceTasks).set({ homeownerId: toHomeownerId }).where(and(eq(customMaintenanceTasks.houseId, houseId), eq(customMaintenanceTasks.homeownerId, fromHomeownerId))).returning(),
+      db.update(homeSystems).set({ homeownerId: toHomeownerId }).where(and(eq(homeSystems.houseId, houseId), eq(homeSystems.homeownerId, fromHomeownerId))).returning(),
+      db.update(serviceRecords).set({ homeownerId: toHomeownerId }).where(and(eq(serviceRecords.houseId, houseId), eq(serviceRecords.homeownerId, fromHomeownerId))).returning(),
+      db.update(taskCompletions).set({ homeownerId: toHomeownerId }).where(and(eq(taskCompletions.houseId, houseId), eq(taskCompletions.homeownerId, fromHomeownerId))).returning(),
+      db.update(taskOverrides).set({ homeownerId: toHomeownerId }).where(and(eq(taskOverrides.houseId, houseId), eq(taskOverrides.homeownerId, fromHomeownerId))).returning(),
+    ]);
+
+    return {
+      maintenanceLogsTransferred: logsResult.length,
+      appliancesTransferred: appResult.length,
+      appointmentsTransferred: apptResult.length,
+      customTasksTransferred: customResult.length,
+      homeSystemsTransferred: sysResult.length,
+      serviceRecordsTransferred: svcResult.length,
+      taskCompletionsTransferred: completionsResult.length,
+      taskOverridesTransferred: overridesResult.length,
+    };
+  }
+
+  async getHousesCount(homeownerId: string): Promise<number> {
+    const result = await db.select({ count: sql<number>`COUNT(*)` }).from(houses).where(eq(houses.homeownerId, homeownerId));
+    return Number(result[0]?.count ?? 0);
+  }
+
+  // ─── Subscription Plans — DATABASE BACKED ────────────────────────────────
+  async getSubscriptionPlans(): Promise<SubscriptionPlan[]> {
+    return db.select().from(subscriptionPlans).where(eq(subscriptionPlans.isActive, true)).orderBy(subscriptionPlans.sortOrder);
+  }
+
+  async getSubscriptionPlansByType(planType: string): Promise<SubscriptionPlan[]> {
+    return db.select().from(subscriptionPlans)
+      .where(and(eq(subscriptionPlans.planType, planType), eq(subscriptionPlans.isActive, true)))
+      .orderBy(subscriptionPlans.sortOrder);
+  }
+
+  async getSubscriptionPlan(id: string): Promise<SubscriptionPlan | undefined> {
+    const result = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getSubscriptionPlanByTier(tierName: string): Promise<SubscriptionPlan | undefined> {
+    const result = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.tierName, tierName)).limit(1);
+    return result[0];
+  }
+
+  // ─── Contractor Analytics — DATABASE BACKED ──────────────────────────────
+  async trackContractorClick(analyticsData: InsertContractorAnalytics): Promise<ContractorAnalytics> {
+    const result = await db.insert(contractorAnalytics).values({ ...analyticsData, id: randomUUID() }).returning();
+    return result[0];
+  }
+
+  async getContractorAnalytics(contractorId: string, startDate?: Date, endDate?: Date): Promise<ContractorAnalytics[]> {
+    let rows = await db.select().from(contractorAnalytics)
+      .where(eq(contractorAnalytics.contractorId, contractorId))
+      .orderBy(desc(contractorAnalytics.clickedAt));
+    if (startDate) rows = rows.filter(a => a.clickedAt && a.clickedAt >= startDate);
+    if (endDate) rows = rows.filter(a => a.clickedAt && a.clickedAt <= endDate);
+    return rows;
+  }
+
+  async getContractorMonthlyStats(contractorId: string, year: number, month: number): Promise<{
+    totalViews: number;
+    uniqueVisitors: number;
+    websiteClicks: number;
+    socialMediaClicks: number;
+    phoneClicks: number;
+    emailClicks: number;
+    topReferrers: { referrer: string; count: number }[];
+    dailyBreakdown: { day: number; views: number; uniqueVisitors: number }[];
+  }> {
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59);
+    const analytics = await this.getContractorAnalytics(contractorId, startDate, endDate);
+
+    const totalViews = analytics.filter(a => a.clickType === 'profile_view').length;
+    const uniqueVisitors = new Set(analytics.map(a => a.sessionId)).size;
+    const websiteClicks = analytics.filter(a => a.clickType === 'website').length;
+    const socialMediaClicks = analytics.filter(a => ['facebook', 'instagram', 'linkedin'].includes(a.clickType)).length;
+    const phoneClicks = analytics.filter(a => a.clickType === 'phone').length;
+    const emailClicks = analytics.filter(a => a.clickType === 'email').length;
+
+    const referrerCounts = new Map<string, number>();
+    analytics.forEach(a => { if (a.referrerUrl) referrerCounts.set(a.referrerUrl, (referrerCounts.get(a.referrerUrl) || 0) + 1); });
+    const topReferrers = Array.from(referrerCounts.entries()).map(([referrer, count]) => ({ referrer, count })).sort((a, b) => b.count - a.count).slice(0, 5);
+
+    const dailyData = new Map<number, { views: number; uniqueVisitors: Set<string> }>();
+    analytics.forEach(a => {
+      if (!a.clickedAt) return;
+      const day = a.clickedAt.getDate();
+      if (!dailyData.has(day)) dailyData.set(day, { views: 0, uniqueVisitors: new Set() });
+      const d = dailyData.get(day)!;
+      if (a.clickType === 'profile_view') d.views++;
+      d.uniqueVisitors.add(a.sessionId);
+    });
+    const dailyBreakdown = Array.from(dailyData.entries())
+      .map(([day, d]) => ({ day, views: d.views, uniqueVisitors: d.uniqueVisitors.size }))
+      .sort((a, b) => a.day - b.day);
+
+    return { totalViews, uniqueVisitors, websiteClicks, socialMediaClicks, phoneClicks, emailClicks, topReferrers, dailyBreakdown };
+  }
+
+  // ─── Task Overrides — DATABASE BACKED ────────────────────────────────────
+  async getTaskOverrides(homeownerId: string, houseId: string): Promise<TaskOverride[]> {
+    return db.select().from(taskOverrides).where(and(eq(taskOverrides.homeownerId, homeownerId), eq(taskOverrides.houseId, houseId)));
+  }
+
+  async getTaskOverride(homeownerId: string, houseId: string, taskId: string): Promise<TaskOverride | undefined> {
+    const result = await db.select().from(taskOverrides)
+      .where(and(eq(taskOverrides.homeownerId, homeownerId), eq(taskOverrides.houseId, houseId), eq(taskOverrides.taskId, taskId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async upsertTaskOverride(data: InsertTaskOverride): Promise<TaskOverride> {
+    const existing = await this.getTaskOverride(data.homeownerId, data.houseId, data.taskId);
+    if (existing) {
+      const result = await db.update(taskOverrides)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(taskOverrides.id, existing.id))
+        .returning();
+      return result[0];
+    }
+    const result = await db.insert(taskOverrides).values({ ...data, id: randomUUID() }).returning();
+    return result[0];
+  }
+
+  async deleteTaskOverride(homeownerId: string, houseId: string, taskId: string): Promise<boolean> {
+    const result = await db.delete(taskOverrides)
+      .where(and(eq(taskOverrides.homeownerId, homeownerId), eq(taskOverrides.houseId, houseId), eq(taskOverrides.taskId, taskId)))
+      .returning();
+    return result.length > 0;
+  }
+
+  // ─── Regional Data — DATABASE BACKED ─────────────────────────────────────
+  async getCountries(): Promise<Country[]> {
+    return db.select().from(countries);
+  }
+
+  async getCountry(id: string): Promise<Country | undefined> {
+    const result = await db.select().from(countries).where(eq(countries.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getCountryByCode(code: string): Promise<Country | undefined> {
+    const result = await db.select().from(countries).where(eq(countries.code, code)).limit(1);
+    return result[0];
+  }
+
+  async createCountry(countryData: InsertCountry): Promise<Country> {
+    const result = await db.insert(countries).values({ ...countryData, id: randomUUID() }).returning();
+    return result[0];
+  }
+
+  async updateCountry(id: string, countryData: Partial<InsertCountry>): Promise<Country | undefined> {
+    const result = await db.update(countries).set(countryData).where(eq(countries.id, id)).returning();
+    return result[0];
+  }
+
+  async getRegionsByCountry(countryId: string): Promise<Region[]> {
+    return db.select().from(regions).where(eq(regions.countryId, countryId));
+  }
+
+  async getRegion(id: string): Promise<Region | undefined> {
+    const result = await db.select().from(regions).where(eq(regions.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createRegion(regionData: InsertRegion): Promise<Region> {
+    const result = await db.insert(regions).values({ ...regionData, id: randomUUID() }).returning();
+    return result[0];
+  }
+
+  async updateRegion(id: string, regionData: Partial<InsertRegion>): Promise<Region | undefined> {
+    const result = await db.update(regions).set(regionData).where(eq(regions.id, id)).returning();
+    return result[0];
+  }
+
+  async getClimateZonesByCountry(countryId: string): Promise<ClimateZone[]> {
+    return db.select().from(climateZones).where(eq(climateZones.countryId, countryId));
+  }
+
+  async getClimateZone(id: string): Promise<ClimateZone | undefined> {
+    const result = await db.select().from(climateZones).where(eq(climateZones.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createClimateZone(zoneData: InsertClimateZone): Promise<ClimateZone> {
+    const result = await db.insert(climateZones).values({ ...zoneData, id: randomUUID() }).returning();
+    return result[0];
+  }
+
+  async updateClimateZone(id: string, zoneData: Partial<InsertClimateZone>): Promise<ClimateZone | undefined> {
+    const result = await db.update(climateZones).set(zoneData).where(eq(climateZones.id, id)).returning();
+    return result[0];
+  }
+
+  async getRegulatoryBodiesByRegion(regionId: string): Promise<RegulatoryBody[]> {
+    return db.select().from(regulatoryBodies).where(eq(regulatoryBodies.regionId, regionId));
+  }
+
+  async getRegulatoryBodiesByCountry(countryId: string): Promise<RegulatoryBody[]> {
+    return db.select().from(regulatoryBodies).where(eq(regulatoryBodies.countryId, countryId));
+  }
+
+  async getRegulatoryBody(id: string): Promise<RegulatoryBody | undefined> {
+    const result = await db.select().from(regulatoryBodies).where(eq(regulatoryBodies.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createRegulatoryBody(bodyData: InsertRegulatoryBody): Promise<RegulatoryBody> {
+    const result = await db.insert(regulatoryBodies).values({ ...bodyData, id: randomUUID() }).returning();
+    return result[0];
+  }
+
+  async updateRegulatoryBody(id: string, bodyData: Partial<InsertRegulatoryBody>): Promise<RegulatoryBody | undefined> {
+    const result = await db.update(regulatoryBodies).set(bodyData).where(eq(regulatoryBodies.id, id)).returning();
+    return result[0];
+  }
+
+  async getRegionalMaintenanceTasks(countryId: string, climateZoneId?: string, month?: number): Promise<RegionalMaintenanceTask[]> {
+    let rows = await db.select().from(regionalMaintenanceTasks).where(eq(regionalMaintenanceTasks.countryId, countryId));
+    if (climateZoneId) rows = rows.filter(t => t.climateZoneId === climateZoneId);
+    if (month) rows = rows.filter(t => !t.months || t.months.includes(month.toString()));
+    return rows;
+  }
+
+  async getRegionalMaintenanceTask(id: string): Promise<RegionalMaintenanceTask | undefined> {
+    const result = await db.select().from(regionalMaintenanceTasks).where(eq(regionalMaintenanceTasks.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createRegionalMaintenanceTask(taskData: InsertRegionalMaintenanceTask): Promise<RegionalMaintenanceTask> {
+    const result = await db.insert(regionalMaintenanceTasks).values({ ...taskData, id: randomUUID() }).returning();
+    return result[0];
+  }
+
+  async updateRegionalMaintenanceTask(id: string, taskData: Partial<InsertRegionalMaintenanceTask>): Promise<RegionalMaintenanceTask | undefined> {
+    const result = await db.update(regionalMaintenanceTasks).set(taskData).where(eq(regionalMaintenanceTasks.id, id)).returning();
+    return result[0];
+  }
+
+  // ─── Task Completions — DATABASE BACKED ──────────────────────────────────
+  async getTaskCompletions(homeownerId: string, houseId?: string): Promise<TaskCompletion[]> {
+    if (houseId) {
+      return db.select().from(taskCompletions)
+        .where(and(eq(taskCompletions.homeownerId, homeownerId), eq(taskCompletions.houseId, houseId)));
+    }
+    return db.select().from(taskCompletions).where(eq(taskCompletions.homeownerId, homeownerId));
+  }
+
+  async getTaskCompletion(id: string): Promise<TaskCompletion | undefined> {
+    const result = await db.select().from(taskCompletions).where(eq(taskCompletions.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createTaskCompletion(completion: InsertTaskCompletion): Promise<TaskCompletion> {
+    const result = await db.insert(taskCompletions).values(completion).returning();
+    return result[0];
+  }
+
+  async getTaskCompletionsByMonth(homeownerId: string, year: number, month: number): Promise<TaskCompletion[]> {
+    return db.select().from(taskCompletions)
+      .where(and(
+        eq(taskCompletions.homeownerId, homeownerId),
+        eq(taskCompletions.year, year),
+        eq(taskCompletions.month, month)
+      ));
+  }
+
+  async getMonthlyStreak(homeownerId: string): Promise<{ currentStreak: number; longestStreak: number }> {
+    const completions = await db.select().from(taskCompletions)
+      .where(eq(taskCompletions.homeownerId, homeownerId))
+      .orderBy(taskCompletions.year, taskCompletions.month);
+
+    if (completions.length === 0) return { currentStreak: 0, longestStreak: 0 };
+
+    const monthSet = new Set<string>();
+    completions.forEach(c => monthSet.add(`${c.year}-${c.month}`));
+    const months = Array.from(monthSet).sort();
+
+    let tempStreak = 1;
+    let longestStreak = 1;
+    for (let i = 1; i < months.length; i++) {
+      const [pY, pM] = months[i - 1].split('-').map(Number);
+      const [cY, cM] = months[i].split('-').map(Number);
+      const isConsec = (cY === pY && cM === pM + 1) || (cY === pY + 1 && pM === 12 && cM === 1);
+      if (isConsec) { tempStreak++; } else { longestStreak = Math.max(longestStreak, tempStreak); tempStreak = 1; }
+    }
+    longestStreak = Math.max(longestStreak, tempStreak);
+
+    const now = new Date();
+    const lastMonth = months[months.length - 1];
+    const [lY, lM] = lastMonth.split('-').map(Number);
+    let currentStreak = 0;
+    if (lY === now.getFullYear() && lM === now.getMonth() + 1) {
+      currentStreak = 1;
+      for (let i = months.length - 2; i >= 0; i--) {
+        const [y, m] = months[i].split('-').map(Number);
+        const [ny, nm] = months[i + 1].split('-').map(Number);
+        const isConsec = (ny === y && nm === m + 1) || (ny === y + 1 && m === 12 && nm === 1);
+        if (isConsec) { currentStreak++; } else { break; }
+      }
+    }
+    return { currentStreak, longestStreak };
+  }
+
+  // ─── Achievements — DATABASE BACKED ──────────────────────────────────────
+  async getAchievements(homeownerId: string): Promise<Achievement[]> {
+    return db.select().from(achievements).where(eq(achievements.homeownerId, homeownerId));
+  }
+
+  async getAchievement(id: string): Promise<Achievement | undefined> {
+    const result = await db.select().from(achievements).where(eq(achievements.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createAchievement(achievement: InsertAchievement): Promise<Achievement> {
+    const result = await db.insert(achievements).values(achievement).returning();
+    return result[0];
+  }
+
+  async hasAchievement(homeownerId: string, achievementType: string): Promise<boolean> {
+    const result = await db.select().from(achievements)
+      .where(and(eq(achievements.homeownerId, homeownerId), eq(achievements.achievementType, achievementType)))
+      .limit(1);
+    return result.length > 0;
+  }
+
+  async getContractorHireCount(homeownerId: string): Promise<number> {
+    const logs = await db.select().from(maintenanceLogs)
+      .where(and(eq(maintenanceLogs.homeownerId, homeownerId), isNotNull(maintenanceLogs.contractorId)));
+    return new Set(logs.map(l => l.contractorId).filter(Boolean)).size;
+  }
+
+  async getAllAchievementDefinitions(): Promise<AchievementDefinition[]> {
+    return db.select().from(achievementDefinitions).where(eq(achievementDefinitions.isActive, true));
+  }
+
+  async getAchievementDefinitionsByCategory(category: string): Promise<AchievementDefinition[]> {
+    return db.select().from(achievementDefinitions)
+      .where(and(eq(achievementDefinitions.category, category), eq(achievementDefinitions.isActive, true)));
+  }
+
+  async getUserAchievements(homeownerId: string): Promise<UserAchievement[]> {
+    return db.select().from(userAchievements).where(eq(userAchievements.homeownerId, homeownerId));
+  }
+
+  async getUserAchievement(homeownerId: string, achievementKey: string): Promise<UserAchievement | undefined> {
+    const result = await db.select().from(userAchievements)
+      .where(and(eq(userAchievements.homeownerId, homeownerId), eq(userAchievements.achievementKey, achievementKey)))
+      .limit(1);
+    return result[0];
+  }
+
+  async createUserAchievement(achievement: InsertUserAchievement): Promise<UserAchievement> {
+    const result = await db.insert(userAchievements).values(achievement).returning();
+    return result[0];
+  }
+
+  async updateUserAchievementProgress(homeownerId: string, achievementKey: string, progress: number, metadata?: string): Promise<UserAchievement | undefined> {
+    const updateData: any = { progress };
+    if (metadata) updateData.metadata = metadata;
+    const result = await db.update(userAchievements)
+      .set(updateData)
+      .where(and(eq(userAchievements.homeownerId, homeownerId), eq(userAchievements.achievementKey, achievementKey)))
+      .returning();
+    return result[0];
+  }
+
+  async unlockUserAchievement(homeownerId: string, achievementKey: string): Promise<UserAchievement | undefined> {
+    const result = await db.update(userAchievements)
+      .set({ isUnlocked: true, unlockedAt: new Date(), progress: "100" })
+      .where(and(eq(userAchievements.homeownerId, homeownerId), eq(userAchievements.achievementKey, achievementKey)))
+      .returning();
+    return result[0];
+  }
+
+  async checkAndAwardAchievements(homeownerId: string): Promise<UserAchievement[]> {
+    return this.memStorage.checkAndAwardAchievements.call(this, homeownerId);
+  }
+
+  async calculateAchievementsProgress(homeownerId: string): Promise<any> {
+    return this.memStorage.calculateAchievementsProgress.call(this, homeownerId);
+  }
+
+  async getAchievementProgress(homeownerId: string, achievementKey: string): Promise<{ progress: number; isUnlocked: boolean; criteria: any }> {
+    const userAchiev = await this.getUserAchievement(homeownerId, achievementKey);
+    const definition = await db.select().from(achievementDefinitions)
+      .where(eq(achievementDefinitions.achievementKey, achievementKey)).limit(1);
+    if (!definition[0]) throw new Error('Achievement definition not found');
+    return {
+      progress: userAchiev ? parseFloat(userAchiev.progress?.toString() || "0") : 0,
+      isUnlocked: userAchiev?.isUnlocked || false,
+      criteria: JSON.parse(definition[0].criteria)
+    };
+  }
+
+  // ─── getDefaultHouse — DATABASE BACKED ───────────────────────────────────
+  async getDefaultHouse(homeownerId: string): Promise<House | undefined> {
+    const result = await db.select().from(houses)
+      .where(and(eq(houses.homeownerId, homeownerId), eq(houses.isDefault, true)))
+      .limit(1);
+    return result[0];
+  }
+
+  // ─── getCustomerServiceRecords — DATABASE BACKED ─────────────────────────
+  async getCustomerServiceRecords(customerId?: string, customerEmail?: string, customerAddress?: string): Promise<ServiceRecord[]> {
+    return db.select().from(serviceRecords);
+  }
+
+  // ─── getContactedHomeowners — DATABASE BACKED ────────────────────────────
+  async getContactedHomeowners(contractorId: string): Promise<(User & { lastContactedAt: Date })[]> {
+    const convRows = await db.select().from(conversations).where(eq(conversations.contractorId, contractorId));
+    const homeownerMap = new Map<string, Date>();
+    convRows.forEach(conv => {
+      const lastDate = conv.lastMessageAt || conv.createdAt;
+      if (lastDate) {
+        const existing = homeownerMap.get(conv.homeownerId);
+        if (!existing || new Date(lastDate) > existing) {
+          homeownerMap.set(conv.homeownerId, new Date(lastDate));
+        }
+      }
+    });
+    const results: (User & { lastContactedAt: Date })[] = [];
+    for (const [homeownerId, lastContactedAt] of homeownerMap.entries()) {
+      const userRows = await db.select().from(users).where(eq(users.id, homeownerId)).limit(1);
+      if (userRows[0]) results.push({ ...userRows[0], lastContactedAt });
+    }
+    return results.sort((a, b) => b.lastContactedAt.getTime() - a.lastContactedAt.getTime());
+  }
+
+  // ─── createContractor — DATABASE BACKED ──────────────────────────────────
+  async createContractor(contractor: InsertContractor): Promise<Contractor> {
+    const result = await db.insert(contractors).values({ ...contractor, id: randomUUID() }).returning();
+    return result[0];
   }
 
   // User operations - DATABASE BACKED for persistence
@@ -8148,130 +8850,6 @@ class DbStorage implements IStorage {
     throw new Error('Failed to generate unique connection code');
   }
 
-  // House transfer operations - DATABASE BACKED for persistence
-  private generateTransferToken(): string {
-    return randomBytes(32).toString('base64url');
-  }
-
-  async createHouseTransfer(transferData: InsertHouseTransfer): Promise<HouseTransfer> {
-    const token = this.generateTransferToken();
-    const transfer = await db.insert(houseTransfers).values({
-      ...transferData,
-      token,
-    }).returning();
-    return transfer[0];
-  }
-
-  async getHouseTransfer(id: string): Promise<HouseTransfer | undefined> {
-    const result = await db.select().from(houseTransfers).where(eq(houseTransfers.id, id));
-    return result[0];
-  }
-
-  async getHouseTransferByToken(token: string): Promise<HouseTransfer | undefined> {
-    const result = await db.select().from(houseTransfers).where(eq(houseTransfers.token, token));
-    return result[0];
-  }
-
-  async getHouseTransfersForUser(homeownerId: string): Promise<HouseTransfer[]> {
-    const result = await db.select().from(houseTransfers)
-      .where(or(
-        eq(houseTransfers.fromHomeownerId, homeownerId),
-        eq(houseTransfers.toHomeownerId, homeownerId)
-      ));
-    return result;
-  }
-
-  async updateHouseTransfer(id: string, updateData: Partial<HouseTransfer>): Promise<HouseTransfer | undefined> {
-    const result = await db.update(houseTransfers)
-      .set({ ...updateData, updatedAt: new Date() })
-      .where(eq(houseTransfers.id, id))
-      .returning();
-    return result[0];
-  }
-
-  async transferHouseOwnership(houseId: string, fromHomeownerId: string, toHomeownerId: string): Promise<{
-    maintenanceLogsTransferred: number;
-    appliancesTransferred: number;
-    appointmentsTransferred: number;
-    customTasksTransferred: number;
-    homeSystemsTransferred: number;
-    serviceRecordsTransferred: number;
-    taskCompletionsTransferred: number;
-    taskOverridesTransferred: number;
-  }> {
-    // Transfer house ownership
-    await db.update(houses)
-      .set({ homeownerId: toHomeownerId })
-      .where(and(eq(houses.id, houseId), eq(houses.homeownerId, fromHomeownerId)));
-
-    // Transfer maintenance logs
-    const logsResult = await db.update(maintenanceLogs)
-      .set({ homeownerId: toHomeownerId })
-      .where(and(eq(maintenanceLogs.houseId, houseId), eq(maintenanceLogs.homeownerId, fromHomeownerId)))
-      .returning();
-
-    // Transfer home appliances (in-memory)
-    let appliancesTransferred = 0;
-    for (const [id, appliance] of this.memStorage['homeAppliances'].entries()) {
-      if (appliance.houseId === houseId && appliance.homeownerId === fromHomeownerId) {
-        const updated = { ...appliance, homeownerId: toHomeownerId };
-        this.memStorage['homeAppliances'].set(id, updated);
-        appliancesTransferred++;
-      }
-    }
-
-    // Transfer contractor appointments (in-memory)
-    let appointmentsTransferred = 0;
-    for (const [id, appointment] of this.memStorage['contractorAppointments'].entries()) {
-      if (appointment.houseId === houseId && appointment.homeownerId === fromHomeownerId) {
-        const updated = { ...appointment, homeownerId: toHomeownerId };
-        this.memStorage['contractorAppointments'].set(id, updated);
-        appointmentsTransferred++;
-      }
-    }
-
-    // Transfer custom tasks
-    const tasksResult = await db.update(customMaintenanceTasks)
-      .set({ homeownerId: toHomeownerId })
-      .where(and(eq(customMaintenanceTasks.houseId, houseId), eq(customMaintenanceTasks.homeownerId, fromHomeownerId)))
-      .returning();
-
-    // Transfer home systems
-    const systemsResult = await db.update(homeSystems)
-      .set({ homeownerId: toHomeownerId })
-      .where(and(eq(homeSystems.houseId, houseId), eq(homeSystems.homeownerId, fromHomeownerId)))
-      .returning();
-
-    // Transfer service records
-    const recordsResult = await db.update(serviceRecords)
-      .set({ homeownerId: toHomeownerId })
-      .where(and(eq(serviceRecords.houseId, houseId), eq(serviceRecords.homeownerId, fromHomeownerId)))
-      .returning();
-
-    // Transfer task completions (for home health score)
-    const completionsResult = await db.update(taskCompletions)
-      .set({ homeownerId: toHomeownerId })
-      .where(and(eq(taskCompletions.houseId, houseId), eq(taskCompletions.homeownerId, fromHomeownerId)))
-      .returning();
-
-    // Transfer task overrides (custom priority settings)
-    const overridesResult = await db.update(taskOverrides)
-      .set({ homeownerId: toHomeownerId })
-      .where(and(eq(taskOverrides.houseId, houseId), eq(taskOverrides.homeownerId, fromHomeownerId)))
-      .returning();
-
-    return {
-      maintenanceLogsTransferred: logsResult.length,
-      appliancesTransferred,
-      appointmentsTransferred,
-      customTasksTransferred: tasksResult.length,
-      homeSystemsTransferred: systemsResult.length,
-      serviceRecordsTransferred: recordsResult.length,
-      taskCompletionsTransferred: completionsResult.length,
-      taskOverridesTransferred: overridesResult.length,
-    };
-  }
-
   // Upload metadata storage methods
   async storeUploadMetadata(uploadId: string, metadata: {
     userId: string;
@@ -9401,82 +9979,6 @@ class DbStorage implements IStorage {
     return { churnRate, churnedUsers, totalActiveUsers, churnSeries };
   }
 
-  // Contractor boost operations - DATABASE BACKED
-  private _calcBoostDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-    const R = 3959;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  }
-
-  async getActiveBoosts(serviceCategory?: string, latitude?: number, longitude?: number): Promise<ContractorBoost[]> {
-    const now = new Date();
-    const conditions = [
-      eq(contractorBoosts.status, 'active'),
-      eq(contractorBoosts.isActive, true),
-    ];
-    if (serviceCategory) {
-      conditions.push(eq(contractorBoosts.serviceCategory, serviceCategory));
-    }
-    const rows = await db.select().from(contractorBoosts).where(and(...conditions));
-    return rows.filter(boost => {
-      if (new Date(boost.endDate) < now) return false;
-      if (latitude !== undefined && longitude !== undefined) {
-        const distance = this._calcBoostDistance(
-          latitude, longitude,
-          parseFloat(boost.businessLatitude), parseFloat(boost.businessLongitude)
-        );
-        if (distance > boost.boostRadius) return false;
-      }
-      return true;
-    });
-  }
-
-  async getContractorBoosts(contractorId: string): Promise<ContractorBoost[]> {
-    return db.select().from(contractorBoosts).where(eq(contractorBoosts.contractorId, contractorId));
-  }
-
-  async createContractorBoost(boostData: InsertContractorBoost): Promise<ContractorBoost> {
-    const [boost] = await db.insert(contractorBoosts).values({
-      ...boostData,
-      isActive: boostData.isActive ?? true,
-      status: boostData.status || 'active',
-      boostRadius: boostData.boostRadius ?? 10,
-      stripePaymentIntentId: boostData.stripePaymentIntentId || null,
-    }).returning();
-    return boost;
-  }
-
-  async updateContractorBoost(id: string, boostData: Partial<InsertContractorBoost>): Promise<ContractorBoost | undefined> {
-    const [updated] = await db.update(contractorBoosts)
-      .set({ ...boostData, updatedAt: new Date() })
-      .where(eq(contractorBoosts.id, id))
-      .returning();
-    return updated;
-  }
-
-  async deleteContractorBoost(id: string): Promise<boolean> {
-    const result = await db.delete(contractorBoosts).where(eq(contractorBoosts.id, id)).returning({ id: contractorBoosts.id });
-    return result.length > 0;
-  }
-
-  async checkBoostConflict(serviceCategory: string, latitude: number, longitude: number, radius: number): Promise<ContractorBoost | null> {
-    const activeBoosts = await this.getActiveBoosts(serviceCategory);
-    for (const boost of activeBoosts) {
-      const distance = this._calcBoostDistance(
-        latitude, longitude,
-        parseFloat(boost.businessLatitude), parseFloat(boost.businessLongitude)
-      );
-      if ((radius + boost.boostRadius) > distance) {
-        return boost;
-      }
-    }
-    return null;
-  }
 
   // Feature usage stats - DATABASE BACKED
   async getFeatureUsageStats(): Promise<Array<{ feature: string; count: number }>> {
@@ -9830,689 +10332,6 @@ class DbStorage implements IStorage {
         });
       }
     }
-  }
-
-  // Regional Maintenance Task operations - DATABASE BACKED
-  async getRegionalMaintenanceTasks(countryId: string, climateZoneId?: string, month?: number): Promise<RegionalMaintenanceTask[]> {
-    let query = db.select().from(regionalMaintenanceTasks).where(eq(regionalMaintenanceTasks.countryId, countryId));
-    const rows = await query;
-    return rows.filter(task => {
-      if (climateZoneId && task.climateZoneId !== climateZoneId) return false;
-      if (month && task.months && !task.months.includes(month.toString())) return false;
-      return true;
-    });
-  }
-
-  async getRegionalMaintenanceTask(id: string): Promise<RegionalMaintenanceTask | undefined> {
-    const result = await db.select().from(regionalMaintenanceTasks).where(eq(regionalMaintenanceTasks.id, id)).limit(1);
-    return result[0];
-  }
-
-  async createRegionalMaintenanceTask(taskData: InsertRegionalMaintenanceTask): Promise<RegionalMaintenanceTask> {
-    const result = await db.insert(regionalMaintenanceTasks).values(taskData).returning();
-    return result[0];
-  }
-
-  async updateRegionalMaintenanceTask(id: string, taskData: Partial<InsertRegionalMaintenanceTask>): Promise<RegionalMaintenanceTask | undefined> {
-    const result = await db.update(regionalMaintenanceTasks).set(taskData).where(eq(regionalMaintenanceTasks.id, id)).returning();
-    return result[0];
-  }
-
-  // Task Completion operations - DATABASE BACKED
-  async getTaskCompletions(homeownerId: string, houseId?: string): Promise<TaskCompletion[]> {
-    if (houseId) {
-      return db.select().from(taskCompletions)
-        .where(and(eq(taskCompletions.homeownerId, homeownerId), eq(taskCompletions.houseId, houseId)));
-    }
-    return db.select().from(taskCompletions).where(eq(taskCompletions.homeownerId, homeownerId));
-  }
-
-  async getTaskCompletion(id: string): Promise<TaskCompletion | undefined> {
-    const result = await db.select().from(taskCompletions).where(eq(taskCompletions.id, id)).limit(1);
-    return result[0];
-  }
-
-  async createTaskCompletion(completion: InsertTaskCompletion): Promise<TaskCompletion> {
-    const result = await db.insert(taskCompletions).values(completion).returning();
-    return result[0];
-  }
-
-  async getTaskCompletionsByMonth(homeownerId: string, year: number, month: number): Promise<TaskCompletion[]> {
-    return db.select().from(taskCompletions)
-      .where(and(
-        eq(taskCompletions.homeownerId, homeownerId),
-        eq(taskCompletions.year, year),
-        eq(taskCompletions.month, month)
-      ));
-  }
-
-  async getMonthlyStreak(homeownerId: string): Promise<{ currentStreak: number; longestStreak: number }> {
-    const completions = await db.select().from(taskCompletions)
-      .where(eq(taskCompletions.homeownerId, homeownerId))
-      .orderBy(taskCompletions.year, taskCompletions.month);
-
-    if (completions.length === 0) return { currentStreak: 0, longestStreak: 0 };
-
-    const monthSet = new Set<string>();
-    completions.forEach(c => monthSet.add(`${c.year}-${c.month}`));
-    const months = Array.from(monthSet).sort();
-
-    let tempStreak = 1;
-    let longestStreak = 1;
-    for (let i = 1; i < months.length; i++) {
-      const [prevYear, prevMonth] = months[i - 1].split('-').map(Number);
-      const [currYear, currMonth] = months[i].split('-').map(Number);
-      const isConsecutive =
-        (currYear === prevYear && currMonth === prevMonth + 1) ||
-        (currYear === prevYear + 1 && prevMonth === 12 && currMonth === 1);
-      if (isConsecutive) {
-        tempStreak++;
-      } else {
-        longestStreak = Math.max(longestStreak, tempStreak);
-        tempStreak = 1;
-      }
-    }
-    longestStreak = Math.max(longestStreak, tempStreak);
-
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth() + 1;
-    let currentStreak = 0;
-    const lastMonth = months[months.length - 1];
-    const [lastYear, lastMonthNum] = lastMonth.split('-').map(Number);
-    if (lastYear === currentYear && lastMonthNum === currentMonth) {
-      currentStreak = 1;
-      for (let i = months.length - 2; i >= 0; i--) {
-        const [year, month] = months[i].split('-').map(Number);
-        const [nextYear, nextMonth] = months[i + 1].split('-').map(Number);
-        const isConsecutive =
-          (nextYear === year && nextMonth === month + 1) ||
-          (nextYear === year + 1 && month === 12 && nextMonth === 1);
-        if (isConsecutive) {
-          currentStreak++;
-        } else {
-          break;
-        }
-      }
-    }
-
-    return { currentStreak, longestStreak };
-  }
-
-  // Achievement operations - DATABASE BACKED
-  async getAchievements(homeownerId: string): Promise<Achievement[]> {
-    return db.select().from(achievements).where(eq(achievements.homeownerId, homeownerId));
-  }
-
-  async getAchievement(id: string): Promise<Achievement | undefined> {
-    const result = await db.select().from(achievements).where(eq(achievements.id, id)).limit(1);
-    return result[0];
-  }
-
-  async createAchievement(achievement: InsertAchievement): Promise<Achievement> {
-    const result = await db.insert(achievements).values(achievement).returning();
-    return result[0];
-  }
-
-  async hasAchievement(homeownerId: string, achievementType: string): Promise<boolean> {
-    const result = await db.select().from(achievements)
-      .where(and(eq(achievements.homeownerId, homeownerId), eq(achievements.achievementType, achievementType)));
-    return result.length > 0;
-  }
-
-  async getContractorHireCount(homeownerId: string): Promise<number> {
-    const logs = await db.select().from(maintenanceLogs)
-      .where(and(eq(maintenanceLogs.homeownerId, homeownerId), isNotNull(maintenanceLogs.contractorId)));
-    const uniqueContractors = new Set(logs.map(log => log.contractorId).filter(Boolean));
-    return uniqueContractors.size;
-  }
-
-  // Achievement Definition operations - DATABASE BACKED
-  async getAllAchievementDefinitions(): Promise<AchievementDefinition[]> {
-    return db.select().from(achievementDefinitions).where(eq(achievementDefinitions.isActive, true));
-  }
-
-  async getAchievementDefinitionsByCategory(category: string): Promise<AchievementDefinition[]> {
-    return db.select().from(achievementDefinitions)
-      .where(and(eq(achievementDefinitions.category, category), eq(achievementDefinitions.isActive, true)));
-  }
-
-  // User Achievement operations - DATABASE BACKED
-  async getUserAchievements(homeownerId: string): Promise<UserAchievement[]> {
-    return db.select().from(userAchievements).where(eq(userAchievements.homeownerId, homeownerId));
-  }
-
-  async getUserAchievement(homeownerId: string, achievementKey: string): Promise<UserAchievement | undefined> {
-    const result = await db.select().from(userAchievements)
-      .where(and(eq(userAchievements.homeownerId, homeownerId), eq(userAchievements.achievementKey, achievementKey)));
-    return result[0];
-  }
-
-  async createUserAchievement(userAchievement: InsertUserAchievement): Promise<UserAchievement> {
-    const result = await db.insert(userAchievements).values(userAchievement).returning();
-    return result[0];
-  }
-
-  async updateUserAchievementProgress(homeownerId: string, achievementKey: string, progress: number, metadata?: string): Promise<UserAchievement | undefined> {
-    const updateFields: { progress: string; metadata?: string } = { progress: progress.toString() };
-    if (metadata) updateFields.metadata = metadata;
-    const result = await db.update(userAchievements)
-      .set(updateFields)
-      .where(and(eq(userAchievements.homeownerId, homeownerId), eq(userAchievements.achievementKey, achievementKey)))
-      .returning();
-    return result[0];
-  }
-
-  async unlockUserAchievement(homeownerId: string, achievementKey: string): Promise<UserAchievement | undefined> {
-    const result = await db.update(userAchievements)
-      .set({ isUnlocked: true, unlockedAt: new Date(), progress: "100" })
-      .where(and(eq(userAchievements.homeownerId, homeownerId), eq(userAchievements.achievementKey, achievementKey)))
-      .returning();
-    return result[0];
-  }
-
-  async checkAndAwardAchievements(homeownerId: string): Promise<UserAchievement[]> {
-    const newlyUnlocked: UserAchievement[] = [];
-    const definitions = await this.getAllAchievementDefinitions();
-    const userAchievs = await this.getUserAchievements(homeownerId);
-    const unlockedKeys = new Set(userAchievs.filter(a => a.isUnlocked).map(a => a.achievementKey));
-
-    const savingsCompletions = await db.select().from(taskCompletions)
-      .where(and(eq(taskCompletions.homeownerId, homeownerId), isNotNull(taskCompletions.costSavings)));
-    const tasksWithSavings = savingsCompletions.filter(c => c.costSavings && parseFloat(c.costSavings.toString()) > 0);
-
-    const savingsMetrics = {
-      totalSavings: tasksWithSavings.reduce((sum, c) => sum + parseFloat(c.costSavings!.toString()), 0),
-      underBudgetCount: tasksWithSavings.length,
-      avgSavingsPerTask: tasksWithSavings.length > 0
-        ? tasksWithSavings.reduce((sum, c) => sum + parseFloat(c.costSavings!.toString()), 0) / tasksWithSavings.length
-        : 0,
-      monthsWithSavings: new Map<string, number>(),
-      quarterSavings: new Map<string, number>(),
-      maxConsecutiveMonths: 0
-    };
-
-    for (const completion of tasksWithSavings) {
-      if (completion.completedAt) {
-        const year = completion.completedAt.getFullYear();
-        const month = completion.completedAt.getMonth() + 1;
-        const monthKey = `${year}-${String(month).padStart(2, '0')}`;
-        const quarter = Math.floor((month - 1) / 3) + 1;
-        const quarterKey = `${year}-Q${quarter}`;
-        savingsMetrics.monthsWithSavings.set(monthKey, (savingsMetrics.monthsWithSavings.get(monthKey) || 0) + 1);
-        const savings = parseFloat(completion.costSavings!.toString());
-        savingsMetrics.quarterSavings.set(quarterKey, (savingsMetrics.quarterSavings.get(quarterKey) || 0) + savings);
-      }
-    }
-
-    if (savingsMetrics.monthsWithSavings.size > 0) {
-      const sortedMonths = Array.from(savingsMetrics.monthsWithSavings.keys()).sort();
-      let currentStreak = 1;
-      let maxStreak = 1;
-      for (let i = 1; i < sortedMonths.length; i++) {
-        const [prevYear, prevMonth] = sortedMonths[i - 1].split('-').map(Number);
-        const [currYear, currMonth] = sortedMonths[i].split('-').map(Number);
-        const isConsecutive =
-          (currYear === prevYear && currMonth === prevMonth + 1) ||
-          (currYear === prevYear + 1 && prevMonth === 12 && currMonth === 1);
-        if (isConsecutive) {
-          currentStreak++;
-          maxStreak = Math.max(maxStreak, currentStreak);
-        } else {
-          currentStreak = 1;
-        }
-      }
-      savingsMetrics.maxConsecutiveMonths = maxStreak;
-    }
-
-    for (const def of definitions) {
-      if (unlockedKeys.has(def.achievementKey)) continue;
-      const criteria = JSON.parse(def.criteria);
-      let isCompleted = false;
-      let progress = 0;
-
-      switch (criteria.type) {
-        case 'seasonal_tasks': {
-          const seasonMonths: Record<string, number[]> = { winter: [12, 1, 2], spring: [3, 4, 5], summer: [6, 7, 8], fall: [9, 10, 11] };
-          const months = seasonMonths[criteria.season] || [];
-          const currentYear = new Date().getFullYear();
-          const completions = await db.select().from(taskCompletions)
-            .where(and(eq(taskCompletions.homeownerId, homeownerId), eq(taskCompletions.year, currentYear)));
-          const seasonalCompletions = completions.filter(c => months.includes(c.month));
-          const requiredCount = criteria.count || 5;
-          progress = Math.min(100, (seasonalCompletions.length / requiredCount) * 100);
-          isCompleted = seasonalCompletions.length >= requiredCount;
-          break;
-        }
-        case 'all_seasons': {
-          const seasonMonths: Record<string, number[]> = { winter: [12, 1, 2], spring: [3, 4, 5], summer: [6, 7, 8], fall: [9, 10, 11] };
-          const currentYear = new Date().getFullYear();
-          const completions = await db.select().from(taskCompletions)
-            .where(and(eq(taskCompletions.homeownerId, homeownerId), eq(taskCompletions.year, currentYear)));
-          const seasonsCompleted = new Set<string>();
-          for (const completion of completions) {
-            for (const [season, months] of Object.entries(seasonMonths)) {
-              if (months.includes(completion.month)) seasonsCompleted.add(season);
-            }
-          }
-          progress = Math.min(100, (seasonsCompleted.size / 4) * 100);
-          isCompleted = seasonsCompleted.size === 4;
-          break;
-        }
-        case 'seasonal_peak': {
-          const seasonMonths: Record<string, number[]> = { winter: [12, 1, 2], spring: [3, 4, 5], summer: [6, 7, 8], fall: [9, 10, 11] };
-          const currentYear = new Date().getFullYear();
-          const completions = await db.select().from(taskCompletions)
-            .where(and(eq(taskCompletions.homeownerId, homeownerId), eq(taskCompletions.year, currentYear)));
-          const seasonCounts: Record<string, number> = { winter: 0, spring: 0, summer: 0, fall: 0 };
-          for (const completion of completions) {
-            for (const [season, months] of Object.entries(seasonMonths)) {
-              if (months.includes(completion.month)) seasonCounts[season]++;
-            }
-          }
-          const maxSeasonalTasks = Math.max(...Object.values(seasonCounts));
-          progress = Math.min(100, (maxSeasonalTasks / criteria.count) * 100);
-          isCompleted = maxSeasonalTasks >= criteria.count;
-          break;
-        }
-        case 'year_round':
-        case 'seasonal_consistency': {
-          const seasonMonths: Record<string, number[]> = { winter: [12, 1, 2], spring: [3, 4, 5], summer: [6, 7, 8], fall: [9, 10, 11] };
-          const currentYear = new Date().getFullYear();
-          const completions = await db.select().from(taskCompletions)
-            .where(and(eq(taskCompletions.homeownerId, homeownerId), eq(taskCompletions.year, currentYear)));
-          const seasonCounts: Record<string, number> = { winter: 0, spring: 0, summer: 0, fall: 0 };
-          for (const completion of completions) {
-            for (const [season, months] of Object.entries(seasonMonths)) {
-              if (months.includes(completion.month)) seasonCounts[season]++;
-            }
-          }
-          const minPerSeason = criteria.min_per_season || 3;
-          const seasonsMetTarget = Object.values(seasonCounts).filter(count => count >= minPerSeason).length;
-          progress = Math.min(100, (seasonsMetTarget / 4) * 100);
-          isCompleted = seasonsMetTarget === 4;
-          break;
-        }
-        case 'under_budget':
-          progress = Math.min(100, (savingsMetrics.underBudgetCount / criteria.count) * 100);
-          isCompleted = savingsMetrics.underBudgetCount >= criteria.count;
-          break;
-        case 'total_savings':
-          progress = Math.min(100, (savingsMetrics.totalSavings / criteria.amount) * 100);
-          isCompleted = savingsMetrics.totalSavings >= criteria.amount;
-          break;
-        case 'consecutive_savings_months':
-          progress = Math.min(100, (savingsMetrics.maxConsecutiveMonths / criteria.count) * 100);
-          isCompleted = savingsMetrics.maxConsecutiveMonths >= criteria.count;
-          break;
-        case 'average_savings_per_task': {
-          const minTasks = criteria.min_tasks || 10;
-          if (tasksWithSavings.length < minTasks) {
-            progress = (tasksWithSavings.length / minTasks) * 50;
-          } else {
-            progress = 50 + Math.min(50, (savingsMetrics.avgSavingsPerTask / criteria.amount) * 50);
-            isCompleted = savingsMetrics.avgSavingsPerTask >= criteria.amount;
-          }
-          break;
-        }
-        case 'quarterly_savings': {
-          const maxQuarterlySavings = savingsMetrics.quarterSavings.size > 0
-            ? Math.max(...Array.from(savingsMetrics.quarterSavings.values()))
-            : 0;
-          progress = Math.min(100, (maxQuarterlySavings / criteria.amount) * 100);
-          isCompleted = maxQuarterlySavings >= criteria.amount;
-          break;
-        }
-        case 'documents_uploaded': {
-          const logs = await db.select().from(maintenanceLogs).where(eq(maintenanceLogs.homeownerId, homeownerId));
-          const docsCount = logs.reduce((sum, log) => sum + (log.receiptUrls?.length || 0), 0);
-          progress = Math.min(100, (docsCount / criteria.count) * 100);
-          isCompleted = docsCount >= criteria.count;
-          break;
-        }
-        case 'logs_created': {
-          const logs = await db.select().from(maintenanceLogs).where(eq(maintenanceLogs.homeownerId, homeownerId));
-          progress = Math.min(100, (logs.length / criteria.count) * 100);
-          isCompleted = logs.length >= criteria.count;
-          break;
-        }
-        case 'detailed_logs': {
-          const logs = await db.select().from(maintenanceLogs).where(eq(maintenanceLogs.homeownerId, homeownerId));
-          const detailedLogs = logs.filter(log => log.description && log.description.length >= 50);
-          progress = Math.min(100, (detailedLogs.length / criteria.count) * 100);
-          isCompleted = detailedLogs.length >= criteria.count;
-          break;
-        }
-        case 'photos_uploaded': {
-          const logs = await db.select().from(maintenanceLogs).where(eq(maintenanceLogs.homeownerId, homeownerId));
-          const photosCount = logs.reduce((sum, log) =>
-            sum + (log.beforePhotoUrls?.length || 0) + (log.afterPhotoUrls?.length || 0), 0);
-          const pairsCount = Math.floor(photosCount / 2);
-          progress = Math.min(100, (pairsCount / criteria.count) * 100);
-          isCompleted = pairsCount >= criteria.count;
-          break;
-        }
-        case 'referrals': {
-          const user = await this.getUser(homeownerId);
-          const referralCount = user?.referralCount || 0;
-          progress = Math.min(100, (referralCount / criteria.count) * 100);
-          isCompleted = referralCount >= criteria.count;
-          break;
-        }
-        case 'contractor_hired': {
-          const acceptedProposals = await db.select().from(proposals)
-            .where(and(eq(proposals.homeownerId, homeownerId), eq(proposals.status, 'accepted')));
-          progress = Math.min(100, (acceptedProposals.length / criteria.count) * 100);
-          isCompleted = acceptedProposals.length >= criteria.count;
-          break;
-        }
-        case 'multi_property': {
-          const userHouses = await db.select().from(houses).where(eq(houses.homeownerId, homeownerId));
-          progress = Math.min(100, (userHouses.length / criteria.count) * 100);
-          isCompleted = userHouses.length >= criteria.count;
-          break;
-        }
-        case 'profile_complete': {
-          const userHouses = await db.select().from(houses).where(eq(houses.homeownerId, homeownerId));
-          if (userHouses.length === 0) { progress = 0; isCompleted = false; break; }
-          const systemsData = await db.select().from(homeSystems).where(eq(homeSystems.houseId, userHouses[0].id));
-          progress = Math.min(100, (systemsData.length / criteria.systems) * 100);
-          isCompleted = systemsData.length >= criteria.systems;
-          break;
-        }
-        case 'streak': {
-          const completions = await db.select().from(taskCompletions).where(eq(taskCompletions.homeownerId, homeownerId));
-          if (completions.length === 0) { progress = 0; isCompleted = false; break; }
-          const monthSet = new Set(completions.map(c => `${c.year}-${c.month}`));
-          const uniqueMonths = Array.from(monthSet).sort();
-          let currentStreak = 1;
-          let maxStreak = 1;
-          for (let i = 1; i < uniqueMonths.length; i++) {
-            const [prevYear, prevMonth] = uniqueMonths[i - 1].split('-').map(Number);
-            const [currYear, currMonth] = uniqueMonths[i].split('-').map(Number);
-            const isConsecutive =
-              (currYear === prevYear && currMonth === prevMonth + 1) ||
-              (currYear === prevYear + 1 && prevMonth === 12 && currMonth === 1);
-            if (isConsecutive) { currentStreak++; maxStreak = Math.max(maxStreak, currentStreak); }
-            else { currentStreak = 1; }
-          }
-          progress = Math.min(100, (maxStreak / criteria.months) * 100);
-          isCompleted = maxStreak >= criteria.months;
-          break;
-        }
-        case 'first_task': {
-          const completions = await db.select().from(taskCompletions).where(eq(taskCompletions.homeownerId, homeownerId));
-          progress = completions.length > 0 ? 100 : 0;
-          isCompleted = completions.length > 0;
-          break;
-        }
-        case 'total_tasks': {
-          const completions = await db.select().from(taskCompletions).where(eq(taskCompletions.homeownerId, homeownerId));
-          progress = Math.min(100, (completions.length / criteria.count) * 100);
-          isCompleted = completions.length >= criteria.count;
-          break;
-        }
-        case 'high_priority_safety': {
-          const completions = await db.select().from(taskCompletions).where(eq(taskCompletions.homeownerId, homeownerId));
-          const safetyTasks = completions.filter(c =>
-            c.taskTitle?.toLowerCase().includes('smoke') ||
-            c.taskTitle?.toLowerCase().includes('carbon') ||
-            c.taskTitle?.toLowerCase().includes('detector') ||
-            c.taskTitle?.toLowerCase().includes('safety') ||
-            c.taskTitle?.toLowerCase().includes('emergency')
-          );
-          progress = Math.min(100, (safetyTasks.length / criteria.count) * 100);
-          isCompleted = safetyTasks.length >= criteria.count;
-          break;
-        }
-        case 'early_adopter': {
-          const user = await this.getUser(homeownerId);
-          const cutoffDate = new Date(criteria.before);
-          const userCreatedAt = user?.createdAt ? new Date(user.createdAt) : new Date();
-          isCompleted = userCreatedAt < cutoffDate;
-          progress = isCompleted ? 100 : 0;
-          break;
-        }
-        case 'premium_subscription': {
-          const user = await this.getUser(homeownerId);
-          const isPremium = user?.subscriptionStatus === 'active' &&
-            (user?.subscriptionPlanId === 'premium' || user?.subscriptionPlanId === 'premium_plus');
-          isCompleted = isPremium;
-          progress = isPremium ? 100 : 0;
-          break;
-        }
-      }
-
-      const existing = userAchievs.find(a => a.achievementKey === def.achievementKey);
-      if (isCompleted) {
-        if (existing) {
-          const unlocked = await this.unlockUserAchievement(homeownerId, def.achievementKey);
-          if (unlocked) newlyUnlocked.push(unlocked);
-        } else {
-          const created = await this.createUserAchievement({
-            homeownerId,
-            achievementKey: def.achievementKey,
-            progress: "100",
-            isUnlocked: true,
-            unlockedAt: new Date()
-          });
-          newlyUnlocked.push(created);
-        }
-      } else if (!existing && progress > 0) {
-        await this.createUserAchievement({
-          homeownerId,
-          achievementKey: def.achievementKey,
-          progress: progress.toString(),
-          isUnlocked: false
-        });
-      } else if (existing && progress > parseFloat(existing.progress?.toString() || "0")) {
-        await this.updateUserAchievementProgress(homeownerId, def.achievementKey, progress);
-      }
-    }
-
-    return newlyUnlocked;
-  }
-
-  async calculateAchievementsProgress(
-    homeownerId: string,
-    houseId?: string
-  ): Promise<Array<{ achievementKey: string; progress: number; isUnlocked: boolean; unlockedAt?: Date; metadata?: string }>> {
-    const results: Array<{ achievementKey: string; progress: number; isUnlocked: boolean; unlockedAt?: Date; metadata?: string }> = [];
-    const definitions = await this.getAllAchievementDefinitions();
-    const userAchievs = await this.getUserAchievements(homeownerId);
-
-    if (!houseId) {
-      for (const def of definitions) {
-        const userAchiev = userAchievs.find(ua => ua.achievementKey === def.achievementKey);
-        results.push({
-          achievementKey: def.achievementKey,
-          progress: userAchiev ? parseFloat(userAchiev.progress?.toString() || "0") : 0,
-          isUnlocked: userAchiev?.isUnlocked || false,
-          unlockedAt: userAchiev?.unlockedAt,
-          metadata: userAchiev?.metadata
-        });
-      }
-      return results;
-    }
-
-    const houseTaskCompletions = await db.select().from(taskCompletions)
-      .where(and(eq(taskCompletions.homeownerId, homeownerId), eq(taskCompletions.houseId, houseId)));
-    const houseMaintenanceLogs = await db.select().from(maintenanceLogs)
-      .where(and(eq(maintenanceLogs.homeownerId, homeownerId), eq(maintenanceLogs.houseId, houseId)));
-
-    const tasksWithSavings = houseTaskCompletions.filter(c => c.costSavings && parseFloat(c.costSavings.toString()) > 0);
-    const houseSavingsMetrics = {
-      totalSavings: tasksWithSavings.reduce((sum, c) => sum + parseFloat(c.costSavings!.toString()), 0),
-      underBudgetCount: tasksWithSavings.length,
-      avgSavingsPerTask: tasksWithSavings.length > 0
-        ? tasksWithSavings.reduce((sum, c) => sum + parseFloat(c.costSavings!.toString()), 0) / tasksWithSavings.length
-        : 0,
-    };
-
-    for (const def of definitions) {
-      const criteria = typeof def.criteria === 'string' ? JSON.parse(def.criteria) : def.criteria;
-      let progress = 0;
-      const userAchiev = userAchievs.find(ua => ua.achievementKey === def.achievementKey);
-
-      switch (criteria.type) {
-        case 'seasonal_tasks': {
-          const seasonMap: Record<string, number[]> = { winter: [12, 1, 2], spring: [3, 4, 5], summer: [6, 7, 8], fall: [9, 10, 11] };
-          const months = seasonMap[criteria.season] || [];
-          const tasksForSeason = houseTaskCompletions.filter(c => {
-            if (!c.completedAt) return false;
-            const month = c.completedAt.getMonth() + 1;
-            return months.includes(month);
-          });
-          progress = Math.min(100, (tasksForSeason.length / criteria.count) * 100);
-          break;
-        }
-        case 'total_savings':
-          progress = Math.min(100, (houseSavingsMetrics.totalSavings / criteria.amount) * 100);
-          break;
-        case 'under_budget':
-          progress = Math.min(100, (houseSavingsMetrics.underBudgetCount / criteria.count) * 100);
-          break;
-        case 'logs_created':
-          progress = Math.min(100, (houseMaintenanceLogs.length / criteria.count) * 100);
-          break;
-        case 'documents_uploaded': {
-          const docsCount = houseMaintenanceLogs.filter(log => log.receiptUrls && log.receiptUrls.length > 0).length;
-          progress = Math.min(100, (docsCount / criteria.count) * 100);
-          break;
-        }
-        case 'photos_uploaded': {
-          const photosCount = houseMaintenanceLogs.reduce((sum, log) =>
-            sum + (log.beforePhotoUrls?.length || 0) + (log.afterPhotoUrls?.length || 0), 0);
-          const pairsCount = Math.floor(photosCount / 2);
-          progress = Math.min(100, (pairsCount / criteria.count) * 100);
-          break;
-        }
-        case 'detailed_logs': {
-          const detailedLogs = houseMaintenanceLogs.filter(log => log.description && log.description.length >= 50);
-          progress = Math.min(100, (detailedLogs.length / criteria.count) * 100);
-          break;
-        }
-        default:
-          progress = userAchiev ? parseFloat(userAchiev.progress?.toString() || "0") : 0;
-          break;
-      }
-
-      const isHouseUnlocked = progress >= 100;
-      results.push({
-        achievementKey: def.achievementKey,
-        progress,
-        isUnlocked: isHouseUnlocked,
-        unlockedAt: isHouseUnlocked && userAchiev?.isUnlocked ? userAchiev.unlockedAt : undefined,
-        metadata: userAchiev?.metadata
-      });
-    }
-
-    return results;
-  }
-
-  async getAchievementProgress(homeownerId: string, achievementKey: string): Promise<{ progress: number; isUnlocked: boolean; criteria: any }> {
-    const userAchiev = await this.getUserAchievement(homeownerId, achievementKey);
-    const definition = await db.select().from(achievementDefinitions)
-      .where(eq(achievementDefinitions.achievementKey, achievementKey));
-    if (!definition[0]) throw new Error('Achievement definition not found');
-    return {
-      progress: userAchiev ? parseFloat(userAchiev.progress?.toString() || "0") : 0,
-      isUnlocked: userAchiev?.isUnlocked || false,
-      criteria: JSON.parse(definition[0].criteria)
-    };
-  }
-
-  // ── Countries ─────────────────────────────────────────────────────────────
-
-  async getCountries(): Promise<Country[]> {
-    return db.select().from(countries);
-  }
-
-  async getCountry(id: string): Promise<Country | undefined> {
-    const result = await db.select().from(countries).where(eq(countries.id, id)).limit(1);
-    return result[0];
-  }
-
-  async getCountryByCode(code: string): Promise<Country | undefined> {
-    const result = await db.select().from(countries).where(eq(countries.code, code)).limit(1);
-    return result[0];
-  }
-
-  async createCountry(countryData: InsertCountry): Promise<Country> {
-    const result = await db.insert(countries).values(countryData).returning();
-    return result[0];
-  }
-
-  async updateCountry(id: string, countryData: Partial<InsertCountry>): Promise<Country | undefined> {
-    const result = await db.update(countries).set(countryData).where(eq(countries.id, id)).returning();
-    return result[0];
-  }
-
-  // ── Regions ───────────────────────────────────────────────────────────────
-
-  async getRegionsByCountry(countryId: string): Promise<Region[]> {
-    return db.select().from(regions).where(eq(regions.countryId, countryId));
-  }
-
-  async getRegion(id: string): Promise<Region | undefined> {
-    const result = await db.select().from(regions).where(eq(regions.id, id)).limit(1);
-    return result[0];
-  }
-
-  async createRegion(regionData: InsertRegion): Promise<Region> {
-    const result = await db.insert(regions).values(regionData).returning();
-    return result[0];
-  }
-
-  async updateRegion(id: string, regionData: Partial<InsertRegion>): Promise<Region | undefined> {
-    const result = await db.update(regions).set(regionData).where(eq(regions.id, id)).returning();
-    return result[0];
-  }
-
-  // ── Climate Zones ─────────────────────────────────────────────────────────
-
-  async getClimateZonesByCountry(countryId: string): Promise<ClimateZone[]> {
-    return db.select().from(climateZones).where(eq(climateZones.countryId, countryId));
-  }
-
-  async getClimateZone(id: string): Promise<ClimateZone | undefined> {
-    const result = await db.select().from(climateZones).where(eq(climateZones.id, id)).limit(1);
-    return result[0];
-  }
-
-  async createClimateZone(zoneData: InsertClimateZone): Promise<ClimateZone> {
-    const result = await db.insert(climateZones).values(zoneData).returning();
-    return result[0];
-  }
-
-  async updateClimateZone(id: string, zoneData: Partial<InsertClimateZone>): Promise<ClimateZone | undefined> {
-    const result = await db.update(climateZones).set(zoneData).where(eq(climateZones.id, id)).returning();
-    return result[0];
-  }
-
-  // ── Regulatory Bodies ─────────────────────────────────────────────────────
-
-  async getRegulatoryBodiesByRegion(regionId: string): Promise<RegulatoryBody[]> {
-    return db.select().from(regulatoryBodies).where(eq(regulatoryBodies.regionId, regionId));
-  }
-
-  async getRegulatoryBodiesByCountry(countryId: string): Promise<RegulatoryBody[]> {
-    return db.select().from(regulatoryBodies).where(eq(regulatoryBodies.countryId, countryId));
-  }
-
-  async getRegulatoryBody(id: string): Promise<RegulatoryBody | undefined> {
-    const result = await db.select().from(regulatoryBodies).where(eq(regulatoryBodies.id, id)).limit(1);
-    return result[0];
-  }
-
-  async createRegulatoryBody(bodyData: InsertRegulatoryBody): Promise<RegulatoryBody> {
-    const result = await db.insert(regulatoryBodies).values(bodyData).returning();
-    return result[0];
-  }
-
-  async updateRegulatoryBody(id: string, bodyData: Partial<InsertRegulatoryBody>): Promise<RegulatoryBody | undefined> {
-    const result = await db.update(regulatoryBodies).set(bodyData).where(eq(regulatoryBodies.id, id)).returning();
-    return result[0];
   }
 }
 
