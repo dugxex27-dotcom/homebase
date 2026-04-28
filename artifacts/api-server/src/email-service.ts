@@ -1374,6 +1374,63 @@ export async function sendWeatherForecastReminderEmail(
   });
 }
 
+export async function sendNewLinkedInvoiceEmail(
+  homeownerId: string,
+  invoiceId: string,
+  invoiceTitle: string,
+  invoiceAmount: string,
+  contractorName: string,
+  contractorCompany?: string
+): Promise<boolean> {
+  if (!apiKey) {
+    console.log('[EMAIL] SendGrid not configured, skipping linked invoice email');
+    return false;
+  }
+
+  const canSend = await canSendEmail(homeownerId, 'messages');
+  if (!canSend) {
+    console.log('[EMAIL] Homeowner has disabled email notifications for contractor messages:', homeownerId);
+    return false;
+  }
+
+  const user = await storage.getUser(homeownerId);
+  if (!user?.email) {
+    console.log('[EMAIL] No email found for homeowner:', homeownerId);
+    return false;
+  }
+
+  const displayName = contractorCompany || contractorName;
+  const dashboardUrl = `https://gotohomebase.com/pay/invoice/${invoiceId}`;
+
+  const escapedDisplayName = escapeHtml(displayName);
+
+  const html = wrapEmailContent(
+    getEmailHeader(),
+    `
+      <p>Hi ${user.firstName || 'there'},</p>
+      <p><strong>${escapedDisplayName}</strong> has linked a new invoice to your account:</p>
+      <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 20px 0;">
+        <p><strong>Service:</strong> ${escapeHtml(invoiceTitle)}</p>
+        <p><strong>Amount:</strong> <span style="color: #1e3a5f; font-weight: bold; font-size: 18px;">${escapeHtml(invoiceAmount)}</span></p>
+        <p><strong>From:</strong> ${escapedDisplayName}</p>
+      </div>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${dashboardUrl}" style="background: #22c55e; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">View Invoice</a>
+      </div>
+      <p style="font-size: 12px; color: #666;">You can manage your notification preferences in your account settings.</p>
+    `
+  );
+
+  const text = `Hi ${user.firstName || 'there'}, ${displayName} has linked a new invoice to your account. Service: ${invoiceTitle}. Amount: ${invoiceAmount}. View it at ${dashboardUrl}`;
+
+  return sendEmail({
+    to: user.email,
+    subject: `New invoice from ${displayName} — ${invoiceAmount}`,
+    html,
+    text,
+  });
+}
+
 export const emailService = {
   sendEmail,
   sendWelcomeEmail,
@@ -1391,6 +1448,7 @@ export const emailService = {
   sendExpiredTrialReengagementEmail,
   sendReferralReminderEmail,
   sendWeatherAlertEmail,
+  sendNewLinkedInvoiceEmail,
   getEmailHeader,
   wrapEmailContent,
 };
