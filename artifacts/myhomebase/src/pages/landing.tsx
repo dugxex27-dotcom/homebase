@@ -713,7 +713,7 @@ export default function Landing() {
             Homeownership is a full-time job nobody trained you for. MyHomeBase tells you exactly what your home needs, when to do it, and who to call — so nothing falls through the cracks.
           </p>
           <div className="mhb-hero-ctas">
-            <a href="/quiz" className="mhb-hero-cta-primary">
+            <a href="/signin" className="mhb-hero-cta-primary">
               Start for $5/month — No guesswork. No surprises.
             </a>
             <button className="mhb-hero-cta-secondary" onClick={() => scrollTo('how-it-works')}>
