@@ -9369,6 +9369,56 @@ class DbStorage implements IStorage {
     };
   }
 
+  // CRM Integration methods — DATABASE BACKED for persistence
+  async getCrmIntegrations(contractorUserId: string, companyId?: string | null): Promise<CrmIntegration[]> {
+    const conditions = companyId
+      ? or(eq(crmIntegrations.contractorUserId, contractorUserId), eq(crmIntegrations.companyId, companyId))
+      : eq(crmIntegrations.contractorUserId, contractorUserId);
+
+    const results = await db.select().from(crmIntegrations).where(conditions).orderBy(desc(crmIntegrations.createdAt));
+    return results;
+  }
+
+  async getCrmIntegration(id: string): Promise<CrmIntegration | undefined> {
+    const result = await db.select().from(crmIntegrations).where(eq(crmIntegrations.id, id)).limit(1);
+    return result[0];
+  }
+
+  async createCrmIntegration(integration: InsertCrmIntegration): Promise<CrmIntegration> {
+    const result = await db.insert(crmIntegrations).values(integration).returning();
+    return result[0];
+  }
+
+  async updateCrmIntegration(id: string, integration: Partial<InsertCrmIntegration>): Promise<CrmIntegration | undefined> {
+    const existing = await this.getCrmIntegration(id);
+    if (!existing) return undefined;
+
+    const result = await db.update(crmIntegrations)
+      .set({ ...integration, updatedAt: new Date() })
+      .where(eq(crmIntegrations.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteCrmIntegration(id: string): Promise<boolean> {
+    const result = await db.delete(crmIntegrations).where(eq(crmIntegrations.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Webhook Log methods — DATABASE BACKED for persistence
+  async getWebhookLogs(integrationId: string, limit = 50): Promise<WebhookLog[]> {
+    const results = await db.select().from(webhookLogs)
+      .where(eq(webhookLogs.integrationId, integrationId))
+      .orderBy(desc(webhookLogs.createdAt))
+      .limit(limit);
+    return results;
+  }
+
+  async createWebhookLog(log: InsertWebhookLog): Promise<WebhookLog> {
+    const result = await db.insert(webhookLogs).values(log).returning();
+    return result[0];
+  }
+
   // Methods delegated to MemStorage (bound in constructor)
 }
 
