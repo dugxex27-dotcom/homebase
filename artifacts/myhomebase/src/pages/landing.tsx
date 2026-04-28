@@ -856,7 +856,7 @@ export default function Landing() {
               <div className="mhb-how-feature-copy">
                 <div className="mhb-how-feature-num">01</div>
                 <h3 className="mhb-how-feature-title">Home Wellness Score™</h3>
-                <p className="mhb-how-feature-body">Your home gets a score from 0 to 1,000 — updated in real time based on system age, maintenance history, and completed tasks. Like a credit score, but for your house. Know it. Improve it. Show it when you sell.</p>
+                <p className="mhb-how-feature-body">Build your home's record. Watch your score grow. Your home gets a score from 0 to 1,000 — updated in real time based on system age, maintenance history, and completed tasks. Like a credit score, but for your house. Know it. Improve it. Show it when you sell.</p>
               </div>
               <div className="mhb-phone-frame">
                 <div className="mhb-phone-screen">
