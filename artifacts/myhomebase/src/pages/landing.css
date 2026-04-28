@@ -2003,6 +2003,24 @@ html {
 .mhb-signin-flyout-contractor:hover .mhb-signin-flyout-arrow { color: #1560a2; transform: translateX(2px); }
 .mhb-signin-flyout-agent:hover .mhb-signin-flyout-arrow { color: #166534; transform: translateX(2px); }
 
+.mhb-signin-flyout-footer {
+  padding: 10px 16px 12px;
+  border-top: 1px solid #f0edf8;
+  text-align: center;
+}
+
+.mhb-signin-flyout-how {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: #9090b0;
+  transition: color 0.15s;
+  padding: 0;
+}
+.mhb-signin-flyout-how:hover { color: #3C258E; }
+
 @media (max-width: 767px) {
   .mhb-signin-flyout {
     right: -8px;
