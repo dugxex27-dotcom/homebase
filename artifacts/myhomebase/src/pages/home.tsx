@@ -161,8 +161,8 @@ export default function Home() {
   const progressPercentage = Math.min(100, (referralCount / referralsNeeded) * 100);
 
   // Stat chip computations
-  const scores = [score0?.score, score1?.score].filter((s): s is number => s !== undefined);
-  const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+  const rawScores = [score0?.score, score1?.score];
+  const houseScores = houses.map((h, i) => ({ house: h, score: rawScores[i] }));
   const totalSystems = houses.reduce((sum, h) => sum + (Array.isArray(h.homeSystems) ? h.homeSystems.length : 0), 0);
   const tasksCount = tasksData
     ? ((tasksData as any).tasks?.seasonal?.length || 0) + ((tasksData as any).tasks?.weatherSpecific?.length || 0)
@@ -171,7 +171,8 @@ export default function Home() {
   const firstName = (typedUser as any)?.firstName || (typedUser as any)?.name?.split(" ")[0] || "";
   const climateZone = houses[0]?.climateZone || "your area";
 
-  const scoreClass = avgScore === null ? "" : avgScore >= 60 ? "good" : avgScore >= 30 ? "warn" : "alert";
+  const getScoreClass = (s: number | undefined) =>
+    s === undefined ? "" : s >= 60 ? "good" : s >= 30 ? "warn" : "alert";
 
   return (
     <div className="min-h-screen" style={{ background: "#ffffff" }}>
@@ -191,12 +192,18 @@ export default function Home() {
 
           {houses.length > 0 && (
             <div className="dash-chips">
-              <div className="dash-chip">
-                <div className={`dash-chip-num ${scoreClass}`}>
-                  {avgScore !== null ? avgScore : "—"}
+              {houseScores.map(({ house, score }, i) => (
+                <div className="dash-chip" key={house.id}>
+                  <div className={`dash-chip-num ${getScoreClass(score)}`}>
+                    {score !== undefined ? score : "—"}
+                  </div>
+                  <div className="dash-chip-label">
+                    {houses.length === 1
+                      ? "HWS™ Score"
+                      : `${house.name || `Property ${i + 1}`} HWS™`}
+                  </div>
                 </div>
-                <div className="dash-chip-label">HWS™ Score</div>
-              </div>
+              ))}
               <div className="dash-chip">
                 <div className="dash-chip-num">
                   {tasksCount !== null ? tasksCount : "—"}
