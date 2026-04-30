@@ -77,10 +77,13 @@ export default function SignInHomeowner() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  const selectedPlan = (() => {
-    const slug = new URLSearchParams(window.location.search).get('plan') ?? '';
-    return PLAN_LABELS[slug] ? { slug, ...PLAN_LABELS[slug] } : null;
-  })();
+  const initialPlanSlug = new URLSearchParams(window.location.search).get('plan') ?? '';
+  const [selectedPlanSlug, setSelectedPlanSlug] = useState<string>(
+    PLAN_LABELS[initialPlanSlug] ? initialPlanSlug : ''
+  );
+  const selectedPlan = selectedPlanSlug && PLAN_LABELS[selectedPlanSlug]
+    ? { slug: selectedPlanSlug, ...PLAN_LABELS[selectedPlanSlug] }
+    : null;
 
   useEffect(() => {
     document.body.classList.add('signin-page');
@@ -199,16 +202,30 @@ export default function SignInHomeowner() {
             <button type="button" onClick={() => setActiveTab('register')} style={toggleBtn(activeTab === 'register')} data-testid="tab-register-homeowner">Register</button>
           </div>
 
-          {/* Plan selection banner */}
-          {selectedPlan && (
-            <div data-testid="plan-selection-banner" style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(83,74,183,0.08)', border: '1.5px solid rgba(83,74,183,0.2)', borderRadius: 12, padding: '10px 14px', marginBottom: 18 }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.primary, flexShrink: 0 }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: C.label, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Selected plan</p>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: C.primary }}>{selectedPlan.name} — {selectedPlan.price}</p>
-              </div>
+          {/* Plan selector */}
+          <div data-testid="plan-selection-banner" style={{ background: 'rgba(83,74,183,0.08)', border: '1.5px solid rgba(83,74,183,0.2)', borderRadius: 12, padding: '10px 14px', marginBottom: 18 }}>
+            <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: C.label, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Selected plan</p>
+            <div style={{ position: 'relative' }}>
+              <select
+                data-testid="select-plan"
+                value={selectedPlanSlug}
+                onChange={e => setSelectedPlanSlug(e.target.value)}
+                style={{
+                  width: '100%', appearance: 'none', WebkitAppearance: 'none',
+                  background: '#fff', border: `1.5px solid ${C.border}`,
+                  borderRadius: 10, padding: '9px 36px 9px 12px',
+                  fontSize: 13, fontWeight: 700, color: C.primary,
+                  cursor: 'pointer', fontFamily: 'inherit', outline: 'none',
+                }}
+              >
+                <option value="" disabled>Choose a plan…</option>
+                {Object.entries(PLAN_LABELS).map(([slug, { name, price }]) => (
+                  <option key={slug} value={slug}>{name} — {price}</option>
+                ))}
+              </select>
+              <svg style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: C.primary }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </div>
-          )}
+          </div>
 
           {/* ── LOGIN ── */}
           {activeTab === 'login' && (
