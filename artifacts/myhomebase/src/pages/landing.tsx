@@ -426,15 +426,15 @@ export default function Landing() {
                   <div className="mpr-divider" />
                 </div>
                 <div className="mpr-plans" style={{ justifyContent: 'center' }}>
-                  <div className="mpr-plan-card mpr-plan-featured mpr-plan-selected" style={{ maxWidth: 360, borderColor: '#1560A2', flex: '0 1 360px' }}>
+                  <div className="mpr-plan-card mpr-plan-featured mpr-plan-selected" style={{ width: '100%', maxWidth: '100%', borderColor: '#1560A2', flex: '1 1 100%' }}>
                     <div className="mpr-popular-badge" style={{ background: '#1560A2' }}>Contractor Plan</div>
                     <div className="mpr-plan-header mpr-plan-header-featured" style={{ background: 'linear-gradient(135deg,#1560A2,#0C447C)' }}>
                       <div>
-                        <p className="mpr-plan-name">Pro Plan</p>
-                        <p className="mpr-plan-sub">For contractors &amp; trade businesses</p>
+                        <p className="mpr-plan-name" style={{ color: '#ffffff' }}>Pro Plan</p>
+                        <p className="mpr-plan-sub" style={{ color: '#ffffff' }}>For contractors &amp; trade businesses</p>
                       </div>
                       <div className="mpr-plan-price-wrap">
-                        <p className="mpr-plan-price">$20</p>
+                        <p className="mpr-plan-price" style={{ color: '#ffffff' }}>$20</p>
                         <p className="mpr-plan-per">/month</p>
                       </div>
                     </div>
