@@ -29,6 +29,7 @@ export default function Landing() {
   const [hwSlider, setHwSlider] = useState(0);
   const [ctSlider, setCtSlider] = useState(0);
   const [selectedPlanCard, setSelectedPlanCard] = useState<'base' | 'premium' | 'plus'>('premium');
+  const [plansTab, setPlansTab] = useState<'homeowner' | 'contractor'>('homeowner');
   const [openFaqIdx, setOpenFaqIdx] = useState<number | null>(null);
 
   // ── Sign-in flyout ──
@@ -311,6 +312,11 @@ export default function Landing() {
             <button className="mhb-modal-close" onClick={() => setPlansOpen(false)} aria-label="Close">
               <X size={20} strokeWidth={2.5} />
             </button>
+            <div className="mrr-tabs">
+              <button className={`mrr-tab ${plansTab === 'homeowner' ? 'mrr-tab-active-hw' : 'mrr-tab-inactive'}`} onClick={() => setPlansTab('homeowner')}>Homeowner</button>
+              <button className={`mrr-tab ${plansTab === 'contractor' ? 'mrr-tab-active-ct' : 'mrr-tab-inactive'}`} onClick={() => setPlansTab('contractor')}>Contractor — $20/mo</button>
+            </div>
+            {plansTab === 'homeowner' && (
             <div className="mpr-card-wrap">
               <div className="mpr-card">
                 <div className="mpr-bar" />
@@ -407,6 +413,76 @@ export default function Landing() {
                 </div>
               </div>
             </div>
+            )}
+
+            {plansTab === 'contractor' && (
+            <div className="mpr-card-wrap">
+              <div className="mpr-card">
+                <div className="mpr-bar" style={{ background: '#1560A2' }} />
+                <div className="mpr-header">
+                  <p className="mpr-eyebrow" style={{ color: '#1560A2' }}>For Contractors</p>
+                  <h2 className="mpr-heading">One Plan. Everything Included.</h2>
+                  <p className="mpr-body">Everything you need to grow your business and manage homeowner relationships.</p>
+                  <div className="mpr-divider" />
+                </div>
+                <div className="mpr-plans" style={{ justifyContent: 'center' }}>
+                  <div className="mpr-plan-card mpr-plan-featured mpr-plan-selected" style={{ maxWidth: 360, borderColor: '#1560A2', flex: '0 1 360px' }}>
+                    <div className="mpr-popular-badge" style={{ background: '#1560A2' }}>Contractor Plan</div>
+                    <div className="mpr-plan-header mpr-plan-header-featured" style={{ background: 'linear-gradient(135deg,#1560A2,#0C447C)' }}>
+                      <div>
+                        <p className="mpr-plan-name">Pro Plan</p>
+                        <p className="mpr-plan-sub">For contractors &amp; trade businesses</p>
+                      </div>
+                      <div className="mpr-plan-price-wrap">
+                        <p className="mpr-plan-price">$20</p>
+                        <p className="mpr-plan-per">/month</p>
+                      </div>
+                    </div>
+                    <div className="mpr-plan-features mpr-plan-features-featured" style={{ background: 'rgba(21,96,162,0.04)' }}>
+                      {[
+                        'Contractor directory listing',
+                        'CRM & lead management',
+                        'Service record integration',
+                        'Invoice & proposal tools',
+                        'Team management',
+                        'Referral revenue program',
+                        'Email support',
+                      ].map(f => (
+                        <div key={f} className="mpr-feature-row"><span className="mpr-check" style={{ color: '#1560A2' }}>✓</span>{f}</div>
+                      ))}
+                    </div>
+                    <button className="mpr-plan-btn mpr-plan-btn-primary" style={{ background: '#1560A2' }}
+                      onClick={(e) => { e.stopPropagation(); handleRoleSelection('contractor'); }}>
+                      Get Started →
+                    </button>
+                  </div>
+                </div>
+                <div className="mpr-free-banner" style={{ background: 'rgba(21,96,162,0.06)', borderColor: 'rgba(21,96,162,0.15)' }}>
+                  <p className="mpr-free-title">14-Day Free Trial Included</p>
+                  <p className="mpr-free-sub">Try it risk-free. Refer 20 homeowners and your subscription is completely free.</p>
+                </div>
+                <div className="mpr-faq">
+                  <p className="mpr-faq-label">Frequently Asked Questions</p>
+                  <div className="mpr-faq-list">
+                    {[
+                      { q: 'How does the referral program work?', a: 'Every homeowner you refer to MyHomeBase™ who becomes a paid subscriber takes $1 off your monthly plan. Refer 20 homeowners and your subscription is completely free — for as long as they remain paid subscribers.' },
+                      { q: 'Can I manage multiple team members?', a: 'Yes. Your plan includes team management tools so you can add crew members and assign jobs.' },
+                      { q: 'Do you offer refunds?', a: 'Every new account includes a 14-day free trial. Your card is not charged during the trial. If you cancel before the trial ends, you won\'t be charged at all.' },
+                    ].map((item, i) => (
+                      <div key={i} className={`mpr-faq-item ${i < 2 ? 'mpr-faq-item-border' : ''}`}
+                        onClick={(e) => { e.stopPropagation(); setOpenFaqIdx(openFaqIdx === i ? null : i); }}>
+                        <div className="mpr-faq-q-row">
+                          <p className="mpr-faq-q">{item.q}</p>
+                          <span className="mpr-faq-chevron" style={{ transform: openFaqIdx === i ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+                        </div>
+                        {openFaqIdx === i && <p className="mpr-faq-a">{item.a}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+            )}
           </div>
         </div>
       )}
