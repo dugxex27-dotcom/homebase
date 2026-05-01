@@ -185,6 +185,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   console.error('========================================');
   
   // Health check endpoint for monitoring
+  // Public address autocomplete — proxies Nominatim server-side (no auth required)
+  app.get('/api/address-suggest', async (req, res) => {
+    const q = (req.query.q as string || '').trim();
+    if (!q || q.length < 3) return res.json([]);
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&addressdetails=0&countrycodes=us`;
+      const nominatimRes = await fetch(url, { headers: { 'User-Agent': 'MyHomeBase/1.0' } });
+      if (!nominatimRes.ok) return res.json([]);
+      const data: any[] = await nominatimRes.json();
+      // Return slim objects only — display_name, type, class
+      const results = data.map(r => ({ display_name: r.display_name, type: r.type, class: r.class }));
+      res.json(results);
+    } catch { res.json([]); }
+  });
+
   // Public geocode endpoint — used by onboarding page (no auth required)
   app.get('/api/geocode', async (req, res) => {
     const address = (req.query.address as string || '').trim();

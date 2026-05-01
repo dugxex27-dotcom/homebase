@@ -1181,17 +1181,15 @@ function handleAddressKeydown(e) {
 function onAddressInput() {
   clearTimeout(acTimer);
   const q = acInput().value.trim();
-  if (q.length < 4) { acClose(); return; }
+  if (q.length < 3) { acClose(); return; }
   acTimer = setTimeout(async () => {
     try {
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&addressdetails=0&countrycodes=us`;
-      const res = await fetch(url, { headers: { 'User-Agent': 'MyHomeBase/1.0' } });
+      const res = await fetch('/api/address-suggest?q=' + encodeURIComponent(q));
+      if (!res.ok) { acClose(); return; }
       const data = await res.json();
-      // Filter to street-level results only
-      const filtered = data.filter(r => ['house', 'building', 'residential', 'road', 'place'].includes(r.type) || r.class === 'building' || r.class === 'place');
-      acOpen(filtered.length ? filtered : data.slice(0, 5));
+      acOpen(Array.isArray(data) ? data : []);
     } catch { acClose(); }
-  }, 320);
+  }, 300);
 }
 
 // Script runs at bottom of body — DOM is already parsed, attach directly
