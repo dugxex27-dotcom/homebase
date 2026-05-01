@@ -185,6 +185,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   console.error('========================================');
   
   // Health check endpoint for monitoring
+  // Public geocode endpoint — used by onboarding page (no auth required)
+  app.get('/api/geocode', async (req, res) => {
+    const address = (req.query.address as string || '').trim();
+    if (!address || address.length < 5) {
+      return res.status(400).json({ error: 'Address is required' });
+    }
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&addressdetails=1&countrycodes=us`;
+      const nominatimRes = await fetch(url, { headers: { 'User-Agent': 'MyHomeBase/1.0' } });
+      if (!nominatimRes.ok) throw new Error('Geocoding service unavailable');
+      const data: any[] = await nominatimRes.json();
+      if (!data || data.length === 0) return res.status(404).json({ error: 'Address not found' });
+      const r = data[0];
+      const addr = r.address || {};
+      const houseNumber = addr.house_number || '';
+      const road = addr.road || '';
+      const street = [houseNumber, road].filter(Boolean).join(' ');
+      const city = addr.city || addr.town || addr.village || addr.hamlet || '';
+      const state = addr.state || '';
+      const zip = addr.postcode || '';
+      const formatted = r.display_name;
+      res.json({ formatted, street, city, state, zip, lat: parseFloat(r.lat), lon: parseFloat(r.lon) });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Geocoding failed' });
+    }
+  });
+
   app.get('/api/health', async (_req, res) => {
     try {
       // Quick database connectivity check

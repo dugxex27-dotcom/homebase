@@ -1193,14 +1193,14 @@ function onAddressInput() {
   }, 320);
 }
 
-// Attach input listener after DOM ready
-document.addEventListener('DOMContentLoaded', () => {
+// Script runs at bottom of body — DOM is already parsed, attach directly
+(function attachAcListeners() {
   const inp = acInput();
   if (inp) {
     inp.addEventListener('input', onAddressInput);
     inp.addEventListener('blur', () => setTimeout(acClose, 150));
   }
-});
+})();
 
 // ─── GOOGLE SIGN-IN ───────────────────────────────────────────────────────────
 function signInWithGoogle() {
