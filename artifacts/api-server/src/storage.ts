@@ -207,7 +207,6 @@ export interface IStorage {
   // Review operations
   getContractorReviews(contractorId: string): Promise<ContractorReview[]>;
   getReviewsByHomeowner(homeownerId: string): Promise<ContractorReview[]>;
-  getAllReviews(): Promise<ContractorReview[]>;
   getReview(id: string): Promise<ContractorReview | undefined>;
   createContractorReview(review: InsertContractorReview): Promise<ContractorReview>;
   updateContractorReview(id: string, review: Partial<InsertContractorReview>): Promise<ContractorReview | undefined>;
@@ -2414,9 +2413,6 @@ export class MemStorage implements IStorage {
       .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
   }
 
-  async getAllReviews(): Promise<ContractorReview[]> {
-    return Array.from(this.contractorReviews.values());
-  }
 
   async getReview(id: string): Promise<ContractorReview | undefined> {
     return this.contractorReviews.get(id);
@@ -10682,9 +10678,6 @@ class DbStorage implements IStorage {
   }
 
   // ─── Contractor Reviews (additional) — DATABASE BACKED ───────────────────
-  async getAllReviews(): Promise<ContractorReview[]> {
-    return db.select().from(contractorReviews).orderBy(desc(contractorReviews.createdAt));
-  }
 
   async getReview(id: string): Promise<ContractorReview | undefined> {
     const [review] = await db.select().from(contractorReviews).where(eq(contractorReviews.id, id));
