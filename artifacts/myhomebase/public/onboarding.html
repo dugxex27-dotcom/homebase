@@ -719,6 +719,7 @@
       <input class="search-input" id="s1AddressInput" type="text"
         autocomplete="off"
         placeholder="123 Main St, City, State ZIP"
+        oninput="onAddressInput()"
         onkeydown="handleAddressKeydown(event)">
       <button class="search-btn" id="s1SearchBtn" onclick="runLookup()">Look up →</button>
       <ul class="ac-dropdown" id="acDropdown"></ul>
@@ -1303,24 +1304,26 @@ async function runLookup() {
     const a1 = geo.street || address.split(',')[0];
     const a2 = (geo.city + ', ' + geo.state + ' ' + geo.zip).trim();
 
-    // Property
+    // Property — non-fatal if route unavailable
     document.getElementById('loadingStep').textContent = 'Pulling public property records...';
-    const propRes = await fetch('/api/property?address1=' + encodeURIComponent(a1) + '&address2=' + encodeURIComponent(a2));
-    const prop = await propRes.json();
-    if (propRes.ok) {
-      state.yearBuilt    = prop.yearBuilt;
-      state.bedrooms     = prop.bedrooms;
-      state.bathrooms    = prop.bathrooms;
-      state.sqft         = prop.sqft;
-      state.lotSqft      = prop.lotSqft;
-      state.propertyType = prop.propertyType;
-      state.lastSaleDate = prop.lastSaleDate;
-      state.lastSalePrice= prop.lastSalePrice;
-      state.assessedValue= prop.assessedValue;
-      state.estimatedValue= prop.marketValue;
-    }
+    try {
+      const propRes = await fetch('/api/property?address1=' + encodeURIComponent(a1) + '&address2=' + encodeURIComponent(a2));
+      if (propRes.ok) {
+        const prop = await propRes.json();
+        state.yearBuilt     = prop.yearBuilt;
+        state.bedrooms      = prop.bedrooms;
+        state.bathrooms     = prop.bathrooms;
+        state.sqft          = prop.sqft;
+        state.lotSqft       = prop.lotSqft;
+        state.propertyType  = prop.propertyType;
+        state.lastSaleDate  = prop.lastSaleDate;
+        state.lastSalePrice = prop.lastSalePrice;
+        state.assessedValue = prop.assessedValue;
+        state.estimatedValue= prop.marketValue;
+      }
+    } catch {}
 
-    // AVM
+    // AVM — non-fatal if route unavailable
     document.getElementById('loadingStep').textContent = 'Estimating current value...';
     try {
       const avmRes = await fetch('/api/avm?address1=' + encodeURIComponent(a1) + '&address2=' + encodeURIComponent(a2));
