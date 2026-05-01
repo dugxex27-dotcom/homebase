@@ -746,7 +746,7 @@ export default function Landing() {
                 ))}
               </div>
               <div className="mhb-faq-cta-row">
-                <a href="/quiz" className="mhb-faq-cta">Check my home's risk — free →</a>
+                <a href="/onboarding" className="mhb-faq-cta">Check my home's risk — free →</a>
               </div>
             </div>
           </div>
@@ -771,6 +771,7 @@ export default function Landing() {
             <button className="mhb-nav-demo-btn" onClick={() => handleDemoLogin('homeowner')} disabled={demoLoading === 'homeowner'}>
               {demoLoading === 'homeowner' ? 'Loading…' : 'Homeowner Demo'}
             </button>
+            <a href="/onboarding" className="mhb-nav-get-started-btn">Get Started</a>
             <div className="mhb-signin-flyout-wrap" ref={signinFlyoutRef}>
               <button
                 className={`mhb-nav-signin-btn${signinOpen ? ' mhb-nav-signin-btn-active' : ''}`}
@@ -1110,13 +1111,13 @@ export default function Landing() {
                 </div>
                 <div className="mhb-role-tile-text">
                   <div className="mhb-role-tile-title">Homeowner</div>
-                  <div className="mhb-role-tile-sub">Track, protect &amp; document</div>
+                  <div className="mhb-role-tile-sub">Check my home's risk — free →</div>
                 </div>
                 <div className="mhb-role-tile-chevron" style={{ transform: selectedRole === 'homeowner' ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</div>
               </button>
               {selectedRole === 'homeowner' && (
                 <div className="mhb-role-actions">
-                  <button className="mhb-role-action mhb-role-action-primary" onClick={() => handleRoleSelection('homeowner')} data-testid="button-homeowner-signup">Register</button>
+                  <a href="/onboarding" className="mhb-role-action mhb-role-action-primary" data-testid="button-homeowner-signup">Check my home's risk — free →</a>
                   <a href="/signin/homeowner" className="mhb-role-action mhb-role-action-ghost">Sign In</a>
                   <button className="mhb-role-action mhb-role-action-text" onClick={() => setHomeownerModalOpen(true)}>Learn more first →</button>
                 </div>
@@ -1222,10 +1223,10 @@ export default function Landing() {
           <p className="mhb-section-eyebrow">Simple, honest pricing</p>
           <h2 className="mhb-section-heading">Less than a cup of coffee.<br />More than you'd pay out of pocket.</h2>
           <div className="mhb-pricing-compare">
-            <div className="mhb-pricing-left">
+            <a href="/onboarding" className="mhb-pricing-left mhb-pricing-left-link">
               <p className="mhb-pricing-amount">$5<span>/month</span></p>
               <p className="mhb-pricing-label">MyHomeBase™</p>
-            </div>
+            </a>
             <div className="mhb-pricing-vs">vs.</div>
             <div className="mhb-pricing-right">
               <p className="mhb-pricing-amount mhb-pricing-amount-red">$18,311</p>
@@ -1245,7 +1246,7 @@ export default function Landing() {
         <div className="mhb-prefooter-inner">
           <h2 className="mhb-prefooter-heading">Your home is probably your biggest investment.</h2>
           <p className="mhb-prefooter-sub">Treat it like one. Start your free home health check — takes 2 minutes.</p>
-          <a href="/quiz" className="mhb-prefooter-cta">
+          <a href="/onboarding" className="mhb-prefooter-cta">
             Check my home's risk — free →
           </a>
         </div>
