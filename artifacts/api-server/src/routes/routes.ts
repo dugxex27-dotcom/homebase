@@ -14344,7 +14344,13 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       if (!req.session.user.email || !adminEmails.includes(req.session.user.email)) {
         return res.status(403).json({ message: "Admin access required" });
       }
-      
+
+      // Verify the flag exists before attempting any update
+      const existingFlag = await storage.getReviewFlag(req.params.id);
+      if (!existingFlag) {
+        return res.status(404).json({ message: "Flag not found" });
+      }
+
       const flagData = insertReviewFlagSchema.partial().parse({
         ...req.body,
         reviewedBy: req.session.user.id,
@@ -14352,7 +14358,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       });
       
       const flag = await storage.updateReviewFlag(req.params.id, flagData);
-      
+
       if (!flag) {
         return res.status(404).json({ message: "Flag not found" });
       }
@@ -14363,7 +14369,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
         userEmail: req.session.user.email || '',
         eventType: AuditEventTypes.ADMIN_SETTINGS_CHANGE,
         action: 'Updated review flag',
-        details: { flagId: req.params.id, newStatus: req.body.status, reviewId: flag.reviewId },
+        details: { flagId: req.params.id, newStatus: req.body.status, reviewId: existingFlag.reviewId },
         req,
       });
       
