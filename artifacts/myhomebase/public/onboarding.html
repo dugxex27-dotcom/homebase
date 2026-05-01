@@ -630,16 +630,13 @@
   /* ── ADDRESS AUTOCOMPLETE DROPDOWN ──────────────────────────────────────── */
   .ac-dropdown {
     display: none;
-    position: absolute;
-    top: calc(100% + 6px);
-    left: 0; right: 0;
+    position: fixed;
     background: #fff;
     border-radius: 14px;
     box-shadow: 0 8px 32px rgba(44,15,91,0.18), 0 2px 8px rgba(0,0,0,0.10);
     list-style: none;
     margin: 0; padding: 6px 0;
-    z-index: 100;
-    overflow: hidden;
+    z-index: 9999;
     max-height: 280px;
     overflow-y: auto;
   }
@@ -785,8 +782,7 @@
   <div class="progress-wrap">
     <div class="progress-header">
       <div class="logo-small">
-        <div class="logo-mark">M</div>
-        <span class="logo-name">MyHomeBase™</span>
+        <img src="/logo-white.png" alt="MyHomeBase" style="height:24px;width:auto;display:block;">
       </div>
       <span class="step-label">Step 2 of 6</span>
     </div>
@@ -833,8 +829,7 @@
   <div class="progress-wrap">
     <div class="progress-header">
       <div class="logo-small">
-        <div class="logo-mark">M</div>
-        <span class="logo-name">MyHomeBase™</span>
+        <img src="/logo-white.png" alt="MyHomeBase" style="height:24px;width:auto;display:block;">
       </div>
       <span class="step-label">Step 3 of 6</span>
     </div>
@@ -909,8 +904,7 @@
   <div class="progress-wrap">
     <div class="progress-header">
       <div class="logo-small">
-        <div class="logo-mark">M</div>
-        <span class="logo-name">MyHomeBase™</span>
+        <img src="/logo-white.png" alt="MyHomeBase" style="height:24px;width:auto;display:block;">
       </div>
       <span class="step-label">Step 4 of 6</span>
     </div>
@@ -966,8 +960,7 @@
   <div class="progress-wrap">
     <div class="progress-header">
       <div class="logo-small">
-        <div class="logo-mark">M</div>
-        <span class="logo-name">MyHomeBase™</span>
+        <img src="/logo-white.png" alt="MyHomeBase" style="height:24px;width:auto;display:block;">
       </div>
       <span class="step-label">Step 5 of 6</span>
     </div>
@@ -1027,8 +1020,7 @@
   <div class="progress-wrap">
     <div class="progress-header">
       <div class="logo-small">
-        <div class="logo-mark">M</div>
-        <span class="logo-name">MyHomeBase™</span>
+        <img src="/logo-white.png" alt="MyHomeBase" style="height:24px;width:auto;display:block;">
       </div>
       <span class="step-label">Step 6 of 6</span>
     </div>
@@ -1107,6 +1099,16 @@ let acActiveIdx = -1;
 const acInput = () => document.getElementById('s1AddressInput');
 const acDropdown = () => document.getElementById('acDropdown');
 
+function acPositionDropdown() {
+  const inp = acInput();
+  const dd = acDropdown();
+  if (!inp || !dd) return;
+  const r = inp.getBoundingClientRect();
+  dd.style.top   = (r.bottom + 6) + 'px';
+  dd.style.left  = r.left + 'px';
+  dd.style.width = r.width + 'px';
+}
+
 function acOpen(items) {
   acResults = items;
   acActiveIdx = -1;
@@ -1126,6 +1128,7 @@ function acOpen(items) {
     });
     dd.appendChild(li);
   });
+  acPositionDropdown();
   dd.classList.add('ac-open');
 }
 
