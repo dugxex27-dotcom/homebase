@@ -7397,6 +7397,17 @@ class DbStorage implements IStorage {
     return { currentStreak, longestStreak };
   }
 
+  async getHouseDIYSavings(houseId: string): Promise<{ totalSavings: number; taskCount: number }> {
+    const diyCompletions = await db.select().from(taskCompletions)
+      .where(and(
+        eq(taskCompletions.houseId, houseId),
+        eq(taskCompletions.completionMethod, 'diy'),
+        isNotNull(taskCompletions.costSavings)
+      ));
+    const totalSavings = diyCompletions.reduce((sum, c) => sum + parseFloat(c.costSavings!.toString()), 0);
+    return { totalSavings, taskCount: diyCompletions.length };
+  }
+
   // ─── Achievements — DATABASE BACKED ──────────────────────────────────────
   async getAchievements(homeownerId: string): Promise<Achievement[]> {
     return db.select().from(achievements).where(eq(achievements.homeownerId, homeownerId));
@@ -7897,6 +7908,14 @@ class DbStorage implements IStorage {
   async createSubscriptionCycleEvent(event: InsertSubscriptionCycleEvent): Promise<SubscriptionCycleEvent> {
     const [created] = await db.insert(subscriptionCycleEvents).values(event).returning();
     return created;
+  }
+
+  async getLastPaymentEvent(userId: string): Promise<SubscriptionCycleEvent | undefined> {
+    const [result] = await db.select().from(subscriptionCycleEvents)
+      .where(and(eq(subscriptionCycleEvents.userId, userId), eq(subscriptionCycleEvents.status, 'paid')))
+      .orderBy(desc(subscriptionCycleEvents.periodStart))
+      .limit(1);
+    return result;
   }
 
   async createUserWithPassword(data: { 
@@ -10374,6 +10393,10 @@ class DbStorage implements IStorage {
   async updateAffiliatePayout(id: string, payout: Partial<InsertAffiliatePayout>): Promise<AffiliatePayout | undefined> {
     const [updated] = await db.update(affiliatePayouts).set({ ...payout, updatedAt: new Date() }).where(eq(affiliatePayouts.id, id)).returning();
     return updated;
+  }
+
+  async getPendingPayouts(): Promise<AffiliatePayout[]> {
+    return db.select().from(affiliatePayouts).where(eq(affiliatePayouts.status, 'pending'));
   }
 
   async getAgentStats(agentId: string): Promise<{
