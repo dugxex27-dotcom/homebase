@@ -87,7 +87,6 @@ const SignIn = lazy(() => import("./pages/signin"));
 const SignInHomeowner = lazy(() => import("./pages/signin-homeowner"));
 const SignInContractor = lazy(() => import("./pages/signin-contractor"));
 const SignInAgent = lazy(() => import("./pages/signin-agent"));
-const Onboarding = lazy(() => import("./pages/onboarding"));
 const Invite = lazy(() => import("./pages/invite"));
 
 // Lazy-loaded pages - Payment (public)
@@ -130,7 +129,7 @@ function Router() {
         <ScrollToTop />
         <Switch>
           <Route path="/invite/:code" component={Invite} />
-          <Route path="/onboarding" component={Onboarding} />
+          <Route path="/onboarding">{() => { window.location.replace('/onboarding.html'); return null; }}</Route>
           <Route path="/signin/homeowner" component={SignInHomeowner} />
           <Route path="/signin/contractor" component={SignInContractor} />
           <Route path="/signin/agent" component={SignInAgent} />
