@@ -625,7 +625,7 @@ export const reviewFlags = pgTable("review_flags", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   reviewId: varchar("review_id").notNull().references(() => contractorReviews.id, { onDelete: 'cascade' }),
   reportedBy: varchar("reported_by").notNull(), // User ID of who reported it
-  reason: text("reason").notNull(), // "fake", "inappropriate", "spam", "other"
+  reason: text("reason").notNull().$type<"fake" | "inappropriate" | "spam" | "other">(), // "fake", "inappropriate", "spam", "other"
   notes: text("notes"), // Additional details from reporter
   status: text("status").notNull().default("pending"), // "pending", "investigating", "resolved_valid", "resolved_invalid"
   reviewedBy: varchar("reviewed_by"), // Admin user ID who reviewed the flag
@@ -635,6 +635,7 @@ export const reviewFlags = pgTable("review_flags", {
 }, (table) => [
   index("IDX_review_flags_review").on(table.reviewId),
   index("IDX_review_flags_status").on(table.status),
+  check("CHK_review_flags_reason", sql`reason IN ('fake', 'inappropriate', 'spam', 'other')`),
   index("IDX_review_flags_reported_by").on(table.reportedBy),
 ]);
 
@@ -1051,7 +1052,9 @@ export const insertContractorReviewSchema = createInsertSchema(contractorReviews
   updatedAt: true,
 });
 
-export const insertReviewFlagSchema = createInsertSchema(reviewFlags).omit({
+export const insertReviewFlagSchema = createInsertSchema(reviewFlags, {
+  reason: z.enum(["fake", "inappropriate", "spam", "other"]),
+}).omit({
   id: true,
   createdAt: true,
   resolvedAt: true,
