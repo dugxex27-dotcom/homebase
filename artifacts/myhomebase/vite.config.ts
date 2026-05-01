@@ -138,10 +138,25 @@ function replitIdeHmrKillerPlugin(): Plugin {
   };
 }
 
+function onboardingRoutePlugin(): Plugin {
+  return {
+    name: "onboarding-route",
+    configureServer(server) {
+      server.middlewares.use((req, _res, next) => {
+        if (req.url === "/onboarding" || req.url === "/onboarding?") {
+          req.url = "/onboarding.html";
+        }
+        next();
+      });
+    },
+  };
+}
+
 export default defineConfig({
   base: basePath,
   plugins: [
     react(),
+    onboardingRoutePlugin(),
     ...(inReplitIDE
       ? [replitIdeHmrKillerPlugin()]
       : [runtimeErrorOverlay()]),
