@@ -635,6 +635,41 @@
     to   { opacity: 1; transform: translateY(0); }
   }
 
+  /* ── ADDRESS AUTOCOMPLETE DROPDOWN ──────────────────────────────────────── */
+  .ac-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0; right: 0;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(44,15,91,0.18), 0 2px 8px rgba(0,0,0,0.10);
+    list-style: none;
+    margin: 0; padding: 6px 0;
+    z-index: 100;
+    overflow: hidden;
+    max-height: 280px;
+    overflow-y: auto;
+  }
+  .ac-dropdown.ac-open { display: block; }
+  .ac-item {
+    padding: 11px 16px;
+    font-size: 14px;
+    color: #2C0F5B;
+    cursor: pointer;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    border-bottom: 1px solid rgba(44,15,91,0.06);
+    transition: background 0.1s;
+    line-height: 1.35;
+  }
+  .ac-item:last-child { border-bottom: none; }
+  .ac-item:hover, .ac-item.ac-active { background: rgba(60,37,142,0.07); }
+  .ac-item-icon { flex-shrink: 0; margin-top: 2px; opacity: 0.5; font-size: 13px; }
+  .ac-item-main { font-weight: 600; }
+  .ac-item-sub { font-size: 12px; color: #7070a0; font-weight: 400; }
+
   /* ── SIGN IN LINK ────────────────────────────────────────────────────────── */
   .signin-link {
     text-align: center;
@@ -680,11 +715,13 @@
     <p class="hero-eyebrow">Step 1 of 6 — Home Intelligence</p>
     <h1 class="hero-headline">Enter your address.<br>We'll show you what<br><em>we already know.</em></h1>
     <p class="hero-sub">Public records, environmental data, and your preliminary Home Wellness Score™ — generated instantly.</p>
-    <div class="search-box">
+    <div class="search-box" style="position:relative;">
       <input class="search-input" id="s1AddressInput" type="text"
+        autocomplete="off"
         placeholder="123 Main St, City, State ZIP"
-        onkeydown="if(event.key==='Enter') runLookup()">
+        onkeydown="handleAddressKeydown(event)">
       <button class="search-btn" id="s1SearchBtn" onclick="runLookup()">Look up →</button>
+      <ul class="ac-dropdown" id="acDropdown"></ul>
     </div>
   </div>
 
@@ -1070,6 +1107,101 @@
 </div>
 
 <script>
+// ─── ADDRESS AUTOCOMPLETE ─────────────────────────────────────────────────────
+let acTimer = null;
+let acResults = [];
+let acActiveIdx = -1;
+
+const acInput = () => document.getElementById('s1AddressInput');
+const acDropdown = () => document.getElementById('acDropdown');
+
+function acOpen(items) {
+  acResults = items;
+  acActiveIdx = -1;
+  const dd = acDropdown();
+  dd.innerHTML = '';
+  if (!items.length) { dd.classList.remove('ac-open'); return; }
+  items.forEach((item, i) => {
+    const parts = item.display_name.split(', ');
+    const main = parts.slice(0, 2).join(', ');
+    const sub = parts.slice(2).join(', ');
+    const li = document.createElement('li');
+    li.className = 'ac-item';
+    li.innerHTML = `<span class="ac-item-icon">📍</span><div><div class="ac-item-main">${main}</div>${sub ? `<div class="ac-item-sub">${sub}</div>` : ''}</div>`;
+    li.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      acSelect(i);
+    });
+    dd.appendChild(li);
+  });
+  dd.classList.add('ac-open');
+}
+
+function acClose() {
+  acDropdown().classList.remove('ac-open');
+  acActiveIdx = -1;
+}
+
+function acHighlight(idx) {
+  const items = acDropdown().querySelectorAll('.ac-item');
+  items.forEach((el, i) => el.classList.toggle('ac-active', i === idx));
+  acActiveIdx = idx;
+}
+
+function acSelect(idx) {
+  const item = acResults[idx];
+  if (!item) return;
+  acInput().value = item.display_name;
+  acClose();
+}
+
+function handleAddressKeydown(e) {
+  const dd = acDropdown();
+  const isOpen = dd.classList.contains('ac-open');
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    acHighlight(Math.min(acActiveIdx + 1, acResults.length - 1));
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    acHighlight(Math.max(acActiveIdx - 1, 0));
+  } else if (e.key === 'Enter') {
+    if (isOpen && acActiveIdx >= 0) {
+      e.preventDefault();
+      acSelect(acActiveIdx);
+    } else {
+      acClose();
+      runLookup();
+    }
+  } else if (e.key === 'Escape') {
+    acClose();
+  }
+}
+
+function onAddressInput() {
+  clearTimeout(acTimer);
+  const q = acInput().value.trim();
+  if (q.length < 4) { acClose(); return; }
+  acTimer = setTimeout(async () => {
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&addressdetails=0&countrycodes=us`;
+      const res = await fetch(url, { headers: { 'User-Agent': 'MyHomeBase/1.0' } });
+      const data = await res.json();
+      // Filter to street-level results only
+      const filtered = data.filter(r => ['house', 'building', 'residential', 'road', 'place'].includes(r.type) || r.class === 'building' || r.class === 'place');
+      acOpen(filtered.length ? filtered : data.slice(0, 5));
+    } catch { acClose(); }
+  }, 320);
+}
+
+// Attach input listener after DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+  const inp = acInput();
+  if (inp) {
+    inp.addEventListener('input', onAddressInput);
+    inp.addEventListener('blur', () => setTimeout(acClose, 150));
+  }
+});
+
 // ─── GOOGLE SIGN-IN ───────────────────────────────────────────────────────────
 function signInWithGoogle() {
   // Save onboarding state so we can resume after auth if needed
