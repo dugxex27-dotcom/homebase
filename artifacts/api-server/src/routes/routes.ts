@@ -14287,8 +14287,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       const reviewId = req.params.id;
       
       // Check if review exists
-      const allReviews = await storage.getAllReviews();
-      const review = allReviews.find(r => r.id === reviewId);
+      const review = await storage.getReview(reviewId);
       if (!review) {
         return res.status(404).json({ message: "Review not found" });
       }
@@ -14331,8 +14330,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       // Enhance flags with review and reporter data
       const enhancedFlags = await Promise.all(flags.map(async (flag) => {
         // Get the review directly from storage
-        const allReviews = await storage.getAllReviews();
-        const review = allReviews.find(r => r.id === flag.reviewId);
+        const review = await storage.getReview(flag.reviewId);
         
         const reporter = await storage.getUser(flag.reportedBy);
         

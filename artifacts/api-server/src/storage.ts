@@ -208,6 +208,7 @@ export interface IStorage {
   getContractorReviews(contractorId: string): Promise<ContractorReview[]>;
   getReviewsByHomeowner(homeownerId: string): Promise<ContractorReview[]>;
   getAllReviews(): Promise<ContractorReview[]>;
+  getReview(id: string): Promise<ContractorReview | undefined>;
   createContractorReview(review: InsertContractorReview): Promise<ContractorReview>;
   updateContractorReview(id: string, review: Partial<InsertContractorReview>): Promise<ContractorReview | undefined>;
   
@@ -2415,6 +2416,10 @@ export class MemStorage implements IStorage {
 
   async getAllReviews(): Promise<ContractorReview[]> {
     return Array.from(this.contractorReviews.values());
+  }
+
+  async getReview(id: string): Promise<ContractorReview | undefined> {
+    return this.contractorReviews.get(id);
   }
 
   async createContractorReview(reviewData: InsertContractorReview): Promise<ContractorReview> {
@@ -10679,6 +10684,11 @@ class DbStorage implements IStorage {
   // ─── Contractor Reviews (additional) — DATABASE BACKED ───────────────────
   async getAllReviews(): Promise<ContractorReview[]> {
     return db.select().from(contractorReviews).orderBy(desc(contractorReviews.createdAt));
+  }
+
+  async getReview(id: string): Promise<ContractorReview | undefined> {
+    const [review] = await db.select().from(contractorReviews).where(eq(contractorReviews.id, id));
+    return review;
   }
 
   // ─── Startup migration: contractor reviews ────────────────────────────────
