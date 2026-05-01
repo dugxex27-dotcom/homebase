@@ -1,4 +1,4 @@
-import { type Contractor, type InsertContractor, type Company, type InsertCompany, type CompanyInviteCode, type InsertCompanyInviteCode, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type HomeApplianceManual, type InsertHomeApplianceManual, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type HomeownerConnectionCode, type InsertHomeownerConnectionCode, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type PushToken, type InsertPushToken, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics, type TaskOverride, type InsertTaskOverride, type Country, type InsertCountry, type Region, type InsertRegion, type ClimateZone, type InsertClimateZone, type RegulatoryBody, type InsertRegulatoryBody, type RegionalMaintenanceTask, type InsertRegionalMaintenanceTask, type TaskCompletion, type InsertTaskCompletion, type Achievement, type InsertAchievement, type AchievementDefinition, type InsertAchievementDefinition, type UserAchievement, type InsertUserAchievement, type SearchAnalytics, type InsertSearchAnalytics, type InviteCode, type InsertInviteCode, type AgentProfile, type InsertAgentProfile, type AffiliateReferral, type InsertAffiliateReferral, type SubscriptionCycleEvent, type InsertSubscriptionCycleEvent, type AffiliatePayout, type InsertAffiliatePayout, type AgentVerificationAudit, type InsertAgentVerificationAudit, contractorAppointments, notifications, type SupportTicket, type InsertSupportTicket, type TicketReply, type InsertTicketReply, type SubscriptionPlan, users, contractors, companies, contractorLicenses, countries, regions, climateZones, regulatoryBodies, regionalMaintenanceTasks, taskCompletions, achievements, achievementDefinitions, userAchievements, maintenanceLogs, searchAnalytics, inviteCodes, agentProfiles, affiliateReferrals, subscriptionCycleEvents, affiliatePayouts, agentVerificationAudits, supportTickets, ticketReplies, houses, homeSystems, customMaintenanceTasks, taskOverrides, serviceRecords, homeownerConnectionCodes, conversations, messages, proposals, houseTransfers, subscriptionPlans, pushTokens, contractorAnalytics, contractorBoosts, pushSubscriptions, homeAppliances, homeApplianceManuals, companyInviteCodes, products, contractorReviews, type CrmLead, type InsertCrmLead, type CrmNote, type InsertCrmNote, type ErrorLog, type InsertErrorLog, type ErrorBreadcrumb, type InsertErrorBreadcrumb, type CrmIntegration, type InsertCrmIntegration, type WebhookLog, type InsertWebhookLog, crmLeads, crmNotes, errorLogs, errorBreadcrumbs, crmIntegrations, webhookLogs, type CrmClient, type InsertCrmClient, type CrmJob, type InsertCrmJob, type CrmQuote, type InsertCrmQuote, type CrmInvoice, type InsertCrmInvoice, crmClients, crmJobs, crmQuotes, crmInvoices, referralCredits } from "@workspace/db";
+import { type Contractor, type InsertContractor, type Company, type InsertCompany, type CompanyInviteCode, type InsertCompanyInviteCode, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type HomeApplianceManual, type InsertHomeApplianceManual, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type HomeownerConnectionCode, type InsertHomeownerConnectionCode, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type PushToken, type InsertPushToken, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics, type TaskOverride, type InsertTaskOverride, type Country, type InsertCountry, type Region, type InsertRegion, type ClimateZone, type InsertClimateZone, type RegulatoryBody, type InsertRegulatoryBody, type RegionalMaintenanceTask, type InsertRegionalMaintenanceTask, type TaskCompletion, type InsertTaskCompletion, type Achievement, type InsertAchievement, type AchievementDefinition, type InsertAchievementDefinition, type UserAchievement, type InsertUserAchievement, type SearchAnalytics, type InsertSearchAnalytics, type InviteCode, type InsertInviteCode, type AgentProfile, type InsertAgentProfile, type AffiliateReferral, type InsertAffiliateReferral, type SubscriptionCycleEvent, type InsertSubscriptionCycleEvent, type AffiliatePayout, type InsertAffiliatePayout, type AgentVerificationAudit, type InsertAgentVerificationAudit, contractorAppointments, notifications, type SupportTicket, type InsertSupportTicket, type TicketReply, type InsertTicketReply, type SubscriptionPlan, users, contractors, companies, contractorLicenses, countries, regions, climateZones, regulatoryBodies, regionalMaintenanceTasks, taskCompletions, achievements, achievementDefinitions, userAchievements, maintenanceLogs, searchAnalytics, inviteCodes, agentProfiles, affiliateReferrals, subscriptionCycleEvents, affiliatePayouts, agentVerificationAudits, supportTickets, ticketReplies, houses, homeSystems, customMaintenanceTasks, taskOverrides, serviceRecords, homeownerConnectionCodes, conversations, messages, proposals, houseTransfers, subscriptionPlans, pushTokens, contractorAnalytics, contractorBoosts, pushSubscriptions, homeAppliances, homeApplianceManuals, companyInviteCodes, products, contractorReviews, reviewFlags, type ReviewFlag, type InsertReviewFlag, type CrmLead, type InsertCrmLead, type CrmNote, type InsertCrmNote, type ErrorLog, type InsertErrorLog, type ErrorBreadcrumb, type InsertErrorBreadcrumb, type CrmIntegration, type InsertCrmIntegration, type WebhookLog, type InsertWebhookLog, crmLeads, crmNotes, errorLogs, errorBreadcrumbs, crmIntegrations, webhookLogs, type CrmClient, type InsertCrmClient, type CrmJob, type InsertCrmJob, type CrmQuote, type InsertCrmQuote, type CrmInvoice, type InsertCrmInvoice, crmClients, crmJobs, crmQuotes, crmInvoices, referralCredits } from "@workspace/db";
 import { houseDisclosures, type HouseDisclosure, type InsertHouseDisclosure, homeDocuments, type HomeDocument, type InsertHomeDocument, insuranceClaimPackages, type InsuranceClaimPackage, type InsertInsuranceClaimPackage, insuranceEmailLogs, type InsuranceEmailLog, type InsertInsuranceEmailLog } from "@workspace/db";
 import { randomUUID, randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
@@ -3716,6 +3716,21 @@ export class MemStorage implements IStorage {
   /** Remove a boost record by ID (used for sync from DbStorage delete). */
   deleteContractorBoostFromMemory(id: string): void {
     this.contractorBoosts.delete(id);
+  }
+
+  /** Returns all contractor reviews currently held in memory. */
+  getAllContractorReviewsFromMemory(): ContractorReview[] {
+    return Array.from(this.contractorReviews.values());
+  }
+
+  /** Returns all company invite codes currently held in memory. */
+  getAllCompanyInviteCodesFromMemory(): CompanyInviteCode[] {
+    return Array.from(this.companyInviteCodes.values());
+  }
+
+  /** Returns all push subscriptions currently held in memory. */
+  getAllPushSubscriptionsFromMemory(): PushSubscription[] {
+    return Array.from(this.pushSubscriptions.values());
   }
 
   async checkBoostConflict(serviceCategory: string, latitude: number, longitude: number, radius: number): Promise<ContractorBoost | null> {
@@ -7836,7 +7851,7 @@ class DbStorage implements IStorage {
       // For contractors who own a company, check if they can cancel
       if (role === 'contractor' && user.companyRole === 'owner') {
         // Check if there are other employees in the company
-        const employees = await this.db.select().from(users).where(eq(users.companyId, user.companyId!));
+        const employees = await db.select().from(users).where(eq(users.companyId, user.companyId!));
         if (employees.length > 1) {
           return { 
             success: false, 
@@ -7846,7 +7861,7 @@ class DbStorage implements IStorage {
       }
 
       // Update account status to cancelled
-      await this.db
+      await db
         .update(users)
         .set({
           accountStatus: 'cancelled',
@@ -10504,6 +10519,182 @@ class DbStorage implements IStorage {
   private async updateAppointmentNotificationsDb(appointment: ContractorAppointment): Promise<void> {
     await db.delete(notifications).where(eq(notifications.appointmentId, appointment.id));
     await this.createAppointmentNotificationsDb(appointment);
+  }
+
+  // ─── Contractor Reviews (additional) — DATABASE BACKED ───────────────────
+  async getAllReviews(): Promise<ContractorReview[]> {
+    return db.select().from(contractorReviews).orderBy(desc(contractorReviews.createdAt));
+  }
+
+  // ─── Startup migration: contractor reviews ────────────────────────────────
+  /**
+   * Flush any contractor reviews held in the in-memory MemStorage map to
+   * the database. Idempotent: reviews already in the DB (matched by ID) are
+   * skipped. Returns { migrated, skipped } counts.
+   *
+   * Safe to call on every startup and on SIGTERM. The in-memory map starts
+   * empty after a clean restart; this is a no-op in the normal case.
+   */
+  async migrateMemStorageReviews(): Promise<{ migrated: number; skipped: number }> {
+    const memReviews = this.memStorage.getAllContractorReviewsFromMemory();
+
+    if (memReviews.length === 0) {
+      logger.info('[ReviewMigration] No in-memory contractor reviews to flush — nothing to persist.');
+      return { migrated: 0, skipped: 0 };
+    }
+
+    logger.info(
+      { reviewCount: memReviews.length },
+      '[ReviewMigration] Flushing in-memory contractor review(s) to the database...',
+    );
+
+    let migrated = 0;
+    let skipped = 0;
+
+    for (const review of memReviews) {
+      const existing = await db
+        .select({ id: contractorReviews.id })
+        .from(contractorReviews)
+        .where(eq(contractorReviews.id, review.id))
+        .limit(1);
+
+      if (existing.length > 0) {
+        skipped++;
+        continue;
+      }
+
+      await db.insert(contractorReviews).values({
+        id: review.id,
+        contractorId: review.contractorId,
+        companyId: review.companyId ?? null,
+        homeownerId: review.homeownerId,
+        rating: review.rating,
+        comment: review.comment ?? null,
+        serviceDate: review.serviceDate ?? null,
+        serviceType: review.serviceType ?? null,
+        wouldRecommend: review.wouldRecommend ?? true,
+        deviceFingerprint: review.deviceFingerprint ?? null,
+        ipAddress: review.ipAddress ?? null,
+        isVerifiedService: review.isVerifiedService ?? false,
+        serviceRecordId: review.serviceRecordId ?? null,
+        reviewPhotoUrl: review.reviewPhotoUrl ?? null,
+        contractorResponse: review.contractorResponse ?? null,
+        contractorRespondedAt: review.contractorRespondedAt ?? null,
+        createdAt: review.createdAt ?? new Date(),
+        updatedAt: review.updatedAt ?? new Date(),
+      });
+      migrated++;
+    }
+
+    logger.info({ migrated, skipped }, '[ReviewMigration] Flush complete.');
+    return { migrated, skipped };
+  }
+
+  // ─── Startup migration: company invite codes ──────────────────────────────
+  /**
+   * Flush any company invite codes held in the in-memory MemStorage map to
+   * the database. Idempotent: codes already in the DB (matched by ID) are
+   * skipped. Returns { migrated, skipped } counts.
+   */
+  async migrateMemStorageInviteCodes(): Promise<{ migrated: number; skipped: number }> {
+    const memCodes = this.memStorage.getAllCompanyInviteCodesFromMemory();
+
+    if (memCodes.length === 0) {
+      logger.info('[InviteCodeMigration] No in-memory company invite codes to flush — nothing to persist.');
+      return { migrated: 0, skipped: 0 };
+    }
+
+    logger.info(
+      { codeCount: memCodes.length },
+      '[InviteCodeMigration] Flushing in-memory company invite code(s) to the database...',
+    );
+
+    let migrated = 0;
+    let skipped = 0;
+
+    for (const code of memCodes) {
+      const existing = await db
+        .select({ id: companyInviteCodes.id })
+        .from(companyInviteCodes)
+        .where(eq(companyInviteCodes.id, code.id))
+        .limit(1);
+
+      if (existing.length > 0) {
+        skipped++;
+        continue;
+      }
+
+      await db.insert(companyInviteCodes).values({
+        id: code.id,
+        companyId: code.companyId,
+        code: code.code,
+        createdBy: code.createdBy,
+        isActive: code.isActive ?? true,
+        usedBy: code.usedBy ?? null,
+        usedAt: code.usedAt ?? null,
+        expiresAt: code.expiresAt ?? null,
+      });
+      migrated++;
+    }
+
+    logger.info({ migrated, skipped }, '[InviteCodeMigration] Flush complete.');
+    return { migrated, skipped };
+  }
+
+  // ─── Startup migration: push subscriptions ────────────────────────────────
+  /**
+   * Flush any push subscriptions held in the in-memory MemStorage map to
+   * the database. Idempotent: subscriptions already in the DB (matched by ID)
+   * are skipped. Returns { migrated, skipped } counts.
+   */
+  async migrateMemStoragePushSubscriptions(): Promise<{ migrated: number; skipped: number }> {
+    const memSubs = this.memStorage.getAllPushSubscriptionsFromMemory();
+
+    if (memSubs.length === 0) {
+      logger.info('[SubMigration] No in-memory push subscriptions to flush — nothing to persist.');
+      return { migrated: 0, skipped: 0 };
+    }
+
+    logger.info(
+      { subCount: memSubs.length },
+      '[SubMigration] Flushing in-memory push subscription(s) to the database...',
+    );
+
+    let migrated = 0;
+    let skipped = 0;
+
+    for (const sub of memSubs) {
+      const existing = await db
+        .select({ id: pushSubscriptions.id })
+        .from(pushSubscriptions)
+        .where(eq(pushSubscriptions.id, sub.id))
+        .limit(1);
+
+      if (existing.length > 0) {
+        skipped++;
+        continue;
+      }
+
+      await db.insert(pushSubscriptions).values({
+        id: sub.id,
+        userId: sub.userId,
+        provider: sub.provider ?? 'web-push',
+        endpoint: sub.endpoint ?? null,
+        p256dhKey: sub.p256dhKey ?? null,
+        authKey: sub.authKey ?? null,
+        token: sub.token ?? null,
+        deviceInfo: sub.deviceInfo ?? null,
+        userAgent: sub.userAgent ?? null,
+        lastSeenAt: sub.lastSeenAt ?? null,
+        isActive: sub.isActive ?? true,
+        createdAt: sub.createdAt ?? new Date(),
+        updatedAt: sub.updatedAt ?? new Date(),
+      });
+      migrated++;
+    }
+
+    logger.info({ migrated, skipped }, '[SubMigration] Flush complete.');
+    return { migrated, skipped };
   }
 
   async createMaintenanceNotifications(homeownerId: string, tasks: any[]): Promise<void> {

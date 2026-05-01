@@ -125,6 +125,37 @@ app.get("/info/*path", proxyToSquarespace);
     logger.warn({ err }, '[BoostMigration] Startup flush failed — continuing without it');
   }
 
+  // Startup flush: migrate any in-memory contractor reviews, company invite
+  // codes, and push subscriptions to the database.  On a clean restart the
+  // MemStorage maps are empty, so these are confirmed no-ops.  In rolling-
+  // deploy or legacy-path scenarios they provide a safety net.
+  try {
+    const reviewResult = await storage.migrateMemStorageReviews();
+    if (reviewResult.migrated > 0) {
+      logger.info(reviewResult, '[ReviewMigration] Startup flush persisted in-memory reviews to DB.');
+    }
+  } catch (err) {
+    logger.warn({ err }, '[ReviewMigration] Startup flush failed — continuing without it');
+  }
+
+  try {
+    const inviteResult = await storage.migrateMemStorageInviteCodes();
+    if (inviteResult.migrated > 0) {
+      logger.info(inviteResult, '[InviteCodeMigration] Startup flush persisted in-memory invite codes to DB.');
+    }
+  } catch (err) {
+    logger.warn({ err }, '[InviteCodeMigration] Startup flush failed — continuing without it');
+  }
+
+  try {
+    const subResult = await storage.migrateMemStoragePushSubscriptions();
+    if (subResult.migrated > 0) {
+      logger.info(subResult, '[SubMigration] Startup flush persisted in-memory push subscriptions to DB.');
+    }
+  } catch (err) {
+    logger.warn({ err }, '[SubMigration] Startup flush failed — continuing without it');
+  }
+
   const server = await registerRoutes(app);
 
   // Graceful shutdown — flush any in-memory boosts to the database before
@@ -137,13 +168,11 @@ app.get("/info/*path", proxyToSquarespace);
   const gracefulShutdown = async (signal: string) => {
     if (shuttingDown) return;
     shuttingDown = true;
-    logger.info(`${signal} received — flushing in-memory contractor boosts before shutdown...`);
+    logger.info(`${signal} received — flushing in-memory data before shutdown...`);
+
     try {
       const { migrated, skipped } = await storage.migrateMemStorageBoosts();
-      logger.info(
-        { migrated, skipped },
-        '[BoostMigration] Pre-shutdown flush complete.',
-      );
+      logger.info({ migrated, skipped }, '[BoostMigration] Pre-shutdown flush complete.');
     } catch (err) {
       logger.error(
         { err },
@@ -151,6 +180,28 @@ app.get("/info/*path", proxyToSquarespace);
         'Use POST /api/admin/contractor-boosts/recover to re-import any missing records.',
       );
     }
+
+    try {
+      const { migrated, skipped } = await storage.migrateMemStorageReviews();
+      logger.info({ migrated, skipped }, '[ReviewMigration] Pre-shutdown flush complete.');
+    } catch (err) {
+      logger.error({ err }, '[ReviewMigration] Pre-shutdown flush FAILED — some in-memory review data may not have been persisted.');
+    }
+
+    try {
+      const { migrated, skipped } = await storage.migrateMemStorageInviteCodes();
+      logger.info({ migrated, skipped }, '[InviteCodeMigration] Pre-shutdown flush complete.');
+    } catch (err) {
+      logger.error({ err }, '[InviteCodeMigration] Pre-shutdown flush FAILED — some in-memory invite code data may not have been persisted.');
+    }
+
+    try {
+      const { migrated, skipped } = await storage.migrateMemStoragePushSubscriptions();
+      logger.info({ migrated, skipped }, '[SubMigration] Pre-shutdown flush complete.');
+    } catch (err) {
+      logger.error({ err }, '[SubMigration] Pre-shutdown flush FAILED — some in-memory push subscription data may not have been persisted.');
+    }
+
     server.close(() => {
       logger.info('HTTP server closed. Exiting.');
       process.exit(0);
