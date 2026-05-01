@@ -66,19 +66,11 @@
   .logo-small {
     display: flex;
     align-items: center;
-    gap: 8px;
   }
-  .logo-mark {
-    width: 28px; height: 28px;
-    background: var(--purple-mid);
-    border-radius: 7px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 14px; font-weight: 700; color: #fff;
-  }
-  .logo-name {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--purple-mid);
+  .logo-small img {
+    height: 28px;
+    width: auto;
+    display: block;
   }
   .step-label {
     font-size: 12px;
@@ -709,8 +701,7 @@
 <div class="screen active" id="screen1">
   <div class="hero">
     <div class="logo-small" style="margin-bottom:28px;">
-      <div class="logo-mark">M</div>
-      <span class="logo-name">MyHomeBase™</span>
+      <img src="/logo-white.png" alt="MyHomeBase">
     </div>
     <p class="hero-eyebrow">Step 1 of 6 — Home Intelligence</p>
     <h1 class="hero-headline">Enter your address.<br>We'll show you what<br><em>we already know.</em></h1>
