@@ -12,7 +12,7 @@ import { eq, and, or, lte, gte, sql as drizzleSql, isNull, isNotNull, desc, coun
 import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, maintenanceTasks, customMaintenanceTasks, insertSupportTicketSchema, insertSubscriptionCycleEventSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, crmClients, crmJobs, crmQuotes, crmInvoices, securitySessions, referralCredits, referralFreeMonths, agentProfiles, users, siteContent, insertSiteContentSchema, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, insertReviewFlagSchema, homeDocuments, insertHomeDocumentSchema, quizResults, insertQuizResultSchema, type House } from "@workspace/db";
 import { calculateDIYSavingsAmount } from "../shared/cost-helpers";
 import { extractInvoiceData, verifyDIYPhotos, type InvoiceExtraction } from "../invoice-analysis-service";
-import { invoiceAnalyses, contractorBoosts } from "@workspace/db";
+import { invoiceAnalyses, contractorBoosts, affiliateReferrals, subscriptionCycleEvents } from "@workspace/db";
 import pushRoutes from "../push-routes";
 import { pushService } from "../push-service";
 import { ObjectStorageService, ObjectNotFoundError } from "../objectStorage";
@@ -3227,10 +3227,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const demoEmail = 'jessica.roberts@ellisonrealty.com';
       const demoId = 'demo-agent-permanent-id';
       
-      // Check if demo user already exists
+      // Ensure the demo agent user exists
       let user = await storage.getUserByEmail(demoEmail);
-      
-      // If not, create demo user with realistic agent profile
       if (!user) {
         user = await storage.upsertUser({
           id: demoId,
@@ -3244,185 +3242,202 @@ export async function registerRoutes(app: Express): Promise<Server> {
           companyId: null,
           companyRole: null
         });
-
-        // Create referral code for the agent
-        try {
-          const agentUser = await storage.getUser(demoId);
-          let agentReferralCode = agentUser?.referralCode || '';
-          if (!agentUser?.referralCode) {
-            agentReferralCode = await generateUniqueReferralCode(storage);
-            await storage.upsertUser({ ...agentUser!, referralCode: agentReferralCode });
-          }
-
-          // Create realistic 6-month referral data showing agent's growing business
-          const referralData = [
-            // Qualified referrals (earning commissions)
-            {
-              id: 'agent-referral-1',
-              firstName: 'Michael',
-              lastName: 'Stevens',
-              email: 'michael.stevens@email.com',
-              zipCode: '98115',
-              role: 'homeowner',
-              signupMonthsAgo: 6,
-              subscriptionStatus: 'active',
-              plan: 'base',
-              monthlyAmount: '5.00',
-              cyclesPaid: 6,
-              qualified: true
-            },
-            {
-              id: 'agent-referral-2',
-              firstName: 'Laura',
-              lastName: 'Thompson',
-              email: 'laura.thompson@email.com',
-              zipCode: '98102',
-              role: 'homeowner',
-              signupMonthsAgo: 5,
-              subscriptionStatus: 'active',
-              plan: 'premium',
-              monthlyAmount: '20.00',
-              cyclesPaid: 5,
-              qualified: true
-            },
-            {
-              id: 'agent-referral-3',
-              firstName: 'Robert',
-              lastName: 'Chang',
-              email: 'robert.chang@email.com',
-              zipCode: '98119',
-              role: 'homeowner',
-              signupMonthsAgo: 4.5,
-              subscriptionStatus: 'active',
-              plan: 'base',
-              monthlyAmount: '5.00',
-              cyclesPaid: 4,
-              qualified: true
-            },
-            // Recently qualified (just hit 4 months)
-            {
-              id: 'agent-referral-4',
-              firstName: 'Amanda',
-              lastName: 'Rodriguez',
-              email: 'amanda.rodriguez@email.com',
-              zipCode: '98125',
-              role: 'contractor',
-              signupMonthsAgo: 4,
-              subscriptionStatus: 'active',
-              plan: 'contractor',
-              monthlyAmount: '20.00',
-              cyclesPaid: 4,
-              qualified: true
-            },
-            // Pending referrals (not yet qualified - need 4 months)
-            {
-              id: 'agent-referral-5',
-              firstName: 'Kevin',
-              lastName: 'Martinez',
-              email: 'kevin.martinez@email.com',
-              zipCode: '98105',
-              role: 'homeowner',
-              signupMonthsAgo: 2.5,
-              subscriptionStatus: 'active',
-              plan: 'premium',
-              monthlyAmount: '20.00',
-              cyclesPaid: 2,
-              qualified: false
-            },
-            {
-              id: 'agent-referral-6',
-              firstName: 'Nicole',
-              lastName: 'Park',
-              email: 'nicole.park@email.com',
-              zipCode: '98103',
-              role: 'homeowner',
-              signupMonthsAgo: 1.5,
-              subscriptionStatus: 'active',
-              plan: 'base',
-              monthlyAmount: '5.00',
-              cyclesPaid: 1,
-              qualified: false
-            },
-            // Trial users (just signed up)
-            {
-              id: 'agent-referral-7',
-              firstName: 'Daniel',
-              lastName: 'Foster',
-              email: 'daniel.foster@email.com',
-              zipCode: '98109',
-              role: 'homeowner',
-              signupMonthsAgo: 0.3,
-              subscriptionStatus: 'trialing',
-              plan: 'base',
-              monthlyAmount: '0.00',
-              cyclesPaid: 0,
-              qualified: false
-            },
-            {
-              id: 'agent-referral-8',
-              firstName: 'Rachel',
-              lastName: 'Kim',
-              email: 'rachel.kim@email.com',
-              zipCode: '98117',
-              role: 'homeowner',
-              signupMonthsAgo: 0.1,
-              subscriptionStatus: 'trialing',
-              plan: 'premium',
-              monthlyAmount: '0.00',
-              cyclesPaid: 0,
-              qualified: false
-            }
-          ];
-
-          for (const referral of referralData) {
-            const signupDate = new Date(Date.now() - referral.signupMonthsAgo * 30 * 24 * 60 * 60 * 1000);
-            
-            // Create the referred user
-            await storage.upsertUser({
-              id: referral.id,
-              email: referral.email,
-              firstName: referral.firstName,
-              lastName: referral.lastName,
-              role: referral.role as 'homeowner' | 'contractor' | 'agent',
-              zipCode: referral.zipCode,
-              subscriptionStatus: referral.subscriptionStatus as any,
-              trialEndsAt: referral.subscriptionStatus === 'trialing' 
-                ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) 
-                : null,
-              maxHousesAllowed: referral.role === 'homeowner' ? 2 : undefined
-            });
-
-            // Create referral record
-            await storage.createAffiliateReferral({
-              agentId: demoId,
-              referredUserId: referral.id,
-              referredUserRole: referral.role as 'homeowner' | 'contractor',
-              referralCode: agentReferralCode,
-              signupDate: signupDate,
-              status: referral.qualified ? 'eligible' : 'trial'
-            });
-
-            // Create subscription cycles for paying users
-            if (referral.cyclesPaid > 0) {
-              for (let month = 0; month < referral.cyclesPaid; month++) {
-                const cycleStart = new Date(signupDate.getTime() + (month * 30 + 14) * 24 * 60 * 60 * 1000);
-                const cycleEnd = new Date(cycleStart.getTime() + 30 * 24 * 60 * 60 * 1000);
-                
-                await storage.createSubscriptionCycleEvent({
-                  userId: referral.id,
-                  periodStart: cycleStart,
-                  periodEnd: cycleEnd,
-                  amount: referral.monthlyAmount,
-                  status: 'paid',
-                  stripeInvoiceId: `demo_inv_${referral.id}_${month + 1}`
-                });
-              }
-            }
-          }
-        } catch (referralError) {
-          console.error("Error creating demo agent referrals:", referralError);
-        }
       }
+
+      // Seed referral data atomically on every login (idempotent writes via
+      // onConflict clauses). Running this outside the !user guard means a retry
+      // after a previous partial failure always reaches this block and can
+      // complete from a clean slate. If the transaction throws, it propagates
+      // to the outer catch which returns 500 — signalling the caller to retry.
+      const agentUser = await storage.getUser(demoId);
+      let agentReferralCode = agentUser?.referralCode || '';
+      if (!agentUser?.referralCode) {
+        agentReferralCode = await generateUniqueReferralCode(storage);
+      }
+
+      // Realistic 6-month referral data showing agent's growing business
+      const referralData = [
+        // Qualified referrals (earning commissions)
+        {
+          id: 'agent-referral-1',
+          firstName: 'Michael',
+          lastName: 'Stevens',
+          email: 'michael.stevens@email.com',
+          zipCode: '98115',
+          role: 'homeowner',
+          signupMonthsAgo: 6,
+          subscriptionStatus: 'active',
+          plan: 'base',
+          monthlyAmount: '5.00',
+          cyclesPaid: 6,
+          qualified: true
+        },
+        {
+          id: 'agent-referral-2',
+          firstName: 'Laura',
+          lastName: 'Thompson',
+          email: 'laura.thompson@email.com',
+          zipCode: '98102',
+          role: 'homeowner',
+          signupMonthsAgo: 5,
+          subscriptionStatus: 'active',
+          plan: 'premium',
+          monthlyAmount: '20.00',
+          cyclesPaid: 5,
+          qualified: true
+        },
+        {
+          id: 'agent-referral-3',
+          firstName: 'Robert',
+          lastName: 'Chang',
+          email: 'robert.chang@email.com',
+          zipCode: '98119',
+          role: 'homeowner',
+          signupMonthsAgo: 4.5,
+          subscriptionStatus: 'active',
+          plan: 'base',
+          monthlyAmount: '5.00',
+          cyclesPaid: 4,
+          qualified: true
+        },
+        // Recently qualified (just hit 4 months)
+        {
+          id: 'agent-referral-4',
+          firstName: 'Amanda',
+          lastName: 'Rodriguez',
+          email: 'amanda.rodriguez@email.com',
+          zipCode: '98125',
+          role: 'contractor',
+          signupMonthsAgo: 4,
+          subscriptionStatus: 'active',
+          plan: 'contractor',
+          monthlyAmount: '20.00',
+          cyclesPaid: 4,
+          qualified: true
+        },
+        // Pending referrals (not yet qualified - need 4 months)
+        {
+          id: 'agent-referral-5',
+          firstName: 'Kevin',
+          lastName: 'Martinez',
+          email: 'kevin.martinez@email.com',
+          zipCode: '98105',
+          role: 'homeowner',
+          signupMonthsAgo: 2.5,
+          subscriptionStatus: 'active',
+          plan: 'premium',
+          monthlyAmount: '20.00',
+          cyclesPaid: 2,
+          qualified: false
+        },
+        {
+          id: 'agent-referral-6',
+          firstName: 'Nicole',
+          lastName: 'Park',
+          email: 'nicole.park@email.com',
+          zipCode: '98103',
+          role: 'homeowner',
+          signupMonthsAgo: 1.5,
+          subscriptionStatus: 'active',
+          plan: 'base',
+          monthlyAmount: '5.00',
+          cyclesPaid: 1,
+          qualified: false
+        },
+        // Trial users (just signed up)
+        {
+          id: 'agent-referral-7',
+          firstName: 'Daniel',
+          lastName: 'Foster',
+          email: 'daniel.foster@email.com',
+          zipCode: '98109',
+          role: 'homeowner',
+          signupMonthsAgo: 0.3,
+          subscriptionStatus: 'trialing',
+          plan: 'base',
+          monthlyAmount: '0.00',
+          cyclesPaid: 0,
+          qualified: false
+        },
+        {
+          id: 'agent-referral-8',
+          firstName: 'Rachel',
+          lastName: 'Kim',
+          email: 'rachel.kim@email.com',
+          zipCode: '98117',
+          role: 'homeowner',
+          signupMonthsAgo: 0.1,
+          subscriptionStatus: 'trialing',
+          plan: 'premium',
+          monthlyAmount: '0.00',
+          cyclesPaid: 0,
+          qualified: false
+        }
+      ];
+
+      // All writes are atomic: any mid-way failure rolls back the entire block
+      // so no partial state is left, and the next retry starts from a clean slate.
+      await db.transaction(async (tx) => {
+        // Persist a freshly generated referral code onto the agent user
+        if (!agentUser?.referralCode) {
+          await tx.update(users)
+            .set({ referralCode: agentReferralCode })
+            .where(eq(users.id, demoId));
+        }
+
+        for (const referral of referralData) {
+          const signupDate = new Date(Date.now() - referral.signupMonthsAgo * 30 * 24 * 60 * 60 * 1000);
+          const trialEndsAt = referral.subscriptionStatus === 'trialing'
+            ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+            : null;
+
+          // Upsert the referred user directly via the transaction connection
+          await tx.insert(users).values({
+            id: referral.id,
+            email: referral.email,
+            firstName: referral.firstName,
+            lastName: referral.lastName,
+            role: referral.role as 'homeowner' | 'contractor' | 'agent',
+            zipCode: referral.zipCode,
+            subscriptionStatus: referral.subscriptionStatus,
+            trialEndsAt,
+            maxHousesAllowed: referral.role === 'homeowner' ? 2 : null,
+          }).onConflictDoUpdate({
+            target: users.id,
+            set: {
+              subscriptionStatus: referral.subscriptionStatus,
+              trialEndsAt,
+            }
+          });
+
+          // Insert referral record; skip silently if it already exists
+          await tx.insert(affiliateReferrals).values({
+            agentId: demoId,
+            referredUserId: referral.id,
+            referredUserRole: referral.role as 'homeowner' | 'contractor',
+            referralCode: agentReferralCode,
+            signupDate,
+            status: referral.qualified ? 'eligible' : 'trial',
+          }).onConflictDoNothing();
+
+          // Insert subscription cycle events for paying users
+          if (referral.cyclesPaid > 0) {
+            for (let month = 0; month < referral.cyclesPaid; month++) {
+              const cycleStart = new Date(signupDate.getTime() + (month * 30 + 14) * 24 * 60 * 60 * 1000);
+              const cycleEnd = new Date(cycleStart.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+              await tx.insert(subscriptionCycleEvents).values({
+                userId: referral.id,
+                periodStart: cycleStart,
+                periodEnd: cycleEnd,
+                amount: referral.monthlyAmount,
+                status: 'paid',
+                stripeInvoiceId: `demo_inv_${referral.id}_${month + 1}`,
+              }).onConflictDoNothing();
+            }
+          }
+        }
+      });
 
       // Regenerate session to prevent session fixation
       req.session.regenerate((err: any) => {
