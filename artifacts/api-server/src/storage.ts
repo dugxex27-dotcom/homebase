@@ -3821,6 +3821,8 @@ export class MemStorage implements IStorage {
     customTasksTransferred: number;
     homeSystemsTransferred: number;
     serviceRecordsTransferred: number;
+    taskCompletionsTransferred: number;
+    taskOverridesTransferred: number;
   }> {
     // First, transfer the house ownership
     const house = this.houses.get(houseId);
@@ -3906,6 +3908,32 @@ export class MemStorage implements IStorage {
     // Transfer service records (database-backed, handled by DbStorage)
     // MemStorage doesn't have service records, so this stays at 0 for in-memory
 
+    // Transfer task completions
+    let taskCompletionsTransferred = 0;
+    for (const [id, completion] of this.taskCompletionsMap.entries()) {
+      if (completion.houseId === houseId && completion.homeownerId === fromHomeownerId) {
+        const updated: TaskCompletion = {
+          ...completion,
+          homeownerId: toHomeownerId,
+        };
+        this.taskCompletionsMap.set(id, updated);
+        taskCompletionsTransferred++;
+      }
+    }
+
+    // Transfer task overrides
+    let taskOverridesTransferred = 0;
+    for (const [id, override] of this.taskOverrides.entries()) {
+      if (override.houseId === houseId && override.homeownerId === fromHomeownerId) {
+        const updated: TaskOverride = {
+          ...override,
+          homeownerId: toHomeownerId,
+        };
+        this.taskOverrides.set(id, updated);
+        taskOverridesTransferred++;
+      }
+    }
+
     return {
       maintenanceLogsTransferred,
       appliancesTransferred,
@@ -3913,6 +3941,8 @@ export class MemStorage implements IStorage {
       customTasksTransferred,
       homeSystemsTransferred,
       serviceRecordsTransferred,
+      taskCompletionsTransferred,
+      taskOverridesTransferred,
     };
   }
 
