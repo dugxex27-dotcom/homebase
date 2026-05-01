@@ -143,8 +143,8 @@ function onboardingRoutePlugin(): Plugin {
     name: "onboarding-route",
     configureServer(server) {
       server.middlewares.use((req, _res, next) => {
-        if (req.url === "/onboarding" || req.url === "/onboarding?") {
-          req.url = "/onboarding.html";
+        if (req.url && (req.url === "/onboarding" || req.url.startsWith("/onboarding?") || req.url.startsWith("/onboarding/"))) {
+          req.url = "/onboarding.html" + (req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "");
         }
         next();
       });

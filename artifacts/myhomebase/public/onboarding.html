@@ -1502,6 +1502,22 @@ function initTour() {
 function goToDashboard() {
   alert('🎉 Welcome to MyHomeBase™!\n\nIn the full app, this would take you to your personalized dashboard.');
 }
+
+// Preview: jump to any screen via ?screen=N with sample data
+(function() {
+  const sp = new URLSearchParams(location.search);
+  const n = parseInt(sp.get('screen'));
+  if (n >= 2 && n <= 6) {
+    state.confirmed = '742 Evergreen Terrace, Springfield, IL 62701';
+    state.yearBuilt = 1987; state.bedrooms = 4; state.bathrooms = 2;
+    state.sqft = 2100; state.lotSqft = 7200;
+    state.propertyType = 'Single Family Residence';
+    state.lastSaleDate = '2019-06-15'; state.lastSalePrice = 285000;
+    state.assessedValue = 265000; state.estimatedValue = 312000;
+    state.hws = calcHWS(state.yearBuilt);
+    goTo(n);
+  }
+})();
 </script>
 </body>
 </html>
