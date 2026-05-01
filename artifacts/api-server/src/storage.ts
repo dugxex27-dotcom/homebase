@@ -357,6 +357,7 @@ export interface IStorage {
   updateUserAchievementProgress(homeownerId: string, achievementKey: string, progress: number, metadata?: string): Promise<UserAchievement | undefined>;
   unlockUserAchievement(homeownerId: string, achievementKey: string): Promise<UserAchievement | undefined>;
   checkAndAwardAchievements(homeownerId: string): Promise<UserAchievement[]>;
+  checkAndUnlockContractorHiringAchievements(homeownerId: string): Promise<UserAchievement[]>;
   calculateAchievementsProgress(homeownerId: string, houseId?: string): Promise<Array<{ achievementKey: string; progress: number; isUnlocked: boolean; unlockedAt?: Date; metadata?: string }>>;
   getAchievementProgress(homeownerId: string, achievementKey: string): Promise<{ progress: number; isUnlocked: boolean; criteria: any }>;
 
@@ -5053,6 +5054,10 @@ export class MemStorage implements IStorage {
     return newlyUnlocked;
   }
 
+  async checkAndUnlockContractorHiringAchievements(homeownerId: string): Promise<UserAchievement[]> {
+    return this.checkAndAwardAchievements(homeownerId);
+  }
+
   async calculateAchievementsProgress(
     homeownerId: string,
     houseId?: string
@@ -7467,6 +7472,10 @@ class DbStorage implements IStorage {
     return this.memStorage.checkAndAwardAchievements.call(this, homeownerId);
   }
 
+  async checkAndUnlockContractorHiringAchievements(homeownerId: string): Promise<UserAchievement[]> {
+    return this.checkAndAwardAchievements(homeownerId);
+  }
+
   async calculateAchievementsProgress(homeownerId: string): Promise<any> {
     return this.memStorage.calculateAchievementsProgress.call(this, homeownerId);
   }
@@ -7481,6 +7490,41 @@ class DbStorage implements IStorage {
       isUnlocked: userAchiev?.isUnlocked || false,
       criteria: JSON.parse(definition[0].criteria)
     };
+  }
+
+  // ─── Review Flag operations — DATABASE BACKED ────────────────────────────
+  async createReviewFlag(flagData: InsertReviewFlag): Promise<ReviewFlag> {
+    const result = await db.insert(reviewFlags).values({ ...flagData, id: randomUUID() }).returning();
+    return result[0];
+  }
+
+  async getReviewFlags(status?: string): Promise<ReviewFlag[]> {
+    if (status) {
+      return db.select().from(reviewFlags).where(eq(reviewFlags.status, status));
+    }
+    return db.select().from(reviewFlags);
+  }
+
+  async getReviewFlag(id: string): Promise<ReviewFlag | undefined> {
+    const result = await db.select().from(reviewFlags).where(eq(reviewFlags.id, id)).limit(1);
+    return result[0];
+  }
+
+  async updateReviewFlag(id: string, flagData: Partial<InsertReviewFlag>): Promise<ReviewFlag | undefined> {
+    const result = await db.update(reviewFlags).set(flagData).where(eq(reviewFlags.id, id)).returning();
+    return result[0];
+  }
+
+  // ─── Agent Verification Audit operations — DATABASE BACKED ───────────────
+  async createVerificationAudit(audit: InsertAgentVerificationAudit): Promise<AgentVerificationAudit> {
+    const result = await db.insert(agentVerificationAudits).values({ ...audit, id: randomUUID() }).returning();
+    return result[0];
+  }
+
+  async getVerificationAudits(agentId: string): Promise<AgentVerificationAudit[]> {
+    return db.select().from(agentVerificationAudits)
+      .where(eq(agentVerificationAudits.agentId, agentId))
+      .orderBy(desc(agentVerificationAudits.createdAt));
   }
 
   // ─── getDefaultHouse — DATABASE BACKED ───────────────────────────────────
