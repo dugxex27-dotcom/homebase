@@ -7846,6 +7846,15 @@ class DbStorage implements IStorage {
     return this.getUser(userId);
   }
 
+  async getSubscriptionCycleEvents(userId: string): Promise<SubscriptionCycleEvent[]> {
+    return db.select().from(subscriptionCycleEvents).where(eq(subscriptionCycleEvents.userId, userId));
+  }
+
+  async createSubscriptionCycleEvent(event: InsertSubscriptionCycleEvent): Promise<SubscriptionCycleEvent> {
+    const [created] = await db.insert(subscriptionCycleEvents).values(event).returning();
+    return created;
+  }
+
   async createUserWithPassword(data: { 
     email: string; 
     passwordHash: string; 
@@ -10270,8 +10279,57 @@ class DbStorage implements IStorage {
     return profile;
   }
 
+  async createAgentProfile(profile: InsertAgentProfile): Promise<AgentProfile> {
+    const [created] = await db.insert(agentProfiles).values(profile).returning();
+    return created;
+  }
+
+  async updateAgentProfile(agentId: string, profile: Partial<InsertAgentProfile>): Promise<AgentProfile | undefined> {
+    const [updated] = await db.update(agentProfiles).set({ ...profile, updatedAt: new Date() }).where(eq(agentProfiles.agentId, agentId)).returning();
+    return updated;
+  }
+
   async getAffiliateReferrals(agentId: string): Promise<AffiliateReferral[]> {
     return db.select().from(affiliateReferrals).where(eq(affiliateReferrals.agentId, agentId));
+  }
+
+  async getAffiliateReferral(id: string): Promise<AffiliateReferral | undefined> {
+    const [referral] = await db.select().from(affiliateReferrals).where(eq(affiliateReferrals.id, id)).limit(1);
+    return referral;
+  }
+
+  async getAffiliateReferralByUserId(userId: string): Promise<AffiliateReferral | undefined> {
+    const [referral] = await db.select().from(affiliateReferrals).where(eq(affiliateReferrals.referredUserId, userId)).limit(1);
+    return referral;
+  }
+
+  async createAffiliateReferral(referral: InsertAffiliateReferral): Promise<AffiliateReferral> {
+    const [created] = await db.insert(affiliateReferrals).values(referral).returning();
+    return created;
+  }
+
+  async updateAffiliateReferral(id: string, referral: Partial<InsertAffiliateReferral>): Promise<AffiliateReferral | undefined> {
+    const [updated] = await db.update(affiliateReferrals).set({ ...referral, updatedAt: new Date() }).where(eq(affiliateReferrals.id, id)).returning();
+    return updated;
+  }
+
+  async getAffiliatePayouts(agentId: string): Promise<AffiliatePayout[]> {
+    return db.select().from(affiliatePayouts).where(eq(affiliatePayouts.agentId, agentId));
+  }
+
+  async getAffiliatePayout(id: string): Promise<AffiliatePayout | undefined> {
+    const [payout] = await db.select().from(affiliatePayouts).where(eq(affiliatePayouts.id, id)).limit(1);
+    return payout;
+  }
+
+  async createAffiliatePayout(payout: InsertAffiliatePayout): Promise<AffiliatePayout> {
+    const [created] = await db.insert(affiliatePayouts).values(payout).returning();
+    return created;
+  }
+
+  async updateAffiliatePayout(id: string, payout: Partial<InsertAffiliatePayout>): Promise<AffiliatePayout | undefined> {
+    const [updated] = await db.update(affiliatePayouts).set({ ...payout, updatedAt: new Date() }).where(eq(affiliatePayouts.id, id)).returning();
+    return updated;
   }
 
   async getAgentStats(agentId: string): Promise<{

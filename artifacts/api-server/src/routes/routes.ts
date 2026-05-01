@@ -1825,7 +1825,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Generate unique referral code utility function
-  async function generateUniqueReferralCode(storage: IStorage): Promise<string> {
+  async function generateUniqueReferralCode(storage: Pick<IStorage, 'getUserByReferralCode'>): Promise<string> {
     const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Exclude similar chars
     let attempts = 0;
     
@@ -3006,7 +3006,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const leadIds = ['demo-lead-1', 'demo-lead-2', 'demo-lead-3', 'demo-lead-4', 'demo-lead-5'];
             
             // Hot lead - ready to close
-            await storage.createLead({
+            await storage.createCrmLead({
               id: leadIds[0],
               companyId,
               createdBy: demoId,
@@ -3024,7 +3024,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
 
             // Warm lead - in progress
-            await storage.createLead({
+            await storage.createCrmLead({
               id: leadIds[1],
               companyId,
               createdBy: demoId,
@@ -3042,7 +3042,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
 
             // New lead - just came in
-            await storage.createLead({
+            await storage.createCrmLead({
               id: leadIds[2],
               companyId,
               createdBy: demoId,
@@ -3060,7 +3060,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
 
             // Lost lead - for realistic pipeline
-            await storage.createLead({
+            await storage.createCrmLead({
               id: leadIds[3],
               companyId,
               createdBy: demoId,
@@ -3078,7 +3078,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
 
             // Won lead - converted to job
-            await storage.createLead({
+            await storage.createCrmLead({
               id: leadIds[4],
               companyId,
               createdBy: demoId,
@@ -3247,14 +3247,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Create referral code for the agent
         try {
-          const existingCode = await storage.getUserReferralCode(demoId);
-          if (!existingCode) {
-            const referralCode = await storage.generateUniqueReferralCode();
-            await storage.createUserReferralCode({
-              userId: demoId,
-              referralCode,
-              referralLink: `https://gotohomebase.com/signin?ref=${referralCode}`
-            });
+          const agentUser = await storage.getUser(demoId);
+          let agentReferralCode = agentUser?.referralCode || '';
+          if (!agentUser?.referralCode) {
+            agentReferralCode = await generateUniqueReferralCode(storage);
+            await storage.upsertUser({ ...agentUser!, referralCode: agentReferralCode });
           }
 
           // Create realistic 6-month referral data showing agent's growing business
@@ -3396,12 +3393,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
 
             // Create referral record
-            await storage.createReferral({
+            await storage.createAffiliateReferral({
               agentId: demoId,
               referredUserId: referral.id,
-              referredUserEmail: referral.email,
-              signupDate: signupDate.toISOString().split('T')[0],
-              status: referral.qualified ? 'qualified' : 'pending'
+              referredUserRole: referral.role as 'homeowner' | 'contractor',
+              referralCode: agentReferralCode,
+              signupDate: signupDate,
+              status: referral.qualified ? 'eligible' : 'trial'
             });
 
             // Create subscription cycles for paying users
@@ -3410,10 +3408,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const cycleStart = new Date(signupDate.getTime() + (month * 30 + 14) * 24 * 60 * 60 * 1000);
                 const cycleEnd = new Date(cycleStart.getTime() + 30 * 24 * 60 * 60 * 1000);
                 
-                await storage.createSubscriptionCycle({
+                await storage.createSubscriptionCycleEvent({
                   userId: referral.id,
-                  cycleStart: cycleStart.toISOString().split('T')[0],
-                  cycleEnd: cycleEnd.toISOString().split('T')[0],
+                  periodStart: cycleStart,
+                  periodEnd: cycleEnd,
                   amount: referral.monthlyAmount,
                   status: 'paid',
                   stripeInvoiceId: `demo_inv_${referral.id}_${month + 1}`
@@ -14287,7 +14285,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
         let reviewData = undefined;
         
         if (review) {
-          const contractor = await storage.getContractorById(review.contractorId);
+          const contractor = await storage.getContractor(review.contractorId);
           contractorName = contractor?.companyName || 'Unknown Contractor';
           
           const homeowner = await storage.getUser(review.homeownerId);
@@ -14383,10 +14381,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
       
       // Update user with verification token
-      await storage.updateUser(userId, {
-        emailVerificationToken: verificationToken,
-        emailVerificationTokenExpiry: tokenExpiry
-      });
+      await storage.upsertUser({ ...user, emailVerificationToken: verificationToken, emailVerificationTokenExpiry: tokenExpiry });
       
       // TODO: Send email via SendGrid (when integrated)
       console.log(`[EMAIL VERIFICATION] Token for ${user.email}: ${verificationToken}`);
@@ -14424,12 +14419,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       }
       
       // Mark email as verified
-      await storage.updateUser(user.id, {
-        emailVerified: true,
-        emailVerifiedAt: new Date(),
-        emailVerificationToken: null,
-        emailVerificationTokenExpiry: null
-      });
+      await storage.upsertUser({ ...user, emailVerified: true, emailVerifiedAt: new Date(), emailVerificationToken: null, emailVerificationTokenExpiry: null });
       
       res.json({ message: "Email verified successfully!" });
     } catch (error) {
