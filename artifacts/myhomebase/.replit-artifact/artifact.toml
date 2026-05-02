@@ -23,6 +23,10 @@ publicDir = "artifacts/myhomebase/dist/public"
 serve = "static"
 
 [[services.production.rewrites]]
+from = "/welcome"
+to = "/screen0.html"
+
+[[services.production.rewrites]]
 from = "/onboarding"
 to = "/onboarding.html"
 

@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>MyHomeBase™ — Why You Need This</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --purple-deep:   #2C0F5B;
+    --purple-mid:    #3C258E;
+    --purple-light:  #B6A6F4;
+    --purple-tint:   #EEEDFE;
+    --purple-border: #CECBF6;
+    --blue-mid:      #1560A2;
+    --blue-light:    #E6F1FB;
+    --green-mid:     #079669;
+    --green-light:   #D4EBDE;
+    --amber:         #D97706;
+    --amber-light:   #FEF3C7;
+    --red:           #DC2626;
+    --red-light:     #FEF2F2;
+    --gray-100:      #F3F4F6;
+    --gray-200:      #E5E7EB;
+    --gray-400:      #9CA3AF;
+    --gray-600:      #4B5563;
+    --gray-900:      #111827;
+    --white:         #FFFFFF;
+    --font: 'Inter', system-ui, sans-serif;
+  }
+  html, body {
+    font-family: var(--font);
+    background: var(--white);
+    color: var(--gray-900);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── HERO ──────────────────────────────────────────────────────────────────── */
+  .hero {
+    background: linear-gradient(160deg, var(--purple-deep) 0%, var(--purple-mid) 60%, #1A4A8A 100%);
+    padding: 36px 24px 40px;
+    position: relative;
+    overflow: hidden;
+    text-align: center;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -80px; right: -80px;
+    width: 320px; height: 320px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(107,79,216,0.2) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    bottom: -40px; left: -40px;
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(21,96,162,0.2) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .logo-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 28px;
+    position: relative; z-index: 1;
+  }
+  .logo-mark {
+    width: 30px; height: 30px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 800; color: #fff;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+  .logo-name {
+    font-size: 13px; font-weight: 600;
+    color: rgba(255,255,255,0.85);
+    letter-spacing: 0.3px;
+  }
+  .step-pill {
+    display: inline-block;
+    background: rgba(255,255,255,0.12);
+    border: 0.5px solid rgba(255,255,255,0.2);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--purple-light);
+    margin-bottom: 18px;
+    position: relative; z-index: 1;
+  }
+  .hero-headline {
+    font-size: clamp(26px, 7vw, 38px);
+    font-weight: 800;
+    color: #fff;
+    line-height: 1.15;
+    margin-bottom: 14px;
+    position: relative; z-index: 1;
+    letter-spacing: -0.5px;
+  }
+  .hero-headline em {
+    font-style: italic;
+    font-weight: 300;
+    color: var(--purple-light);
+  }
+  .hero-sub {
+    font-size: 15px;
+    color: rgba(255,255,255,0.65);
+    line-height: 1.65;
+    position: relative; z-index: 1;
+    max-width: 380px;
+    margin: 0 auto;
+  }
+
+  /* ── BODY ──────────────────────────────────────────────────────────────────── */
+  .body {
+    padding: 28px 20px 40px;
+    max-width: 560px;
+    margin: 0 auto;
+  }
+
+  /* ── STAT BAR ──────────────────────────────────────────────────────────────── */
+  .stat-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+  .stat-tile {
+    background: var(--white);
+    border: 0.5px solid var(--gray-200);
+    border-radius: 14px;
+    padding: 14px;
+    text-align: center;
+  }
+  .stat-tile.accent {
+    background: var(--purple-tint);
+    border-color: var(--purple-border);
+  }
+  .stat-num {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--purple-mid);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .stat-num.red { color: var(--red); }
+  .stat-num.green { color: var(--green-mid); }
+  .stat-desc {
+    font-size: 11px;
+    color: var(--gray-400);
+    line-height: 1.4;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* ── SECTION HEADING ───────────────────────────────────────────────────────── */
+  .section-eyebrow {
+    font-size: 10px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--gray-400);
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .section-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: 20px;
+    line-height: 1.3;
+  }
+
+  /* ── DIFFERENTIATOR CARDS ──────────────────────────────────────────────────── */
+  .diff-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+  .diff-card {
+    background: var(--white);
+    border: 0.5px solid var(--gray-200);
+    border-radius: 14px;
+    padding: 16px;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    opacity: 0;
+    transform: translateY(10px);
+    animation: slideUp 0.4s ease forwards;
+  }
+  .diff-card:nth-child(1) { animation-delay: 0.1s; }
+  .diff-card:nth-child(2) { animation-delay: 0.2s; }
+  .diff-card:nth-child(3) { animation-delay: 0.3s; }
+  .diff-card:nth-child(4) { animation-delay: 0.4s; }
+  @keyframes slideUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .diff-icon-wrap {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .diff-icon-wrap.purple { background: var(--purple-tint); }
+  .diff-icon-wrap.blue   { background: var(--blue-light); }
+  .diff-icon-wrap.green  { background: var(--green-light); }
+  .diff-icon-wrap.amber  { background: var(--amber-light); }
+  .diff-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: 4px;
+    line-height: 1.3;
+  }
+  .diff-body {
+    font-size: 13px;
+    color: var(--gray-600);
+    line-height: 1.6;
+  }
+  .diff-body strong {
+    color: var(--purple-mid);
+    font-weight: 600;
+  }
+
+  /* ── TRUST STRIP ───────────────────────────────────────────────────────────── */
+  .trust-strip {
+    background: var(--gray-100);
+    border-radius: 14px;
+    padding: 16px 18px;
+    margin-bottom: 28px;
+  }
+  .trust-eyebrow {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gray-400);
+    font-weight: 600;
+    margin-bottom: 12px;
+    text-align: center;
+  }
+  .trust-items {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .trust-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--gray-600);
+    line-height: 1.4;
+  }
+  .trust-check {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--green-mid);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* ── COMPARISON ────────────────────────────────────────────────────────────── */
+  .comparison {
+    background: var(--white);
+    border: 0.5px solid var(--gray-200);
+    border-radius: 14px;
+    overflow: hidden;
+    margin-bottom: 28px;
+  }
+  .comparison-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    background: var(--gray-100);
+    border-bottom: 0.5px solid var(--gray-200);
+  }
+  .comp-col-head {
+    padding: 10px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--gray-600);
+    text-align: center;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .comp-col-head.mhb {
+    background: var(--purple-tint);
+    color: var(--purple-mid);
+    border-left: 0.5px solid var(--purple-border);
+    border-right: 0.5px solid var(--purple-border);
+  }
+  .comp-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    border-bottom: 0.5px solid var(--gray-200);
+  }
+  .comp-row:last-child { border-bottom: none; }
+  .comp-cell {
+    padding: 11px 12px;
+    font-size: 12px;
+    color: var(--gray-600);
+    text-align: center;
+    line-height: 1.4;
+  }
+  .comp-cell.feature {
+    text-align: left;
+    font-weight: 500;
+    color: var(--gray-900);
+    font-size: 12px;
+  }
+  .comp-cell.mhb {
+    background: var(--purple-tint);
+    color: var(--purple-mid);
+    font-weight: 600;
+    border-left: 0.5px solid var(--purple-border);
+    border-right: 0.5px solid var(--purple-border);
+  }
+  .check { color: var(--green-mid); font-weight: 700; }
+  .cross { color: var(--gray-400); }
+
+  /* ── INSURANCE CALLOUT ─────────────────────────────────────────────────────── */
+  .insurance-callout {
+    background: linear-gradient(135deg, var(--purple-deep), var(--blue-mid));
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 28px;
+    text-align: center;
+  }
+  .ins-eyebrow {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--purple-light);
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+  .ins-headline {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 8px;
+    line-height: 1.3;
+  }
+  .ins-body {
+    font-size: 13px;
+    color: rgba(255,255,255,0.65);
+    line-height: 1.6;
+    margin-bottom: 16px;
+  }
+  .ins-math {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 12px;
+  }
+  .ins-val {
+    text-align: center;
+  }
+  .ins-num {
+    font-size: 20px;
+    font-weight: 800;
+    color: #fff;
+    line-height: 1;
+    margin-bottom: 2px;
+  }
+  .ins-sub {
+    font-size: 10px;
+    color: rgba(255,255,255,0.5);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .ins-vs {
+    font-size: 12px;
+    color: rgba(255,255,255,0.4);
+    font-weight: 600;
+  }
+
+  /* ── FOUNDER BLOCK ─────────────────────────────────────────────────────────── */
+  .founder-block {
+    background: var(--white);
+    border: 0.5px solid var(--gray-200);
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 28px;
+    border-left: 3px solid var(--purple-mid);
+  }
+  .founder-quote {
+    font-size: 14px;
+    color: var(--gray-900);
+    line-height: 1.7;
+    font-style: italic;
+    margin-bottom: 12px;
+  }
+  .founder-attr {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .founder-avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--purple-mid);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .founder-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-900);
+    margin-bottom: 1px;
+  }
+  .founder-title {
+    font-size: 11px;
+    color: var(--gray-400);
+  }
+
+  /* ── CTA BLOCK ─────────────────────────────────────────────────────────────── */
+  .cta-block {
+    background: linear-gradient(135deg, var(--purple-deep), var(--blue-mid));
+    border-radius: 16px;
+    padding: 24px 20px;
+    text-align: center;
+    margin-bottom: 16px;
+  }
+  .cta-eyebrow {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--purple-light);
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+  .cta-headline {
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.25;
+    margin-bottom: 8px;
+  }
+  .cta-sub {
+    font-size: 13px;
+    color: rgba(255,255,255,0.65);
+    line-height: 1.6;
+    margin-bottom: 20px;
+  }
+  .cta-btn {
+    display: block;
+    width: 100%;
+    padding: 15px 24px;
+    background: #fff;
+    color: var(--purple-mid);
+    font-family: var(--font);
+    font-size: 15px;
+    font-weight: 700;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    margin-bottom: 10px;
+    transition: opacity 0.2s;
+    text-decoration: none;
+  }
+  .cta-btn:hover { opacity: 0.93; }
+  .cta-trial {
+    font-size: 12px;
+    color: rgba(255,255,255,0.45);
+  }
+
+  .signin-note {
+    text-align: center;
+    font-size: 13px;
+    color: var(--gray-400);
+    margin-top: 8px;
+  }
+  .signin-note a {
+    color: var(--purple-mid);
+    text-decoration: none;
+    font-weight: 500;
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="logo-row">
+    <img src="/my-homebase-logo-tm-final-white.png" alt="MyHomeBase™" style="height:36px;width:auto;position:relative;z-index:1;">
+  </div>
+  <div class="step-pill">Step 1 of 7 — Welcome</div>
+  <h1 class="hero-headline">
+    Your home is your<br>biggest investment.<br><br><em>Start acting like it.</em>
+  </h1>
+  <p class="hero-sub">The cross between Carfax and FICO — but for your house. A verified record. A live health score. Protection that follows your home forever.</p>
+</div>
+
+<!-- BODY -->
+<div class="body">
+
+  <!-- Stat bar -->
+  <div class="stat-bar" style="margin-top: -20px; position: relative; z-index: 2;">
+    <div class="stat-tile">
+      <div class="stat-num red">42%</div>
+      <div class="stat-desc">Insurance claims denied nationally</div>
+    </div>
+    <div class="stat-tile accent">
+      <div class="stat-num">#1</div>
+      <div class="stat-desc">Reason: no maintenance records</div>
+    </div>
+    <div class="stat-tile accent">
+      <div class="stat-num green">$5</div>
+      <div class="stat-desc">Per month to protect yourself</div>
+    </div>
+    <div class="stat-tile">
+      <div class="stat-num">1,000</div>
+      <div class="stat-desc">Max Home Wellness Score™</div>
+    </div>
+  </div>
+
+  <!-- What makes us different -->
+  <div style="margin-bottom: 20px;">
+    <div class="section-eyebrow">What sets us apart</div>
+    <div class="section-title">Not just another home app.</div>
+  </div>
+
+  <div class="diff-cards">
+    <div class="diff-card">
+      <div class="diff-icon-wrap purple">🏠</div>
+      <div>
+        <div class="diff-title">We already know your home</div>
+        <div class="diff-body">Enter your address and we instantly pull public records — year built, system ages, sale history, estimated value. <strong>No forms to fill out. No manual entry.</strong> Your home profile is pre-populated before you answer a single question.</div>
+      </div>
+    </div>
+    <div class="diff-card">
+      <div class="diff-icon-wrap blue">📊</div>
+      <div>
+        <div class="diff-title">A score, not just a checklist</div>
+        <div class="diff-body">Your Home Wellness Score™ runs from 0 to 1,000 — updated in real time as you complete tasks, log repairs, and build your record. <strong>Like a credit score for your house.</strong> Know it. Improve it. Show it when you sell.</div>
+      </div>
+    </div>
+    <div class="diff-card">
+      <div class="diff-icon-wrap green">📋</div>
+      <div>
+        <div class="diff-title">A record that follows your home</div>
+        <div class="diff-body">Every repair, inspection, and upgrade is logged and stored permanently. <strong>When you sell, the record transfers.</strong> Buyers see a verified history. Appraisers give credit for it. Insurers can't ignore it.</div>
+      </div>
+    </div>
+    <div class="diff-card">
+      <div class="diff-icon-wrap amber">🤖</div>
+      <div>
+        <div class="diff-title">AI does the heavy lifting</div>
+        <div class="diff-body">Upload your home inspection report and our AI reads it, extracts every system's condition, and populates your home's profile automatically. <strong>You verify. You don't enter.</strong> The less you have to do, the more we handle.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Comparison table -->
+  <div style="margin-bottom: 20px;">
+    <div class="section-eyebrow">How we compare</div>
+    <div class="section-title">MyHomeBase vs. everything else.</div>
+  </div>
+
+  <div class="comparison">
+    <div class="comparison-header">
+      <div class="comp-col-head">Feature</div>
+      <div class="comp-col-head mhb">MyHomeBase™</div>
+      <div class="comp-col-head">Other Apps</div>
+    </div>
+    <div class="comp-row">
+      <div class="comp-cell feature">Auto-populated from public records</div>
+      <div class="comp-cell mhb"><span class="check">✓</span> Yes</div>
+      <div class="comp-cell"><span class="cross">✗</span> Manual entry</div>
+    </div>
+    <div class="comp-row">
+      <div class="comp-cell feature">Live Home Wellness Score™</div>
+      <div class="comp-cell mhb"><span class="check">✓</span> 0–1,000</div>
+      <div class="comp-cell"><span class="cross">✗</span> No score</div>
+    </div>
+    <div class="comp-row">
+      <div class="comp-cell feature">AI inspection report parsing</div>
+      <div class="comp-cell mhb"><span class="check">✓</span> Instant</div>
+      <div class="comp-cell"><span class="cross">✗</span> Not available</div>
+    </div>
+    <div class="comp-row">
+      <div class="comp-cell feature">Geo-located task reminders</div>
+      <div class="comp-cell mhb"><span class="check">✓</span> Your home</div>
+      <div class="comp-cell"><span class="cross">✗</span> Generic lists</div>
+    </div>
+    <div class="comp-row">
+      <div class="comp-cell feature">Transferable at sale</div>
+      <div class="comp-cell mhb"><span class="check">✓</span> Yes</div>
+      <div class="comp-cell"><span class="cross">✗</span> Stays with user</div>
+    </div>
+    <div class="comp-row">
+      <div class="comp-cell feature">Insurance claim protection</div>
+      <div class="comp-cell mhb"><span class="check">✓</span> Documented</div>
+      <div class="comp-cell"><span class="cross">✗</span> No record</div>
+    </div>
+    <div class="comp-row">
+      <div class="comp-cell feature">Price</div>
+      <div class="comp-cell mhb" style="color: #079669; font-weight: 700;">$5/month</div>
+      <div class="comp-cell">$10–30/mo</div>
+    </div>
+  </div>
+
+  <!-- Insurance callout -->
+  <div class="insurance-callout">
+    <div class="ins-eyebrow">The real cost of not having records</div>
+    <div class="ins-headline">Most homeowners don't find out until it's too late.</div>
+    <div class="ins-body">42% of property claims are denied or underpaid. The most common reason isn't the damage — it's the lack of documentation proving the home was maintained. MyHomeBase builds that documentation automatically.</div>
+    <div class="ins-math">
+      <div class="ins-val">
+        <div class="ins-num">$5/mo</div>
+        <div class="ins-sub">MyHomeBase</div>
+      </div>
+      <div class="ins-vs">vs.</div>
+      <div class="ins-val">
+        <div class="ins-num" style="color: #FCA5A5;">$18,311</div>
+        <div class="ins-sub">Avg denied claim</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trust items -->
+  <div class="trust-strip">
+    <div class="trust-eyebrow">Why trust us</div>
+    <div class="trust-items">
+      <div class="trust-item">
+        <div class="trust-check">✓</div>
+        <div>Built by contractors with decades of hands-on experience inside real homes</div>
+      </div>
+      <div class="trust-item">
+        <div class="trust-check">✓</div>
+        <div>Property data powered by ATTOM — the same source lenders and appraisers use</div>
+      </div>
+      <div class="trust-item">
+        <div class="trust-check">✓</div>
+        <div>14-day free trial — no credit card required, cancel anytime</div>
+      </div>
+      <div class="trust-item">
+        <div class="trust-check">✓</div>
+        <div>Your data is private — never sold, never shared without your permission</div>
+      </div>
+      <div class="trust-item">
+        <div class="trust-check">✓</div>
+        <div>Trademarked technology: MyHomeBase™ and Home Wellness Score™</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Founder quote -->
+  <div class="founder-block">
+    <div class="founder-quote">"We built MyHomeBase because we spent years inside homeowners' houses watching the same problems repeat — deferred maintenance, no records, denied claims. The tools to prevent all of it didn't exist. So we built them."</div>
+    <div class="founder-attr">
+      <div class="founder-avatar">DR</div>
+      <div>
+        <div class="founder-name">Doug Rettig</div>
+        <div class="founder-title">Co-Founder & CEO, MyHomeBase™</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-block">
+    <div class="cta-eyebrow">Ready? Let's start.</div>
+    <div class="cta-headline">Enter your address.<br>See what we already know.</div>
+    <div class="cta-sub">Takes 30 seconds. No account needed yet. Just type your address and watch your home come to life.</div>
+    <a href="/onboarding" class="cta-btn" onclick="goNext()">See what we know about your home →</a>
+    <div class="cta-trial">14-day free trial · No credit card required · $5/month after</div>
+  </div>
+
+  <div class="signin-note">Already have an account? <a href="/login">Sign in</a></div>
+
+</div>
+
+<script>
+function goNext() {
+  window.location.href = '/onboarding';
+}
+</script>
+
+</body>
+</html>

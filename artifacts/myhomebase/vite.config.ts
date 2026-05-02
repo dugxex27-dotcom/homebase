@@ -145,6 +145,8 @@ function onboardingRoutePlugin(): Plugin {
       server.middlewares.use((req, _res, next) => {
         if (req.url && (req.url === "/onboarding" || req.url.startsWith("/onboarding?") || req.url.startsWith("/onboarding/"))) {
           req.url = "/onboarding.html" + (req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "");
+        } else if (req.url && (req.url === "/welcome" || req.url.startsWith("/welcome?") || req.url.startsWith("/welcome/"))) {
+          req.url = "/screen0.html" + (req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "");
         }
         next();
       });

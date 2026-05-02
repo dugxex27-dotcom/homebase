@@ -129,6 +129,7 @@ function Router() {
         <ScrollToTop />
         <Switch>
           <Route path="/invite/:code" component={Invite} />
+          <Route path="/welcome">{() => { window.location.replace('/screen0.html'); return null; }}</Route>
           <Route path="/onboarding">{() => { window.location.replace('/onboarding.html'); return null; }}</Route>
           <Route path="/signin/homeowner" component={SignInHomeowner} />
           <Route path="/signin/contractor" component={SignInContractor} />
