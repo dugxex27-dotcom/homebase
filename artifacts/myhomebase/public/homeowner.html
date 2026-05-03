@@ -22,56 +22,50 @@
     /* ══ NAV ══ */
     .nav {
       position: sticky; top: 0; z-index: 800;
-      background: linear-gradient(160deg, #130a2e 0%, #2C0F5B 100%);
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-      backdrop-filter: blur(8px);
+      background: #fff;
+      border-bottom: 0.5px solid #E5E7EB;
     }
     .nav-inner {
       max-width: 1200px; margin: 0 auto; padding: 0 24px;
-      height: 64px; display: flex; align-items: center;
+      height: 56px; display: flex; align-items: center;
       justify-content: space-between; gap: 16px;
     }
-    .nav-left { display: flex; align-items: center; gap: 28px; }
+    .nav-left { display: flex; align-items: center; gap: 20px; }
     .nav-logo-link { display: flex; align-items: center; flex-shrink: 0; }
-    .nav-logo { height: 28px; width: auto; object-fit: contain; }
+    .nav-logo {
+      height: 28px; width: auto; object-fit: contain;
+      filter: brightness(0) saturate(100%) invert(14%) sepia(72%) saturate(1200%) hue-rotate(250deg) brightness(80%) contrast(110%);
+    }
     .nav-all-users {
-      font-size: 12px; color: rgba(255,255,255,0.55); text-decoration: none;
+      font-size: 13px; color: #3C258E; text-decoration: none;
       font-weight: 500; white-space: nowrap; transition: color .15s;
     }
-    .nav-all-users:hover { color: rgba(255,255,255,0.85); }
+    .nav-all-users:hover { color: #2C0F5B; }
     .nav-links { display: flex; align-items: center; gap: 20px; }
     .nav-link {
-      background: none; border: none; color: rgba(255,255,255,0.75);
-      font-size: 13.5px; font-weight: 500; cursor: pointer; padding: 4px 0;
+      background: none; border: none; color: #4B5563;
+      font-size: 13px; font-weight: 500; cursor: pointer; padding: 4px 0;
       transition: color .15s; font-family: inherit; text-decoration: none;
       display: inline-block;
     }
-    .nav-link:hover { color: #fff; }
-    .nav-right { display: flex; align-items: center; gap: 14px; }
-    .nav-demo-btn {
-      font-size: 12.5px; font-weight: 700; color: #2C0F5B;
-      background: rgba(255,255,255,0.92); border: none;
-      padding: 7px 14px; border-radius: 10px; cursor: pointer;
-      transition: background .15s, opacity .15s; white-space: nowrap;
-      font-family: inherit;
-    }
-    .nav-demo-btn:hover { background: #fff; }
-    .nav-demo-btn:disabled { opacity: .6; cursor: not-allowed; }
+    .nav-link:hover { color: #111827; }
+    .nav-right { display: flex; align-items: center; gap: 12px; }
+    .nav-demo-btn { display: none; }
     .nav-get-started {
-      font-size: 13px; font-weight: 700; text-decoration: none; color: #fff;
-      background: #3C258E; border: 1px solid #3C258E;
-      padding: 7px 16px; border-radius: 10px; transition: background .15s;
+      font-size: 13px; font-weight: 600; text-decoration: none; color: #fff;
+      background: #3C258E; border: none;
+      padding: 8px 18px; border-radius: 8px; transition: opacity .2s;
       white-space: nowrap;
     }
-    .nav-get-started:hover { background: #2C0F5B; border-color: #2C0F5B; }
+    .nav-get-started:hover { opacity: .88; }
     .signin-wrap { position: relative; flex-shrink: 0; }
     .nav-signin-btn {
-      font-size: 13px; font-weight: 600; color: #fff;
-      background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
-      padding: 7px 16px; border-radius: 10px; transition: background .15s;
+      font-size: 13px; font-weight: 500; color: #4B5563;
+      background: none; border: none;
+      padding: 4px 0; transition: color .15s;
       cursor: pointer; font-family: inherit;
     }
-    .nav-signin-btn:hover, .nav-signin-btn.active { background: rgba(255,255,255,0.22); }
+    .nav-signin-btn:hover, .nav-signin-btn.active { color: #111827; }
     .signin-flyout {
       display: none; position: absolute; top: calc(100% + 10px); right: 0;
       width: 280px; background: #fff; border-radius: 18px;
@@ -132,19 +126,17 @@
     .signin-flyout-how:hover { color: #3C258E; }
 
     @media (max-width: 767px) {
-      .nav-demo-btn { display: none; }
       .nav-links { display: none; }
       .signin-flyout { right: -8px; width: 260px; }
     }
 
-    /* ══ DEMO UNDERBAR (mobile) ══ */
+    /* ══ DEMO UNDERBAR ══ */
     .demo-underbar {
-      display: none; justify-content: space-between; align-items: center;
+      display: flex; justify-content: space-between; align-items: center;
       background: rgba(44,15,91,0.96);
       padding: 7px 16px 8px;
       border-bottom: 1px solid rgba(255,255,255,0.08);
     }
-    @media (max-width: 767px) { .demo-underbar { display: flex; } }
     .demo-underbar-back {
       font-size: 12.5px; font-weight: 600; color: rgba(255,255,255,0.65);
       text-decoration: none; transition: color .15s;
@@ -161,35 +153,50 @@
 
     /* ══ HERO ══ */
     .hero {
-      background: linear-gradient(160deg, #080412 0%, #1e0b3e 55%, #291870 100%);
-      padding: 80px 24px 72px;
-      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(160deg, #1a0a3e 0%, #2C0F5B 55%, #3C258E 100%);
+      padding: 56px 24px 64px;
+      position: relative; overflow: hidden;
     }
-    .hero-content { max-width: 720px; width: 100%; text-align: center; color: #fff; }
+    .hero::before {
+      content: ''; position: absolute; top: -80px; right: -80px;
+      width: 400px; height: 400px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(140,100,255,0.2) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero::after {
+      content: ''; position: absolute; bottom: -60px; left: -60px;
+      width: 300px; height: 300px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(60,37,142,0.3) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-inner { max-width: 680px; margin: 0 auto; position: relative; z-index: 1; }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,0.1);
+      border: 0.5px solid rgba(255,255,255,0.2);
+      border-radius: 20px; padding: 6px 16px;
+      font-size: 12px; color: #c4b5fd;
+      letter-spacing: 1px; text-transform: uppercase; margin-bottom: 20px;
+    }
     .hero-h1 {
-      font-size: clamp(32px, 5.5vw, 54px); font-weight: 800; line-height: 1.15;
-      margin: 0 0 22px; color: #fff; letter-spacing: -.02em;
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: clamp(32px, 6vw, 52px); font-weight: normal;
+      color: #fff; line-height: 1.15; margin-bottom: 16px; letter-spacing: -0.5px;
     }
+    .hero-h1 em { font-style: italic; color: #c4b5fd; }
     .hero-sub {
-      font-size: clamp(15px,2vw,18px); line-height: 1.65;
-      color: rgba(255,255,255,0.8); margin: 0 0 36px;
-      max-width: 580px; margin-left: auto; margin-right: auto; display: block;
+      font-size: 16px; color: rgba(255,255,255,0.65);
+      line-height: 1.7; margin-bottom: 32px; max-width: 520px;
     }
-    .hero-ctas { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+    .hero-cta-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
     .hero-cta-primary {
       display: inline-block; background: #fff; color: #2C0F5B;
-      text-decoration: none; padding: 16px 36px; border-radius: 14px;
-      font-size: 16px; font-weight: 700; font-family: inherit;
-      box-shadow: 0 4px 24px rgba(44,15,91,0.35);
-      transition: transform .15s, box-shadow .15s; letter-spacing: -.01em;
+      text-decoration: none; padding: 15px 28px; border-radius: 12px;
+      font-size: 15px; font-weight: 700; font-family: inherit;
+      transition: opacity .2s;
     }
-    .hero-cta-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(44,15,91,0.45); }
-    .hero-cta-secondary {
-      background: none; border: none; color: rgba(255,255,255,0.7);
-      font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit;
-      padding: 4px 0; transition: color .15s;
-    }
-    .hero-cta-secondary:hover { color: rgba(255,255,255,0.95); }
+    .hero-cta-primary:hover { opacity: .92; }
+    .hero-note { font-size: 13px; color: rgba(255,255,255,0.45); }
 
     /* ══ STAT TILES ══ */
     .stats { background: #fff; padding: 0; }
@@ -816,10 +823,8 @@
       </div>
     </div>
     <div class="nav-right">
-      <button class="nav-demo-btn" id="nav-demo-btn" onclick="handleDemo(this)">Homeowner Demo</button>
-      <a href="/welcome" class="nav-get-started">Get Started</a>
       <div class="signin-wrap">
-        <button class="nav-signin-btn" id="signin-toggle" onclick="toggleSignin()" aria-expanded="false" aria-haspopup="true">Sign In</button>
+        <button class="nav-signin-btn" id="signin-toggle" onclick="toggleSignin()" aria-expanded="false" aria-haspopup="true">Sign in</button>
         <div class="signin-flyout" id="signin-flyout" role="menu">
           <div class="signin-flyout-header">
             <span>Sign in as…</span>
@@ -862,11 +867,12 @@
           </div>
         </div>
       </div>
+      <a href="/welcome" class="nav-get-started">Get Started</a>
     </div>
   </div>
 </nav>
 
-<!-- Demo underbar (mobile) -->
+<!-- Demo underbar -->
 <div class="demo-underbar">
   <a class="demo-underbar-back" href="/">← All users</a>
   <button class="demo-underbar-btn" id="underbar-demo-btn" onclick="handleDemo(this)">Try the homeowner demo →</button>
@@ -876,12 +882,13 @@
      SECTION 02 — HERO
 ═══════════════════════════════════ -->
 <section class="hero">
-  <div class="hero-content">
-    <h1 class="hero-h1">Finally. A system that runs your home so you don't have to.</h1>
-    <span class="hero-sub">Homeownership is a full-time job nobody trained you for. MyHomeBase™ tells you exactly what your home needs, when to do it, and who to call — so nothing falls through the cracks.</span>
-    <div class="hero-ctas">
-      <a href="/signin" class="hero-cta-primary">Start for $5/month — No guesswork. No surprises.</a>
-      <button class="hero-cta-secondary" onclick="scrollToId('how-it-works')">See how it works ↓</button>
+  <div class="hero-inner">
+    <div class="hero-badge">🏠 For Homeowners</div>
+    <h1 class="hero-h1">Finally. A system that<br><em>runs your home.</em></h1>
+    <p class="hero-sub">Homeownership is a full-time job nobody trained you for. MyHomeBase™ tells you exactly what your home needs, when to do it, and who to call — so nothing falls through the cracks.</p>
+    <div class="hero-cta-row">
+      <a href="/welcome" class="hero-cta-primary">Start for $5/month — no guesswork →</a>
+      <span class="hero-note">14-day free trial · No credit card required</span>
     </div>
   </div>
 </section>
