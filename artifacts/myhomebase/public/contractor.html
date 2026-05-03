@@ -61,6 +61,33 @@ nav{
 }
 .nav-cta:hover{opacity:0.88;}
 
+/* ── DEMO UNDERBAR ── */
+.demo-underbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  background:rgba(10,30,58,0.96);
+  padding:7px 16px 8px;
+  border-bottom:1px solid rgba(255,255,255,0.08);
+}
+.demo-underbar-back{
+  font-size:12.5px;font-weight:600;
+  color:rgba(255,255,255,0.65);
+  text-decoration:none;font-family:var(--font);
+  transition:color 0.15s;
+}
+.demo-underbar-back:hover{color:#fff;}
+.demo-underbar-btn{
+  font-size:12.5px;font-weight:600;
+  color:rgba(255,255,255,0.65);
+  text-decoration:underline;
+  text-underline-offset:3px;
+  text-decoration-color:rgba(255,255,255,0.3);
+  font-family:var(--font);
+  transition:color 0.15s;
+}
+.demo-underbar-btn:hover{color:#fff;}
+
 /* ── HERO ── */
 .hero{
   background:linear-gradient(160deg,var(--blue-deep) 0%,var(--blue-mid) 60%,#0C2A4A 100%);
@@ -370,6 +397,10 @@ footer a{color:var(--blue);text-decoration:none;}
     <a href="/onboarding" class="nav-cta">Get started free</a>
   </div>
 </nav>
+<div class="demo-underbar">
+  <a href="/" class="demo-underbar-back">← All users</a>
+  <a href="/homeowner" class="demo-underbar-btn">Try the contractor demo →</a>
+</div>
 
 <!-- HERO -->
 <div class="hero">
