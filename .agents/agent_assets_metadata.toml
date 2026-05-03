@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "4Jzi0J1thlJwNBEujnIj2"
+uri = "file://scripts/output/codebase.pdf"
+type = "pdf"
+title = "MyHomeBase Codebase Export"
