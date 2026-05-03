@@ -28,7 +28,7 @@ to = "/index-selector.html"
 
 [[services.production.rewrites]]
 from = "/homeowner"
-to = "/index.html"
+to = "/homeowner.html"
 
 [[services.production.rewrites]]
 from = "/contractor"

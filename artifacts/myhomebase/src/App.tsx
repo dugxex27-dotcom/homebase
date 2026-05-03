@@ -129,7 +129,7 @@ function Router() {
         <ScrollToTop />
         <Switch>
           <Route path="/invite/:code" component={Invite} />
-          <Route path="/homeowner" component={isStandalone ? SignIn : Landing} />
+          <Route path="/homeowner">{() => { window.location.replace('/homeowner.html'); return null; }}</Route>
           <Route path="/contractor">{() => { window.location.replace('/contractor.html'); return null; }}</Route>
           <Route path="/agent">{() => { window.location.replace('/agent.html'); return null; }}</Route>
           <Route path="/agent-onboarding">{() => { window.location.replace('/agent-onboarding.html'); return null; }}</Route>

@@ -149,6 +149,8 @@ function onboardingRoutePlugin(): Plugin {
 
         if (path === "/" || path === "") {
           req.url = "/index-selector.html" + qs;
+        } else if (path === "/homeowner" || path.startsWith("/homeowner/")) {
+          req.url = "/homeowner.html" + qs;
         } else if (path === "/contractor" || path.startsWith("/contractor/")) {
           req.url = "/contractor.html" + qs;
         } else if (path === "/agent" || path.startsWith("/agent/")) {
