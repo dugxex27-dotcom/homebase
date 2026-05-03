@@ -17,10 +17,9 @@ export default function LoadingFallback({ variant = 'full' }: LoadingFallbackPro
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="text-center space-y-4">
-        <img src={logoImage} alt="MyHomeBase™" className="h-12 w-auto mx-auto animate-pulse" />
-        <div className="text-muted-foreground text-sm">Loading...</div>
+    <div style={{ minHeight: '100vh', background: '#1a0a3e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ textAlign: 'center' }}>
+        <img src={logoImage} alt="MyHomeBase™" style={{ height: '48px', width: 'auto', margin: '0 auto', display: 'block', opacity: 0.9 }} className="animate-pulse" />
       </div>
     </div>
   );
