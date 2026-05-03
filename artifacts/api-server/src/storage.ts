@@ -250,8 +250,6 @@ export interface IStorage {
 
   // AI Maintenance helper methods
   getHousesByHomeowner(homeownerId: string): Promise<House[]>;
-  getHomeSystemsByHomeowner(homeownerId: string): Promise<HomeSystem[]>;
-  getMaintenanceLogsByHomeowner(homeownerId: string): Promise<MaintenanceLog[]>;
 
   // Contractor boost operations
   getActiveBoosts(serviceCategory?: string, latitude?: number, longitude?: number): Promise<ContractorBoost[]>;
@@ -3628,14 +3626,6 @@ export class MemStorage implements IStorage {
   // AI Maintenance helper methods
   async getHousesByHomeowner(homeownerId: string): Promise<House[]> {
     return Array.from(this.houses.values()).filter(house => house.homeownerId === homeownerId);
-  }
-
-  async getHomeSystemsByHomeowner(homeownerId: string): Promise<HomeSystem[]> {
-    return Array.from(this.homeSystems.values()).filter(system => system.homeownerId === homeownerId);
-  }
-
-  async getMaintenanceLogsByHomeowner(homeownerId: string): Promise<MaintenanceLog[]> {
-    return Array.from(this.maintenanceLogs.values()).filter(log => log.homeownerId === homeownerId);
   }
 
   // Contractor boost operations
@@ -8827,10 +8817,6 @@ class DbStorage implements IStorage {
     return true;
   }
 
-  async getHomeSystemsByHomeowner(homeownerId: string): Promise<HomeSystem[]> {
-    return await db.select().from(homeSystems).where(eq(homeSystems.homeownerId, homeownerId));
-  }
-
   // Custom Maintenance Tasks operations - DATABASE BACKED for persistence
   async getCustomMaintenanceTasks(homeownerId?: string, houseId?: string): Promise<CustomMaintenanceTask[]> {
     let query = db.select().from(customMaintenanceTasks);
@@ -8938,10 +8924,6 @@ class DbStorage implements IStorage {
   async deleteMaintenanceLog(id: string): Promise<boolean> {
     await db.delete(maintenanceLogs).where(eq(maintenanceLogs.id, id));
     return true;
-  }
-
-  async getMaintenanceLogsByHomeowner(homeownerId: string): Promise<MaintenanceLog[]> {
-    return await db.select().from(maintenanceLogs).where(eq(maintenanceLogs.homeownerId, homeownerId));
   }
 
   // Service Records operations - DATABASE BACKED for persistence
