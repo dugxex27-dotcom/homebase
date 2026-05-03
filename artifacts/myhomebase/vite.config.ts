@@ -143,10 +143,22 @@ function onboardingRoutePlugin(): Plugin {
     name: "onboarding-route",
     configureServer(server) {
       server.middlewares.use((req, _res, next) => {
-        if (req.url && (req.url === "/onboarding" || req.url.startsWith("/onboarding?") || req.url.startsWith("/onboarding/"))) {
-          req.url = "/onboarding.html" + (req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "");
-        } else if (req.url && (req.url === "/welcome" || req.url.startsWith("/welcome?") || req.url.startsWith("/welcome/"))) {
-          req.url = "/screen0.html" + (req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "");
+        const url = req.url ?? "";
+        const qs = url.includes("?") ? url.slice(url.indexOf("?")) : "";
+        const path = url.split("?")[0];
+
+        if (path === "/" || path === "") {
+          req.url = "/index-selector.html" + qs;
+        } else if (path === "/contractor" || path.startsWith("/contractor/")) {
+          req.url = "/contractor.html" + qs;
+        } else if (path === "/agent" || path.startsWith("/agent/")) {
+          req.url = "/agent.html" + qs;
+        } else if (path === "/agent-onboarding" || path.startsWith("/agent-onboarding/")) {
+          req.url = "/agent-onboarding.html" + qs;
+        } else if (path === "/onboarding" || path.startsWith("/onboarding/")) {
+          req.url = "/onboarding.html" + qs;
+        } else if (path === "/welcome" || path.startsWith("/welcome/")) {
+          req.url = "/screen0.html" + qs;
         }
         next();
       });

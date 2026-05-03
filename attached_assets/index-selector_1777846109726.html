@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyHomeBase™ — Who Are You?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  
+  --
+  --purple:#3C258E;
+  --purple-deep:#2C0F5B;
+  --purple-light:#B6A6F4;
+  --purple-tint:#EEEDFE;
+  --blue:#1560A2;
+  --blue-deep:#0C3460;
+  --blue-light:#AFD6F9;
+  --blue-tint:#E6F1FB;
+  --green:#079669;
+  --green-deep:#09694A;
+  --green-light:#D4EBDE;
+  --green-tint:#F0FAF4;
+  --off-white:#FAFAF8;
+  --gray-200:#E5E7EB;
+  --gray-400:#9CA3AF;
+  --gray-600:#4B5563;
+  --gray-900:#111827;
+}
+html,body{
+  font-family:var(--font);
+  background:var(--off-white);
+  color:var(--gray-900);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+/* ── HERO ── */
+.hero{
+  background:linear-gradient(160deg,#0C0A1A 0%,#1A1040 50%,#0C1A30 100%);
+  padding:48px 24px 60px;
+  text-align:center;
+  position:relative;
+  overflow:hidden;
+}
+.hero::before{
+  content:'';
+  position:absolute;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  width:600px;height:600px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(60,37,142,0.3) 0%,rgba(21,96,162,0.15) 40%,transparent 70%);
+  pointer-events:none;
+}
+.hero-logo{
+  margin-bottom:36px;
+  position:relative;z-index:1;
+}
+.hero-logo img{
+  height:40px;
+  width:auto;
+}
+.hero-eyebrow{
+  font-size:11px;
+  letter-spacing:3px;
+  text-transform:uppercase;
+  color:rgba(255,255,255,0.4);
+  margin-bottom:16px;
+  position:relative;z-index:1;
+}
+.hero-headline{
+  font-family:var(--font);
+  font-size:clamp(32px,7vw,52px);
+  font-weight:normal;
+  color:#fff;
+  line-height:1.15;
+  margin-bottom:16px;
+  position:relative;z-index:1;
+}
+.hero-headline em{
+  font-style:italic;
+  color:var(--purple-light);
+}
+.hero-sub{
+  font-size:16px;
+  color:rgba(255,255,255,0.55);
+  line-height:1.7;
+  max-width:480px;
+  margin:0 auto;
+  position:relative;z-index:1;
+}
+
+/* ── CARDS SECTION ── */
+.cards-section{
+  padding:0 20px 60px;
+  max-width:960px;
+  margin:-36px auto 0;
+  position:relative;
+  z-index:2;
+}
+
+.cards-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:16px;
+}
+
+/* ── ADVENTURE CARD ── */
+.adv-card{
+  border-radius:20px;
+  overflow:hidden;
+  cursor:pointer;
+  text-decoration:none;
+  display:block;
+  transform:translateY(20px);
+  opacity:0;
+  animation:cardUp 0.5s ease forwards;
+  box-shadow:0 4px 24px rgba(0,0,0,0.12);
+  transition:transform 0.25s ease, box-shadow 0.25s ease;
+}
+.adv-card:hover{
+  transform:translateY(-4px);
+  box-shadow:0 16px 48px rgba(0,0,0,0.18);
+}
+.adv-card:nth-child(1){animation-delay:0.1s;}
+.adv-card:nth-child(2){animation-delay:0.2s;}
+.adv-card:nth-child(3){animation-delay:0.3s;}
+
+@keyframes cardUp{
+  to{opacity:1;transform:translateY(0);}
+}
+
+.card-visual{
+  padding:32px 28px 24px;
+  position:relative;
+  overflow:hidden;
+  min-height:220px;
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-end;
+}
+.card-visual::before{
+  content:'';
+  position:absolute;
+  top:-40px;right:-40px;
+  width:180px;height:180px;
+  border-radius:50%;
+  opacity:0.2;
+}
+.card-visual.purple{background:linear-gradient(160deg,var(--purple-deep),var(--purple));}
+.card-visual.purple::before{background:var(--purple-light);}
+.card-visual.blue{background:linear-gradient(160deg,var(--blue-deep),var(--blue));}
+.card-visual.blue::before{background:var(--blue-light);}
+.card-visual.green{background:linear-gradient(160deg,var(--green-deep),var(--green));}
+.card-visual.green::before{background:var(--green-light);}
+
+.card-tag{
+  display:inline-block;
+  font-size:10px;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  padding:4px 12px;
+  border-radius:20px;
+  background:rgba(255,255,255,0.15);
+  color:rgba(255,255,255,0.8);
+  margin-bottom:12px;
+  width:fit-content;
+}
+.card-icon{
+  font-size:48px;
+  position:absolute;
+  top:24px;right:24px;
+  opacity:0.6;
+}
+.card-name{
+  font-family:var(--font);
+  font-size:28px;
+  color:#fff;
+  line-height:1.2;
+  margin-bottom:6px;
+}
+.card-tagline{
+  font-size:13px;
+  color:rgba(255,255,255,0.65);
+  line-height:1.5;
+}
+
+.card-body{
+  background:#fff;
+  padding:20px 24px;
+}
+.card-features{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  margin-bottom:18px;
+}
+.card-feature{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:13px;
+  color:var(--gray-600);
+}
+.feat-dot{
+  width:6px;height:6px;
+  border-radius:50%;
+  flex-shrink:0;
+}
+.card-price{
+  display:flex;
+  align-items:baseline;
+  gap:4px;
+  margin-bottom:16px;
+}
+.price-num{
+  font-size:24px;
+  font-weight:600;
+}
+.price-per{
+  font-size:13px;
+  color:var(--gray-400);
+}
+.card-cta{
+  display:block;
+  width:100%;
+  padding:13px;
+  border:none;
+  border-radius:12px;
+  font-family:var(--font);
+  font-size:14px;
+  font-weight:600;
+  cursor:pointer;
+  text-align:center;
+  text-decoration:none;
+  transition:opacity 0.2s;
+}
+.card-cta:hover{opacity:0.88;}
+.card-cta.purple{background:var(--purple);color:#fff;}
+.card-cta.blue{background:var(--blue);color:#fff;}
+.card-cta.green{background:var(--green);color:#fff;}
+
+/* ── BOTTOM NOTE ── */
+.bottom-note{
+  text-align:center;
+  font-size:13px;
+  color:var(--gray-400);
+  padding:0 24px 48px;
+  line-height:1.7;
+}
+.bottom-note a{color:var(--purple);text-decoration:none;font-weight:500;}
+
+/* ── FOOTER ── */
+.footer{
+  background:#fff;
+  border-top:0.5px solid var(--gray-200);
+  padding:24px;
+  text-align:center;
+  font-size:12px;
+  color:var(--gray-400);
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-logo">
+    <img src="/my-homebase-logo-tm-final-white.png" alt="MyHomeBase™">
+  </div>
+  <p class="hero-eyebrow">Welcome to MyHomeBase™</p>
+  <h1 class="hero-headline">Who are<br><em>you?</em></h1>
+  <p class="hero-sub">MyHomeBase™ is built for homeowners, contractors, and real estate agents — each with their own dedicated experience. Select yours to get started.</p>
+</div>
+
+<div class="cards-section">
+  <div class="cards-grid">
+
+    <!-- HOMEOWNER -->
+    <a class="adv-card" href="/homeowner">
+      <div class="card-visual purple">
+        <div class="card-tag">Homeowner</div>
+        <div class="card-icon">🏠</div>
+        <div class="card-name">Own a home.<br>Know it.</div>
+        <div class="card-tagline">Track, protect & document everything — starting at $5/month.</div>
+      </div>
+      <div class="card-body">
+        <div class="card-features">
+          <div class="card-feature"><div class="feat-dot" style="background:var(--purple);"></div>Home Wellness Score™ (0–1,000)</div>
+          <div class="card-feature"><div class="feat-dot" style="background:var(--purple);"></div>Geo-located maintenance task list</div>
+          <div class="card-feature"><div class="feat-dot" style="background:var(--purple);"></div>Service record tracking</div>
+          <div class="card-feature"><div class="feat-dot" style="background:var(--purple);"></div>Insurance claim protection</div>
+        </div>
+        <div class="card-price">
+          <span class="price-num" style="color:var(--purple);">$5</span>
+          <span class="price-per">/month · 14-day free trial</span>
+        </div>
+        <span class="card-cta purple">Check my home's risk — free →</span>
+      </div>
+    </a>
+
+    <!-- CONTRACTOR -->
+    <a class="adv-card" href="/contractor">
+      <div class="card-visual blue">
+        <div class="card-tag">Contractor</div>
+        <div class="card-icon">🔧</div>
+        <div class="card-name">Grow your<br>business.</div>
+        <div class="card-tagline">Connect with homeowners who already know what their home needs.</div>
+      </div>
+      <div class="card-body">
+        <div class="card-features">
+          <div class="card-feature"><div class="feat-dot" style="background:var(--blue);"></div>Pre-briefed, pre-qualified leads</div>
+          <div class="card-feature"><div class="feat-dot" style="background:var(--blue);"></div>Verified contractor profile & badge</div>
+          <div class="card-feature"><div class="feat-dot" style="background:var(--blue);"></div>Refer homeowners — reduce your cost</div>
+          <div class="card-feature"><div class="feat-dot" style="background:var(--blue);"></div>Refer 20 homeowners — it's free</div>
+        </div>
+        <div class="card-price">
+          <span class="price-num" style="color:var(--blue);">$20</span>
+          <span class="price-per">/month · 14-day free trial</span>
+        </div>
+        <span class="card-cta blue">Grow my contracting business →</span>
+      </div>
+    </a>
+
+    <!-- RE AGENT -->
+    <a class="adv-card" href="/agent">
+      <div class="card-visual green">
+        <div class="card-tag">Real Estate Agent</div>
+        <div class="card-icon">🏡</div>
+        <div class="card-name">Close deals.<br>Stay remembered.</div>
+        <div class="card-tagline">The closing gift that follows your clients for the life of their home.</div>
+      </div>
+      <div class="card-body">
+        <div class="card-features">
+          <div class="card-feature"><div class="feat-dot" style="background:var(--green);"></div>Set up client's home record at closing</div>
+          <div class="card-feature"><div class="feat-dot" style="background:var(--green);"></div>Co-branded Home Wellness Report</div>
+          <div class="card-feature"><div class="feat-dot" style="background:var(--green);"></div>$15 per client who stays 4+ months</div>
+          <div class="card-feature"><div class="feat-dot" style="background:var(--green);"></div>Listing prep advantage</div>
+        </div>
+        <div class="card-price">
+          <span class="price-num" style="color:var(--green);">Free</span>
+          <span class="price-per">— always. Earn $15 per client.</span>
+        </div>
+        <span class="card-cta green">Start earning at closing →</span>
+      </div>
+    </a>
+
+  </div>
+</div>
+
+<div class="bottom-note">
+  Already have an account? <a href="/login">Sign in</a> &nbsp;·&nbsp;
+  Questions? <a href="/faq">Read our FAQ</a> &nbsp;·&nbsp;
+  <a href="/contact">Contact us</a>
+</div>
+
+<div class="footer">
+  © 2026 MyHomeBase™. All rights reserved. &nbsp;·&nbsp; gotohomebase.com
+</div>
+
+</body>
+</html>

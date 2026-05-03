@@ -129,6 +129,10 @@ function Router() {
         <ScrollToTop />
         <Switch>
           <Route path="/invite/:code" component={Invite} />
+          <Route path="/homeowner" component={isStandalone ? SignIn : Landing} />
+          <Route path="/contractor">{() => { window.location.replace('/contractor.html'); return null; }}</Route>
+          <Route path="/agent">{() => { window.location.replace('/agent.html'); return null; }}</Route>
+          <Route path="/agent-onboarding">{() => { window.location.replace('/agent-onboarding.html'); return null; }}</Route>
           <Route path="/welcome">{() => { window.location.replace('/screen0.html'); return null; }}</Route>
           <Route path="/onboarding">{() => { window.location.replace('/onboarding.html'); return null; }}</Route>
           <Route path="/signin/homeowner" component={SignInHomeowner} />
@@ -170,6 +174,7 @@ function Router() {
       <Switch>
         {/* Home route */}
         <Route path="/" component={Home} />
+        <Route path="/homeowner" component={Home} />
         
         {/* Shared routes - all authenticated users */}
         <Route path="/test-upload" component={TestUpload} />

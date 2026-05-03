@@ -23,6 +23,26 @@ publicDir = "artifacts/myhomebase/dist/public"
 serve = "static"
 
 [[services.production.rewrites]]
+from = "/"
+to = "/index-selector.html"
+
+[[services.production.rewrites]]
+from = "/homeowner"
+to = "/index.html"
+
+[[services.production.rewrites]]
+from = "/contractor"
+to = "/contractor.html"
+
+[[services.production.rewrites]]
+from = "/agent"
+to = "/agent.html"
+
+[[services.production.rewrites]]
+from = "/agent-onboarding"
+to = "/agent-onboarding.html"
+
+[[services.production.rewrites]]
 from = "/welcome"
 to = "/screen0.html"
 

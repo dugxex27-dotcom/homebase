@@ -758,9 +758,10 @@ export default function Landing() {
       <nav className="mhb-nav">
         <div className="mhb-nav-inner">
           <div className="mhb-nav-left">
-            <a href="/" className="mhb-nav-logo-link">
+            <a href="/homeowner" className="mhb-nav-logo-link">
               <img src={logoWhite} alt="MyHomeBase" className="mhb-nav-logo" />
             </a>
+            <a href="/" style={{fontSize:'12px',color:'var(--gray-400)',textDecoration:'none',fontWeight:500,whiteSpace:'nowrap'}} className="mhb-nav-link">← All users</a>
             <div className="mhb-nav-links">
               <button className="mhb-nav-link" onClick={() => scrollTo('how-it-works')}>How It Works</button>
               <button className="mhb-nav-link" onClick={() => scrollTo('pricing')}>Pricing</button>

@@ -1,0 +1,303 @@
+Please implement the following changes to the MyHomeBase™ project. Read all
+instructions carefully before making any changes.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 1 — FILE SETUP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Add the following files to the public/ folder. I will paste the contents of
+each file separately after this prompt:
+
+  public/
+  ├── my-homebase-logo-tm-final-white.png   ← logo image (upload the PNG file)
+  ├── index-selector.html                   ← new root entry page
+  ├── contractor.html                       ← contractor landing page
+  ├── agent.html                            ← RE agent landing page
+  ├── screen0.html                          ← onboarding sell screen (Screen 0)
+  ├── onboarding.html                       ← homeowner onboarding flow (Screens 1–6)
+  └── index.html                            ← existing homeowner homepage (keep as-is)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 2 — SERVER ROUTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Update server.js to serve these routes:
+
+  GET /                → public/index-selector.html   (new root — choose your adventure)
+  GET /homeowner       → public/index.html            (existing homeowner homepage)
+  GET /contractor      → public/contractor.html       (contractor landing page)
+  GET /agent           → public/agent.html            (RE agent landing page)
+  GET /welcome         → public/screen0.html          (onboarding sell screen)
+  GET /onboarding      → public/onboarding.html       (homeowner onboarding flow)
+
+Keep all existing API routes unchanged:
+  GET /api/geocode
+  GET /api/property
+  GET /api/avm
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 3 — GLOBAL DESIGN RULES (apply to ALL pages)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Apply these rules consistently across every HTML file:
+
+3a. FONT — Inter everywhere
+    Load from Google Fonts:
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    Set on body: font-family: 'Inter', system-ui, sans-serif;
+    No other fonts. Remove any DM Serif Display or DM Sans references.
+
+3b. LOGO — always the real PNG
+    Every page uses:
+    <img src="/my-homebase-logo-tm-final-white.png" alt="MyHomeBase™">
+    - On dark/colored backgrounds: display as-is (white logo shows correctly)
+    - On white nav bars: apply CSS filter to make it visible in the brand color:
+      Homeowner pages:  filter: brightness(0) saturate(100%) invert(23%) sepia(88%) saturate(722%) hue-rotate(189deg) brightness(87%) contrast(99%);
+      Contractor pages: filter: brightness(0) saturate(100%) invert(23%) sepia(88%) saturate(722%) hue-rotate(189deg) brightness(87%) contrast(99%);
+      Agent pages:      filter: brightness(0) saturate(100%) invert(35%) sepia(72%) saturate(500%) hue-rotate(120deg) brightness(90%) contrast(95%);
+    Logo height: 36px in heroes, 28px in nav bars.
+
+3c. LOGO LINKS — logo always navigates to the page's own homepage
+    - index-selector.html logo → href="/"
+    - index.html (homeowner) logo → href="/homeowner"
+    - contractor.html logo → href="/contractor"
+    - agent.html logo → href="/agent"
+    - screen0.html logo → href="/welcome"
+    - onboarding.html logo → href="/onboarding"
+
+3d. BACK NAVIGATION — every page has a way back
+    Every page except index-selector.html must have a visible back link in the nav:
+    - Homeowner pages:   "← Back" links to /
+    - Contractor pages:  "← All users" links to /
+    - Agent pages:       "← All users" links to /
+    - Screen0/onboarding: "← Back" links to /
+
+3e. COLOR SYSTEM
+    Homeowner = Purple:  primary #3C258E, deep #2C0F5B, light #B6A6F4, tint #EEEDFE
+    Contractor = Blue:   primary #1560A2, deep #0C3460, light #AFD6F9, tint #E6F1FB
+    RE Agent   = Green:  primary #079669, deep #09694A, light #D4EBDE, tint #F0FAF4
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 4 — RE AGENT NAV BAR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The agent.html nav bar must match the homeowner homepage nav bar layout:
+
+  [Logo]   How It Works   Pricing   FAQ        [Get Started Free]   [Sign In]
+
+- "Get Started Free" button: background #079669 (green), white text, links to /agent-onboarding
+- "Sign In" button: outlined, green border, links to /login
+- "← All users" text link on the far left next to the logo, color #079669
+- Logo links to /agent
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 5 — RE AGENT ONBOARDING FLOW (new file)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Create a new file: public/agent-onboarding.html
+Route: GET /agent-onboarding → public/agent-onboarding.html
+
+This is a green-coded onboarding flow for RE Agents. It mirrors the structure
+of onboarding.html (the homeowner flow) but is entirely focused on helping the
+agent set up their CLIENT'S home — so the homeowner has to do as little as
+possible.
+
+The agent onboarding has 5 screens. All screens use:
+- Inter font
+- Green color system (#079669, #09694A, #D4EBDE, #F0FAF4)
+- Progress bar at top (Step X of 5)
+- Logo in top left linking to /agent
+- Back navigation
+
+─────────────────────────────────────────
+SCREEN 1 — Create Agent Account
+─────────────────────────────────────────
+Hero (green gradient): "Let's set up your Agent Hub."
+Sub: "Free forever. Takes 2 minutes. Your clients will thank you."
+
+Form fields:
+- Full name
+- Email address
+- Brokerage name
+- License number (optional)
+
+Buttons:
+- "Continue with Google" (Google OAuth style)
+- OR email/password fields
+- Primary CTA: "Create my free account →"
+
+Bottom note: "Already have an account? Sign in"
+
+─────────────────────────────────────────
+SCREEN 2 — Enter Client's Property Address
+─────────────────────────────────────────
+Hero (green gradient): "Start with your client's address."
+Sub: "We'll pull public records instantly — year built, system ages, estimated
+value, and a preliminary Home Wellness Score™. No forms for your client to fill."
+
+Contains the same address lookup tool as the homeowner onboarding (calls
+/api/geocode and /api/property and /api/avm).
+
+After address is entered and results load, show:
+- Address confirmed chip
+- Property profile card (year built, beds, baths, sqft, lot size, estimated value)
+- Preliminary HWS™ dial with score and band
+- Note: "This is their starting score. It improves as you add documents."
+
+Primary CTA: "This is the right property →"
+Secondary: "Try a different address"
+
+─────────────────────────────────────────
+SCREEN 3 — Upload Client Documents
+─────────────────────────────────────────
+Hero (green gradient): "Upload your client's closing documents."
+Sub: "Our AI reads them and populates the home's profile automatically.
+The more you upload now, the less your client has to do later."
+
+Show three upload areas, each with drag-and-drop + file picker:
+
+Upload Area 1 — Home Inspection Report
+  Icon: 📋
+  Label: "Home Inspection Report"
+  Sub: "PDF or image — AI extracts all system conditions, deficiencies, and
+  remaining useful life estimates automatically."
+  Accepted: .pdf, .jpg, .jpeg, .png
+
+Upload Area 2 — Seller Disclosure Documents
+  Icon: 📄
+  Label: "Seller Disclosure Statement"
+  Sub: "AI parses known defects, past repairs, and material facts — added
+  directly to the home's permanent record."
+  Accepted: .pdf, .jpg, .jpeg, .png
+
+Upload Area 3 — Other Closing Documents (optional)
+  Icon: 📁
+  Label: "Additional Documents (optional)"
+  Sub: "Survey, title report, HOA docs, permits — anything relevant to the
+  home's history. Drag and drop multiple files."
+  Accepted: .pdf, .jpg, .jpeg, .png, .doc, .docx
+
+Below uploads show an AI processing status indicator when files are selected:
+  "🤖 AI is reading your documents and populating the home profile..."
+
+Primary CTA: "Continue →"
+Secondary: "Skip — my client will upload later"
+
+─────────────────────────────────────────
+SCREEN 4 — Review Pre-Populated Profile
+─────────────────────────────────────────
+Hero (green gradient): "Here's what we know about your client's home."
+Sub: "Populated automatically from public records and your uploaded documents.
+Review before sending the claim link to your client."
+
+Show pre-populated items list (same style as homeowner Screen 4) with source labels:
+- Address (Google Maps)
+- Year Built (ATTOM Public Records)
+- Bedrooms / Bathrooms / Sqft (ATTOM)
+- Estimated Value (ATTOM AVM)
+- System conditions if inspection uploaded (Home Inspection Report)
+- Known defects if disclosure uploaded (Seller Disclosure)
+
+Show updated HWS™ score reflecting any documents uploaded.
+
+Show environmental flags (lead paint if pre-1978, asbestos, radon, aging systems).
+
+Show pre-scheduled task list based on home age and location.
+
+Primary CTA: "Send claim link to my client →"
+Secondary: "Edit details first"
+
+─────────────────────────────────────────
+SCREEN 5 — Send Client Their Claim Link
+─────────────────────────────────────────
+Hero (green gradient): "Your client's home is ready."
+Sub: "Send them this link. They click it, create a free account, and their
+home profile is already set up — score live, records in, tasks scheduled.
+They do nothing. You did it all."
+
+Show:
+- Large claim link display:
+  "gotohomebase.com/claim/[unique-code]"
+  With "Copy link" button
+
+- Three send options:
+  Option 1: "Send via text" — opens SMS with pre-written message
+    Pre-written text: "Hi [Client Name]! Your home record is ready on
+    MyHomeBase™. Click this link to claim your home and see your Home Wellness
+    Score™: gotohomebase.com/claim/[code] — set up for you at closing. 🏠"
+
+  Option 2: "Send via email" — opens email client with pre-written subject/body
+    Subject: "Your Home Wellness Score™ is ready — MyHomeBase™"
+    Body: "Congratulations on your new home! I set up your home record on
+    MyHomeBase™ as your closing gift. Your Home Wellness Score™ is already
+    live. Click the link below to claim your home — everything is pre-populated,
+    no forms to fill. [LINK]"
+
+  Option 3: "Download co-branded report" — generates a PDF Home Wellness
+    Report with agent name and brokerage. (Can be a placeholder/mock for now.)
+
+Show a success callout box:
+  ✅ "Your client's home is set up. You'll earn $15 when they stay subscribed
+  for 4+ months — automatically."
+
+Primary CTA: "Go to my Agent Hub →" (links to /login or agent dashboard)
+Secondary: "Set up another client's home"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 6 — HOMEOWNER HOMEPAGE NAV UPDATE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+On the existing homeowner homepage (index.html / /homeowner route):
+- Logo should link to /homeowner
+- Add "← All users" text link in the nav bar linking to /
+- The existing "Get Started" / "Homeowner Demo" buttons should link to /welcome
+  (which is screen0.html — the sell screen before onboarding)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 7 — SUMMARY OF ALL ROUTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  /                    → index-selector.html   (choose your adventure)
+  /homeowner           → index.html            (homeowner landing page)
+  /contractor          → contractor.html       (contractor landing page)
+  /agent               → agent.html            (RE agent landing page)
+  /welcome             → screen0.html          (homeowner sell screen / Screen 0)
+  /onboarding          → onboarding.html       (homeowner onboarding Screens 1–6)
+  /agent-onboarding    → agent-onboarding.html (RE agent onboarding Screens 1–5)
+  /api/geocode         → existing (keep)
+  /api/property        → existing (keep)
+  /api/avm             → existing (keep)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 8 — NAVIGATION MAP (how pages connect)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  / (selector)
+  ├── Homeowner card → /homeowner
+  │     ├── Get Started / Homeowner Demo → /welcome
+  │     │     └── CTA → /onboarding (Screens 1–6)
+  │     └── Logo → /homeowner
+  │
+  ├── Contractor card → /contractor
+  │     ├── Get started CTA → /onboarding (same homeowner onboarding for now)
+  │     └── Logo → /contractor
+  │
+  └── RE Agent card → /agent
+        ├── Get Started Free → /agent-onboarding (Screens 1–5, green)
+        └── Logo → /agent
+
+  All pages have "← Back" or "← All users" → /
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTION 9 — IMPORTANT NOTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- Inter font must be loaded from Google Fonts on every page. No other fonts.
+- The logo PNG (my-homebase-logo-tm-final-white.png) must be in public/ folder.
+- Every page logo must be a clickable link to that page's own homepage.
+- Every page except / must have a visible back link to /.
+- The agent onboarding (agent-onboarding.html) uses the same /api/geocode,
+  /api/property, and /api/avm endpoints as the homeowner onboarding.
+- All colors must match the brand system in Section 3e exactly.
+- Do not break any existing functionality — the address lookup, ATTOM
+  integration, and Google geocoding must continue to work.

@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>MyHomeBase™ — Get Started</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --purple-deep:   #2C0F5B;
+    --purple-mid:    #3C258E;
+    --purple-bright: #6B4FD8;
+    --purple-light:  #B6A6F4;
+    --purple-tint:   #EEEDFE;
+    --purple-border: #CECBF6;
+    --blue-mid:      #1560A2;
+    --blue-light:    #E6F1FB;
+    --green-mid:     #079669;
+    --green-light:   #D4EBDE;
+    --amber:         #D97706;
+    --amber-light:   #FEF3C7;
+    --red:           #DC2626;
+    --red-light:     #FEF2F2;
+    --gray-50:       #F9FAFB;
+    --gray-100:      #F3F4F6;
+    --gray-200:      #E5E7EB;
+    --gray-400:      #9CA3AF;
+    --gray-600:      #4B5563;
+    --gray-900:      #111827;
+    --white:         #FFFFFF;
+    --font: 'Inter', system-ui, sans-serif;
+  }
+
+  html, body {
+    font-family: var(--font);
+    background: var(--gray-50);
+    color: var(--gray-900);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── SCREEN SYSTEM ───────────────────────────────────────────────────────── */
+  .screen {
+    display: none;
+    min-height: 100vh;
+    flex-direction: column;
+  }
+  .screen.active { display: flex; }
+
+  /* ── PROGRESS BAR ────────────────────────────────────────────────────────── */
+  .progress-wrap {
+    background: var(--white);
+    padding: 14px 24px 0;
+    border-bottom: 0.5px solid var(--gray-200);
+  }
+  .progress-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .logo-small {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .logo-mark {
+    width: 28px; height: 28px;
+    background: var(--purple-mid);
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; color: #fff;
+  }
+  .logo-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--purple-mid);
+  }
+  .step-label {
+    font-size: 12px;
+    color: var(--gray-400);
+    font-weight: 500;
+  }
+  .progress-bar-wrap {
+    height: 3px;
+    background: var(--gray-100);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--purple-mid), var(--blue-mid));
+    border-radius: 2px;
+    transition: width 0.5s ease;
+  }
+
+  /* ── HERO HEADER ─────────────────────────────────────────────────────────── */
+  .hero {
+    background: linear-gradient(160deg, var(--purple-deep) 0%, var(--purple-mid) 60%, #1A4A8A 100%);
+    padding: 32px 24px 40px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 300px; height: 300px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(107,79,216,0.25) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-eyebrow {
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--purple-light);
+    margin-bottom: 10px;
+    position: relative; z-index: 1;
+  }
+  .hero-headline {
+    font-size: clamp(24px, 6vw, 34px);
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.2;
+    margin-bottom: 8px;
+    position: relative; z-index: 1;
+  }
+  .hero-headline em {
+    font-style: italic;
+    font-weight: 300;
+    color: var(--purple-light);
+  }
+  .hero-sub {
+    font-size: 14px;
+    color: rgba(255,255,255,0.65);
+    line-height: 1.6;
+    position: relative; z-index: 1;
+  }
+
+  /* ── BODY CONTENT ────────────────────────────────────────────────────────── */
+  .body-content {
+    flex: 1;
+    padding: 24px;
+    max-width: 560px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  /* ── CARDS ───────────────────────────────────────────────────────────────── */
+  .card {
+    background: var(--white);
+    border-radius: 16px;
+    border: 0.5px solid var(--gray-200);
+    overflow: hidden;
+    margin-bottom: 14px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+  .card-header {
+    background: linear-gradient(135deg, var(--purple-deep), var(--purple-mid));
+    padding: 16px 20px;
+  }
+  .card-eyebrow {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--purple-light);
+    margin-bottom: 3px;
+  }
+  .card-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+  }
+  .card-body { padding: 20px; }
+
+  /* ── FORM ELEMENTS ───────────────────────────────────────────────────────── */
+  .form-group { margin-bottom: 16px; }
+  .form-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gray-600);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .form-input {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 15px;
+    font-family: var(--font);
+    border: 1.5px solid var(--gray-200);
+    border-radius: 10px;
+    outline: none;
+    color: var(--gray-900);
+    background: var(--white);
+    transition: border-color 0.2s;
+  }
+  .form-input:focus { border-color: var(--purple-mid); }
+  .form-input::placeholder { color: var(--gray-400); }
+
+  /* ── SEARCH BOX ──────────────────────────────────────────────────────────── */
+  .search-box {
+    display: flex;
+    background: var(--white);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    margin-top: 24px;
+    position: relative; z-index: 1;
+  }
+  .search-input {
+    flex: 1;
+    padding: 14px 18px;
+    font-size: 14px;
+    font-family: var(--font);
+    border: none;
+    outline: none;
+    color: var(--gray-900);
+  }
+  .search-input::placeholder { color: var(--gray-400); }
+  .search-btn {
+    padding: 14px 20px;
+    background: linear-gradient(135deg, var(--purple-mid), var(--blue-mid));
+    border: none;
+    color: #fff;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.2s;
+  }
+  .search-btn:hover { opacity: 0.9; }
+  .search-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  /* ── PRIMARY BUTTON ──────────────────────────────────────────────────────── */
+  .btn-primary {
+    width: 100%;
+    padding: 14px 24px;
+    background: linear-gradient(135deg, var(--purple-mid), var(--blue-mid));
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    font-family: var(--font);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    margin-bottom: 10px;
+  }
+  .btn-primary:hover { opacity: 0.92; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-secondary {
+    width: 100%;
+    padding: 13px 24px;
+    background: transparent;
+    border: 1.5px solid var(--gray-200);
+    border-radius: 12px;
+    color: var(--gray-600);
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 10px;
+  }
+  .btn-secondary:hover { border-color: var(--purple-mid); color: var(--purple-mid); }
+
+  .btn-text {
+    width: 100%;
+    padding: 10px;
+    background: transparent;
+    border: none;
+    color: var(--gray-400);
+    font-family: var(--font);
+    font-size: 13px;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+
+  /* ── DIVIDER ─────────────────────────────────────────────────────────────── */
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 16px 0;
+    color: var(--gray-400);
+    font-size: 12px;
+  }
+  .divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    height: 0.5px;
+    background: var(--gray-200);
+  }
+
+  /* ── GOOGLE BTN ──────────────────────────────────────────────────────────── */
+  .btn-google {
+    width: 100%;
+    padding: 13px 24px;
+    background: var(--white);
+    border: 1.5px solid var(--gray-200);
+    border-radius: 12px;
+    color: var(--gray-900);
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: border-color 0.2s;
+    margin-bottom: 10px;
+  }
+  .btn-google:hover { border-color: var(--gray-400); }
+
+  /* ── STAT GRID ───────────────────────────────────────────────────────────── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .stat {
+    background: var(--gray-100);
+    border-radius: 10px;
+    padding: 12px;
+  }
+  .stat.full { grid-column: 1 / -1; }
+  .stat-label {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--gray-400);
+    margin-bottom: 4px;
+    font-weight: 500;
+  }
+  .stat-value {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--gray-900);
+  }
+  .stat-value.purple { color: var(--purple-mid); }
+  .stat-value.green  { color: var(--green-mid); }
+
+  /* ── HWS DIAL ────────────────────────────────────────────────────────────── */
+  .hws-reveal {
+    text-align: center;
+    padding: 12px 0 20px;
+  }
+  .hws-dial-big {
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    margin: 0 auto 16px;
+    box-shadow: 0 8px 32px rgba(60,37,142,0.25);
+    transition: background 0.5s ease;
+  }
+  .hws-num {
+    font-size: 36px;
+    font-weight: 800;
+    color: #fff;
+    line-height: 1;
+  }
+  .hws-denom {
+    font-size: 12px;
+    color: rgba(255,255,255,0.6);
+    font-weight: 400;
+  }
+  .hws-band-label {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .hws-desc-text {
+    font-size: 13px;
+    color: var(--gray-600);
+    line-height: 1.6;
+    max-width: 360px;
+    margin: 0 auto;
+  }
+  .score-bar-wrap {
+    height: 8px;
+    background: var(--gray-100);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 16px 0 6px;
+  }
+  .score-bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 1.2s ease;
+    width: 0%;
+  }
+  .score-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--gray-400);
+  }
+
+  /* ── FACTORS ─────────────────────────────────────────────────────────────── */
+  .factors { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+  .factor {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; color: var(--gray-600);
+  }
+  .factor-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── STEPS ───────────────────────────────────────────────────────────────── */
+  .steps { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+  .step-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 14px;
+    background: var(--gray-100);
+    border-radius: 10px;
+  }
+  .step-num {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--purple-mid);
+    color: #fff;
+    font-size: 11px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .step-text { font-size: 12px; color: var(--gray-600); flex: 1; line-height: 1.4; }
+  .step-pts { font-size: 11px; font-weight: 700; color: var(--green-mid); white-space: nowrap; }
+
+  /* ── ENV FLAGS ───────────────────────────────────────────────────────────── */
+  .env-flags { display: flex; flex-direction: column; gap: 8px; }
+  .env-flag {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 11px 14px; border-radius: 10px;
+    font-size: 12px; line-height: 1.5;
+  }
+  .env-flag.warn { background: var(--amber-light); border: 0.5px solid #FDE68A; color: #92400E; }
+  .env-flag.info { background: var(--blue-light); border: 0.5px solid #93C5FD; color: #1E40AF; }
+  .env-flag.ok   { background: var(--green-light); border: 0.5px solid #6EE7B7; color: #065F46; }
+  .env-icon { font-size: 15px; flex-shrink: 0; }
+  .env-title { font-weight: 600; margin-bottom: 2px; }
+
+  /* ── UPLOAD AREA ─────────────────────────────────────────────────────────── */
+  .upload-area {
+    border: 2px dashed var(--purple-border);
+    border-radius: 14px;
+    padding: 32px 24px;
+    text-align: center;
+    background: var(--purple-tint);
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 14px;
+  }
+  .upload-area:hover { border-color: var(--purple-mid); }
+  .upload-icon { font-size: 36px; margin-bottom: 10px; }
+  .upload-title { font-size: 15px; font-weight: 600; color: var(--purple-mid); margin-bottom: 6px; }
+  .upload-sub { font-size: 13px; color: var(--gray-400); line-height: 1.5; }
+  .upload-input { display: none; }
+
+  .upload-option {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 16px;
+    background: var(--white);
+    border: 1.5px solid var(--gray-200);
+    border-radius: 12px;
+    cursor: pointer;
+    margin-bottom: 10px;
+    transition: all 0.2s;
+  }
+  .upload-option:hover { border-color: var(--purple-mid); }
+  .upload-option.selected { border-color: var(--purple-mid); background: var(--purple-tint); }
+  .option-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .option-icon.purple { background: var(--purple-tint); }
+  .option-icon.blue   { background: var(--blue-light); }
+  .option-icon.green  { background: var(--green-light); }
+  .option-title { font-size: 14px; font-weight: 600; color: var(--gray-900); margin-bottom: 2px; }
+  .option-sub   { font-size: 12px; color: var(--gray-400); }
+
+  /* ── TOUR CARDS ──────────────────────────────────────────────────────────── */
+  .tour-slides {
+    display: flex;
+    gap: 14px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .tour-slides::-webkit-scrollbar { display: none; }
+  .tour-slide {
+    flex-shrink: 0;
+    width: calc(100% - 32px);
+    scroll-snap-align: start;
+    background: var(--white);
+    border-radius: 16px;
+    border: 0.5px solid var(--gray-200);
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+  .tour-slide-header {
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .tour-icon {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+  }
+  .tour-slide-title { font-size: 16px; font-weight: 700; color: var(--gray-900); margin-bottom: 3px; }
+  .tour-slide-sub   { font-size: 13px; color: var(--gray-400); }
+  .tour-slide-body  { padding: 0 20px 20px; font-size: 13px; color: var(--gray-600); line-height: 1.7; }
+
+  .tour-dots {
+    display: flex; justify-content: center; gap: 6px;
+    margin: 12px 0 20px;
+  }
+  .tour-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--gray-200); transition: background 0.2s;
+  }
+  .tour-dot.active { background: var(--purple-mid); width: 18px; border-radius: 3px; }
+
+  /* ── PRE-POPULATED ITEMS ─────────────────────────────────────────────────── */
+  .pre-pop-list { display: flex; flex-direction: column; gap: 8px; }
+  .pre-pop-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px;
+    background: var(--gray-100);
+    border-radius: 10px;
+  }
+  .pre-pop-check {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--green-mid);
+    color: #fff;
+    font-size: 11px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-weight: 700;
+  }
+  .pre-pop-text { font-size: 13px; color: var(--gray-900); flex: 1; }
+  .pre-pop-source { font-size: 10px; color: var(--gray-400); }
+
+  /* ── LOADING ─────────────────────────────────────────────────────────────── */
+  .loading-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(44,15,91,0.85);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .loading-overlay.active { display: flex; }
+  .spinner {
+    width: 44px; height: 44px;
+    border: 3px solid rgba(255,255,255,0.2);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 15px; font-weight: 500; color: #fff; }
+  .loading-step { font-size: 13px; color: var(--purple-light); }
+
+  /* ── ERROR ───────────────────────────────────────────────────────────────── */
+  .error-msg {
+    background: var(--red-light);
+    border: 0.5px solid #FECACA;
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--red);
+    margin-bottom: 14px;
+    display: none;
+  }
+  .error-msg.active { display: block; }
+
+  /* ── CTA CARD ────────────────────────────────────────────────────────────── */
+  .cta-card {
+    background: linear-gradient(135deg, var(--purple-deep), var(--blue-mid));
+    border-radius: 16px;
+    padding: 22px 20px;
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  .cta-eyebrow { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--purple-light); margin-bottom: 6px; }
+  .cta-headline { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 6px; line-height: 1.3; }
+  .cta-sub { font-size: 13px; color: rgba(255,255,255,0.65); margin-bottom: 18px; line-height: 1.5; }
+  .cta-btn {
+    display: block; width: 100%;
+    padding: 13px; background: #fff;
+    color: var(--purple-mid); font-family: var(--font);
+    font-size: 14px; font-weight: 700;
+    border: none; border-radius: 10px;
+    cursor: pointer; margin-bottom: 8px;
+    transition: opacity 0.2s;
+  }
+  .cta-btn:hover { opacity: 0.93; }
+  .cta-trial { font-size: 11px; color: rgba(255,255,255,0.5); }
+
+  /* ── SECTION LABEL ───────────────────────────────────────────────────────── */
+  .section-label {
+    font-size: 10px; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--gray-400);
+    margin-bottom: 10px; font-weight: 600;
+  }
+
+  /* ── ANIMATIONS ──────────────────────────────────────────────────────────── */
+  .fade-in {
+    animation: fadeIn 0.4s ease forwards;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── SIGN IN LINK ────────────────────────────────────────────────────────── */
+  .signin-link {
+    text-align: center;
+    font-size: 13px;
+    color: var(--gray-400);
+    margin-top: 8px;
+  }
+  .signin-link a { color: var(--purple-mid); text-decoration: none; font-weight: 500; }
+
+  .address-confirmed {
+    background: var(--purple-tint);
+    border: 0.5px solid var(--purple-border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    font-size: 13px;
+    color: var(--purple-mid);
+    font-weight: 500;
+  }
+</style>
+</head>
+<body>
+
+<!-- ── LOADING OVERLAY ──────────────────────────────────────────────────────── -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">Searching public records...</div>
+  <div class="loading-step" id="loadingStep">Validating address</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- SCREEN 1: ADDRESS LOOKUP                                                   -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div class="screen active" id="screen1">
+  <div class="hero">
+    <div class="logo-small" style="margin-bottom:28px;">
+      <div class="logo-mark">M</div>
+      <span class="logo-name">MyHomeBase™</span>
+    </div>
+    <p class="hero-eyebrow">Step 1 of 6 — Home Intelligence</p>
+    <h1 class="hero-headline">Enter your address.<br>We'll show you what<br><em>we already know.</em></h1>
+    <p class="hero-sub">Public records, environmental data, and your preliminary Home Wellness Score™ — generated instantly.</p>
+    <div class="search-box">
+      <input class="search-input" id="s1AddressInput" type="text"
+        placeholder="123 Main St, City, State ZIP"
+        onkeydown="if(event.key==='Enter') runLookup()">
+      <button class="search-btn" id="s1SearchBtn" onclick="runLookup()">Look up →</button>
+    </div>
+  </div>
+
+  <div class="body-content">
+    <div class="error-msg" id="s1Error"></div>
+
+    <!-- Results — hidden until lookup completes -->
+    <div id="s1Results" style="display:none;">
+
+      <!-- Address confirmed -->
+      <div class="address-confirmed fade-in">
+        📍 <span id="s1ConfirmedAddress">—</span>
+      </div>
+
+      <!-- Property Profile -->
+      <div class="card fade-in">
+        <div class="card-header">
+          <div class="card-eyebrow">From Public Records</div>
+          <div class="card-title">Property Profile</div>
+        </div>
+        <div class="card-body">
+          <div class="stats-grid" id="s1StatsGrid"></div>
+        </div>
+      </div>
+
+      <!-- HWS Preview -->
+      <div class="card fade-in">
+        <div class="card-header">
+          <div class="card-eyebrow">Preliminary Estimate</div>
+          <div class="card-title">Home Wellness Score™</div>
+        </div>
+        <div class="card-body">
+          <div class="hws-reveal">
+            <div class="hws-dial-big" id="s1HwsDial">
+              <span class="hws-num" id="s1HwsNum">—</span>
+              <span class="hws-denom">/ 1000</span>
+            </div>
+            <div class="hws-band-label" id="s1HwsBand">—</div>
+            <div class="hws-desc-text" id="s1HwsDesc">—</div>
+          </div>
+          <div class="score-bar-wrap">
+            <div class="score-bar" id="s1ScoreBar"></div>
+          </div>
+          <div class="score-labels">
+            <span>0 — Critical</span>
+            <span>500 — Fair</span>
+            <span>1000 — Excellent</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- CTA to claim -->
+      <div class="cta-card fade-in">
+        <p class="cta-eyebrow">Your next step</p>
+        <h2 class="cta-headline">Give your home a record.<br>Give it a score.</h2>
+        <p class="cta-sub">This is a preliminary estimate. Your real HWS™ gets built from your maintenance history, completed tasks, and your home inspection report.</p>
+        <button class="cta-btn" onclick="goTo(2)">Claim this home & create my account →</button>
+        <div class="cta-trial">14-day free trial · No credit card required · $5/month after</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- SCREEN 2: CREATE ACCOUNT                                                   -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen2">
+  <div class="progress-wrap">
+    <div class="progress-header">
+      <div class="logo-small">
+        <div class="logo-mark">M</div>
+        <span class="logo-name">MyHomeBase™</span>
+      </div>
+      <span class="step-label">Step 2 of 6</span>
+    </div>
+    <div class="progress-bar-wrap"><div class="progress-bar" style="width:33%"></div></div>
+  </div>
+
+  <div class="hero" style="padding:24px 24px 32px;">
+    <p class="hero-eyebrow">Create Your Account</p>
+    <h1 class="hero-headline" style="font-size:26px;">Your home<br>is waiting for you.</h1>
+    <p class="hero-sub">Free for 14 days. No credit card required.</p>
+  </div>
+
+  <div class="body-content">
+    <div class="card">
+      <div class="card-body">
+        <button class="btn-google" onclick="goTo(3)">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Continue with Google
+        </button>
+        <div class="divider">or</div>
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input class="form-input" type="text" placeholder="Jane Smith">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email Address</label>
+          <input class="form-input" type="email" placeholder="jane@email.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input class="form-input" type="password" placeholder="Create a secure password">
+        </div>
+        <button class="btn-primary" onclick="goTo(3)">Create My Account →</button>
+        <div class="signin-link">Already have an account? <a href="#">Sign in</a></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- SCREEN 3: INSPECTION REPORT                                                -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen3">
+  <div class="progress-wrap">
+    <div class="progress-header">
+      <div class="logo-small">
+        <div class="logo-mark">M</div>
+        <span class="logo-name">MyHomeBase™</span>
+      </div>
+      <span class="step-label">Step 3 of 6</span>
+    </div>
+    <div class="progress-bar-wrap"><div class="progress-bar" style="width:50%"></div></div>
+  </div>
+
+  <div class="hero" style="padding:24px 24px 32px;">
+    <p class="hero-eyebrow">Home Inspection Report</p>
+    <h1 class="hero-headline" style="font-size:26px;">Do you have your<br>inspection report?</h1>
+    <p class="hero-sub">Our AI reads it and populates your home's details automatically. You don't have to enter anything.</p>
+  </div>
+
+  <div class="body-content">
+    <div class="error-msg" id="s3Error"></div>
+
+    <div class="upload-option" id="opt1" onclick="selectOption(1)">
+      <div class="option-icon purple">📄</div>
+      <div>
+        <div class="option-title">Upload my report now</div>
+        <div class="option-sub">PDF or image — AI parses it instantly</div>
+      </div>
+    </div>
+
+    <div class="upload-option" id="opt2" onclick="selectOption(2)">
+      <div class="option-icon blue">📧</div>
+      <div>
+        <div class="option-title">Email it to us</div>
+        <div class="option-sub">Send to reports@gotohomebase.com anytime</div>
+      </div>
+    </div>
+
+    <div class="upload-option" id="opt3" onclick="selectOption(3)">
+      <div class="option-icon green">🏡</div>
+      <div>
+        <div class="option-title">My agent will upload it</div>
+        <div class="option-sub">Send your agent a secure upload link</div>
+      </div>
+    </div>
+
+    <!-- Upload area — shown when option 1 selected -->
+    <div id="uploadArea" style="display:none; margin-top:14px;">
+      <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+        <div class="upload-icon">📤</div>
+        <div class="upload-title">Tap to upload your inspection report</div>
+        <div class="upload-sub">PDF, JPG, or PNG · AI will extract all the details</div>
+      </div>
+      <input type="file" id="fileInput" class="upload-input" accept=".pdf,.jpg,.jpeg,.png" onchange="handleFileUpload(this)">
+    </div>
+
+    <!-- Agent link — shown when option 3 selected -->
+    <div id="agentLinkArea" style="display:none; margin-top:14px;">
+      <div class="card">
+        <div class="card-body">
+          <p class="section-label">Agent Upload Link</p>
+          <div style="background:var(--gray-100);border-radius:8px;padding:12px;font-size:13px;color:var(--purple-mid);font-weight:500;word-break:break-all;margin-bottom:12px;">
+            gotohomebase.com/agent-upload/abc123xyz
+          </div>
+          <button class="btn-secondary" onclick="navigator.clipboard?.writeText('gotohomebase.com/agent-upload/abc123xyz')">Copy Link</button>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-primary" style="margin-top:14px;" onclick="goTo(4)" id="s3NextBtn">Continue →</button>
+    <button class="btn-text" onclick="goTo(4)">Skip for now — I'll do this later</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- SCREEN 4: SMART PRE-POPULATION                                             -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen4">
+  <div class="progress-wrap">
+    <div class="progress-header">
+      <div class="logo-small">
+        <div class="logo-mark">M</div>
+        <span class="logo-name">MyHomeBase™</span>
+      </div>
+      <span class="step-label">Step 4 of 6</span>
+    </div>
+    <div class="progress-bar-wrap"><div class="progress-bar" style="width:67%"></div></div>
+  </div>
+
+  <div class="hero" style="padding:24px 24px 32px;">
+    <p class="hero-eyebrow">Your Home Profile</p>
+    <h1 class="hero-headline" style="font-size:26px;">Here's what we<br>already know.</h1>
+    <p class="hero-sub">We pre-populated your home's profile from public records. Verify what's right — no need to enter anything from scratch.</p>
+  </div>
+
+  <div class="body-content">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-eyebrow">Auto-populated from ATTOM Data</div>
+        <div class="card-title">Property Details</div>
+      </div>
+      <div class="card-body">
+        <div class="pre-pop-list" id="s4PrepopList"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-eyebrow">Based on build year & location</div>
+        <div class="card-title">Environmental Awareness</div>
+      </div>
+      <div class="card-body">
+        <div class="env-flags" id="s4EnvFlags"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-eyebrow">Pre-scheduled for your home</div>
+        <div class="card-title">Your First Task List</div>
+      </div>
+      <div class="card-body">
+        <div class="pre-pop-list" id="s4TaskList"></div>
+      </div>
+    </div>
+
+    <button class="btn-primary" onclick="goTo(5)">This looks right — continue →</button>
+    <button class="btn-text" onclick="goTo(5)">I'll review and edit later</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- SCREEN 5: HWS REVEAL                                                       -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen5">
+  <div class="progress-wrap">
+    <div class="progress-header">
+      <div class="logo-small">
+        <div class="logo-mark">M</div>
+        <span class="logo-name">MyHomeBase™</span>
+      </div>
+      <span class="step-label">Step 5 of 6</span>
+    </div>
+    <div class="progress-bar-wrap"><div class="progress-bar" style="width:83%"></div></div>
+  </div>
+
+  <div class="hero" style="padding:24px 24px 32px;">
+    <p class="hero-eyebrow">Your Home Wellness Score™</p>
+    <h1 class="hero-headline" style="font-size:26px;">Here's where<br>your home stands.</h1>
+    <p class="hero-sub">This score will improve as you complete tasks, log work, and build your home's record.</p>
+  </div>
+
+  <div class="body-content">
+    <div class="card">
+      <div class="card-body" style="text-align:center; padding:28px 20px;">
+        <div class="hws-dial-big" id="s5HwsDial" style="margin:0 auto 16px;">
+          <span class="hws-num" id="s5HwsNum">—</span>
+          <span class="hws-denom">/ 1000</span>
+        </div>
+        <div class="hws-band-label" id="s5HwsBand" style="font-size:20px; margin-bottom:6px;">—</div>
+        <div class="hws-desc-text" id="s5HwsDesc">—</div>
+        <div class="score-bar-wrap" style="margin-top:20px;">
+          <div class="score-bar" id="s5ScoreBar"></div>
+        </div>
+        <div class="score-labels"><span>0</span><span>500</span><span>1000</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-eyebrow">What's affecting your score</div>
+        <div class="card-title">Score Factors</div>
+      </div>
+      <div class="card-body">
+        <div class="factors" id="s5Factors"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-eyebrow">Your fastest wins</div>
+        <div class="card-title">How to improve</div>
+      </div>
+      <div class="card-body">
+        <div class="steps" id="s5Steps"></div>
+      </div>
+    </div>
+
+    <button class="btn-primary" onclick="goTo(6)">Let's see my dashboard →</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!-- SCREEN 6: TOUR                                                             -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen6">
+  <div class="progress-wrap">
+    <div class="progress-header">
+      <div class="logo-small">
+        <div class="logo-mark">M</div>
+        <span class="logo-name">MyHomeBase™</span>
+      </div>
+      <span class="step-label">Step 6 of 6</span>
+    </div>
+    <div class="progress-bar-wrap"><div class="progress-bar" style="width:100%"></div></div>
+  </div>
+
+  <div class="hero" style="padding:24px 24px 32px;">
+    <p class="hero-eyebrow">Quick Tour</p>
+    <h1 class="hero-headline" style="font-size:26px;">Three things to<br>know about<br><em>your dashboard.</em></h1>
+    <p class="hero-sub">Swipe through to see what's waiting for you.</p>
+  </div>
+
+  <div class="body-content">
+    <div class="tour-slides" id="tourSlides">
+
+      <div class="tour-slide">
+        <div class="tour-slide-header">
+          <div class="tour-icon" style="background:var(--purple-tint);">📋</div>
+          <div>
+            <div class="tour-slide-title">Your Task List</div>
+            <div class="tour-slide-sub">Geo-located & seasonal</div>
+          </div>
+        </div>
+        <div class="tour-slide-body">
+          Your maintenance tasks are pre-scheduled based on your home's age, systems, and your exact location. No generic checklists — just what your home actually needs, when it needs it. Complete tasks to watch your HWS™ climb.
+        </div>
+      </div>
+
+      <div class="tour-slide">
+        <div class="tour-slide-header">
+          <div class="tour-icon" style="background:var(--blue-light);">📁</div>
+          <div>
+            <div class="tour-slide-title">Service Records</div>
+            <div class="tour-slide-sub">Your home's permanent history</div>
+          </div>
+        </div>
+        <div class="tour-slide-body">
+          Every repair, inspection, and upgrade — logged, dated, and stored permanently with your home's unique HIN™. This record follows your home through every future sale. It's the most valuable document your home can have.
+        </div>
+      </div>
+
+      <div class="tour-slide">
+        <div class="tour-slide-header">
+          <div class="tour-icon" style="background:var(--green-light);">🔧</div>
+          <div>
+            <div class="tour-slide-title">Contractor Directory</div>
+            <div class="tour-slide-sub">The right pro for your home</div>
+          </div>
+        </div>
+        <div class="tour-slide-body">
+          Find verified local contractors who already know your home's history before they call you. No re-explaining. No starting from scratch. MHB sends them your home's relevant data so the first conversation is productive.
+        </div>
+      </div>
+
+    </div>
+
+    <div class="tour-dots">
+      <div class="tour-dot active" id="dot0"></div>
+      <div class="tour-dot" id="dot1"></div>
+      <div class="tour-dot" id="dot2"></div>
+    </div>
+
+    <button class="btn-primary" onclick="goToDashboard()">Go to my dashboard →</button>
+    <div style="text-align:center; font-size:12px; color:var(--gray-400); margin-top:8px;">
+      Your home record is ready. Welcome to MyHomeBase™.
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── STATE ────────────────────────────────────────────────────────────────────
+const state = {
+  address: '',
+  confirmed: '',
+  yearBuilt: null,
+  bedrooms: null,
+  bathrooms: null,
+  sqft: null,
+  lotSqft: null,
+  propertyType: null,
+  lastSaleDate: null,
+  lastSalePrice: null,
+  assessedValue: null,
+  estimatedValue: null,
+  hws: null,
+  selectedOption: null,
+};
+
+// ─── NAVIGATION ───────────────────────────────────────────────────────────────
+function goTo(n) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen' + n).classList.add('active');
+  window.scrollTo(0, 0);
+  if (n === 4) renderScreen4();
+  if (n === 5) renderScreen5();
+  if (n === 6) initTour();
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+const fmt = {
+  money: v => v ? '$' + parseInt(v).toLocaleString() : null,
+  sqft:  v => v ? parseInt(v).toLocaleString() + ' sq ft' : null,
+  date:  v => { if (!v) return null; try { return new Date(v).toLocaleDateString('en-US', {year:'numeric',month:'long'}); } catch { return v; } },
+  year:  v => v ? String(v) : null,
+};
+
+function showLoading(text, step) {
+  document.getElementById('loadingText').textContent = text || 'Loading...';
+  document.getElementById('loadingStep').textContent = step || '';
+  document.getElementById('loadingOverlay').classList.add('active');
+}
+function hideLoading() {
+  document.getElementById('loadingOverlay').classList.remove('active');
+}
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = '⚠️ ' + msg;
+  el.classList.add('active');
+}
+function hideError(id) {
+  document.getElementById(id).classList.remove('active');
+}
+
+// ─── HWS CALCULATION ─────────────────────────────────────────────────────────
+function calcHWS(yearBuilt) {
+  if (!yearBuilt) return { score: 500, band: 'Unknown', color: '#6B7280', barColor: '#6B7280', desc: 'We need your home\'s details to calculate a precise score. Completing your profile will unlock your real HWS™.' };
+  const age = new Date().getFullYear() - parseInt(yearBuilt);
+  let score = 1000;
+  if (age > 50)      score -= 320;
+  else if (age > 35) score -= 220;
+  else if (age > 20) score -= 140;
+  else if (age > 10) score -= 70;
+  else if (age > 5)  score -= 30;
+  score -= 120; // unknown maintenance history penalty
+  score = Math.max(200, Math.min(950, score));
+  const rounded = Math.round(score / 10) * 10;
+  let band, color, barColor, desc;
+  if (rounded >= 800)      { band='Excellent'; color='#079669'; barColor='#079669'; desc='Your home\'s age suggests it\'s in great shape. Keep logging maintenance to protect this score.'; }
+  else if (rounded >= 600) { band='Good';      color='#3C258E'; barColor='#3C258E'; desc='Your home has some age on it. Logging past maintenance and completing key tasks will improve this score.'; }
+  else if (rounded >= 400) { band='Needs Work'; color='#D97706'; barColor='#D97706'; desc='Older homes carry more maintenance risk. Start with the highest-priority tasks to see the fastest improvement.'; }
+  else                     { band='Critical';  color='#DC2626'; barColor='#DC2626'; desc='Significant attention needed. Start by documenting your home\'s major systems to understand the full picture.'; }
+  return { score: rounded, band, color, barColor, desc };
+}
+
+// ─── SCREEN 1: LOOKUP ─────────────────────────────────────────────────────────
+async function runLookup() {
+  const address = document.getElementById('s1AddressInput').value.trim();
+  if (!address || address.length < 5) { showError('s1Error', 'Please enter a full address including city and state.'); return; }
+  hideError('s1Error');
+  document.getElementById('s1Results').style.display = 'none';
+  document.getElementById('s1SearchBtn').disabled = true;
+  showLoading('Searching public records...', 'Validating address');
+  state.address = address;
+
+  try {
+    // Geocode
+    document.getElementById('loadingStep').textContent = 'Validating address...';
+    const geoRes = await fetch('/api/geocode?address=' + encodeURIComponent(address));
+    const geo = await geoRes.json();
+    if (!geoRes.ok) throw new Error(geo.error || 'Address not found. Please include city and state.');
+    state.confirmed = geo.formatted;
+    const a1 = geo.street || address.split(',')[0];
+    const a2 = (geo.city + ', ' + geo.state + ' ' + geo.zip).trim();
+
+    // Property
+    document.getElementById('loadingStep').textContent = 'Pulling public property records...';
+    const propRes = await fetch('/api/property?address1=' + encodeURIComponent(a1) + '&address2=' + encodeURIComponent(a2));
+    const prop = await propRes.json();
+    if (propRes.ok) {
+      state.yearBuilt    = prop.yearBuilt;
+      state.bedrooms     = prop.bedrooms;
+      state.bathrooms    = prop.bathrooms;
+      state.sqft         = prop.sqft;
+      state.lotSqft      = prop.lotSqft;
+      state.propertyType = prop.propertyType;
+      state.lastSaleDate = prop.lastSaleDate;
+      state.lastSalePrice= prop.lastSalePrice;
+      state.assessedValue= prop.assessedValue;
+      state.estimatedValue= prop.marketValue;
+    }
+
+    // AVM
+    document.getElementById('loadingStep').textContent = 'Estimating current value...';
+    try {
+      const avmRes = await fetch('/api/avm?address1=' + encodeURIComponent(a1) + '&address2=' + encodeURIComponent(a2));
+      if (avmRes.ok) { const avm = await avmRes.json(); if (avm.estimatedValue) state.estimatedValue = avm.estimatedValue; }
+    } catch {}
+
+    // Calculate HWS
+    state.hws = calcHWS(state.yearBuilt);
+
+    // Render Screen 1 results
+    renderScreen1Results();
+    hideLoading();
+    document.getElementById('s1Results').style.display = 'block';
+
+  } catch (err) {
+    hideLoading();
+    showError('s1Error', err.message || 'Something went wrong. Please try again.');
+  } finally {
+    document.getElementById('s1SearchBtn').disabled = false;
+  }
+}
+
+function renderScreen1Results() {
+  document.getElementById('s1ConfirmedAddress').textContent = state.confirmed;
+  const items = [
+    { label:'Year Built',      value: fmt.year(state.yearBuilt) },
+    { label:'Living Area',     value: fmt.sqft(state.sqft) },
+    { label:'Bedrooms',        value: state.bedrooms },
+    { label:'Bathrooms',       value: state.bathrooms },
+    { label:'Lot Size',        value: fmt.sqft(state.lotSqft) },
+    { label:'Property Type',   value: state.propertyType },
+    { label:'Last Sold',       value: fmt.date(state.lastSaleDate) },
+    { label:'Last Sale Price', value: fmt.money(state.lastSalePrice) },
+    { label:'Estimated Value', value: fmt.money(state.estimatedValue), purple: true },
+  ].filter(i => i.value);
+
+  document.getElementById('s1StatsGrid').innerHTML = items.map(i => `
+    <div class="stat">
+      <div class="stat-label">${i.label}</div>
+      <div class="stat-value${i.purple?' purple':''}">${i.value}</div>
+    </div>
+  `).join('');
+
+  const hws = state.hws;
+  document.getElementById('s1HwsDial').style.background = `linear-gradient(135deg, ${hws.color}, ${hws.color}99)`;
+  document.getElementById('s1HwsNum').textContent = hws.score;
+  document.getElementById('s1HwsBand').textContent = hws.band;
+  document.getElementById('s1HwsBand').style.color = hws.color;
+  document.getElementById('s1HwsDesc').textContent = hws.desc;
+  setTimeout(() => {
+    document.getElementById('s1ScoreBar').style.width = (hws.score / 1000 * 100) + '%';
+    document.getElementById('s1ScoreBar').style.background = hws.barColor;
+  }, 300);
+}
+
+// ─── SCREEN 3: INSPECTION OPTION ──────────────────────────────────────────────
+function selectOption(n) {
+  state.selectedOption = n;
+  [1,2,3].forEach(i => document.getElementById('opt'+i).classList.remove('selected'));
+  document.getElementById('opt'+n).classList.add('selected');
+  document.getElementById('uploadArea').style.display   = n === 1 ? 'block' : 'none';
+  document.getElementById('agentLinkArea').style.display = n === 3 ? 'block' : 'none';
+}
+
+function handleFileUpload(input) {
+  if (input.files && input.files[0]) {
+    const file = input.files[0];
+    document.querySelector('#uploadArea .upload-title').textContent = '✅ ' + file.name + ' uploaded';
+    document.querySelector('#uploadArea .upload-sub').textContent = 'AI is parsing your inspection report...';
+  }
+}
+
+// ─── SCREEN 4: PRE-POPULATION ─────────────────────────────────────────────────
+function renderScreen4() {
+  const age = state.yearBuilt ? new Date().getFullYear() - parseInt(state.yearBuilt) : 0;
+
+  // Pre-pop list
+  const items = [
+    { label: 'Address',        value: state.confirmed,                     source: 'Google Maps' },
+    { label: 'Year Built',     value: fmt.year(state.yearBuilt),           source: 'ATTOM Public Records' },
+    { label: 'Bedrooms',       value: state.bedrooms,                      source: 'ATTOM Public Records' },
+    { label: 'Bathrooms',      value: state.bathrooms,                     source: 'ATTOM Public Records' },
+    { label: 'Living Area',    value: fmt.sqft(state.sqft),                source: 'ATTOM Public Records' },
+    { label: 'Lot Size',       value: fmt.sqft(state.lotSqft),             source: 'ATTOM Public Records' },
+    { label: 'Estimated Value',value: fmt.money(state.estimatedValue),     source: 'ATTOM AVM' },
+    { label: 'Property Type',  value: state.propertyType,                  source: 'ATTOM Public Records' },
+  ].filter(i => i.value);
+
+  document.getElementById('s4PrepopList').innerHTML = items.map(i => `
+    <div class="pre-pop-item">
+      <div class="pre-pop-check">✓</div>
+      <div class="pre-pop-text"><strong>${i.label}:</strong> ${i.value}</div>
+      <div class="pre-pop-source">${i.source}</div>
+    </div>
+  `).join('');
+
+  // Env flags
+  const yr = parseInt(state.yearBuilt) || 0;
+  const flags = [];
+  if (yr > 0 && yr < 1978) flags.push({ type:'warn', icon:'⚠️', title:'Lead Paint Risk', body:`Built in ${yr} — homes before 1978 may contain lead-based paint.` });
+  if (yr > 0 && yr < 1980) flags.push({ type:'warn', icon:'🏗️', title:'Potential Asbestos', body:'Homes before 1980 may contain asbestos in insulation or tiles.' });
+  flags.push({ type:'info', icon:'☢️', title:'Radon Testing Recommended', body:'The EPA recommends testing all homes. Retest every 2 years.' });
+  if (age > 30) flags.push({ type:'warn', icon:'🔧', title:'Aging Major Systems', body:`At ${age} years old, HVAC, water heater, and roof may be approaching end of life.` });
+  flags.push({ type:'ok', icon:'✅', title:'Documentation = Protection', body:'A complete maintenance record protects your insurance claims.' });
+
+  document.getElementById('s4EnvFlags').innerHTML = flags.map(f => `
+    <div class="env-flag ${f.type}">
+      <div class="env-icon">${f.icon}</div>
+      <div><div class="env-title">${f.title}</div><div>${f.body}</div></div>
+    </div>
+  `).join('');
+
+  // Task list
+  const tasks = [
+    { task: 'Schedule HVAC inspection & filter replacement', source: 'System age estimate' },
+    { task: 'Test smoke & carbon monoxide detectors', source: 'Safety requirement' },
+    { task: 'Clean gutters and check drainage', source: 'Seasonal maintenance' },
+    { task: 'Inspect roof for damage or wear', source: 'Age-based recommendation' },
+    { task: 'Test main water shutoff valve', source: 'Safety requirement' },
+    { task: 'Schedule radon test', source: 'EPA recommendation' },
+  ];
+  document.getElementById('s4TaskList').innerHTML = tasks.map(t => `
+    <div class="pre-pop-item">
+      <div class="pre-pop-check" style="background:var(--blue-mid);">→</div>
+      <div class="pre-pop-text">${t.task}</div>
+      <div class="pre-pop-source">${t.source}</div>
+    </div>
+  `).join('');
+}
+
+// ─── SCREEN 5: HWS REVEAL ────────────────────────────────────────────────────
+function renderScreen5() {
+  const hws = state.hws || calcHWS(state.yearBuilt);
+  const age = state.yearBuilt ? new Date().getFullYear() - parseInt(state.yearBuilt) : 0;
+
+  document.getElementById('s5HwsDial').style.background = `linear-gradient(135deg, ${hws.color}, ${hws.color}99)`;
+  document.getElementById('s5HwsNum').textContent = hws.score;
+  document.getElementById('s5HwsBand').textContent = hws.band;
+  document.getElementById('s5HwsBand').style.color = hws.color;
+  document.getElementById('s5HwsDesc').textContent = hws.desc;
+  setTimeout(() => {
+    document.getElementById('s5ScoreBar').style.width = (hws.score / 1000 * 100) + '%';
+    document.getElementById('s5ScoreBar').style.background = hws.barColor;
+  }, 400);
+
+  document.getElementById('s5Factors').innerHTML = [
+    { dot:'#DC2626', text:`System age depreciation — ${age > 0 ? age + '-year-old home' : 'unknown age'}` },
+    { dot:'#D97706', text:'Maintenance history unverified — no records on file yet' },
+    { dot:'#3C258E', text:'Public data only — owner-verified details not yet added' },
+    { dot:'#6B7280', text:'Environmental risks flagged from location & build year' },
+  ].map(f => `
+    <div class="factor">
+      <div class="factor-dot" style="background:${f.dot}"></div>
+      <span>${f.text}</span>
+    </div>
+  `).join('');
+
+  document.getElementById('s5Steps').innerHTML = [
+    { num:'1', text:'Upload your home inspection report', pts:'+80–120 pts' },
+    { num:'2', text:'Log all past maintenance and repairs', pts:'+40 pts' },
+    { num:'3', text:'Document ages of all major systems', pts:'+30 pts' },
+    { num:'4', text:'Complete your first seasonal checklist', pts:'+25 pts' },
+    { num:'5', text:'Connect with a contractor for overdue tasks', pts:'+20 pts' },
+  ].map(s => `
+    <div class="step-row">
+      <div class="step-num">${s.num}</div>
+      <div class="step-text">${s.text}</div>
+      <div class="step-pts">${s.pts}</div>
+    </div>
+  `).join('');
+}
+
+// ─── SCREEN 6: TOUR ───────────────────────────────────────────────────────────
+function initTour() {
+  const slides = document.getElementById('tourSlides');
+  slides.addEventListener('scroll', () => {
+    const idx = Math.round(slides.scrollLeft / slides.offsetWidth);
+    [0,1,2].forEach(i => {
+      document.getElementById('dot'+i).classList.toggle('active', i === idx);
+    });
+  });
+}
+
+function goToDashboard() {
+  alert('🎉 Welcome to MyHomeBase™!\n\nIn the full app, this would take you to your personalized dashboard.');
+}
+</script>
+</body>
+</html>

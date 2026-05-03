@@ -64,26 +64,12 @@
     background: radial-gradient(circle, rgba(21,96,162,0.2) 0%, transparent 70%);
     pointer-events: none;
   }
-  .hero-top-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 28px;
-    position: relative; z-index: 1;
-  }
-  .hero-back {
-    font-size: 13px;
-    color: rgba(255,255,255,0.6);
-    text-decoration: none;
-    font-weight: 500;
-    min-width: 50px;
-  }
-  .hero-back:hover { color: #fff; }
   .logo-row {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
+    margin-bottom: 28px;
     position: relative; z-index: 1;
   }
   .logo-mark {
@@ -117,7 +103,7 @@
     font-weight: 800;
     color: #fff;
     line-height: 1.15;
-    margin-bottom: 24px;
+    margin-bottom: 14px;
     position: relative; z-index: 1;
     letter-spacing: -0.5px;
   }
@@ -125,7 +111,6 @@
     font-style: italic;
     font-weight: 300;
     color: var(--purple-light);
-    font-size: 34px;
   }
   .hero-sub {
     font-size: 15px;
@@ -158,8 +143,8 @@
     text-align: center;
   }
   .stat-tile.accent {
-    background: #ffffff;
-    border-color: #e5e7eb;
+    background: var(--purple-tint);
+    border-color: var(--purple-border);
   }
   .stat-num {
     font-size: 26px;
@@ -518,16 +503,12 @@
 
 <!-- HERO -->
 <div class="hero">
-  <div class="hero-top-bar">
-    <a href="/" class="hero-back">← Back</a>
-    <div class="logo-row">
-      <a href="/welcome" style="display:inline-block;line-height:0;position:relative;z-index:1;"><img src="/my-homebase-logo-tm-final-white.png" alt="MyHomeBase™" style="height:36px;width:auto;display:block;"></a>
-    </div>
-    <div style="width:50px;"></div>
+  <div class="logo-row">
+    <img src="/my-homebase-logo-tm-final-white.png" alt="MyHomeBase™" style="height:36px;width:auto;position:relative;z-index:1;">
   </div>
   <div class="step-pill">Step 1 of 7 — Welcome</div>
   <h1 class="hero-headline">
-    Your home is your<br>biggest investment.<br><em>Start acting like it.</em>
+    Your home is your<br>biggest investment.<br><br><em>Start acting like it.</em>
   </h1>
   <p class="hero-sub">The cross between Carfax and FICO — but for your house. A verified record. A live health score. Protection that follows your home forever.</p>
 </div>

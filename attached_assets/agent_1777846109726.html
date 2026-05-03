@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyHomeBase™ for RE Agents — Close Deals. Stay Remembered.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  
+  --
+  --green:#079669;
+  --green-deep:#09694A;
+  --green-mid:#0A7A56;
+  --green-bright:#22C55E;
+  --green-light:#D4EBDE;
+  --green-tint:#F0FAF4;
+  --green-border:#A7D7B8;
+  --purple:#3C258E;
+  --purple-tint:#EEEDFE;
+  --blue:#1560A2;
+  --blue-light:#E6F1FB;
+  --amber:#D97706;
+  --amber-light:#FEF3C7;
+  --red:#DC2626;
+  --red-light:#FEF2F2;
+  --off-white:#F8FAF9;
+  --gray-100:#F3F4F6;
+  --gray-200:#E5E7EB;
+  --gray-400:#9CA3AF;
+  --gray-600:#4B5563;
+  --gray-900:#111827;
+  --white:#FFFFFF;
+}
+html,body{font-family:var(--font);background:var(--off-white);color:var(--gray-900);min-height:100vh;overflow-x:hidden;}
+
+/* ── NAV ── */
+nav{
+  background:var(--white);
+  border-bottom:0.5px solid var(--gray-200);
+  padding:14px 24px;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100;
+}
+.nav-logo img{height:28px;width:auto;}
+.nav-right{display:flex;align-items:center;gap:12px;}
+.nav-link{font-size:13px;color:var(--gray-600);text-decoration:none;font-weight:500;}
+.nav-back{font-size:13px;color:var(--green);text-decoration:none;font-weight:500;}
+.nav-cta{
+  padding:8px 18px;background:var(--green);color:#fff;
+  border-radius:8px;font-size:13px;font-weight:600;
+  text-decoration:none;transition:opacity 0.2s;
+}
+.nav-cta:hover{opacity:0.88;}
+
+/* ── HERO ── */
+.hero{
+  background:linear-gradient(160deg,var(--green-deep) 0%,var(--green-mid) 55%,#0A4A35 100%);
+  padding:56px 24px 64px;
+  position:relative;overflow:hidden;
+}
+.hero::before{
+  content:'';position:absolute;top:-80px;right:-80px;
+  width:400px;height:400px;border-radius:50%;
+  background:radial-gradient(circle,rgba(34,197,94,0.15) 0%,transparent 70%);
+  pointer-events:none;
+}
+.hero::after{
+  content:'';position:absolute;bottom:-60px;left:-60px;
+  width:280px;height:280px;border-radius:50%;
+  background:radial-gradient(circle,rgba(7,150,105,0.2) 0%,transparent 70%);
+  pointer-events:none;
+}
+.hero-inner{max-width:680px;margin:0 auto;position:relative;z-index:1;}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(255,255,255,0.1);
+  border:0.5px solid rgba(255,255,255,0.2);
+  border-radius:20px;padding:6px 16px;
+  font-size:12px;color:var(--green-light);
+  letter-spacing:1px;text-transform:uppercase;margin-bottom:20px;
+}
+.hero-headline{
+  font-family:var(--font);
+  font-size:clamp(32px,6vw,52px);
+  font-weight:normal;color:#fff;
+  line-height:1.15;margin-bottom:16px;letter-spacing:-0.5px;
+}
+.hero-headline em{font-style:italic;color:var(--green-light);}
+.hero-sub{
+  font-size:16px;color:rgba(255,255,255,0.65);
+  line-height:1.7;margin-bottom:32px;max-width:520px;
+}
+.hero-cta-row{display:flex;flex-wrap:wrap;gap:12px;align-items:center;}
+.btn-primary{
+  padding:15px 28px;background:#fff;color:var(--green);
+  border:none;border-radius:12px;font-family:var(--font);
+  font-size:15px;font-weight:700;cursor:pointer;
+  text-decoration:none;transition:opacity 0.2s;display:inline-block;
+}
+.btn-primary:hover{opacity:0.92;}
+.hero-note{font-size:13px;color:rgba(255,255,255,0.45);}
+
+/* ── STAT BAR ── */
+.stat-bar{background:var(--white);border-bottom:0.5px solid var(--gray-200);padding:24px;}
+.stat-bar-inner{
+  max-width:880px;margin:0 auto;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  gap:24px;text-align:center;
+}
+.stat-num{font-size:28px;font-weight:700;color:var(--green);line-height:1;margin-bottom:4px;}
+.stat-label{font-size:12px;color:var(--gray-400);line-height:1.4;text-transform:uppercase;letter-spacing:0.5px;}
+
+/* ── SECTION ── */
+.section{padding:56px 24px;max-width:880px;margin:0 auto;}
+.section-eyebrow{font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:var(--green);font-weight:600;margin-bottom:8px;}
+.section-title{
+  font-family:var(--font);
+  font-size:clamp(26px,4vw,36px);font-weight:normal;
+  color:var(--gray-900);line-height:1.25;margin-bottom:16px;
+}
+.section-sub{font-size:16px;color:var(--gray-600);line-height:1.7;max-width:560px;margin-bottom:36px;}
+
+/* ── CLOSING GIFT HERO CARD ── */
+.closing-card{
+  background:linear-gradient(135deg,var(--green-deep),var(--green-mid));
+  border-radius:20px;padding:32px;margin-bottom:48px;
+  position:relative;overflow:hidden;
+}
+.closing-card::before{
+  content:'';position:absolute;top:-30px;right:-30px;
+  width:160px;height:160px;border-radius:50%;
+  background:rgba(34,197,94,0.15);pointer-events:none;
+}
+.closing-eyebrow{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--green-light);margin-bottom:8px;font-weight:600;}
+.closing-headline{
+  font-family:var(--font);
+  font-size:26px;color:#fff;margin-bottom:8px;line-height:1.3;
+}
+.closing-sub{font-size:14px;color:rgba(255,255,255,0.65);line-height:1.6;margin-bottom:24px;}
+.closing-steps{display:flex;flex-direction:column;gap:10px;}
+.closing-step{
+  display:flex;align-items:flex-start;gap:12px;
+  background:rgba(255,255,255,0.1);
+  border:0.5px solid rgba(255,255,255,0.15);
+  border-radius:12px;padding:12px 14px;
+}
+.closing-step-num{
+  width:24px;height:24px;border-radius:50%;
+  background:rgba(255,255,255,0.2);
+  color:#fff;font-size:12px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.closing-step-text{font-size:13px;color:rgba(255,255,255,0.85);line-height:1.5;}
+
+/* ── VALUE GRID ── */
+.value-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+  gap:16px;margin-bottom:48px;
+}
+.value-card{
+  background:var(--white);border:0.5px solid var(--gray-200);
+  border-radius:16px;padding:24px;border-top:3px solid var(--green);
+}
+.val-icon{font-size:28px;margin-bottom:12px;}
+.val-title{font-size:15px;font-weight:600;color:var(--gray-900);margin-bottom:6px;}
+.val-body{font-size:13px;color:var(--gray-600);line-height:1.6;}
+
+/* ── REFERRAL FLYWHEEL ── */
+.flywheel-card{
+  background:var(--green-tint);border:0.5px solid var(--green-border);
+  border-radius:20px;padding:32px;margin-bottom:48px;
+}
+.fly-eyebrow{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--green);margin-bottom:8px;font-weight:600;}
+.fly-headline{
+  font-family:var(--font);
+  font-size:26px;color:var(--gray-900);margin-bottom:8px;line-height:1.3;
+}
+.fly-sub{font-size:14px;color:var(--gray-600);line-height:1.6;margin-bottom:24px;}
+.flywheel-math{
+  background:var(--white);border:0.5px solid var(--green-border);
+  border-radius:14px;padding:20px;margin-bottom:20px;
+}
+.fly-math-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:8px 0;border-bottom:0.5px solid var(--gray-100);
+  font-size:14px;
+}
+.fly-math-row:last-child{border-bottom:none;padding-bottom:0;}
+.fly-math-label{color:var(--gray-600);}
+.fly-math-val{font-weight:700;color:var(--green);}
+.fly-math-val.big{font-size:18px;}
+.fly-note{
+  background:rgba(7,150,105,0.08);
+  border:0.5px solid var(--green-border);
+  border-radius:10px;padding:12px 16px;
+  font-size:13px;color:var(--green-deep);line-height:1.5;
+}
+
+/* ── LISTING PREP ── */
+.listing-card{
+  background:var(--white);border:0.5px solid var(--gray-200);
+  border-radius:20px;overflow:hidden;margin-bottom:48px;
+}
+.listing-header{
+  background:linear-gradient(135deg,var(--green-deep),var(--green-mid));
+  padding:24px;
+}
+.listing-header-eyebrow{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--green-light);margin-bottom:6px;font-weight:600;}
+.listing-header-title{font-family:var(--font);font-size:20px;color:#fff;}
+.listing-body{padding:24px;}
+.listing-features{display:flex;flex-direction:column;gap:12px;}
+.listing-feature{
+  display:flex;align-items:flex-start;gap:12px;
+  padding:12px 14px;background:var(--green-tint);
+  border:0.5px solid var(--green-border);border-radius:10px;
+}
+.lf-icon{font-size:18px;flex-shrink:0;}
+.lf-title{font-size:13px;font-weight:600;color:var(--green-deep);margin-bottom:2px;}
+.lf-body{font-size:12px;color:var(--gray-600);line-height:1.5;}
+
+/* ── REPORT MOCKUP ── */
+.report-mockup{
+  background:var(--white);border:0.5px solid var(--gray-200);
+  border-radius:16px;overflow:hidden;margin-bottom:48px;
+  box-shadow:0 4px 24px rgba(0,0,0,0.08);
+}
+.report-header{
+  background:linear-gradient(135deg,var(--green-deep),var(--green-mid));
+  padding:20px 24px;display:flex;align-items:center;justify-content:space-between;
+}
+.report-title{font-family:var(--font);font-size:18px;color:#fff;}
+.report-badge{
+  background:rgba(255,255,255,0.15);border-radius:6px;
+  padding:4px 10px;font-size:11px;color:rgba(255,255,255,0.8);
+}
+.report-body{padding:20px;}
+.report-agent-row{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 14px;background:var(--green-tint);
+  border-radius:10px;margin-bottom:16px;
+  border:0.5px solid var(--green-border);
+}
+.report-avatar{
+  width:40px;height:40px;border-radius:50%;
+  background:var(--green);color:#fff;
+  font-size:14px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.report-agent-name{font-size:14px;font-weight:600;color:var(--gray-900);margin-bottom:1px;}
+.report-agent-title{font-size:12px;color:var(--gray-400);}
+.report-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;}
+.report-stat{background:var(--gray-100);border-radius:8px;padding:10px;text-align:center;}
+.report-stat-num{font-size:20px;font-weight:700;color:var(--green);line-height:1;}
+.report-stat-label{font-size:10px;color:var(--gray-400);text-transform:uppercase;letter-spacing:0.5px;margin-top:3px;}
+.report-note{font-size:12px;color:var(--gray-400);text-align:center;font-style:italic;}
+
+/* ── TESTIMONIAL ── */
+.testimonial-block{
+  background:var(--green-tint);
+  border:0.5px solid var(--green-border);
+  border-left:4px solid var(--green);
+  border-radius:16px;padding:24px;margin-bottom:48px;
+}
+.test-quote{
+  font-family:var(--font);font-size:18px;
+  color:var(--gray-900);line-height:1.6;font-style:italic;margin-bottom:16px;
+}
+.test-attr{display:flex;align-items:center;gap:10px;}
+.test-avatar{
+  width:40px;height:40px;border-radius:50%;background:var(--green);
+  color:#fff;font-size:14px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.test-name{font-size:14px;font-weight:600;color:var(--gray-900);}
+.test-title{font-size:12px;color:var(--gray-400);}
+
+/* ── PRICING ── */
+.pricing-card{
+  background:var(--white);border:2px solid var(--green);
+  border-radius:20px;overflow:hidden;margin-bottom:48px;max-width:480px;
+}
+.pricing-header{
+  background:linear-gradient(135deg,var(--green-deep),var(--green-mid));
+  padding:24px;text-align:center;
+}
+.pricing-eyebrow{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--green-light);margin-bottom:6px;font-weight:600;}
+.pricing-name{font-family:var(--font);font-size:22px;color:#fff;margin-bottom:4px;}
+.pricing-price{display:flex;align-items:baseline;justify-content:center;gap:4px;margin-top:8px;}
+.price-big{font-size:48px;font-weight:700;color:#fff;line-height:1;}
+.price-small{font-size:14px;color:rgba(255,255,255,0.6);}
+.pricing-body{padding:24px;}
+.pricing-features{display:flex;flex-direction:column;gap:10px;margin-bottom:20px;}
+.pricing-feature{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--gray-600);}
+.pf-check{
+  width:20px;height:20px;border-radius:50%;background:var(--green);
+  color:#fff;font-size:10px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.pricing-cta{
+  display:block;width:100%;padding:14px;background:var(--green);color:#fff;
+  border:none;border-radius:12px;font-family:var(--font);font-size:15px;font-weight:700;
+  cursor:pointer;text-align:center;text-decoration:none;transition:opacity 0.2s;
+}
+.pricing-cta:hover{opacity:0.88;}
+.pricing-trial{text-align:center;font-size:12px;color:var(--gray-400);margin-top:10px;}
+
+/* ── FINAL CTA ── */
+.final-cta{
+  background:linear-gradient(135deg,var(--green-deep),#071A10);
+  padding:64px 24px;text-align:center;
+}
+.final-cta-inner{max-width:560px;margin:0 auto;}
+.final-eyebrow{font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:var(--green-light);margin-bottom:12px;font-weight:600;}
+.final-headline{
+  font-family:var(--font);
+  font-size:clamp(28px,5vw,40px);color:#fff;line-height:1.2;margin-bottom:12px;
+}
+.final-sub{font-size:15px;color:rgba(255,255,255,0.6);line-height:1.7;margin-bottom:28px;}
+.final-btn{
+  display:inline-block;padding:16px 32px;background:#fff;color:var(--green);
+  border:none;border-radius:12px;font-family:var(--font);font-size:15px;font-weight:700;
+  cursor:pointer;text-decoration:none;transition:opacity 0.2s;margin-bottom:12px;
+}
+.final-btn:hover{opacity:0.92;}
+.final-note{font-size:12px;color:rgba(255,255,255,0.35);}
+
+/* ── FOOTER ── */
+footer{
+  background:var(--white);border-top:0.5px solid var(--gray-200);
+  padding:24px;display:flex;flex-wrap:wrap;
+  align-items:center;justify-content:space-between;
+  gap:12px;font-size:12px;color:var(--gray-400);
+}
+footer a{color:var(--green);text-decoration:none;}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    <img src="/my-homebase-logo-tm-final-white.png" alt="MyHomeBase™" style="filter:brightness(0)saturate(100%)invert(35%)sepia(72%)saturate(500%)hue-rotate(120deg)brightness(90%)contrast(95%);">
+  </div>
+  <div class="nav-right">
+    <a href="/" class="nav-back">← All users</a>
+    <a href="/login" class="nav-link">Sign in</a>
+    <a href="/onboarding" class="nav-cta">Create free agent account</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge">🏡 For Real Estate Agents</div>
+    <h1 class="hero-headline">The closing gift<br>they'll never<br><em>forget you for.</em></h1>
+    <p class="hero-sub">Set up your client's home record at closing. Their Home Wellness Score™ is live before they unpack a box. Every time they open the app — they think of you. And you earn $15 for every client who stays subscribed for 4+ months.</p>
+    <div class="hero-cta-row">
+      <a href="/onboarding" class="btn-primary">Start earning at closing →</a>
+      <span class="hero-note">Free for agents — always · No credit card required</span>
+    </div>
+  </div>
+</div>
+
+<!-- STAT BAR -->
+<div class="stat-bar">
+  <div class="stat-bar-inner">
+    <div>
+      <div class="stat-num">$15</div>
+      <div class="stat-label">Per client who stays 4+ months</div>
+    </div>
+    <div>
+      <div class="stat-num">Free</div>
+      <div class="stat-label">Always — no subscription ever</div>
+    </div>
+    <div>
+      <div class="stat-num">30 sec</div>
+      <div class="stat-label">To set up a client's home record</div>
+    </div>
+    <div>
+      <div class="stat-num">$300+</div>
+      <div class="stat-label">Annual earnings at 20 closings/yr</div>
+    </div>
+  </div>
+</div>
+
+<!-- CLOSING GIFT WORKFLOW -->
+<div class="section">
+  <div class="section-eyebrow">The closing day workflow</div>
+  <h2 class="section-title">Five minutes at closing.<br>Years of client loyalty.</h2>
+  <p class="section-sub">Most agents give a gift card at closing. You give your client a verified home record, a live wellness score, and a system that runs their home. The difference is unforgettable.</p>
+
+  <div class="closing-card">
+    <div class="closing-eyebrow">What you do at closing</div>
+    <h3 class="closing-headline">Their home is set up<br>before they get the keys.</h3>
+    <p class="closing-sub">It takes five minutes. The homeowner's first experience of MyHomeBase™ is a home that already knows its own history.</p>
+    <div class="closing-steps">
+      <div class="closing-step">
+        <div class="closing-step-num">1</div>
+        <div class="closing-step-text"><strong>Enter the address</strong> — ATTOM public records pre-populate the home's profile instantly. Year built, system ages, sale history, estimated value.</div>
+      </div>
+      <div class="closing-step">
+        <div class="closing-step-num">2</div>
+        <div class="closing-step-text"><strong>Upload the inspection report</strong> — AI reads it and extracts every system's condition, deficiencies, and estimated remaining life. Automatic.</div>
+      </div>
+      <div class="closing-step">
+        <div class="closing-step-num">3</div>
+        <div class="closing-step-text"><strong>Send the claim link</strong> — Your client gets a unique URL. They click it, create their account, and their home is already set up with their score live.</div>
+      </div>
+      <div class="closing-step">
+        <div class="closing-step-num">4</div>
+        <div class="closing-step-text"><strong>Hand them the co-branded report</strong> — A printed or digital Home Wellness Report with your name and brokerage on it. A closing gift they'll keep.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VALUE PROPS -->
+  <div class="section-eyebrow">Why agents use it</div>
+  <h2 class="section-title" style="margin-bottom:12px;">Four ways MHB makes<br>you the agent they remember.</h2>
+  <p class="section-sub">This isn't just a closing gift. It's a relationship tool, a listing differentiator, and a passive income stream — all in one.</p>
+
+  <div class="value-grid">
+    <div class="value-card">
+      <div class="val-icon">🎁</div>
+      <div class="val-title">The closing gift that lasts</div>
+      <div class="val-body">A bottle of wine is forgotten in a day. A home wellness platform is opened every time a maintenance reminder fires, every time a score improves, every time they need a contractor. Your name is on all of it.</div>
+    </div>
+    <div class="value-card">
+      <div class="val-icon">💰</div>
+      <div class="val-title">$15 per client — automatically</div>
+      <div class="val-body">Every homeowner client who stays subscribed for 4+ months earns you $15. No invoices. No tracking. No extra work. MyHomeBase is completely free for agents — so every dollar is pure profit. For an agent closing 20 homes a year that's $300 — automatically.</div>
+    </div>
+    <div class="value-card">
+      <div class="val-icon">📊</div>
+      <div class="val-title">The listing prep advantage</div>
+      <div class="val-body">Before a listing appointment, run MHB's address lookup on your seller's home. Walk in knowing the preliminary HWS™, system ages, and risk flags before the seller says a word. That's not an agent. That's an advisor.</div>
+    </div>
+    <div class="value-card">
+      <div class="val-icon">🤝</div>
+      <div class="val-title">Stronger buyer confidence</div>
+      <div class="val-body">Show buyers a verified Home Wellness Report on any MHB listing — the same way a dealer shows a Carfax. A verified maintenance history reduces inspection anxiety and accelerates decisions.</div>
+    </div>
+  </div>
+
+  <!-- REFERRAL FLYWHEEL -->
+  <div class="flywheel-card">
+    <div class="fly-eyebrow">The referral flywheel</div>
+    <h3 class="fly-headline">Your clients pay for<br>your subscription — and then some.</h3>
+    <p class="fly-sub">Every homeowner client who stays with MyHomeBase™ for 4 months or more earns you $15 automatically. The app is completely free for agents — so every dollar earned is pure upside.</p>
+    <div class="flywheel-math">
+      <div class="fly-math-row">
+        <span class="fly-math-label">Your subscription cost</span>
+        <span class="fly-math-val">$0 — always free</span>
+      </div>
+      <div class="fly-math-row">
+        <span class="fly-math-label">Earnings per client (4+ months)</span>
+        <span class="fly-math-val">$15 per client</span>
+      </div>
+      <div class="fly-math-row">
+        <span class="fly-math-label">Agent closing 20 homes/year earns</span>
+        <span class="fly-math-val big">$300/year</span>
+      </div>
+      <div class="fly-math-row">
+        <span class="fly-math-label">Agent closing 50 homes/year earns</span>
+        <span class="fly-math-val big">$750/year</span>
+      </div>
+    </div>
+    <div class="fly-note">💡 Referral income is paid automatically — no invoicing, no tracking, no extra work. We handle it. You just keep closing.</div>
+  </div>
+
+  <!-- LISTING PREP -->
+  <div class="listing-card">
+    <div class="listing-header">
+      <div class="listing-header-eyebrow">The listing prep advantage</div>
+      <div class="listing-header-title">Walk into every appointment knowing more than your competition.</div>
+    </div>
+    <div class="listing-body">
+      <div class="listing-features">
+        <div class="listing-feature">
+          <div class="lf-icon">🔍</div>
+          <div>
+            <div class="lf-title">Pre-appointment address lookup</div>
+            <div class="lf-body">Enter any address before your listing appointment and instantly see the preliminary HWS™, system ages, environmental flags, and estimated value. Walk in as the most informed person in the room.</div>
+          </div>
+        </div>
+        <div class="listing-feature">
+          <div class="lf-icon">📈</div>
+          <div>
+            <div class="lf-title">Score improvement before listing</div>
+            <div class="lf-body">If a seller's score is low, you have time to fix it. Recommend targeted maintenance tasks before listing to push the score up — and the sale price with it.</div>
+          </div>
+        </div>
+        <div class="listing-feature">
+          <div class="lf-icon">🏆</div>
+          <div>
+            <div class="lf-title">Differentiated listing marketing</div>
+            <div class="lf-body">"This home has a verified 847 Home Wellness Score™ and a complete 6-year maintenance record." No other agent in your market is saying that. No other listing tool makes it possible.</div>
+          </div>
+        </div>
+        <div class="listing-feature">
+          <div class="lf-icon">📄</div>
+          <div>
+            <div class="lf-title">Co-branded Home Wellness Report</div>
+            <div class="lf-body">Generate a branded PDF with your name and brokerage at closing. Give it to the homeowner. Attach it to your listing. Share it with buyer's agents. Your name on the most important document the home has.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REPORT MOCKUP -->
+  <div class="section-eyebrow">The co-branded report</div>
+  <h2 class="section-title" style="margin-bottom:12px;">Your name on the document<br>that follows the home forever.</h2>
+  <p class="section-sub">Every Home Wellness Report generated through your account carries your name, photo, and brokerage. It's the only closing document that keeps generating referrals long after the transaction closes.</p>
+
+  <div class="report-mockup">
+    <div class="report-header">
+      <div class="report-title">Home Wellness Report™</div>
+      <div class="report-badge">Verified by MyHomeBase™</div>
+    </div>
+    <div class="report-body">
+      <div class="report-agent-row">
+        <div class="report-avatar">SA</div>
+        <div>
+          <div class="report-agent-name">Prepared by Sarah Alvarez</div>
+          <div class="report-agent-title">Licensed RE Agent · Keller Williams Realty</div>
+        </div>
+      </div>
+      <div class="report-stats">
+        <div class="report-stat">
+          <div class="report-stat-num">847</div>
+          <div class="report-stat-label">Home Wellness Score™</div>
+        </div>
+        <div class="report-stat">
+          <div class="report-stat-num">2019</div>
+          <div class="report-stat-label">Year Built</div>
+        </div>
+        <div class="report-stat">
+          <div class="report-stat-num">Good</div>
+          <div class="report-stat-label">Overall Condition</div>
+        </div>
+      </div>
+      <div class="report-note">Generated at closing · 48 Hosford Ave · Verified maintenance record attached</div>
+    </div>
+  </div>
+
+  <!-- TESTIMONIAL -->
+  <div class="testimonial-block">
+    <div class="test-quote">"I used MHB at my last three closings. Every single client texted me within a week saying they loved it. Two of them already referred friends to me. The $15 referral income is nice — but the repeat business is where the real money is."</div>
+    <div class="test-attr">
+      <div class="test-avatar">SA</div>
+      <div>
+        <div class="test-name">Sarah A.</div>
+        <div class="test-title">Licensed RE Agent, New Jersey</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRICING -->
+  <div class="section-eyebrow">Simple pricing</div>
+  <h2 class="section-title" style="margin-bottom:32px;">Free for agents.<br>Always.</h2>
+  <div class="pricing-card">
+    <div class="pricing-header">
+      <div class="pricing-eyebrow">Agent Hub</div>
+      <div class="pricing-name">Everything agents need.</div>
+      <div class="pricing-price">
+        <span class="price-big">$0</span>
+        <span class="price-small">/month — forever</span>
+      </div>
+    </div>
+    <div class="pricing-body">
+      <div class="pricing-features">
+        <div class="pricing-feature"><div class="pf-check">✓</div>Address lookup — any US property</div>
+        <div class="pricing-feature"><div class="pf-check">✓</div>AI inspection report parsing</div>
+        <div class="pricing-feature"><div class="pf-check">✓</div>Client "claim your home" links</div>
+        <div class="pricing-feature"><div class="pf-check">✓</div>Co-branded Home Wellness Reports</div>
+        <div class="pricing-feature"><div class="pf-check">✓</div>$15 per client who stays 4+ months</div>
+        <div class="pricing-feature"><div class="pf-check">✓</div>Listing prep — HWS™ before every appointment</div>
+        <div class="pricing-feature"><div class="pf-check">✓</div>Agent Hub dashboard</div>
+        <div class="pricing-feature"><div class="pf-check">✓</div>No subscription — no catch</div>
+      </div>
+      <a href="/onboarding" class="pricing-cta">Create my free agent account →</a>
+      <div class="pricing-trial">Free forever for agents · No credit card required · Cancel anytime</div>
+    </div>
+  </div>
+</div>
+
+<!-- FINAL CTA -->
+<div class="final-cta">
+  <div class="final-cta-inner">
+    <div class="final-eyebrow">Ready to close differently?</div>
+    <h2 class="final-headline">Give your clients a home<br>that already knows itself.</h2>
+    <p class="final-sub">Set up their record at closing. Earn $15 when they stay. Stay top-of-mind for every referral that follows.</p>
+    <a href="/onboarding" class="final-btn">Start earning at closing →</a>
+    <div class="final-note">Free for agents — always · No credit card required · No subscription</div>
+  </div>
+</div>
+
+<footer>
+  <img src="/my-homebase-logo-tm-final-white.png" alt="MyHomeBase™" style="height:22px;filter:brightness(0)saturate(100%)invert(35%)sepia(72%)saturate(500%)hue-rotate(120deg)brightness(90%)contrast(95%);">
+  <span>© 2026 MyHomeBase™. All rights reserved.</span>
+  <div style="display:flex;gap:16px;">
+    <a href="/privacy-policy">Privacy Policy</a>
+    <a href="/terms">Terms of Service</a>
+    <a href="/contact">Contact</a>
+  </div>
+</footer>
+
+</body>
+</html>
