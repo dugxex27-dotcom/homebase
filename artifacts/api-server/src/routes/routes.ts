@@ -2973,7 +2973,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.session.save((saveErr: any) => {
           if (saveErr) return res.redirect('/homeowner?demo_error=1');
           console.log('[DEMO LOGIN GET] Homeowner session saved, redirecting');
-          res.redirect('/');
+          res.redirect('/dashboard');
         });
       });
     } catch (error) {
@@ -3308,7 +3308,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.session.save((saveErr: any) => {
           if (saveErr) return res.redirect('/contractor?demo_error=1');
           console.log('[DEMO LOGIN GET] Contractor session saved, redirecting');
-          res.redirect('/');
+          res.redirect('/dashboard');
         });
       });
     } catch (error) {
@@ -3574,7 +3574,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.session.save((saveErr: any) => {
           if (saveErr) return res.redirect('/agent?demo_error=1');
           console.log('[DEMO LOGIN GET] Agent session saved, redirecting');
-          res.redirect('/');
+          res.redirect('/dashboard');
         });
       });
     } catch (error) {

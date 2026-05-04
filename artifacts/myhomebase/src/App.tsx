@@ -175,6 +175,7 @@ function Router() {
         {/* Home route */}
         <Route path="/" component={Home} />
         <Route path="/homeowner" component={Home} />
+        <Route path="/dashboard" component={Home} />
         
         {/* Shared routes - all authenticated users */}
         <Route path="/test-upload" component={TestUpload} />
