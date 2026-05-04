@@ -37,20 +37,20 @@ html,body{font-family:var(--font);background:var(--off-white);color:var(--gray-9
 
 /* ── NAV ── */
 nav{
-  background:var(--white);
-  border-bottom:0.5px solid var(--gray-200);
+  background:#0d2217;
+  border-bottom:0.5px solid rgba(255,255,255,0.08);
   padding:14px 24px;
   display:flex;align-items:center;justify-content:space-between;
   position:sticky;top:0;z-index:100;
 }
 .nav-left{display:flex;align-items:center;gap:16px;}
 .nav-logo a{display:inline-flex;align-items:center;}
-.nav-logo img{height:28px;width:auto;filter:brightness(0) saturate(100%) invert(35%) sepia(72%) saturate(500%) hue-rotate(120deg) brightness(90%) contrast(95%);}
+.nav-logo img{height:28px;width:auto;}
 .nav-right{display:flex;align-items:center;gap:12px;}
-.nav-link{font-size:13px;color:var(--gray-600);text-decoration:none;font-weight:500;}
-.nav-back{font-size:13px;color:var(--green);text-decoration:none;font-weight:500;}
+.nav-link{font-size:13px;color:rgba(255,255,255,0.7);text-decoration:none;font-weight:500;transition:color .15s;}
+.nav-link:hover{color:#fff;}
 .nav-cta{
-  padding:8px 18px;background:var(--green);color:#fff;
+  padding:8px 18px;background:#fff;color:#0d2217;
   border-radius:8px;font-size:13px;font-weight:600;
   text-decoration:none;transition:opacity 0.2s;
 }
@@ -332,7 +332,6 @@ footer a{color:var(--green);text-decoration:none;}
     <div class="nav-logo">
       <a href="/agent"><img src="/my-homebase-logo-tm-final-white.png" alt="MyHomeBase™"></a>
     </div>
-    <a href="/" class="nav-back">← All users</a>
   </div>
   <div class="nav-right">
     <a href="/login" class="nav-link">Sign in</a>

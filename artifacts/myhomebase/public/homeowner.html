@@ -22,8 +22,8 @@
     /* ══ NAV ══ */
     .nav {
       position: sticky; top: 0; z-index: 800;
-      background: #fff;
-      border-bottom: 0.5px solid #E5E7EB;
+      background: #1a3d2b;
+      border-bottom: 0.5px solid rgba(255,255,255,0.08);
     }
     .nav-inner {
       max-width: 1200px; margin: 0 auto; padding: 0 24px;
@@ -32,40 +32,32 @@
     }
     .nav-left { display: flex; align-items: center; gap: 20px; }
     .nav-logo-link { display: flex; align-items: center; flex-shrink: 0; }
-    .nav-logo {
-      height: 28px; width: auto; object-fit: contain;
-      filter: brightness(0) saturate(100%) invert(14%) sepia(72%) saturate(1200%) hue-rotate(250deg) brightness(80%) contrast(110%);
-    }
-    .nav-all-users {
-      font-size: 13px; color: #3C258E; text-decoration: none;
-      font-weight: 500; white-space: nowrap; transition: color .15s;
-    }
-    .nav-all-users:hover { color: #2C0F5B; }
+    .nav-logo { height: 28px; width: auto; object-fit: contain; }
     .nav-links { display: flex; align-items: center; gap: 20px; }
     .nav-link {
-      background: none; border: none; color: #4B5563;
+      background: none; border: none; color: rgba(255,255,255,0.7);
       font-size: 13px; font-weight: 500; cursor: pointer; padding: 4px 0;
       transition: color .15s; font-family: inherit; text-decoration: none;
       display: inline-block;
     }
-    .nav-link:hover { color: #111827; }
+    .nav-link:hover { color: #fff; }
     .nav-right { display: flex; align-items: center; gap: 12px; }
     .nav-demo-btn { display: none; }
     .nav-get-started {
-      font-size: 13px; font-weight: 600; text-decoration: none; color: #fff;
-      background: #3C258E; border: none;
+      font-size: 13px; font-weight: 600; text-decoration: none; color: #1a3d2b;
+      background: #fff; border: none;
       padding: 8px 18px; border-radius: 8px; transition: opacity .2s;
       white-space: nowrap;
     }
     .nav-get-started:hover { opacity: .88; }
     .signin-wrap { position: relative; flex-shrink: 0; }
     .nav-signin-btn {
-      font-size: 13px; font-weight: 500; color: #4B5563;
+      font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.7);
       background: none; border: none;
       padding: 4px 0; transition: color .15s;
       cursor: pointer; font-family: inherit;
     }
-    .nav-signin-btn:hover, .nav-signin-btn.active { color: #111827; }
+    .nav-signin-btn:hover, .nav-signin-btn.active { color: #fff; }
     .signin-flyout {
       display: none; position: absolute; top: calc(100% + 10px); right: 0;
       width: 280px; background: #fff; border-radius: 18px;
@@ -815,7 +807,6 @@
       <a href="/homeowner" class="nav-logo-link">
         <img src="/my-homebase-logo-tm-final-white.png" alt="MyHomeBase™" class="nav-logo" />
       </a>
-      <a href="/" class="nav-all-users">← All users</a>
       <div class="nav-links">
         <a href="#how-it-works" class="nav-link">How It Works</a>
         <a href="#pricing" class="nav-link">Pricing</a>
