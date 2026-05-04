@@ -460,7 +460,6 @@ export class SecurityAuditLogger {
 // Session Manager for enhanced session security
 export class SecuritySessionManager {
   private static instance: SecuritySessionManager;
-  private auditLogger: SecurityAuditLogger;
   
   private constructor() {
     this.auditLogger = SecurityAuditLogger.getInstance();
@@ -529,7 +528,7 @@ export class SecuritySessionManager {
       conditions.push(sql`${securitySessions.sessionSid} != ${exceptSessionSid}`);
     }
     
-    const result = await db.update(securitySessions)
+    await db.update(securitySessions)
       .set({
         isActive: false,
         terminatedAt: new Date(),
@@ -573,7 +572,6 @@ export class SecuritySessionManager {
 // User-Level Rate Limiter for SOC 2 compliance
 export class UserRateLimiter {
   private static instance: UserRateLimiter;
-  private auditLogger: SecurityAuditLogger;
   
   // Default limits per endpoint category (requests per window)
   private readonly limits: Record<string, { maxRequests: number; windowMs: number }> = {

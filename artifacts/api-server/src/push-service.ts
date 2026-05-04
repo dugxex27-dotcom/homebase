@@ -4,7 +4,6 @@ import type { PushSubscription } from '@workspace/db';
 import { smsService } from './sms-service';
 
 // Generate VAPID keys for push notifications
-import crypto from 'crypto';
 
 // Helper to generate VAPID keys if not provided in environment
 const generateVapidKeys = () => {

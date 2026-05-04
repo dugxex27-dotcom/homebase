@@ -1,6 +1,6 @@
 import { db } from './db';
 import { users } from '@workspace/db';
-import { eq, and, isNotNull, lt, or, isNull } from 'drizzle-orm';
+import { eq, and, isNotNull, lt, or } from 'drizzle-orm';
 import { sendExpiredTrialReengagementEmail } from './email-service';
 import { isDemoId } from './storage';
 

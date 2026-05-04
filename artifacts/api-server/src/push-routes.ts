@@ -5,7 +5,7 @@ import { storage } from './storage';
 const router = express.Router();
 
 // Get VAPID public key for client subscription
-router.get('/vapid-public-key', (req, res) => {
+router.get('/vapid-public-key', (_req, res) => {
   try {
     const publicKey = pushService.getVapidPublicKey();
     res.json({ publicKey });

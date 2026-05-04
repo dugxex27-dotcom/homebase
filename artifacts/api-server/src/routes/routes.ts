@@ -2,14 +2,14 @@ import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
-import { storage, type IStorage, isDemoDataEnabled, isDemoId, isDemoEmail } from "../storage";
+import { storage, type IStorage } from "../storage";
 import { setupAuth, isAuthenticated, requireRole, requirePropertyOwner } from "../replitAuth";
 import { setupGoogleAuth } from "../googleAuth";
 import { z } from "zod";
 import { randomUUID } from "crypto";
 import rateLimit from "express-rate-limit";
-import { eq, and, or, lte, gte, sql as drizzleSql, isNull, isNotNull, desc, count } from "drizzle-orm";
-import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertNotificationSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertCountrySchema, insertRegionSchema, insertClimateZoneSchema, insertRegulatoryBodySchema, insertRegionalMaintenanceTaskSchema, insertTaskCompletionSchema, insertAchievementSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, maintenanceTasks, customMaintenanceTasks, insertSupportTicketSchema, insertSubscriptionCycleEventSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, crmClients, crmJobs, crmQuotes, crmInvoices, securitySessions, referralCredits, referralFreeMonths, agentProfiles, users, siteContent, insertSiteContentSchema, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, insertReviewFlagSchema, homeDocuments, insertHomeDocumentSchema, quizResults, insertQuizResultSchema, type House } from "@workspace/db";
+import { eq, and, sql as drizzleSql, isNotNull, desc } from "drizzle-orm";
+import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertTaskCompletionSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, customMaintenanceTasks, insertSupportTicketSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, securitySessions, referralCredits, referralFreeMonths, agentProfiles, users, siteContent, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, insertReviewFlagSchema, homeDocuments, quizResults, type House } from "@workspace/db";
 import { calculateDIYSavingsAmount } from "../shared/cost-helpers";
 import { extractInvoiceData, verifyDIYPhotos, type InvoiceExtraction } from "../invoice-analysis-service";
 import { invoiceAnalyses, contractorBoosts, affiliateReferrals, subscriptionCycleEvents } from "@workspace/db";
@@ -482,13 +482,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   })();
 
   // IMMEDIATE TEST: Simple test endpoint to verify routing works
-  app.post('/api/test-simple', (req, res) => {
+  app.post('/api/test-simple', (_req, res) => {
     console.error("===== SIMPLE TEST ENDPOINT CALLED =====");
     res.json({ success: true, message: "Test endpoint works!" });
   });
 
   // DEBUG: Test endpoint to check what Drizzle returns
-  app.get('/api/test-user-data', async (req, res) => {
+  app.get('/api/test-user-data', async (_req, res) => {
     try {
       const testUser = await storage.getUser('google_103315263202734374496');
       console.log('[TEST] User from storage:', testUser);
@@ -589,7 +589,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'User or company not found' });
       }
       
-      const companyId = user.companyId;
       
       // Validate image size (max 5MB for logos)
       const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
@@ -721,7 +720,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Stripe health check endpoint - Tests API connectivity
-  app.get('/api/stripe/health', async (req: any, res) => {
+  app.get('/api/stripe/health', async (_req: any, res) => {
     try {
       if (!stripe) {
         return res.status(500).json({ 
@@ -1143,8 +1142,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Check if this is a CRM invoice payment
           if (session.metadata?.type === 'crm_invoice_payment') {
             const invoiceId = session.metadata.invoiceId;
-            const companyId = session.metadata.companyId;
-            const clientId = session.metadata.clientId;
             
             if (invoiceId) {
               const invoice = await storage.getCrmInvoice(invoiceId);
@@ -1455,7 +1452,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/pay/invoice/:invoiceId', async (req: any, res) => {
     try {
       const { invoiceId } = req.params;
-      const { token } = req.query;
 
       // For now, allow access to invoice details for payment
       // In production, you'd want a signed token or session
@@ -3298,7 +3294,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/auth/contractor-demo-login', authLimiter, async (req: any, res) => {
     try {
       const demoEmail = 'david.martinez@precisionhvac.com';
-      const demoId = 'demo-contractor-permanent-id';
       let user = await storage.getUserByEmail(demoEmail);
       if (!user) return res.redirect('/contractor?demo_error=1');
       req.session.regenerate((err: any) => {
@@ -3564,7 +3559,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/auth/agent-demo-login', authLimiter, async (req: any, res) => {
     try {
       const demoEmail = 'jessica.roberts@ellisonrealty.com';
-      const demoId = 'demo-agent-permanent-id';
       let user = await storage.getUserByEmail(demoEmail);
       if (!user) return res.redirect('/agent?demo_error=1');
       req.session.regenerate((err: any) => {
@@ -3630,7 +3624,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate referral code if provided (for homeowners/contractors)
       // Supports both agent referrals (for affiliate payouts) and user-to-user referrals (for subscription credits)
       let referringAgent = null;
-      let referringUser = null;
       if (referralCode && (role === 'homeowner' || role === 'contractor')) {
         const referrer = await storage.getUserByReferralCode(referralCode);
         if (!referrer) {
@@ -4243,7 +4236,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin analytics routes
-  app.get('/api/admin/stats', requireAdmin, async (req, res) => {
+  app.get('/api/admin/stats', requireAdmin, async (_req, res) => {
     try {
       console.log("[ADMIN STATS] Fetching admin stats...");
       const stats = await storage.getAdminStats();
@@ -4270,7 +4263,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Invite code routes
-  app.get('/api/admin/invite-codes', requireAdmin, async (req, res) => {
+  app.get('/api/admin/invite-codes', requireAdmin, async (_req, res) => {
     try {
       const codes = await storage.getInviteCodes();
       res.json(codes);
@@ -4426,7 +4419,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin: list all users with referral free months summary
-  app.get('/api/admin/referral-free-months', requireAdmin, async (req, res) => {
+  app.get('/api/admin/referral-free-months', requireAdmin, async (_req, res) => {
     try {
       const rows = await db.execute(drizzleSql`
         WITH fm_agg AS (
@@ -4722,7 +4715,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/admin/security/recent-alerts', requireAdmin, async (req: any, res) => {
+  app.get('/api/admin/security/recent-alerts', requireAdmin, async (_req: any, res) => {
     try {
       // Get recent security-related events
       const result = await auditLogger.getAuditLogs({
@@ -4779,7 +4772,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/admin/security/active-sessions', requireAdmin, async (req: any, res) => {
+  app.get('/api/admin/security/active-sessions', requireAdmin, async (_req: any, res) => {
     try {
       // Get all active sessions across all users
       const activeSessions = await db.select()
@@ -4807,7 +4800,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin Agent Verification routes
-  app.get('/api/admin/agents', requireAdmin, async (req: any, res) => {
+  app.get('/api/admin/agents', requireAdmin, async (_req: any, res) => {
     try {
       // Get all agent profiles with user info - only real estate agents (role='agent')
       const profiles = await db.select()
@@ -7192,7 +7185,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Calculate stats
       const now = new Date();
       const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
       // Jobs stats
       const scheduledJobs = jobs.filter(j => j.status === 'scheduled').length;
@@ -7898,7 +7890,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const userId = req.session.user.id;
-      const { emailNotifications, smsNotifications, homeownerMessages, leadAlerts, appointmentReminders } = req.body;
+      const { emailNotifications, smsNotifications, homeownerMessages, appointmentReminders } = req.body;
       
       console.log(`[NOTIF] Contractor notification preferences updated for user ${userId}:`, req.body);
 
@@ -9425,8 +9417,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await objectStorageService.uploadFile(storageKey, req.file.buffer, req.file.mimetype);
 
       // Get the current user to check for old profile picture
-      const currentUser = await storage.getUser(userId);
-      const oldProfileImageUrl = currentUser?.profileImageUrl;
 
       // Update user's profile image URL
       await storage.upsertUser({
@@ -11071,7 +11061,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Generate secure token and expiry server-side
-      const token = randomUUID();
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
       
       // Create transfer request with server-generated security fields
@@ -14645,7 +14634,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   // Regional API endpoints for international expansion
   
   // Countries endpoints
-  app.get('/api/countries', async (req: any, res) => {
+  app.get('/api/countries', async (_req: any, res) => {
     try {
       const countries = await storage.getCountries();
       res.json(countries);
@@ -16265,7 +16254,6 @@ Severity levels:
       const userId = req.session?.user?.id;
       if (req.session?.user?.role !== "homeowner") return res.status(403).json({ message: "Homeowner access only" });
       const { houseId, category } = req.query;
-      let query = db.select().from(homeDocuments).where(eq(homeDocuments.homeownerId, userId));
       const docs = await db.select().from(homeDocuments)
         .where(and(
           eq(homeDocuments.homeownerId, userId),

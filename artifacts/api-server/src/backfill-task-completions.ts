@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { maintenanceLogs, taskCompletions } from "@workspace/db";
-import { isNotNull, notInArray, sql } from "drizzle-orm";
+import { isNotNull } from "drizzle-orm";
 
 /**
  * Backfill script to migrate existing maintenance_logs into task_completions table

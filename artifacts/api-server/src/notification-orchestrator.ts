@@ -1,7 +1,7 @@
 import { smsService } from './sms-service';
 import { emailService } from './email-service';
 import { pushNotificationService } from './push-notification-service';
-import { storage, isDemoId, isDemoEmail } from './storage';
+import { isDemoId } from './storage';
 
 export async function sendWelcomeNotifications(
   userId: string,

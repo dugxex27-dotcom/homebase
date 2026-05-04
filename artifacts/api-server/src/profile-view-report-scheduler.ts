@@ -35,24 +35,6 @@ async function canSendEngagementEmail(userId: string): Promise<boolean> {
   }
 }
 
-// Check if report was already successfully sent
-async function isReportSent(contractorId: string, reportMonth: string): Promise<boolean> {
-  try {
-    const existing = await db.select()
-      .from(monthlyReportsSent)
-      .where(and(
-        eq(monthlyReportsSent.contractorId, contractorId),
-        eq(monthlyReportsSent.reportMonth, reportMonth),
-        eq(monthlyReportsSent.status, 'sent')
-      ))
-      .limit(1);
-    return existing.length > 0;
-  } catch (error) {
-    console.error('[PROFILE-VIEW-SCHEDULER] Error checking if report sent:', error);
-    return false;
-  }
-}
-
 // Claim timeout in milliseconds (30 minutes) - stale claims older than this can be reclaimed
 // This is generous to handle slow email APIs; typical email send is <30 seconds
 const CLAIM_TIMEOUT_MS = 30 * 60 * 1000;

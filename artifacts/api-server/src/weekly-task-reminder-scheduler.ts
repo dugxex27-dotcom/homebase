@@ -1,5 +1,5 @@
 import { db } from './db';
-import { users, taskCompletions, notificationPreferences } from '@workspace/db';
+import { users, notificationPreferences } from '@workspace/db';
 import type { TaskCompletion } from '@workspace/db';
 import { eq, and, isNotNull } from 'drizzle-orm';
 import { storage, isDemoId, IStorage } from './storage';

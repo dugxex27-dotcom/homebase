@@ -26,7 +26,7 @@ export async function setupGoogleAuth(app: Express) {
         callbackURL: getCallbackURL(),
         scope: ['profile', 'email'],
       },
-      async (accessToken, refreshToken, profile, done) => {
+      async (_accessToken, _refreshToken, profile, done) => {
         try {
           // Extract user info from Google profile
           const email = profile.emails?.[0]?.value;

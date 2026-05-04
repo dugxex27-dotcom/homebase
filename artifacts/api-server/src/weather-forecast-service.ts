@@ -1,5 +1,5 @@
 import { db } from './db';
-import { eq, or, ilike, and, gte, isNull, sql } from 'drizzle-orm';
+import { eq, or, ilike, and, isNull } from 'drizzle-orm';
 import { maintenanceTasks, customMaintenanceTasks, taskCompletions } from '@workspace/db';
 
 export type WeatherTrigger = 'hard_freeze' | 'heavy_rain' | 'high_winds' | 'extreme_heat' | 'snow_storm';

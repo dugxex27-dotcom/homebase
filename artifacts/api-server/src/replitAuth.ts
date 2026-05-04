@@ -33,7 +33,6 @@ export function getSession() {
     tableName: "sessions",
   });
   
-  const isProduction = process.env.NODE_ENV === 'production';
   
   return session({
     secret: process.env.SESSION_SECRET!,
@@ -97,23 +96,6 @@ async function upsertUser(claims: any) {
   delete (global as any).pendingUserRole;
 }
 
-// FIX 2: Hostname normalization helper
-function normalizeHostname(hostname: string, configuredDomains: string[]): string {
-  // Remove port numbers and hash segments
-  const cleanHost = hostname.split(':')[0].split('#')[0];
-  
-  // Check if it matches a configured domain
-  for (const domain of configuredDomains) {
-    if (cleanHost === domain || cleanHost.endsWith('.' + domain)) {
-      return domain;
-    }
-  }
-  
-  // Fallback to first configured domain
-  console.warn('[AUTH] Unknown hostname:', cleanHost, '- falling back to:', configuredDomains[0]);
-  return configuredDomains[0];
-}
-
 export async function setupAuth(app: Express) {
   app.set("trust proxy", 1);
   
@@ -137,8 +119,6 @@ export async function setupAuth(app: Express) {
     verified(null, user);
   };
 
-  // Keep track of registered strategies
-  const registeredStrategies = new Set<string>();
 
   // Get all configured domains
   const domains = process.env.REPLIT_DOMAINS?.split(',') || [];

@@ -3,15 +3,13 @@ import { eq, and, gte, lt } from 'drizzle-orm';
 import { users, houses, notificationPreferences, weatherForecastRemindersSent } from '@workspace/db';
 import { geocodeAddress } from './geocoding-service';
 import { isDemoId } from './storage';
-import { storage } from './storage';
+// removed unused storage import
 import {
   getWeatherForecast,
   detectForecastTriggers,
   findRelevantOverdueTasks,
   TRIGGER_DISPLAY,
   type WeatherTrigger,
-  type ForecastTriggerResult,
-  type RelevantTask,
 } from './weather-forecast-service';
 import { sendWeatherForecastReminderEmail } from './email-service';
 import { smsService } from './sms-service';

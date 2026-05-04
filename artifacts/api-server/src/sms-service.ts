@@ -129,7 +129,7 @@ export async function sendMaintenanceReminder(userId: string, taskName: string, 
 export async function sendAppointmentConfirmation(
   userId: string,
   contractorName: string,
-  appointmentDate: string,
+  _appointmentDate: string,
   appointmentTime: string
 ): Promise<boolean> {
   if (!await canSendSMS(userId, 'appointment')) return false;
@@ -166,7 +166,7 @@ export async function sendNewMessageNotification(
 export async function sendAppointmentReminder(
   userId: string,
   contractorName: string,
-  appointmentDate: string,
+  _appointmentDate: string,
   appointmentTime: string
 ): Promise<boolean> {
   if (!await canSendSMS(userId, 'appointment')) return false;

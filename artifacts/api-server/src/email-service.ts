@@ -778,11 +778,6 @@ export async function sendWeeklyTaskReminderEmail(data: WeeklyTaskReminderData):
     low: '#16a34a'
   };
 
-  const priorityLabels: Record<string, string> = {
-    high: 'High Priority',
-    medium: 'Medium Priority',
-    low: 'Low Priority'
-  };
 
   let houseTasksHtml = '';
   for (const house of data.houseTasks) {
@@ -1296,7 +1291,7 @@ export async function sendWeatherAlertEmail(
 export async function sendWeatherForecastReminderEmail(
   userId: string,
   houseName: string,
-  houseAddress: string,
+  _houseAddress: string,
   triggerResult: { trigger: string; description: string; expectedDate: string },
   tasks: Array<{ title: string; category: string; priority: string }>
 ): Promise<boolean> {

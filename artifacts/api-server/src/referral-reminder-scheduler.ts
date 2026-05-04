@@ -1,6 +1,6 @@
 import { db } from './db';
 import { users, referralCredits, subscriptionPlans } from '@workspace/db';
-import { eq, and, isNotNull, or, sql, ne } from 'drizzle-orm';
+import { eq, and, isNotNull, or, sql } from 'drizzle-orm';
 import { sendReferralReminderEmail } from './email-service';
 import { isDemoId } from './storage';
 

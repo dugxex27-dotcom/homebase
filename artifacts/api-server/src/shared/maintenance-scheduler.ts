@@ -39,15 +39,6 @@ function calculateAge(installedYear: number | null | undefined): number {
   return new Date().getFullYear() - installedYear;
 }
 
-function getSeasonMonth(season: string): number {
-  const seasonMonths: Record<string, number> = {
-    spring: 4, // April
-    summer: 7, // July
-    fall: 10, // October
-    winter: 1, // January
-  };
-  return seasonMonths[season] || 1;
-}
 
 export function generateMaintenanceSchedule(house: House): AnnualMaintenanceSchedule {
   const tasks: ScheduledTask[] = [];
