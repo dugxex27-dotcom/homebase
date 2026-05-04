@@ -410,9 +410,9 @@ export default function ServiceRecords() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed': return 'bg-green-100 text-green-800';
+      case 'completed': return 'bg-[#F0FAF4] text-[#09694A]';
       case 'in-progress': return 'bg-yellow-100 text-yellow-800';
-      case 'scheduled': return 'bg-blue-100 text-blue-800';
+      case 'scheduled': return 'bg-[#E6F1FB] text-[#1560A2]';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -448,7 +448,7 @@ export default function ServiceRecords() {
               </DialogTrigger>
               <DialogContent className="max-w-4xl max-h-[90dvh] overflow-y-auto" >
               <DialogHeader>
-                <DialogTitle style={{ color: '#1560a2' }}>
+                <DialogTitle style={{ color: 'var(--blue)' }}>
                   {editingRecord ? 'Edit Service Record' : 'Add New Service Record'}
                 </DialogTitle>
               </DialogHeader>
@@ -456,10 +456,10 @@ export default function ServiceRecords() {
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Connection Code Section - Contractors Only */}
                 {user?.role === 'contractor' && !editingRecord && (
-                  <Card style={{ backgroundColor: '#f2f2f2', border: '2px solid #1560a2' }}>
+                  <Card style={{ backgroundColor: 'var(--gray-100)', border: '2px solid var(--blue)' }}>
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2" style={{ color: '#1560a2' }}>
-                        <User className="w-5 h-5" style={{ color: '#1560a2' }} />
+                      <CardTitle className="flex items-center gap-2" style={{ color: 'var(--blue)' }}>
+                        <User className="w-5 h-5" style={{ color: 'var(--blue)' }} />
                         Link to Homeowner Account (Optional)
                       </CardTitle>
                     </CardHeader>
@@ -467,7 +467,7 @@ export default function ServiceRecords() {
                       {!linkedHomeowner ? (
                         <>
                           <div className="flex flex-col gap-2">
-                            <Label htmlFor="connectionCode" style={{ color: '#1560a2' }}>
+                            <Label htmlFor="connectionCode" style={{ color: 'var(--blue)' }}>
                               Homeowner Connection Code
                             </Label>
                             <p className="text-sm text-gray-600">
@@ -498,14 +498,14 @@ export default function ServiceRecords() {
                         </>
                       ) : (
                         <div className="space-y-3">
-                          <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
+                          <div className="flex items-center justify-between p-4 bg-[#F0FAF4] border border-[#A7D7B8] rounded-lg">
                             <div className="flex items-center gap-3">
-                              <div className="p-2 bg-green-100 rounded-full">
-                                <User className="w-5 h-5 text-green-600" />
+                              <div className="p-2 bg-[#F0FAF4] rounded-full">
+                                <User className="w-5 h-5 text-[#079669]" />
                               </div>
                               <div>
-                                <p className="font-semibold text-green-900">{linkedHomeowner.name}</p>
-                                <p className="text-sm text-green-700">{linkedHomeowner.email}</p>
+                                <p className="font-semibold text-[#09694A]">{linkedHomeowner.name}</p>
+                                <p className="text-sm text-[#09694A]">{linkedHomeowner.email}</p>
                               </div>
                             </div>
                             <Button
@@ -524,7 +524,7 @@ export default function ServiceRecords() {
                           </div>
                           {linkedHomeowner.houses.length > 0 && (
                             <div>
-                              <Label htmlFor="linkedHouseSelect" style={{ color: '#1560a2' }}>
+                              <Label htmlFor="linkedHouseSelect" style={{ color: 'var(--blue)' }}>
                                 Select Property
                               </Label>
                               <Select 
@@ -802,7 +802,7 @@ export default function ServiceRecords() {
                     type="button" 
                     variant="outline" 
                     onClick={() => setIsDialogOpen(false)}
-                    style={{ backgroundColor: '#3798ef', color: 'white' }}
+                    style={{ backgroundColor: 'var(--blue)', color: 'white' }}
                   >
                     Cancel
                   </Button>
@@ -828,8 +828,8 @@ export default function ServiceRecords() {
             <CardContent className="py-4">
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
-                  <Home className="w-5 h-5" style={{ color: '#1560a2' }} />
-                  <Label className="text-base font-medium" style={{ color: '#1560a2' }}>
+                  <Home className="w-5 h-5" style={{ color: 'var(--blue)' }} />
+                  <Label className="text-base font-medium" style={{ color: 'var(--blue)' }}>
                     Select Property:
                   </Label>
                 </div>
@@ -949,7 +949,7 @@ export default function ServiceRecords() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="text-blue-700 border-blue-300 hover:bg-blue-50"
+                          className="text-[#1560A2] border-[#B5D4F4] hover:bg-[#E6F1FB]"
                           disabled={reviewRequestMutation.isPending || reviewRequestedIds.has(record.id)}
                           onClick={() => reviewRequestMutation.mutate(record)}
                           title="Ask homeowner to leave a review"

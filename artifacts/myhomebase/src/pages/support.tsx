@@ -204,7 +204,7 @@ function FaqItem({ q, a, r, index }: { q: string; a: string; r: typeof ROLES[Rol
           textAlign: 'left',
         }}
       >
-        <span style={{ fontSize: 13, fontWeight: 500, color: '#1a1a2e', lineHeight: 1.4 }}>{q}</span>
+        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--gray-900)', lineHeight: 1.4 }}>{q}</span>
         <span style={{
           color: r.mid, flexShrink: 0,
           transform: open ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s',
@@ -609,7 +609,7 @@ export default function SupportPage() {
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
-                          <div data-testid={`ticket-subject-${ticket.id}`} style={{ fontSize: 13, fontWeight: 600, color: '#1a1a2e', flex: 1 }}>{ticket.subject}</div>
+                          <div data-testid={`ticket-subject-${ticket.id}`} style={{ fontSize: 13, fontWeight: 600, color: 'var(--gray-900)', flex: 1 }}>{ticket.subject}</div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                             <div style={{ width: 8, height: 8, borderRadius: '50%', background: statusColor }} />
                             <StatusIcon style={{ width: 13, height: 13, color: '#9ca3af' }} />

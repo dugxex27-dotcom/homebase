@@ -1191,10 +1191,10 @@ export default function ContractorProfile() {
       <div className="container mx-auto py-8 px-4 max-w-4xl">
 
       {/* Subscription & Billing Card */}
-      <Card style={{ backgroundColor: '#f2f2f2' }} className="mb-8">
+      <Card style={{ backgroundColor: 'var(--gray-100)' }} className="mb-8">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2" style={{ color: '#1560a2' }}>
-            <CreditCard className="w-5 h-5" style={{ color: '#1560a2' }} />
+          <CardTitle className="flex items-center gap-2" style={{ color: 'var(--blue)' }}>
+            <CreditCard className="w-5 h-5" style={{ color: 'var(--blue)' }} />
             Subscription & Billing
           </CardTitle>
           <CardDescription>
@@ -1206,15 +1206,15 @@ export default function ContractorProfile() {
           <div className="p-4 rounded-lg border" style={{ backgroundColor: 'white' }}>
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h4 className="font-medium" style={{ color: '#1560a2' }}>Current Plan</h4>
+                <h4 className="font-medium" style={{ color: 'var(--blue)' }}>Current Plan</h4>
                 <div className="flex items-center gap-2 mt-1">
                   {hasActiveSubscription && !isInTrial ? (
-                    <Badge className="bg-green-100 text-green-700">
+                    <Badge className="bg-[#F0FAF4] text-[#09694A]">
                       <Check className="w-3 h-3 mr-1" />
                       Active - {planName}
                     </Badge>
                   ) : isInTrial ? (
-                    <Badge className="bg-blue-100 text-blue-700">
+                    <Badge className="bg-[#E6F1FB] text-[#1560A2]">
                       <Clock className="w-3 h-3 mr-1" />
                       Trial - {trialDaysRemaining} days left
                     </Badge>
@@ -1225,7 +1225,7 @@ export default function ContractorProfile() {
               </div>
               {hasActiveSubscription && !isInTrial && (
                 <div className="text-right">
-                  <p className="text-2xl font-bold" style={{ color: '#1560a2' }}>
+                  <p className="text-2xl font-bold" style={{ color: 'var(--blue)' }}>
                     ${monthlyPrice}
                   </p>
                   <p className="text-sm text-gray-500">/month</p>
@@ -1237,27 +1237,27 @@ export default function ContractorProfile() {
             {hasActiveSubscription && !isInTrial && (
               <div className="text-sm text-gray-600">
                 <p className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-green-500" />
+                  <Check className="w-4 h-4 text-[#079669]" />
                   Lead management & CRM integrations
                 </p>
                 {hasCrmAccess && (
                   <>
                     <p className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-green-500" />
+                      <Check className="w-4 h-4 text-[#079669]" />
                       Full CRM access with client management
                     </p>
                     <p className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-green-500" />
+                      <Check className="w-4 h-4 text-[#079669]" />
                       Job scheduling, quotes & invoices
                     </p>
                     <p className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-green-500" />
+                      <Check className="w-4 h-4 text-[#079669]" />
                       Dashboard analytics
                     </p>
                   </>
                 )}
                 <p className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-green-500" />
+                  <Check className="w-4 h-4 text-[#079669]" />
                   ${monthlyPrice}/month referral credit cap
                 </p>
               </div>
@@ -1265,8 +1265,8 @@ export default function ContractorProfile() {
 
             {/* Trial user message */}
             {isInTrial && (
-              <div className="mt-3 p-3 rounded-lg bg-blue-50 border border-blue-200">
-                <p className="text-sm text-blue-800">
+              <div className="mt-3 p-3 rounded-lg bg-[#E6F1FB] border border-[#B5D4F4]">
+                <p className="text-sm text-[#0C3460]">
                   Your 14-day trial includes full access to all MyHomeBase™ Pro features. Subscribe before it ends to continue accessing leads and growing your business.
                 </p>
               </div>
@@ -1300,7 +1300,7 @@ export default function ContractorProfile() {
           {hasActiveSubscription && !isInTrial && (
             <div className="flex items-center justify-between pt-2">
               <div>
-                <h4 className="font-medium" style={{ color: '#1560a2' }}>Manage Subscription</h4>
+                <h4 className="font-medium" style={{ color: 'var(--blue)' }}>Manage Subscription</h4>
                 <p className="text-sm text-gray-600">Update payment method or change plan</p>
               </div>
               <Link href="/contractor-pricing">
@@ -1315,10 +1315,10 @@ export default function ContractorProfile() {
 
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Business Information */}
-        <Card style={{ backgroundColor: '#f2f2f2' }}>
+        <Card style={{ backgroundColor: 'var(--gray-100)' }}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2" style={{ color: '#1560a2' }}>
-              <Building className="w-5 h-5" style={{ color: '#1560a2' }} />
+            <CardTitle className="flex items-center gap-2" style={{ color: 'var(--blue)' }}>
+              <Building className="w-5 h-5" style={{ color: 'var(--blue)' }} />
               Business Information
             </CardTitle>
           </CardHeader>
@@ -1354,7 +1354,7 @@ export default function ContractorProfile() {
               <div>
                 <Label htmlFor="email">Email Address *</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4" style={{ color: '#1560a2' }} />
+                  <Mail className="absolute left-3 top-3 h-4 w-4" style={{ color: 'var(--blue)' }} />
                   <Input
                     id="email"
                     type="email"
@@ -1370,7 +1370,7 @@ export default function ContractorProfile() {
               <div>
                 <Label htmlFor="phone">Phone Number *</Label>
                 <div className="relative">
-                  <Phone className="absolute left-3 top-3 h-4 w-4" style={{ color: '#1560a2' }} />
+                  <Phone className="absolute left-3 top-3 h-4 w-4" style={{ color: 'var(--blue)' }} />
                   <Input
                     id="phone"
                     type="tel"
@@ -1408,7 +1408,7 @@ export default function ContractorProfile() {
             <div>
               <Label htmlFor="address">Street Address *</Label>
               <div className="relative">
-                <MapPin className="absolute left-3 top-3 h-4 w-4" style={{ color: '#1560a2' }} />
+                <MapPin className="absolute left-3 top-3 h-4 w-4" style={{ color: 'var(--blue)' }} />
                 <Input
                   id="address"
                   value={formData.address}
@@ -1464,7 +1464,7 @@ export default function ContractorProfile() {
                       return (
                         <div
                           key={index}
-                          className="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                          className="px-4 py-3 hover:bg-[#E6F1FB] cursor-pointer border-b border-gray-100 last:border-b-0"
                           onClick={() => handleBusinessAddressSuggestionSelect(suggestion)}
                           data-testid={`business-address-suggestion-${index}`}
                         >
@@ -1511,10 +1511,10 @@ export default function ContractorProfile() {
         </Card>
 
         {/* License Information */}
-        <Card style={{ backgroundColor: '#f2f2f2' }}>
+        <Card style={{ backgroundColor: 'var(--gray-100)' }}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2" style={{ color: '#1560a2' }}>
-              <FileText className="w-5 h-5" style={{ color: '#1560a2' }} />
+            <CardTitle className="flex items-center gap-2" style={{ color: 'var(--blue)' }}>
+              <FileText className="w-5 h-5" style={{ color: 'var(--blue)' }} />
               License Information
             </CardTitle>
           </CardHeader>
@@ -1601,7 +1601,7 @@ export default function ContractorProfile() {
               variant="outline"
               onClick={addLicense}
               className="w-full border-dashed border-2"
-              style={{ borderColor: '#1560a2', color: '#1560a2', backgroundColor: 'white' }}
+              style={{ borderColor: 'var(--blue)', color: 'var(--blue)', backgroundColor: 'white' }}
             >
               <Plus className="w-4 h-4 mr-2" />
               Add Another License
@@ -1610,10 +1610,10 @@ export default function ContractorProfile() {
         </Card>
 
         {/* Insurance & Compliance */}
-        <Card style={{ backgroundColor: '#f2f2f2' }}>
+        <Card style={{ backgroundColor: 'var(--gray-100)' }}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2" style={{ color: '#1560a2' }}>
-              <Shield className="w-5 h-5" style={{ color: '#1560a2' }} />
+            <CardTitle className="flex items-center gap-2" style={{ color: 'var(--blue)' }}>
+              <Shield className="w-5 h-5" style={{ color: 'var(--blue)' }} />
               Insurance & Compliance
             </CardTitle>
             <CardDescription className="text-sm text-gray-600">
@@ -1676,8 +1676,8 @@ export default function ContractorProfile() {
                 </Select>
               </div>
             </div>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
-              <p className="text-sm text-blue-800">
+            <div className="bg-[#E6F1FB] border border-[#B5D4F4] rounded-lg p-4 mt-4">
+              <p className="text-sm text-[#0C3460]">
                 <Shield className="w-4 h-4 inline mr-2" />
                 <strong>Why this matters:</strong> Contractors with verified insurance and active licenses earn a "Verified" badge, which builds trust and increases booking rates by up to 40%.
               </p>
@@ -1686,10 +1686,10 @@ export default function ContractorProfile() {
         </Card>
 
         {/* Business Logo */}
-        <Card style={{ backgroundColor: '#f2f2f2' }}>
+        <Card style={{ backgroundColor: 'var(--gray-100)' }}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2" style={{ color: '#1560a2' }}>
-              <Camera className="w-5 h-5" style={{ color: '#1560a2' }} />
+            <CardTitle className="flex items-center gap-2" style={{ color: 'var(--blue)' }}>
+              <Camera className="w-5 h-5" style={{ color: 'var(--blue)' }} />
               Business Logo
             </CardTitle>
           </CardHeader>
@@ -1743,7 +1743,7 @@ export default function ContractorProfile() {
                 type="button" 
                 variant="outline" 
                 className="cursor-pointer hover:opacity-90" 
-                style={{ backgroundColor: '#1560a2', color: 'white' }}
+                style={{ backgroundColor: 'var(--blue)', color: 'white' }}
                 onClick={() => document.getElementById('logo-upload')?.click()}
               >
                 <Plus className="w-4 h-4 mr-2" />
@@ -1754,10 +1754,10 @@ export default function ContractorProfile() {
         </Card>
 
         {/* Project Photos */}
-        <Card style={{ backgroundColor: '#f2f2f2' }}>
+        <Card style={{ backgroundColor: 'var(--gray-100)' }}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2" style={{ color: '#1560a2' }}>
-              <Camera className="w-5 h-5" style={{ color: '#1560a2' }} />
+            <CardTitle className="flex items-center gap-2" style={{ color: 'var(--blue)' }}>
+              <Camera className="w-5 h-5" style={{ color: 'var(--blue)' }} />
               Project Portfolio
             </CardTitle>
           </CardHeader>
@@ -1806,7 +1806,7 @@ export default function ContractorProfile() {
                   type="button" 
                   variant="outline" 
                   className="cursor-pointer hover:opacity-90" 
-                  style={{ backgroundColor: '#1560a2', color: 'white' }}
+                  style={{ backgroundColor: 'var(--blue)', color: 'white' }}
                   onClick={() => document.getElementById('photos-upload')?.click()}
                 >
                   <Plus className="w-4 h-4 mr-2" />
@@ -1832,10 +1832,10 @@ export default function ContractorProfile() {
         </Card>
 
         {/* Services Offered */}
-        <Card style={{ backgroundColor: '#f2f2f2' }}>
+        <Card style={{ backgroundColor: 'var(--gray-100)' }}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2" style={{ color: '#1560a2' }}>
-              <Wrench className="w-5 h-5" style={{ color: '#1560a2' }} />
+            <CardTitle className="flex items-center gap-2" style={{ color: 'var(--blue)' }}>
+              <Wrench className="w-5 h-5" style={{ color: 'var(--blue)' }} />
               Services Offered
             </CardTitle>
           </CardHeader>
@@ -1866,7 +1866,7 @@ export default function ContractorProfile() {
                   style={{ backgroundColor: '#ffffff' }}
                   data-testid="input-custom-service"
                 />
-                <Button type="button" onClick={addCustomService} size="sm" style={{ backgroundColor: '#1560a2', color: 'white' }} className="hover:opacity-90" data-testid="button-add-custom-service">
+                <Button type="button" onClick={addCustomService} size="sm" style={{ backgroundColor: 'var(--blue)', color: 'white' }} className="hover:opacity-90" data-testid="button-add-custom-service">
                   <Plus className="w-4 h-4" />
                 </Button>
               </div>
@@ -1911,10 +1911,10 @@ export default function ContractorProfile() {
         </Card>
 
         {/* Online Presence */}
-        <Card style={{ backgroundColor: '#f2f2f2' }}>
+        <Card style={{ backgroundColor: 'var(--gray-100)' }}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2" style={{ color: '#1560a2' }}>
-              <Globe className="w-5 h-5" style={{ color: '#1560a2' }} />
+            <CardTitle className="flex items-center gap-2" style={{ color: 'var(--blue)' }}>
+              <Globe className="w-5 h-5" style={{ color: 'var(--blue)' }} />
               Online Presence
             </CardTitle>
           </CardHeader>
@@ -1977,10 +1977,10 @@ export default function ContractorProfile() {
         </Card>
 
         {/* About & Experience */}
-        <Card style={{ backgroundColor: '#f2f2f2' }}>
+        <Card style={{ backgroundColor: 'var(--gray-100)' }}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2" style={{ color: '#1560a2' }}>
-              <User className="w-5 h-5" style={{ color: '#1560a2' }} />
+            <CardTitle className="flex items-center gap-2" style={{ color: 'var(--blue)' }}>
+              <User className="w-5 h-5" style={{ color: 'var(--blue)' }} />
               About & Experience
             </CardTitle>
           </CardHeader>
@@ -2041,7 +2041,7 @@ export default function ContractorProfile() {
             type="submit" 
             disabled={updateProfileMutation.isPending}
             className="px-8 py-2 hover:opacity-90"
-            style={{ backgroundColor: '#afd6f9', color: 'black' }}
+            style={{ backgroundColor: 'var(--blue-light)', color: 'black' }}
           >
             {updateProfileMutation.isPending ? (
               <div className="flex items-center gap-2">
@@ -2060,7 +2060,7 @@ export default function ContractorProfile() {
 
       {/* Payment Settings - Stripe Connect */}
       <div className="mt-8">
-        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2" style={{ color: '#1560a2' }}>
+        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2" style={{ color: 'var(--blue)' }}>
           Payment Settings
         </h2>
         <p className="mb-4" style={{ color: 'white' }}>
@@ -2198,7 +2198,7 @@ export default function ContractorProfile() {
       </Card>
 
       {/* Notification Preferences */}
-      <Card style={{ backgroundColor: '#f2f2f2' }} className="mt-8">
+      <Card style={{ backgroundColor: 'var(--gray-100)' }} className="mt-8">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Bell className="w-5 h-5" />
@@ -2212,7 +2212,7 @@ export default function ContractorProfile() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium" style={{ color: '#2c0f5b' }}>Email Notifications</p>
+                <p className="font-medium" style={{ color: 'var(--purple-deep)' }}>Email Notifications</p>
                 <p className="text-sm text-gray-600">Receive updates via email</p>
               </div>
               <Switch
@@ -2224,7 +2224,7 @@ export default function ContractorProfile() {
 
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium" style={{ color: '#2c0f5b' }}>SMS Notifications</p>
+                <p className="font-medium" style={{ color: 'var(--purple-deep)' }}>SMS Notifications</p>
                 <p className="text-sm text-gray-600">Receive urgent alerts via text</p>
               </div>
               <Switch
@@ -2238,7 +2238,7 @@ export default function ContractorProfile() {
 
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium" style={{ color: '#2c0f5b' }}>Homeowner Messages</p>
+                <p className="font-medium" style={{ color: 'var(--purple-deep)' }}>Homeowner Messages</p>
                 <p className="text-sm text-gray-600">Get notified when homeowners message you</p>
               </div>
               <Switch
@@ -2250,7 +2250,7 @@ export default function ContractorProfile() {
 
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium" style={{ color: '#2c0f5b' }}>Lead Alerts</p>
+                <p className="font-medium" style={{ color: 'var(--purple-deep)' }}>Lead Alerts</p>
                 <p className="text-sm text-gray-600">New lead notifications</p>
               </div>
               <Switch
@@ -2262,7 +2262,7 @@ export default function ContractorProfile() {
 
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium" style={{ color: '#2c0f5b' }}>Appointment Reminders</p>
+                <p className="font-medium" style={{ color: 'var(--purple-deep)' }}>Appointment Reminders</p>
                 <p className="text-sm text-gray-600">Upcoming appointment alerts</p>
               </div>
               <Switch

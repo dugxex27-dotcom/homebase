@@ -52,7 +52,7 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
 
-const inpStyle = { background: '#F3F5F7', border: `1.5px solid ${C.border}`, borderRadius: 12, padding: '12px 14px', fontSize: 13, fontWeight: 500, color: C.label, height: 'auto', boxShadow: 'none', outline: 'none' } as React.CSSProperties;
+const inpStyle = { background: '#F3F5F7', border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '12px 16px', fontSize: 13, fontWeight: 500, color: C.label, height: 'auto', boxShadow: 'none', outline: 'none' } as React.CSSProperties;
 const labelStyle = { fontSize: 11, fontWeight: 700, color: C.label, letterSpacing: '0.03em', marginBottom: 4, display: 'block' } as React.CSSProperties;
 
 const GoogleSVG = () => (
@@ -152,7 +152,7 @@ export default function SignInContractor() {
   } as React.CSSProperties);
 
   const primaryBtn = (pending: boolean) => ({
-    width: '100%', background: C.primary, borderRadius: 13, padding: '14px 0', fontSize: 15, fontWeight: 700, color: '#fff',
+    width: '100%', background: C.primary, borderRadius: 12, padding: '14px 0', fontSize: 15, fontWeight: 700, color: '#fff',
     border: 'none', cursor: pending ? 'default' : 'pointer', marginBottom: 14, opacity: pending ? 0.7 : 1, fontFamily: 'inherit',
   } as React.CSSProperties);
 

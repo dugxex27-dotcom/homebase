@@ -192,14 +192,14 @@ export default function AgentDashboard() {
     switch (status) {
       case 'active':
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#F0FAF4] text-[#09694A]">
             <CheckCircle className="w-3 h-3 mr-1" />
             Active
           </span>
         );
       case 'trial':
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#E6F1FB] text-[#1560A2]">
             <Clock className="w-3 h-3 mr-1" />
             Trial
           </span>
@@ -344,11 +344,11 @@ export default function AgentDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span className="flex items-center gap-2 text-gray-900 dark:text-white">
-                <ArrowRight className="h-5 w-5 text-emerald-600" />
+                <ArrowRight className="h-5 w-5 text-[#079669]" />
                 Home Handoff Packages
               </span>
               <Link href="/agent-handoff">
-                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                <Button size="sm" className="bg-[#079669] hover:bg-[#09694A] text-white">
                   Manage Handoffs <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
                 </Button>
               </Link>
@@ -359,16 +359,16 @@ export default function AgentDashboard() {
               Upload closing documents for new buyers and let AI extract home system and appliance data into a pre-filled home record. Send buyers a magic link to claim their record instantly.
             </p>
             <div className="grid grid-cols-3 gap-4">
-              <div className="text-center p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
-                <div className="text-lg font-bold text-emerald-600">1</div>
+              <div className="text-center p-3 bg-[#F0FAF4] dark:bg-emerald-900/20 rounded-lg">
+                <div className="text-lg font-bold text-[#079669]">1</div>
                 <div className="text-xs text-gray-500">Upload docs</div>
               </div>
-              <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                <div className="text-lg font-bold text-blue-600">2</div>
+              <div className="text-center p-3 bg-[#E6F1FB] dark:bg-blue-900/20 rounded-lg">
+                <div className="text-lg font-bold text-[#1560A2]">2</div>
                 <div className="text-xs text-gray-500">AI extracts data</div>
               </div>
-              <div className="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                <div className="text-lg font-bold text-purple-600">3</div>
+              <div className="text-center p-3 bg-[#EEEDFE] dark:bg-purple-900/20 rounded-lg">
+                <div className="text-lg font-bold text-[#3C258E]">3</div>
                 <div className="text-xs text-gray-500">Buyer claims record</div>
               </div>
             </div>
@@ -385,11 +385,11 @@ export default function AgentDashboard() {
           </CardHeader>
           <CardContent>
             {stripeStatus?.onboardingComplete ? (
-              <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-lg">
-                <CheckCircle className="h-6 w-6 text-green-600" />
+              <div className="flex items-center gap-3 p-4 bg-[#F0FAF4] border border-[#A7D7B8] rounded-lg">
+                <CheckCircle className="h-6 w-6 text-[#079669]" />
                 <div>
-                  <p className="font-medium text-green-800">Bank Account Connected</p>
-                  <p className="text-sm text-green-600">Your payouts will be automatically deposited to your connected bank account.</p>
+                  <p className="font-medium text-[#09694A]">Bank Account Connected</p>
+                  <p className="text-sm text-[#079669]">Your payouts will be automatically deposited to your connected bank account.</p>
                 </div>
               </div>
             ) : stripeStatus?.connected && !stripeStatus?.onboardingComplete ? (
@@ -404,7 +404,7 @@ export default function AgentDashboard() {
                 <Button 
                   onClick={() => connectStripeMutation.mutate()}
                   disabled={connectStripeMutation.isPending}
-                  className="bg-emerald-600 hover:bg-emerald-700"
+                  className="bg-[#079669] hover:bg-[#09694A]"
                   data-testid="button-complete-stripe-setup"
                 >
                   {connectStripeMutation.isPending ? (
@@ -423,7 +423,7 @@ export default function AgentDashboard() {
                 <Button 
                   onClick={() => connectStripeMutation.mutate()}
                   disabled={connectStripeMutation.isPending}
-                  className="bg-emerald-600 hover:bg-emerald-700"
+                  className="bg-[#079669] hover:bg-[#09694A]"
                   data-testid="button-connect-stripe"
                 >
                   {connectStripeMutation.isPending ? (
@@ -476,7 +476,7 @@ export default function AgentDashboard() {
                       key={payout.id}
                       className={`flex items-start justify-between p-4 rounded-lg border ${
                         isPaid
-                          ? 'bg-green-50 border-green-100 dark:bg-green-900/10 dark:border-green-900/30'
+                          ? 'bg-[#F0FAF4] border-[#A7D7B8] dark:bg-green-900/10 dark:border-green-900/30'
                           : isPending || isProcessing
                             ? 'bg-yellow-50 border-yellow-100 dark:bg-yellow-900/10 dark:border-yellow-900/30'
                             : isFailed
@@ -487,13 +487,13 @@ export default function AgentDashboard() {
                     >
                       <div className="flex items-start gap-3">
                         <div className={`mt-0.5 rounded-full p-1.5 ${
-                          isPaid ? 'bg-green-100 dark:bg-green-800/40' :
+                          isPaid ? 'bg-[#F0FAF4] dark:bg-green-800/40' :
                           isPending || isProcessing ? 'bg-yellow-100 dark:bg-yellow-800/40' :
                           isFailed ? 'bg-red-100 dark:bg-red-800/40' :
                           'bg-gray-100 dark:bg-gray-600/40'
                         }`}>
                           {isPaid ? (
-                            <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                            <CheckCircle className="h-4 w-4 text-[#079669] dark:text-green-400" />
                           ) : isPending || isProcessing ? (
                             <Clock className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
                           ) : isFailed ? (
@@ -514,16 +514,16 @@ export default function AgentDashboard() {
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0 ml-4">
-                        <p className={`font-bold text-lg ${isPaid ? 'text-green-600 dark:text-green-400' : 'text-gray-700 dark:text-gray-300'}`}>
+                        <p className={`font-bold text-lg ${isPaid ? 'text-[#079669] dark:text-green-400' : 'text-gray-700 dark:text-gray-300'}`}>
                           ${parseFloat(payout.amount).toFixed(2)}
                         </p>
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                           isPaid
-                            ? 'bg-green-100 text-green-800 dark:bg-green-800/40 dark:text-green-300'
+                            ? 'bg-[#F0FAF4] text-[#09694A] dark:bg-green-800/40 dark:text-green-300'
                             : isPending
                               ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800/40 dark:text-yellow-300'
                               : isProcessing
-                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-800/40 dark:text-blue-300'
+                                ? 'bg-[#E6F1FB] text-[#1560A2] dark:bg-blue-800/40 dark:text-blue-300'
                                 : isFailed
                                   ? 'bg-red-100 text-red-800 dark:bg-red-800/40 dark:text-red-300'
                                   : 'bg-gray-100 text-gray-800 dark:bg-gray-600/40 dark:text-gray-300'
@@ -581,7 +581,7 @@ export default function AgentDashboard() {
                       </div>
                       <div className="text-xs text-muted-foreground">
                         {referral.consecutiveMonthsPaid >= 4 ? (
-                          <span className="text-green-600 font-medium">Eligible for payout</span>
+                          <span className="text-[#079669] font-medium">Eligible for payout</span>
                         ) : (
                           `${4 - referral.consecutiveMonthsPaid} months until payout`
                         )}

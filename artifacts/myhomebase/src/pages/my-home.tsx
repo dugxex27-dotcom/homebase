@@ -575,7 +575,7 @@ export default function MyHome() {
         <HomeownerFeatureGate featureName="My Home">
         {houses.length === 0 ? (
           // No houses - show create form
-          <Card className="border-gray-300 shadow-lg" style={{ background: '#f2f2f2' }}>
+          <Card className="border-gray-300 shadow-lg" style={{ background: 'var(--gray-100)' }}>
             <CardHeader>
               <CardTitle className="flex items-center gap-2" style={{ color: 'var(--theme-primary)' }}>
                 <Home className="h-6 w-6" />
@@ -602,13 +602,13 @@ export default function MyHome() {
             {/* House Selection */}
             {/* Super User Section for 3+ properties */}
             {isSuperUser && (
-              <Card className="border-purple-600 shadow-lg" style={{ background: 'linear-gradient(135deg, #2c0f5b 0%, #4c1d95 100%)' }}>
+              <Card className="border-[#3C258E] shadow-lg" style={{ background: 'linear-gradient(135deg, #2C0F5B 0%, #3C258E 100%)' }}>
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between text-white">
                     <div className="flex items-center gap-2">
                       <Crown className="h-6 w-6 text-yellow-400" />
                       Super User Dashboard
-                      <Badge variant="secondary" className="bg-yellow-400 text-purple-900 font-medium">
+                      <Badge variant="secondary" className="bg-yellow-400 text-[#2C0F5B] font-medium">
                         {houses.length} Properties
                       </Badge>
                     </div>
@@ -620,17 +620,17 @@ export default function MyHome() {
                     <div className="bg-white/10 rounded-lg p-4 text-center">
                       <BarChart3 className="h-8 w-8 text-yellow-400 mx-auto mb-2" />
                       <p className="text-white font-semibold">{houses.length}</p>
-                      <p className="text-purple-200 text-sm">Total Properties</p>
+                      <p className="text-[#B6A6F4] text-sm">Total Properties</p>
                     </div>
                     <div className="bg-white/10 rounded-lg p-4 text-center">
                       <Settings className="h-8 w-8 text-yellow-400 mx-auto mb-2" />
                       <p className="text-white font-semibold">{houses.filter(h => h.isDefault).length}</p>
-                      <p className="text-purple-200 text-sm">Default Property</p>
+                      <p className="text-[#B6A6F4] text-sm">Default Property</p>
                     </div>
                     <div className="bg-white/10 rounded-lg p-4 text-center">
                       <Calendar className="h-8 w-8 text-yellow-400 mx-auto mb-2" />
                       <p className="text-white font-semibold">Active</p>
-                      <p className="text-purple-200 text-sm">All Properties</p>
+                      <p className="text-[#B6A6F4] text-sm">All Properties</p>
                     </div>
                   </div>
                   
@@ -671,14 +671,14 @@ export default function MyHome() {
               </Card>
             )}
 
-            <Card className="border-gray-300 shadow-lg" style={{ background: '#f2f2f2' }}>
+            <Card className="border-gray-300 shadow-lg" style={{ background: 'var(--gray-100)' }}>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between" style={{ color: 'var(--theme-primary)' }}>
                   <div className="flex items-center gap-2">
                     <Building className="h-6 w-6" />
                     Your Properties
                     {isSuperUser && (
-                      <Badge variant="outline" className="border-purple-600 text-purple-600">
+                      <Badge variant="outline" className="border-[#3C258E] text-[#3C258E]">
                         <Crown className="h-3 w-3 mr-1" />
                         Super User
                       </Badge>
@@ -707,7 +707,7 @@ export default function MyHome() {
                   ) : (
                     <Button
                       onClick={() => setShowUpgradeDialog(true)}
-                      style={{ backgroundColor: '#b6a6f4', color: 'var(--theme-primary)', borderColor: 'var(--theme-primary)' }}
+                      style={{ backgroundColor: 'var(--purple-light)', color: 'var(--theme-primary)', borderColor: 'var(--theme-primary)' }}
                       className="hover:opacity-90 border-2"
                       data-testid="button-upgrade-required"
                     >
@@ -724,10 +724,10 @@ export default function MyHome() {
                       key={house.id}
                       className={`p-4 rounded-lg border-2 transition-all ${
                         selectedHouse?.id === house.id
-                          ? 'border-purple-600 bg-purple-50'
+                          ? 'border-[#3C258E] bg-[#EEEDFE]'
                           : selectedForBulk.includes(house.id) 
-                            ? 'border-blue-600 bg-blue-50'
-                            : 'border-gray-300 hover:border-purple-400'
+                            ? 'border-[#1560A2] bg-[#E6F1FB]'
+                            : 'border-gray-300 hover:border-[#3C258E]'
                       } ${bulkSelectMode ? '' : 'cursor-pointer'}`}
                       onClick={() => !bulkSelectMode && setSelectedHouse(house)}
                       data-testid={`card-house-${house.id}`}
@@ -739,7 +739,7 @@ export default function MyHome() {
                               type="checkbox"
                               checked={selectedForBulk.includes(house.id)}
                               onChange={(e) => handleBulkSelect(house.id, e.target.checked)}
-                              className="h-4 w-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500 flex-shrink-0"
+                              className="h-4 w-4 text-[#3C258E] rounded border-gray-300 focus:ring-[#3C258E] flex-shrink-0"
                               data-testid={`checkbox-bulk-${house.id}`}
                               onClick={(e) => e.stopPropagation()}
                             />
@@ -801,23 +801,23 @@ export default function MyHome() {
             {selectedHouse && (
               <Link href="/disclosures">
                 <Card
-                  className="border-purple-200 shadow cursor-pointer hover:shadow-md hover:border-purple-400 transition-all"
-                  style={{ background: 'linear-gradient(135deg, #f5f0ff 0%, #ede9fe 100%)' }}
+                  className="border-[#CECBF6] shadow cursor-pointer hover:shadow-md hover:border-[#3C258E] transition-all"
+                  style={{ background: 'var(--purple-tint)' }}
                   data-testid="card-disclosure-cta"
                 >
                   <CardContent className="p-4 flex items-center gap-4">
-                    <div className="flex-shrink-0 p-2.5 rounded-xl bg-purple-100">
-                      <ClipboardList className="h-5 w-5 text-purple-700" />
+                    <div className="flex-shrink-0 p-2.5 rounded-xl bg-[#EEEDFE]">
+                      <ClipboardList className="h-5 w-5 text-[#3C258E]" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-purple-900">Property Disclosure Wizard</p>
-                      <p className="text-xs text-purple-700 mt-0.5">
+                      <p className="text-sm font-semibold text-[#2C0F5B]">Property Disclosure Wizard</p>
+                      <p className="text-xs text-[#3C258E] mt-0.5">
                         {disclosureData?.answers && Object.keys(disclosureData.answers).filter(k => !k.endsWith('_details')).length > 0
                           ? `In progress — ${Object.keys(disclosureData.answers).filter(k => !k.endsWith('_details')).length} answers saved`
                           : 'Prepare your NY PCDS before selling'}
                       </p>
                     </div>
-                    <ChevronRight className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                    <ChevronRight className="h-4 w-4 text-[#3C258E] flex-shrink-0" />
                   </CardContent>
                 </Card>
               </Link>
@@ -825,7 +825,7 @@ export default function MyHome() {
 
             {/* Maintenance Tasks for Selected House */}
             {selectedHouse && (
-              <Card className="border-gray-300 shadow-lg" style={{ background: '#f2f2f2' }}>
+              <Card className="border-gray-300 shadow-lg" style={{ background: 'var(--gray-100)' }}>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2" style={{ color: 'var(--theme-primary)' }}>
                     <Wrench className="h-6 w-6" />
@@ -970,7 +970,7 @@ export default function MyHome() {
                           />
                           {isLoadingSuggestions && (
                             <div className="absolute right-3 top-3">
-                              <div className="animate-spin w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full"></div>
+                              <div className="animate-spin w-4 h-4 border-2 border-[#3C258E] border-t-transparent rounded-full"></div>
                             </div>
                           )}
                           {/* Address suggestions dropdown */}
@@ -979,7 +979,7 @@ export default function MyHome() {
                               {addressSuggestions.map((suggestion, index) => (
                                 <div
                                   key={index}
-                                  className="px-4 py-2 hover:bg-purple-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                  className="px-4 py-2 hover:bg-[#EEEDFE] cursor-pointer border-b border-gray-100 last:border-b-0"
                                   onClick={() => handleSuggestionSelect(suggestion)}
                                   data-testid={`address-suggestion-${index}`}
                                 >
@@ -1118,14 +1118,14 @@ export default function MyHome() {
                 {houses.map((house) => (
                   <div
                     key={house.id}
-                    className="p-4 border rounded-lg hover:bg-purple-50 cursor-pointer transition-colors"
+                    className="p-4 border rounded-lg hover:bg-[#EEEDFE] cursor-pointer transition-colors"
                     onClick={() => createPropertyFromTemplate(house)}
                     data-testid={`template-house-${house.id}`}
                   >
                     <div className="flex items-center gap-3">
-                      <Copy className="h-5 w-5 text-purple-600" />
+                      <Copy className="h-5 w-5 text-[#3C258E]" />
                       <div>
-                        <h4 className="font-semibold text-purple-900">{house.name}</h4>
+                        <h4 className="font-semibold text-[#2C0F5B]">{house.name}</h4>
                         <p className="text-sm text-gray-600">{house.address}</p>
                         <p className="text-sm text-gray-500">Climate Zone: {house.climateZone}</p>
                         {house.homeSystems && house.homeSystems.length > 0 && (
@@ -1155,16 +1155,16 @@ export default function MyHome() {
         <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-purple-900">
-                <Crown className="h-6 w-6 text-purple-600" />
+              <DialogTitle className="flex items-center gap-2 text-[#2C0F5B]">
+                <Crown className="h-6 w-6 text-[#3C258E]" />
                 Upgrade to Premium
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div className="text-center">
-                <div className="bg-purple-50 p-6 rounded-lg">
-                  <Crown className="h-12 w-12 text-purple-600 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-purple-900 mb-2">
+                <div className="bg-[#EEEDFE] p-6 rounded-lg">
+                  <Crown className="h-12 w-12 text-[#3C258E] mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-[#2C0F5B] mb-2">
                     Manage More Properties
                   </h3>
                   <p className="text-gray-600 mb-4">
@@ -1172,19 +1172,19 @@ export default function MyHome() {
                   </p>
                   <div className="space-y-2 text-left bg-white p-4 rounded border">
                     <div className="flex items-center gap-2">
-                      <Crown className="h-4 w-4 text-purple-600" />
+                      <Crown className="h-4 w-4 text-[#3C258E]" />
                       <span className="text-sm">Up to 10 properties</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Settings className="h-4 w-4 text-purple-600" />
+                      <Settings className="h-4 w-4 text-[#3C258E]" />
                       <span className="text-sm">Bulk management tools</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Copy className="h-4 w-4 text-purple-600" />
+                      <Copy className="h-4 w-4 text-[#3C258E]" />
                       <span className="text-sm">Property templates</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <BarChart3 className="h-4 w-4 text-purple-600" />
+                      <BarChart3 className="h-4 w-4 text-[#3C258E]" />
                       <span className="text-sm">Advanced analytics</span>
                     </div>
                   </div>

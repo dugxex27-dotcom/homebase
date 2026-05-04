@@ -227,7 +227,7 @@ export default function ContractorDashboard() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
-          <div className="text-2xl font-bold text-blue-700 mb-2">Loading...</div>
+          <div className="text-2xl font-bold text-[#0C3460] mb-2">Loading...</div>
         </div>
       </div>
     );
@@ -268,14 +268,14 @@ export default function ContractorDashboard() {
               <h3 className="text-lg font-semibold mb-3" style={{ color: '#1560A2' }} data-testid="text-overview-title">Overview</h3>
               <ul className="space-y-3 text-sm text-slate-600">
                 <li className="flex items-center gap-3">
-                  <DollarSign size={18} className="text-blue-600" />
+                  <DollarSign size={18} className="text-[#1560A2]" />
                   <div>
                     <div className="text-xs text-slate-400">This month</div>
                     <div className="font-medium" data-testid="text-monthly-earnings">${totalEarnings.toLocaleString()}</div>
                   </div>
                 </li>
                 <li className="flex items-center gap-3">
-                  <Users size={18} className="text-emerald-600" />
+                  <Users size={18} className="text-[#079669]" />
                   <div>
                     <div className="text-xs text-slate-400">New leads</div>
                     <div className="font-medium" data-testid="text-new-leads">{referralCount}</div>
@@ -293,7 +293,7 @@ export default function ContractorDashboard() {
               <div className="mt-6 pt-4 border-t border-slate-100">
                 <Button 
                   onClick={() => setIsCreateDialogOpen(true)}
-                  className="w-full px-4 py-2 bg-gradient-to-r from-emerald-500 to-emerald-400 text-white rounded-lg font-semibold hover:opacity-90"
+                  className="w-full px-4 py-2 bg-gradient-to-r from-[#079669] to-[#07966f] text-white rounded-lg font-semibold hover:opacity-90"
                   data-testid="button-create-proposal"
                 >
                   <Plus size={16} className="mr-2" />
@@ -308,11 +308,11 @@ export default function ContractorDashboard() {
                 <div className="grid grid-cols-1 gap-2">
                   <Link href="/crm">
                     <button 
-                      className="w-full text-sm text-left px-3 py-2 rounded-lg bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 flex items-center gap-2 border border-purple-200"
+                      className="w-full text-sm text-left px-3 py-2 rounded-lg bg-gradient-to-r from-[#EEEDFE] to-[#E6F1FB] hover:from-[#E6E3FC] hover:to-[#D5E9F8] flex items-center gap-2 border border-[#CECBF6]"
                       data-testid="button-open-crm"
                     >
-                      <Briefcase size={16} className="text-purple-600" />
-                      <span className="font-medium text-purple-700">Open CRM</span>
+                      <Briefcase size={16} className="text-[#3C258E]" />
+                      <span className="font-medium text-[#3C258E]">Open CRM</span>
                     </button>
                   </Link>
                   <Link href="/messages">
@@ -320,7 +320,7 @@ export default function ContractorDashboard() {
                       className="w-full text-sm text-left px-3 py-2 rounded-lg hover:bg-slate-50 flex items-center gap-2"
                       data-testid="button-message-client"
                     >
-                      <MessageSquare size={16} className="text-blue-600" />
+                      <MessageSquare size={16} className="text-[#1560A2]" />
                       Message Client
                     </button>
                   </Link>
@@ -329,7 +329,7 @@ export default function ContractorDashboard() {
                       className="w-full text-sm text-left px-3 py-2 rounded-lg hover:bg-slate-50 flex items-center gap-2"
                       data-testid="button-schedule-visit"
                     >
-                      <Calendar size={16} className="text-blue-600" />
+                      <Calendar size={16} className="text-[#1560A2]" />
                       Schedule Visit
                     </button>
                   </Link>
@@ -338,7 +338,7 @@ export default function ContractorDashboard() {
                       className="w-full text-sm text-left px-3 py-2 rounded-lg hover:bg-slate-50 flex items-center gap-2"
                       data-testid="button-mark-complete"
                     >
-                      <CheckCircle size={16} className="text-emerald-600" />
+                      <CheckCircle size={16} className="text-[#079669]" />
                       Mark Job Complete
                     </button>
                   </Link>
@@ -358,7 +358,7 @@ export default function ContractorDashboard() {
             <div className="bg-white rounded-2xl p-6 shadow-sm mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4" style={{ border: '1px solid #dbeafe' }}>
               <div>
                 <h2 className="text-2xl font-bold" style={{ color: '#1560A2' }} data-testid="text-welcome-message">Welcome back, {firstName}</h2>
-                <p className="mt-1" style={{ color: '#1e3a6e' }}>Quick snapshot of your business. Keep doing great work — we'll handle the busywork.</p>
+                <p className="mt-1" style={{ color: 'var(--blue-deep)' }}>Quick snapshot of your business. Keep doing great work — we'll handle the busywork.</p>
               </div>
               <div className="flex items-center gap-3">
                 <div className="text-xs text-slate-400">Subscription</div>
@@ -373,19 +373,19 @@ export default function ContractorDashboard() {
               <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: '1px solid #dbeafe' }}>
                 <div className="text-xs" style={{ color: '#4b72a0' }}>Earnings (30d)</div>
                 <div className="text-xl font-semibold mt-2" style={{ color: '#1560A2' }} data-testid="text-earnings-30d">${totalEarnings.toLocaleString()}</div>
-                <div className="text-sm mt-1" style={{ color: '#1e3a6e' }}>From accepted proposals</div>
+                <div className="text-sm mt-1" style={{ color: 'var(--blue-deep)' }}>From accepted proposals</div>
               </div>
 
               <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: '1px solid #dbeafe' }}>
                 <div className="text-xs" style={{ color: '#4b72a0' }}>Active Jobs</div>
                 <div className="text-xl font-semibold mt-2" style={{ color: '#1560A2' }} data-testid="text-active-jobs">{acceptedProposals.length}</div>
-                <div className="text-sm mt-1" style={{ color: '#1e3a6e' }}>{upcomingAppointments.length} scheduled this week</div>
+                <div className="text-sm mt-1" style={{ color: 'var(--blue-deep)' }}>{upcomingAppointments.length} scheduled this week</div>
               </div>
 
               <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: '1px solid #dbeafe' }}>
                 <div className="text-xs" style={{ color: '#4b72a0' }}>Avg Response Time</div>
                 <div className="text-xl font-semibold mt-2" style={{ color: '#1560A2' }} data-testid="text-response-time">2h 12m</div>
-                <div className="text-sm mt-1" style={{ color: '#1e3a6e' }}>Keep response rate high to win more leads</div>
+                <div className="text-sm mt-1" style={{ color: 'var(--blue-deep)' }}>Keep response rate high to win more leads</div>
               </div>
             </div>
 
@@ -393,8 +393,8 @@ export default function ContractorDashboard() {
             <div className="bg-gradient-to-r from-emerald-50 via-white to-emerald-50 rounded-2xl p-6 shadow-sm mb-6 border border-emerald-100">
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-lg bg-emerald-100">
-                    <Gift size={22} className="text-emerald-700" />
+                  <div className="p-3 rounded-lg bg-[#F0FAF4]">
+                    <Gift size={22} className="text-[#09694A]" />
                   </div>
                   <div>
                     <div className="text-sm text-slate-600 font-semibold">Get your subscription FREE</div>
@@ -413,7 +413,7 @@ export default function ContractorDashboard() {
                   </div>
                   <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
                     <div 
-                      className="h-3 rounded-full bg-emerald-400 transition-all duration-500" 
+                      className="h-3 rounded-full bg-[#079669] transition-all duration-500" 
                       style={{ width: `${progressPercentage}%` }}
                       data-testid="progress-referrals"
                     ></div>
@@ -452,8 +452,8 @@ export default function ContractorDashboard() {
                           <div className="text-xs text-slate-400">{proposal.status} • ${parseFloat(proposal.estimatedCost || '0').toLocaleString()}</div>
                         </div>
                         <div className={`text-xs px-2 py-1 rounded ${
-                          proposal.status === 'accepted' ? 'bg-emerald-100 text-emerald-700' :
-                          proposal.status === 'sent' ? 'bg-blue-100 text-blue-700' :
+                          proposal.status === 'accepted' ? 'bg-[#F0FAF4] text-[#09694A]' :
+                          proposal.status === 'sent' ? 'bg-[#E6F1FB] text-[#1560A2]' :
                           proposal.status === 'rejected' ? 'bg-red-100 text-red-700' :
                           'bg-slate-100 text-slate-600'
                         }`}>
@@ -535,7 +535,7 @@ export default function ContractorDashboard() {
                           {job.estimatedDuration || 'TBD'} • ${parseFloat(job.estimatedCost || '0').toLocaleString()}
                         </div>
                       </div>
-                      <div className="text-sm text-emerald-600 flex items-center gap-1">
+                      <div className="text-sm text-[#079669] flex items-center gap-1">
                         <CheckCircle size={14} />
                         Scheduled
                       </div>
@@ -874,7 +874,7 @@ export default function ContractorDashboard() {
                 <Button
                   type="submit"
                   disabled={createMutation.isPending}
-                  className="bg-gradient-to-r from-emerald-500 to-emerald-400 text-white hover:opacity-90"
+                  className="bg-gradient-to-r from-[#079669] to-[#07966f] text-white hover:opacity-90"
                   data-testid="button-submit-proposal"
                 >
                   {createMutation.isPending ? "Creating..." : "Create Proposal"}

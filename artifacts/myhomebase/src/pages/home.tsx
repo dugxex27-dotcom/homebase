@@ -238,10 +238,10 @@ export default function Home() {
       {typedUser?.role === "homeowner" && houses.length === 0 && (
         <div className="dash-body">
           <div style={{ textAlign: "center", padding: "40px 0" }}>
-            <h2 style={{ fontSize: 22, fontWeight: 800, color: "#2C0F5B", marginBottom: 12 }}>
+            <h2 style={{ fontSize: 22, fontWeight: 800, color: "var(--purple-deep)", marginBottom: 12 }}>
               Welcome to MyHomeBase™!
             </h2>
-            <p style={{ fontSize: 14, color: "#B6A6F4", marginBottom: 24, lineHeight: 1.6 }}>
+            <p style={{ fontSize: 14, color: "var(--purple-light)", marginBottom: 24, lineHeight: 1.6 }}>
               Create a living record of your home — systems, maintenance, upgrades, and health.
             </p>
             <Link href="/maintenance">
@@ -454,7 +454,7 @@ export default function Home() {
                       const claimHouseId = inv.houseId || (houses.length === 1 ? houses[0]?.id : null);
                       return (
                         <div key={inv.id} style={{
-                          background: '#F9F7FF', border: '1px solid #E5DDF7', borderRadius: 10,
+                          background: 'var(--purple-tint)', border: '1px solid var(--purple-border)', borderRadius: 10,
                           padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10,
                         }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
@@ -579,7 +579,7 @@ export default function Home() {
                   { href: "/contractor-dashboard", Icon: Search, label: "New Leads", sub: "Opportunities", body: "5 new client inquiries this week" },
                 ].map(({ href, Icon, label, sub, body }) => (
                   <Link key={label} href={href} className="h-full">
-                    <Card className="shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group h-full flex flex-col" style={{ background: "#f2f2f2" }}>
+                    <Card className="shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group h-full flex flex-col" style={{ background: "var(--gray-100)" }}>
                       <CardContent className="p-4 sm:p-6 flex-1 flex flex-col">
                         <div className="flex items-center mb-3 sm:mb-4">
                           <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center group-hover:opacity-80 transition-colors flex-shrink-0" style={{ backgroundColor: "var(--theme-primary)" }}>

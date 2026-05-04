@@ -49,11 +49,11 @@ export default function PublicHeader() {
                 <nav className="mt-6 space-y-1">
                   <a
                     href="/signin/homeowner"
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-purple-50 transition-colors"
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-[#EEEDFE] transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                     data-testid="link-menu-homeowner"
                   >
-                    <div className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: '#ede9fe', color: '#3C258E' }}>
+                    <div className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: 'var(--purple-tint)', color: '#3C258E' }}>
                       <Home className="h-[18px] w-[18px]" />
                     </div>
                     <div className="flex flex-col gap-0.5">
@@ -63,29 +63,29 @@ export default function PublicHeader() {
                   </a>
                   <a
                     href="/signin/contractor"
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-blue-50 transition-colors"
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-[#E6F1FB] transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                     data-testid="link-menu-contractor"
                   >
-                    <div className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: '#dbeafe', color: '#1560a2' }}>
+                    <div className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: 'var(--blue-tint)', color: 'var(--blue)' }}>
                       <Wrench className="h-[18px] w-[18px]" />
                     </div>
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-sm font-bold" style={{ color: '#1560a2' }}>Contractor</span>
+                      <span className="text-sm font-bold" style={{ color: 'var(--blue)' }}>Contractor</span>
                       <span className="text-[11px] font-medium text-gray-400">Grow your business</span>
                     </div>
                   </a>
                   <a
                     href="/signin/agent"
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-emerald-50 transition-colors"
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-[#F0FAF4] transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
                     data-testid="link-menu-agent"
                   >
-                    <div className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: '#dcfce7', color: '#166534' }}>
+                    <div className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: 'var(--green-tint)', color: 'var(--green-deep)' }}>
                       <Building2 className="h-[18px] w-[18px]" />
                     </div>
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-sm font-bold" style={{ color: '#166534' }}>Real Estate Agent</span>
+                      <span className="text-sm font-bold" style={{ color: 'var(--green-deep)' }}>Real Estate Agent</span>
                       <span className="text-[11px] font-medium text-gray-400">Refer and earn</span>
                     </div>
                   </a>
@@ -177,48 +177,48 @@ export default function PublicHeader() {
                   onMouseOver={e => (e.currentTarget.style.background = '#f5f1ff')}
                   onMouseOut={e => (e.currentTarget.style.background = '')}
                 >
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: '#ede9fe', color: '#3C258E', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--purple-tint)', color: '#3C258E', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <Home size={18} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1 }}>
                     <span style={{ fontSize: 14, fontWeight: 700, color: '#2C0F5B' }}>Homeowner</span>
                     <span style={{ fontSize: 11.5, color: '#9090b0', fontWeight: 500 }}>Track, protect &amp; document</span>
                   </div>
-                  <span style={{ fontSize: 15, color: '#c0b8d8' }}>→</span>
+                  <span style={{ fontSize: 15, color: 'var(--purple-light)' }}>→</span>
                 </a>
 
                 {/* Contractor */}
                 <a
                   href="/signin/contractor"
                   style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', textDecoration: 'none', borderBottom: '1px solid #f7f5fd', transition: 'background 0.15s' }}
-                  onMouseOver={e => (e.currentTarget.style.background = '#eff6ff')}
+                  onMouseOver={e => (e.currentTarget.style.background = 'var(--blue-tint)')}
                   onMouseOut={e => (e.currentTarget.style.background = '')}
                 >
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: '#dbeafe', color: '#1560a2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--blue-tint)', color: 'var(--blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <Wrench size={18} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1 }}>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: '#1560a2' }}>Contractor</span>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--blue)' }}>Contractor</span>
                     <span style={{ fontSize: 11.5, color: '#9090b0', fontWeight: 500 }}>Grow your business</span>
                   </div>
-                  <span style={{ fontSize: 15, color: '#c0b8d8' }}>→</span>
+                  <span style={{ fontSize: 15, color: 'var(--purple-light)' }}>→</span>
                 </a>
 
                 {/* Agent */}
                 <a
                   href="/signin/agent"
                   style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', textDecoration: 'none', transition: 'background 0.15s' }}
-                  onMouseOver={e => (e.currentTarget.style.background = '#f0fdf4')}
+                  onMouseOver={e => (e.currentTarget.style.background = 'var(--green-tint)')}
                   onMouseOut={e => (e.currentTarget.style.background = '')}
                 >
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: '#dcfce7', color: '#166534', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--green-tint)', color: 'var(--green-deep)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <Building2 size={18} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1 }}>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: '#166534' }}>Real Estate Agent</span>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--green-deep)' }}>Real Estate Agent</span>
                     <span style={{ fontSize: 11.5, color: '#9090b0', fontWeight: 500 }}>Refer and earn</span>
                   </div>
-                  <span style={{ fontSize: 15, color: '#c0b8d8' }}>→</span>
+                  <span style={{ fontSize: 15, color: 'var(--purple-light)' }}>→</span>
                 </a>
               </div>
             )}

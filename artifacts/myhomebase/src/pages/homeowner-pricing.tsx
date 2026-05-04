@@ -105,7 +105,7 @@ export default function HomeownerPricing() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => window.location.reload()} className="w-full bg-purple-600 hover:bg-purple-700 text-white">
+            <Button onClick={() => window.location.reload()} className="w-full bg-[#3C258E] hover:bg-[#2C0F5B] text-white">
               Refresh Page
             </Button>
           </CardContent>
@@ -133,7 +133,7 @@ export default function HomeownerPricing() {
               <p className="text-lg max-w-2xl mx-auto text-gray-600">
                 Choose a plan and enter your payment info to get started. You won't be charged until your 14-day trial ends — cancel anytime.
               </p>
-              <div className="flex items-center justify-center gap-2 text-green-700 font-medium">
+              <div className="flex items-center justify-center gap-2 text-[#09694A] font-medium">
                 <ShieldCheck className="w-5 h-5" />
                 <span>No charge today. Trial starts the moment you sign up.</span>
               </div>
@@ -157,10 +157,10 @@ export default function HomeownerPricing() {
             className="flex items-center gap-3 max-w-md mx-auto rounded-xl px-4 py-3"
             style={{ background: 'rgba(83,74,183,0.08)', border: '1.5px solid rgba(83,74,183,0.2)' }}
           >
-            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: '#534AB7' }} />
+            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: 'var(--purple)' }} />
             <div className="flex-1 min-w-0">
-              <p className="m-0 text-xs font-bold uppercase tracking-widest" style={{ color: '#2d1f6e', letterSpacing: '0.07em' }}>Your selected plan</p>
-              <p className="m-0 text-sm font-bold" style={{ color: '#534AB7' }}>
+              <p className="m-0 text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--purple-deep)', letterSpacing: '0.07em' }}>Your selected plan</p>
+              <p className="m-0 text-sm font-bold" style={{ color: 'var(--purple)' }}>
                 {PRICING_PLAN_INFO[preSelectedPlan].name} — {PRICING_PLAN_INFO[preSelectedPlan].price}
               </p>
             </div>
@@ -170,7 +170,7 @@ export default function HomeownerPricing() {
         {/* Current Plan Badge */}
         {hasActiveSubscription && !isOnboarding && (
           <div className="flex justify-center">
-            <Badge variant="secondary" className="px-4 py-2 text-sm bg-purple-100 text-purple-800" data-testid="badge-current-plan">
+            <Badge variant="secondary" className="px-4 py-2 text-sm bg-[#EEEDFE] text-[#2C0F5B]" data-testid="badge-current-plan">
               Your Current Plan: {actualPlan === 'premium_plus' ? 'Premium Plus' : actualPlan === 'premium' ? 'Premium' : 'Base'}
             </Badge>
           </div>
@@ -179,7 +179,7 @@ export default function HomeownerPricing() {
         {/* Trial or Expired Trial Message */}
         {!hasActiveSubscription && !isOnboarding && (
           <div className="flex justify-center">
-            <Badge variant="secondary" className={`px-4 py-2 text-sm ${isInTrial ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
+            <Badge variant="secondary" className={`px-4 py-2 text-sm ${isInTrial ? 'bg-[#E6F1FB] text-[#1560A2]' : 'bg-amber-100 text-amber-800'}`}>
               {isInTrial 
                 ? 'You are on a 14-day free trial. Select a plan to continue after your trial ends.'
                 : 'Your free trial has ended. Select a plan below to continue using MyHomeBase™.'}
@@ -191,57 +191,57 @@ export default function HomeownerPricing() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
           {/* Base Plan */}
           <div ref={(el) => { planRefs.current['base'] = el; }}>
-          <Card className={`relative transition-all hover:shadow-lg ${hasActiveSubscription && actualPlan === 'base' ? 'border-4 border-purple-600 shadow-xl' : preSelectedPlan === 'base' && !hasActiveSubscription ? 'border-4 border-purple-500 shadow-xl' : 'border-2'}`}>
+          <Card className={`relative transition-all hover:shadow-lg ${hasActiveSubscription && actualPlan === 'base' ? 'border-4 border-[#3C258E] shadow-xl' : preSelectedPlan === 'base' && !hasActiveSubscription ? 'border-4 border-[#3C258E] shadow-xl' : 'border-2'}`}>
             {hasActiveSubscription && actualPlan === 'base' ? (
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                <Badge className="bg-purple-600 text-white px-4 py-1" data-testid="badge-base-plan-current">Current Plan</Badge>
+                <Badge className="bg-[#3C258E] text-white px-4 py-1" data-testid="badge-base-plan-current">Current Plan</Badge>
               </div>
             ) : preSelectedPlan === 'base' && !hasActiveSubscription ? (
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                <Badge className="bg-purple-500 text-white px-4 py-1" data-testid="badge-base-plan-selected">Your Selection</Badge>
+                <Badge className="bg-[#3C258E] text-white px-4 py-1" data-testid="badge-base-plan-selected">Your Selection</Badge>
               </div>
             ) : null}
             <CardHeader className="text-center pb-4">
               <div className="flex justify-center mb-4">
-                <div className="p-3 rounded-full bg-purple-100">
-                  <Home className="w-8 h-8 text-purple-600" />
+                <div className="p-3 rounded-full bg-[#EEEDFE]">
+                  <Home className="w-8 h-8 text-[#3C258E]" />
                 </div>
               </div>
-              <CardTitle className="text-2xl" style={{ color: '#2c0f5b' }} data-testid="title-base-plan">Base Plan</CardTitle>
+              <CardTitle className="text-2xl" style={{ color: 'var(--purple-deep)' }} data-testid="title-base-plan">Base Plan</CardTitle>
               <CardDescription>Perfect for getting started</CardDescription>
               <div className="mt-4">
-                <span className="text-5xl font-bold" style={{ color: '#2c0f5b' }} data-testid="price-base-plan">$5</span>
+                <span className="text-5xl font-bold" style={{ color: 'var(--purple-deep)' }} data-testid="price-base-plan">$5</span>
                 <span className="text-gray-600">/month</span>
               </div>
             </CardHeader>
             <CardContent>
               <ul className="space-y-3 mb-6">
                 <li className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
+                  <Check className="h-5 w-5 text-[#3C258E] mt-0.5 flex-shrink-0" />
                   <span className="text-sm">Up to <strong>2 properties</strong></span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
+                  <Check className="h-5 w-5 text-[#3C258E] mt-0.5 flex-shrink-0" />
                   <span className="text-sm">Full maintenance scheduling</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
+                  <Check className="h-5 w-5 text-[#3C258E] mt-0.5 flex-shrink-0" />
                   <span className="text-sm">Contractor directory access</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
+                  <Check className="h-5 w-5 text-[#3C258E] mt-0.5 flex-shrink-0" />
                   <span className="text-sm">Service record tracking</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
+                  <Check className="h-5 w-5 text-[#3C258E] mt-0.5 flex-shrink-0" />
                   <span className="text-sm">Home health score</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
+                  <Check className="h-5 w-5 text-[#3C258E] mt-0.5 flex-shrink-0" />
                   <span className="text-sm">DIY savings tracker</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
+                  <Check className="h-5 w-5 text-[#3C258E] mt-0.5 flex-shrink-0" />
                   <span className="text-sm">Email support</span>
                 </li>
               </ul>
@@ -251,7 +251,7 @@ export default function HomeownerPricing() {
                 </Button>
               ) : (
                 <Button 
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                  className="w-full bg-[#3C258E] hover:bg-[#2C0F5B] text-white"
                   data-testid="button-select-base-plan"
                   onClick={() => checkoutMutation.mutate('base')}
                   disabled={checkoutMutation.isPending}
@@ -272,37 +272,37 @@ export default function HomeownerPricing() {
 
           {/* Premium Plan */}
           <div ref={(el) => { planRefs.current['premium'] = el; }}>
-          <Card className={`relative transition-all hover:shadow-lg ${hasActiveSubscription && actualPlan === 'premium' ? 'border-4 border-purple-600 shadow-xl' : preSelectedPlan === 'premium' && !hasActiveSubscription ? 'border-4 border-purple-500 shadow-xl' : 'border-2'}`}>
+          <Card className={`relative transition-all hover:shadow-lg ${hasActiveSubscription && actualPlan === 'premium' ? 'border-4 border-[#3C258E] shadow-xl' : preSelectedPlan === 'premium' && !hasActiveSubscription ? 'border-4 border-[#3C258E] shadow-xl' : 'border-2'}`}>
             {hasActiveSubscription && actualPlan === 'premium' ? (
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                <Badge className="bg-purple-600 text-white px-4 py-1" data-testid="badge-premium-plan-current">Current Plan</Badge>
+                <Badge className="bg-[#3C258E] text-white px-4 py-1" data-testid="badge-premium-plan-current">Current Plan</Badge>
               </div>
             ) : preSelectedPlan === 'premium' && !hasActiveSubscription ? (
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                <Badge className="bg-purple-500 text-white px-4 py-1" data-testid="badge-premium-plan-selected">Your Selection</Badge>
+                <Badge className="bg-[#3C258E] text-white px-4 py-1" data-testid="badge-premium-plan-selected">Your Selection</Badge>
               </div>
             ) : null}
             <CardHeader className="text-center pb-4">
               <div className="flex justify-center mb-4">
-                <div className="p-3 rounded-full bg-purple-100">
-                  <Zap className="w-8 h-8 text-purple-600" />
+                <div className="p-3 rounded-full bg-[#EEEDFE]">
+                  <Zap className="w-8 h-8 text-[#3C258E]" />
                 </div>
               </div>
-              <CardTitle className="text-2xl" style={{ color: '#2c0f5b' }} data-testid="title-premium-plan">Premium Plan</CardTitle>
+              <CardTitle className="text-2xl" style={{ color: 'var(--purple-deep)' }} data-testid="title-premium-plan">Premium Plan</CardTitle>
               <CardDescription>For active property managers</CardDescription>
               <div className="mt-4">
-                <span className="text-5xl font-bold" style={{ color: '#2c0f5b' }} data-testid="price-premium-plan">$20</span>
+                <span className="text-5xl font-bold" style={{ color: 'var(--purple-deep)' }} data-testid="price-premium-plan">$20</span>
                 <span className="text-gray-600">/month</span>
               </div>
             </CardHeader>
             <CardContent>
               <ul className="space-y-3 mb-6">
                 <li className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
+                  <Check className="h-5 w-5 text-[#3C258E] mt-0.5 flex-shrink-0" />
                   <span className="text-sm"><strong>3-6 properties</strong></span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
+                  <Check className="h-5 w-5 text-[#3C258E] mt-0.5 flex-shrink-0" />
                   <span className="text-sm"><strong>Everything in Base</strong></span>
                 </li>
               </ul>
@@ -312,7 +312,7 @@ export default function HomeownerPricing() {
                 </Button>
               ) : (
                 <Button 
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                  className="w-full bg-[#3C258E] hover:bg-[#2C0F5B] text-white"
                   data-testid="button-select-premium-plan"
                   onClick={() => checkoutMutation.mutate('premium')}
                   disabled={checkoutMutation.isPending}
@@ -333,37 +333,37 @@ export default function HomeownerPricing() {
 
           {/* Premium Plus Plan */}
           <div ref={(el) => { planRefs.current['premium_plus'] = el; }}>
-          <Card className={`relative transition-all hover:shadow-lg ${hasActiveSubscription && actualPlan === 'premium_plus' ? 'border-4 border-purple-600 shadow-xl' : preSelectedPlan === 'premium_plus' && !hasActiveSubscription ? 'border-4 border-purple-500 shadow-xl' : 'border-2'}`}>
+          <Card className={`relative transition-all hover:shadow-lg ${hasActiveSubscription && actualPlan === 'premium_plus' ? 'border-4 border-[#3C258E] shadow-xl' : preSelectedPlan === 'premium_plus' && !hasActiveSubscription ? 'border-4 border-[#3C258E] shadow-xl' : 'border-2'}`}>
             {hasActiveSubscription && actualPlan === 'premium_plus' ? (
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                <Badge className="bg-purple-600 text-white px-4 py-1" data-testid="badge-premium-plus-plan-current">Current Plan</Badge>
+                <Badge className="bg-[#3C258E] text-white px-4 py-1" data-testid="badge-premium-plus-plan-current">Current Plan</Badge>
               </div>
             ) : preSelectedPlan === 'premium_plus' && !hasActiveSubscription ? (
               <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                <Badge className="bg-purple-500 text-white px-4 py-1" data-testid="badge-premium-plus-plan-selected">Your Selection</Badge>
+                <Badge className="bg-[#3C258E] text-white px-4 py-1" data-testid="badge-premium-plus-plan-selected">Your Selection</Badge>
               </div>
             ) : null}
             <CardHeader className="text-center pb-4">
               <div className="flex justify-center mb-4">
-                <div className="p-3 rounded-full bg-purple-100">
-                  <Crown className="w-8 h-8 text-purple-600" />
+                <div className="p-3 rounded-full bg-[#EEEDFE]">
+                  <Crown className="w-8 h-8 text-[#3C258E]" />
                 </div>
               </div>
-              <CardTitle className="text-2xl" style={{ color: '#2c0f5b' }} data-testid="title-premium-plus-plan">Premium Plus</CardTitle>
+              <CardTitle className="text-2xl" style={{ color: 'var(--purple-deep)' }} data-testid="title-premium-plus-plan">Premium Plus</CardTitle>
               <CardDescription>For serious property portfolios</CardDescription>
               <div className="mt-4">
-                <span className="text-5xl font-bold" style={{ color: '#2c0f5b' }} data-testid="price-premium-plus-plan">$40</span>
+                <span className="text-5xl font-bold" style={{ color: 'var(--purple-deep)' }} data-testid="price-premium-plus-plan">$40</span>
                 <span className="text-gray-600">/month</span>
               </div>
             </CardHeader>
             <CardContent>
               <ul className="space-y-3 mb-6">
                 <li className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
+                  <Check className="h-5 w-5 text-[#3C258E] mt-0.5 flex-shrink-0" />
                   <span className="text-sm"><strong>7+ properties</strong></span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <Check className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
+                  <Check className="h-5 w-5 text-[#3C258E] mt-0.5 flex-shrink-0" />
                   <span className="text-sm"><strong>Everything in Premium</strong></span>
                 </li>
               </ul>
@@ -373,7 +373,7 @@ export default function HomeownerPricing() {
                 </Button>
               ) : (
                 <Button 
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                  className="w-full bg-[#3C258E] hover:bg-[#2C0F5B] text-white"
                   data-testid="button-select-premium-plus-plan"
                   onClick={() => checkoutMutation.mutate('premium_plus')}
                   disabled={checkoutMutation.isPending}
@@ -397,7 +397,7 @@ export default function HomeownerPricing() {
         <Card className="mt-8">
           <CardContent className="pt-6">
             <div className="text-center space-y-4">
-              <h3 className="text-xl font-semibold" style={{ color: '#2c0f5b' }}>
+              <h3 className="text-xl font-semibold" style={{ color: 'var(--purple-deep)' }}>
                 {isOnboarding ? '14-Day Free Trial — No Charge Today' : 'All Plans Include a 14-Day Free Trial'}
               </h3>
               <p className="text-gray-600 max-w-2xl mx-auto">
@@ -408,7 +408,7 @@ export default function HomeownerPricing() {
               <div className="flex flex-col sm:flex-row gap-4 justify-center mt-6">
                 <Button 
                   asChild 
-                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                  className="bg-[#3C258E] hover:bg-[#2C0F5B] text-white"
                   data-testid="button-manage-subscription-footer"
                 >
                   <Link href="/billing">
@@ -430,7 +430,7 @@ export default function HomeownerPricing() {
 
         {/* FAQ Section */}
         <div className="mt-12 max-w-3xl mx-auto">
-          <h3 className="text-2xl font-bold text-center mb-6" style={{ color: '#2c0f5b' }}>
+          <h3 className="text-2xl font-bold text-center mb-6" style={{ color: 'var(--purple-deep)' }}>
             Frequently Asked Questions
           </h3>
           <div className="space-y-4">

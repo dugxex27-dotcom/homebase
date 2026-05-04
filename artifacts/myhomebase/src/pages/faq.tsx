@@ -8,7 +8,7 @@ export default function FAQ() {
     <div className="bg-gray-50">
       <main className="max-w-4xl mx-auto px-4 py-8 sm:py-12">
         <div className="text-center mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold mb-3" style={{ color: '#2c0f5b' }}>
+          <h1 className="text-3xl sm:text-4xl font-bold mb-3" style={{ color: 'var(--purple-deep)' }}>
             Frequently Asked Questions
           </h1>
           <p className="text-gray-600 text-lg">
@@ -17,7 +17,7 @@ export default function FAQ() {
         </div>
 
         <Tabs defaultValue="pricing" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 mb-8 bg-purple-100">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 mb-8 bg-[#EEEDFE]">
             <TabsTrigger value="pricing" className="flex items-center gap-2">
               <DollarSign className="h-4 w-4" />
               <span className="hidden sm:inline">Pricing</span>
@@ -40,7 +40,7 @@ export default function FAQ() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5 text-purple-600" />
+                  <DollarSign className="h-5 w-5 text-[#3C258E]" />
                   Pricing & Subscriptions
                 </CardTitle>
               </CardHeader>
@@ -49,7 +49,7 @@ export default function FAQ() {
                   <AccordionItem value="homeowner-pricing">
                     <AccordionTrigger className="text-left">
                       <div className="flex items-center gap-2">
-                        <Home className="h-4 w-4 text-purple-600" />
+                        <Home className="h-4 w-4 text-[#3C258E]" />
                         What are the homeowner subscription plans?
                       </div>
                     </AccordionTrigger>
@@ -68,7 +68,7 @@ export default function FAQ() {
                   <AccordionItem value="contractor-pricing">
                     <AccordionTrigger className="text-left">
                       <div className="flex items-center gap-2">
-                        <Wrench className="h-4 w-4 text-blue-600" />
+                        <Wrench className="h-4 w-4 text-[#1560A2]" />
                         What are the contractor subscription plans?
                       </div>
                     </AccordionTrigger>
@@ -126,7 +126,7 @@ export default function FAQ() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-emerald-600" />
+                  <Users className="h-5 w-5 text-[#079669]" />
                   Referral Program
                 </CardTitle>
               </CardHeader>
@@ -150,7 +150,7 @@ export default function FAQ() {
                   <AccordionItem value="agent-referrals">
                     <AccordionTrigger className="text-left">
                       <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-emerald-600" />
+                        <Building2 className="h-4 w-4 text-[#079669]" />
                         How do real estate agent referrals work?
                       </div>
                     </AccordionTrigger>
@@ -387,7 +387,7 @@ export default function FAQ() {
                     <AccordionContent className="text-gray-600">
                       You can reach our support team through multiple channels:
                       <ul className="list-disc pl-6 space-y-2 mt-2">
-                        <li>Use the <a href="/contact" className="text-purple-600 hover:underline">Contact Us</a> page to submit a support ticket</li>
+                        <li>Use the <a href="/contact" className="text-[#3C258E] hover:underline">Contact Us</a> page to submit a support ticket</li>
                         <li>Email us at gotohomebase2025@gmail.com</li>
                         <li>Logged-in users can create support tickets directly from the Support page in their dashboard</li>
                       </ul>
@@ -408,8 +408,8 @@ export default function FAQ() {
           </TabsContent>
         </Tabs>
 
-        <div className="text-center mt-12 p-6 bg-white rounded-lg border border-gray-200">
-          <h3 className="text-lg font-semibold mb-2" style={{ color: '#2c0f5b' }}>
+        <div className="text-center mt-12 p-6 bg-white rounded-[16px] border border-[#E5E7EB]">
+          <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--purple-deep)' }}>
             Still have questions?
           </h3>
           <p className="text-gray-600 mb-4">
@@ -417,8 +417,8 @@ export default function FAQ() {
           </p>
           <a 
             href="/contact"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-medium text-white transition-colors"
-            style={{ backgroundColor: '#2c0f5b' }}
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-[12px] font-medium text-white transition-colors"
+            style={{ backgroundColor: 'var(--purple-deep)' }}
           >
             Contact Us
           </a>

@@ -150,9 +150,9 @@ export default function Billing() {
 
         {/* Trial Alert */}
         {isTrialActive && (
-          <Alert className={`mb-6 ${isContractor ? 'border-red-200 bg-red-50' : 'border-purple-200 bg-purple-50'}`}>
-            <Calendar className={`h-4 w-4 ${isContractor ? 'text-red-600' : 'text-purple-600'}`} />
-            <AlertDescription className={isContractor ? 'text-red-900' : 'text-purple-900'}>
+          <Alert className={`mb-6 ${isContractor ? 'border-red-200 bg-red-50' : 'border-[#CECBF6] bg-[#EEEDFE]'}`}>
+            <Calendar className={`h-4 w-4 ${isContractor ? 'text-red-600' : 'text-[#3C258E]'}`} />
+            <AlertDescription className={isContractor ? 'text-red-900' : 'text-[#2C0F5B]'}>
               <strong>Free Trial Active:</strong> You have {daysRemaining} day{daysRemaining !== 1 ? 's' : ''} remaining in your 14-day trial. 
               {isContractor 
                 ? ' Subscribe below to continue accessing your contractor features after your trial ends.'
@@ -176,7 +176,7 @@ export default function Billing() {
         {currentPlan !== 'trial' && (
           <Card className="mb-8">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2" style={{ color: isContractor ? '#b91c1c' : '#2c0f5b' }}>
+              <CardTitle className="flex items-center gap-2" style={{ color: isContractor ? '#b91c1c' : 'var(--purple-deep)' }}>
                 {currentPlan === 'grandfathered' && <Crown className="h-5 w-5 text-yellow-600" />}
                 {currentPlan === 'contractor_pro' && <Crown className="h-5 w-5 text-red-600" />}
                 Current Plan: {currentPlan === 'grandfathered' ? 'Grandfathered' : currentPlan === 'contractor_pro' ? 'Contractor Pro' : currentPlan === 'contractor' ? 'Contractor Basic' : currentPlan === 'premium_plus' ? 'Premium Plus' : currentPlan === 'premium' ? 'Premium' : 'Base'}
@@ -352,12 +352,12 @@ export default function Billing() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
             {/* Base Plan */}
             <Card 
-              className={`relative transition-all ${selectedPlan === 'base' ? 'ring-2 ring-purple-600' : ''}`}
+              className={`relative transition-all ${selectedPlan === 'base' ? 'ring-2 ring-[#3C258E]' : ''}`}
               data-testid="card-plan-base"
             >
               <CardHeader className="pb-4 sm:pb-6">
                 <div className="flex items-center justify-between mb-2">
-                  <CardTitle className="text-lg sm:text-xl lg:text-2xl" style={{ color: '#2c0f5b' }}>
+                  <CardTitle className="text-lg sm:text-xl lg:text-2xl" style={{ color: 'var(--purple-deep)' }}>
                     Base Plan
                   </CardTitle>
                   {currentPlan === 'base' && (
@@ -365,7 +365,7 @@ export default function Billing() {
                   )}
                 </div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-3xl sm:text-4xl font-bold" style={{ color: '#2c0f5b' }}>$5</span>
+                  <span className="text-3xl sm:text-4xl font-bold" style={{ color: 'var(--purple-deep)' }}>$5</span>
                   <span className="text-sm sm:text-base text-gray-600">/month</span>
                 </div>
                 <CardDescription className="text-xs sm:text-sm">Perfect for managing a primary residence</CardDescription>
@@ -373,27 +373,27 @@ export default function Billing() {
               <CardContent>
                 <ul className="space-y-3 mb-6">
                   <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-purple-600 mt-0.5" />
+                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
                     <span><strong>14-day free trial</strong></span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-purple-600 mt-0.5" />
+                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
                     <span>Up to <strong>2 properties</strong></span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-purple-600 mt-0.5" />
+                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
                     <span>Full maintenance scheduling</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-purple-600 mt-0.5" />
+                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
                     <span>Contractor directory access</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-purple-600 mt-0.5" />
+                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
                     <span>Service record tracking</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-purple-600 mt-0.5" />
+                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
                     <span>AI contractor recommendations</span>
                   </li>
                 </ul>
@@ -402,7 +402,7 @@ export default function Billing() {
                     onClick={() => handleSubscribe('base')}
                     variant="outline"
                     className="w-full"
-                    style={{ borderColor: '#2c0f5b', color: '#2c0f5b' }}
+                    style={{ borderColor: 'var(--purple-deep)', color: 'var(--purple-deep)' }}
                     data-testid="button-subscribe-base"
                   >
                     Select Base Plan
@@ -413,16 +413,16 @@ export default function Billing() {
 
             {/* Premium Plan */}
             <Card 
-              className={`relative transition-all ${selectedPlan === 'premium' ? 'ring-2 ring-purple-600' : ''}`}
+              className={`relative transition-all ${selectedPlan === 'premium' ? 'ring-2 ring-[#3C258E]' : ''}`}
               data-testid="card-plan-premium"
             >
               <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                <Badge className="bg-purple-600 text-white">Most Popular</Badge>
+                <Badge className="bg-[#3C258E] text-white">Most Popular</Badge>
               </div>
               <CardHeader className="pt-8">
                 <div className="flex items-center justify-between mb-2">
-                  <CardTitle className="text-2xl flex items-center gap-2" style={{ color: '#2c0f5b' }}>
-                    <Crown className="h-6 w-6 text-purple-600" />
+                  <CardTitle className="text-2xl flex items-center gap-2" style={{ color: 'var(--purple-deep)' }}>
+                    <Crown className="h-6 w-6 text-[#3C258E]" />
                     Premium Plan
                   </CardTitle>
                   {currentPlan === 'premium' && (
@@ -430,7 +430,7 @@ export default function Billing() {
                   )}
                 </div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold" style={{ color: '#2c0f5b' }}>$20</span>
+                  <span className="text-4xl font-bold" style={{ color: 'var(--purple-deep)' }}>$20</span>
                   <span className="text-gray-600">/month</span>
                 </div>
                 <CardDescription>Ideal for landlords and rental properties</CardDescription>
@@ -438,34 +438,34 @@ export default function Billing() {
               <CardContent>
                 <ul className="space-y-3 mb-6">
                   <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-purple-600 mt-0.5" />
+                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
                     <span><strong>14-day free trial</strong></span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-purple-600 mt-0.5" />
+                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
                     <span><strong>3-6 properties</strong></span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-purple-600 mt-0.5" />
+                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
                     <span>Full maintenance scheduling</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-purple-600 mt-0.5" />
+                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
                     <span>Contractor directory access</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-purple-600 mt-0.5" />
+                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
                     <span>Service record tracking</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-purple-600 mt-0.5" />
+                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
                     <span>AI contractor recommendations</span>
                   </li>
                 </ul>
                 {currentPlan !== 'premium' && (
                   <Button
                     onClick={() => handleSubscribe('premium')}
-                    style={{ backgroundColor: '#2c0f5b', color: 'white' }}
+                    style={{ backgroundColor: 'var(--purple-deep)', color: 'white' }}
                     className="w-full hover:opacity-90"
                     data-testid="button-subscribe-premium"
                   >
@@ -478,13 +478,13 @@ export default function Billing() {
 
             {/* Premium Plus Plan */}
             <Card 
-              className={`relative transition-all ${selectedPlan === 'premium_plus' ? 'ring-2 ring-purple-600' : ''}`}
+              className={`relative transition-all ${selectedPlan === 'premium_plus' ? 'ring-2 ring-[#3C258E]' : ''}`}
               data-testid="card-plan-premium-plus"
             >
               <CardHeader>
                 <div className="flex items-center justify-between mb-2">
-                  <CardTitle className="text-2xl flex items-center gap-2" style={{ color: '#2c0f5b' }}>
-                    <Crown className="h-6 w-6 text-purple-600" />
+                  <CardTitle className="text-2xl flex items-center gap-2" style={{ color: 'var(--purple-deep)' }}>
+                    <Crown className="h-6 w-6 text-[#3C258E]" />
                     Premium Plus
                   </CardTitle>
                   {currentPlan === 'premium_plus' && (
@@ -492,7 +492,7 @@ export default function Billing() {
                   )}
                 </div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold" style={{ color: '#2c0f5b' }}>$40</span>
+                  <span className="text-4xl font-bold" style={{ color: 'var(--purple-deep)' }}>$40</span>
                   <span className="text-gray-600">/month</span>
                 </div>
                 <CardDescription>Perfect for property managers</CardDescription>
@@ -500,34 +500,34 @@ export default function Billing() {
               <CardContent>
                 <ul className="space-y-3 mb-6">
                   <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-purple-600 mt-0.5" />
+                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
                     <span><strong>14-day free trial</strong></span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-purple-600 mt-0.5" />
+                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
                     <span><strong>7+ properties</strong></span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-purple-600 mt-0.5" />
+                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
                     <span>Full maintenance scheduling</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-purple-600 mt-0.5" />
+                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
                     <span>Contractor directory access</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-purple-600 mt-0.5" />
+                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
                     <span>Service record tracking</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-purple-600 mt-0.5" />
+                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
                     <span>AI contractor recommendations</span>
                   </li>
                 </ul>
                 {currentPlan !== 'premium_plus' && (
                   <Button
                     onClick={() => handleSubscribe('premium_plus')}
-                    style={{ backgroundColor: '#2c0f5b', color: 'white' }}
+                    style={{ backgroundColor: 'var(--purple-deep)', color: 'white' }}
                     className="w-full hover:opacity-90"
                     data-testid="button-subscribe-premium-plus"
                   >
@@ -544,7 +544,7 @@ export default function Billing() {
         {billingHistory.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle style={{ color: '#2c0f5b' }}>Billing History</CardTitle>
+              <CardTitle style={{ color: 'var(--purple-deep)' }}>Billing History</CardTitle>
               <CardDescription>Your payment and subscription history</CardDescription>
             </CardHeader>
             <CardContent>
@@ -557,7 +557,7 @@ export default function Billing() {
                   >
                     <div className="flex items-start gap-3 flex-1">
                       {event.status === 'paid' && (
-                        <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                        <CheckCircle className="h-5 w-5 text-[#079669] mt-0.5" />
                       )}
                       {event.status === 'failed' && (
                         <XCircle className="h-5 w-5 text-red-600 mt-0.5" />
@@ -573,7 +573,7 @@ export default function Billing() {
                           <Badge
                             className={
                               event.status === 'paid'
-                                ? 'bg-green-100 text-green-800'
+                                ? 'bg-[#F0FAF4] text-[#09694A]'
                                 : event.status === 'failed'
                                 ? 'bg-red-100 text-red-800'
                                 : 'bg-gray-100 text-gray-800'
@@ -605,29 +605,29 @@ export default function Billing() {
         {/* FAQ / Additional Info */}
         <Card>
           <CardHeader>
-            <CardTitle style={{ color: '#2c0f5b' }}>Billing Information</CardTitle>
+            <CardTitle style={{ color: 'var(--purple-deep)' }}>Billing Information</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <h3 className="font-semibold mb-1" style={{ color: '#2c0f5b' }}>14-Day Free Trial</h3>
+              <h3 className="font-semibold mb-1" style={{ color: 'var(--purple-deep)' }}>14-Day Free Trial</h3>
               <p className="text-gray-600">
                 All new accounts start with a 14-day free trial. No credit card required to start.
               </p>
             </div>
             <div>
-              <h3 className="font-semibold mb-1" style={{ color: '#2c0f5b' }}>Referral Rewards</h3>
+              <h3 className="font-semibold mb-1" style={{ color: 'var(--purple-deep)' }}>Referral Rewards</h3>
               <p className="text-gray-600">
                 For every active paying subscriber you refer, you'll receive $1 off your monthly subscription. Discounts are applied automatically each billing cycle.
               </p>
             </div>
             <div>
-              <h3 className="font-semibold mb-1" style={{ color: '#2c0f5b' }}>Cancel Anytime</h3>
+              <h3 className="font-semibold mb-1" style={{ color: 'var(--purple-deep)' }}>Cancel Anytime</h3>
               <p className="text-gray-600">
                 You can cancel your subscription at any time. Your access will continue until the end of your billing period.
               </p>
             </div>
             <div>
-              <h3 className="font-semibold mb-1" style={{ color: '#2c0f5b' }}>Secure Payments</h3>
+              <h3 className="font-semibold mb-1" style={{ color: 'var(--purple-deep)' }}>Secure Payments</h3>
               <p className="text-gray-600">
                 All payments are processed securely through Stripe. We never store your payment information.
               </p>

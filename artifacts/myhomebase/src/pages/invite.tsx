@@ -48,7 +48,7 @@ export default function Invite() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #2c0f5b 0%, #5b21b6 100%)' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #2C0F5B 0%, #3C258E 100%)' }}>
         <div className="text-white text-xl">Loading...</div>
       </div>
     );
@@ -56,13 +56,13 @@ export default function Invite() {
 
   if (!referralInfo) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #2c0f5b 0%, #5b21b6 100%)' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #2C0F5B 0%, #3C258E 100%)' }}>
         <Card className="max-w-md mx-4">
           <CardContent className="p-6 text-center">
-            <h2 className="text-2xl font-bold mb-4" style={{ color: '#2c0f5b' }}>Invalid Invite Link</h2>
+            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--purple-deep)' }}>Invalid Invite Link</h2>
             <p className="mb-6 text-gray-600">This referral link is no longer valid.</p>
             <Link href="/signup">
-              <Button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
+              <Button className="bg-gradient-to-r from-[#3C258E] to-[#1560A2] hover:from-[#2C0F5B] hover:to-[#0C3460]">
                 Sign Up Anyway
               </Button>
             </Link>
@@ -93,7 +93,7 @@ export default function Invite() {
         <meta property="twitter:image" content={`${hostUrl}/og-invite.png`} />
       </Helmet>
 
-      <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #2c0f5b 0%, #5b21b6 100%)' }}>
+      <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #2C0F5B 0%, #3C258E 100%)' }}>
         {/* Header */}
         <header className="py-6 px-4">
           <div className="max-w-4xl mx-auto flex items-center justify-between">
@@ -115,16 +115,16 @@ export default function Invite() {
           <Card className="mb-8 bg-white shadow-2xl">
             <CardContent className="p-8 sm:p-12">
               <div className="text-center mb-8">
-                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 mb-4">
+                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-[#3C258E] to-[#1560A2] mb-4">
                   <Sparkles className="w-10 h-10 text-white" />
                 </div>
-                <h1 className="text-3xl sm:text-4xl font-bold mb-3" style={{ color: '#2c0f5b' }} data-testid="heading-invite">
+                <h1 className="text-3xl sm:text-4xl font-bold mb-3" style={{ color: 'var(--purple-deep)' }} data-testid="heading-invite">
                   {firstName} invited you to MyHomeBase™!
                 </h1>
                 <p className="text-lg text-gray-600 mb-6">
                   Join thousands of homeowners who are taking control of their home maintenance
                 </p>
-                <Badge className="bg-green-100 text-green-700 text-lg px-4 py-2 font-semibold">
+                <Badge className="bg-[#F0FAF4] text-[#09694A] text-lg px-4 py-2 font-semibold">
                   <CheckCircle className="w-5 h-5 mr-2" />
                   14-Day Free Trial Included
                 </Badge>
@@ -133,7 +133,7 @@ export default function Invite() {
               <Link href={`/signup?ref=${referralCode}`}>
                 <Button 
                   size="lg" 
-                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white text-xl py-6 rounded-xl shadow-lg hover:shadow-xl transition-all"
+                  className="w-full bg-gradient-to-r from-[#3C258E] to-[#1560A2] hover:from-[#2C0F5B] hover:to-[#0C3460] text-white text-xl py-6 rounded-xl shadow-lg hover:shadow-xl transition-all"
                   data-testid="button-signup-referral"
                 >
                   Get Started Free
@@ -147,11 +147,11 @@ export default function Invite() {
             <Card className="bg-white/95 backdrop-blur">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
-                  <div className="p-3 rounded-lg bg-purple-100">
-                    <Calendar className="w-6 h-6 text-purple-600" />
+                  <div className="p-3 rounded-lg bg-[#EEEDFE]">
+                    <Calendar className="w-6 h-6 text-[#3C258E]" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-lg mb-2" style={{ color: '#2c0f5b' }}>
+                    <h3 className="font-bold text-lg mb-2" style={{ color: 'var(--purple-deep)' }}>
                       Smart Maintenance Tracking
                     </h3>
                     <p className="text-gray-600">
@@ -165,11 +165,11 @@ export default function Invite() {
             <Card className="bg-white/95 backdrop-blur">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
-                  <div className="p-3 rounded-lg bg-blue-100">
-                    <Users className="w-6 h-6 text-blue-600" />
+                  <div className="p-3 rounded-lg bg-[#E6F1FB]">
+                    <Users className="w-6 h-6 text-[#1560A2]" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-lg mb-2" style={{ color: '#2c0f5b' }}>
+                    <h3 className="font-bold text-lg mb-2" style={{ color: 'var(--purple-deep)' }}>
                       Trusted Contractor Network
                     </h3>
                     <p className="text-gray-600">
@@ -183,11 +183,11 @@ export default function Invite() {
             <Card className="bg-white/95 backdrop-blur">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
-                  <div className="p-3 rounded-lg bg-green-100">
-                    <TrendingUp className="w-6 h-6 text-green-600" />
+                  <div className="p-3 rounded-lg bg-[#F0FAF4]">
+                    <TrendingUp className="w-6 h-6 text-[#079669]" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-lg mb-2" style={{ color: '#2c0f5b' }}>
+                    <h3 className="font-bold text-lg mb-2" style={{ color: 'var(--purple-deep)' }}>
                       DIY Savings Tracker
                     </h3>
                     <p className="text-gray-600">
@@ -205,7 +205,7 @@ export default function Invite() {
                     <Shield className="w-6 h-6 text-yellow-600" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-lg mb-2" style={{ color: '#2c0f5b' }}>
+                    <h3 className="font-bold text-lg mb-2" style={{ color: 'var(--purple-deep)' }}>
                       Complete Service History
                     </h3>
                     <p className="text-gray-600">
@@ -218,9 +218,9 @@ export default function Invite() {
           </div>
 
           {/* CTA Card */}
-          <Card className="bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-300">
+          <Card className="border-2 border-[#CECBF6]" style={{ background: 'linear-gradient(135deg, #EEEDFE, #E6F1FB)' }}>
             <CardContent className="p-8 text-center">
-              <h2 className="text-2xl font-bold mb-3" style={{ color: '#2c0f5b' }}>
+              <h2 className="text-2xl font-bold mb-3" style={{ color: 'var(--purple-deep)' }}>
                 Ready to Get Started?
               </h2>
               <p className="text-gray-600 mb-6">
@@ -229,7 +229,7 @@ export default function Invite() {
               <Link href={`/signup?ref=${referralCode}`}>
                 <Button 
                   size="lg" 
-                  className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-6 text-lg rounded-xl"
+                  className="bg-gradient-to-r from-[#3C258E] to-[#1560A2] hover:from-[#2C0F5B] hover:to-[#0C3460] text-white px-8 py-6 text-lg rounded-xl"
                   data-testid="button-cta-signup"
                 >
                   Start Your Free Trial

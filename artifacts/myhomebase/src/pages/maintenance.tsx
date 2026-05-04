@@ -1074,7 +1074,7 @@ function TaskDetailDialog({
     }
     if (task.priority === 'low') {
       return (
-        <Badge className="bg-green-500 text-white text-xs px-3 py-1 rounded-full font-medium">
+        <Badge className="bg-[#079669] text-white text-xs px-3 py-1 rounded-full font-medium">
           LOW PRIORITY
         </Badge>
       );
@@ -1085,7 +1085,7 @@ function TaskDetailDialog({
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="max-w-4xl w-[95vw] max-h-[90dvh] overflow-y-auto p-0">
-        <div className={`${completed ? 'bg-green-50' : 'bg-white'}`}>
+        <div className={`${completed ? 'bg-[#F0FAF4]' : 'bg-white'}`}>
           <div className="sticky top-0 z-10 bg-white border-b px-6 py-4 flex items-start justify-between gap-4">
             <div className="flex-1">
               {houseName && (
@@ -1100,7 +1100,7 @@ function TaskDetailDialog({
                   {task.category}
                 </Badge>
               </div>
-              <h2 className="text-xl sm:text-2xl font-bold" style={{ color: '#2c0f5b' }}>
+              <h2 className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--purple-deep)' }}>
                 {task.title}
               </h2>
             </div>
@@ -1127,7 +1127,7 @@ function TaskDetailDialog({
                   <h3 className="font-semibold text-gray-900">Cost Information</h3>
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-gray-700">DIY Cost:</span>
-                    <span className="font-semibold text-green-600 text-lg">
+                    <span className="font-semibold text-[#079669] text-lg">
                       {task.costEstimate ? formatDIYSavings(task.costEstimate) : '–'}
                     </span>
                   </div>
@@ -1153,7 +1153,7 @@ function TaskDetailDialog({
                   </div>
                   {task.cost && (
                     <div className="flex items-center gap-2">
-                      <DollarSign className="w-4 h-4 text-green-500" />
+                      <DollarSign className="w-4 h-4 text-[#079669]" />
                       <span className="text-gray-700">{task.cost}</span>
                     </div>
                   )}
@@ -1164,7 +1164,7 @@ function TaskDetailDialog({
                 {!completed && (
                   <div className="space-y-3">
                     <Button
-                      className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-4 text-base"
+                      className="w-full bg-[#079669] hover:bg-[#09694A] text-white font-medium py-4 text-base"
                       onClick={() => {
                         completeTaskMutation.mutate({
                           houseId: selectedHouseId,
@@ -1180,7 +1180,7 @@ function TaskDetailDialog({
                     </Button>
                     <Button
                       className="w-full text-white hover:opacity-90 font-medium py-4 text-base border-0"
-                      style={{ backgroundColor: '#2c0f5b' }}
+                      style={{ backgroundColor: 'var(--purple-deep)' }}
                       onClick={() => {
                         onContractorComplete(task);
                         onClose();
@@ -1193,14 +1193,14 @@ function TaskDetailDialog({
                 
                 <a
                   href={`/contractors?category=${encodeURIComponent(task.category)}&service=${encodeURIComponent(task.title)}&houseId=${selectedHouseId}&maxDistance=20`}
-                  className="block w-full text-center py-3 px-4 bg-blue-50 text-blue-700 font-medium rounded-lg hover:bg-blue-100 transition-colors"
+                  className="block w-full text-center py-3 px-4 bg-[#E6F1FB] text-[#1560A2] font-medium rounded-lg hover:bg-[#D5E9F8] transition-colors"
                 >
                   Find a Contractor
                 </a>
                 {!isContractor && (
                   <a
                     href={`/messages?taskTitle=${encodeURIComponent(task.title)}&taskDescription=${encodeURIComponent(task.description || '')}&houseId=${encodeURIComponent(selectedHouseId || '')}`}
-                    className="flex items-center justify-center gap-2 w-full text-center py-3 px-4 bg-purple-50 text-purple-700 font-medium rounded-lg hover:bg-purple-100 transition-colors"
+                    className="flex items-center justify-center gap-2 w-full text-center py-3 px-4 bg-[#EEEDFE] text-[#3C258E] font-medium rounded-lg hover:bg-[#E6E3FC] transition-colors"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/><path d="M19 3v4"/><path d="M21 5h-4"/>
@@ -1212,12 +1212,12 @@ function TaskDetailDialog({
             </div>
 
             {task.steps && task.steps.length > 0 && (
-              <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
-                <h3 className="font-semibold mb-3" style={{ color: '#2c0f5b' }}>Steps to Complete:</h3>
+              <div className="bg-[#EEEDFE] rounded-lg p-4 border border-[#CECBF6]">
+                <h3 className="font-semibold mb-3" style={{ color: 'var(--purple-deep)' }}>Steps to Complete:</h3>
                 <ul className="space-y-2">
                   {task.steps.map((step, index) => (
                     <li key={index} className="flex items-start gap-3 text-gray-700">
-                      <div className="flex-shrink-0 w-6 h-6 rounded-full bg-purple-600 text-white flex items-center justify-center text-sm font-medium">
+                      <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#3C258E] text-white flex items-center justify-center text-sm font-medium">
                         {index + 1}
                       </div>
                       <span className="pt-0.5">{step}</span>
@@ -1229,7 +1229,7 @@ function TaskDetailDialog({
 
             {task.toolsAndSupplies && task.toolsAndSupplies.length > 0 && (
               <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
-                <h3 className="font-semibold mb-3 flex items-center gap-2" style={{ color: '#2c0f5b' }}>
+                <h3 className="font-semibold mb-3 flex items-center gap-2" style={{ color: 'var(--purple-deep)' }}>
                   <Wrench className="w-5 h-5" />
                   Tools & Supplies Needed:
                 </h3>
@@ -1246,7 +1246,7 @@ function TaskDetailDialog({
 
             {task.tools && task.tools.length > 0 && (
               <div>
-                <h3 className="font-semibold mb-2 flex items-center gap-2" style={{ color: '#2c0f5b' }}>
+                <h3 className="font-semibold mb-2 flex items-center gap-2" style={{ color: 'var(--purple-deep)' }}>
                   <Wrench className="w-4 h-4 text-red-500" />
                   Tools Needed:
                 </h3>
@@ -1263,7 +1263,7 @@ function TaskDetailDialog({
             {!isCustomTask && (
               <div className="border rounded-lg p-4 bg-slate-50">
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-medium flex items-center" style={{ color: '#2c0f5b' }}>
+                  <h4 className="font-medium flex items-center" style={{ color: 'var(--purple-deep)' }}>
                     <Settings className="w-4 h-4 mr-2" />
                     Customize This Task
                   </h4>
@@ -1299,7 +1299,7 @@ function TaskDetailDialog({
                                   });
                                 }}
                               />
-                              <label htmlFor={`dialog-enable-${taskId}`} className="text-sm font-medium" style={{ color: '#2c0f5b' }}>
+                              <label htmlFor={`dialog-enable-${taskId}`} className="text-sm font-medium" style={{ color: 'var(--purple-deep)' }}>
                                 Enable this task
                               </label>
                             </div>
@@ -1316,7 +1316,7 @@ function TaskDetailDialog({
                           </div>
 
                           <div>
-                            <label className="text-sm font-medium mb-2 block" style={{ color: '#2c0f5b' }}>
+                            <label className="text-sm font-medium mb-2 block" style={{ color: 'var(--purple-deep)' }}>
                               Task Frequency
                             </label>
                             <Select
@@ -1351,7 +1351,7 @@ function TaskDetailDialog({
                           </div>
 
                           <div>
-                            <label className="text-sm font-medium mb-2 block" style={{ color: '#2c0f5b' }}>
+                            <label className="text-sm font-medium mb-2 block" style={{ color: 'var(--purple-deep)' }}>
                               Custom Description (Optional)
                             </label>
                             <textarea
@@ -1371,7 +1371,7 @@ function TaskDetailDialog({
                                 }
                               }}
                             />
-                            <p className="text-xs mt-1" style={{ color: '#2c0f5b' }}>
+                            <p className="text-xs mt-1" style={{ color: 'var(--purple-deep)' }}>
                               Leave blank to use the default description
                             </p>
                           </div>
@@ -1384,7 +1384,7 @@ function TaskDetailDialog({
             )}
 
             {previousContractor && (
-              <div className="rounded-lg p-4" style={{ backgroundColor: '#2c0f5b' }}>
+              <div className="rounded-lg p-4" style={{ backgroundColor: 'var(--purple-deep)' }}>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center mb-2">
@@ -1411,7 +1411,7 @@ function TaskDetailDialog({
                         size="sm"
                         variant="outline"
                         className="text-sm"
-                        style={{ backgroundColor: '#b6a6f4', color: '#ffffff', borderColor: '#b6a6f4' }}
+                        style={{ backgroundColor: 'var(--purple-light)', color: '#ffffff', borderColor: 'var(--purple-light)' }}
                         onClick={() => onViewContractor(previousContractor.contractorId)}
                       >
                         <User className="w-4 h-4 mr-1" />
@@ -1422,7 +1422,7 @@ function TaskDetailDialog({
                         size="sm"
                         variant="outline"
                         className="text-sm"
-                        style={{ backgroundColor: '#b6a6f4', color: '#ffffff', borderColor: '#b6a6f4' }}
+                        style={{ backgroundColor: 'var(--purple-light)', color: '#ffffff', borderColor: 'var(--purple-light)' }}
                         onClick={() => {
                           toast({
                             title: "Contact Contractor",
@@ -1478,7 +1478,7 @@ function TaskCard({
     }
     if (task.priority === 'low') {
       return (
-        <Badge className="bg-green-500 text-white text-xs px-3 py-1 rounded-full font-medium" data-testid={`badge-priority-${task.priority}`}>
+        <Badge className="bg-[#079669] text-white text-xs px-3 py-1 rounded-full font-medium" data-testid={`badge-priority-${task.priority}`}>
           LOW PRIORITY
         </Badge>
       );
@@ -1488,19 +1488,19 @@ function TaskCard({
 
   return (
     <Card 
-      className={`transition-all border-0 shadow-sm hover:shadow-md cursor-pointer ${completed ? 'bg-green-100' : 'bg-white'}`}
+      className={`transition-all border-0 shadow-sm hover:shadow-md cursor-pointer ${completed ? 'bg-[#F0FAF4]' : 'bg-white'}`}
       data-testid={`card-task-${task.id}`}
       onClick={onOpenDialog}
     >
       <div className="p-4">
         <div className="flex items-start justify-between gap-3 mb-2">
-          <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 flex-1" style={{ color: '#2c0f5b' }} data-testid={`title-task-${generateTaskId(task.title)}`}>
+          <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 flex-1" style={{ color: 'var(--purple-deep)' }} data-testid={`title-task-${generateTaskId(task.title)}`}>
             {task.title}
           </h3>
           <div className="flex items-center gap-2 flex-shrink-0">
             {getPriorityBadge()}
             {completed && (
-              <CheckCircle2 className="w-5 h-5 text-green-600" />
+              <CheckCircle2 className="w-5 h-5 text-[#079669]" />
             )}
           </div>
         </div>
@@ -1513,7 +1513,7 @@ function TaskCard({
           <div className="flex items-center gap-4">
             {task.costEstimate && (
               <span className="flex items-center gap-1">
-                <DollarSign className="w-4 h-4 text-green-500" />
+                <DollarSign className="w-4 h-4 text-[#079669]" />
                 {formatDIYSavings(task.costEstimate)}
               </span>
             )}
@@ -1524,7 +1524,7 @@ function TaskCard({
               </span>
             )}
           </div>
-          <span className="text-blue-600 font-medium text-sm">View Details →</span>
+          <span className="text-[#1560A2] font-medium text-sm">View Details →</span>
         </div>
       </div>
     </Card>
@@ -3376,7 +3376,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     switch (priority) {
       case 'high': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
       case 'medium': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-      case 'low': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'low': return 'bg-green-100 text-[#09694A] dark:bg-green-900 dark:text-green-200';
       default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
     }
   };
@@ -3395,8 +3395,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--page-background)' }}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 mx-auto mb-4" style={{ borderColor: '#2c0f5b' }}></div>
-          <p className="text-lg" style={{ color: '#2c0f5b' }}>Loading...</p>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 mx-auto mb-4" style={{ borderColor: 'var(--purple-deep)' }}></div>
+          <p className="text-lg" style={{ color: 'var(--purple-deep)' }}>Loading...</p>
         </div>
       </div>
     );
@@ -3406,9 +3406,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--page-background)' }}>
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4" style={{ color: '#2c0f5b' }}>Authentication Required</h1>
-          <p className="mb-6" style={{ color: '#2c0f5b' }}>Please sign in to access maintenance features.</p>
-          <Button onClick={() => window.location.href = '/signin'} style={{ backgroundColor: '#2c0f5b', color: 'white' }} className="hover:opacity-90">
+          <h1 className="text-2xl font-bold mb-4" style={{ color: 'var(--purple-deep)' }}>Authentication Required</h1>
+          <p className="mb-6" style={{ color: 'var(--purple-deep)' }}>Please sign in to access maintenance features.</p>
+          <Button onClick={() => window.location.href = '/signin'} style={{ backgroundColor: 'var(--purple-deep)', color: 'white' }} className="hover:opacity-90">
             Sign In
           </Button>
         </div>
@@ -3420,9 +3420,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--page-background)' }}>
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4" style={{ color: '#2c0f5b' }}>Access Denied</h1>
-          <p className="mb-6" style={{ color: '#2c0f5b' }}>This feature is only available to homeowners and contractors.</p>
-          <Button onClick={() => window.location.href = '/'} style={{ backgroundColor: '#2c0f5b', color: 'white' }} className="hover:opacity-90">
+          <h1 className="text-2xl font-bold mb-4" style={{ color: 'var(--purple-deep)' }}>Access Denied</h1>
+          <p className="mb-6" style={{ color: 'var(--purple-deep)' }}>This feature is only available to homeowners and contractors.</p>
+          <Button onClick={() => window.location.href = '/'} style={{ backgroundColor: 'var(--purple-deep)', color: 'white' }} className="hover:opacity-90">
             Go Home
           </Button>
         </div>
@@ -3491,12 +3491,12 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
           
           {/* Contractor No Properties Onboarding */}
           {userRole === 'contractor' && houses.length === 0 && (
-            <Card className="mb-6 border-2 border-dashed" style={{ backgroundColor: '#f8fafc', borderColor: '#b6a6f4' }}>
+            <Card className="mb-6 border-2 border-dashed" style={{ backgroundColor: '#f8fafc', borderColor: 'var(--purple-light)' }}>
               <CardHeader className="text-center pb-4">
-                <div className="mx-auto mb-4 p-3 rounded-full" style={{ backgroundColor: '#2c0f5b' }}>
+                <div className="mx-auto mb-4 p-3 rounded-full" style={{ backgroundColor: 'var(--purple-deep)' }}>
                   <Building className="w-8 h-8 text-white" />
                 </div>
-                <CardTitle className="text-2xl font-bold" style={{ color: '#2c0f5b' }}>
+                <CardTitle className="text-2xl font-bold" style={{ color: 'var(--purple-deep)' }}>
                   Add Your Property to Get Started
                 </CardTitle>
                 <p className="text-lg" style={{ color: '#6b7280' }}>
@@ -3506,17 +3506,17 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
               <CardContent className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-4 text-center">
                   <div className="space-y-2">
-                    <div className="p-2 rounded-lg mx-auto w-fit" style={{ backgroundColor: '#f3e8ff' }}>
-                      <Calendar className="w-6 h-6" style={{ color: '#6b46c1' }} />
+                    <div className="p-2 rounded-lg mx-auto w-fit" style={{ backgroundColor: 'var(--purple-tint)' }}>
+                      <Calendar className="w-6 h-6" style={{ color: 'var(--purple)' }} />
                     </div>
-                    <h3 className="font-semibold" style={{ color: '#2c0f5b' }}>Smart Scheduling</h3>
+                    <h3 className="font-semibold" style={{ color: 'var(--purple-deep)' }}>Smart Scheduling</h3>
                     <p className="text-sm text-gray-600">Get personalized maintenance schedules based on your location and home systems</p>
                   </div>
                   <div className="space-y-2">
-                    <div className="p-2 rounded-lg mx-auto w-fit" style={{ backgroundColor: '#f3e8ff' }}>
-                      <Wrench className="w-6 h-6" style={{ color: '#6b46c1' }} />
+                    <div className="p-2 rounded-lg mx-auto w-fit" style={{ backgroundColor: 'var(--purple-tint)' }}>
+                      <Wrench className="w-6 h-6" style={{ color: 'var(--purple)' }} />
                     </div>
-                    <h3 className="font-semibold" style={{ color: '#2c0f5b' }}>Track Maintenance</h3>
+                    <h3 className="font-semibold" style={{ color: 'var(--purple-deep)' }}>Track Maintenance</h3>
                     <p className="text-sm text-gray-600">Log completed maintenance, repairs, and improvements to keep detailed records</p>
                   </div>
                 </div>
@@ -3525,7 +3525,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     onClick={handleAddNewHouse}
                     size="lg"
                     className="px-8 py-3 text-lg font-semibold"
-                    style={{ backgroundColor: '#2c0f5b', color: 'white' }}
+                    style={{ backgroundColor: 'var(--purple-deep)', color: 'white' }}
                     data-testid="button-add-first-property"
                   >
                     <Plus className="w-5 h-5 mr-2" />
@@ -3541,12 +3541,12 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
           {/* Homeowner No Properties Onboarding */}
           {userRole === 'homeowner' && houses.length === 0 && (
-            <Card className="mb-6 border-2 border-dashed" style={{ backgroundColor: '#f8fafc', borderColor: '#b6a6f4' }}>
+            <Card className="mb-6 border-2 border-dashed" style={{ backgroundColor: '#f8fafc', borderColor: 'var(--purple-light)' }}>
               <CardHeader className="text-center pb-4">
-                <div className="mx-auto mb-4 p-3 rounded-full" style={{ backgroundColor: '#2c0f5b' }}>
+                <div className="mx-auto mb-4 p-3 rounded-full" style={{ backgroundColor: 'var(--purple-deep)' }}>
                   <Building className="w-8 h-8 text-white" />
                 </div>
-                <CardTitle className="text-2xl font-bold" style={{ color: '#2c0f5b' }}>
+                <CardTitle className="text-2xl font-bold" style={{ color: 'var(--purple-deep)' }}>
                   Add Your First Property to Get Started
                 </CardTitle>
                 <p className="text-lg" style={{ color: '#6b7280' }}>
@@ -3556,17 +3556,17 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
               <CardContent className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-4 text-center">
                   <div className="space-y-2">
-                    <div className="p-2 rounded-lg mx-auto w-fit" style={{ backgroundColor: '#f3e8ff' }}>
-                      <Calendar className="w-6 h-6" style={{ color: '#6b46c1' }} />
+                    <div className="p-2 rounded-lg mx-auto w-fit" style={{ backgroundColor: 'var(--purple-tint)' }}>
+                      <Calendar className="w-6 h-6" style={{ color: 'var(--purple)' }} />
                     </div>
-                    <h3 className="font-semibold" style={{ color: '#2c0f5b' }}>Smart Scheduling</h3>
+                    <h3 className="font-semibold" style={{ color: 'var(--purple-deep)' }}>Smart Scheduling</h3>
                     <p className="text-sm text-gray-600">Get personalized maintenance schedules based on your location and home systems</p>
                   </div>
                   <div className="space-y-2">
-                    <div className="p-2 rounded-lg mx-auto w-fit" style={{ backgroundColor: '#f3e8ff' }}>
-                      <Wrench className="w-6 h-6" style={{ color: '#6b46c1' }} />
+                    <div className="p-2 rounded-lg mx-auto w-fit" style={{ backgroundColor: 'var(--purple-tint)' }}>
+                      <Wrench className="w-6 h-6" style={{ color: 'var(--purple)' }} />
                     </div>
-                    <h3 className="font-semibold" style={{ color: '#2c0f5b' }}>Track Maintenance</h3>
+                    <h3 className="font-semibold" style={{ color: 'var(--purple-deep)' }}>Track Maintenance</h3>
                     <p className="text-sm text-gray-600">Log completed maintenance, repairs, and improvements to keep detailed records</p>
                   </div>
                 </div>
@@ -3576,7 +3576,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       onClick={handleAddNewHouse}
                       size="lg"
                       className="px-8 py-3 text-lg font-semibold"
-                      style={{ backgroundColor: '#2c0f5b', color: 'white' }}
+                      style={{ backgroundColor: 'var(--purple-deep)', color: 'white' }}
                       data-testid="button-add-first-property"
                     >
                       <Plus className="w-5 h-5 mr-2" />
@@ -3586,7 +3586,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       onClick={() => window.location.href = '/contractors'}
                       size="lg"
                       className="px-8 py-3 text-lg font-semibold"
-                      style={{ backgroundColor: '#1560a2', color: 'white' }}
+                      style={{ backgroundColor: 'var(--blue)', color: 'white' }}
                       data-testid="button-find-contractors-general"
                       data-tour-id="find-contractors"
                     >
@@ -3608,11 +3608,11 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
               <div className="flex flex-col gap-4 items-center text-center">
                 <div className="w-full max-w-md">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    <Building className="inline w-4 h-4 mr-1.5 text-purple-600" />
+                    <Building className="inline w-4 h-4 mr-1.5 text-[#3C258E]" />
                     Select Property
                   </label>
                   <Select value={selectedHouseId} onValueChange={setSelectedHouseId}>
-                    <SelectTrigger className="w-full h-12 bg-white border-gray-300 hover:border-purple-400 focus:border-purple-500" data-testid="select-property">
+                    <SelectTrigger className="w-full h-12 bg-white border-gray-300 hover:border-[#3C258E] focus:border-[#3C258E]" data-testid="select-property">
                       <SelectValue placeholder="Choose a property..." />
                     </SelectTrigger>
                     <SelectContent className="max-h-[400px]">
@@ -3637,7 +3637,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                 <div className="flex flex-col gap-3 w-full max-w-md">
                   {/* Contractor constraint message */}
                   {userRole === 'contractor' && houses.length >= 1 && (
-                    <div className="text-sm p-3 rounded-lg bg-blue-50 border-2 border-blue-200 text-blue-700 mb-2">
+                    <div className="text-sm p-3 rounded-lg bg-[#E6F1FB] border-2 border-[#B5D4F4] text-[#1560A2] mb-2">
                       Contractors can track maintenance for one personal property
                     </div>
                   )}
@@ -3648,7 +3648,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                         variant="outline" 
                         size="lg" 
                         onClick={handleAddNewHouse}
-                        className="whitespace-nowrap text-base w-full" style={{ backgroundColor: '#2c0f5b', color: 'white', borderColor: '#2c0f5b' }}
+                        className="whitespace-nowrap text-base w-full" style={{ backgroundColor: 'var(--purple-deep)', color: 'white', borderColor: 'var(--purple-deep)' }}
                         data-tour-id="add-home"
                       >
                         <Plus className="w-5 h-5 mr-2" />
@@ -3663,9 +3663,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                           const selectedHouse = houses.find((h: House) => h.id === selectedHouseId);
                           if (selectedHouse) handleEditHouse(selectedHouse);
                         }}
-                        className="whitespace-nowrap text-base w-full" style={{ backgroundColor: 'white', color: '#2c0f5b', borderColor: '#2c0f5b', borderWidth: '3px' }}
+                        className="whitespace-nowrap text-base w-full" style={{ backgroundColor: 'white', color: 'var(--purple-deep)', borderColor: 'var(--purple-deep)', borderWidth: '3px' }}
                       >
-                        <Edit className="w-5 h-5 mr-2" style={{ color: '#2c0f5b' }} />
+                        <Edit className="w-5 h-5 mr-2" style={{ color: 'var(--purple-deep)' }} />
                         Edit
                       </Button>
                     )}
@@ -3686,16 +3686,16 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                   </div>
                   
                   {selectedHouseId && houses.length > 0 && (
-                    <div className="text-base mt-2" style={{ color: '#2c0f5b' }}>
+                    <div className="text-base mt-2" style={{ color: 'var(--purple-deep)' }}>
                       <div className="flex items-center justify-center gap-2">
-                        <MapPin className="w-5 h-5" style={{ color: '#2c0f5b' }} />
-                        <span className="font-medium" style={{ color: '#2c0f5b' }}>
+                        <MapPin className="w-5 h-5" style={{ color: 'var(--purple-deep)' }} />
+                        <span className="font-medium" style={{ color: 'var(--purple-deep)' }}>
                           {CLIMATE_ZONES.find(z => z.value === selectedZone)?.label || 'Loading region...'}
                         </span>
                       </div>
                       <div className="flex items-center justify-center gap-2 mt-2">
-                        <Home className="w-5 h-5" style={{ color: '#2c0f5b' }} />
-                        <span className="font-medium" style={{ color: '#2c0f5b' }}>5 systems configured</span>
+                        <Home className="w-5 h-5" style={{ color: 'var(--purple-deep)' }} />
+                        <span className="font-medium" style={{ color: 'var(--purple-deep)' }}>5 systems configured</span>
                       </div>
                     </div>
                   )}
@@ -3704,25 +3704,25 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             </div>
           )}
         </div>
-            <div className="mb-6 border rounded-lg p-4" style={{ backgroundColor: '#f2f2f2' }}>
+            <div className="mb-6 border rounded-lg p-4" style={{ backgroundColor: 'var(--gray-100)' }}>
               <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                <div className="text-sm" style={{ color: '#2c0f5b' }}>
-                  <Building className="inline w-4 h-4 mr-1" style={{ color: '#2c0f5b' }} />
+                <div className="text-sm" style={{ color: 'var(--purple-deep)' }}>
+                  <Building className="inline w-4 h-4 mr-1" style={{ color: 'var(--purple-deep)' }} />
                   {houses.find((house: House) => house.id === selectedHouseId)?.name || 'Loading...'} • 
-                  <Calendar className="inline w-4 h-4 ml-2 mr-1" style={{ color: '#2c0f5b' }} />
+                  <Calendar className="inline w-4 h-4 ml-2 mr-1" style={{ color: 'var(--purple-deep)' }} />
                   {MONTHS[selectedMonth - 1]} • {CLIMATE_ZONES.find(z => z.value === selectedZone)?.label}
                 </div>
                 
                 {totalTasks > 0 && (
                   <div className="flex items-center gap-3">
-                    <div className="text-sm font-medium text-[#2c0f5b]" style={{ color: '#2c0f5b' }}>
+                    <div className="text-sm font-medium text-[#2c0f5b]" style={{ color: 'var(--purple-deep)' }}>
                       Progress: {completedCount}/{totalTasks} completed
                     </div>
                     <Button 
                       variant="outline" 
                       size="sm" 
                       onClick={resetMonthTasks}
-                      className="text-xs" style={{ backgroundColor: '#2c0f5b', color: 'white', borderColor: '#2c0f5b' }}
+                      className="text-xs" style={{ backgroundColor: 'var(--purple-deep)', color: 'white', borderColor: 'var(--purple-deep)' }}
                     >
                       <RotateCcw className="w-3 h-3 mr-1" />
                       Reset Month
@@ -3737,7 +3737,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       size="sm"
                       onClick={openAiInvoiceDialog}
                       className="text-white"
-                      style={{ backgroundColor: '#7c3aed', borderColor: '#7c3aed' }}
+                      style={{ backgroundColor: 'var(--purple)', borderColor: 'var(--purple)' }}
                       data-testid="button-ai-scan-invoice-maintenance"
                     >
                       <Scan className="w-4 h-4 mr-1" />
@@ -3756,8 +3756,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             <div className="space-y-6 mb-8">
               <div className="flex flex-col md:flex-row gap-4">
                 <div className="flex-1">
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#2c0f5b' }}>
-                    <Calendar className="inline w-4 h-4 mr-1" style={{ color: '#2c0f5b' }} />
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--purple-deep)' }}>
+                    <Calendar className="inline w-4 h-4 mr-1" style={{ color: 'var(--purple-deep)' }} />
                     Month
                   </label>
                   <Select value={selectedMonth.toString()} onValueChange={(value) => setSelectedMonth(parseInt(value))}>
@@ -3774,8 +3774,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                   </Select>
                 </div>
                 <div className="flex-1">
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#2c0f5b' }}>
-                    <MapPin className="inline w-4 h-4 mr-1" style={{ color: '#2c0f5b' }} />
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--purple-deep)' }}>
+                    <MapPin className="inline w-4 h-4 mr-1" style={{ color: 'var(--purple-deep)' }} />
                     Climate Zone (auto-set by property)
                   </label>
                   <Select value={selectedZone} onValueChange={setSelectedZone} disabled>
@@ -3796,21 +3796,21 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
               {/* Home Systems Filter */}
               <Collapsible open={showSystemFilters} onOpenChange={setShowSystemFilters}>
                 <CollapsibleTrigger asChild>
-                  <Button variant="outline" className="w-full justify-between h-14" style={{ backgroundColor: '#ffffff', color: '#2c0f5b', borderColor: '#2c0f5b' }} data-tour-id="home-systems">
+                  <Button variant="outline" className="w-full justify-between h-14" style={{ backgroundColor: '#ffffff', color: 'var(--purple-deep)', borderColor: 'var(--purple-deep)' }} data-tour-id="home-systems">
                     <div className="flex items-center">
-                      <Settings className="w-4 h-4 mr-2" style={{ color: '#2c0f5b' }} />
+                      <Settings className="w-4 h-4 mr-2" style={{ color: 'var(--purple-deep)' }} />
                       Home Systems & Features ({homeSystems.length} selected)
                     </div>
-                    <ChevronDown className={`w-4 h-4 transition-transform ${showSystemFilters ? 'rotate-180' : ''}`} style={{ color: '#2c0f5b' }} />
+                    <ChevronDown className={`w-4 h-4 transition-transform ${showSystemFilters ? 'rotate-180' : ''}`} style={{ color: 'var(--purple-deep)' }} />
                   </Button>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="mt-4">
-                  <div className="flex flex-col lg:flex-row gap-4 p-4 border-2 rounded-lg" style={{ backgroundColor: '#f2f2f2', borderColor: '#2c0f5b' }}>
+                  <div className="flex flex-col lg:flex-row gap-4 p-4 border-2 rounded-lg" style={{ backgroundColor: 'var(--gray-100)', borderColor: 'var(--purple-deep)' }}>
                     {/* Systems checklist */}
                     <div className="flex-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
                       {Object.entries(HOME_SYSTEMS).map(([category, systems]) => (
                         <div key={category}>
-                          <h4 className="font-medium text-sm mb-3 capitalize" style={{ color: '#2c0f5b' }}>
+                          <h4 className="font-medium text-sm mb-3 capitalize" style={{ color: 'var(--purple-deep)' }}>
                             {category === 'features' ? 'Special Features' :
                              category === 'exterior' ? 'Roof & Exterior' :
                              category === 'electrical' ? 'Electrical' :
@@ -3833,14 +3833,14 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                                     <label
                                       htmlFor={system.value}
                                       className="text-sm cursor-pointer"
-                                      style={{ color: '#2c0f5b' }}
+                                      style={{ color: 'var(--purple-deep)' }}
                                     >
                                       {system.label}
                                     </label>
                                   </div>
                                   <div className="flex items-center space-x-2">
                                     {systemData && (
-                                      <span className="text-xs px-2 py-1 rounded" style={{ backgroundColor: '#e8e0f0', color: '#2c0f5b' }}>
+                                      <span className="text-xs px-2 py-1 rounded" style={{ backgroundColor: 'var(--purple-tint)', color: 'var(--purple-deep)' }}>
                                         {systemData.installationYear || 'Unknown'}
                                       </span>
                                     )}
@@ -3848,7 +3848,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                                       variant="ghost" 
                                       size="sm" 
                                       className="h-6 w-6 p-0 text-xs"
-                                      style={{ color: '#2c0f5b' }}
+                                      style={{ color: 'var(--purple-deep)' }}
                                       onClick={() => systemData ? handleEditHomeSystem(systemData) : handleAddHomeSystem(system.label)}
                                       data-testid={`button-add-date-${system.value}`}
                                     >
@@ -3865,8 +3865,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
                     {/* Live house map — updates as systems are checked */}
                     {selectedHouseId && (
-                      <div className="lg:w-64 xl:w-72 flex-shrink-0 bg-white rounded-lg p-2 border border-purple-100">
-                        <p className="text-xs font-semibold text-center mb-1" style={{ color: '#2c0f5b' }}>Your Home Map</p>
+                      <div className="lg:w-64 xl:w-72 flex-shrink-0 bg-white rounded-lg p-2 border border-[#CECBF6]">
+                        <p className="text-xs font-semibold text-center mb-1" style={{ color: 'var(--purple-deep)' }}>Your Home Map</p>
                         <HouseMap
                           houseId={selectedHouseId}
                           homeownerId={homeownerId}
@@ -3884,7 +3884,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             {/* Referring Agent Card */}
             {referringAgentLoading && (
               <div className="mb-6">
-                <Card className="border-blue-200 dark:border-blue-800/30 animate-pulse" style={{ backgroundColor: '#f2f2f2' }}>
+                <Card className="border-blue-200 dark:border-blue-800/30 animate-pulse" style={{ backgroundColor: 'var(--gray-100)' }}>
                   <CardContent className="p-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-lg bg-gray-300 dark:bg-gray-700"></div>
@@ -3901,7 +3901,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
             {referringAgent && !referringAgentLoading && (
               <div className="mb-6">
-                <Card className="border-blue-200 dark:border-blue-800/30" style={{ backgroundColor: '#f2f2f2' }}>
+                <Card className="border-blue-200 dark:border-blue-800/30" style={{ backgroundColor: 'var(--gray-100)' }}>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -3919,12 +3919,12 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                             />
                           </div>
                         ) : (
-                          <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ backgroundColor: '#2c0f5b' }}>
-                            <User className="w-7 h-7" style={{ color: '#b6a6f4' }} />
+                          <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--purple-deep)' }}>
+                            <User className="w-7 h-7" style={{ color: 'var(--purple-light)' }} />
                           </div>
                         )}
                         <div>
-                          <h3 className="font-semibold" style={{ color: '#2c0f5b' }}>
+                          <h3 className="font-semibold" style={{ color: 'var(--purple-deep)' }}>
                             Your Real Estate Agent
                           </h3>
                           <p className="text-sm" style={{ color: '#666666' }}>
@@ -3932,7 +3932,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                           </p>
                           {referringAgent.referralCode && (
                             <div className="flex items-center gap-2 mt-1">
-                              <span className="text-xs bg-purple-100 dark:bg-purple-900/30 px-2 py-1 rounded" style={{ color: '#2c0f5b' }}>
+                              <span className="text-xs bg-purple-100 dark:bg-purple-900/30 px-2 py-1 rounded" style={{ color: 'var(--purple-deep)' }}>
                                 Referral Code: {referringAgent.referralCode}
                               </span>
                             </div>
@@ -3946,7 +3946,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                             size="sm"
                             asChild
                             data-testid="button-email-agent"
-                            style={{ backgroundColor: '#2c0f5b', color: 'white', borderColor: '#2c0f5b' }}
+                            style={{ backgroundColor: 'var(--purple-deep)', color: 'white', borderColor: 'var(--purple-deep)' }}
                           >
                             <a href={`mailto:${referringAgent.email}`}>
                               <Mail className="w-4 h-4 mr-1" />
@@ -3960,7 +3960,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                             size="sm"
                             asChild
                             data-testid="button-call-agent"
-                            style={{ backgroundColor: '#2c0f5b', color: 'white', borderColor: '#2c0f5b' }}
+                            style={{ backgroundColor: 'var(--purple-deep)', color: 'white', borderColor: 'var(--purple-deep)' }}
                           >
                             <a href={`tel:${referringAgent.phone}`}>
                               <Phone className="w-4 h-4 mr-1" />
@@ -3973,19 +3973,19 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 space-y-2">
                       {referringAgent.officeAddress && (
                         <div className="flex items-center gap-2 text-sm" style={{ color: '#666666' }}>
-                          <Building2 className="w-4 h-4" style={{ color: '#2c0f5b' }} />
+                          <Building2 className="w-4 h-4" style={{ color: 'var(--purple-deep)' }} />
                           <span data-testid="text-agent-office">{referringAgent.officeAddress}</span>
                         </div>
                       )}
                       {referringAgent.website && (
                         <div className="flex items-center gap-2 text-sm">
-                          <Globe className="w-4 h-4" style={{ color: '#2c0f5b' }} />
+                          <Globe className="w-4 h-4" style={{ color: 'var(--purple-deep)' }} />
                           <a 
                             href={referringAgent.website} 
                             target="_blank" 
                             rel="noopener noreferrer"
                             className="hover:underline"
-                            style={{ color: '#2c0f5b' }}
+                            style={{ color: 'var(--purple-deep)' }}
                             data-testid="link-agent-website"
                           >
                             Visit Website
@@ -4024,8 +4024,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       <Thermometer className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold text-center" style={{ color: '#2c0f5b' }}>System-Based Maintenance Recommendations</h2>
-                      <p className="text-sm text-center" style={{ color: '#b6a6f4' }}>
+                      <h2 className="text-xl font-bold text-center" style={{ color: 'var(--purple-deep)' }}>System-Based Maintenance Recommendations</h2>
+                      <p className="text-sm text-center" style={{ color: 'var(--purple-light)' }}>
                         Personalized suggestions based on your equipment age
                       </p>
                     </div>
@@ -4059,7 +4059,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                                   </span>
                                 )}
                               </div>
-                              <CardTitle className="text-base" style={{ color: '#2c0f5b' }}>
+                              <CardTitle className="text-base" style={{ color: 'var(--purple-deep)' }}>
                                 {rec.title}
                               </CardTitle>
                             </div>
@@ -4104,19 +4104,19 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                   >
                     <div className="flex items-center gap-3">
                       <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/50">
-                        <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                        <Sparkles className="w-4 h-4 text-[#3C258E] dark:text-[#3C258E]" />
                       </div>
                       <div>
                         <p className="font-semibold text-sm text-purple-900 dark:text-purple-100">AI Maintenance Coach</p>
-                        <p className="text-xs text-purple-600 dark:text-purple-400">
+                        <p className="text-xs text-[#3C258E] dark:text-[#3C258E]">
                           {coachResult ? "Personalized plan ready" : "Get a personalized maintenance plan for this month"}
                         </p>
                       </div>
                     </div>
                     {coachOpen ? (
-                      <ChevronDown className="w-4 h-4 text-purple-500 transition-transform" />
+                      <ChevronDown className="w-4 h-4 text-[#3C258E] transition-transform" />
                     ) : (
-                      <ChevronRight className="w-4 h-4 text-purple-500 transition-transform" />
+                      <ChevronRight className="w-4 h-4 text-[#3C258E] transition-transform" />
                     )}
                   </button>
 
@@ -4145,7 +4145,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                           </p>
                           <Button
                             size="sm"
-                            className="bg-purple-600 hover:bg-purple-700 text-white"
+                            className="bg-[#3C258E] hover:bg-[#2C0F5B] text-white"
                             onClick={() => { if (selectedHouseId) coachMutation.mutate(selectedHouseId); }}
                             disabled={coachMutation.isPending}
                           >
@@ -4186,7 +4186,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                                       setTimeout(() => setHighlightedTask(null), 2500);
                                     }
                                   }}
-                                  className="w-full text-left flex items-start gap-3 p-3 rounded-lg bg-white dark:bg-purple-950/30 border border-purple-100 dark:border-purple-800 hover:border-purple-300 dark:hover:border-purple-600 transition-colors group/task"
+                                  className="w-full text-left flex items-start gap-3 p-3 rounded-lg bg-white dark:bg-purple-950/30 border border-[#CECBF6] dark:border-purple-800 hover:border-purple-300 dark:hover:border-purple-600 transition-colors group/task"
                                 >
                                   <span className="flex-shrink-0 w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-xs font-bold flex items-center justify-center mt-0.5">
                                     {i + 1}
@@ -4195,7 +4195,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                                     <p className="text-sm font-medium text-gray-900 dark:text-gray-100 group-hover/task:text-purple-700 dark:group-hover/task:text-purple-300 transition-colors">{t.title}</p>
                                     <p className="text-xs text-muted-foreground mt-0.5">{t.reason}</p>
                                   </div>
-                                  <ChevronRight className="w-4 h-4 text-purple-400 flex-shrink-0 mt-1 opacity-0 group-hover/task:opacity-100 transition-opacity" />
+                                  <ChevronRight className="w-4 h-4 text-[#3C258E] flex-shrink-0 mt-1 opacity-0 group-hover/task:opacity-100 transition-opacity" />
                                 </button>
                               ))}
                             </div>
@@ -4205,7 +4205,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/30 h-7 px-2"
+                              className="text-xs text-[#3C258E] hover:text-purple-700 hover:bg-[#EEEDFE] dark:hover:bg-purple-900/30 h-7 px-2"
                               onClick={() => { if (selectedHouseId) coachMutation.mutate(selectedHouseId); }}
                               disabled={coachMutation.isPending}
                             >
@@ -4255,7 +4255,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                   <h3 className="text-lg font-medium mb-2" style={{ color: '#ffffff' }}>
                     No tasks for this month and location
                   </h3>
-                  <p style={{ color: '#2c0f5b' }}>
+                  <p style={{ color: 'var(--purple-deep)' }}>
                     Try selecting a different month or climate zone to see recommended maintenance tasks.
                   </p>
                 </div>
@@ -4268,7 +4268,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
           <div className="mt-12" data-tour-id="appliances">
             <div className="space-y-6">
               <div className="space-y-3 text-center">
-                <h2 className="text-2xl font-semibold" style={{ color: '#2c0f5b' }}>Home Appliances</h2>
+                <h2 className="text-2xl font-semibold" style={{ color: 'var(--purple-deep)' }}>Home Appliances</h2>
                 <Button
                   onClick={() => {
                     setEditingAppliance(null);
@@ -4293,7 +4293,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     setIsApplianceDialogOpen(true);
                   }}
                   className="text-white px-6 py-2 rounded-lg font-medium transition-all duration-200 hover:opacity-90 mx-auto"
-                  style={{ backgroundColor: '#2c0f5b' }}
+                  style={{ backgroundColor: 'var(--purple-deep)' }}
                   data-testid="button-add-appliance"
                 >
                   <Plus className="w-4 h-4 mr-2" />
@@ -4302,13 +4302,13 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
               </div>
               {appliancesLoading ? (
                 <div className="text-center py-8">
-                  <div className="text-lg" style={{ color: '#2c0f5b' }}>Loading appliances...</div>
+                  <div className="text-lg" style={{ color: 'var(--purple-deep)' }}>Loading appliances...</div>
                 </div>
               ) : appliances.length === 0 ? (
-                <Card className="border-2" style={{ borderColor: '#b6a6f4', backgroundColor: '#f8f9fa' }}>
+                <Card className="border-2" style={{ borderColor: 'var(--purple-light)', backgroundColor: '#f8f9fa' }}>
                   <CardContent className="py-8 text-center">
-                    <Monitor className="h-12 w-12 mx-auto mb-4" style={{ color: '#b6a6f4' }} />
-                    <h3 className="text-lg font-medium mb-2" style={{ color: '#2c0f5b' }}>No appliances added yet</h3>
+                    <Monitor className="h-12 w-12 mx-auto mb-4" style={{ color: 'var(--purple-light)' }} />
+                    <h3 className="text-lg font-medium mb-2" style={{ color: 'var(--purple-deep)' }}>No appliances added yet</h3>
                     <p className="text-gray-600">
                       Track appliances, manuals, and maintenance schedules
                     </p>
@@ -4329,12 +4329,12 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                         className="border border-gray-200 rounded-lg overflow-hidden"
                         style={{ backgroundColor: '#ffffff' }}
                       >
-                        <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-purple-50 [&>svg]:hidden">
+                        <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-[#EEEDFE] [&>svg]:hidden">
                           <div className="flex items-center justify-between w-full gap-3">
                             <div className="flex items-center gap-3 flex-1 min-w-0">
-                              <Monitor className="w-5 h-5 shrink-0" style={{ color: '#2c0f5b' }} />
+                              <Monitor className="w-5 h-5 shrink-0" style={{ color: 'var(--purple-deep)' }} />
                               <div className="text-left min-w-0">
-                                <p className="font-semibold text-sm leading-tight truncate" style={{ color: '#2c0f5b' }}>
+                                <p className="font-semibold text-sm leading-tight truncate" style={{ color: 'var(--purple-deep)' }}>
                                   {appliance.name}
                                 </p>
                                 <p className="text-xs text-gray-500 truncate">
@@ -4345,7 +4345,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                               {age !== null && (
-                                <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: '#e8e0f0', color: '#2c0f5b' }}>
+                                <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--purple-tint)', color: 'var(--purple-deep)' }}>
                                   {age} yr{age !== 1 ? 's' : ''}
                                 </span>
                               )}
@@ -4359,13 +4359,13 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                               {appliance.make && (
                                 <div>
                                   <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Manufacturer</p>
-                                  <p className="font-medium" style={{ color: '#2c0f5b' }}>{appliance.make}</p>
+                                  <p className="font-medium" style={{ color: 'var(--purple-deep)' }}>{appliance.make}</p>
                                 </div>
                               )}
                               {appliance.model && (
                                 <div>
                                   <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Model #</p>
-                                  <p className="font-medium" style={{ color: '#2c0f5b' }}>{appliance.model}</p>
+                                  <p className="font-medium" style={{ color: 'var(--purple-deep)' }}>{appliance.model}</p>
                                 </div>
                               )}
                               {appliance.serialNumber && (
@@ -4420,7 +4420,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                                     setIsApplianceManualDialogOpen(true);
                                   }}
                                   className="text-xs h-7"
-                                  style={{ borderColor: '#2c0f5b', color: '#2c0f5b' }}
+                                  style={{ borderColor: 'var(--purple-deep)', color: 'var(--purple-deep)' }}
                                   data-testid={`button-add-manual-${appliance.id}`}
                                 >
                                   <Book className="w-3 h-3 mr-1" />
@@ -4444,7 +4444,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                                     setIsApplianceDialogOpen(true);
                                   }}
                                   className="h-7 w-7 p-0"
-                                  style={{ color: '#2c0f5b' }}
+                                  style={{ color: 'var(--purple-deep)' }}
                                   data-testid={`button-edit-appliance-${appliance.id}`}
                                 >
                                   <Edit className="w-3.5 h-3.5" />
@@ -4486,8 +4486,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
         <Dialog open={aiInvoiceOpen} onOpenChange={setAiInvoiceOpen}>
           <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2" style={{ color: '#2c0f5b' }}>
-                <Scan className="w-5 h-5" style={{ color: '#7c3aed' }} />
+              <DialogTitle className="flex items-center gap-2" style={{ color: 'var(--purple-deep)' }}>
+                <Scan className="w-5 h-5" style={{ color: 'var(--purple)' }} />
                 {aiStep === "diy-verify" ? "Verify DIY Work" : "AI Scan Invoice"}
               </DialogTitle>
             </DialogHeader>
@@ -4495,7 +4495,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             {aiStep === "upload" && (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium" style={{ color: '#2c0f5b' }}>Completion Method</label>
+                  <label className="text-sm font-medium" style={{ color: 'var(--purple-deep)' }}>Completion Method</label>
                   <Select value={aiCompletionMethod} onValueChange={(v) => setAiCompletionMethod(v as "contractor" | "diy")}>
                     <SelectTrigger>
                       <SelectValue />
@@ -4509,26 +4509,26 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
                 {aiCompletionMethod === "contractor" ? (
                   <div className="space-y-2">
-                    <label className="text-sm font-medium" style={{ color: '#2c0f5b' }}>
+                    <label className="text-sm font-medium" style={{ color: 'var(--purple-deep)' }}>
                       Invoice / Receipt Photos *
                     </label>
-                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-purple-50" style={{ borderColor: '#b6a6f4' }}>
-                      <Upload className="w-8 h-8 mb-2" style={{ color: '#7c3aed' }} />
-                      <span className="text-sm" style={{ color: '#2c0f5b' }}>Upload invoice photos</span>
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-[#EEEDFE]" style={{ borderColor: 'var(--purple-light)' }}>
+                      <Upload className="w-8 h-8 mb-2" style={{ color: 'var(--purple)' }} />
+                      <span className="text-sm" style={{ color: 'var(--purple-deep)' }}>Upload invoice photos</span>
                       <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => setAiInvoiceFiles(Array.from(e.target.files || []))} />
                     </label>
-                    {aiInvoiceFiles.length > 0 && <p className="text-xs text-green-600">{aiInvoiceFiles.length} file(s) selected</p>}
+                    {aiInvoiceFiles.length > 0 && <p className="text-xs text-[#079669]">{aiInvoiceFiles.length} file(s) selected</p>}
                   </div>
                 ) : (
                   <div className="space-y-3">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium" style={{ color: '#2c0f5b' }}>Material Receipt (optional)</label>
-                      <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-purple-50" style={{ borderColor: '#b6a6f4' }}>
-                        <Upload className="w-6 h-6 mb-1" style={{ color: '#7c3aed' }} />
-                        <span className="text-xs" style={{ color: '#2c0f5b' }}>Upload receipt for AI to extract service details</span>
+                      <label className="text-sm font-medium" style={{ color: 'var(--purple-deep)' }}>Material Receipt (optional)</label>
+                      <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-[#EEEDFE]" style={{ borderColor: 'var(--purple-light)' }}>
+                        <Upload className="w-6 h-6 mb-1" style={{ color: 'var(--purple)' }} />
+                        <span className="text-xs" style={{ color: 'var(--purple-deep)' }}>Upload receipt for AI to extract service details</span>
                         <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => setAiReceiptFiles(Array.from(e.target.files || []))} />
                       </label>
-                      {aiReceiptFiles.length > 0 && <p className="text-xs text-green-600">{aiReceiptFiles.length} receipt(s)</p>}
+                      {aiReceiptFiles.length > 0 && <p className="text-xs text-[#079669]">{aiReceiptFiles.length} receipt(s)</p>}
                     </div>
                     <p className="text-xs text-amber-700 bg-amber-50 rounded p-2 border border-amber-200">Before &amp; after photos for verification will be requested in the next step.</p>
                   </div>
@@ -4538,7 +4538,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                   onClick={runAiAnalysis}
                   disabled={aiAnalyzing}
                   className="w-full text-white"
-                  style={{ backgroundColor: '#7c3aed' }}
+                  style={{ backgroundColor: 'var(--purple)' }}
                 >
                   {aiAnalyzing ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Analyzing...</> : <><Scan className="w-4 h-4 mr-2" /> Analyze with AI</>}
                 </Button>
@@ -4553,41 +4553,41 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                 </div>
 
                 {aiDiyVerifyResult && (
-                  <div className={`p-3 rounded-lg border ${aiDiyVerifyResult.diyVerified ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}>
-                    <p className={`text-sm font-medium ${aiDiyVerifyResult.diyVerified ? "text-green-800" : "text-red-800"}`}>
+                  <div className={`p-3 rounded-lg border ${aiDiyVerifyResult.diyVerified ? "bg-[#F0FAF4] border-[#A7D7B8]" : "bg-red-50 border-red-200"}`}>
+                    <p className={`text-sm font-medium ${aiDiyVerifyResult.diyVerified ? "text-[#09694A]" : "text-red-800"}`}>
                       {aiDiyVerifyResult.diyVerified ? "✓ Verification passed" : "✗ Verification inconclusive"}
                     </p>
-                    {aiDiyVerifyResult.verificationNotes && <p className="text-xs mt-1" style={{ color: aiDiyVerifyResult.diyVerified ? '#166534' : '#991b1b' }}>{aiDiyVerifyResult.verificationNotes}</p>}
+                    {aiDiyVerifyResult.verificationNotes && <p className="text-xs mt-1" style={{ color: aiDiyVerifyResult.diyVerified ? 'var(--green-deep)' : '#991b1b' }}>{aiDiyVerifyResult.verificationNotes}</p>}
                   </div>
                 )}
 
                 <div className="space-y-3">
                   <div>
                     <label className="block text-xs font-medium mb-1 text-gray-700">Before Photos *</label>
-                    <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-purple-50" style={{ borderColor: '#b6a6f4' }}>
-                      <Upload className="w-5 h-5 mb-1" style={{ color: '#7c3aed' }} />
+                    <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-[#EEEDFE]" style={{ borderColor: 'var(--purple-light)' }}>
+                      <Upload className="w-5 h-5 mb-1" style={{ color: 'var(--purple)' }} />
                       <span className="text-xs text-gray-600">Upload before photos</span>
                       <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => setAiDiyVerifyFiles((p) => ({ ...p, before: Array.from(e.target.files || []) }))} />
                     </label>
-                    {aiDiyVerifyFiles.before.length > 0 && <p className="text-xs text-green-600 mt-1">{aiDiyVerifyFiles.before.length} before photo(s)</p>}
+                    {aiDiyVerifyFiles.before.length > 0 && <p className="text-xs text-[#079669] mt-1">{aiDiyVerifyFiles.before.length} before photo(s)</p>}
                   </div>
                   <div>
                     <label className="block text-xs font-medium mb-1 text-gray-700">After Photos *</label>
-                    <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-purple-50" style={{ borderColor: '#b6a6f4' }}>
-                      <Upload className="w-5 h-5 mb-1" style={{ color: '#7c3aed' }} />
+                    <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-[#EEEDFE]" style={{ borderColor: 'var(--purple-light)' }}>
+                      <Upload className="w-5 h-5 mb-1" style={{ color: 'var(--purple)' }} />
                       <span className="text-xs text-gray-600">Upload after photos</span>
                       <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => setAiDiyVerifyFiles((p) => ({ ...p, after: Array.from(e.target.files || []) }))} />
                     </label>
-                    {aiDiyVerifyFiles.after.length > 0 && <p className="text-xs text-green-600 mt-1">{aiDiyVerifyFiles.after.length} after photo(s)</p>}
+                    {aiDiyVerifyFiles.after.length > 0 && <p className="text-xs text-[#079669] mt-1">{aiDiyVerifyFiles.after.length} after photo(s)</p>}
                   </div>
                   <div>
                     <label className="block text-xs font-medium mb-1 text-gray-700">Receipt (optional)</label>
-                    <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed rounded-lg cursor-pointer hover:bg-purple-50" style={{ borderColor: '#b6a6f4' }}>
-                      <Upload className="w-5 h-5 mb-1" style={{ color: '#7c3aed' }} />
+                    <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed rounded-lg cursor-pointer hover:bg-[#EEEDFE]" style={{ borderColor: 'var(--purple-light)' }}>
+                      <Upload className="w-5 h-5 mb-1" style={{ color: 'var(--purple)' }} />
                       <span className="text-xs text-gray-600">Upload receipt</span>
                       <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => setAiDiyVerifyFiles((p) => ({ ...p, receipt: Array.from(e.target.files || []) }))} />
                     </label>
-                    {aiDiyVerifyFiles.receipt.length > 0 && <p className="text-xs text-green-600 mt-1">{aiDiyVerifyFiles.receipt.length} receipt(s)</p>}
+                    {aiDiyVerifyFiles.receipt.length > 0 && <p className="text-xs text-[#079669] mt-1">{aiDiyVerifyFiles.receipt.length} receipt(s)</p>}
                   </div>
                 </div>
 
@@ -4597,7 +4597,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     onClick={runDiyVerify}
                     disabled={aiDiyVerifying}
                     className="text-white"
-                    style={{ backgroundColor: '#7c3aed' }}
+                    style={{ backgroundColor: 'var(--purple)' }}
                     data-testid="button-run-diy-verify"
                   >
                     {aiDiyVerifying ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Verifying...</> : "Verify with AI"}
@@ -4606,7 +4606,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     <Button
                       onClick={() => setAiStep("review")}
                       className="text-white"
-                      style={{ backgroundColor: '#2c0f5b' }}
+                      style={{ backgroundColor: 'var(--purple-deep)' }}
                       data-testid="button-diy-verify-to-review"
                     >
                       Continue to Review
@@ -4618,50 +4618,50 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
             {aiStep === "review" && aiAnalysis && (
               <div className="space-y-4">
-                <div className="p-3 rounded-lg border" style={{ backgroundColor: '#f3e8ff', borderColor: '#b6a6f4' }}>
+                <div className="p-3 rounded-lg border" style={{ backgroundColor: 'var(--purple-tint)', borderColor: 'var(--purple-light)' }}>
                   <div className="flex items-center gap-1 mb-1">
                     {aiAnalysis.aiConfidence === "high" ? (
-                      <span className="text-xs font-medium flex items-center gap-1 text-green-700"><CheckCircle2 className="w-3 h-3" /> High confidence</span>
+                      <span className="text-xs font-medium flex items-center gap-1 text-[#09694A]"><CheckCircle2 className="w-3 h-3" /> High confidence</span>
                     ) : aiAnalysis.aiConfidence === "medium" ? (
                       <span className="text-xs font-medium flex items-center gap-1 text-amber-700"><AlertCircle className="w-3 h-3" /> Medium confidence — review carefully</span>
                     ) : (
                       <span className="text-xs font-medium flex items-center gap-1 text-red-700"><AlertCircle className="w-3 h-3" /> Low confidence — please fill in manually</span>
                     )}
                   </div>
-                  {aiAnalysis.aiNotes && <p className="text-xs" style={{ color: '#2c0f5b' }}>{aiAnalysis.aiNotes}</p>}
+                  {aiAnalysis.aiNotes && <p className="text-xs" style={{ color: 'var(--purple-deep)' }}>{aiAnalysis.aiNotes}</p>}
                 </div>
                 <div className="space-y-3">
                   <div>
-                    <label className="text-xs font-medium" style={{ color: '#2c0f5b' }}>Description</label>
+                    <label className="text-xs font-medium" style={{ color: 'var(--purple-deep)' }}>Description</label>
                     <Input value={aiEditDescription} onChange={(e) => setAiEditDescription(e.target.value)} />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs font-medium" style={{ color: '#2c0f5b' }}>Date</label>
+                      <label className="text-xs font-medium" style={{ color: 'var(--purple-deep)' }}>Date</label>
                       <Input type="date" value={aiEditDate} onChange={(e) => setAiEditDate(e.target.value)} />
                     </div>
                     <div>
-                      <label className="text-xs font-medium" style={{ color: '#2c0f5b' }}>Amount ($)</label>
+                      <label className="text-xs font-medium" style={{ color: 'var(--purple-deep)' }}>Amount ($)</label>
                       <Input type="number" placeholder="0.00" value={aiEditAmount} onChange={(e) => setAiEditAmount(e.target.value)} />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs font-medium" style={{ color: '#2c0f5b' }}>Contractor Name</label>
+                      <label className="text-xs font-medium" style={{ color: 'var(--purple-deep)' }}>Contractor Name</label>
                       <Input value={aiEditContractorName} onChange={(e) => setAiEditContractorName(e.target.value)} />
                     </div>
                     <div>
-                      <label className="text-xs font-medium" style={{ color: '#2c0f5b' }}>Company</label>
+                      <label className="text-xs font-medium" style={{ color: 'var(--purple-deep)' }}>Company</label>
                       <Input value={aiEditContractorCompany} onChange={(e) => setAiEditContractorCompany(e.target.value)} />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs font-medium" style={{ color: '#2c0f5b' }}>Home Area</label>
+                      <label className="text-xs font-medium" style={{ color: 'var(--purple-deep)' }}>Home Area</label>
                       <Input value={aiEditHomeArea} onChange={(e) => setAiEditHomeArea(e.target.value)} />
                     </div>
                     <div>
-                      <label className="text-xs font-medium" style={{ color: '#2c0f5b' }}>Service Type</label>
+                      <label className="text-xs font-medium" style={{ color: 'var(--purple-deep)' }}>Service Type</label>
                       <Input value={aiEditServiceType} onChange={(e) => setAiEditServiceType(e.target.value)} />
                     </div>
                   </div>
@@ -4678,7 +4678,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     onClick={confirmAiAnalysis}
                     disabled={aiConfirming || (aiAnalysis.completionMethod === "diy" && !aiAnalysis.diyVerified)}
                     className="flex-1 text-white"
-                    style={{ backgroundColor: '#2c0f5b' }}
+                    style={{ backgroundColor: 'var(--purple-deep)' }}
                     data-testid="button-confirm-ai-analysis-maintenance"
                   >
                     {aiConfirming ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</> : "Confirm & Add Record"}
@@ -4690,7 +4690,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             {aiStep === "done" && (
               <div className="text-center py-8">
                 <CheckCircle2 className="w-16 h-16 mx-auto mb-4" style={{ color: '#22c55e' }} />
-                <h3 className="text-lg font-semibold" style={{ color: '#2c0f5b' }}>Record Added!</h3>
+                <h3 className="text-lg font-semibold" style={{ color: 'var(--purple-deep)' }}>Record Added!</h3>
                 <p className="text-sm text-muted-foreground">Your service record and health score have been updated.</p>
               </div>
             )}
@@ -4895,7 +4895,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                 />
 
                 {/* File Upload Section */}
-                <div className="space-y-4 pt-4 border-t" style={{ borderColor: '#b6a6f4' }}>
+                <div className="space-y-4 pt-4 border-t" style={{ borderColor: 'var(--purple-light)' }}>
                   <h3 className="text-lg font-semibold">Attachments</h3>
                   
                   {/* Receipt Upload */}
@@ -4915,14 +4915,14 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                         file:mr-4 file:py-2 file:px-4
                         file:rounded-full file:border-0
                         file:text-sm file:font-semibold
-                        file:bg-white file:text-purple-700
+                        file:bg-white file:text-[#3C258E]
                         hover:file:bg-gray-100"
                       data-testid="input-receipt-files"
                     />
                     {receiptFiles.length > 0 && (
                       <div className="mt-2 space-y-1">
                         {receiptFiles.map((file, index) => (
-                          <div key={index} className="flex items-center justify-between text-sm" style={{ color: '#b6a6f4' }}>
+                          <div key={index} className="flex items-center justify-between text-sm" style={{ color: 'var(--purple-light)' }}>
                             <span className="truncate">{file.name}</span>
                             <button
                               type="button"
@@ -4954,14 +4954,14 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                         file:mr-4 file:py-2 file:px-4
                         file:rounded-full file:border-0
                         file:text-sm file:font-semibold
-                        file:bg-white file:text-purple-700
+                        file:bg-white file:text-[#3C258E]
                         hover:file:bg-gray-100"
                       data-testid="input-before-photos"
                     />
                     {beforePhotoFiles.length > 0 && (
                       <div className="mt-2 space-y-1">
                         {beforePhotoFiles.map((file, index) => (
-                          <div key={index} className="flex items-center justify-between text-sm" style={{ color: '#b6a6f4' }}>
+                          <div key={index} className="flex items-center justify-between text-sm" style={{ color: 'var(--purple-light)' }}>
                             <span className="truncate">{file.name}</span>
                             <button
                               type="button"
@@ -4993,14 +4993,14 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                         file:mr-4 file:py-2 file:px-4
                         file:rounded-full file:border-0
                         file:text-sm file:font-semibold
-                        file:bg-white file:text-purple-700
+                        file:bg-white file:text-[#3C258E]
                         hover:file:bg-gray-100"
                       data-testid="input-after-photos"
                     />
                     {afterPhotoFiles.length > 0 && (
                       <div className="mt-2 space-y-1">
                         {afterPhotoFiles.map((file, index) => (
-                          <div key={index} className="flex items-center justify-between text-sm" style={{ color: '#b6a6f4' }}>
+                          <div key={index} className="flex items-center justify-between text-sm" style={{ color: 'var(--purple-light)' }}>
                             <span className="truncate">{file.name}</span>
                             <button
                               type="button"
@@ -5020,7 +5020,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                   <Button 
                     type="button" 
                     onClick={() => setIsMaintenanceLogDialogOpen(false)}
-                    style={{ backgroundColor: 'white', color: '#2c0f5b' }}
+                    style={{ backgroundColor: 'white', color: 'var(--purple-deep)' }}
                     className="hover:opacity-90"
                     data-testid="button-cancel"
                   >
@@ -5029,7 +5029,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                   <Button 
                     type="submit" 
                     disabled={createMaintenanceLogMutation.isPending || updateMaintenanceLogMutation.isPending || isUploadingFiles}
-                    style={{ backgroundColor: '#b6a6f4', color: 'white' }}
+                    style={{ backgroundColor: 'var(--purple-light)', color: 'white' }}
                     className="hover:opacity-90"
                     data-testid="button-add-service-record"
                   >
@@ -5151,7 +5151,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                   <Button 
                     type="submit" 
                     disabled={createHouseMutation.isPending || updateHouseMutation.isPending}
-                    style={{ backgroundColor: '#2c0f5b', color: 'white' }}
+                    style={{ backgroundColor: 'var(--purple-deep)', color: 'white' }}
                     className="hover:opacity-90"
                   >
                     {createHouseMutation.isPending || updateHouseMutation.isPending ? 'Saving...' : editingHouse ? 'Update' : 'Add'} House
@@ -5172,9 +5172,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             </DialogHeader>
 
             {/* Scan Document */}
-            <div className="rounded-lg border-2 border-dashed p-3 text-center" style={{ borderColor: '#b6a6f4' }}>
+            <div className="rounded-lg border-2 border-dashed p-3 text-center" style={{ borderColor: 'var(--purple-light)' }}>
               <p className="text-xs text-gray-500 mb-2">Upload a manual, label, or warranty card and AI will fill in the fields</p>
-              <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold text-white" style={{ backgroundColor: systemPdfLoading ? '#888' : '#2c0f5b' }}>
+              <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold text-white" style={{ backgroundColor: systemPdfLoading ? '#888' : 'var(--purple-deep)' }}>
                 {systemPdfLoading ? (
                   <>
                     <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
@@ -5311,7 +5311,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                   <Button 
                     type="submit" 
                     disabled={createHomeSystemMutation.isPending || updateHomeSystemMutation.isPending}
-                    style={{ backgroundColor: '#2c0f5b', color: 'white' }}
+                    style={{ backgroundColor: 'var(--purple-deep)', color: 'white' }}
                     className="hover:opacity-90"
                   >
                     {createHomeSystemMutation.isPending || updateHomeSystemMutation.isPending ? (
@@ -5477,7 +5477,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                                 <button
                                   key={brand}
                                   type="button"
-                                  className="w-full text-left px-3 py-2 text-sm text-gray-900 hover:bg-purple-50 hover:text-purple-900"
+                                  className="w-full text-left px-3 py-2 text-sm text-gray-900 hover:bg-[#EEEDFE] hover:text-[#2C0F5B]"
                                   onMouseDown={() => {
                                     field.onChange(brand);
                                     setBrandSearch(brand);
@@ -5517,7 +5517,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                             size="sm"
                             disabled={modelLookupLoading}
                             onClick={handleModelLookup}
-                            style={{ backgroundColor: 'white', color: '#2c0f5b', whiteSpace: 'nowrap', flexShrink: 0 }}
+                            style={{ backgroundColor: 'white', color: 'var(--purple-deep)', whiteSpace: 'nowrap', flexShrink: 0 }}
                             title="Look up appliance details by model number"
                           >
                             {modelLookupLoading
@@ -5632,14 +5632,14 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     type="button" 
                     variant="outline" 
                     onClick={() => setIsApplianceDialogOpen(false)}
-                    style={{ color: '#2c0f5b', borderColor: 'white', backgroundColor: 'white' }}
+                    style={{ color: 'var(--purple-deep)', borderColor: 'white', backgroundColor: 'white' }}
                   >
                     Cancel
                   </Button>
                   <Button 
                     type="submit" 
                     disabled={createApplianceMutation.isPending || updateApplianceMutation.isPending}
-                    style={{ backgroundColor: '#2c0f5b', color: 'white' }}
+                    style={{ backgroundColor: 'var(--purple-deep)', color: 'white' }}
                     className="hover:opacity-90"
                   >
                     {createApplianceMutation.isPending || updateApplianceMutation.isPending ? (
@@ -5785,7 +5785,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                   <Button 
                     type="submit" 
                     disabled={createApplianceManualMutation.isPending || updateApplianceManualMutation.isPending}
-                    style={{ backgroundColor: 'white', color: '#2c0f5b' }}
+                    style={{ backgroundColor: 'white', color: 'var(--purple-deep)' }}
                     className="hover:opacity-90"
                   >
                     {createApplianceManualMutation.isPending || updateApplianceManualMutation.isPending ? (
