@@ -772,7 +772,7 @@ export default function Landing() {
             <button className="mhb-nav-demo-btn" onClick={() => handleDemoLogin('homeowner')} disabled={demoLoading === 'homeowner'}>
               {demoLoading === 'homeowner' ? 'Loading…' : 'Homeowner Demo'}
             </button>
-            <a href="/welcome" className="mhb-nav-get-started-btn">Get Started</a>
+            <a href="/onboarding" className="mhb-nav-get-started-btn">Get Started</a>
             <div className="mhb-signin-flyout-wrap" ref={signinFlyoutRef}>
               <button
                 className={`mhb-nav-signin-btn${signinOpen ? ' mhb-nav-signin-btn-active' : ''}`}

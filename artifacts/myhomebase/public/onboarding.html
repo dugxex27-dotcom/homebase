@@ -681,6 +681,40 @@
     color: var(--purple-mid);
     font-weight: 500;
   }
+
+  /* ── WHY YOUR ADDRESS ─────────────────────────────────────────────────────── */
+  .why-address {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative; z-index: 1;
+  }
+  .why-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: rgba(255,255,255,0.1);
+    border: 0.5px solid rgba(255,255,255,0.18);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .why-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .why-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 2px;
+  }
+  .why-desc {
+    font-size: 12px;
+    color: rgba(255,255,255,0.65);
+    line-height: 1.5;
+  }
 </style>
 </head>
 <body>
@@ -703,6 +737,31 @@
     <p class="hero-eyebrow">Step 1 of 6 — Home Intelligence</p>
     <h1 class="hero-headline">Enter your address.<br>We'll show you what<br><em>we already know.</em></h1>
     <p class="hero-sub">Public records, environmental data, and your preliminary Home Wellness Score™ — generated instantly.</p>
+
+    <div class="why-address">
+      <div class="why-item">
+        <span class="why-icon">🏠</span>
+        <div>
+          <div class="why-title">We pull from public records</div>
+          <div class="why-desc">Year built, lot size, sale history, estimated value — pre-populated before you enter anything.</div>
+        </div>
+      </div>
+      <div class="why-item">
+        <span class="why-icon">📊</span>
+        <div>
+          <div class="why-title">We generate a preliminary HWS™</div>
+          <div class="why-desc">A baseline Home Wellness Score calculated instantly from your property data.</div>
+        </div>
+      </div>
+      <div class="why-item">
+        <span class="why-icon">🔒</span>
+        <div>
+          <div class="why-title">Your privacy is protected</div>
+          <div class="why-desc">We never sell or share your address data. It's yours — only used to build your home's record.</div>
+        </div>
+      </div>
+    </div>
+
     <div class="search-box" style="position:relative;">
       <input class="search-input" id="s1AddressInput" type="text"
         autocomplete="off"

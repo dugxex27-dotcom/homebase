@@ -43,10 +43,6 @@ from = "/agent-onboarding"
 to = "/agent-onboarding.html"
 
 [[services.production.rewrites]]
-from = "/welcome"
-to = "/screen0.html"
-
-[[services.production.rewrites]]
 from = "/onboarding"
 to = "/onboarding.html"
 

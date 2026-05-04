@@ -133,7 +133,7 @@ function Router() {
           <Route path="/contractor">{() => { window.location.replace('/contractor.html'); return null; }}</Route>
           <Route path="/agent">{() => { window.location.replace('/agent.html'); return null; }}</Route>
           <Route path="/agent-onboarding">{() => { window.location.replace('/agent-onboarding.html'); return null; }}</Route>
-          <Route path="/welcome">{() => { window.location.replace('/screen0.html'); return null; }}</Route>
+          <Route path="/welcome">{() => { window.location.replace('/onboarding'); return null; }}</Route>
           <Route path="/onboarding">{() => { window.location.replace('/onboarding.html'); return null; }}</Route>
           <Route path="/signin/homeowner" component={SignInHomeowner} />
           <Route path="/signin/contractor" component={SignInContractor} />

@@ -549,6 +549,107 @@
     .faq-modal-heading { font-size: 22px; font-weight: 800; color: #1a0a3e; margin: 0 0 20px; }
     .faq-modal-cta { display: inline-block; text-decoration: none; background: linear-gradient(135deg,#3C258E,#7c3aed); color: #fff; border: none; padding: 12px 24px; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; margin-top: 20px; transition: opacity .15s; }
     .faq-modal-cta:hover { opacity: .88; }
+
+  /* ══ DIFFERENTIATOR CARDS ══ */
+  .diff-section { background: #fff; padding: 64px 24px 0; }
+  .diff-section-inner { max-width: 1100px; margin: 0 auto; }
+  .section-title {
+    font-size: clamp(22px, 3.5vw, 32px); font-weight: 800; letter-spacing: -.02em;
+    line-height: 1.25; color: #1a0840; margin: 0 0 32px;
+  }
+  .diff-cards { display: flex; flex-direction: column; gap: 12px; margin-bottom: 64px; }
+  .diff-card {
+    background: #fff; border: 0.5px solid #e8e4f0; border-radius: 14px;
+    padding: 18px; display: flex; gap: 16px; align-items: flex-start;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  }
+  .diff-icon-wrap {
+    width: 46px; height: 46px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; flex-shrink: 0;
+  }
+  .diff-icon-wrap.purple { background: #ede9fe; }
+  .diff-icon-wrap.blue   { background: #dbeafe; }
+  .diff-icon-wrap.green  { background: #dcfce7; }
+  .diff-icon-wrap.amber  { background: #fef3c7; }
+  .diff-title { font-size: 15px; font-weight: 700; color: #1a0840; margin-bottom: 5px; line-height: 1.3; }
+  .diff-body  { font-size: 14px; color: #4a4870; line-height: 1.65; margin: 0; }
+  .diff-body strong { color: #3C258E; font-weight: 600; }
+
+  /* ══ COMPARISON TABLE ══ */
+  .comparison-section { background: #fff; padding: 0 24px 64px; }
+  .comparison-section-inner { max-width: 1100px; margin: 0 auto; }
+  .comparison {
+    background: #fff; border: 0.5px solid #e8e4f0; border-radius: 14px;
+    overflow: hidden;
+  }
+  .comparison-header {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    background: #f9f8ff; border-bottom: 0.5px solid #e8e4f0;
+  }
+  .comp-col-head {
+    padding: 12px 14px; font-size: 12px; font-weight: 700; color: #5a5a7a;
+    text-align: center; letter-spacing: .04em; text-transform: uppercase;
+  }
+  .comp-col-head.mhb {
+    background: #ede9fe; color: #3C258E;
+    border-left: 0.5px solid #d4d0f0; border-right: 0.5px solid #d4d0f0;
+  }
+  .comp-row {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    border-bottom: 0.5px solid #e8e4f0;
+  }
+  .comp-row:last-child { border-bottom: none; }
+  .comp-cell {
+    padding: 12px 14px; font-size: 13px; color: #5a5a7a;
+    text-align: center; line-height: 1.4;
+  }
+  .comp-cell.feature { text-align: left; font-weight: 500; color: #1a0840; }
+  .comp-cell.mhb {
+    background: #f5f1ff; color: #3C258E; font-weight: 600;
+    border-left: 0.5px solid #d4d0f0; border-right: 0.5px solid #d4d0f0;
+  }
+  .comp-check { color: #09694A; font-weight: 700; }
+  .comp-cross { color: #9090b0; }
+
+  /* ══ TRUST STRIP ══ */
+  .trust-section { background: #fff; padding: 0 24px 48px; }
+  .trust-section-inner { max-width: 1100px; margin: 0 auto; }
+  .trust-strip {
+    background: #f3f4f6; border-radius: 16px; padding: 24px 24px 20px;
+  }
+  .trust-eyebrow {
+    font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+    color: #9090b0; font-weight: 600; margin-bottom: 16px; text-align: center;
+  }
+  .trust-items { display: flex; flex-direction: column; gap: 12px; }
+  .trust-item { display: flex; align-items: center; gap: 12px; font-size: 14px; color: #4a4870; line-height: 1.45; }
+  .trust-check-badge {
+    width: 22px; height: 22px; border-radius: 50%; background: #09694A;
+    color: #fff; font-size: 11px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+
+  /* ══ FOUNDER BLOCK ══ */
+  .founder-section { background: #fff; padding: 0 24px 64px; }
+  .founder-section-inner { max-width: 1100px; margin: 0 auto; }
+  .founder-block {
+    background: #fff; border: 0.5px solid #e8e4f0; border-radius: 14px;
+    padding: 22px; border-left: 3px solid #3C258E;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+  }
+  .founder-quote {
+    font-size: 15px; color: #1a0840; line-height: 1.75; font-style: italic; margin-bottom: 16px;
+  }
+  .founder-attr { display: flex; align-items: center; gap: 12px; }
+  .founder-avatar {
+    width: 40px; height: 40px; border-radius: 50%; background: #3C258E;
+    color: #fff; font-size: 13px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .founder-name { font-size: 14px; font-weight: 700; color: #1a0840; margin-bottom: 2px; }
+  .founder-title { font-size: 12px; color: #9090b0; }
+
   </style>
 </head>
 <body>
@@ -858,7 +959,7 @@
           </div>
         </div>
       </div>
-      <a href="/welcome" class="nav-get-started">Get Started</a>
+      <a href="/onboarding" class="nav-get-started">Get Started</a>
     </div>
   </div>
 </nav>
@@ -878,7 +979,7 @@
     <h1 class="hero-h1">Finally. A system that<br><em>runs your home.</em></h1>
     <p class="hero-sub">Homeownership is a full-time job nobody trained you for. MyHomeBase™ tells you exactly what your home needs, when to do it, and who to call — so nothing falls through the cracks.</p>
     <div class="hero-cta-row">
-      <a href="/welcome" class="hero-cta-primary">Start for $5/month — no guesswork →</a>
+      <a href="/onboarding" class="hero-cta-primary">Start for $5/month — no guesswork →</a>
       <span class="hero-note">14-day free trial · No credit card required</span>
     </div>
   </div>
@@ -921,6 +1022,98 @@
         How it works
       </div>
     </button>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════
+     SECTION 03b — WHAT SETS US APART
+═══════════════════════════════════ -->
+<section class="diff-section">
+  <div class="diff-section-inner">
+    <p class="section-eyebrow">What sets us apart</p>
+    <h2 class="section-title">Not just another home app.</h2>
+    <div class="diff-cards">
+      <div class="diff-card">
+        <div class="diff-icon-wrap purple">🏠</div>
+        <div>
+          <div class="diff-title">We already know your home</div>
+          <p class="diff-body">Enter your address and we instantly pull public records — year built, system ages, sale history, estimated value. <strong>No forms to fill out. No manual entry.</strong> Your home profile is pre-populated before you answer a single question.</p>
+        </div>
+      </div>
+      <div class="diff-card">
+        <div class="diff-icon-wrap blue">📊</div>
+        <div>
+          <div class="diff-title">A score, not just a checklist</div>
+          <p class="diff-body">Your Home Wellness Score™ runs from 0 to 1,000 — updated in real time as you complete tasks, log repairs, and build your record. <strong>Like a credit score for your house.</strong> Know it. Improve it. Show it when you sell.</p>
+        </div>
+      </div>
+      <div class="diff-card">
+        <div class="diff-icon-wrap green">📋</div>
+        <div>
+          <div class="diff-title">A record that follows your home</div>
+          <p class="diff-body">Every repair, inspection, and upgrade is logged and stored permanently. <strong>When you sell, the record transfers.</strong> Buyers see a verified history. Appraisers give credit for it. Insurers can't ignore it.</p>
+        </div>
+      </div>
+      <div class="diff-card">
+        <div class="diff-icon-wrap amber">🤖</div>
+        <div>
+          <div class="diff-title">AI does the heavy lifting</div>
+          <p class="diff-body">Upload your home inspection report and our AI reads it, extracts every system's condition, and populates your home's profile automatically. <strong>You verify. You don't enter.</strong> The less you have to do, the more we handle.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════
+     SECTION 03c — HOW WE COMPARE
+═══════════════════════════════════ -->
+<section class="comparison-section">
+  <div class="comparison-section-inner">
+    <p class="section-eyebrow">How we compare</p>
+    <h2 class="section-title">MyHomeBase™ vs. everything else.</h2>
+    <div class="comparison">
+      <div class="comparison-header">
+        <div class="comp-col-head">Feature</div>
+        <div class="comp-col-head mhb">MyHomeBase™</div>
+        <div class="comp-col-head">Other Apps</div>
+      </div>
+      <div class="comp-row">
+        <div class="comp-cell feature">Auto-populated from public records</div>
+        <div class="comp-cell mhb"><span class="comp-check">✓</span> Yes</div>
+        <div class="comp-cell"><span class="comp-cross">✗</span> Manual entry</div>
+      </div>
+      <div class="comp-row">
+        <div class="comp-cell feature">Live Home Wellness Score™</div>
+        <div class="comp-cell mhb"><span class="comp-check">✓</span> 0–1,000</div>
+        <div class="comp-cell"><span class="comp-cross">✗</span> No score</div>
+      </div>
+      <div class="comp-row">
+        <div class="comp-cell feature">AI inspection report parsing</div>
+        <div class="comp-cell mhb"><span class="comp-check">✓</span> Instant</div>
+        <div class="comp-cell"><span class="comp-cross">✗</span> Not available</div>
+      </div>
+      <div class="comp-row">
+        <div class="comp-cell feature">Geo-located task reminders</div>
+        <div class="comp-cell mhb"><span class="comp-check">✓</span> Your home</div>
+        <div class="comp-cell"><span class="comp-cross">✗</span> Generic lists</div>
+      </div>
+      <div class="comp-row">
+        <div class="comp-cell feature">Transferable at sale</div>
+        <div class="comp-cell mhb"><span class="comp-check">✓</span> Yes</div>
+        <div class="comp-cell"><span class="comp-cross">✗</span> Stays with user</div>
+      </div>
+      <div class="comp-row">
+        <div class="comp-cell feature">Insurance claim protection</div>
+        <div class="comp-cell mhb"><span class="comp-check">✓</span> Documented</div>
+        <div class="comp-cell"><span class="comp-cross">✗</span> No record</div>
+      </div>
+      <div class="comp-row">
+        <div class="comp-cell feature">Price</div>
+        <div class="comp-cell mhb" style="color:#09694A;font-weight:700;">$5/month</div>
+        <div class="comp-cell">$10–30/mo</div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -1198,6 +1391,57 @@
     </div>
     <p class="pricing-tagline">Do the math.</p>
     <button class="pricing-details-btn" onclick="openModal('plans-overlay')">See full plan details →</button>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════
+     SECTION 08b — TRUST STRIP
+═══════════════════════════════════ -->
+<section class="trust-section">
+  <div class="trust-section-inner">
+    <div class="trust-strip">
+      <div class="trust-eyebrow">Why trust us</div>
+      <div class="trust-items">
+        <div class="trust-item">
+          <div class="trust-check-badge">✓</div>
+          <div>Built by contractors with decades of hands-on experience inside real homes</div>
+        </div>
+        <div class="trust-item">
+          <div class="trust-check-badge">✓</div>
+          <div>Property data powered by ATTOM — the same source lenders and appraisers use</div>
+        </div>
+        <div class="trust-item">
+          <div class="trust-check-badge">✓</div>
+          <div>14-day free trial — no credit card required, cancel anytime</div>
+        </div>
+        <div class="trust-item">
+          <div class="trust-check-badge">✓</div>
+          <div>Your data is private — never sold, never shared without your permission</div>
+        </div>
+        <div class="trust-item">
+          <div class="trust-check-badge">✓</div>
+          <div>Trademarked technology: MyHomeBase™ and Home Wellness Score™</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════
+     SECTION 08c — FOUNDER QUOTE
+═══════════════════════════════════ -->
+<section class="founder-section">
+  <div class="founder-section-inner">
+    <div class="founder-block">
+      <div class="founder-quote">"We built MyHomeBase because we spent years inside homeowners' houses watching the same problems repeat — deferred maintenance, no records, denied claims. The tools to prevent all of it didn't exist. So we built them."</div>
+      <div class="founder-attr">
+        <div class="founder-avatar">DR</div>
+        <div>
+          <div class="founder-name">Doug Rettig</div>
+          <div class="founder-title">Co-Founder &amp; CEO, MyHomeBase™</div>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 
