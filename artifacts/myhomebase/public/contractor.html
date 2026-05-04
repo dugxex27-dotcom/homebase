@@ -78,6 +78,7 @@ nav{
 }
 .demo-underbar-back:hover{color:#fff;}
 .demo-underbar-btn{
+  background:none;border:none;padding:0;cursor:pointer;
   font-size:12.5px;font-weight:600;
   color:rgba(255,255,255,0.65);
   text-decoration:underline;
@@ -87,6 +88,7 @@ nav{
   transition:color 0.15s;
 }
 .demo-underbar-btn:hover{color:#fff;}
+.demo-underbar-btn:disabled{opacity:.5;cursor:not-allowed;}
 
 /* ── HERO ── */
 .hero{
@@ -398,7 +400,7 @@ footer a{color:var(--blue);text-decoration:none;}
 </nav>
 <div class="demo-underbar">
   <a href="/" class="demo-underbar-back">← All users</a>
-  <a href="/homeowner" class="demo-underbar-btn">Try the contractor demo →</a>
+  <button class="demo-underbar-btn" id="underbar-demo-btn" onclick="handleDemo(this)">Try the contractor demo →</button>
 </div>
 
 <!-- HERO -->
@@ -597,5 +599,27 @@ footer a{color:var(--blue);text-decoration:none;}
   </div>
 </footer>
 
+<script>
+  async function handleDemo(btn) {
+    if (btn.disabled) return;
+    btn.disabled = true;
+    const orig = btn.textContent;
+    btn.textContent = 'Loading…';
+    try {
+      const res = await fetch('/api/auth/contractor-demo-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) throw new Error('Demo login failed');
+      window.location.href = '/';
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = orig;
+      alert('Demo login failed. Please try again.');
+    }
+  }
+</script>
 </body>
 </html>
