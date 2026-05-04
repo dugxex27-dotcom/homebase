@@ -249,6 +249,23 @@ html,body{
 .card-cta.blue{background:var(--blue);color:#fff;}
 .card-cta.green{background:var(--green);color:#fff;}
 
+.card-demo-link{
+  display:block;
+  width:100%;
+  padding:10px;
+  margin-top:8px;
+  border-radius:12px;
+  font-family:var(--font);
+  font-size:13px;
+  font-weight:500;
+  text-align:center;
+  text-decoration:none;
+  color:var(--gray-600);
+  background:var(--gray-200);
+  transition:background 0.2s, color 0.2s;
+}
+.card-demo-link:hover{background:#d1d5db;color:var(--gray-900);}
+
 /* ── BOTTOM NOTE ── */
 .bottom-note{
   text-align:center;
@@ -285,7 +302,7 @@ html,body{
   <div class="cards-grid">
 
     <!-- HOMEOWNER -->
-    <a class="adv-card" href="/homeowner">
+    <div class="adv-card" onclick="window.location.href='/homeowner'" style="cursor:pointer;">
       <div class="card-visual purple">
         <div class="card-tag">Homeowner</div>
         <div class="card-icon">🏠</div>
@@ -303,12 +320,13 @@ html,body{
           <span class="price-num" style="color:var(--purple);">$5</span>
           <span class="price-per">/month · 14-day free trial</span>
         </div>
-        <span class="card-cta purple">Check my home's risk — free →</span>
+        <a href="/homeowner" class="card-cta purple" onclick="event.stopPropagation()">Check my home's risk — free →</a>
+        <a href="/api/auth/homeowner-demo-login" class="card-demo-link" onclick="event.stopPropagation()">Try Demo</a>
       </div>
-    </a>
+    </div>
 
     <!-- CONTRACTOR -->
-    <a class="adv-card" href="/contractor">
+    <div class="adv-card" onclick="window.location.href='/contractor'" style="cursor:pointer;">
       <div class="card-visual blue">
         <div class="card-tag">Contractor</div>
         <div class="card-icon">🔧</div>
@@ -326,12 +344,13 @@ html,body{
           <span class="price-num" style="color:var(--blue);">$20</span>
           <span class="price-per">/month · 14-day free trial</span>
         </div>
-        <span class="card-cta blue">Grow my contracting business →</span>
+        <a href="/contractor" class="card-cta blue" onclick="event.stopPropagation()">Grow my contracting business →</a>
+        <a href="/api/auth/contractor-demo-login" class="card-demo-link" onclick="event.stopPropagation()">Try Demo</a>
       </div>
-    </a>
+    </div>
 
     <!-- RE AGENT -->
-    <a class="adv-card" href="/agent">
+    <div class="adv-card" onclick="window.location.href='/agent'" style="cursor:pointer;">
       <div class="card-visual green">
         <div class="card-tag">Real Estate Agent</div>
         <div class="card-icon">🏡</div>
@@ -349,9 +368,10 @@ html,body{
           <span class="price-num" style="color:var(--green);">Free</span>
           <span class="price-per">— always. Earn $15 per client.</span>
         </div>
-        <span class="card-cta green">Start earning at closing →</span>
+        <a href="/agent" class="card-cta green" onclick="event.stopPropagation()">Start earning at closing →</a>
+        <a href="/api/auth/agent-demo-login" class="card-demo-link" onclick="event.stopPropagation()">Try Demo</a>
       </div>
-    </a>
+    </div>
 
   </div>
 </div>
