@@ -564,25 +564,11 @@ footer a{color:var(--green);text-decoration:none;}
 </footer>
 
 <script>
-  async function handleDemo(btn) {
+  function handleDemo(btn) {
     if (btn.disabled) return;
     btn.disabled = true;
-    const orig = btn.textContent;
     btn.textContent = 'Loading…';
-    try {
-      const res = await fetch('/api/auth/agent-demo-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({}),
-      });
-      if (!res.ok) throw new Error('Demo login failed');
-      window.location.href = '/';
-    } catch (err) {
-      btn.disabled = false;
-      btn.textContent = orig;
-      alert('Demo login failed. Please try again.');
-    }
+    window.location.href = '/api/auth/agent-demo-login';
   }
 </script>
 </body>

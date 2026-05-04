@@ -2951,6 +2951,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET version — browser navigation, sets session and redirects
+  app.get('/api/auth/homeowner-demo-login', authLimiter, async (req: any, res) => {
+    try {
+      const demoEmail = 'sarah.anderson@homebase.com';
+      const demoId = 'demo-homeowner-permanent-id';
+      let user = await storage.getUserByEmail(demoEmail);
+      if (!user) {
+        user = await storage.upsertUser({
+          id: demoId, email: demoEmail, firstName: 'Sarah', lastName: 'Anderson',
+          profileImageUrl: null, role: 'homeowner', zipCode: '98101',
+          subscriptionStatus: 'trialing',
+          trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+          maxHousesAllowed: 2, connectionCode: 'DEMO4567'
+        });
+      }
+      req.session.regenerate((err: any) => {
+        if (err) return res.redirect('/homeowner?demo_error=1');
+        req.session.isAuthenticated = true;
+        req.session.user = user;
+        req.session.save((saveErr: any) => {
+          if (saveErr) return res.redirect('/homeowner?demo_error=1');
+          console.log('[DEMO LOGIN GET] Homeowner session saved, redirecting');
+          res.redirect('/');
+        });
+      });
+    } catch (error) {
+      console.error("Error in GET homeowner demo login:", error);
+      res.redirect('/homeowner?demo_error=1');
+    }
+  });
+
   // Simple contractor demo login with realistic company profile
   app.post('/api/auth/contractor-demo-login', authLimiter, async (req, res) => {
     try {
@@ -3263,6 +3294,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET version — browser navigation, sets session and redirects
+  app.get('/api/auth/contractor-demo-login', authLimiter, async (req: any, res) => {
+    try {
+      const demoEmail = 'david.martinez@precisionhvac.com';
+      const demoId = 'demo-contractor-permanent-id';
+      let user = await storage.getUserByEmail(demoEmail);
+      if (!user) return res.redirect('/contractor?demo_error=1');
+      req.session.regenerate((err: any) => {
+        if (err) return res.redirect('/contractor?demo_error=1');
+        req.session.isAuthenticated = true;
+        req.session.user = user;
+        req.session.save((saveErr: any) => {
+          if (saveErr) return res.redirect('/contractor?demo_error=1');
+          console.log('[DEMO LOGIN GET] Contractor session saved, redirecting');
+          res.redirect('/');
+        });
+      });
+    } catch (error) {
+      console.error("Error in GET contractor demo login:", error);
+      res.redirect('/contractor?demo_error=1');
+    }
+  });
+
   // Simple agent demo login with realistic agent profile
   app.post('/api/auth/agent-demo-login', authLimiter, async (req, res) => {
     try {
@@ -3503,6 +3557,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating agent demo user:", error);
       res.status(500).json({ message: "Failed to create agent account" });
+    }
+  });
+
+  // GET version — browser navigation, sets session and redirects
+  app.get('/api/auth/agent-demo-login', authLimiter, async (req: any, res) => {
+    try {
+      const demoEmail = 'jessica.roberts@ellisonrealty.com';
+      const demoId = 'demo-agent-permanent-id';
+      let user = await storage.getUserByEmail(demoEmail);
+      if (!user) return res.redirect('/agent?demo_error=1');
+      req.session.regenerate((err: any) => {
+        if (err) return res.redirect('/agent?demo_error=1');
+        req.session.isAuthenticated = true;
+        req.session.user = user;
+        req.session.save((saveErr: any) => {
+          if (saveErr) return res.redirect('/agent?demo_error=1');
+          console.log('[DEMO LOGIN GET] Agent session saved, redirecting');
+          res.redirect('/');
+        });
+      });
+    } catch (error) {
+      console.error("Error in GET agent demo login:", error);
+      res.redirect('/agent?demo_error=1');
     }
   });
 

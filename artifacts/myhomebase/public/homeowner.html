@@ -1371,30 +1371,10 @@
   });
 
   // ── Demo login ──
-  async function handleDemo(btn) {
+  function handleDemo(btn) {
     if (btn.disabled) return;
-    btn.disabled = true;
-    const orig = btn.textContent;
-    btn.textContent = 'Loading…';
-    // Disable both demo buttons
     document.querySelectorAll('#nav-demo-btn, #underbar-demo-btn').forEach(b => { b.disabled = true; b.textContent = 'Loading…'; });
-    try {
-      const res = await fetch('/api/auth/homeowner-demo-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({}),
-      });
-      if (!res.ok) throw new Error('Demo login failed');
-      window.location.href = '/';
-    } catch (err) {
-      document.querySelectorAll('#nav-demo-btn, #underbar-demo-btn').forEach(b => {
-        b.disabled = false;
-      });
-      document.getElementById('nav-demo-btn').textContent = 'Homeowner Demo';
-      document.getElementById('underbar-demo-btn').textContent = 'Try the homeowner demo →';
-      alert('Demo login failed. Please try again.');
-    }
+    window.location.href = '/api/auth/homeowner-demo-login';
   }
 </script>
 </body>
