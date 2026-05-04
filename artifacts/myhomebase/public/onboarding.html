@@ -715,6 +715,35 @@
     color: rgba(255,255,255,0.65);
     line-height: 1.5;
   }
+
+  /* ── BACK BUTTON ─────────────────────────────────────────────────────────── */
+  .back-btn {
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.65);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0;
+    transition: color 0.15s;
+    flex-shrink: 0;
+    min-width: 56px;
+  }
+  .back-btn:hover { color: #fff; }
+
+  .s1-nav-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    position: relative; z-index: 1;
+  }
+  .s1-nav-spacer { min-width: 56px; }
 </style>
 </head>
 <body>
@@ -731,8 +760,12 @@
 <!-- ══════════════════════════════════════════════════════════════════════════ -->
 <div class="screen active" id="screen1">
   <div class="hero">
-    <div class="logo-small" style="margin-bottom:28px;">
-      <a href="/" style="display:inline-block;line-height:0;"><img src="/my-homebase-logo-tm-final-white.png" alt="MyHomeBase" style="height:28px;width:auto;display:block;"></a>
+    <div class="s1-nav-row">
+      <a href="/homeowner" class="back-btn">← Back</a>
+      <div class="logo-small">
+        <a href="/homeowner" style="display:inline-block;line-height:0;"><img src="/my-homebase-logo-tm-final-white.png" alt="MyHomeBase" style="height:28px;width:auto;display:block;"></a>
+      </div>
+      <span class="s1-nav-spacer"></span>
     </div>
     <p class="hero-eyebrow">Step 1 of 6 — Home Intelligence</p>
     <h1 class="hero-headline">Enter your address.<br>We'll show you what<br><em>we already know.</em></h1>
@@ -840,8 +873,9 @@
 <div class="screen" id="screen2">
   <div class="progress-wrap">
     <div class="progress-header">
+      <button class="back-btn" onclick="goTo(1)">← Back</button>
       <div class="logo-small">
-        <a href="/" style="display:inline-block;line-height:0;"><img src="/my-homebase-logo-tm-final-white.png" alt="MyHomeBase" style="height:24px;width:auto;display:block;"></a>
+        <a href="/homeowner" style="display:inline-block;line-height:0;"><img src="/my-homebase-logo-tm-final-white.png" alt="MyHomeBase" style="height:24px;width:auto;display:block;"></a>
       </div>
       <span class="step-label">Step 2 of 6</span>
     </div>
@@ -887,8 +921,9 @@
 <div class="screen" id="screen3">
   <div class="progress-wrap">
     <div class="progress-header">
+      <button class="back-btn" onclick="goTo(2)">← Back</button>
       <div class="logo-small">
-        <a href="/" style="display:inline-block;line-height:0;"><img src="/my-homebase-logo-tm-final-white.png" alt="MyHomeBase" style="height:24px;width:auto;display:block;"></a>
+        <a href="/homeowner" style="display:inline-block;line-height:0;"><img src="/my-homebase-logo-tm-final-white.png" alt="MyHomeBase" style="height:24px;width:auto;display:block;"></a>
       </div>
       <span class="step-label">Step 3 of 6</span>
     </div>
@@ -962,8 +997,9 @@
 <div class="screen" id="screen4">
   <div class="progress-wrap">
     <div class="progress-header">
+      <button class="back-btn" onclick="goTo(3)">← Back</button>
       <div class="logo-small">
-        <a href="/" style="display:inline-block;line-height:0;"><img src="/my-homebase-logo-tm-final-white.png" alt="MyHomeBase" style="height:24px;width:auto;display:block;"></a>
+        <a href="/homeowner" style="display:inline-block;line-height:0;"><img src="/my-homebase-logo-tm-final-white.png" alt="MyHomeBase" style="height:24px;width:auto;display:block;"></a>
       </div>
       <span class="step-label">Step 4 of 6</span>
     </div>
@@ -1018,8 +1054,9 @@
 <div class="screen" id="screen5">
   <div class="progress-wrap">
     <div class="progress-header">
+      <button class="back-btn" onclick="goTo(4)">← Back</button>
       <div class="logo-small">
-        <a href="/" style="display:inline-block;line-height:0;"><img src="/my-homebase-logo-tm-final-white.png" alt="MyHomeBase" style="height:24px;width:auto;display:block;"></a>
+        <a href="/homeowner" style="display:inline-block;line-height:0;"><img src="/my-homebase-logo-tm-final-white.png" alt="MyHomeBase" style="height:24px;width:auto;display:block;"></a>
       </div>
       <span class="step-label">Step 5 of 6</span>
     </div>
@@ -1078,8 +1115,9 @@
 <div class="screen" id="screen6">
   <div class="progress-wrap">
     <div class="progress-header">
+      <button class="back-btn" onclick="goTo(5)">← Back</button>
       <div class="logo-small">
-        <a href="/" style="display:inline-block;line-height:0;"><img src="/my-homebase-logo-tm-final-white.png" alt="MyHomeBase" style="height:24px;width:auto;display:block;"></a>
+        <a href="/homeowner" style="display:inline-block;line-height:0;"><img src="/my-homebase-logo-tm-final-white.png" alt="MyHomeBase" style="height:24px;width:auto;display:block;"></a>
       </div>
       <span class="step-label">Step 6 of 6</span>
     </div>
