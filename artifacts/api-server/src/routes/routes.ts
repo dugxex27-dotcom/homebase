@@ -16524,6 +16524,29 @@ Severity levels:
     }
   });
 
+  // TEMPORARY ADMIN CLEANUP — remove after use
+  app.delete("/api/admin/cleanup-hosford", async (req: any, res) => {
+    const secret = req.headers["x-admin-secret"];
+    if (secret !== "hosford-cleanup-2026") return res.status(403).json({ message: "Forbidden" });
+    const targetIds = [
+      "8c7d6be1-47d0-4d7c-a253-2c45d3aa4fc6",
+      "516f4613-c7f0-4ee0-ad7a-99367864c2ce",
+    ];
+    const results: any[] = [];
+    for (const id of targetIds) {
+      try {
+        const [doc] = await db.select().from(homeDocuments).where(eq(homeDocuments.id, id));
+        if (!doc) { results.push({ id, status: "not found" }); continue; }
+        try { await objectStorageService.deleteFile(doc.storageKey); } catch (e: any) { /* non-fatal */ }
+        await db.delete(homeDocuments).where(eq(homeDocuments.id, id));
+        results.push({ id, status: "deleted", storageKey: doc.storageKey });
+      } catch (e: any) {
+        results.push({ id, status: "error", error: e.message });
+      }
+    }
+    res.json({ results });
+  });
+
   // DELETE /api/home-documents/:id — delete a document
   app.delete("/api/home-documents/:id", isAuthenticated, async (req: any, res) => {
     try {
