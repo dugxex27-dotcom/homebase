@@ -895,13 +895,23 @@ body[data-role="agent"],
   }
 }
 
-/* ── Sign-in pages: hide unauthenticated public header ── */
+/* ── Sign-in pages: hide unauthenticated public header/footer ── */
 body.signin-page > div > div > header,
 body.signin-page header:first-of-type {
   display: none !important;
 }
 body.signin-page > div > div > footer,
 body.signin-page footer:last-of-type {
+  display: none !important;
+}
+
+/* ── Invite page: full-page design, hide layout header/footer ── */
+body.invite-page > div > div > header,
+body.invite-page header:first-of-type {
+  display: none !important;
+}
+body.invite-page > div > div > footer,
+body.invite-page footer:last-of-type {
   display: none !important;
 }
 

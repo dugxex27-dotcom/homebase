@@ -13,7 +13,6 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Mail, MessageCircle, CheckCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import Footer from "@/components/footer";
 
 const contactFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -78,38 +77,34 @@ export default function Contact() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(to bottom, #f8f4fc, #faf9fb)' }}>
-        <div className="flex-1 flex items-center justify-center p-4">
-          <Card className="max-w-md w-full text-center">
-            <CardContent className="pt-8 pb-8">
-              <div className="mb-6">
-                <div className="w-16 h-16 mx-auto rounded-full bg-green-100 flex items-center justify-center">
-                  <CheckCircle className="w-8 h-8 text-green-600" />
-                </div>
+      <div className="flex-1 flex items-center justify-center p-4" style={{ background: 'linear-gradient(to bottom, #f8f4fc, #faf9fb)' }}>
+        <Card className="max-w-md w-full text-center">
+          <CardContent className="pt-8 pb-8">
+            <div className="mb-6">
+              <div className="w-16 h-16 mx-auto rounded-full bg-green-100 flex items-center justify-center">
+                <CheckCircle className="w-8 h-8 text-green-600" />
               </div>
-              <h2 className="text-2xl font-bold mb-3" style={{ color: '#2c0f5b' }}>Message Sent!</h2>
-              <p className="text-gray-600 mb-6">
-                Thank you for contacting us. We'll review your message and get back to you within 24-48 hours.
-              </p>
-              <Button
-                onClick={() => window.location.href = '/'}
-                style={{ backgroundColor: '#2c0f5b' }}
-                className="text-white"
-              >
-                Return Home
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-        <Footer />
+            </div>
+            <h2 className="text-2xl font-bold mb-3" style={{ color: '#2c0f5b' }}>Message Sent!</h2>
+            <p className="text-gray-600 mb-6">
+              Thank you for contacting us. We'll review your message and get back to you within 24-48 hours.
+            </p>
+            <Button
+              onClick={() => window.location.href = '/'}
+              style={{ backgroundColor: '#2c0f5b' }}
+              className="text-white"
+            >
+              Return Home
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(to bottom, #f8f4fc, #faf9fb)' }}>
-      <div className="flex-1 py-8 sm:py-12 px-4">
-        <div className="max-w-2xl mx-auto">
+    <div className="py-8 sm:py-12 px-4" style={{ background: 'linear-gradient(to bottom, #f8f4fc, #faf9fb)' }}>
+      <div className="max-w-2xl mx-auto">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-100 mb-4">
               <Mail className="w-8 h-8 text-purple-600" />
@@ -240,8 +235,6 @@ export default function Contact() {
             </a>
           </p>
         </div>
-      </div>
-      <Footer />
     </div>
   );
 }

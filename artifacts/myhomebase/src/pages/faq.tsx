@@ -2,30 +2,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { DollarSign, Users, MapPin, HelpCircle, Home, Wrench, Building2 } from "lucide-react";
-import { SiFacebook, SiInstagram } from "react-icons/si";
-import logoColor from "@assets/my-homebase-logo-tm-final_1776295160061.png";
 
 export default function FAQ() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <a href="/" className="flex items-center">
-            <img 
-              src={logoColor} 
-              alt="MyHomeBase™" 
-              className="h-8 sm:h-10 w-auto"
-            />
-          </a>
-          <a 
-            href="/"
-            className="text-sm font-medium text-gray-600 hover:text-gray-900"
-          >
-            Back to Home
-          </a>
-        </div>
-      </header>
-
+    <div className="bg-gray-50">
       <main className="max-w-4xl mx-auto px-4 py-8 sm:py-12">
         <div className="text-center mb-8">
           <h1 className="text-3xl sm:text-4xl font-bold mb-3" style={{ color: '#2c0f5b' }}>
@@ -444,37 +424,6 @@ export default function FAQ() {
           </a>
         </div>
       </main>
-
-      <footer className="bg-gray-100 border-t border-gray-200 py-8 mt-12">
-        <div className="max-w-6xl mx-auto px-4 text-center text-gray-600 text-sm">
-          <div className="flex items-center justify-center gap-4 mb-4">
-            <a 
-              href="https://www.facebook.com/share/1H6GxEER1K/" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="hover:opacity-80 transition-opacity"
-              aria-label="Facebook"
-            >
-              <SiFacebook className="w-5 h-5" style={{ color: '#1877F2' }} />
-            </a>
-            <a 
-              href="https://www.instagram.com/gotohomebase?igsh=MTV3OHJpazkwZXVwYQ==" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="hover:opacity-80 transition-opacity"
-              aria-label="Instagram"
-            >
-              <SiInstagram className="w-5 h-5" style={{ color: '#E4405F' }} />
-            </a>
-          </div>
-          <p>&copy; {new Date().getFullYear()} MyHomeBase™. All rights reserved.</p>
-          <div className="mt-2 space-x-4">
-            <a href="/terms-of-service" className="hover:underline">Terms of Service</a>
-            <a href="/privacy-policy" className="hover:underline">Privacy Policy</a>
-            <a href="/legal-disclaimer" className="hover:underline">Legal Disclaimer</a>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

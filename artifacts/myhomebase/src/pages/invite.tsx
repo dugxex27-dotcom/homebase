@@ -19,6 +19,11 @@ import { Helmet } from "react-helmet";
 export default function Invite() {
   const [, params] = useRoute("/invite/:code");
   const referralCode = params?.code || "";
+
+  useEffect(() => {
+    document.body.classList.add('invite-page');
+    return () => document.body.classList.remove('invite-page');
+  }, []);
   
   const { data: referralInfo, isLoading } = useQuery({
     queryKey: ['/api/referrals', referralCode],
