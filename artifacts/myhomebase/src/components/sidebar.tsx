@@ -79,22 +79,21 @@ export default function Sidebar() {
     const active = isActive(path);
     return active
       ? {
-          backgroundColor: 'var(--theme-fill)',
-          color: 'var(--theme-accent)',
-          borderLeft: '3px solid var(--theme-accent)',
-          paddingLeft: 9,
+          backgroundColor: 'var(--purple-tint, #EEEDFE)',
+          color: 'var(--purple, #3C258E)',
+          fontWeight: 600,
           borderRadius: 8,
+          position: 'relative',
         }
       : {
           color: 'var(--gray-600, #4B5563)',
-          borderLeft: '3px solid transparent',
-          paddingLeft: 9,
+          fontWeight: 500,
         };
   };
 
   const navItemClass = (path: string | string[]) =>
-    `w-full text-left py-[9px] pr-3 rounded-lg flex items-center gap-[9px] text-[13px] font-medium transition-colors ${
-      isActive(path) ? 'font-semibold' : 'hover:bg-gray-50'
+    `w-full text-left py-[9px] px-3 rounded-[8px] flex items-center gap-[10px] text-[13px] transition-colors mb-[2px] ${
+      isActive(path) ? 'sidebar-active-item' : 'hover:bg-gray-100 hover:text-gray-900'
     }`;
 
   const isHomeowner  = typedUser.role === 'homeowner';
@@ -153,15 +152,19 @@ export default function Sidebar() {
       className="hidden lg:flex lg:flex-col flex-shrink-0 overflow-y-auto"
       style={{
         width: 200,
+        minWidth: 200,
         background: '#ffffff',
         borderRight: '1px solid var(--gray-200, #E5E7EB)',
+        height: '100vh',
+        position: 'relative',
+        zIndex: 10,
       }}
     >
       {/* Logo */}
       <div
         style={{
-          padding: '14px 16px 13px',
-          borderBottom: '1px solid var(--gray-200, #E5E7EB)',
+          padding: '18px 16px 14px',
+          borderBottom: '0.5px solid var(--gray-200, #E5E7EB)',
           flexShrink: 0,
         }}
       >
@@ -169,13 +172,13 @@ export default function Sidebar() {
           <img
             src={logoColor}
             alt="MyHomeBase™"
-            style={{ height: 22, width: 'auto', display: 'block', cursor: 'pointer' }}
+            style={{ height: 24, width: 'auto', display: 'block', cursor: 'pointer' }}
           />
         </Link>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 p-3 space-y-0.5" aria-label="Main navigation">
+      <nav className="flex-1 p-[10px] space-y-0.5" style={{ padding: '12px 10px' }} aria-label="Main navigation">
         {isAdmin && (
           <NavItem href="/admin" icon={Shield} label="Admin" testId="nav-admin" />
         )}
@@ -239,10 +242,10 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="p-3 flex-shrink-0" style={{ borderTop: '1px solid var(--gray-200, #E5E7EB)' }}>
+      <div className="flex-shrink-0" style={{ padding: '10px', borderTop: '0.5px solid var(--gray-200, #E5E7EB)' }}>
         <button
           onClick={handleLogout}
-          className="w-full text-left py-[9px] px-3 rounded-lg flex items-center gap-[9px] text-[13px] font-medium transition-colors hover:bg-red-50"
+          className="w-full text-left py-[9px] px-3 rounded-[8px] flex items-center gap-[10px] text-[13px] font-medium transition-colors hover:bg-red-50"
           style={{ color: '#DC2626' }}
           data-testid="button-logout-sidebar"
         >

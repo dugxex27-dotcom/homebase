@@ -213,8 +213,11 @@ export default function Header() {
           {/* Tablet horizontal nav (md–lg only) */}
           <TabletNav role={role} location={location} />
 
-          {/* Desktop topnav row — white 50px bar, bell + avatar, hidden below lg */}
-          <div className="hidden lg:flex justify-end items-center h-[50px] px-5 gap-3">
+          {/* Desktop topnav row — white 52px bar, bell + avatar, hidden below lg */}
+          <div
+            className="hidden lg:flex justify-end items-center flex-shrink-0"
+            style={{ height: 52, padding: '0 24px', gap: 16 }}
+          >
             {isAdmin && (
               <Link href="/admin">
                 <button
@@ -244,8 +247,16 @@ export default function Header() {
             {(role === 'homeowner' || role === 'contractor') && <Notifications />}
             {typedUser && (
               <div
-                className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-                style={{ background: 'var(--theme-fill)', color: 'var(--theme-accent)' }}
+                className="flex items-center justify-center text-xs font-bold flex-shrink-0"
+                style={{
+                  width: 32, height: 32,
+                  borderRadius: '50%',
+                  background: 'var(--purple-tint, #EEEDFE)',
+                  border: '2px solid var(--purple-border, #CECBF6)',
+                  color: 'var(--purple, #3C258E)',
+                  fontSize: 12,
+                  fontWeight: 700,
+                }}
               >
                 {initials}
               </div>

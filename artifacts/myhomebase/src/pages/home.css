@@ -59,26 +59,26 @@
 .dash-eyebrow {
   display: block;
   font-size: 10px;
-  font-weight: 700;
-  color: #B6A6F4;
-  letter-spacing: 0.12em;
+  font-weight: 600;
+  color: var(--purple-light, #B6A6F4);
+  letter-spacing: 2.5px;
   text-transform: uppercase;
-  margin-bottom: 5px;
-}
-
-.dash-title {
-  font-size: 22px;
-  font-weight: 800;
-  color: #ffffff;
-  letter-spacing: -0.4px;
-  line-height: 1.15;
   margin-bottom: 4px;
 }
 
+.dash-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.3px;
+  line-height: 1.15;
+  margin-bottom: 3px;
+}
+
 .dash-subtitle {
-  font-size: 12px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.5);
+  font-size: 13px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.6);
   margin-bottom: 18px;
 }
 
@@ -157,13 +157,13 @@
 
 /* ─── AI COACH CARD ───────────────────────────────────────────── */
 .ai-coach-card {
-  background: var(--theme-accent);
-  border-radius: 14px;
-  padding: 14px;
+  background: linear-gradient(135deg, var(--purple-deep, #2C0F5B), var(--purple, #3C258E));
+  border-radius: 16px;
+  padding: 16px 20px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 14px;
+  margin-bottom: 16px;
   cursor: pointer;
   text-decoration: none;
   transition: opacity 0.15s;
@@ -172,52 +172,53 @@
 .ai-coach-card:hover { opacity: 0.93; }
 
 .ai-coach-icon {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   background: rgba(255, 255, 255, 0.15);
-  border-radius: 11px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   color: #ffffff;
+  font-size: 18px;
 }
 
 .ai-coach-copy { flex: 1; min-width: 0; }
 
 .ai-coach-eyebrow {
-  font-size: 9px;
-  font-weight: 700;
-  color: #B6A6F4;
-  letter-spacing: 0.1em;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--purple-light, #B6A6F4);
+  letter-spacing: 1.5px;
   text-transform: uppercase;
-  margin-bottom: 3px;
+  margin-bottom: 2px;
 }
 
 .ai-coach-title {
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 14px;
+  font-weight: 600;
   color: #ffffff;
-  letter-spacing: -0.2px;
+  letter-spacing: 0;
   line-height: 1.25;
 }
 
 .ai-coach-sub {
-  font-size: 11px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 400;
   color: rgba(255, 255, 255, 0.6);
   margin-top: 2px;
 }
 
 .ai-coach-btn {
   background: rgba(255, 255, 255, 0.15);
-  border-radius: 9px;
-  padding: 7px 12px;
-  font-size: 11px;
-  font-weight: 700;
+  border: 0.5px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
   color: #ffffff;
   white-space: nowrap;
-  border: none;
   cursor: pointer;
   flex-shrink: 0;
   font-family: inherit;
@@ -277,11 +278,11 @@
 /* ─── SECTION DIVIDER ─────────────────────────────────────────── */
 .dash-section-label {
   font-size: 10px;
-  font-weight: 700;
-  color: #B6A6F4;
-  letter-spacing: 0.1em;
+  font-weight: 600;
+  color: var(--gray-400, #9CA3AF);
+  letter-spacing: 2px;
   text-transform: uppercase;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   margin-top: 4px;
   display: block;
 }

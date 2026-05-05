@@ -59,9 +59,10 @@
   --radius: var(--radius-lg);
 
   /* Shadows */
+  --shadow:    0 2px 12px rgba(0,0,0,0.06);
   --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 20px rgba(0,0,0,0.1);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
   --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
 
@@ -459,10 +460,12 @@ body[data-role="agent"],
 
 /* ── Cards ── */
 .card {
-  background: var(--white);
-  border-radius: var(--radius-card);
-  border: 1px solid var(--theme-border);
-  padding: 14px;
+  background: #ffffff;
+  border: 0.5px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
+  overflow: hidden;
 }
 
 /* ── Stat chips ── */
@@ -819,7 +822,7 @@ body[data-role="agent"],
   @media (min-width: 1024px) {
     .mhb-authed-header {
       background: #ffffff;
-      border-bottom: 1px solid var(--gray-200, #E5E7EB) !important;
+      border-bottom: 0.5px solid var(--gray-200, #E5E7EB) !important;
     }
   }
 
@@ -924,6 +927,27 @@ body[data-role="agent"],
   .sidebar-nav-item[aria-current="page"] {
     background-color: var(--sidebar-active-bg);
     color: var(--sidebar-active);
+  }
+
+  /* Active nav item — left purple bar via ::before */
+  .sidebar-active-item {
+    background-color: var(--purple-tint, #EEEDFE) !important;
+    color: var(--purple, #3C258E) !important;
+    font-weight: 600 !important;
+    position: relative;
+  }
+  .sidebar-active-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--theme-accent, #3C258E);
+    border-radius: 0 3px 3px 0;
+  }
+  .sidebar-active-item svg {
+    opacity: 1;
   }
 
   /* ── HWS / health score ── */
