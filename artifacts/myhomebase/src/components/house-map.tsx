@@ -585,13 +585,13 @@ export default function HouseMap({
           alignItems: "flex-start",
           marginBottom: "16px",
         }}>
-          <div>
+          <div style={{ flex: 1, minWidth: 0, paddingRight: "12px" }}>
             {houseName && (
               <div style={{ fontSize: "16px", fontWeight: 700, color: "#2d1f6e", marginBottom: "3px" }}>
                 {houseName}
               </div>
             )}
-            <div style={{ fontSize: "12px", color: "#9b97c4" }}>
+            <div style={{ fontSize: "12px", color: "#9b97c4", wordBreak: "break-word" }}>
               {houseAddress ? `${houseAddress} · ` : ""}{dots.length} system{dots.length !== 1 ? "s" : ""}
             </div>
           </div>
