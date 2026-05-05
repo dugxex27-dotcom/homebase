@@ -575,7 +575,7 @@ export default function HouseMap({
   };
 
   return (
-    <div style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
+    <div style={{ fontFamily: "'Inter', system-ui, sans-serif", padding: "16px" }}>
 
       {/* ── Property Card Header (full mode only) ─────────────────────── */}
       {!compact && (
