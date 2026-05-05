@@ -360,7 +360,9 @@ function ZoneCard({ zone, items, selected, onClick }: {
     <button
       onClick={onClick}
       style={{
-        flex: 1,
+        flex: "1 1 0",
+        minWidth: 0,
+        width: "100%",
         background: selected ? "#EEEDFE" : "#fff",
         borderRadius: "10px",
         border: selected ? "1.5px solid #534AB7" : "1px solid rgba(83,74,183,0.1)",
@@ -688,7 +690,7 @@ export default function HouseMap({
         }}>
           Upper floor
         </div>
-        <div style={{ display: "flex", gap: "6px", marginBottom: "8px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(60px, 1fr))", gap: "6px", marginBottom: "8px" }}>
           {showUpperZones.map(zone => (
             <ZoneCard
               key={zone}
@@ -708,7 +710,7 @@ export default function HouseMap({
         }}>
           Lower floor
         </div>
-        <div style={{ display: "flex", gap: "6px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(60px, 1fr))", gap: "6px" }}>
           {showLowerZones.map(zone => (
             <ZoneCard
               key={zone}
