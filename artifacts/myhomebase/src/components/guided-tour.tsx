@@ -1269,7 +1269,7 @@ export function AgentGuidedTour() {
       setAgentTourState({ phase: "tour", stepIndex: nextIndex });
     } else {
       setAgentTourState({ phase: "inactive", stepIndex: 0 });
-      setLocation("/agent-onboarding");
+      window.location.href = "/agent-onboarding";
     }
   }, [agentTourState.stepIndex, setAgentTourState, setLocation]);
 
