@@ -767,7 +767,7 @@ const CONTRACTOR_STEPS: StepDef[] = [
     tourId: "contractor-referral",
     page: "/contractor-dashboard",
     title: "Referral Program",
-    body: "Refer homeowners to MyHomeBase™ and earn $1 off your subscription per referral. Refer 20 homeowners and your $20/month subscription is completely free.",
+    body: "Refer homeowners or contractors to MyHomeBase™ and earn $1 off your subscription per referral. Refer 20 and your $20/month subscription is completely free.",
     icon: Trophy,
     preferBelow: false,
   },
