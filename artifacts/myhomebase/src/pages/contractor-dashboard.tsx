@@ -244,7 +244,7 @@ export default function ContractorDashboard() {
         <span className="dash-eyebrow" style={{ color: '#AFD6F9' }}>CONTRACTOR</span>
         <div className="dash-title" data-testid="text-welcome-message">Welcome back, {firstName}</div>
         <div className="dash-subtitle">Manage your work and grow your client base</div>
-        <div className="dash-chips">
+        <div className="dash-chips" data-tour-id="contractor-stats">
           <div className="dash-chip">
             <div className={`dash-chip-num${totalEarnings > 0 ? ' good' : ''}`} data-testid="text-monthly-earnings">${totalEarnings.toLocaleString()}</div>
             <div className="dash-chip-label">This Month</div>
@@ -269,7 +269,7 @@ export default function ContractorDashboard() {
       <div className="dash-body">
 
         {/* AI Business Coach */}
-        <Link href="/ai-contractor-help" className="ai-coach-card" style={{ background: 'linear-gradient(135deg, #0C3460, #1560A2)' }}>
+        <Link href="/ai-contractor-help" className="ai-coach-card" data-tour-id="contractor-ai-coach" style={{ background: 'linear-gradient(135deg, #0C3460, #1560A2)' }}>
           <div className="ai-coach-icon"><Sparkles size={18} /></div>
           <div className="ai-coach-copy">
             <div className="ai-coach-eyebrow" style={{ color: '#AFD6F9' }}>AI Business Coach</div>
@@ -284,6 +284,7 @@ export default function ContractorDashboard() {
 
         <button
           className="action-row"
+          data-tour-id="contractor-quick-actions"
           style={{ width: '100%', textAlign: 'left', cursor: 'pointer', background: 'white', fontFamily: 'inherit' }}
           onClick={() => setIsCreateDialogOpen(true)}
           data-testid="button-create-proposal"
@@ -338,13 +339,13 @@ export default function ContractorDashboard() {
 
         {/* Homeowner Connection */}
         <span className="dash-section-label" style={{ marginTop: 8 }}>Homeowner Connection</span>
-        <div className="dash-light-card">
+        <div className="dash-light-card" data-tour-id="contractor-connection">
           <ContractorCodeEntry />
         </div>
 
         {/* Referral Program */}
         <span className="dash-section-label" style={{ marginTop: 4 }}>Referral Program</span>
-        <div className="dash-light-card">
+        <div className="dash-light-card" data-tour-id="contractor-referral">
           <div className="dash-light-card-row">
             <div className="dash-light-card-icon" style={{ background: '#F0FAF4', color: '#09694A' }}>
               <Gift size={18} />
@@ -372,7 +373,7 @@ export default function ContractorDashboard() {
 
         {/* Proposals */}
         <span className="dash-section-label" style={{ marginTop: 4 }}>Proposals</span>
-        <div className="dash-light-card" style={{ marginBottom: 10 }}>
+        <div className="dash-light-card" data-tour-id="contractor-proposals" style={{ marginBottom: 10 }}>
           <div className="dash-light-card-row">
             <div className="dash-light-card-icon" style={{ background: '#EAF4FD', color: '#1560A2' }}>
               <FileText size={18} />
@@ -414,7 +415,7 @@ export default function ContractorDashboard() {
 
         {/* Calendar */}
         <span className="dash-section-label" style={{ marginTop: 4 }}>Calendar</span>
-        <div className="dash-light-card" style={{ marginBottom: 10 }}>
+        <div className="dash-light-card" data-tour-id="contractor-calendar" style={{ marginBottom: 10 }}>
           <div className="dash-light-card-row">
             <div className="dash-light-card-icon" style={{ background: '#EAF4FD', color: '#1560A2' }}>
               <Calendar size={18} />

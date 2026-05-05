@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { X, ChevronRight, CheckCircle2, Home, Wrench, ClipboardList, Package, Users, Trophy, ArrowRight, Star, Settings, TrendingUp, FolderOpen } from "lucide-react";
+import { X, ChevronRight, CheckCircle2, Home, Wrench, ClipboardList, Package, Users, Trophy, ArrowRight, Star, Settings, TrendingUp, FolderOpen, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import type { User } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -678,6 +678,396 @@ export function GuidedTour() {
         {/* Resume banner (when on wrong page mid-tour) */}
         {isOnWrongPage && !isNavigating && (
           <TourResumeBanner onContinue={continueTour} onDismiss={skipTour} />
+        )}
+      </>,
+      document.body
+    );
+  }
+
+  return null;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONTRACTOR GUIDED TOUR
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CONTRACTOR_TOUR_KEY = "mhb_contractor_tour";
+
+const CONTRACTOR_STEPS: StepDef[] = [
+  {
+    tourId: "contractor-stats",
+    page: "/contractor-dashboard",
+    title: "Your Business at a Glance",
+    body: "Your live dashboard shows monthly earnings, active jobs, pending proposals, and new leads — all updated in real time so you always know where you stand.",
+    icon: TrendingUp,
+    preferBelow: true,
+  },
+  {
+    tourId: "contractor-ai-coach",
+    page: "/contractor-dashboard",
+    title: "AI Business Coach",
+    body: "Get personalized tips to grow your contracting business — pricing advice, upsell opportunities, and strategies tailored to your specific trade.",
+    icon: Sparkles,
+    preferBelow: true,
+  },
+  {
+    tourId: "contractor-quick-actions",
+    page: "/contractor-dashboard",
+    title: "Quick Actions",
+    body: "Create proposals, open your CRM, message clients, schedule site visits, and log completed jobs — all from one place, in seconds.",
+    icon: ArrowRight,
+    preferBelow: true,
+  },
+  {
+    tourId: "contractor-proposals",
+    page: "/contractor-dashboard",
+    title: "Proposals & Earnings",
+    body: "Build and send professional proposals to clients. Track pending, accepted, and rejected bids, and see your total earned revenue at a glance.",
+    icon: ClipboardList,
+    preferBelow: false,
+  },
+  {
+    tourId: "contractor-calendar",
+    page: "/contractor-dashboard",
+    title: "Appointment Calendar",
+    body: "View all your upcoming appointments in one place. Clients can request visits directly through the platform — no back-and-forth texting.",
+    icon: Home,
+    preferBelow: false,
+  },
+  {
+    tourId: "contractor-connection",
+    page: "/contractor-dashboard",
+    title: "Homeowner Connection",
+    body: "Connect directly to homeowners' MyHomeBase™ accounts with a code. Once linked, you can upload service records straight to their home history — that's your review.",
+    icon: Users,
+    preferBelow: false,
+  },
+  {
+    tourId: "contractor-referral",
+    page: "/contractor-dashboard",
+    title: "Referral Program",
+    body: "Refer homeowners to MyHomeBase™ and earn $1 off your subscription per referral. Refer 20 homeowners and your $20/month subscription is completely free.",
+    icon: Trophy,
+    preferBelow: false,
+  },
+];
+
+export function ContractorGuidedTour() {
+  const { user } = useAuth();
+  const typedUser = user as User | undefined;
+  const [location, setLocation] = useLocation();
+
+  // Separate state object for the contractor tour
+  const [contractorTourState, setContractorTourStateRaw] = useState<TourState>({ phase: "inactive", stepIndex: 0 });
+  const [hasInitialized, setHasInitialized] = useState(false);
+  const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const findTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const navigatedForStepRef = useRef<number | null>(null);
+  const setLocationRef = useRef(setLocation);
+  useEffect(() => { setLocationRef.current = setLocation; }, [setLocation]);
+
+  const setContractorTourState = useCallback((state: TourState) => {
+    setContractorTourStateRaw(state);
+    localStorage.setItem(CONTRACTOR_TOUR_KEY, JSON.stringify(state));
+  }, []);
+
+  // Initialize from localStorage
+  useEffect(() => {
+    if (!typedUser || typedUser.role !== "contractor") {
+      setHasInitialized(true);
+      return;
+    }
+    const saved = localStorage.getItem(CONTRACTOR_TOUR_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as TourState;
+        if (parsed.phase === "tour" || parsed.phase === "welcome") {
+          setContractorTourStateRaw(parsed);
+        }
+      } catch {}
+    }
+    setHasInitialized(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typedUser]);
+
+  const currentStep = contractorTourState.phase === "tour" ? CONTRACTOR_STEPS[contractorTourState.stepIndex] : null;
+  const currentStepRef = useRef(currentStep);
+  useEffect(() => { currentStepRef.current = currentStep; }, [currentStep]);
+
+  const findElement = useCallback(() => {
+    const step = currentStepRef.current;
+    if (!step) return false;
+    const el = document.querySelector(`[data-tour-id="${step.tourId}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => {
+        const el2 = document.querySelector(`[data-tour-id="${step.tourId}"]`);
+        if (el2) setTargetRect(el2.getBoundingClientRect());
+      }, 350);
+      return true;
+    }
+    return false;
+  }, []);
+
+  useEffect(() => {
+    if (contractorTourState.phase !== "tour" || !currentStep) {
+      setTargetRect(null);
+      return;
+    }
+    if (findTimerRef.current) clearTimeout(findTimerRef.current);
+    if (pollRef.current) clearInterval(pollRef.current);
+
+    const needsNavigation = location !== currentStep.page;
+    if (needsNavigation && navigatedForStepRef.current !== contractorTourState.stepIndex) {
+      navigatedForStepRef.current = contractorTourState.stepIndex;
+      setTargetRect(null);
+      setIsNavigating(true);
+      setLocationRef.current(currentStep.page);
+      let attempts = 0;
+      pollRef.current = setInterval(() => {
+        const found = findElement();
+        attempts++;
+        if (found || attempts > 30) {
+          clearInterval(pollRef.current!);
+          pollRef.current = null;
+          setIsNavigating(false);
+        }
+      }, 200);
+    } else if (!needsNavigation) {
+      navigatedForStepRef.current = null;
+      setIsNavigating(false);
+      findTimerRef.current = setTimeout(findElement, 300);
+    }
+    return () => {
+      if (findTimerRef.current) clearTimeout(findTimerRef.current);
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contractorTourState.phase, contractorTourState.stepIndex]);
+
+  useEffect(() => {
+    if (!currentStep || contractorTourState.phase !== "tour") return;
+    const update = () => {
+      const el = document.querySelector(`[data-tour-id="${currentStep.tourId}"]`);
+      if (el) setTargetRect(el.getBoundingClientRect());
+    };
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, { passive: true, capture: true });
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, { capture: true });
+    };
+  }, [contractorTourState.phase, currentStep]);
+
+  const goNext = useCallback(() => {
+    const nextIndex = contractorTourState.stepIndex + 1;
+    if (nextIndex < CONTRACTOR_STEPS.length) {
+      setTargetRect(null);
+      setContractorTourState({ phase: "tour", stepIndex: nextIndex });
+    } else {
+      setContractorTourState({ phase: "inactive", stepIndex: 0 });
+      setLocation("/contractor-dashboard");
+    }
+  }, [contractorTourState.stepIndex, setContractorTourState, setLocation]);
+
+  const skipTour = useCallback(() => {
+    setContractorTourState({ phase: "inactive", stepIndex: 0 });
+  }, [setContractorTourState]);
+
+  const startTour = useCallback(() => {
+    setContractorTourState({ phase: "tour", stepIndex: 0 });
+    setTargetRect(null);
+  }, [setContractorTourState]);
+
+  const continueTour = useCallback(() => {
+    setContractorTourState({ ...contractorTourState, phase: "tour" });
+  }, [contractorTourState, setContractorTourState]);
+
+  if (!hasInitialized) return null;
+  if (!typedUser || typedUser.role !== "contractor") return null;
+  if (contractorTourState.phase === "inactive") return null;
+
+  // Welcome modal
+  if (contractorTourState.phase === "welcome") {
+    return createPortal(
+      <div
+        className="fixed inset-0 z-[10010] flex items-center justify-center p-4"
+        style={{ background: "rgba(0,0,0,0.75)" }}
+      >
+        <div
+          className="relative rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center"
+          style={{ background: "linear-gradient(135deg, #0C3460 0%, #1560A2 100%)" }}
+        >
+          <div className="flex justify-center mb-4">
+            <img src={logoPath} alt="MyHomeBase™" className="h-14 object-contain" />
+          </div>
+          <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "rgba(255,255,255,0.15)" }}>
+            <Sparkles className="w-6 h-6 text-white" />
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-2">Welcome, Contractor</h1>
+          <p className="text-sm mb-6 leading-relaxed" style={{ color: "#AFD6F9" }}>
+            Let us show you around your contractor dashboard. It only takes about 2 minutes.
+          </p>
+          <Button
+            onClick={startTour}
+            className="w-full mb-3 font-bold py-3 text-base"
+            style={{ background: "linear-gradient(135deg, #10b981, #059669)", color: "white" }}
+          >
+            Show Me Around
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
+          <button
+            onClick={skipTour}
+            className="w-full text-sm transition-colors"
+            style={{ color: "#AFD6F9" }}
+          >
+            Skip Tour
+          </button>
+        </div>
+      </div>,
+      document.body
+    );
+  }
+
+  if (contractorTourState.phase === "tour" && currentStep) {
+    const PAD = 10;
+    const isOnWrongPage = location !== currentStep.page;
+    const Icon = currentStep.icon;
+
+    let tooltipStyle: React.CSSProperties = {};
+    let arrowFrom = { x: 0, y: 0 };
+    let arrowTo = { x: 0, y: 0 };
+    let showArrow = false;
+
+    if (targetRect) {
+      tooltipStyle = computeTooltipStyle(targetRect, currentStep.preferBelow !== false);
+      const tleft = (tooltipStyle.left as number) || 0;
+      const ttop = (tooltipStyle.top as number) || 0;
+      const tw = (tooltipStyle.width as number) || 320;
+      arrowFrom = { x: tleft + tw / 2, y: ttop + 110 };
+      arrowTo = {
+        x: targetRect.left + targetRect.width / 2,
+        y: targetRect.top + targetRect.height / 2,
+      };
+      showArrow = true;
+    } else {
+      tooltipStyle = { top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 320 };
+    }
+
+    return createPortal(
+      <>
+        <div
+          className="fixed inset-0 z-[9998]"
+          style={{ pointerEvents: "none", background: targetRect ? "transparent" : "rgba(0,0,0,0.5)" }}
+        />
+        {targetRect && !isOnWrongPage && (
+          <div
+            style={{
+              position: "fixed",
+              top: targetRect.top - PAD,
+              left: targetRect.left - PAD,
+              width: targetRect.width + PAD * 2,
+              height: targetRect.height + PAD * 2,
+              boxShadow: "0 0 0 9999px rgba(0,0,0,0.62)",
+              borderRadius: 10,
+              zIndex: 9999,
+              pointerEvents: "none",
+              transition: "all 0.35s cubic-bezier(0.4,0,0.2,1)",
+            }}
+          />
+        )}
+        {showArrow && !isOnWrongPage && (
+          <svg
+            style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", zIndex: 10001, pointerEvents: "none" }}
+          >
+            <defs>
+              <marker id="ct-arrowhead" markerWidth="8" markerHeight="6" refX="6" refY="3" orient="auto">
+                <polygon points="0 0, 8 3, 0 6" fill="#1560A2" />
+              </marker>
+            </defs>
+            <line
+              x1={arrowFrom.x} y1={arrowFrom.y}
+              x2={arrowTo.x} y2={arrowTo.y}
+              stroke="#1560A2"
+              strokeWidth="2.5"
+              strokeDasharray="6 4"
+              markerEnd="url(#ct-arrowhead)"
+            />
+          </svg>
+        )}
+        <div style={{ position: "fixed", zIndex: 10002, ...tooltipStyle }}>
+          <div
+            className="rounded-2xl shadow-2xl overflow-hidden"
+            style={{ background: "linear-gradient(135deg, #0C3460 0%, #1560A2 100%)" }}
+          >
+            <div className="flex items-center justify-between px-4 pt-4 pb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.15)" }}>
+                  <Icon className="w-4 h-4" style={{ color: "#AFD6F9" }} />
+                </div>
+                <span className="text-xs font-medium" style={{ color: "#AFD6F9" }}>
+                  Step {contractorTourState.stepIndex + 1} of {CONTRACTOR_STEPS.length}
+                </span>
+              </div>
+              <button onClick={skipTour} style={{ color: "#AFD6F9" }} className="hover:text-white transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="px-4 pb-2">
+              <div className="h-1 rounded-full" style={{ background: "rgba(255,255,255,0.15)" }}>
+                <div
+                  className="h-1 rounded-full transition-all duration-300"
+                  style={{
+                    background: "linear-gradient(90deg, #AFD6F9, #60a5fa)",
+                    width: `${((contractorTourState.stepIndex + 1) / CONTRACTOR_STEPS.length) * 100}%`,
+                  }}
+                />
+              </div>
+            </div>
+            <div className="px-4 pb-4">
+              <h3 className="text-white font-bold text-base mb-1">{currentStep.title}</h3>
+              <p className="text-sm leading-relaxed mb-4" style={{ color: "#AFD6F9" }}>{currentStep.body}</p>
+              {isNavigating && (
+                <p className="text-xs mb-3 animate-pulse" style={{ color: "#AFD6F9" }}>Navigating…</p>
+              )}
+              <div className="flex justify-between items-center">
+                <button
+                  onClick={skipTour}
+                  className="text-xs transition-colors hover:text-white"
+                  style={{ color: "#AFD6F9" }}
+                >
+                  Skip tour
+                </button>
+                <Button
+                  onClick={goNext}
+                  size="sm"
+                  className="font-semibold text-sm"
+                  style={{ background: "linear-gradient(135deg, #10b981, #059669)", color: "white" }}
+                >
+                  {contractorTourState.stepIndex < CONTRACTOR_STEPS.length - 1 ? "Next" : "Finish"}{" "}
+                  <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+        {isOnWrongPage && !isNavigating && (
+          <div className="fixed top-0 left-0 right-0 z-[9990] flex items-center justify-between px-4 py-3 shadow-lg" style={{ background: "#0C3460" }}>
+            <div className="flex items-center gap-2 text-white text-sm font-medium">
+              <Sparkles className="w-4 h-4 flex-shrink-0" style={{ color: "#AFD6F9" }} />
+              <span>Continue your dashboard tour</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" onClick={continueTour} className="text-xs font-semibold" style={{ background: "#10b981", color: "white" }}>
+                Continue <ChevronRight className="w-3 h-3 ml-1" />
+              </Button>
+              <button onClick={skipTour} style={{ color: "#AFD6F9" }} className="hover:text-white transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         )}
       </>,
       document.body

@@ -9,7 +9,7 @@ import LoadingFallback from "@/components/loading-fallback";
 import AuthenticatedLayout from "@/layouts/authenticated-layout";
 import UnauthenticatedLayout from "@/layouts/unauthenticated-layout";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
-import { GuidedTour } from "@/components/guided-tour";
+import { GuidedTour, ContractorGuidedTour } from "@/components/guided-tour";
 
 // Scroll to top on route changes
 function ScrollToTop() {
@@ -172,6 +172,7 @@ function Router() {
     <AuthenticatedLayout>
       <ScrollToTop />
       <GuidedTour />
+      <ContractorGuidedTour />
       <Switch>
         {/* Home route */}
         <Route path="/" component={Home} />
