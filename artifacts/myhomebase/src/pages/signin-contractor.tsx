@@ -115,7 +115,7 @@ export default function SignInContractor() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
       toast({ title: "Account created!", description: "Welcome to MyHomeBase™." });
-      setLocation('/contractor-dashboard');
+      setLocation('/contractor-onboarding');
     },
     onError: (e: Error) => toast({ title: "Registration failed", description: e.message, variant: "destructive" }),
   });
