@@ -3954,20 +3954,6 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                             </a>
                           </Button>
                         )}
-                        {referringAgent.phone && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            asChild
-                            data-testid="button-call-agent"
-                            style={{ backgroundColor: 'var(--purple-deep)', color: 'white', borderColor: 'var(--purple-deep)' }}
-                          >
-                            <a href={`tel:${referringAgent.phone}`}>
-                              <Phone className="w-4 h-4 mr-1" />
-                              Call
-                            </a>
-                          </Button>
-                        )}
                       </div>
                     </div>
                     <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 space-y-2">
