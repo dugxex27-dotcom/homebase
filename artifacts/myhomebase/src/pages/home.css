@@ -1,8 +1,22 @@
 /* ─── DASHBOARD HEADER ─────────────────────────────────────────── */
 .dash-header {
-  background: linear-gradient(160deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%);
-  padding: 16px 18px 0;
+  background: linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%);
+  padding: 24px 28px 0;
   flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.dash-header::before {
+  content: '';
+  position: absolute;
+  top: -60px;
+  right: -60px;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(182,166,244,0.15) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 .dash-header-top {
@@ -71,15 +85,16 @@
 /* ─── STAT CHIPS ──────────────────────────────────────────────── */
 .dash-chips {
   display: flex;
-  gap: 8px;
-  padding-bottom: 18px;
+  gap: 12px;
+  padding-bottom: 20px;
 }
 
 .dash-chip {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 13px;
-  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.10);
+  border: 0.5px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  padding: 14px 18px;
+  min-width: 140px;
   flex: 1;
 }
 
@@ -97,11 +112,11 @@
 }
 
 .dash-chip-num {
-  font-size: 20px;
-  font-weight: 800;
+  font-size: 22px;
+  font-weight: 700;
   color: #ffffff;
-  letter-spacing: -0.5px;
   line-height: 1;
+  margin-bottom: 4px;
 }
 
 .dash-chip-num.good  { color: #4a9e2f; }
@@ -109,11 +124,10 @@
 .dash-chip-num.alert { color: #e03e3e; }
 
 .dash-chip-label {
-  font-size: 9px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.45);
-  margin-top: 4px;
-  letter-spacing: 0.08em;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.50);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -128,7 +142,7 @@
 /* ─── PAGE BODY ───────────────────────────────────────────────── */
 .dash-body {
   background: var(--gray-50, #F9FAFB);
-  padding: 16px 16px 8px;
+  padding: 24px 28px;
 }
 
 /* ─── PROPERTY CARDS ──────────────────────────────────────────── */

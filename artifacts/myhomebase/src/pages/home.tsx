@@ -175,7 +175,7 @@ export default function Home() {
     s === undefined ? "" : s >= 60 ? "good" : s >= 30 ? "warn" : "alert";
 
   return (
-    <div className="min-h-screen" style={{ background: "#ffffff" }}>
+    <div>
 
       {/* ── DASHBOARD HEADER (homeowners only) ──────────────── */}
       {typedUser?.role === "homeowner" && (

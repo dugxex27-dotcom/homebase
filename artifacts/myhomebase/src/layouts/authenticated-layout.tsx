@@ -16,39 +16,49 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
   const [location] = useLocation();
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--page-background)' }}>
-      {/* Sticky top header (all viewports) */}
-      <Header />
-
-      {/* Desktop sidebar (lg+) */}
+    <div
+      style={{
+        display: 'flex',
+        height: '100vh',
+        overflow: 'hidden',
+        background: 'var(--gray-50, #F9FAFB)',
+      }}
+    >
+      {/* Sidebar — 200px on desktop (lg+), hidden on mobile/tablet */}
       <Sidebar />
 
-      {/* Main content area
-          - mobile:  no left margin, bottom padding for bottom nav
-          - tablet:  no left margin (horizontal top nav in header)
-          - desktop: left margin for sidebar
-      */}
-      <AnimatePresence mode="wait">
-        <motion.main
-          key={location}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.18, ease: 'easeInOut' }}
-          className="flex-1 lg:ml-52 pb-20 md:pb-6"
-        >
-          <ErrorBoundary>
-            <Suspense fallback={<LoadingFallback variant="inline" />}>
-              {children}
-            </Suspense>
-          </ErrorBoundary>
-        </motion.main>
-      </AnimatePresence>
+      {/* Main column — fills remaining width */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
 
-      {/* Mobile bottom nav (< md) */}
-      <BottomNav />
+        {/* Header:
+            - mobile/tablet: colored gradient bar (logo + sign-out)
+            - desktop (lg+): slim 52px white topnav (bell + avatar only) */}
+        <Header />
 
-      {/* Back-to-top — appears on all screens after scrolling down */}
+        {/* Scrollable page content */}
+        <AnimatePresence mode="wait">
+          <motion.main
+            key={location}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.18, ease: 'easeInOut' }}
+            style={{ flex: 1, overflowY: 'auto' }}
+            className="pb-16 lg:pb-0"
+          >
+            <ErrorBoundary>
+              <Suspense fallback={<LoadingFallback variant="inline" />}>
+                {children}
+              </Suspense>
+            </ErrorBoundary>
+          </motion.main>
+        </AnimatePresence>
+
+        {/* Mobile bottom nav (hidden on lg+) */}
+        <BottomNav />
+      </div>
+
+      {/* Back-to-top scrolls within the motion.main above */}
       <BackToTop bottom={88} />
     </div>
   );
