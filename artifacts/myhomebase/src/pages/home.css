@@ -85,7 +85,8 @@
 /* ─── STAT CHIPS ──────────────────────────────────────────────── */
 .dash-chips {
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 10px;
   padding-bottom: 20px;
 }
 
@@ -93,9 +94,9 @@
   background: rgba(255, 255, 255, 0.10);
   border: 0.5px solid rgba(255, 255, 255, 0.18);
   border-radius: 12px;
-  padding: 14px 18px;
-  min-width: 140px;
-  flex: 1;
+  padding: 12px 16px;
+  flex: 1 1 calc(50% - 6px);
+  min-width: 0;
 }
 
 .dash-chip-earnings {
