@@ -149,10 +149,9 @@
 .property-card {
   background: #ffffff;
   border-radius: 16px;
-  border: 1px solid rgba(60, 37, 142, 0.10);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-  padding: 14px;
-  margin-bottom: 12px;
+  border: 0.5px solid var(--gray-200, #E5E7EB);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  margin-bottom: 16px;
   overflow: hidden;
 }
 
@@ -351,17 +350,17 @@
 
 .dash-light-card-btn:hover { background: #dddcfc; }
 
-/* ─── AGENT BANNER TILE (in header, full-width) ──────────────── */
+/* ─── AGENT BANNER (in body, purple-tint style) ──────────────── */
 .dash-agent-banner {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   width: 100%;
-  background: rgba(255, 255, 255, 0.10);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 14px;
-  padding: 10px 12px;
-  margin-bottom: 18px;
+  background: var(--purple-tint, #EEEDFE);
+  border: 0.5px solid var(--purple-border, #CECBF6);
+  border-radius: 16px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
   cursor: pointer;
   font-family: inherit;
   transition: background 0.15s;
@@ -369,20 +368,19 @@
 }
 
 .dash-agent-banner:hover {
-  background: rgba(255, 255, 255, 0.17);
+  background: #e4e2fd;
 }
 
 .dash-agent-banner-photo {
-  width: 44px;
-  height: 44px;
-  border-radius: 11px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
-  background: #16a34a;
+  background: var(--purple-border, #CECBF6);
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid rgba(255, 255, 255, 0.25);
 }
 
 .dash-agent-banner-img {
@@ -393,9 +391,9 @@
 }
 
 .dash-agent-banner-initial {
-  font-size: 18px;
-  font-weight: 800;
-  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--purple, #3C258E);
 }
 
 .dash-agent-banner-copy {
@@ -404,18 +402,18 @@
 }
 
 .dash-agent-banner-label {
-  font-size: 9px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.5);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--purple-light, #B6A6F4);
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  margin-bottom: 3px;
+  margin-bottom: 2px;
 }
 
 .dash-agent-banner-name {
   font-size: 14px;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--purple, #3C258E);
   line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
@@ -423,11 +421,12 @@
 }
 
 .dash-agent-banner-cta {
-  font-size: 11px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--purple, #3C258E);
   white-space: nowrap;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 /* ─── AGENT PHOTO BUTTON (in header actions) ─────────────────── */
@@ -636,6 +635,62 @@
 .dash-agent-modal-row-icon {
   color: #B6A6F4;
   flex-shrink: 0;
+}
+
+/* ─── ACTION ROWS ─────────────────────────────────────────────── */
+.action-row {
+  background: #ffffff;
+  border: 0.5px solid var(--gray-200, #E5E7EB);
+  border-radius: 12px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+.action-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--purple-tint, #EEEDFE);
+  color: var(--purple, #3C258E);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.action-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gray-900, #111827);
+}
+
+.action-sub {
+  font-size: 12px;
+  color: var(--gray-400, #9CA3AF);
+  margin-top: 2px;
+}
+
+.action-cta {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--purple, #3C258E);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ─── SECTION LABEL IN BODY ───────────────────────────────────── */
+.dash-body .dash-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--gray-400, #9CA3AF);
+  letter-spacing: 0.12em;
+  margin-bottom: 12px;
+  margin-top: 0;
 }
 
 /* AI status indicator — pulsing green dot */

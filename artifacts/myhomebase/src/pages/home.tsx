@@ -217,20 +217,6 @@ export default function Home() {
             </div>
           )}
 
-          {referringAgent && (
-            <button className="dash-agent-banner" onClick={() => setAgentModalOpen(true)} aria-label="View your agent">
-              <div className="dash-agent-banner-photo">
-                {referringAgent.profileImageUrl
-                  ? <img src={referringAgent.profileImageUrl} alt={`${referringAgent.firstName} ${referringAgent.lastName}`} className="dash-agent-banner-img" />
-                  : <span className="dash-agent-banner-initial">{referringAgent.firstName?.[0]?.toUpperCase() ?? "A"}</span>}
-              </div>
-              <div className="dash-agent-banner-copy">
-                <div className="dash-agent-banner-label">Your Real Estate Agent</div>
-                <div className="dash-agent-banner-name">{referringAgent.firstName} {referringAgent.lastName}</div>
-              </div>
-              <div className="dash-agent-banner-cta">View info →</div>
-            </button>
-          )}
         </div>
       )}
 
@@ -258,6 +244,22 @@ export default function Home() {
       {typedUser?.role === "homeowner" && houses.length > 0 && (
         <HomeownerFeatureGate featureName="Home Dashboard">
           <div className="dash-body">
+
+            {/* Agent Banner — in body (purple-tint area) per reference design */}
+            {referringAgent && (
+              <button className="dash-agent-banner" onClick={() => setAgentModalOpen(true)} aria-label="View your agent">
+                <div className="dash-agent-banner-photo">
+                  {referringAgent.profileImageUrl
+                    ? <img src={referringAgent.profileImageUrl} alt={`${referringAgent.firstName} ${referringAgent.lastName}`} className="dash-agent-banner-img" />
+                    : <span className="dash-agent-banner-initial">{referringAgent.firstName?.[0]?.toUpperCase() ?? "A"}</span>}
+                </div>
+                <div className="dash-agent-banner-copy">
+                  <div className="dash-agent-banner-label">Your Real Estate Agent</div>
+                  <div className="dash-agent-banner-name">{referringAgent.firstName} {referringAgent.lastName}</div>
+                </div>
+                <div className="dash-agent-banner-cta">View info →</div>
+              </button>
+            )}
 
             {/* Property Cards */}
             <span className="dash-section-label">Your {houses.length === 1 ? "property" : "properties"}</span>
@@ -292,114 +294,89 @@ export default function Home() {
 
             {/* Inspection Summary (if present) */}
             {inspectionSummary && (
-              <div style={{
-                background: "#FFFBF0",
-                border: "1px solid #F3D99A",
-                borderRadius: 14,
-                padding: "12px 14px",
-                marginBottom: 12,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 12,
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                  <div style={{
-                    width: 36, height: 36, background: "#FEF3C7",
-                    borderRadius: 10, display: "flex", alignItems: "center",
-                    justifyContent: "center", flexShrink: 0,
-                  }}>
-                    <ClipboardList size={18} style={{ color: "#92400e" }} />
+              <Link href="/documents" className="action-row" style={{ textDecoration: 'none' }}>
+                <div className="action-icon" style={{ background: '#FEF3C7' }}>
+                  <ClipboardList size={18} style={{ color: '#92400e' }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="action-title">
+                    Home Inspection on File
+                    {inspectionSummary.flaggedItemCount > 0 && (
+                      <span style={{
+                        marginLeft: 6, fontSize: 9, fontWeight: 700,
+                        background: "#FEE2E2", color: "#991B1B",
+                        borderRadius: 5, padding: "2px 7px",
+                        textTransform: "uppercase", letterSpacing: "0.04em",
+                      }}>
+                        {inspectionSummary.flaggedItemCount} flagged
+                      </span>
+                    )}
                   </div>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#78350f" }}>
-                      Home Inspection on File
-                      {inspectionSummary.flaggedItemCount > 0 && (
-                        <span style={{
-                          marginLeft: 6, fontSize: 9, fontWeight: 700,
-                          background: "#FEE2E2", color: "#991B1B",
-                          borderRadius: 5, padding: "2px 7px",
-                          textTransform: "uppercase", letterSpacing: "0.04em",
-                        }}>
-                          {inspectionSummary.flaggedItemCount} flagged
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: 10, color: "#92400e", marginTop: 2 }}>
-                      {inspectionSummary.inspectionDate || "Date unknown"} · {inspectionSummary.inspectorName || "Unknown"}
-                    </div>
+                  <div className="action-sub">
+                    {inspectionSummary.inspectionDate || "Date unknown"} · {inspectionSummary.inspectorName || "Unknown"}
                   </div>
                 </div>
-                <Link href="/documents">
-                  <button className="dash-light-card-btn">View →</button>
-                </Link>
-              </div>
+                <span className="action-cta">View →</span>
+              </Link>
             )}
 
             {/* Upload Inspection Prompt */}
             {!inspectionSummary && (
-              <Link href="/documents" className="upload-prompt-card">
-                <div className="upload-prompt-icon">
+              <Link href="/documents" className="action-row" style={{ textDecoration: 'none' }}>
+                <div className="action-icon">
                   <ClipboardList size={18} />
                 </div>
-                <div className="upload-prompt-copy">
-                  <div className="upload-prompt-title">Upload inspection report</div>
-                  <div className="upload-prompt-sub">AI extracts everything automatically</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="action-title">Upload inspection report</div>
+                  <div className="action-sub">AI extracts everything automatically</div>
                 </div>
-                <span className="upload-prompt-link">Upload →</span>
+                <span className="action-cta">Upload →</span>
               </Link>
             )}
 
             {/* Resale Readiness */}
-            <div className="dash-light-card" data-tour-id="resale-report">
-              <div className="dash-light-card-row">
-                <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
-                  <div className="dash-light-card-icon">
-                    <TrendingUp size={18} />
-                  </div>
-                  <div style={{ minWidth: 0 }}>
-                    <div className="dash-light-card-title">Thinking about selling?</div>
-                    <div className="dash-light-card-sub">AI-powered Resale Readiness Report</div>
-                  </div>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
-                  {houses.map((h: House) => (
-                    <Link key={h.id} href={`/resale-report/${h.id}`}>
-                      <button
-                        className="dash-light-card-btn"
-                        data-testid={`button-resale-report-${h.id}`}
-                      >
-                        {houses.length > 1 ? (h.name || "Report") : "Get Report"} →
-                      </button>
-                    </Link>
-                  ))}
-                </div>
+            <div className="action-row" data-tour-id="resale-report">
+              <div className="action-icon">
+                <TrendingUp size={18} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="action-title">Thinking about selling?</div>
+                <div className="action-sub">AI-powered Resale Readiness Report</div>
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+                {houses.map((h: House) => (
+                  <Link key={h.id} href={`/resale-report/${h.id}`}>
+                    <span className="action-cta" data-testid={`button-resale-report-${h.id}`}>
+                      {houses.length > 1 ? (h.name || "Report") : "Get Report"} →
+                    </span>
+                  </Link>
+                ))}
               </div>
             </div>
 
             {/* Referral Card — paid subscribers only */}
             {isPaidSubscriber && (
-              <div className="dash-light-card" data-tour-id="referral">
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                  <div className="dash-light-card-icon">
+              <>
+                <div className="action-row" data-tour-id="referral">
+                  <div className="action-icon">
                     <Gift size={18} />
                   </div>
-                  <div>
-                    <div className="dash-light-card-title">Earn a Free Subscription</div>
-                    <div className="dash-light-card-sub">
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="action-title">Earn a Free Subscription</div>
+                    <div className="action-sub">
                       {referralsRemaining === 0
                         ? "You've earned a free subscription!"
                         : `${referralsRemaining} more paid referral${referralsRemaining !== 1 ? "s" : ""} needed`}
                     </div>
                   </div>
+                  <Link href="/homeowner-referral">
+                    <span className="action-cta" data-testid="button-share-invite-link">Share →</span>
+                  </Link>
                 </div>
-                <Progress value={progressPercentage} className="h-2 mb-3" data-testid="progress-referral-subscription" />
-                <Link href="/homeowner-referral">
-                  <button className="dash-light-card-btn" data-testid="button-share-invite-link" style={{ width: "100%", justifyContent: "center" }}>
-                    Share Your Invite Link →
-                  </button>
+                <Link href="/homeowner-referral" style={{ fontSize: 13, color: 'var(--purple)', textAlign: 'center', display: 'block', marginTop: 4, marginBottom: 8, textDecoration: 'none', fontWeight: 600 }}>
+                  Share Your Invite Link →
                 </Link>
-              </div>
+              </>
             )}
 
             {/* From Your Contractors — linked invoices */}
