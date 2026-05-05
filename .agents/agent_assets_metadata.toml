@@ -1,3 +1,8 @@
 uploads = []
 generated = []
-outputs = []
+
+[[outputs]]
+id = "MfJDepcez-JPlZzMuexQk"
+uri = "file://contractor-tour-demo.zip"
+type = "unspecified"
+title = "contractor-tour-demo.zip"
