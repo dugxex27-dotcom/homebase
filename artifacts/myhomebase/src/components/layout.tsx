@@ -14,19 +14,27 @@ interface LayoutProps {
 export default function Layout({ children, showFooter = true }: LayoutProps) {
   const { user, isAuthenticated } = useAuth();
   const typedUser = user as User | undefined;
-  
+
   const showSidebar = isAuthenticated && typedUser;
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--page-background)' }}>
-      <Header />
+    <div
+      className="flex flex-col min-h-screen lg:flex-row lg:h-screen lg:overflow-hidden"
+      style={{ backgroundColor: 'var(--gray-50, #F9FAFB)' }}
+    >
       {showSidebar && <Sidebar />}
-      <main className={`flex-1 pb-20 md:pb-0 ${showSidebar ? 'md:ml-64' : ''}`}>
-        <div className="min-h-full">
-          {children}
-        </div>
-      </main>
-      {showFooter && <Footer />}
+      <div className="flex-1 flex flex-col min-h-0">
+        <Header />
+        <main
+          className="flex-1 pb-20 lg:pb-0 lg:overflow-y-auto"
+          style={{ backgroundColor: 'var(--gray-50, #F9FAFB)' }}
+        >
+          <div className="min-h-full">
+            {children}
+          </div>
+        </main>
+        {showFooter && <Footer />}
+      </div>
       <BottomNav />
     </div>
   );

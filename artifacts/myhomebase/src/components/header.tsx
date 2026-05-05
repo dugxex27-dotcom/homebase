@@ -158,52 +158,75 @@ export default function Header() {
   };
 
   const role = typedUser?.role ?? '';
+  const initials = typedUser
+    ? (typedUser.firstName?.[0]?.toUpperCase() || typedUser.email?.[0]?.toUpperCase() || 'U')
+    : 'U';
 
   return (
-    <header className="sticky top-0 z-50" style={{ backgroundColor: isAuthenticated ? 'var(--theme-primary)' : '#ffffff', borderBottom: isAuthenticated ? 'none' : '1px solid var(--theme-border)' }}>
+    <header
+      className={`sticky top-0 z-50 ${isAuthenticated ? 'mhb-authed-header' : ''}`}
+      style={!isAuthenticated ? { backgroundColor: '#ffffff', borderBottom: '1px solid var(--theme-border)' } : undefined}
+    >
 
-      {/* ── Main top bar ── */}
-      <div className="w-full px-3 sm:px-4 lg:px-6">
-        <div className="flex justify-between items-center h-14">
-
-          {/* Left: Logo */}
-          <Link href={role === 'contractor' ? '/contractor-dashboard' : role === 'agent' ? '/agent-dashboard' : '/'}>
-            <button
-              className="p-1.5 rounded-xl transition-all duration-200"
-              aria-label="Home"
-              data-testid="link-home-logo"
-            >
-              {isAuthenticated ? (
-                <img src={logoWhite} alt="MyHomeBase™" className="h-5 sm:h-6 w-auto" />
-              ) : (
-                <img src={logoColor} alt="MyHomeBase™" className="h-5 sm:h-6 w-auto" />
-              )}
-            </button>
-          </Link>
-
-          {/* Right: Notifications + sign-in */}
-          <div className="flex items-center gap-2">
-            {isAuthenticated && (typedUser?.role === 'homeowner' || typedUser?.role === 'contractor') && (
-              <Notifications />
-            )}
-
-            {/* User avatar + name — desktop only */}
-            {isAuthenticated && typedUser && (
-              <div className="hidden lg:flex items-center gap-1.5">
-                <div
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
-                  style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }}
+      {/* ── Mobile/Tablet top bar (colored gradient) — hidden on lg desktop ── */}
+      {isAuthenticated ? (
+        <>
+          {/* Mobile row: logo + notifications + sign-out — hidden on lg */}
+          <div className="lg:hidden w-full px-3 sm:px-4">
+            <div className="flex justify-between items-center h-14">
+              <Link href={role === 'contractor' ? '/contractor-dashboard' : role === 'agent' ? '/agent-dashboard' : '/'}>
+                <button className="p-1.5 rounded-xl" aria-label="Home" data-testid="link-home-logo">
+                  <img src={logoWhite} alt="MyHomeBase™" className="h-5 sm:h-6 w-auto" />
+                </button>
+              </Link>
+              <div className="flex items-center gap-2">
+                {(role === 'homeowner' || role === 'contractor') && <Notifications />}
+                {isInstallable && (
+                  <button
+                    onClick={async () => {
+                      if (!deferredPrompt) return;
+                      deferredPrompt.prompt();
+                      await deferredPrompt.userChoice;
+                      setDeferredPrompt(null); setIsInstallable(false);
+                    }}
+                    className="flex items-center gap-1.5 text-xs font-semibold px-3 h-8 rounded-lg"
+                    style={{ background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.8)' }}
+                    data-testid="button-install-app-header"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-1.5 text-xs font-semibold px-2.5 h-8 rounded-lg transition-colors"
+                  style={{ background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.7)' }}
+                  data-testid="button-logout-header"
+                  aria-label="Sign out"
                 >
-                  {typedUser.firstName?.[0]?.toUpperCase() || typedUser.email?.[0]?.toUpperCase() || 'U'}
-                </div>
-                <span className="text-xs font-semibold max-w-[90px] truncate" style={{ color: 'rgba(255,255,255,0.85)' }}>
-                  {typedUser.firstName || typedUser.email?.split('@')[0] || 'Account'}
-                </span>
+                  <LogOut className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span className="hidden sm:inline">Sign Out</span>
+                </button>
               </div>
-            )}
+            </div>
+          </div>
 
-            {/* Install app (desktop/tablet only) */}
-            {isInstallable && isAuthenticated && (
+          {/* Tablet horizontal nav (md–lg only) */}
+          <TabletNav role={role} location={location} />
+
+          {/* Desktop topnav row — white 50px bar, bell + avatar, hidden below lg */}
+          <div className="hidden lg:flex justify-end items-center h-[50px] px-5 gap-3">
+            {isAdmin && (
+              <Link href="/admin">
+                <button
+                  className="flex items-center gap-1.5 text-xs font-semibold px-3 h-8 rounded-lg"
+                  style={{ background: 'var(--theme-fill)', color: 'var(--theme-accent)' }}
+                  data-testid="nav-admin-header"
+                >
+                  <Shield className="w-3.5 h-3.5" />Admin
+                </button>
+              </Link>
+            )}
+            {isInstallable && (
               <button
                 onClick={async () => {
                   if (!deferredPrompt) return;
@@ -211,50 +234,38 @@ export default function Header() {
                   await deferredPrompt.userChoice;
                   setDeferredPrompt(null); setIsInstallable(false);
                 }}
-                className="hidden md:flex items-center gap-1.5 text-xs font-semibold px-3 h-8 rounded-lg transition-colors"
-                style={{ background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.8)' }}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 h-8 rounded-lg"
+                style={{ background: 'var(--theme-fill)', color: 'var(--theme-accent)' }}
                 data-testid="button-install-app-header"
               >
-                <Download className="w-3.5 h-3.5" />
-                <span className="hidden lg:inline">Install App</span>
+                <Download className="w-3.5 h-3.5" />Install App
               </button>
             )}
-
-            {/* Admin badge (desktop) */}
-            {isAdmin && (
-              <Link href="/admin">
-                <button className="hidden lg:flex items-center gap-1.5 text-xs font-semibold px-3 h-8 rounded-lg" style={{ background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.8)' }} data-testid="nav-admin-header">
-                  <Shield className="w-3.5 h-3.5" />Admin
-                </button>
-              </Link>
-            )}
-
-            {/* Sign-out (mobile + tablet; desktop uses sidebar) */}
-            {isAuthenticated && (
-              <button
-                onClick={handleLogout}
-                className="flex lg:hidden items-center gap-1.5 text-xs font-semibold px-2.5 h-8 rounded-lg transition-colors"
-                style={{ background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.7)' }}
-                data-testid="button-logout-header"
-                aria-label="Sign out"
+            {(role === 'homeowner' || role === 'contractor') && <Notifications />}
+            {typedUser && (
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+                style={{ background: 'var(--theme-fill)', color: 'var(--theme-accent)' }}
               >
-                <LogOut className="w-3.5 h-3.5 flex-shrink-0" />
-                <span className="hidden sm:inline">Sign Out</span>
-              </button>
-            )}
-
-            {!isAuthenticated && (
-              <Button onClick={() => window.location.href = '/signin'} aria-label="Sign in" className="text-sm h-9 px-3 sm:px-4 theme-btn-primary">
-                Sign In
-              </Button>
+                {initials}
+              </div>
             )}
           </div>
+        </>
+      ) : (
+        /* Logged-out header */
+        <div className="w-full px-3 sm:px-4 lg:px-6">
+          <div className="flex justify-between items-center h-14">
+            <Link href="/">
+              <button className="p-1.5 rounded-xl" aria-label="Home" data-testid="link-home-logo">
+                <img src={logoColor} alt="MyHomeBase™" className="h-5 sm:h-6 w-auto" />
+              </button>
+            </Link>
+            <Button onClick={() => window.location.href = '/signin'} aria-label="Sign in" className="text-sm h-9 px-3 sm:px-4 theme-btn-primary">
+              Sign In
+            </Button>
+          </div>
         </div>
-      </div>
-
-      {/* ── Tablet horizontal nav (md–lg only) ── */}
-      {isAuthenticated && typedUser && (
-        <TabletNav role={role} location={location} />
       )}
 
       {/* ── Trial banner ── */}
@@ -264,7 +275,7 @@ export default function Header() {
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-1.5 flex-1 min-w-0">
                 <Calendar className="h-3.5 w-3.5 flex-shrink-0" style={{ color: 'var(--theme-eyebrow)' }} />
-                <span className="text-xs font-semibold truncate text-white">
+                <span className="text-xs font-semibold truncate" style={{ color: 'var(--theme-primary)' }}>
                   <strong>{daysRemaining} day{daysRemaining !== 1 ? 's' : ''}</strong> left in trial
                 </span>
               </div>
@@ -273,7 +284,7 @@ export default function Header() {
                 size="sm"
                 onClick={() => window.location.href = '/billing'}
                 className="text-xs h-7 px-2 sm:px-3 flex-shrink-0 font-bold"
-                style={{ background: 'rgba(255,255,255,0.15)', color: '#ffffff', border: '1px solid rgba(255,255,255,0.3)' }}
+                style={{ background: 'rgba(255,255,255,0.15)', color: 'var(--theme-accent)', border: '1px solid var(--theme-border-hover)' }}
                 data-testid="button-trial-upgrade"
               >
                 <Crown className="h-3 w-3 mr-1" />

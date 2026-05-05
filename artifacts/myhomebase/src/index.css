@@ -78,7 +78,25 @@
   --text-4xl:  2.25rem;
 
   /* Layout */
-  --sidebar-width: 220px;
+  --sidebar-width: 200px;
+  --sidebar-w: 200px;
+
+  /* New design system radii aliases (r-* shorthand) */
+  --r-sm:  8px;
+  --r-md:  12px;
+  --r-lg:  16px;
+  --r-xl:  20px;
+  --r-2xl: 24px;
+
+  /* Extended palette */
+  --gray-50:    #F9FAFB;
+  --red:        #DC2626;
+  --red-light:  #FEF2F2;
+  --amber:      #D97706;
+  --amber-light: #FEF3C7;
+
+  /* Card shadow */
+  --shadow-card: 0 2px 12px rgba(0,0,0,0.06);
 
   /* ── Per-role palette tokens (spec §3) ── */
   /* Homeowner — Purple */
@@ -792,6 +810,17 @@ body[data-role="agent"],
     background-color: var(--theme-fill);
     border-radius: var(--radius-lg);
     padding: 4px;
+  }
+
+  /* ── Authenticated header — mobile gradient, desktop white topnav ── */
+  .mhb-authed-header {
+    background: linear-gradient(160deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%);
+  }
+  @media (min-width: 1024px) {
+    .mhb-authed-header {
+      background: #ffffff;
+      border-bottom: 1px solid var(--gray-200, #E5E7EB) !important;
+    }
   }
 
   /* ── Tablet top nav ── */

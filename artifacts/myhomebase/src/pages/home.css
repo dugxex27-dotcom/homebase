@@ -127,7 +127,7 @@
 
 /* ─── PAGE BODY ───────────────────────────────────────────────── */
 .dash-body {
-  background: #ffffff;
+  background: var(--gray-50, #F9FAFB);
   padding: 16px 16px 8px;
 }
 

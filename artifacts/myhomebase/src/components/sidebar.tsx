@@ -70,62 +70,137 @@ export default function Sidebar() {
 
   if (!isAuthenticated || !typedUser) return null;
 
-  const nav = (path: string | string[]) => {
+  const isActive = (path: string | string[]) => {
     const arr = Array.isArray(path) ? path : [path];
-    const active = arr.some(p => location === p || location.startsWith(p + '/'));
-    return `w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-sm transition-colors font-medium ${
-      active
-        ? 'font-semibold'
-        : 'hover:bg-gray-50'
-    }`;
+    return arr.some(p => location === p || location.startsWith(p + '/'));
   };
-  const navStyle = (path: string | string[]) => {
-    const arr = Array.isArray(path) ? path : [path];
-    const active = arr.some(p => location === p || location.startsWith(p + '/'));
+
+  const navItemStyle = (path: string | string[]): React.CSSProperties => {
+    const active = isActive(path);
     return active
-      ? { backgroundColor: 'var(--theme-fill)', color: 'var(--theme-accent)', borderLeft: '3px solid var(--theme-accent)', paddingLeft: '10px', borderRadius: '8px' }
-      : { color: 'rgba(0,0,0,0.5)', borderLeft: '3px solid transparent', paddingLeft: '10px' };
+      ? {
+          backgroundColor: 'var(--theme-fill)',
+          color: 'var(--theme-accent)',
+          borderLeft: '3px solid var(--theme-accent)',
+          paddingLeft: 9,
+          borderRadius: 8,
+        }
+      : {
+          color: 'var(--gray-600, #4B5563)',
+          borderLeft: '3px solid transparent',
+          paddingLeft: 9,
+        };
   };
+
+  const navItemClass = (path: string | string[]) =>
+    `w-full text-left py-[9px] pr-3 rounded-lg flex items-center gap-[9px] text-[13px] font-medium transition-colors ${
+      isActive(path) ? 'font-semibold' : 'hover:bg-gray-50'
+    }`;
 
   const isHomeowner  = typedUser.role === 'homeowner';
   const isContractor = typedUser.role === 'contractor';
   const isAgent      = typedUser.role === 'agent';
 
+  const NavItem = ({
+    href,
+    paths,
+    icon: Icon,
+    label,
+    badge,
+    testId,
+    external,
+  }: {
+    href: string;
+    paths?: string | string[];
+    icon: React.ElementType;
+    label: string;
+    badge?: boolean;
+    testId?: string;
+    external?: boolean;
+  }) => {
+    const matchPaths = paths ?? href;
+    const active = isActive(matchPaths);
+    if (external) {
+      return (
+        <a href={href} target="_blank" rel="noopener noreferrer" data-testid={testId}>
+          <button
+            className={navItemClass(matchPaths)}
+            style={{ ...navItemStyle(matchPaths), color: 'var(--theme-accent)' }}
+          >
+            <Icon className="w-[15px] h-[15px] flex-shrink-0" />
+            {label}
+          </button>
+        </a>
+      );
+    }
+    return (
+      <Link href={href}>
+        <button
+          className={navItemClass(matchPaths)}
+          style={navItemStyle(matchPaths)}
+          data-testid={testId}
+        >
+          <Icon className="w-[15px] h-[15px] flex-shrink-0" />
+          {label}
+          {badge && <span className="ml-auto h-2 w-2 rounded-full bg-red-500 flex-shrink-0" />}
+        </button>
+      </Link>
+    );
+  };
+
   return (
-    /* Desktop sidebar — hidden on mobile + tablet, visible on lg+ */
     <aside
-      className="hidden lg:flex lg:flex-col w-52 fixed left-0 top-14 bottom-0 z-40 overflow-y-auto"
-      style={{ background: '#ffffff', borderRight: '1px solid var(--theme-border)' }}
+      className="hidden lg:flex lg:flex-col flex-shrink-0 overflow-y-auto"
+      style={{
+        width: 200,
+        background: '#ffffff',
+        borderRight: '1px solid var(--gray-200, #E5E7EB)',
+      }}
     >
+      {/* Logo */}
+      <div
+        style={{
+          padding: '14px 16px 13px',
+          borderBottom: '1px solid var(--gray-200, #E5E7EB)',
+          flexShrink: 0,
+        }}
+      >
+        <Link href={isContractor ? '/contractor-dashboard' : isAgent ? '/agent-dashboard' : '/'}>
+          <img
+            src={logoColor}
+            alt="MyHomeBase™"
+            style={{ height: 22, width: 'auto', display: 'block', cursor: 'pointer' }}
+          />
+        </Link>
+      </div>
+
+      {/* Nav */}
       <nav className="flex-1 p-3 space-y-0.5" aria-label="Main navigation">
         {isAdmin && (
-          <Link href="/admin">
-            <button className={nav('/admin')} style={navStyle('/admin')} data-testid="nav-admin">
-              <Shield className="w-4 h-4 flex-shrink-0" />Admin
-            </button>
-          </Link>
+          <NavItem href="/admin" icon={Shield} label="Admin" testId="nav-admin" />
         )}
 
         {isHomeowner && (
           <>
-            <Link href="/"><button className={nav('/')} style={navStyle('/')} data-testid="nav-home"><Home className="w-4 h-4 flex-shrink-0" />Home</button></Link>
-            <Link href="/maintenance"><button className={nav('/maintenance')} style={navStyle('/maintenance')} data-testid="nav-maintenance"><Wrench className="w-4 h-4 flex-shrink-0" />Tasks{hasNotif('maintenance') && <span className="ml-auto h-2 w-2 rounded-full bg-red-500" />}</button></Link>
-            <Link href="/service-records"><button className={nav('/service-records')} style={navStyle('/service-records')} data-testid="nav-service-records"><FileText className="w-4 h-4 flex-shrink-0" />Service Records</button></Link>
-            <Link href="/contractors"><button className={nav(['/contractors', '/find-contractors'])} style={navStyle(['/contractors', '/find-contractors'])} data-testid="nav-contractors"><Building2 className="w-4 h-4 flex-shrink-0" />Contractors</button></Link>
-            <Link href="/messages"><button className={nav('/messages')} style={navStyle('/messages')} data-testid="nav-messages"><MessageCircle className="w-4 h-4 flex-shrink-0" />Messages{hasNotif('messages') && <span className="ml-auto h-2 w-2 rounded-full bg-red-500" />}</button></Link>
-            <Link href="/achievements"><button className={nav('/achievements')} style={navStyle('/achievements')} data-testid="nav-achievements"><Trophy className="w-4 h-4 flex-shrink-0" />Achievements</button></Link>
-            <Link href="/homeowner-referral"><button className={nav('/homeowner-referral')} style={navStyle('/homeowner-referral')} data-testid="nav-referral"><Gift className="w-4 h-4 flex-shrink-0" />Referral</button></Link>
-            <Link href="/documents"><button className={nav(['/documents', '/disclosures']).replace('items-center', 'items-start')} style={navStyle(['/documents', '/disclosures'])} data-testid="nav-documents"><FolderOpen className="w-4 h-4 flex-shrink-0 mt-0.5" /><span className="whitespace-normal leading-tight">Documents / Disclosures</span></button></Link>
-            <Link href="/account"><button className={nav('/account')} style={navStyle('/account')} data-testid="nav-account"><UserIcon className="w-4 h-4 flex-shrink-0" />Account</button></Link>
-            <Link href="/support"><button className={nav('/support')} style={navStyle('/support')} data-testid="nav-support"><HelpCircle className="w-4 h-4 flex-shrink-0" />Support</button></Link>
-            <a href="https://gotohomebase.com/info" target="_blank" rel="noopener noreferrer" data-testid="nav-myhomebase-info">
-              <button className="w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-sm font-medium transition-colors hover:bg-gray-50" style={{ color: 'var(--theme-accent)' }}>
-                <Info className="w-4 h-4 flex-shrink-0" />MHB Info
-              </button>
-            </a>
+            <NavItem href="/" icon={Home} label="Home" testId="nav-home" />
+            <NavItem href="/maintenance" icon={Wrench} label="Tasks" badge={hasNotif('maintenance')} testId="nav-maintenance" />
+            <NavItem href="/service-records" icon={FileText} label="Service Records" testId="nav-service-records" />
+            <NavItem href="/contractors" paths={['/contractors', '/find-contractors']} icon={Building2} label="Contractors" testId="nav-contractors" />
+            <NavItem href="/messages" icon={MessageCircle} label="Messages" badge={hasNotif('messages')} testId="nav-messages" />
+            <NavItem href="/achievements" icon={Trophy} label="Achievements" testId="nav-achievements" />
+            <NavItem href="/homeowner-referral" icon={Gift} label="Referral" testId="nav-referral" />
+            <NavItem href="/documents" paths={['/documents', '/disclosures']} icon={FolderOpen} label="Documents / Disclosures" testId="nav-documents" />
+            <NavItem href="/account" icon={UserIcon} label="Account" testId="nav-account" />
+            <NavItem href="/support" icon={HelpCircle} label="Support" testId="nav-support" />
+            <NavItem href="https://gotohomebase.com/info" icon={Info} label="MHB Info" testId="nav-myhomebase-info" external />
             {isInstallable && (
-              <button onClick={handleInstall} className="w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-sm font-medium transition-colors hover:bg-gray-50" style={{ color: 'var(--theme-accent)' }} data-testid="button-install-app-sidebar">
-                <Download className="w-4 h-4 flex-shrink-0" />Install App
+              <button
+                onClick={handleInstall}
+                className={navItemClass('/install')}
+                style={{ ...navItemStyle('/install'), color: 'var(--theme-accent)' }}
+                data-testid="button-install-app-sidebar"
+              >
+                <Download className="w-[15px] h-[15px] flex-shrink-0" />Install App
               </button>
             )}
           </>
@@ -133,35 +208,45 @@ export default function Sidebar() {
 
         {isContractor && (
           <>
-            <Link href="/contractor-dashboard"><button className={nav('/contractor-dashboard')} style={navStyle('/contractor-dashboard')} data-testid="nav-dashboard"><LayoutDashboard className="w-4 h-4 flex-shrink-0" />Dashboard{hasNotif('dashboard') && <span className="ml-auto h-2 w-2 rounded-full bg-red-500" />}</button></Link>
-            <Link href="/manage-team"><button className={nav('/manage-team')} style={navStyle('/manage-team')} data-testid="nav-manage-team"><Users className="w-4 h-4 flex-shrink-0" />Manage Team</button></Link>
-            <Link href="/messages"><button className={nav('/messages')} style={navStyle('/messages')} data-testid="nav-messages"><MessageCircle className="w-4 h-4 flex-shrink-0" />Messages{hasNotif('messages') && <span className="ml-auto h-2 w-2 rounded-full bg-red-500" />}</button></Link>
-            <Link href="/crm"><button className={nav('/crm')} style={navStyle('/crm')} data-testid="nav-crm"><Wrench className="w-4 h-4 flex-shrink-0" />CRM</button></Link>
-            <Link href="/contractor-referral"><button className={nav('/contractor-referral')} style={navStyle('/contractor-referral')} data-testid="nav-referral"><Gift className="w-4 h-4 flex-shrink-0" />Referral</button></Link>
-            <Link href="/contractor-profile"><button className={nav('/contractor-profile')} style={navStyle('/contractor-profile')} data-testid="nav-account"><UserIcon className="w-4 h-4 flex-shrink-0" />Account</button></Link>
-            <Link href="/support"><button className={nav('/support')} style={navStyle('/support')} data-testid="nav-support"><HelpCircle className="w-4 h-4 flex-shrink-0" />Support</button></Link>
-            {isInstallable && <button onClick={handleInstall} className="w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-sm font-medium hover:bg-gray-50" style={{ color: 'var(--theme-accent)' }} data-testid="button-install-app-sidebar"><Download className="w-4 h-4 flex-shrink-0" />Install App</button>}
+            <NavItem href="/contractor-dashboard" icon={LayoutDashboard} label="Dashboard" badge={hasNotif('dashboard')} testId="nav-dashboard" />
+            <NavItem href="/manage-team" icon={Users} label="Manage Team" testId="nav-manage-team" />
+            <NavItem href="/messages" icon={MessageCircle} label="Messages" badge={hasNotif('messages')} testId="nav-messages" />
+            <NavItem href="/crm" icon={Wrench} label="CRM" testId="nav-crm" />
+            <NavItem href="/contractor-referral" icon={Gift} label="Referral" testId="nav-referral" />
+            <NavItem href="/contractor-profile" icon={UserIcon} label="Account" testId="nav-account" />
+            <NavItem href="/support" icon={HelpCircle} label="Support" testId="nav-support" />
+            {isInstallable && (
+              <button onClick={handleInstall} className={navItemClass('/install')} style={{ ...navItemStyle('/install'), color: 'var(--theme-accent)' }} data-testid="button-install-app-sidebar">
+                <Download className="w-[15px] h-[15px] flex-shrink-0" />Install App
+              </button>
+            )}
           </>
         )}
 
         {isAgent && (
           <>
-            <Link href="/agent-dashboard"><button className={nav('/agent-dashboard')} style={navStyle('/agent-dashboard')} data-testid="nav-dashboard"><LayoutDashboard className="w-4 h-4 flex-shrink-0" />Dashboard</button></Link>
-            <Link href="/agent-referral"><button className={nav('/agent-referral')} style={navStyle('/agent-referral')} data-testid="nav-referral"><Gift className="w-4 h-4 flex-shrink-0" />Referral</button></Link>
-            <Link href="/agent-account"><button className={nav('/agent-account')} style={navStyle('/agent-account')} data-testid="nav-account"><UserIcon className="w-4 h-4 flex-shrink-0" />Account</button></Link>
-            <Link href="/support"><button className={nav('/support')} style={navStyle('/support')} data-testid="nav-support"><HelpCircle className="w-4 h-4 flex-shrink-0" />Support</button></Link>
-            {isInstallable && <button onClick={handleInstall} className="w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-sm font-medium hover:bg-gray-50" style={{ color: 'var(--theme-accent)' }} data-testid="button-install-app-sidebar"><Download className="w-4 h-4 flex-shrink-0" />Install App</button>}
+            <NavItem href="/agent-dashboard" icon={LayoutDashboard} label="Dashboard" testId="nav-dashboard" />
+            <NavItem href="/agent-referral" icon={Gift} label="Referral" testId="nav-referral" />
+            <NavItem href="/agent-account" icon={UserIcon} label="Account" testId="nav-account" />
+            <NavItem href="/support" icon={HelpCircle} label="Support" testId="nav-support" />
+            {isInstallable && (
+              <button onClick={handleInstall} className={navItemClass('/install')} style={{ ...navItemStyle('/install'), color: 'var(--theme-accent)' }} data-testid="button-install-app-sidebar">
+                <Download className="w-[15px] h-[15px] flex-shrink-0" />Install App
+              </button>
+            )}
           </>
         )}
       </nav>
 
-      <div className="p-3" style={{ borderTop: '1px solid var(--theme-border)' }}>
+      {/* Footer */}
+      <div className="p-3 flex-shrink-0" style={{ borderTop: '1px solid var(--gray-200, #E5E7EB)' }}>
         <button
           onClick={handleLogout}
-          className="w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-2.5 text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
+          className="w-full text-left py-[9px] px-3 rounded-lg flex items-center gap-[9px] text-[13px] font-medium transition-colors hover:bg-red-50"
+          style={{ color: '#DC2626' }}
           data-testid="button-logout-sidebar"
         >
-          <LogOut className="w-4 h-4 flex-shrink-0" />Sign Out
+          <LogOut className="w-[15px] h-[15px] flex-shrink-0" />Sign Out
         </button>
       </div>
     </aside>

@@ -1,0 +1,191 @@
+I've uploaded a zip file called mhb-redesign.zip containing redesigned HTML files for the entire MyHomeBase™ app. Please do the following in order:
+Step 1 — Unzip the files
+Unzip mhb-redesign.zip into a temporary folder called /tmp/mhb-redesign/.
+Step 2 — Copy public HTML files
+Copy these files into the public/ folder, replacing any existing versions:
+
+index-selector.html → public/index-selector.html
+contractor.html → public/contractor.html
+agent.html → public/agent.html
+screen0.html → public/screen0.html
+onboarding.html → public/onboarding.html
+modals.html → public/modals.html
+
+Step 3 — Use the HTML files as the visual reference
+The remaining files are visual design references showing exactly how every logged-in screen should look. Do NOT serve these as static HTML pages. Instead, use them as pixel-perfect design specs to restyle the existing React/TypeScript components. The files and the screens they correspond to are:
+
+dashboard.html → the homeowner dashboard (/dashboard)
+tasks.html → the tasks/maintenance page (/maintenance)
+service-records.html → the service records page (/service-records)
+documents.html → the documents & disclosures page (/documents)
+messages.html → the messages page (/messages)
+achievements.html → the achievements page (/achievements)
+referral.html → the homeowner referral page (/homeowner-referral)
+account.html → the account settings page (/account)
+support.html → the homeowner support page (/support)
+pricing.html → the pricing page (/homeowner-pricing)
+contractor-dashboard.html → the contractor dashboard (/contractor-dashboard)
+contractor-referral.html → the contractor referral page (/contractor-referral)
+agent-dashboard.html → the agent dashboard (/agent-dashboard)
+agent-referral.html → the agent referral page (/agent-referral)
+agent-account.html → the agent account page (/agent-account)
+modals.html → contains all 12 modals as interactive references
+
+Step 4 — Extract and apply the design system
+From the HTML files, extract and apply these design tokens globally in index.css or the shared stylesheet:
+css:root {
+  --font: 'Inter', system-ui, sans-serif;
+  --purple: #3C258E;
+  --purple-deep: #2C0F5B;
+  --purple-light: #B6A6F4;
+  --purple-tint: #EEEDFE;
+  --purple-border: #CECBF6;
+  --blue: #1560A2;
+  --blue-deep: #0C3460;
+  --blue-light: #AFD6F9;
+  --blue-tint: #E6F1FB;
+  --blue-border: #B5D4F4;
+  --green: #079669;
+  --green-deep: #09694A;
+  --green-light: #D4EBDE;
+  --green-tint: #F0FAF4;
+  --green-border: #A7D7B8;
+  --red: #DC2626;
+  --red-light: #FEF2F2;
+  --amber: #D97706;
+  --amber-light: #FEF3C7;
+  --gray-50: #F9FAFB;
+  --gray-100: #F3F4F6;
+  --gray-200: #E5E7EB;
+  --gray-400: #9CA3AF;
+  --gray-600: #4B5563;
+  --gray-900: #111827;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 20px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 20px rgba(0,0,0,0.10);
+}
+Load Inter from Google Fonts in index.html:
+html<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+Apply font-family: 'Inter', system-ui, sans-serif to the body globally.
+Step 5 — Restyle each component to match the reference HTML
+For each page, update the corresponding React component to visually match the reference HTML file. Follow these rules strictly:
+
+Do NOT change any copy, labels, data, or functionality
+Do NOT change any routing, API calls, or business logic
+Do NOT change any data fetching or state management
+ONLY change visual styling — colors, fonts, spacing, border-radius, shadows, component structure
+
+The design rules that apply to every page:
+SIDEBAR NAV:
+
+White background, 200px wide, 1px right border in #E5E7EB
+Nav items: Inter 13px, weight 500, color #4B5563, padding 9px 11px, border-radius 8px
+Active nav item: background = user's primary color tint, color = user's primary color, font-weight 600
+Active item left border: 3px solid user's primary color, border-radius 0 2px 2px 0
+Homeowner active: background #EEEDFE, color #3C258E, border #3C258E
+Contractor active: background #E6F1FB, color #1560A2, border #1560A2
+Agent active: background #F0FAF4, color #079669, border #079669
+Sign out: color #DC2626
+
+PAGE HEADER BANNER (the colored section at top of each logged-in page):
+
+Homeowner: gradient from #2C0F5B to #3C258E
+Contractor: gradient from #0C3460 to #1560A2
+Agent: gradient from #09694A to #079669
+Page title: Inter 22px weight 700, white
+Eyebrow: Inter 10px weight 600, letter-spacing 2.5px, uppercase, rgba(255,255,255,0.5)
+Subtitle: Inter 13px, rgba(255,255,255,0.55)
+Stat tiles inside banner: background rgba(255,255,255,0.10), border 0.5px solid rgba(255,255,255,0.16), border-radius 12px, padding 12px 16px
+Stat numbers: Inter 20px weight 700, white
+Stat labels: Inter 9px uppercase letter-spacing 1px, rgba(255,255,255,0.45)
+
+CARDS:
+
+Background white
+Border 0.5px solid #E5E7EB
+Border-radius 16px
+Box-shadow 0 2px 12px rgba(0,0,0,0.06)
+Padding 18px 20px
+Card header border-bottom 0.5px solid #F3F4F6
+
+BUTTONS:
+
+Primary: background = user's primary color, white text, border-radius 12px, padding 9px 18px, font-weight 600, font-size 13px
+Secondary/outline: transparent background, 1.5px solid #E5E7EB, color #4B5563, same radius
+Danger: background #DC2626, white text
+All buttons: Inter font, no border unless outline variant
+
+INPUTS:
+
+Padding 10px 14px, border 1.5px solid #E5E7EB, border-radius 12px
+Font-size 14px, font-family Inter
+Focus: border-color = user's primary color
+
+MODALS (use modals.html as the exact visual reference):
+
+Overlay: rgba(10,5,30,0.75) background, backdrop-filter blur(4px)
+Modal container: white, border-radius 24px, max-width 560px, box-shadow 0 8px 40px rgba(0,0,0,0.18)
+Color accent strip at top: 4px tall, gradient using user's primary color, border-radius 24px 24px 0 0
+Close button: top-right 16px, 32px circle, background #F3F4F6, color #4B5563
+Body padding: 24px 28px
+Footer: padding 16px 28px 24px, border-top 0.5px solid #F3F4F6, flex row with gap 10px
+Animation: translateY(16px) scale(0.98) → translateY(0) scale(1), duration 0.25s ease
+
+SECTION EYEBROWS / LABELS:
+
+Font-size 10px, letter-spacing 2px, text-transform uppercase, color #9CA3AF, font-weight 600
+
+TOGGLES:
+
+Track: 38px wide × 22px tall, border-radius 11px
+Knob: 16px circle, white, box-shadow 0 1px 3px rgba(0,0,0,0.2)
+Active track color: user's primary color
+
+ACHIEVEMENTS PAGE SPECIFIC:
+
+All achievement category numbers use the user's single primary color (purple #3C258E for homeowners)
+Remove all rainbow/multi-color category number styling
+Active filter tab uses primary color background and white text
+
+ACCOUNT & CONTRACTOR PROFILE PAGES SPECIFIC:
+
+Add visible section dividers (1px solid #E5E7EB, margin 24px 0) between each major section
+Each section starts with a section eyebrow label followed by the section title
+Add 24px padding between sections for breathing room
+
+Step 6 — Update server routes
+Ensure these routes are registered in server.js and working:
+GET /           → public/index-selector.html
+GET /homeowner  → existing homeowner homepage (index.html)
+GET /contractor → public/contractor.html
+GET /agent      → public/agent.html
+GET /welcome    → public/screen0.html
+GET /onboarding → public/onboarding.html
+GET /agent-onboarding → public/agent-onboarding.html (if it exists)
+GET /api/geocode   → existing (keep)
+GET /api/property  → existing (keep)
+GET /api/avm       → existing (keep)
+Step 7 — Verify and test
+After applying all changes:
+
+Run the server and confirm it starts without errors
+Test every route listed in Step 6 — confirm each returns 200
+Open the homeowner dashboard and confirm: Inter font is loading, the purple gradient header banner is showing, cards have the correct white/border/radius style, sidebar active state shows purple tint
+Open the contractor dashboard and confirm blue theme is applied
+Open the agent dashboard and confirm green theme is applied
+Open any modal (pricing, quiz, etc.) and confirm the animation, overlay blur, and color strip are showing correctly
+Confirm no content, copy, data, routing, or functionality has changed — only visual styling
+
+Critical rules — do not violate these:
+
+Do NOT change any text content, labels, or copy
+Do NOT change any routing or API calls
+Do NOT change any data fetching, state management, or business logic
+Do NOT remove the sidebar navigation from any logged-in page
+Do NOT change the environmental flag classes .warn .ok .info — used dynamically
+Do NOT change the color system assignment: purple = homeowner, blue = contractor, green = agent
+When in doubt about whether a change affects functionality, ask before proceeding
+Apply changes screen by screen — show me each screen as you complete it so I can review
