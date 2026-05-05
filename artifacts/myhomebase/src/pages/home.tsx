@@ -343,7 +343,7 @@ export default function Home() {
                 <div className="action-title">Thinking about selling?</div>
                 <div className="action-sub">AI-powered Resale Readiness Report</div>
               </div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-end", flexShrink: 0 }}>
                 {houses.map((h: House) => (
                   <Link key={h.id} href={`/resale-report/${h.id}`}>
                     <span className="action-cta" data-testid={`button-resale-report-${h.id}`}>
