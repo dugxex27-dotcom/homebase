@@ -6,3 +6,57 @@ id = "MfJDepcez-JPlZzMuexQk"
 uri = "file://contractor-tour-demo.zip"
 type = "unspecified"
 title = "contractor-tour-demo.zip (tooltip fix)"
+
+[[outputs]]
+id = "i8XY2LWzoKbLYuxi33Ju-"
+uri = "file://screenshots/01-landing-mobile.jpg"
+type = "image"
+title = "1. Role-Select Landing (mobile)"
+
+[[outputs]]
+id = "OjaiXlMeiTIkWYe6wih0z"
+uri = "file://screenshots/02-homeowner-landing-desktop.jpg"
+type = "image"
+title = "2. Homeowner Landing Page (desktop)"
+
+[[outputs]]
+id = "lTaBnLTt_HzG2Jt1pDTEp"
+uri = "file://screenshots/03-contractor-landing-desktop.jpg"
+type = "image"
+title = "3. Contractor Landing Page (desktop)"
+
+[[outputs]]
+id = "LaogEE6PhYDKM1rENRs8K"
+uri = "file://screenshots/04-agent-landing-desktop.jpg"
+type = "image"
+title = "4. Agent Landing Page (desktop)"
+
+[[outputs]]
+id = "It1WlygexFvwL0j928uQu"
+uri = "file://screenshots/05-homeowner-onboarding-mobile.jpg"
+type = "image"
+title = "5. Homeowner Onboarding – Step 1 (address lookup)"
+
+[[outputs]]
+id = "8kJLxX4HzLINQOAWb6Vaw"
+uri = "file://screenshots/06-agent-onboarding-mobile.jpg"
+type = "image"
+title = "6. Agent Onboarding – Step 1 (create account)"
+
+[[outputs]]
+id = "zmGjtokZc1Rd8nBu1PI9a"
+uri = "file://screenshots/09-quiz.jpg"
+type = "image"
+title = "7. Home Health Score Quiz (landing)"
+
+[[outputs]]
+id = "DO6wtj40bn0BE3SRd8RCR"
+uri = "file://screenshots/12-signin.jpg"
+type = "image"
+title = "8. Sign In Page"
+
+[[outputs]]
+id = "LbirmsWcH706SpJLauhgx"
+uri = "file://screenshots/10-invite-page.jpg"
+type = "image"
+title = "9. Invite/Referral Link (invalid code state)"
