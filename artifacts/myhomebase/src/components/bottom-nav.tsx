@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, FileText, User, LayoutDashboard, MessageCircle, Users, Gift, Grid2x2, Trophy, ShoppingBag, HardHat, Sparkles, X, ClipboardList, HelpCircle } from "lucide-react";
+import { Home, FileText, User, LayoutDashboard, MessageCircle, Users, Gift, Grid2x2, Trophy, HardHat, Sparkles, X, ClipboardList, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import type { User as UserType } from "@shared/schema";
@@ -12,7 +12,6 @@ const homeownerToolsItems = [
   { href: "/documents",           icon: ClipboardList,  label: "Documents",            description: "Documents & disclosure wizard" },
   { href: "/contractors",         icon: HardHat,        label: "Find Contractor",      description: "Search local professionals" },
   { href: "/achievements",        icon: Trophy,         label: "Explore Achievements", description: "Earn badges & rewards" },
-  { href: "/products",            icon: ShoppingBag,    label: "Shop Products",        description: "Browse home products" },
   { href: "/ai-help",             icon: Sparkles,       label: "Ask AI",               description: "Get instant home advice" },
   { href: "/messages",            icon: MessageCircle,  label: "Messages",             description: "Chat with your contractors" },
   { href: "/homeowner-referral",  icon: Gift,           label: "Refer & Earn",         description: "Earn free months by referring friends" },
