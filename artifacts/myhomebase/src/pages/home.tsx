@@ -148,6 +148,18 @@ export default function Home() {
   const [agentModalOpen, setAgentModalOpen] = useState(false);
   const [contractorInvoicesExpanded, setContractorInvoicesExpanded] = useState(false);
   const [claimedInvoiceIds, setClaimedInvoiceIds] = useState<Set<string>>(new Set());
+  const [hwsModalOpen, setHwsModalOpen] = useState(false);
+  const [tasksModalOpen, setTasksModalOpen] = useState(false);
+  const [systemsModalOpen, setSystemsModalOpen] = useState(false);
+
+  // Lock body scroll when any stat chip modal is open
+  useEffect(() => {
+    const anyOpen = hwsModalOpen || tasksModalOpen || systemsModalOpen;
+    document.body.style.overflow = anyOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [hwsModalOpen, tasksModalOpen, systemsModalOpen]);
+
+  const allSystems = [...new Set(houses.flatMap((h: House) => Array.isArray(h.homeSystems) ? h.homeSystems as string[] : []))];
 
   // Use server count directly; query is invalidated on every claim so it stays accurate
   const unclaimedInvoiceCount = unclaimedInvoiceData?.count ?? 0;
@@ -193,7 +205,7 @@ export default function Home() {
           {houses.length > 0 && (
             <div className="dash-chips">
               {houseScores.map(({ house, score }, i) => (
-                <div className="dash-chip" key={house.id}>
+                <button className="dash-chip dash-chip-btn" key={house.id} onClick={() => setHwsModalOpen(true)}>
                   <div className={`dash-chip-num ${getScoreClass(score)}`}>
                     {score !== undefined ? score : "—"}
                   </div>
@@ -202,18 +214,18 @@ export default function Home() {
                       ? "HWS™ Score"
                       : `${house.name || `Property ${i + 1}`} HWS™`}
                   </div>
-                </div>
+                </button>
               ))}
-              <div className="dash-chip">
+              <button className="dash-chip dash-chip-btn" onClick={() => setTasksModalOpen(true)}>
                 <div className="dash-chip-num">
                   {tasksCount !== null ? tasksCount : "—"}
                 </div>
                 <div className="dash-chip-label">Tasks this month</div>
-              </div>
-              <div className="dash-chip">
+              </button>
+              <button className="dash-chip dash-chip-btn" onClick={() => setSystemsModalOpen(true)}>
                 <div className="dash-chip-num">{totalSystems || "—"}</div>
                 <div className="dash-chip-label">Systems tracked</div>
-              </div>
+              </button>
             </div>
           )}
 
@@ -487,6 +499,155 @@ export default function Home() {
 
           </div>
         </HomeownerFeatureGate>
+      )}
+
+      {/* ── HWS SCORE MODAL ─────────────────────────────── */}
+      {hwsModalOpen && (
+        <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setHwsModalOpen(false)}>
+          <div className="mhb-modal-card" onClick={e => e.stopPropagation()}>
+            <button className="mhb-modal-close" onClick={() => setHwsModalOpen(false)} aria-label="Close"><XIcon size={20} strokeWidth={2.5} /></button>
+            <div className="hdm-wrap">
+              <div className="hdm-bar hdm-bar-purple" />
+              <div className="hdm-header">
+                <p className="hdm-eyebrow hdm-eyebrow-purple">Home Wellness Score™</p>
+                <h2 className="hdm-heading">What your HWS™ score means</h2>
+                <p className="hdm-subtitle">Your score reflects how well-documented and maintained your home is — the same record insurers and buyers rely on.</p>
+                <div className="hdm-divider" />
+              </div>
+              <div className="hdm-score-display">
+                {houseScores.map(({ house, score }, i) => (
+                  <div key={house.id} className="hdm-score-row">
+                    <div className={`hdm-score-badge hdm-score-badge-${getScoreClass(score) || 'neutral'}`}>
+                      {score !== undefined ? score : "—"}
+                    </div>
+                    <div>
+                      <p className="hdm-score-label">{houses.length === 1 ? "Your Home" : house.name || `Property ${i + 1}`}</p>
+                      <p className="hdm-score-tier">{
+                        score === undefined ? "Score calculating…" :
+                        score >= 60 ? "Healthy — well-documented" :
+                        score >= 30 ? "Needs attention — gaps in record" :
+                        "At risk — significant gaps"
+                      }</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="hdm-tiers">
+                <p className="hdm-tiers-label">Score guide</p>
+                {[
+                  { range: "60 – 100", label: "Healthy", desc: "Strong documentation, insurer-ready record.", color: "#4a9e2f", bg: "#f0fdf4" },
+                  { range: "30 – 59",  label: "Needs attention", desc: "Gaps that could affect a claim or a sale.", color: "#EF9F27", bg: "#fffbeb" },
+                  { range: "0 – 29",   label: "At risk", desc: "Missing records that could cost you thousands.", color: "#e03e3e", bg: "#fef2f2" },
+                ].map(t => (
+                  <div key={t.range} className="hdm-tier-row" style={{ background: t.bg }}>
+                    <div className="hdm-tier-badge" style={{ color: t.color }}>{t.range}</div>
+                    <div>
+                      <p className="hdm-tier-title" style={{ color: t.color }}>{t.label}</p>
+                      <p className="hdm-tier-desc">{t.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="hdm-factors">
+                <p className="hdm-tiers-label">What raises your score</p>
+                {[
+                  { icon: "🔧", text: "Systems logged and tracked" },
+                  { icon: "📋", text: "Maintenance tasks completed" },
+                  { icon: "📄", text: "Inspection report on file" },
+                  { icon: "🧾", text: "Contractor invoices saved" },
+                ].map(f => (
+                  <div key={f.text} className="hdm-factor-row">
+                    <span className="hdm-factor-icon">{f.icon}</span>
+                    <p className="hdm-factor-text">{f.text}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="hdm-cta-row">
+                <Link href="/maintenance" onClick={() => setHwsModalOpen(false)}>
+                  <button className="btn-primary hdm-cta-btn">Improve My Score →</button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── TASKS THIS MONTH MODAL ───────────────────────── */}
+      {tasksModalOpen && (
+        <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setTasksModalOpen(false)}>
+          <div className="mhb-modal-card" onClick={e => e.stopPropagation()}>
+            <button className="mhb-modal-close" onClick={() => setTasksModalOpen(false)} aria-label="Close"><XIcon size={20} strokeWidth={2.5} /></button>
+            <div className="hdm-wrap">
+              <div className="hdm-bar hdm-bar-amber" />
+              <div className="hdm-header">
+                <p className="hdm-eyebrow hdm-eyebrow-amber">Maintenance Tasks</p>
+                <h2 className="hdm-heading">Your {getMonth()} task plan</h2>
+                <p className="hdm-subtitle">
+                  {tasksCount !== null
+                    ? `${tasksCount} task${tasksCount !== 1 ? "s" : ""} this month — generated by your AI Maintenance Coach based on your home, climate zone, and season.`
+                    : "Your AI Maintenance Coach generates a personalized task plan each month based on your home, climate zone, and season."}
+                </p>
+                <div className="hdm-divider" />
+              </div>
+              <div className="hdm-info-cards">
+                {[
+                  { icon: "🌡️", title: "Climate-aware", desc: `Tasks are tailored for ${climateZone}.` },
+                  { icon: "📅", title: "Monthly rotation", desc: "Tasks update each month so nothing gets missed year-round." },
+                  { icon: "✅", title: "Raises your HWS™", desc: "Completing tasks improves your Home Wellness Score." },
+                ].map(c => (
+                  <div key={c.title} className="hdm-info-card">
+                    <span className="hdm-info-icon">{c.icon}</span>
+                    <div>
+                      <p className="hdm-info-title">{c.title}</p>
+                      <p className="hdm-info-desc">{c.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="hdm-cta-row">
+                <Link href="/maintenance" onClick={() => setTasksModalOpen(false)}>
+                  <button className="btn-primary hdm-cta-btn">View All Tasks →</button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── SYSTEMS TRACKED MODAL ───────────────────────── */}
+      {systemsModalOpen && (
+        <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setSystemsModalOpen(false)}>
+          <div className="mhb-modal-card" onClick={e => e.stopPropagation()}>
+            <button className="mhb-modal-close" onClick={() => setSystemsModalOpen(false)} aria-label="Close"><XIcon size={20} strokeWidth={2.5} /></button>
+            <div className="hdm-wrap">
+              <div className="hdm-bar hdm-bar-teal" />
+              <div className="hdm-header">
+                <p className="hdm-eyebrow hdm-eyebrow-teal">Home Systems</p>
+                <h2 className="hdm-heading">{totalSystems || "—"} system{totalSystems !== 1 ? "s" : ""} in your record</h2>
+                <p className="hdm-subtitle">Every tracked system generates maintenance reminders, raises your HWS™ score, and becomes part of your permanent home record.</p>
+                <div className="hdm-divider" />
+              </div>
+              {allSystems.length > 0 ? (
+                <div className="hdm-systems-grid">
+                  {allSystems.map(sys => (
+                    <div key={sys} className="hdm-system-chip">
+                      <span className="hdm-system-dot" />
+                      {sys}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="hdm-empty-msg">No systems tracked yet. Add them to start building your home record.</p>
+              )}
+              <div className="hdm-divider" style={{ margin: '16px 20px 0' }} />
+              <div className="hdm-cta-row">
+                <Link href="/maintenance" onClick={() => setSystemsModalOpen(false)}>
+                  <button className="btn-primary hdm-cta-btn">Manage Systems →</button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── REFERRING AGENT MODAL ───────────────────────── */}
