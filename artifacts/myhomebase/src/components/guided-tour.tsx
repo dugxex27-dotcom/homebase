@@ -127,36 +127,57 @@ function useGuidedTourState() {
   return { tourState, setTourState };
 }
 
-// Tooltip positioning
+// Tooltip positioning — never overlaps the spotlight rect
+function clamp(val: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, val));
+}
+
 function computeTooltipStyle(rect: DOMRect, preferBelow: boolean): React.CSSProperties {
   const TOOLTIP_W = 320;
-  const TOOLTIP_H = 220;
-  const GAP = 16;
+  const TOOLTIP_H = 230;
+  const GAP = 18;
   const MARGIN = 12;
   const vw = window.innerWidth;
   const vh = window.innerHeight;
 
-  let top: number;
-  const spaceBelow = vh - (rect.bottom + GAP + TOOLTIP_H);
-  const spaceAbove = rect.top - GAP - TOOLTIP_H;
-
-  if (preferBelow && spaceBelow > 0) {
-    top = rect.bottom + GAP;
-  } else if (!preferBelow && spaceAbove > 0) {
-    top = rect.top - TOOLTIP_H - GAP;
-  } else if (spaceBelow > 0) {
-    top = rect.bottom + GAP;
-  } else if (spaceAbove > 0) {
-    top = rect.top - TOOLTIP_H - GAP;
-  } else {
-    top = Math.max(MARGIN, Math.min(vh - TOOLTIP_H - MARGIN, rect.top + rect.height / 2 - TOOLTIP_H / 2));
+  // Mobile: always position clear of the spotlight (bottom-sheet style)
+  if (vw <= 540) {
+    const mw = vw - MARGIN * 2;
+    const spaceBelow = vh - (rect.bottom + GAP + TOOLTIP_H);
+    const spaceAbove = rect.top - GAP - TOOLTIP_H;
+    let top: number;
+    if (spaceBelow >= 0)      top = rect.bottom + GAP;
+    else if (spaceAbove >= 0) top = rect.top - TOOLTIP_H - GAP;
+    else                      top = vh - TOOLTIP_H - MARGIN;
+    return { top, left: MARGIN, width: mw };
   }
 
-  // Horizontal: center on element, clamp to viewport
-  let left = rect.left + rect.width / 2 - TOOLTIP_W / 2;
-  left = Math.max(MARGIN, Math.min(vw - TOOLTIP_W - MARGIN, left));
+  const spaceBelow = vh - (rect.bottom + GAP + TOOLTIP_H);
+  const spaceAbove = rect.top - GAP - TOOLTIP_H;
+  const spaceRight = vw - (rect.right + GAP + TOOLTIP_W);
+  const spaceLeft  = rect.left - GAP - TOOLTIP_W;
 
-  return { top, left, width: TOOLTIP_W };
+  const centeredLeft = clamp(
+    rect.left + rect.width / 2 - TOOLTIP_W / 2,
+    MARGIN,
+    vw - TOOLTIP_W - MARGIN,
+  );
+  const centeredTop = clamp(
+    rect.top + rect.height / 2 - TOOLTIP_H / 2,
+    MARGIN,
+    vh - TOOLTIP_H - MARGIN,
+  );
+
+  // Priority: preferred direction → opposite → right side → left side → pinned bottom
+  if (preferBelow && spaceBelow >= 0)  return { top: rect.bottom + GAP,        left: centeredLeft, width: TOOLTIP_W };
+  if (!preferBelow && spaceAbove >= 0) return { top: rect.top - TOOLTIP_H - GAP, left: centeredLeft, width: TOOLTIP_W };
+  if (spaceBelow >= 0)                 return { top: rect.bottom + GAP,        left: centeredLeft, width: TOOLTIP_W };
+  if (spaceAbove >= 0)                 return { top: rect.top - TOOLTIP_H - GAP, left: centeredLeft, width: TOOLTIP_W };
+  if (spaceRight >= 0)                 return { top: centeredTop, left: rect.right + GAP,           width: TOOLTIP_W };
+  if (spaceLeft >= 0)                  return { top: centeredTop, left: rect.left - TOOLTIP_W - GAP, width: TOOLTIP_W };
+
+  // Last resort: pin to bottom of viewport, horizontally centred on element
+  return { top: vh - TOOLTIP_H - MARGIN, left: centeredLeft, width: TOOLTIP_W };
 }
 
 // Arrow pointing from tooltip to element

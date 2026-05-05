@@ -341,7 +341,6 @@
 
   @media (max-width: 600px) {
     .sidebar { display: none; }
-    #tour-tooltip { width: calc(100vw - 32px); left: 16px !important; }
   }
 </style>
 </head>
@@ -698,10 +697,13 @@
     setTimeout(() => positionTour(step, el), 350);
   }
 
+  function clamp(val, min, max) { return Math.max(min, Math.min(max, val)); }
+
   function positionTour(step, el) {
     const rect = el.getBoundingClientRect();
     const vw = window.innerWidth;
     const vh = window.innerHeight;
+    const isMobile = vw <= 600;
 
     // Spotlight
     spotlight.style.display = 'block';
@@ -710,33 +712,40 @@
     spotlight.style.width  = (rect.width  + PAD * 2) + 'px';
     spotlight.style.height = (rect.height + PAD * 2) + 'px';
 
-    // Tooltip position
+    const tw = isMobile ? (vw - MARGIN * 2) : TW;
+
+    // Compute tooltip position — never overlaps spotlight
     const spaceBelow = vh - (rect.bottom + GAP + TH);
     const spaceAbove = rect.top - GAP - TH;
-    let top;
-    if (step.preferBelow && spaceBelow > 0)      top = rect.bottom + GAP;
-    else if (!step.preferBelow && spaceAbove > 0) top = rect.top - TH - GAP;
-    else if (spaceBelow > 0)                      top = rect.bottom + GAP;
-    else if (spaceAbove > 0)                      top = rect.top - TH - GAP;
-    else top = Math.max(MARGIN, Math.min(vh - TH - MARGIN, rect.top + rect.height / 2 - TH / 2));
+    const spaceRight = vw - (rect.right + GAP + tw);
+    const spaceLeft  = rect.left - GAP - tw;
 
-    let left = rect.left + rect.width / 2 - TW / 2;
-    left = Math.max(MARGIN, Math.min(vw - TW - MARGIN, left));
+    const centeredLeft = clamp(rect.left + rect.width / 2 - tw / 2, MARGIN, vw - tw - MARGIN);
+    const centeredTop  = clamp(rect.top  + rect.height / 2 - TH / 2, MARGIN, vh - TH - MARGIN);
 
-    // On mobile, pin to full-width
-    if (vw <= 600) {
-      left = 16;
-      tooltip.style.width = (vw - 32) + 'px';
-    } else {
-      tooltip.style.width = TW + 'px';
-    }
+    let top, left;
 
+    if (isMobile) {
+      // Mobile: stack above or below, then pin to bottom
+      left = MARGIN;
+      if      (spaceBelow >= 0) top = rect.bottom + GAP;
+      else if (spaceAbove >= 0) top = rect.top - TH - GAP;
+      else                      top = vh - TH - MARGIN;
+    } else if (step.preferBelow && spaceBelow >= 0) { top = rect.bottom + GAP;        left = centeredLeft; }
+    else if (!step.preferBelow && spaceAbove >= 0)  { top = rect.top - TH - GAP;      left = centeredLeft; }
+    else if (spaceBelow >= 0)                       { top = rect.bottom + GAP;        left = centeredLeft; }
+    else if (spaceAbove >= 0)                       { top = rect.top - TH - GAP;      left = centeredLeft; }
+    else if (spaceRight >= 0)                       { top = centeredTop;              left = rect.right + GAP; }
+    else if (spaceLeft  >= 0)                       { top = centeredTop;              left = rect.left - tw - GAP; }
+    else                                            { top = vh - TH - MARGIN;         left = centeredLeft; }
+
+    tooltip.style.width   = tw + 'px';
     tooltip.style.display = 'block';
-    tooltip.style.top  = top + 'px';
-    tooltip.style.left = left + 'px';
+    tooltip.style.top     = top  + 'px';
+    tooltip.style.left    = left + 'px';
 
-    // Arrow
-    const tipCx = left + (vw <= 600 ? (vw - 32) / 2 : TW / 2);
+    // Arrow from tooltip centre → element centre
+    const tipCx = left + tw / 2;
     const tipCy = top + 100;
     const elCx  = rect.left + rect.width  / 2;
     const elCy  = rect.top  + rect.height / 2;
@@ -746,7 +755,6 @@
     arrowLine.setAttribute('x2', elCx);
     arrowLine.setAttribute('y2', elCy);
 
-    // Backdrop dim (no spotlight = dim when no rect yet)
     backdrop.classList.add('dim');
     backdrop.style.background = 'transparent';
 
