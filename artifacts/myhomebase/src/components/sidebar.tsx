@@ -9,7 +9,7 @@ import { queryClient } from "@/lib/queryClient";
 import type { User, Notification } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
-import logoColor from '@assets/my-homebase-logo-tm-final_1776295160061.png';
+import logoColor from '@assets/my-homebase-logo-tm-final-purple_1777948438665.png';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
