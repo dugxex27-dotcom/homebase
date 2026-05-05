@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, Calendar, Search, Star, TrendingUp, Gift, Sparkles, FileText, AlertTriangle, ClipboardList, Bell, ChevronRight, ChevronDown, ChevronUp, Phone, Mail, Globe, MapPin, X as XIcon, Wrench, DollarSign } from "lucide-react";
+import { Users, Calendar, Search, Star, TrendingUp, Gift, Sparkles, FileText, AlertTriangle, ClipboardList, Bell, ChevronRight, ChevronDown, ChevronUp, Phone, Mail, Globe, MapPin, X as XIcon, Wrench, DollarSign, Info } from "lucide-react";
 import HouseMap from "@/components/house-map";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -209,10 +209,9 @@ export default function Home() {
                   <div className={`dash-chip-num ${getScoreClass(score)}`}>
                     {score !== undefined ? score : "—"}
                   </div>
-                  <div className="dash-chip-label">
-                    {houses.length === 1
-                      ? "HWS™ Score"
-                      : `${house.name || `Property ${i + 1}`} HWS™`}
+                  <div className="dash-chip-label dash-chip-label-info">
+                    {houses.length === 1 ? "HWS™ Score" : `${house.name || `Property ${i + 1}`} HWS™`}
+                    <Info size={9} className="dash-chip-info-icon" />
                   </div>
                 </button>
               ))}
@@ -220,11 +219,17 @@ export default function Home() {
                 <div className="dash-chip-num">
                   {tasksCount !== null ? tasksCount : "—"}
                 </div>
-                <div className="dash-chip-label">Tasks this month</div>
+                <div className="dash-chip-label dash-chip-label-info">
+                  Tasks this month
+                  <Info size={9} className="dash-chip-info-icon" />
+                </div>
               </button>
               <button className="dash-chip dash-chip-btn" onClick={() => setSystemsModalOpen(true)}>
                 <div className="dash-chip-num">{totalSystems || "—"}</div>
-                <div className="dash-chip-label">Systems tracked</div>
+                <div className="dash-chip-label dash-chip-label-info">
+                  Systems tracked
+                  <Info size={9} className="dash-chip-info-icon" />
+                </div>
               </button>
             </div>
           )}

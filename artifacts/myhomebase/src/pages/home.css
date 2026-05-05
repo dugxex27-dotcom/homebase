@@ -729,6 +729,16 @@
 .dash-chip-btn:hover  { background: rgba(255,255,255,0.18); }
 .dash-chip-btn:active { transform: scale(0.97); }
 
+.dash-chip-label-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.dash-chip-info-icon {
+  opacity: 0.45;
+  flex-shrink: 0;
+}
+
 /* ─── STAT CHIP MODALS — shared overlay & card ────────────────── */
 .mhb-overlay {
   position: fixed;
