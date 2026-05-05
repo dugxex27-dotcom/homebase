@@ -1,0 +1,128 @@
+Smart choice. This is the fastest path to actually seeing your design live — and it works because your app already has a Node/Express backend serving static files.
+Here's exactly how this works and the prompt to make it happen:
+
+The approach in plain English:
+Instead of fighting React's component structure, we tell the server to serve your HTML files directly for each route. The real data (user's name, HWS score, property info, systems, etc.) gets injected by the server before the page is sent to the browser — the same way the existing ATTOM lookup works. The HTML files become the app. React steps aside.
+
+Paste this entire prompt into Replit:
+
+
+I want to replace the React frontend with the redesigned HTML files I've uploaded. The goal is to serve each HTML file directly from the Express server, with real user data injected into the page before it's sent to the browser. Here is exactly what to do:
+Step 1 — Understand the architecture shift
+We are moving from a React SPA to server-rendered HTML pages. The Express server will serve each HTML file directly. Real data from the database will be injected into each page using template literal replacement — find placeholder tokens like {{USER_NAME}}, {{HWS_SCORE}}, etc. in the HTML and replace them with real values before sending the response. Do not use a template engine like Handlebars or EJS — just use Node's built-in string replacement on the HTML file content.
+Step 2 — Add data injection helper to server.js
+Add this helper function to server.js:
+javascriptasync function serveInjected(res, filename, data = {}) {
+  const fs = require('fs');
+  const path = require('path');
+  let html = fs.readFileSync(path.join(__dirname, 'public', filename), 'utf8');
+  for (const [key, value] of Object.entries(data)) {
+    html = html.replaceAll(`{{${key}}}`, value ?? '');
+  }
+  res.setHeader('Content-Type', 'text/html');
+  res.send(html);
+}
+Step 3 — Add authenticated route middleware
+Add a middleware function that checks if the user is logged in (using the existing session/auth system). If not logged in, redirect to /login. Apply this to all dashboard routes.
+Step 4 — Wire up routes for each HTML file
+Replace or add these routes in server.js. For each route, fetch the relevant data from the database using the existing storage/query functions, then call serveInjected with that data:
+GET /dashboard         → serve dashboard.html with user data
+GET /maintenance       → serve tasks.html with user data
+GET /service-records   → serve service-records.html with user data
+GET /documents         → serve documents.html with user data
+GET /messages          → serve messages.html with user data
+GET /achievements      → serve achievements.html with user data
+GET /homeowner-referral → serve referral.html with user data
+GET /account           → serve account.html with user data
+GET /support           → serve support.html with user data
+GET /homeowner-pricing → serve pricing.html with user data
+GET /contractor-dashboard → serve contractor-dashboard.html with contractor data
+GET /contractor-referral  → serve contractor-referral.html with contractor data
+GET /agent-dashboard      → serve agent-dashboard.html with agent data
+GET /agent-referral       → serve agent-referral.html with agent data
+GET /agent-account        → serve agent-account.html with agent data
+Step 5 — Add data tokens to each HTML file
+In each HTML file, replace hardcoded demo values with injection tokens. Here is the complete list of tokens to add per file:
+dashboard.html — replace:
+
+"Good Evening, Sarah" → {{GREETING}}, {{USER_FIRST_NAME}}
+"2 properties · 16 systems tracked" → {{PROPERTY_COUNT}} properties · {{SYSTEM_COUNT}} systems tracked
+The HWS score numbers → {{HWS_SCORE_1}} and {{HWS_SCORE_2}}
+"7" tasks this month → {{TASKS_THIS_MONTH}}
+"16" systems → {{SYSTEM_COUNT}}
+Agent name "Jessica Morgan" → {{AGENT_NAME}}
+Property names and addresses → {{PROPERTY_1_NAME}}, {{PROPERTY_1_ADDRESS}}, {{PROPERTY_2_NAME}}, {{PROPERTY_2_ADDRESS}}
+
+account.html — replace:
+
+"Sarah" → {{USER_FIRST_NAME}}
+"Anderson" → {{USER_LAST_NAME}}
+"sarah.anderson@homebase.com" → {{USER_EMAIL}}
+"Premium+" plan name → {{PLAN_NAME}}
+"$19.99" → {{PLAN_PRICE}}
+"KZBG3ALV" referral code → {{REFERRAL_CODE}}
+"0" friends referred → {{REFERRAL_COUNT}}
+
+referral.html — replace:
+
+"KZBG3ALV" → {{REFERRAL_CODE}}
+"0" active referrals → {{ACTIVE_REFERRALS}}
+"0" credits earned → {{CREDITS_EARNED}}
+"0" free months → {{FREE_MONTHS}}
+"https://gotohomebase.com/invite/KZBG3ALV" → {{REFERRAL_LINK}}
+
+agent-dashboard.html — replace:
+
+"0" total referrals → {{TOTAL_REFERRALS}}
+"0" active subscribers → {{ACTIVE_SUBSCRIBERS}}
+"$0.00" total earnings → {{TOTAL_EARNINGS}}
+"NWY9BAG8" referral code → {{REFERRAL_CODE}}
+"https://gotohomebase.com/signin?ref=NWY9BAG8" → {{REFERRAL_LINK}}
+
+For all other pages (tasks, service-records, documents, messages, achievements, support, pricing, contractor pages) — add a {{USER_FIRST_NAME}} token to the greeting and {{REFERRAL_CODE}} where relevant. The rest of the content on those pages is structural and does not need injection for the first pass.
+Step 6 — Handle the sidebar navigation active state
+In each HTML file the sidebar nav has a hardcoded active class on one nav item. This is correct as-is — each file only serves one page so the active state is always right. No changes needed.
+Step 7 — Handle modal interactions
+The modals.html file contains all 12 modals. Do NOT serve modals.html as a page. Instead, copy the modal HTML and their CSS from modals.html and paste them into the bottom of each relevant page file:
+
+Pricing modal → add to dashboard.html, account.html, pricing.html
+Quiz modal → add to dashboard.html (homeowner landing already has it)
+Add Service Record modal → add to service-records.html
+Add Property modal → add to dashboard.html, tasks.html
+New Message modal → add to messages.html
+Notifications modal → add to all logged-in pages
+Confirm Delete modal → add to service-records.html, documents.html
+HWS Score modal → add to dashboard.html, tasks.html
+42% Claims modal → add to dashboard.html
+$18K Cost modal → add to dashboard.html
+Referral modal → add to referral.html, account.html
+
+Wire up the modal trigger buttons using the existing onclick functions from modals.html. Each modal is triggered by show('modal-id') and closed by close('modal-id') — these functions are already in modals.html and should be included in a shared script block.
+Step 8 — Keep all existing API routes untouched
+Do not change or remove:
+
+GET /api/geocode
+GET /api/property
+GET /api/avm
+Any authentication routes (/login, /logout, /register)
+Any POST routes for creating/updating records
+Any websocket connections
+
+Step 9 — Test each route
+After implementation, test every route while logged in as a homeowner, contractor, and agent. Confirm:
+
+The correct HTML file is served for each route
+Real user data is injected correctly — no {{TOKEN}} strings visible on any page
+All modals open and close correctly
+The sidebar nav shows the correct active item for each page
+Logging out redirects to /login correctly
+The existing API routes still return data correctly
+
+Critical rules:
+
+Do NOT break any existing authentication or session logic
+Do NOT remove any existing POST/PUT/DELETE API routes
+Do NOT change the database schema or any storage functions
+Do NOT touch the ATTOM integration or geocoding logic
+If a route already exists in server.js, replace it with the new serveInjected version — do not duplicate it
+Work through one route at a time and confirm it works before moving to the next
