@@ -355,7 +355,7 @@ nav{
   </div>
   <div class="nav-right">
     <a href="/login" class="nav-link">Sign in</a>
-    <a href="/agent-onboarding" class="nav-cta">Get Started Free</a>
+    <button class="nav-cta" onclick="handleTourDemo(this)">Get Started Free</button>
   </div>
 </nav>
 <div class="demo-underbar">
@@ -370,7 +370,7 @@ nav{
     <h1 class="hero-headline">The closing gift<br>they'll never<br><em>forget you for.</em></h1>
     <p class="hero-sub">Set up your client's home record at closing. Their Home Wellness Score™ is live before they unpack a box. Every time they open the app — they think of you. And you earn $15 for every client who stays subscribed for 4+ months.</p>
     <div class="hero-cta-row">
-      <a href="/agent-onboarding" class="btn-primary">Start earning at closing →</a>
+      <button class="btn-primary" onclick="handleTourDemo(this)">Start earning at closing →</button>
       <span class="hero-note">Free for agents — always · No credit card required</span>
     </div>
   </div>
@@ -554,7 +554,7 @@ nav{
         <div class="pricing-feature"><div class="pf-check">✓</div>Agent Hub dashboard</div>
         <div class="pricing-feature"><div class="pf-check">✓</div>No subscription — no catch</div>
       </div>
-      <a href="/agent-onboarding" class="pricing-cta">Create my free agent account →</a>
+      <button class="pricing-cta" onclick="handleTourDemo(this)">Create my free agent account →</button>
       <div class="pricing-trial">Free forever for agents · No credit card required · Cancel anytime</div>
     </div>
   </div>
@@ -566,7 +566,7 @@ nav{
     <div class="final-eyebrow">Ready to close differently?</div>
     <h2 class="final-headline">Give your clients a home<br>that already knows itself.</h2>
     <p class="final-sub">Set up their record at closing. Earn $15 when they stay. Stay top-of-mind for every referral that follows.</p>
-    <a href="/agent-onboarding" class="final-btn">Start earning at closing →</a>
+    <button class="final-btn" onclick="handleTourDemo(this)">Start earning at closing →</button>
     <div class="final-note">Free for agents — always · No credit card required · No subscription</div>
   </div>
 </div>
@@ -610,6 +610,12 @@ nav{
     if (btn.disabled) return;
     btn.disabled = true;
     btn.textContent = 'Loading…';
+    window.location.href = '/api/auth/agent-demo-login';
+  }
+  function handleTourDemo(el) {
+    if (el && el.disabled) return;
+    if (el) { el.disabled = true; el.textContent = 'Loading…'; }
+    try { localStorage.setItem('mhb_agent_tour', JSON.stringify({ phase: 'welcome', stepIndex: 0 })); } catch(e) {}
     window.location.href = '/api/auth/agent-demo-login';
   }
 </script>

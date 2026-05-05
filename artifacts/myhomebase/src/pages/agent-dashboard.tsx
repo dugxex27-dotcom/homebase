@@ -225,7 +225,7 @@ export default function AgentDashboard() {
         <span className="dash-eyebrow" style={{ color: '#D4EBDE' }}>REAL ESTATE AGENT</span>
         <div className="dash-title">Agent Dashboard</div>
         <div className="dash-subtitle">Track your referrals and earnings</div>
-        <div className="dash-chips">
+        <div className="dash-chips" data-tour-id="agent-stats">
           <div className="dash-chip">
             <div className={`dash-chip-num${(stats?.totalReferrals || 0) > 0 ? ' good' : ''}`}>{stats?.totalReferrals || 0}</div>
             <div className="dash-chip-label">Total Referrals</div>
@@ -270,7 +270,7 @@ export default function AgentDashboard() {
         )}
 
         {/* Referral Hero Card */}
-        <Link href="/agent-referral" className="ai-coach-card" style={{ background: 'linear-gradient(135deg, #09694A, #079669)' }}>
+        <Link href="/agent-referral" className="ai-coach-card" style={{ background: 'linear-gradient(135deg, #09694A, #079669)' }} data-tour-id="agent-referral-card">
           <div className="ai-coach-icon"><TrendingUp size={18} /></div>
           <div className="ai-coach-copy">
             <div className="ai-coach-eyebrow" style={{ color: '#D4EBDE' }}>Referral Program</div>
@@ -282,7 +282,7 @@ export default function AgentDashboard() {
 
         {/* Referral Link */}
         <span className="dash-section-label">Your Referral Link</span>
-        <div className="dash-light-card" style={{ marginBottom: 10 }}>
+        <div className="dash-light-card" style={{ marginBottom: 10 }} data-tour-id="agent-referral-link">
           <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
             <input
               type="text"
@@ -329,7 +329,7 @@ export default function AgentDashboard() {
 
         {/* Home Handoffs */}
         <span className="dash-section-label">Home Handoff Packages</span>
-        <div className="dash-light-card">
+        <div className="dash-light-card" data-tour-id="agent-handoffs">
           <div className="dash-light-card-row">
             <div className="dash-light-card-icon" style={{ background: '#F0FAF4', color: '#09694A' }}>
               <ArrowRight size={18} />
@@ -358,7 +358,7 @@ export default function AgentDashboard() {
 
         {/* Payout Settings */}
         <span className="dash-section-label" style={{ marginTop: 8 }}>Payout Settings</span>
-        <div className="dash-light-card">
+        <div className="dash-light-card" data-tour-id="agent-payout">
           {stripeStatus?.onboardingComplete ? (
             <div className="dash-light-card-row">
               <div className="dash-light-card-icon" style={{ background: '#F0FAF4', color: '#09694A' }}>
@@ -458,7 +458,7 @@ export default function AgentDashboard() {
         )}
 
         {/* Referrals List */}
-        <span className="dash-section-label" style={{ marginTop: 4 }}>Your Referrals</span>
+        <span className="dash-section-label" style={{ marginTop: 4 }} data-tour-id="agent-referrals">Your Referrals</span>
         {referrals.length === 0 ? (
           <div className="dash-light-card" style={{ textAlign: 'center', padding: '24px 14px' }}>
             <Users size={28} style={{ color: 'var(--gray-400)', margin: '0 auto 8px', display: 'block' }} />

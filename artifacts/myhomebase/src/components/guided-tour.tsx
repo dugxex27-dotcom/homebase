@@ -1097,3 +1097,385 @@ export function ContractorGuidedTour() {
 
   return null;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AGENT GUIDED TOUR
+// ─────────────────────────────────────────────────────────────────────────────
+
+const AGENT_TOUR_KEY = "mhb_agent_tour";
+
+const AGENT_STEPS: StepDef[] = [
+  {
+    tourId: "agent-stats",
+    page: "/agent-dashboard",
+    title: "Your Dashboard at a Glance",
+    body: "See your total referrals, active clients, total earnings, and pending payouts — all in real time. Every closing you do shows up here.",
+    icon: TrendingUp,
+    preferBelow: true,
+  },
+  {
+    tourId: "agent-referral-card",
+    page: "/agent-dashboard",
+    title: "Referral Income Program",
+    body: "Earn $15 for every homeowner client who stays subscribed for 4+ months. No invoicing, no tracking — it's deposited automatically.",
+    icon: Star,
+    preferBelow: true,
+  },
+  {
+    tourId: "agent-referral-link",
+    page: "/agent-dashboard",
+    title: "Your Unique Referral Link",
+    body: "Share this link at closings or by text/email. When clients sign up through your link, they're automatically tied to your account — you don't lift another finger.",
+    icon: ArrowRight,
+    preferBelow: true,
+  },
+  {
+    tourId: "agent-handoffs",
+    page: "/agent-dashboard",
+    title: "Home Handoff Packages",
+    body: "Set up a client's home record at closing in 30 seconds. Upload the inspection report, AI extracts every system and deficiency, and the buyer claims their record with one tap.",
+    icon: Home,
+    preferBelow: false,
+  },
+  {
+    tourId: "agent-payout",
+    page: "/agent-dashboard",
+    title: "Automatic Payouts",
+    body: "Connect your bank account once. After that, every $15 referral commission is deposited automatically — no invoices, no chasing, no extra work.",
+    icon: Settings,
+    preferBelow: false,
+  },
+  {
+    tourId: "agent-referrals",
+    page: "/agent-dashboard",
+    title: "Track Every Referral",
+    body: "See every client you've referred, their subscription status, and exactly how close each one is to triggering your $15 payout.",
+    icon: Users,
+    preferBelow: false,
+  },
+];
+
+export function AgentGuidedTour() {
+  const { user } = useAuth();
+  const typedUser = user as User | undefined;
+  const [location, setLocation] = useLocation();
+
+  const [agentTourState, setAgentTourStateRaw] = useState<TourState>({ phase: "inactive", stepIndex: 0 });
+  const [hasInitialized, setHasInitialized] = useState(false);
+  const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const findTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const navigatedForStepRef = useRef<number | null>(null);
+  const setLocationRef = useRef(setLocation);
+  useEffect(() => { setLocationRef.current = setLocation; }, [setLocation]);
+
+  const setAgentTourState = useCallback((state: TourState) => {
+    setAgentTourStateRaw(state);
+    localStorage.setItem(AGENT_TOUR_KEY, JSON.stringify(state));
+  }, []);
+
+  useEffect(() => {
+    if (!typedUser || typedUser.role !== "agent") {
+      setHasInitialized(true);
+      return;
+    }
+    const saved = localStorage.getItem(AGENT_TOUR_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as TourState;
+        if (parsed.phase === "tour" || parsed.phase === "welcome") {
+          setAgentTourStateRaw(parsed);
+        }
+      } catch {}
+    }
+    setHasInitialized(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typedUser]);
+
+  const currentStep = agentTourState.phase === "tour" ? AGENT_STEPS[agentTourState.stepIndex] : null;
+  const currentStepRef = useRef(currentStep);
+  useEffect(() => { currentStepRef.current = currentStep; }, [currentStep]);
+
+  const findElement = useCallback(() => {
+    const step = currentStepRef.current;
+    if (!step) return false;
+    const el = document.querySelector(`[data-tour-id="${step.tourId}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => {
+        const el2 = document.querySelector(`[data-tour-id="${step.tourId}"]`);
+        if (el2) setTargetRect(el2.getBoundingClientRect());
+      }, 350);
+      return true;
+    }
+    return false;
+  }, []);
+
+  useEffect(() => {
+    if (agentTourState.phase !== "tour" || !currentStep) {
+      setTargetRect(null);
+      return;
+    }
+    if (findTimerRef.current) clearTimeout(findTimerRef.current);
+    if (pollRef.current) clearInterval(pollRef.current);
+
+    const needsNavigation = location !== currentStep.page;
+    if (needsNavigation && navigatedForStepRef.current !== agentTourState.stepIndex) {
+      navigatedForStepRef.current = agentTourState.stepIndex;
+      setTargetRect(null);
+      setIsNavigating(true);
+      setLocationRef.current(currentStep.page);
+      let attempts = 0;
+      pollRef.current = setInterval(() => {
+        const found = findElement();
+        attempts++;
+        if (found || attempts > 30) {
+          clearInterval(pollRef.current!);
+          pollRef.current = null;
+          setIsNavigating(false);
+        }
+      }, 200);
+    } else if (!needsNavigation) {
+      navigatedForStepRef.current = null;
+      setIsNavigating(false);
+      findTimerRef.current = setTimeout(findElement, 300);
+    }
+    return () => {
+      if (findTimerRef.current) clearTimeout(findTimerRef.current);
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agentTourState.phase, agentTourState.stepIndex]);
+
+  useEffect(() => {
+    if (!currentStep || agentTourState.phase !== "tour") return;
+    const update = () => {
+      const el = document.querySelector(`[data-tour-id="${currentStep.tourId}"]`);
+      if (el) setTargetRect(el.getBoundingClientRect());
+    };
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, { passive: true, capture: true });
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, { capture: true });
+    };
+  }, [agentTourState.phase, currentStep]);
+
+  const goNext = useCallback(() => {
+    const nextIndex = agentTourState.stepIndex + 1;
+    if (nextIndex < AGENT_STEPS.length) {
+      setTargetRect(null);
+      setAgentTourState({ phase: "tour", stepIndex: nextIndex });
+    } else {
+      setAgentTourState({ phase: "inactive", stepIndex: 0 });
+      setLocation("/agent-onboarding");
+    }
+  }, [agentTourState.stepIndex, setAgentTourState, setLocation]);
+
+  const skipTour = useCallback(() => {
+    setAgentTourState({ phase: "inactive", stepIndex: 0 });
+  }, [setAgentTourState]);
+
+  const startTour = useCallback(() => {
+    setAgentTourState({ phase: "tour", stepIndex: 0 });
+    setTargetRect(null);
+  }, [setAgentTourState]);
+
+  const continueTour = useCallback(() => {
+    setAgentTourState({ ...agentTourState, phase: "tour" });
+  }, [agentTourState, setAgentTourState]);
+
+  if (!hasInitialized) return null;
+  if (!typedUser || typedUser.role !== "agent") return null;
+  if (agentTourState.phase === "inactive") return null;
+
+  if (agentTourState.phase === "welcome") {
+    return createPortal(
+      <div
+        className="fixed inset-0 z-[10010] flex items-center justify-center p-4"
+        style={{ background: "rgba(0,0,0,0.75)" }}
+      >
+        <div
+          className="relative rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center"
+          style={{ background: "linear-gradient(135deg, #09694A 0%, #079669 100%)" }}
+        >
+          <div className="flex justify-center mb-4">
+            <img src={logoPath} alt="MyHomeBase™" className="h-14 object-contain" />
+          </div>
+          <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "rgba(255,255,255,0.15)" }}>
+            <Sparkles className="w-6 h-6 text-white" />
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-2">Welcome, Agent</h1>
+          <p className="text-sm mb-6 leading-relaxed" style={{ color: "#D4EBDE" }}>
+            Let us show you around your Agent Hub. It only takes about 2 minutes.
+          </p>
+          <Button
+            onClick={startTour}
+            className="w-full mb-3 font-bold py-3 text-base"
+            style={{ background: "linear-gradient(135deg, #10b981, #059669)", color: "white" }}
+          >
+            Show Me Around
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
+          <button
+            onClick={skipTour}
+            className="w-full text-sm transition-colors"
+            style={{ color: "#D4EBDE" }}
+          >
+            Skip Tour
+          </button>
+        </div>
+      </div>,
+      document.body
+    );
+  }
+
+  if (agentTourState.phase === "tour" && currentStep) {
+    const PAD = 10;
+    const isOnWrongPage = location !== currentStep.page;
+    const Icon = currentStep.icon;
+
+    let tooltipStyle: React.CSSProperties = {};
+    let arrowFrom = { x: 0, y: 0 };
+    let arrowTo = { x: 0, y: 0 };
+    let showArrow = false;
+
+    if (targetRect) {
+      tooltipStyle = computeTooltipStyle(targetRect, currentStep.preferBelow !== false);
+      const tleft = (tooltipStyle.left as number) || 0;
+      const ttop = (tooltipStyle.top as number) || 0;
+      const tw = (tooltipStyle.width as number) || 320;
+      arrowFrom = { x: tleft + tw / 2, y: ttop + 110 };
+      arrowTo = {
+        x: targetRect.left + targetRect.width / 2,
+        y: targetRect.top + targetRect.height / 2,
+      };
+      showArrow = true;
+    } else {
+      tooltipStyle = { top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 320 };
+    }
+
+    return createPortal(
+      <>
+        <div
+          className="fixed inset-0 z-[9998]"
+          style={{ pointerEvents: "none", background: targetRect ? "transparent" : "rgba(0,0,0,0.5)" }}
+        />
+        {targetRect && !isOnWrongPage && (
+          <div
+            style={{
+              position: "fixed",
+              top: targetRect.top - PAD,
+              left: targetRect.left - PAD,
+              width: targetRect.width + PAD * 2,
+              height: targetRect.height + PAD * 2,
+              boxShadow: "0 0 0 9999px rgba(0,0,0,0.62)",
+              borderRadius: 10,
+              zIndex: 9999,
+              pointerEvents: "none",
+              transition: "all 0.35s cubic-bezier(0.4,0,0.2,1)",
+            }}
+          />
+        )}
+        {showArrow && !isOnWrongPage && (
+          <svg
+            style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", zIndex: 10001, pointerEvents: "none" }}
+          >
+            <defs>
+              <marker id="at-arrowhead" markerWidth="8" markerHeight="6" refX="6" refY="3" orient="auto">
+                <polygon points="0 0, 8 3, 0 6" fill="#079669" />
+              </marker>
+            </defs>
+            <line
+              x1={arrowFrom.x} y1={arrowFrom.y}
+              x2={arrowTo.x} y2={arrowTo.y}
+              stroke="#079669"
+              strokeWidth="2.5"
+              strokeDasharray="6 4"
+              markerEnd="url(#at-arrowhead)"
+            />
+          </svg>
+        )}
+        <div style={{ position: "fixed", zIndex: 10002, ...tooltipStyle }}>
+          <div
+            className="rounded-2xl shadow-2xl overflow-hidden"
+            style={{ background: "linear-gradient(135deg, #09694A 0%, #079669 100%)" }}
+          >
+            <div className="flex items-center justify-between px-4 pt-4 pb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.15)" }}>
+                  <Icon className="w-4 h-4" style={{ color: "#D4EBDE" }} />
+                </div>
+                <span className="text-xs font-medium" style={{ color: "#D4EBDE" }}>
+                  Step {agentTourState.stepIndex + 1} of {AGENT_STEPS.length}
+                </span>
+              </div>
+              <button onClick={skipTour} style={{ color: "#D4EBDE" }} className="hover:text-white transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="px-4 pb-2">
+              <div className="h-1 rounded-full" style={{ background: "rgba(255,255,255,0.15)" }}>
+                <div
+                  className="h-1 rounded-full transition-all duration-300"
+                  style={{
+                    background: "linear-gradient(90deg, #D4EBDE, #6ee7b7)",
+                    width: `${((agentTourState.stepIndex + 1) / AGENT_STEPS.length) * 100}%`,
+                  }}
+                />
+              </div>
+            </div>
+            <div className="px-4 pb-4">
+              <h3 className="text-white font-bold text-base mb-1">{currentStep.title}</h3>
+              <p className="text-sm leading-relaxed mb-4" style={{ color: "#D4EBDE" }}>{currentStep.body}</p>
+              {isNavigating && (
+                <p className="text-xs mb-3 animate-pulse" style={{ color: "#D4EBDE" }}>Navigating…</p>
+              )}
+              <div className="flex justify-between items-center">
+                <button
+                  onClick={skipTour}
+                  className="text-xs transition-colors hover:text-white"
+                  style={{ color: "#D4EBDE" }}
+                >
+                  Skip tour
+                </button>
+                <Button
+                  onClick={goNext}
+                  size="sm"
+                  className="font-semibold text-sm"
+                  style={{ background: "linear-gradient(135deg, #10b981, #059669)", color: "white" }}
+                >
+                  {agentTourState.stepIndex < AGENT_STEPS.length - 1 ? (
+                    <>Next <ChevronRight className="w-3.5 h-3.5 ml-1" /></>
+                  ) : (
+                    "Get Started →"
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+        {isOnWrongPage && !isNavigating && (
+          <div className="fixed top-0 left-0 right-0 z-[9990] flex items-center justify-between px-4 py-3 shadow-lg" style={{ background: "#09694A" }}>
+            <div className="flex items-center gap-2 text-white text-sm font-medium">
+              <Sparkles className="w-4 h-4 flex-shrink-0" style={{ color: "#D4EBDE" }} />
+              <span>Continue your Agent Hub tour</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" onClick={continueTour} className="text-xs font-semibold" style={{ background: "#10b981", color: "white" }}>
+                Continue <ChevronRight className="w-3 h-3 ml-1" />
+              </Button>
+              <button onClick={skipTour} style={{ color: "#D4EBDE" }} className="hover:text-white transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </>,
+      document.body
+    );
+  }
+
+  return null;
+}
