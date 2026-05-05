@@ -44,10 +44,10 @@ type StatusType = "green" | "yellow" | "red" | "unknown";
 const ZONE_LABELS: Record<ZoneKey, string> = {
   roof: "Roof",
   attic: "Attic",
-  bedroom: "Bedrooms",
-  bathroom: "Bathrooms",
+  bedroom: "Beds",
+  bathroom: "Baths",
   kitchen: "Kitchen",
-  living: "Living Room",
+  living: "Living",
   utility: "Utility",
   garage: "Garage",
   basement: "Basement",
@@ -387,6 +387,9 @@ function ZoneCard({ zone, items, selected, onClick }: {
         letterSpacing: "0.04em",
         textTransform: "uppercase",
         marginBottom: "6px",
+        lineHeight: "1.25",
+        wordBreak: "break-word",
+        overflowWrap: "break-word",
       }}>
         {ZONE_LABELS[zone]}
       </div>
