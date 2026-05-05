@@ -29,7 +29,8 @@ import {
   MessageSquare,
   CheckCircle,
   AlertCircle,
-  Plus
+  Plus,
+  Sparkles
 } from "lucide-react";
 import type { User as UserType, Proposal, ContractorAppointment } from "@shared/schema";
 import { Link } from "wouter";
@@ -236,349 +237,247 @@ export default function ContractorDashboard() {
   const firstName = typedUser.firstName || typedUser.email?.split('@')[0] || 'Contractor';
   
   return (
-    <div className="min-h-screen" style={{ background: '#ffffff' }}>
+    <div>
 
       {/* ── DASH HEADER ─────────────────────────── */}
-      <div className="dash-header" style={{ background: '#1560A2' }}>
-        <span className="dash-eyebrow" style={{ color: '#AFD6F9' }}>Contractor</span>
-        <div className="dash-title">Jobs & Proposals</div>
+      <div className="dash-header" style={{ background: 'linear-gradient(135deg, #0C3460 0%, #1560A2 100%)' }}>
+        <span className="dash-eyebrow" style={{ color: '#AFD6F9' }}>CONTRACTOR</span>
+        <div className="dash-title" data-testid="text-welcome-message">Welcome back, {firstName}</div>
         <div className="dash-subtitle">Manage your work and grow your client base</div>
         <div className="dash-chips">
           <div className="dash-chip">
-            <div className={`dash-chip-num${totalEarnings > 0 ? ' good' : ''}`}>${totalEarnings.toLocaleString()}</div>
+            <div className={`dash-chip-num${totalEarnings > 0 ? ' good' : ''}`} data-testid="text-monthly-earnings">${totalEarnings.toLocaleString()}</div>
             <div className="dash-chip-label">This Month</div>
           </div>
           <div className="dash-chip">
-            <div className={`dash-chip-num${acceptedProposals.length > 0 ? ' good' : ''}`}>{acceptedProposals.length}</div>
+            <div className={`dash-chip-num${acceptedProposals.length > 0 ? ' good' : ''}`} data-testid="text-active-jobs">{acceptedProposals.length}</div>
             <div className="dash-chip-label">Active Jobs</div>
           </div>
           <div className="dash-chip">
-            <div className={`dash-chip-num${pendingProposals.length > 0 ? ' warn' : ''}`}>{pendingProposals.length}</div>
+            <div className={`dash-chip-num${pendingProposals.length > 0 ? ' warn' : ''}`} data-testid="text-pending-proposals">{pendingProposals.length}</div>
             <div className="dash-chip-label">Proposals</div>
+          </div>
+          <div className="dash-chip">
+            <div className={`dash-chip-num${referralCount > 0 ? ' good' : ''}`} data-testid="text-new-leads">{referralCount}</div>
+            <div className="dash-chip-label">New Leads</div>
           </div>
         </div>
       </div>
 
       {isInTrial && <ContractorTrialBanner />}
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-12 gap-6">
-          {/* Left column / sidebar */}
-          <aside className="col-span-12 lg:col-span-3">
-            <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: '1px solid #dbeafe' }}>
-              <h3 className="text-lg font-semibold mb-3" style={{ color: '#1560A2' }} data-testid="text-overview-title">Overview</h3>
-              <ul className="space-y-3 text-sm text-slate-600">
-                <li className="flex items-center gap-3">
-                  <DollarSign size={18} className="text-[#1560A2]" />
-                  <div>
-                    <div className="text-xs text-slate-400">This month</div>
-                    <div className="font-medium" data-testid="text-monthly-earnings">${totalEarnings.toLocaleString()}</div>
-                  </div>
-                </li>
-                <li className="flex items-center gap-3">
-                  <Users size={18} className="text-[#079669]" />
-                  <div>
-                    <div className="text-xs text-slate-400">New leads</div>
-                    <div className="font-medium" data-testid="text-new-leads">{referralCount}</div>
-                  </div>
-                </li>
-                <li className="flex items-center gap-3">
-                  <FileText size={18} className="text-amber-500" />
-                  <div>
-                    <div className="text-xs text-slate-400">Proposals</div>
-                    <div className="font-medium" data-testid="text-pending-proposals">{pendingProposals.length} pending</div>
-                  </div>
-                </li>
-              </ul>
 
-              <div className="mt-6 pt-4 border-t border-slate-100">
-                <Button 
-                  onClick={() => setIsCreateDialogOpen(true)}
-                  className="w-full px-4 py-2 bg-gradient-to-r from-[#079669] to-[#07966f] text-white rounded-lg font-semibold hover:opacity-90"
-                  data-testid="button-create-proposal"
-                >
-                  <Plus size={16} className="mr-2" />
-                  Create Proposal
-                </Button>
-              </div>
+      <div className="dash-body">
+
+        {/* AI Business Coach */}
+        <Link href="/ai-contractor-help" className="ai-coach-card" style={{ background: 'linear-gradient(135deg, #0C3460, #1560A2)' }}>
+          <div className="ai-coach-icon"><Sparkles size={18} /></div>
+          <div className="ai-coach-copy">
+            <div className="ai-coach-eyebrow" style={{ color: '#AFD6F9' }}>AI Business Coach</div>
+            <div className="ai-coach-title">Grow your contractor business</div>
+            <div className="ai-coach-sub">Personalized tips for your trade</div>
+          </div>
+          <button className="ai-coach-btn" onClick={e => e.preventDefault()}>Ask AI →</button>
+        </Link>
+
+        {/* Quick Actions */}
+        <span className="dash-section-label">Quick Actions</span>
+
+        <button
+          className="action-row"
+          style={{ width: '100%', textAlign: 'left', cursor: 'pointer', background: 'white', fontFamily: 'inherit' }}
+          onClick={() => setIsCreateDialogOpen(true)}
+          data-testid="button-create-proposal"
+        >
+          <div className="action-icon" style={{ background: '#EAF4FD', color: '#1560A2' }}><Plus size={18} /></div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="action-title">Create Proposal</div>
+            <div className="action-sub">Send a new proposal to a client</div>
+          </div>
+          <span className="action-cta" style={{ color: '#1560A2' }}>Create →</span>
+        </button>
+
+        <Link href="/crm" className="action-row" style={{ textDecoration: 'none' }} data-testid="button-open-crm">
+          <div className="action-icon" style={{ background: '#EAF4FD', color: '#1560A2' }}><Briefcase size={18} /></div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="action-title">Open CRM</div>
+            <div className="action-sub">Manage clients and leads</div>
+          </div>
+          <span className="action-cta" style={{ color: '#1560A2' }}>Open →</span>
+        </Link>
+
+        <Link href="/messages" className="action-row" style={{ textDecoration: 'none' }} data-testid="button-message-client">
+          <div className="action-icon" style={{ background: '#EAF4FD', color: '#1560A2' }}><MessageSquare size={18} /></div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="action-title">Message Client</div>
+            <div className="action-sub">Chat with homeowners</div>
+          </div>
+          <span className="action-cta" style={{ color: '#1560A2' }}>Go →</span>
+        </Link>
+
+        <Link href="/calendar" className="action-row" style={{ textDecoration: 'none' }} data-testid="button-schedule-visit">
+          <div className="action-icon" style={{ background: '#EAF4FD', color: '#1560A2' }}><Calendar size={18} /></div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="action-title">Schedule Visit</div>
+            <div className="action-sub">
+              {nextAppointment
+                ? `Next: ${new Date(nextAppointment.scheduledDateTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                : 'No upcoming appointments'}
             </div>
+          </div>
+          <span className="action-cta" style={{ color: '#1560A2' }}>View →</span>
+        </Link>
 
-            <div className="mt-6">
-              <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: '1px solid #dbeafe' }}>
-                <h4 className="text-sm font-semibold mb-2" style={{ color: '#1560A2' }}>Quick Actions</h4>
-                <div className="grid grid-cols-1 gap-2">
-                  <Link href="/crm">
-                    <button 
-                      className="w-full text-sm text-left px-3 py-2 rounded-lg bg-gradient-to-r from-[#EEEDFE] to-[#E6F1FB] hover:from-[#E6E3FC] hover:to-[#D5E9F8] flex items-center gap-2 border border-[#CECBF6]"
-                      data-testid="button-open-crm"
-                    >
-                      <Briefcase size={16} className="text-[#3C258E]" />
-                      <span className="font-medium text-[#3C258E]">Open CRM</span>
-                    </button>
-                  </Link>
-                  <Link href="/messages">
-                    <button 
-                      className="w-full text-sm text-left px-3 py-2 rounded-lg hover:bg-slate-50 flex items-center gap-2"
-                      data-testid="button-message-client"
-                    >
-                      <MessageSquare size={16} className="text-[#1560A2]" />
-                      Message Client
-                    </button>
-                  </Link>
-                  <Link href="/calendar">
-                    <button 
-                      className="w-full text-sm text-left px-3 py-2 rounded-lg hover:bg-slate-50 flex items-center gap-2"
-                      data-testid="button-schedule-visit"
-                    >
-                      <Calendar size={16} className="text-[#1560A2]" />
-                      Schedule Visit
-                    </button>
-                  </Link>
-                  <Link href="/service-records">
-                    <button 
-                      className="w-full text-sm text-left px-3 py-2 rounded-lg hover:bg-slate-50 flex items-center gap-2"
-                      data-testid="button-mark-complete"
-                    >
-                      <CheckCircle size={16} className="text-[#079669]" />
-                      Mark Job Complete
-                    </button>
-                  </Link>
-                </div>
-              </div>
-            </div>
+        <Link href="/service-records" className="action-row" style={{ textDecoration: 'none' }} data-testid="button-mark-complete">
+          <div className="action-icon" style={{ background: '#F0FAF4', color: '#079669' }}><CheckCircle size={18} /></div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="action-title">Mark Job Complete</div>
+            <div className="action-sub">Log finished work to service records</div>
+          </div>
+          <span className="action-cta" style={{ color: '#079669' }}>Log →</span>
+        </Link>
 
-            {/* Connection Code Entry */}
-            <div className="mt-6">
-              <ContractorCodeEntry />
-            </div>
-          </aside>
-
-          {/* Main content */}
-          <section className="col-span-12 lg:col-span-9">
-            {/* Welcome banner */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4" style={{ border: '1px solid #dbeafe' }}>
-              <div>
-                <h2 className="text-2xl font-bold" style={{ color: '#1560A2' }} data-testid="text-welcome-message">Welcome back, {firstName}</h2>
-                <p className="mt-1" style={{ color: 'var(--blue-deep)' }}>Quick snapshot of your business. Keep doing great work — we'll handle the busywork.</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="text-xs text-slate-400">Subscription</div>
-                <div className="bg-gradient-to-r from-blue-600 to-blue-500 text-white px-3 py-2 rounded-lg font-semibold" data-testid="badge-subscription">
-                  Pro
-                </div>
-              </div>
-            </div>
-
-            {/* Metric cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: '1px solid #dbeafe' }}>
-                <div className="text-xs" style={{ color: '#4b72a0' }}>Earnings (30d)</div>
-                <div className="text-xl font-semibold mt-2" style={{ color: '#1560A2' }} data-testid="text-earnings-30d">${totalEarnings.toLocaleString()}</div>
-                <div className="text-sm mt-1" style={{ color: 'var(--blue-deep)' }}>From accepted proposals</div>
-              </div>
-
-              <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: '1px solid #dbeafe' }}>
-                <div className="text-xs" style={{ color: '#4b72a0' }}>Active Jobs</div>
-                <div className="text-xl font-semibold mt-2" style={{ color: '#1560A2' }} data-testid="text-active-jobs">{acceptedProposals.length}</div>
-                <div className="text-sm mt-1" style={{ color: 'var(--blue-deep)' }}>{upcomingAppointments.length} scheduled this week</div>
-              </div>
-
-              <div className="bg-white rounded-2xl p-5 shadow-sm" style={{ border: '1px solid #dbeafe' }}>
-                <div className="text-xs" style={{ color: '#4b72a0' }}>Avg Response Time</div>
-                <div className="text-xl font-semibold mt-2" style={{ color: '#1560A2' }} data-testid="text-response-time">2h 12m</div>
-                <div className="text-sm mt-1" style={{ color: 'var(--blue-deep)' }}>Keep response rate high to win more leads</div>
-              </div>
-            </div>
-
-            {/* Referral / Progress Card */}
-            <div className="bg-gradient-to-r from-emerald-50 via-white to-emerald-50 rounded-2xl p-6 shadow-sm mb-6 border border-emerald-100">
-              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-lg bg-[#F0FAF4]">
-                    <Gift size={22} className="text-[#09694A]" />
-                  </div>
-                  <div>
-                    <div className="text-sm text-slate-600 font-semibold">Get your subscription FREE</div>
-                    <div className="mt-1 text-slate-700 font-bold text-lg" data-testid="text-referrals-remaining">
-                      {referralsRemaining === 0 
-                        ? "🎉 You've earned a free subscription!" 
-                        : `Just ${referralsRemaining} referral${referralsRemaining !== 1 ? 's' : ''} to go`}
-                    </div>
-                    <div className="text-xs text-slate-500 mt-1">Share your referral code to earn $1 per signup.</div>
-                  </div>
-                </div>
-                <div className="w-full md:w-56">
-                  <div className="flex justify-between text-xs text-slate-500 mb-1">
-                    <span>{referralCount} referrals</span>
-                    <span>{referralsNeeded} needed</span>
-                  </div>
-                  <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
-                    <div 
-                      className="h-3 rounded-full bg-[#079669] transition-all duration-500" 
-                      style={{ width: `${progressPercentage}%` }}
-                      data-testid="progress-referrals"
-                    ></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Proposals + Calendar row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-              <div className="bg-white rounded-2xl p-6 shadow-sm" style={{ border: '1px solid #dbeafe' }}>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold" style={{ color: '#1560A2' }}>Proposals</h3>
-                    <p className="text-sm text-slate-500 mt-1">
-                      {proposals.length === 0 
-                        ? "No proposals yet. Create your first proposal to get started." 
-                        : `${pendingProposals.length} pending, ${acceptedProposals.length} accepted`}
-                    </p>
-                  </div>
-                  <Button 
-                    onClick={() => setIsCreateDialogOpen(true)}
-                    className="text-sm bg-gradient-to-r from-blue-600 to-blue-500 text-white px-3 py-2 rounded-lg hover:opacity-90"
-                    data-testid="button-new-proposal"
-                  >
-                    New Proposal
-                  </Button>
-                </div>
-
-                {proposals.length > 0 && (
-                  <div className="mt-4 border-t pt-4 text-sm text-slate-600 space-y-2">
-                    {proposals.slice(0, 3).map((proposal) => (
-                      <div key={proposal.id} className="py-2 flex justify-between items-center">
-                        <div>
-                          <div className="font-medium">{proposal.title}</div>
-                          <div className="text-xs text-slate-400">{proposal.status} • ${parseFloat(proposal.estimatedCost || '0').toLocaleString()}</div>
-                        </div>
-                        <div className={`text-xs px-2 py-1 rounded ${
-                          proposal.status === 'accepted' ? 'bg-[#F0FAF4] text-[#09694A]' :
-                          proposal.status === 'sent' ? 'bg-[#E6F1FB] text-[#1560A2]' :
-                          proposal.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                          'bg-slate-100 text-slate-600'
-                        }`}>
-                          {proposal.status}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="bg-white rounded-2xl p-6 shadow-sm" style={{ border: '1px solid #dbeafe' }}>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold" style={{ color: '#1560A2' }}>Calendar</h3>
-                    <p className="text-sm text-slate-500 mt-1">
-                      {nextAppointment 
-                        ? `Next: ${new Date(nextAppointment.scheduledDateTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} • ${new Date(nextAppointment.scheduledDateTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
-                        : 'No upcoming appointments'}
-                    </p>
-                  </div>
-                  <Link href="/calendar">
-                    <Button 
-                      variant="outline" 
-                      className="text-sm px-3 py-2 rounded-lg border"
-                      data-testid="button-view-calendar"
-                    >
-                      View Calendar
-                    </Button>
-                  </Link>
-                </div>
-
-                {upcomingAppointments.length > 0 && (
-                  <div className="mt-4">
-                    {upcomingAppointments.slice(0, 2).map((appointment) => (
-                      <div key={appointment.id} className="mb-2">
-                        <div className="text-sm text-slate-600">
-                          {new Date(appointment.scheduledDateTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        </div>
-                        <div className="mt-1 bg-slate-50 p-3 rounded-lg text-sm">
-                          {appointment.serviceType || 'Service appointment'} • {new Date(appointment.scheduledDateTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} • {appointment.estimatedDuration || 2} hrs
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {upcomingAppointments.length === 0 && (
-                  <div className="mt-4 text-center py-6 text-slate-400">
-                    <Calendar className="mx-auto mb-2" size={24} />
-                    <p className="text-sm">No upcoming appointments</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Jobs list */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm mb-6" style={{ border: '1px solid #dbeafe' }}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold" style={{ color: '#1560A2' }}>Jobs</h3>
-                <Link href="/crm">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    data-testid="button-view-all-jobs"
-                  >
-                    View All
-                  </Button>
-                </Link>
-              </div>
-              
-              {acceptedProposals.length > 0 ? (
-                <div className="grid gap-3">
-                  {acceptedProposals.slice(0, 3).map((job) => (
-                    <div key={job.id} className="p-4 border rounded-lg flex items-center justify-between hover:bg-slate-50 transition-colors">
-                      <div>
-                        <div className="font-medium">{job.title}</div>
-                        <div className="text-xs text-slate-500 mt-1">
-                          {job.estimatedDuration || 'TBD'} • ${parseFloat(job.estimatedCost || '0').toLocaleString()}
-                        </div>
-                      </div>
-                      <div className="text-sm text-[#079669] flex items-center gap-1">
-                        <CheckCircle size={14} />
-                        Scheduled
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-slate-400">
-                  <Briefcase className="mx-auto mb-2" size={32} />
-                  <p>No active jobs yet</p>
-                  <p className="text-sm mt-1">Create and send proposals to get started</p>
-                </div>
-              )}
-
-              {pendingProposals.length > 0 && (
-                <div className="mt-4 pt-4 border-t">
-                  <h4 className="text-sm font-medium text-slate-600 mb-3">Pending Attention</h4>
-                  {pendingProposals.slice(0, 2).map((proposal) => (
-                    <div key={proposal.id} className="p-4 border rounded-lg flex items-center justify-between mb-2 hover:bg-slate-50 transition-colors">
-                      <div>
-                        <div className="font-medium">{proposal.title}</div>
-                        <div className="text-xs text-slate-500 mt-1">
-                          {proposal.status === 'draft' ? 'Draft - needs to be sent' : 'Awaiting response'} • ${parseFloat(proposal.estimatedCost || '0').toLocaleString()}
-                        </div>
-                      </div>
-                      <div className="text-sm text-amber-500 flex items-center gap-1">
-                        <AlertCircle size={14} />
-                        Needs Attention
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Full Proposals Section */}
-            <div className="mb-8">
-              <Proposals contractorId={typedUser.id} />
-            </div>
-
-          </section>
+        {/* Homeowner Connection */}
+        <span className="dash-section-label" style={{ marginTop: 8 }}>Homeowner Connection</span>
+        <div className="dash-light-card">
+          <ContractorCodeEntry />
         </div>
-      </main>
+
+        {/* Referral Program */}
+        <span className="dash-section-label" style={{ marginTop: 4 }}>Referral Program</span>
+        <div className="dash-light-card">
+          <div className="dash-light-card-row">
+            <div className="dash-light-card-icon" style={{ background: '#F0FAF4', color: '#09694A' }}>
+              <Gift size={18} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="dash-light-card-title" data-testid="text-referrals-remaining">
+                {referralsRemaining === 0 ? "You've earned a free subscription!" : `Just ${referralsRemaining} referral${referralsRemaining !== 1 ? 's' : ''} to go`}
+              </div>
+              <div className="dash-light-card-sub">Get your subscription FREE</div>
+            </div>
+            <Link href="/contractor-referral">
+              <span className="dash-light-card-btn" style={{ background: '#F0FAF4', color: '#09694A' }}>Share →</span>
+            </Link>
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--gray-400)', marginBottom: 6 }}>
+              <span>{referralCount} referrals</span>
+              <span>{referralsNeeded} needed</span>
+            </div>
+            <div style={{ width: '100%', background: 'var(--gray-200)', borderRadius: 6, height: 6, overflow: 'hidden' }}>
+              <div style={{ width: `${progressPercentage}%`, height: 6, borderRadius: 6, background: '#079669', transition: 'width 0.5s' }} data-testid="progress-referrals" />
+            </div>
+          </div>
+        </div>
+
+        {/* Proposals */}
+        <span className="dash-section-label" style={{ marginTop: 4 }}>Proposals</span>
+        <div className="dash-light-card" style={{ marginBottom: 10 }}>
+          <div className="dash-light-card-row">
+            <div className="dash-light-card-icon" style={{ background: '#EAF4FD', color: '#1560A2' }}>
+              <FileText size={18} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="dash-light-card-title">
+                {proposals.length === 0 ? 'No proposals yet' : `${pendingProposals.length} pending · ${acceptedProposals.length} accepted`}
+              </div>
+              <div className="dash-light-card-sub">
+                {proposals.length === 0 ? 'Create your first proposal to get started' : `Earnings: $${totalEarnings.toLocaleString()}`}
+              </div>
+            </div>
+            <button
+              className="dash-light-card-btn"
+              style={{ background: '#EAF4FD', color: '#1560A2' }}
+              onClick={() => setIsCreateDialogOpen(true)}
+              data-testid="button-new-proposal"
+            >New →</button>
+          </div>
+          {proposals.length > 0 && (
+            <div style={{ marginTop: 12, borderTop: '1px solid var(--gray-200)', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {proposals.slice(0, 3).map(proposal => (
+                <div key={proposal.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{proposal.title}</div>
+                    <div style={{ fontSize: 11, color: 'var(--gray-400)', marginTop: 1 }}>${parseFloat(proposal.estimatedCost || '0').toLocaleString()}</div>
+                  </div>
+                  <span style={{
+                    flexShrink: 0, fontSize: 10, fontWeight: 600, borderRadius: 5, padding: '2px 8px',
+                    background: proposal.status === 'accepted' ? '#F0FAF4' : proposal.status === 'sent' ? '#EAF4FD' : proposal.status === 'rejected' ? '#FEE2E2' : '#F3F4F6',
+                    color: proposal.status === 'accepted' ? '#09694A' : proposal.status === 'sent' ? '#1560A2' : proposal.status === 'rejected' ? '#DC2626' : '#6B7280',
+                    textTransform: 'uppercase',
+                  }}>{proposal.status}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Calendar */}
+        <span className="dash-section-label" style={{ marginTop: 4 }}>Calendar</span>
+        <div className="dash-light-card" style={{ marginBottom: 10 }}>
+          <div className="dash-light-card-row">
+            <div className="dash-light-card-icon" style={{ background: '#EAF4FD', color: '#1560A2' }}>
+              <Calendar size={18} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="dash-light-card-title">
+                {nextAppointment
+                  ? `${new Date(nextAppointment.scheduledDateTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${new Date(nextAppointment.scheduledDateTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
+                  : 'No upcoming appointments'}
+              </div>
+              <div className="dash-light-card-sub">{upcomingAppointments.length} upcoming this week</div>
+            </div>
+            <Link href="/calendar">
+              <span className="dash-light-card-btn" style={{ background: '#EAF4FD', color: '#1560A2' }} data-testid="button-view-calendar">View →</span>
+            </Link>
+          </div>
+          {upcomingAppointments.length > 0 && (
+            <div style={{ marginTop: 12, borderTop: '1px solid var(--gray-200)', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {upcomingAppointments.slice(0, 2).map(appointment => (
+                <div key={appointment.id} style={{ background: 'var(--gray-100)', borderRadius: 8, padding: '8px 12px' }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#111827' }}>{appointment.serviceType || 'Service appointment'}</div>
+                  <div style={{ fontSize: 11, color: 'var(--gray-400)', marginTop: 2 }}>
+                    {new Date(appointment.scheduledDateTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · {new Date(appointment.scheduledDateTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} · {appointment.estimatedDuration || 2} hrs
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Active Jobs */}
+        <span className="dash-section-label" style={{ marginTop: 4 }}>Active Jobs</span>
+        {acceptedProposals.length > 0 ? (
+          acceptedProposals.slice(0, 3).map(job => (
+            <div key={job.id} className="dash-light-card" style={{ marginBottom: 10 }}>
+              <div className="dash-light-card-row">
+                <div className="dash-light-card-icon" style={{ background: '#F0FAF4', color: '#09694A' }}>
+                  <CheckCircle size={18} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="dash-light-card-title">{job.title}</div>
+                  <div className="dash-light-card-sub">{job.estimatedDuration || 'TBD'} · ${parseFloat(job.estimatedCost || '0').toLocaleString()}</div>
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 600, color: '#079669', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                  <CheckCircle size={12} /> Scheduled
+                </span>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="dash-light-card" style={{ textAlign: 'center', padding: '24px 14px', marginBottom: 10 }}>
+            <Briefcase size={28} style={{ color: 'var(--gray-400)', margin: '0 auto 8px', display: 'block' }} />
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gray-600)' }}>No active jobs yet</div>
+            <div style={{ fontSize: 12, color: 'var(--gray-400)', marginTop: 4 }}>Create and send proposals to get started</div>
+          </div>
+        )}
+
+        {/* Full Proposals Section */}
+        <div style={{ marginBottom: 16 }}>
+          <Proposals contractorId={typedUser.id} />
+        </div>
+
+      </div>
 
       {/* Create Proposal Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {

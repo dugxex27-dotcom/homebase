@@ -1,11 +1,8 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useAuth } from "@/hooks/useAuth";
-import { Users, DollarSign, TrendingUp, Copy, Share2, CheckCircle, Clock, XCircle, AlertCircle, ArrowRight, CreditCard, ExternalLink, Loader2 } from "lucide-react";
+import { Users, DollarSign, TrendingUp, CheckCircle, Clock, XCircle, AlertCircle, ArrowRight, CreditCard } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import QRCode from "qrcode";
@@ -221,11 +218,11 @@ export default function AgentDashboard() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: '#ffffff' }}>
+    <div>
 
       {/* ── DASH HEADER ─────────────────────────── */}
-      <div className="dash-header" style={{ background: '#09694A' }}>
-        <span className="dash-eyebrow" style={{ color: '#D4EBDE' }}>Real Estate Agent</span>
+      <div className="dash-header" style={{ background: 'linear-gradient(135deg, #09694A 0%, #079669 100%)' }}>
+        <span className="dash-eyebrow" style={{ color: '#D4EBDE' }}>REAL ESTATE AGENT</span>
         <div className="dash-title">Agent Dashboard</div>
         <div className="dash-subtitle">Track your referrals and earnings</div>
         <div className="dash-chips">
@@ -235,366 +232,264 @@ export default function AgentDashboard() {
           </div>
           <div className="dash-chip">
             <div className={`dash-chip-num${(stats?.activeReferrals || 0) > 0 ? ' good' : ''}`}>{stats?.activeReferrals || 0}</div>
-            <div className="dash-chip-label">Active Subscribers</div>
+            <div className="dash-chip-label">Active</div>
           </div>
-          <div className="dash-chip dash-chip-earnings">
-            <div>
-              <div className={`dash-chip-num${(stats?.totalEarnings || 0) > 0 ? ' good' : ''}`}>${(stats?.totalEarnings || 0).toFixed(2)}</div>
-              <div className="dash-chip-label">Total Earnings</div>
-            </div>
-            <div className="dash-chip-divider" />
-            <div>
-              <div className={`dash-chip-num${(stats?.pendingEarnings || 0) > 0 ? ' warn' : ''}`}>${(stats?.pendingEarnings || 0).toFixed(2)}</div>
-              <div className="dash-chip-label">Pending Earnings</div>
-              {stats?.nextPayoutDate && (
-                <div className="dash-chip-sublabel">
-                  Est. {new Date(stats.nextPayoutDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                </div>
-              )}
-            </div>
+          <div className="dash-chip">
+            <div className={`dash-chip-num${(stats?.totalEarnings || 0) > 0 ? ' good' : ''}`}>${(stats?.totalEarnings || 0).toFixed(0)}</div>
+            <div className="dash-chip-label">Total Earned</div>
+          </div>
+          <div className="dash-chip">
+            <div className={`dash-chip-num${(stats?.pendingEarnings || 0) > 0 ? ' warn' : ''}`}>${(stats?.pendingEarnings || 0).toFixed(0)}</div>
+            <div className="dash-chip-label">Pending</div>
           </div>
         </div>
       </div>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="dash-body">
 
-        {/* Verification Status Banner */}
+        {/* Verification Banner */}
         {verificationStatus?.verificationStatus !== 'approved' && (
-          <Alert className="mb-6 border-yellow-200 bg-yellow-50">
-            <AlertCircle className="h-4 w-4 text-yellow-600" />
-            <AlertTitle className="text-yellow-800">Verification Required</AlertTitle>
-            <AlertDescription className="text-yellow-700">
-              {verificationStatus?.verificationStatus === 'pending_review' ? (
-                <span>Your verification is under review. You'll be able to earn commissions once approved.</span>
-              ) : verificationStatus?.verificationStatus === 'rejected' || verificationStatus?.verificationStatus === 'resubmit_required' ? (
-                <span>Your verification was rejected. Please resubmit your information.</span>
-              ) : (
-                <span>You must verify your real estate license to start earning referral commissions.</span>
-              )}
-              <Link href="/agent-account">
-                <Button variant="link" className="h-auto p-0 ml-2 text-yellow-800 hover:text-yellow-900">
-                  {verificationStatus?.verificationStatus === 'pending_review' ? 'View Status' : 'Get Verified'}
-                  <ArrowRight className="w-4 h-4 ml-1" />
-                </Button>
-              </Link>
-            </AlertDescription>
-          </Alert>
+          <div style={{ background: '#FEF9C3', border: '0.5px solid #FCD34D', borderRadius: 12, padding: '12px 14px', marginBottom: 16, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+            <AlertCircle size={18} style={{ color: '#D97706', flexShrink: 0, marginTop: 1 }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#92400E' }}>Verification Required</div>
+              <div style={{ fontSize: 12, color: '#B45309', marginTop: 2 }}>
+                {verificationStatus?.verificationStatus === 'pending_review'
+                  ? 'Your verification is under review. You\'ll be able to earn commissions once approved.'
+                  : verificationStatus?.verificationStatus === 'rejected' || verificationStatus?.verificationStatus === 'resubmit_required'
+                    ? 'Your verification was rejected. Please resubmit your information.'
+                    : 'Verify your real estate license to start earning referral commissions.'}
+              </div>
+            </div>
+            <Link href="/agent-account">
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#09694A', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                {verificationStatus?.verificationStatus === 'pending_review' ? 'View Status →' : 'Get Verified →'}
+              </span>
+            </Link>
+          </div>
         )}
 
-        {/* Referral Link Section */}
-        <Card className="mb-8 bg-white dark:bg-gray-800 shadow rounded-2xl">
-          <CardHeader>
-            <CardTitle className="text-gray-900 dark:text-white">Your Referral Link</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex flex-wrap gap-2">
-                <input
-                  type="text"
-                  value={referralUrl}
-                  readOnly
-                  className="flex-1 min-w-0 px-3 py-2 border border-input bg-background rounded-md text-sm"
-                  data-testid="input-referral-link"
-                />
-                <div className="flex gap-2 flex-shrink-0">
-                  <Button onClick={handleCopyLink} variant="outline" data-testid="button-copy-link">
-                    <Copy className="h-4 w-4 mr-2" />
-                    Copy
-                  </Button>
-                  <Button onClick={handleShareLink} variant="outline" data-testid="button-share-link">
-                    <Share2 className="h-4 w-4 mr-2" />
-                    Share
-                  </Button>
-                </div>
-              </div>
+        {/* Referral Hero Card */}
+        <Link href="/agent-referral" className="ai-coach-card" style={{ background: 'linear-gradient(135deg, #09694A, #079669)' }}>
+          <div className="ai-coach-icon"><TrendingUp size={18} /></div>
+          <div className="ai-coach-copy">
+            <div className="ai-coach-eyebrow" style={{ color: '#D4EBDE' }}>Referral Program</div>
+            <div className="ai-coach-title">Grow your referral income</div>
+            <div className="ai-coach-sub">Share your link and earn $15/referral</div>
+          </div>
+          <button className="ai-coach-btn" onClick={e => e.preventDefault()}>Share →</button>
+        </Link>
 
-              <div className="flex gap-2">
-                <Button onClick={generateQRCode} variant="secondary" data-testid="button-generate-qr">
-                  Generate QR Code
-                </Button>
-                {qrCodeUrl && (
-                  <a
-                    href={qrCodeUrl}
-                    download={`homebase-referral-${typedUser.referralCode}.png`}
-                    data-testid="link-download-qr"
-                  >
-                    <Button variant="outline">Download QR Code</Button>
-                  </a>
-                )}
-              </div>
-
-              {qrCodeUrl && (
-                <div className="flex justify-center mt-4">
-                  <img src={qrCodeUrl} alt="Referral QR Code" className="border rounded-lg p-4" />
-                </div>
-              )}
-
-              <p className="text-sm text-muted-foreground">
-                Your referral code: <span className="font-mono font-bold">{typedUser.referralCode}</span>
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Share this link with homeowners and contractors. You'll earn $15 after they maintain an active subscription for 4 consecutive months.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Home Handoffs Section */}
-        <Card className="mb-8 bg-white dark:bg-gray-800 shadow rounded-2xl">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-gray-900 dark:text-white">
-                <ArrowRight className="h-5 w-5 text-[#079669]" />
-                Home Handoff Packages
-              </span>
-              <Link href="/agent-handoff">
-                <Button size="sm" className="bg-[#079669] hover:bg-[#09694A] text-white">
-                  Manage Handoffs <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
-                </Button>
-              </Link>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Upload closing documents for new buyers and let AI extract home system and appliance data into a pre-filled home record. Send buyers a magic link to claim their record instantly.
-            </p>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="text-center p-3 bg-[#F0FAF4] dark:bg-emerald-900/20 rounded-lg">
-                <div className="text-lg font-bold text-[#079669]">1</div>
-                <div className="text-xs text-gray-500">Upload docs</div>
-              </div>
-              <div className="text-center p-3 bg-[#E6F1FB] dark:bg-blue-900/20 rounded-lg">
-                <div className="text-lg font-bold text-[#1560A2]">2</div>
-                <div className="text-xs text-gray-500">AI extracts data</div>
-              </div>
-              <div className="text-center p-3 bg-[#EEEDFE] rounded-lg">
-                <div className="text-lg font-bold text-[#3C258E]">3</div>
-                <div className="text-xs text-gray-500">Buyer claims record</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Stripe Connect Section */}
-        <Card className="mb-8 bg-white dark:bg-gray-800 shadow rounded-2xl">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-              <CreditCard className="h-5 w-5" />
-              Payout Settings
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {stripeStatus?.onboardingComplete ? (
-              <div className="flex items-center gap-3 p-4 bg-[#F0FAF4] border border-[#A7D7B8] rounded-lg">
-                <CheckCircle className="h-6 w-6 text-[#079669]" />
-                <div>
-                  <p className="font-medium text-[#09694A]">Bank Account Connected</p>
-                  <p className="text-sm text-[#079669]">Your payouts will be automatically deposited to your connected bank account.</p>
-                </div>
-              </div>
-            ) : stripeStatus?.connected && !stripeStatus?.onboardingComplete ? (
-              <div className="space-y-4">
-                <div className="flex items-center gap-3 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <AlertCircle className="h-6 w-6 text-yellow-600" />
-                  <div className="flex-1">
-                    <p className="font-medium text-yellow-800">Complete Your Setup</p>
-                    <p className="text-sm text-yellow-600">You need to finish connecting your bank account to receive payouts.</p>
-                  </div>
-                </div>
-                <Button 
-                  onClick={() => connectStripeMutation.mutate()}
-                  disabled={connectStripeMutation.isPending}
-                  className="bg-[#079669] hover:bg-[#09694A]"
-                  data-testid="button-complete-stripe-setup"
-                >
-                  {connectStripeMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                  )}
-                  Complete Setup
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <p className="text-muted-foreground">
-                  Connect your bank account to receive automatic $15 payouts when your referrals complete 4 months of paid subscription.
-                </p>
-                <Button 
-                  onClick={() => connectStripeMutation.mutate()}
-                  disabled={connectStripeMutation.isPending}
-                  className="bg-[#079669] hover:bg-[#09694A]"
-                  data-testid="button-connect-stripe"
-                >
-                  {connectStripeMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <CreditCard className="h-4 w-4 mr-2" />
-                  )}
-                  Connect Bank Account
-                </Button>
-              </div>
+        {/* Referral Link */}
+        <span className="dash-section-label">Your Referral Link</span>
+        <div className="dash-light-card" style={{ marginBottom: 10 }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+            <input
+              type="text"
+              value={referralUrl}
+              readOnly
+              style={{ flex: 1, minWidth: 0, padding: '8px 12px', border: '0.5px solid var(--gray-200)', borderRadius: 8, fontSize: 12, background: 'var(--gray-100)', color: 'var(--gray-600)', fontFamily: 'inherit' }}
+              data-testid="input-referral-link"
+            />
+            <button
+              onClick={handleCopyLink}
+              style={{ flexShrink: 0, background: '#F0FAF4', color: '#09694A', border: '0.5px solid #A7D7B8', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+              data-testid="button-copy-link"
+            >Copy</button>
+            <button
+              onClick={handleShareLink}
+              style={{ flexShrink: 0, background: '#F0FAF4', color: '#09694A', border: '0.5px solid #A7D7B8', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+              data-testid="button-share-link"
+            >Share</button>
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              onClick={generateQRCode}
+              style={{ background: '#F0FAF4', color: '#09694A', border: '0.5px solid #A7D7B8', borderRadius: 8, padding: '7px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+              data-testid="button-generate-qr"
+            >Generate QR Code</button>
+            {qrCodeUrl && (
+              <a
+                href={qrCodeUrl}
+                download={`homebase-referral-${typedUser.referralCode}.png`}
+                style={{ background: '#F0FAF4', color: '#09694A', border: '0.5px solid #A7D7B8', borderRadius: 8, padding: '7px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', textDecoration: 'none' }}
+                data-testid="link-download-qr"
+              >Download QR</a>
             )}
-          </CardContent>
-        </Card>
+          </div>
+          {qrCodeUrl && (
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
+              <img src={qrCodeUrl} alt="Referral QR Code" style={{ border: '0.5px solid var(--gray-200)', borderRadius: 10, padding: 12 }} />
+            </div>
+          )}
+          <div style={{ fontSize: 11, color: 'var(--gray-400)', marginTop: 10 }}>
+            Referral code: <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--gray-600)' }}>{typedUser.referralCode}</span> · Earn $15 after 4 months of paid subscription
+          </div>
+        </div>
+
+        {/* Home Handoffs */}
+        <span className="dash-section-label">Home Handoff Packages</span>
+        <div className="dash-light-card">
+          <div className="dash-light-card-row">
+            <div className="dash-light-card-icon" style={{ background: '#F0FAF4', color: '#09694A' }}>
+              <ArrowRight size={18} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="dash-light-card-title">Home Handoff Packages</div>
+              <div className="dash-light-card-sub">Upload docs · AI extracts data · Buyer claims record</div>
+            </div>
+            <Link href="/agent-handoff">
+              <span className="dash-light-card-btn" style={{ background: '#F0FAF4', color: '#09694A' }}>Manage →</span>
+            </Link>
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            {[
+              { num: '1', label: 'Upload docs', bg: '#F0FAF4', color: '#079669' },
+              { num: '2', label: 'AI extracts', bg: '#EAF4FD', color: '#1560A2' },
+              { num: '3', label: 'Buyer claims', bg: '#EEEDFE', color: '#3C258E' },
+            ].map(step => (
+              <div key={step.num} style={{ flex: 1, textAlign: 'center', background: step.bg, borderRadius: 8, padding: '10px 4px' }}>
+                <div style={{ fontSize: 18, fontWeight: 700, color: step.color }}>{step.num}</div>
+                <div style={{ fontSize: 10, color: 'var(--gray-400)', marginTop: 2 }}>{step.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Payout Settings */}
+        <span className="dash-section-label" style={{ marginTop: 8 }}>Payout Settings</span>
+        <div className="dash-light-card">
+          {stripeStatus?.onboardingComplete ? (
+            <div className="dash-light-card-row">
+              <div className="dash-light-card-icon" style={{ background: '#F0FAF4', color: '#09694A' }}>
+                <CheckCircle size={18} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="dash-light-card-title" style={{ color: '#09694A' }}>Bank Account Connected</div>
+                <div className="dash-light-card-sub">Payouts automatically deposited</div>
+              </div>
+            </div>
+          ) : stripeStatus?.connected && !stripeStatus?.onboardingComplete ? (
+            <div className="dash-light-card-row">
+              <div className="dash-light-card-icon" style={{ background: '#FEF9C3', color: '#D97706' }}>
+                <AlertCircle size={18} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="dash-light-card-title">Complete Your Setup</div>
+                <div className="dash-light-card-sub">Finish connecting your bank account to receive payouts</div>
+              </div>
+              <button
+                onClick={() => connectStripeMutation.mutate()}
+                disabled={connectStripeMutation.isPending}
+                className="dash-light-card-btn"
+                style={{ background: '#F0FAF4', color: '#09694A' }}
+                data-testid="button-complete-stripe-setup"
+              >{connectStripeMutation.isPending ? '...' : 'Complete →'}</button>
+            </div>
+          ) : (
+            <div className="dash-light-card-row">
+              <div className="dash-light-card-icon" style={{ background: '#EAF4FD', color: '#1560A2' }}>
+                <CreditCard size={18} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="dash-light-card-title">Connect Bank Account</div>
+                <div className="dash-light-card-sub">Receive $15 payouts after 4 months per referral</div>
+              </div>
+              <button
+                onClick={() => connectStripeMutation.mutate()}
+                disabled={connectStripeMutation.isPending}
+                className="dash-light-card-btn"
+                style={{ background: '#F0FAF4', color: '#09694A' }}
+                data-testid="button-connect-stripe"
+              >{connectStripeMutation.isPending ? '...' : 'Connect →'}</button>
+            </div>
+          )}
+        </div>
 
         {/* Payout History */}
-        <Card className="mb-8 bg-white dark:bg-gray-800 shadow rounded-2xl">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-              <DollarSign className="h-5 w-5" />
-              Payout History
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {payouts.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <DollarSign className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                <p className="font-medium">No payouts yet</p>
-                <p className="text-sm mt-1">Payouts appear here once a referred user completes 4 months of paid subscription.</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {payouts.map((payout) => {
-                  const isPaid = payout.status === 'paid';
-                  const isPending = payout.status === 'pending';
-                  const isProcessing = payout.status === 'processing';
-                  const isFailed = payout.status === 'failed';
-
-                  const dateLabel = isPaid && payout.paidAt
-                    ? `Paid out ${new Date(payout.paidAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
-                    : `Initiated ${new Date(payout.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
-
-                  const pendingNote = isPending && !stripeStatus?.onboardingComplete
-                    ? 'Awaiting bank account connection'
-                    : isPending
-                      ? 'Transfer in progress'
-                      : null;
-
-                  return (
-                    <div
-                      key={payout.id}
-                      className={`flex items-start justify-between p-4 rounded-lg border ${
-                        isPaid
-                          ? 'bg-[#F0FAF4] border-[#A7D7B8] dark:bg-green-900/10 dark:border-green-900/30'
-                          : isPending || isProcessing
-                            ? 'bg-yellow-50 border-yellow-100 dark:bg-yellow-900/10 dark:border-yellow-900/30'
-                            : isFailed
-                              ? 'bg-red-50 border-red-100 dark:bg-red-900/10 dark:border-red-900/30'
-                              : 'bg-gray-50 border-gray-100 dark:bg-gray-700/20 dark:border-gray-700/40'
-                      }`}
-                      data-testid={`payout-${payout.id}`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className={`mt-0.5 rounded-full p-1.5 ${
-                          isPaid ? 'bg-[#F0FAF4] dark:bg-green-800/40' :
-                          isPending || isProcessing ? 'bg-yellow-100 dark:bg-yellow-800/40' :
-                          isFailed ? 'bg-red-100 dark:bg-red-800/40' :
-                          'bg-gray-100 dark:bg-gray-600/40'
-                        }`}>
-                          {isPaid ? (
-                            <CheckCircle className="h-4 w-4 text-[#079669] dark:text-green-400" />
-                          ) : isPending || isProcessing ? (
-                            <Clock className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
-                          ) : isFailed ? (
-                            <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
-                          ) : (
-                            <DollarSign className="h-4 w-4 text-gray-500" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900 dark:text-white">{payout.refereeName}</p>
-                          <p className="text-sm text-muted-foreground">{dateLabel}</p>
-                          {pendingNote && (
-                            <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-0.5">{pendingNote}</p>
-                          )}
-                          {isFailed && payout.errorMessage && (
-                            <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">{payout.errorMessage}</p>
-                          )}
-                        </div>
+        <span className="dash-section-label" style={{ marginTop: 8 }}>Payout History</span>
+        {payouts.length === 0 ? (
+          <div className="dash-light-card" style={{ textAlign: 'center', padding: '24px 14px' }}>
+            <DollarSign size={28} style={{ color: 'var(--gray-400)', margin: '0 auto 8px', display: 'block' }} />
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gray-600)' }}>No payouts yet</div>
+            <div style={{ fontSize: 12, color: 'var(--gray-400)', marginTop: 4 }}>Payouts appear after 4 months of paid subscription per referral</div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+            {payouts.map(payout => {
+              const isPaid = payout.status === 'paid';
+              const isPending = payout.status === 'pending';
+              const isProcessing = payout.status === 'processing';
+              const isFailed = payout.status === 'failed';
+              const dateLabel = isPaid && payout.paidAt
+                ? `Paid ${new Date(payout.paidAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+                : `Initiated ${new Date(payout.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+              const pendingNote = isPending && !stripeStatus?.onboardingComplete
+                ? 'Awaiting bank account connection'
+                : isPending ? 'Transfer in progress' : null;
+              return (
+                <div key={payout.id} className="dash-light-card" style={{ marginBottom: 0 }} data-testid={`payout-${payout.id}`}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, background: isPaid ? '#F0FAF4' : isPending || isProcessing ? '#FEF9C3' : isFailed ? '#FEE2E2' : 'var(--gray-100)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {isPaid ? <CheckCircle size={18} style={{ color: '#079669' }} />
+                          : isPending || isProcessing ? <Clock size={18} style={{ color: '#D97706' }} />
+                            : isFailed ? <XCircle size={18} style={{ color: '#DC2626' }} />
+                              : <DollarSign size={18} style={{ color: 'var(--gray-400)' }} />}
                       </div>
-                      <div className="text-right flex-shrink-0 ml-4">
-                        <p className={`font-bold text-lg ${isPaid ? 'text-[#079669] dark:text-green-400' : 'text-gray-700 dark:text-gray-300'}`}>
-                          ${parseFloat(payout.amount).toFixed(2)}
-                        </p>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                          isPaid
-                            ? 'bg-[#F0FAF4] text-[#09694A] dark:bg-green-800/40 dark:text-green-300'
-                            : isPending
-                              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800/40 dark:text-yellow-300'
-                              : isProcessing
-                                ? 'bg-[#E6F1FB] text-[#1560A2] dark:bg-blue-800/40 dark:text-blue-300'
-                                : isFailed
-                                  ? 'bg-red-100 text-red-800 dark:bg-red-800/40 dark:text-red-300'
-                                  : 'bg-gray-100 text-gray-800 dark:bg-gray-600/40 dark:text-gray-300'
-                        }`}>
-                          {isPaid ? 'Paid' :
-                           isPending ? 'Pending' :
-                           isProcessing ? 'Processing' :
-                           isFailed ? 'Failed' : payout.status}
-                        </span>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{payout.refereeName}</div>
+                        <div style={{ fontSize: 11, color: 'var(--gray-400)', marginTop: 1 }}>{dateLabel}</div>
+                        {pendingNote && <div style={{ fontSize: 11, color: '#D97706', marginTop: 1 }}>{pendingNote}</div>}
+                        {isFailed && payout.errorMessage && <div style={{ fontSize: 11, color: '#DC2626', marginTop: 1 }}>{payout.errorMessage}</div>}
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Referrals List */}
-        <Card className="bg-white dark:bg-gray-800 shadow rounded-2xl">
-          <CardHeader>
-            <CardTitle className="text-gray-900 dark:text-white">Your Referrals</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {referrals.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No referrals yet. Start sharing your link!</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {referrals.map((referral) => (
-                  <div
-                    key={referral.id}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                    data-testid={`referral-${referral.id}`}
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-1">
-                        <h3 className="font-semibold" data-testid={`text-referral-name-${referral.id}`}>
-                          {referral.refereeName}
-                        </h3>
-                        {getStatusBadge(referral.status)}
-                      </div>
-                      <p className="text-sm text-muted-foreground" data-testid={`text-referral-email-${referral.id}`}>
-                        {referral.refereeEmail}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Signed up: {new Date(referral.signupDate).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm font-medium">
-                        {referral.consecutiveMonthsPaid} / 4 months
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {referral.consecutiveMonthsPaid >= 4 ? (
-                          <span className="text-[#079669] font-medium">Eligible for payout</span>
-                        ) : (
-                          `${4 - referral.consecutiveMonthsPaid} months until payout`
-                        )}
-                      </div>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: isPaid ? '#079669' : 'var(--gray-600)' }}>${parseFloat(payout.amount).toFixed(2)}</div>
+                      <span style={{ fontSize: 10, fontWeight: 600, borderRadius: 5, padding: '1px 6px', background: isPaid ? '#F0FAF4' : isPending ? '#FEF9C3' : isProcessing ? '#EAF4FD' : isFailed ? '#FEE2E2' : 'var(--gray-100)', color: isPaid ? '#09694A' : isPending ? '#92400E' : isProcessing ? '#1560A2' : isFailed ? '#DC2626' : 'var(--gray-600)', textTransform: 'uppercase' }}>
+                        {isPaid ? 'Paid' : isPending ? 'Pending' : isProcessing ? 'Processing' : isFailed ? 'Failed' : payout.status}
+                      </span>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
-      </main>
+        {/* Referrals List */}
+        <span className="dash-section-label" style={{ marginTop: 4 }}>Your Referrals</span>
+        {referrals.length === 0 ? (
+          <div className="dash-light-card" style={{ textAlign: 'center', padding: '24px 14px' }}>
+            <Users size={28} style={{ color: 'var(--gray-400)', margin: '0 auto 8px', display: 'block' }} />
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gray-600)' }}>No referrals yet</div>
+            <div style={{ fontSize: 12, color: 'var(--gray-400)', marginTop: 4 }}>Start sharing your link!</div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {referrals.map(referral => (
+              <div key={referral.id} className="dash-light-card" style={{ marginBottom: 0 }} data-testid={`referral-${referral.id}`}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 2 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }} data-testid={`text-referral-name-${referral.id}`}>{referral.refereeName}</span>
+                      {getStatusBadge(referral.status)}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--gray-400)' }} data-testid={`text-referral-email-${referral.id}`}>{referral.refereeEmail}</div>
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#111827' }}>{referral.consecutiveMonthsPaid} / 4 months</div>
+                    <div style={{ fontSize: 10, color: referral.consecutiveMonthsPaid >= 4 ? '#079669' : 'var(--gray-400)', marginTop: 1 }}>
+                      {referral.consecutiveMonthsPaid >= 4 ? 'Eligible for payout' : `${4 - referral.consecutiveMonthsPaid}mo until payout`}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+      </div>
     </div>
   );
 }
