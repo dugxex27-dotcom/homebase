@@ -51,10 +51,10 @@ function ContractorUpgradePrompt({ feature }: ContractorUpgradePromptProps) {
   const featureInfo = featureLabels[feature] || { label: feature, icon: <Lock className="h-5 w-5" />, description: '' };
 
   return (
-    <Card className="border-2 border-dashed border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50/50 to-white dark:from-purple-950/20 dark:to-background">
+    <Card className="border-2 border-dashed" style={{ borderColor: 'var(--theme-border)', background: 'var(--theme-fill)' }}>
       <CardHeader className="text-center pb-2">
-        <div className="mx-auto mb-3 p-3 rounded-full bg-purple-100 dark:bg-purple-900/30 w-fit">
-          <Lock className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+        <div className="mx-auto mb-3 p-3 rounded-full w-fit" style={{ background: 'var(--theme-fill)' }}>
+          <Lock className="h-6 w-6" style={{ color: 'var(--theme-accent)' }} />
         </div>
         <CardTitle className="text-lg">Upgrade to Pro</CardTitle>
         <CardDescription>
@@ -63,14 +63,14 @@ function ContractorUpgradePrompt({ feature }: ContractorUpgradePromptProps) {
       </CardHeader>
       <CardContent className="text-center space-y-4">
         <div className="flex items-center justify-center gap-2">
-          <Badge variant="secondary" className="bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300">
+          <Badge variant="secondary" style={{ background: 'var(--theme-fill)', color: 'var(--theme-accent)' }}>
             <Sparkles className="h-3 w-3 mr-1" />
             Pro Feature
           </Badge>
         </div>
         <Button 
           onClick={() => setLocation('/contractor/upgrade')}
-          className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800"
+          style={{ background: 'linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)' }}
           data-testid="button-upgrade-pro"
         >
           Upgrade to Pro - $40/month
@@ -97,7 +97,7 @@ export function ContractorCRMUpgradePage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="text-center mb-8">
-        <Badge className="mb-4 bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300">
+        <Badge className="mb-4" style={{ background: 'var(--theme-fill)', color: 'var(--theme-accent)' }}>
           <Sparkles className="h-3 w-3 mr-1" />
           Upgrade Your Business
         </Badge>
@@ -140,15 +140,15 @@ export function ContractorCRMUpgradePage() {
           </CardContent>
         </Card>
 
-        <Card className="border-2 border-purple-500 relative overflow-hidden">
-          <div className="absolute top-0 right-0 bg-purple-500 text-white text-xs px-3 py-1 rounded-bl-lg">
+        <Card className="border-2 relative overflow-hidden" style={{ borderColor: 'var(--theme-accent)' }}>
+          <div className="absolute top-0 right-0 text-white text-xs px-3 py-1 rounded-bl-lg" style={{ background: 'var(--theme-accent)' }}>
             RECOMMENDED
           </div>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               Pro
               {currentPlan === 'pro' && (
-                <Badge className="bg-purple-500">Current Plan</Badge>
+                <Badge style={{ background: 'var(--theme-accent)', color: '#fff' }}>Current Plan</Badge>
               )}
             </CardTitle>
             <div className="text-3xl font-bold">$40<span className="text-base font-normal text-muted-foreground">/month</span></div>
@@ -159,26 +159,27 @@ export function ContractorCRMUpgradePage() {
                 <Check className="h-4 w-4 text-green-500" />
                 Everything in Basic
               </li>
-              <li className="flex items-center gap-2 text-sm font-medium text-purple-600 dark:text-purple-400">
+              <li className="flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--theme-accent)' }}>
                 <Sparkles className="h-4 w-4" />
                 Full CRM with client management
               </li>
-              <li className="flex items-center gap-2 text-sm font-medium text-purple-600 dark:text-purple-400">
+              <li className="flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--theme-accent)' }}>
                 <Sparkles className="h-4 w-4" />
                 Job scheduling & tracking
               </li>
-              <li className="flex items-center gap-2 text-sm font-medium text-purple-600 dark:text-purple-400">
+              <li className="flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--theme-accent)' }}>
                 <Sparkles className="h-4 w-4" />
                 Quotes, invoices & payments
               </li>
-              <li className="flex items-center gap-2 text-sm font-medium text-purple-600 dark:text-purple-400">
+              <li className="flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--theme-accent)' }}>
                 <Sparkles className="h-4 w-4" />
                 Team management
               </li>
             </ul>
             {currentPlan !== 'pro' && (
               <Button 
-                className="w-full mt-4 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800"
+                className="w-full mt-4"
+                style={{ background: 'linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)' }}
                 onClick={() => setLocation('/contractor/checkout?plan=pro')}
                 data-testid="button-upgrade-to-pro"
               >
@@ -195,7 +196,7 @@ export function ContractorCRMUpgradePage() {
           <Card key={index} className="bg-muted/30">
             <CardContent className="pt-4">
               <div className="flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
+                <div className="p-2 rounded-lg" style={{ background: 'var(--theme-fill)', color: 'var(--theme-accent)' }}>
                   {feature.icon}
                 </div>
                 <div>

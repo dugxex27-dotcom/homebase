@@ -69,13 +69,13 @@ function SaveToHistoryCard({ invoiceId, invoiceHouseId }: { invoiceId: string; i
   }
 
   return (
-    <Card className="border-purple-200 bg-purple-50">
+    <Card style={{ borderColor: 'var(--purple-border)', background: 'var(--purple-tint)' }}>
       <CardContent className="pt-4 pb-4 space-y-3">
         <div className="flex items-center gap-2">
-          <BookmarkPlus className="h-5 w-5 text-purple-600 shrink-0" />
-          <p className="text-sm font-semibold text-purple-900">Save this record to your home history</p>
+          <BookmarkPlus className="h-5 w-5 shrink-0" style={{ color: 'var(--hw-primary)' }} />
+          <p className="text-sm font-semibold" style={{ color: 'var(--purple-deep)' }}>Save this record to your home history</p>
         </div>
-        <p className="text-xs text-purple-700">This invoice is linked to your MyHomeBase account. Save it to keep a permanent record of this work.</p>
+        <p className="text-xs" style={{ color: 'var(--hw-primary)' }}>This invoice is linked to your MyHomeBase account. Save it to keep a permanent record of this work.</p>
         {houses.length > 1 && (
           <Select value={selectedHouseId} onValueChange={setSelectedHouseId}>
             <SelectTrigger className="bg-white text-sm" data-testid="select-claim-house">
@@ -90,7 +90,8 @@ function SaveToHistoryCard({ invoiceId, invoiceHouseId }: { invoiceId: string; i
         )}
         <Button
           size="sm"
-          className="w-full bg-purple-600 hover:bg-purple-700"
+          className="w-full"
+          style={{ background: 'var(--hw-primary)' }}
           onClick={() => claimMutation.mutate()}
           disabled={claimMutation.isPending || (houses.length > 1 && !selectedHouseId)}
           data-testid="button-save-to-history"
@@ -140,7 +141,7 @@ export default function PayInvoicePage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color: 'var(--hw-primary)' }} />
       </div>
     );
   }
@@ -204,7 +205,7 @@ export default function PayInvoicePage() {
                 className="h-16 w-auto mx-auto mb-4 object-contain"
               />
             ) : (
-              <Building2 className="h-12 w-12 mx-auto mb-4 text-purple-600" />
+              <Building2 className="h-12 w-12 mx-auto mb-4" style={{ color: 'var(--purple)' }} />
             )}
             <CardTitle className="text-2xl">{invoice.companyName || invoice.contractorName}</CardTitle>
             <CardDescription>Invoice {invoice.invoiceNumber}</CardDescription>
@@ -262,12 +263,13 @@ export default function PayInvoicePage() {
 
             <div className="flex justify-between items-center text-xl font-bold">
               <span>Total Due</span>
-              <span className="text-purple-600">${parseFloat(invoice.totalAmount).toFixed(2)}</span>
+              <span style={{ color: 'var(--hw-primary)' }}>${parseFloat(invoice.totalAmount).toFixed(2)}</span>
             </div>
 
             <Button
               size="lg"
-              className="w-full bg-purple-600 hover:bg-purple-700"
+              className="w-full"
+              style={{ background: 'var(--hw-primary)' }}
               onClick={() => checkoutMutation.mutate()}
               disabled={checkoutMutation.isPending}
               data-testid="button-pay-invoice"

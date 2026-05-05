@@ -367,7 +367,7 @@ export default function AgentDashboard() {
                 <div className="text-lg font-bold text-[#1560A2]">2</div>
                 <div className="text-xs text-gray-500">AI extracts data</div>
               </div>
-              <div className="text-center p-3 bg-[#EEEDFE] dark:bg-purple-900/20 rounded-lg">
+              <div className="text-center p-3 bg-[#EEEDFE] rounded-lg">
                 <div className="text-lg font-bold text-[#3C258E]">3</div>
                 <div className="text-xs text-gray-500">Buyer claims record</div>
               </div>

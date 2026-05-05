@@ -43,7 +43,7 @@ function ChatBubble({ message, onFindContractor }: { message: ChatMessage; onFin
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"} mb-4`}>
       {!isUser && (
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center mr-3 flex-shrink-0 mt-1">
+        <div className="w-8 h-8 rounded-full flex items-center justify-center mr-3 flex-shrink-0 mt-1" style={{ background: 'linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)' }}>
           <Sparkles className="w-4 h-4 text-white" />
         </div>
       )}
@@ -51,9 +51,10 @@ function ChatBubble({ message, onFindContractor }: { message: ChatMessage; onFin
         <div
           className={`rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
             isUser
-              ? "bg-gradient-to-br from-purple-600 to-blue-600 text-white rounded-br-sm"
+              ? "text-white rounded-br-sm"
               : "bg-white border border-gray-200 text-gray-800 rounded-bl-sm shadow-sm"
           }`}
+          style={isUser ? { background: 'linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)' } : undefined}
         >
           {message.content}
         </div>
@@ -171,8 +172,8 @@ function TroubleshootTab({ onSwitchToContractor }: { onSwitchToContractor: (quer
       <div className="flex-1 overflow-y-auto p-4 space-y-1">
         {isEmpty ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center mb-4">
-              <MessageCircle className="w-8 h-8 text-purple-600" />
+            <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4" style={{ background: 'var(--purple-tint)' }}>
+              <MessageCircle className="w-8 h-8" style={{ color: 'var(--theme-accent)' }} />
             </div>
             <h3 className="text-lg font-semibold text-gray-800 mb-2">What's going on with your home?</h3>
             <p className="text-sm text-gray-500 mb-6 max-w-sm">
@@ -183,9 +184,11 @@ function TroubleshootTab({ onSwitchToContractor }: { onSwitchToContractor: (quer
                 <button
                   key={chip.label}
                   onClick={() => sendMessage(chip.prompt)}
-                  className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 hover:border-purple-400 hover:bg-purple-50 hover:text-purple-700 transition-colors text-left shadow-sm"
+                  className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm text-gray-700 transition-colors text-left shadow-sm"
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--theme-accent)'; e.currentTarget.style.color = 'var(--theme-accent)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = ''; e.currentTarget.style.color = ''; }}
                 >
-                  <chip.icon className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                  <chip.icon className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--theme-accent)' }} />
                   <span>{chip.label}</span>
                 </button>
               ))}
@@ -198,14 +201,14 @@ function TroubleshootTab({ onSwitchToContractor }: { onSwitchToContractor: (quer
             ))}
             {troubleshootMutation.isPending && (
               <div className="flex justify-start mb-4">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center mr-3 flex-shrink-0">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center mr-3 flex-shrink-0" style={{ background: 'linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)' }}>
                   <Sparkles className="w-4 h-4 text-white" />
                 </div>
                 <div className="bg-white border border-gray-200 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
                   <div className="flex items-center gap-1">
-                    <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: 'var(--theme-accent)', animationDelay: '0ms' }} />
+                    <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: 'var(--theme-accent)', animationDelay: '150ms' }} />
+                    <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: 'var(--theme-accent)', animationDelay: '300ms' }} />
                   </div>
                 </div>
               </div>
@@ -243,7 +246,8 @@ function TroubleshootTab({ onSwitchToContractor }: { onSwitchToContractor: (quer
           <Button
             onClick={() => sendMessage(input)}
             disabled={!input.trim() || troubleshootMutation.isPending}
-            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 flex-shrink-0 h-12 w-12 p-0"
+            className="flex-shrink-0 h-12 w-12 p-0"
+            style={{ background: 'linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)' }}
             data-testid="button-send-message"
           >
             {troubleshootMutation.isPending ? (
@@ -401,14 +405,16 @@ export default function AIContractorHelp() {
                     value={problem}
                     onChange={(e) => setProblem(e.target.value)}
                     placeholder="Example: My toilet keeps running and won't stop filling with water..."
-                    className="min-h-[150px] resize-none text-purple-900 placeholder:text-purple-400"
+                    className="min-h-[150px] resize-none"
+                    style={{ color: 'var(--theme-accent)' }}
                     disabled={recommendationMutation.isPending}
                     data-testid="textarea-problem-description"
                   />
                   <Button
                     type="submit"
                     disabled={recommendationMutation.isPending || problem.trim().length < 10}
-                    className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                    className="w-full"
+                    style={{ background: 'linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)' }}
                     data-testid="button-get-recommendation"
                   >
                     {recommendationMutation.isPending ? (

@@ -278,7 +278,7 @@ export default function Documents() {
           <button
             onClick={() => setTopSection("documents")}
             className="px-5 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px whitespace-nowrap"
-            style={topSection === "documents" ? { borderColor: '#2c0f5b', color: '#2c0f5b' } : { borderColor: 'transparent', color: '#7c6fa0' }}
+            style={topSection === "documents" ? { borderColor: 'var(--theme-accent)', color: 'var(--theme-accent)' } : { borderColor: 'transparent', color: '#7c6fa0' }}
             data-testid="tab-documents"
           >
             Documents
@@ -286,7 +286,7 @@ export default function Documents() {
           <button
             onClick={() => setTopSection("disclosures")}
             className="px-5 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px whitespace-nowrap"
-            style={topSection === "disclosures" ? { borderColor: '#2c0f5b', color: '#2c0f5b' } : { borderColor: 'transparent', color: '#7c6fa0' }}
+            style={topSection === "disclosures" ? { borderColor: 'var(--theme-accent)', color: 'var(--theme-accent)' } : { borderColor: 'transparent', color: '#7c6fa0' }}
             data-testid="tab-disclosures"
           >
             Disclosures
@@ -294,7 +294,7 @@ export default function Documents() {
           <button
             onClick={() => setTopSection("insurance")}
             className="px-5 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px whitespace-nowrap"
-            style={topSection === "insurance" ? { borderColor: '#2c0f5b', color: '#2c0f5b' } : { borderColor: 'transparent', color: '#7c6fa0' }}
+            style={topSection === "insurance" ? { borderColor: 'var(--theme-accent)', color: 'var(--theme-accent)' } : { borderColor: 'transparent', color: '#7c6fa0' }}
             data-testid="tab-insurance-prep"
           >
             Insurance Prep
@@ -312,7 +312,7 @@ export default function Documents() {
 
         {/* Category Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
-          <TabsList className="flex flex-wrap h-auto gap-1 p-1" style={{ backgroundColor: '#f0ebfa' }}>
+          <TabsList className="flex flex-wrap h-auto gap-1 p-1" style={{ backgroundColor: 'var(--purple-tint)' }}>
             <TabsTrigger value="all" className="text-xs sm:text-sm">All ({documents.length})</TabsTrigger>
             {CATEGORIES.map(cat => {
               const count = documents.filter(d => d.category === cat.value).length;
@@ -340,8 +340,8 @@ export default function Documents() {
                   <Card key={doc.id} className="transition-colors" style={{ border: '1px solid #ede9f8', boxShadow: '0 1px 4px rgba(44,15,91,0.05)' }}>
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
-                        <div className="flex-shrink-0 w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
-                          <FileText className="w-5 h-5 text-purple-600" />
+                        <div className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--purple-tint)' }}>
+                          <FileText className="w-5 h-5" style={{ color: 'var(--purple)' }} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
@@ -431,12 +431,15 @@ export default function Documents() {
             <div>
               <Label>Document</Label>
               <div
-                className="mt-1 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-purple-400 transition-colors"
+                className="mt-1 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer transition-colors"
+                style={{ '--tw-border-opacity': '1' } as React.CSSProperties}
+                onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--theme-accent)')}
+                onMouseLeave={e => (e.currentTarget.style.borderColor = '')}
                 onClick={() => fileInputRef.current?.click()}
               >
                 {selectedFile ? (
                   <div className="text-sm">
-                    <FileText className="w-8 h-8 mx-auto text-purple-500 mb-2" />
+                    <FileText className="w-8 h-8 mx-auto mb-2" style={{ color: 'var(--purple)' }} />
                     <p className="font-medium text-gray-700">{selectedFile.name}</p>
                     <p className="text-gray-400">{formatBytes(selectedFile.size)}</p>
                   </div>
@@ -486,7 +489,8 @@ export default function Documents() {
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => setUploadDialogOpen(false)}>Cancel</Button>
               <Button
-                className="bg-purple-600 hover:bg-purple-700 text-white"
+                className="text-white"
+                style={{ background: 'var(--theme-accent)' }}
                 disabled={!selectedFile || uploadMutation.isPending}
                 onClick={() => {
                   if (!selectedFile) return;
@@ -522,12 +526,14 @@ export default function Documents() {
             <div>
               <Label>Inspection Report</Label>
               <div
-                className="mt-1 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-purple-400 transition-colors"
+                className="mt-1 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer transition-colors"
+                onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--theme-accent)')}
+                onMouseLeave={e => (e.currentTarget.style.borderColor = '')}
                 onClick={() => inspectionInputRef.current?.click()}
               >
                 {inspectionFile ? (
                   <div className="text-sm">
-                    <FileText className="w-8 h-8 mx-auto text-purple-500 mb-2" />
+                    <FileText className="w-8 h-8 mx-auto mb-2" style={{ color: 'var(--purple)' }} />
                     <p className="font-medium text-gray-700">{inspectionFile.name}</p>
                     <p className="text-gray-400">{formatBytes(inspectionFile.size)}</p>
                   </div>
@@ -560,7 +566,8 @@ export default function Documents() {
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => setInspectionDialogOpen(false)}>Cancel</Button>
               <Button
-                className="bg-purple-600 hover:bg-purple-700 text-white"
+                className="text-white"
+                style={{ background: 'var(--theme-accent)' }}
                 disabled={!inspectionFile || inspectionUploadMutation.isPending}
                 onClick={() => {
                   if (!inspectionFile) return;
@@ -711,7 +718,8 @@ export default function Documents() {
             <div className="flex gap-2 justify-end pt-2 border-t">
               <Button variant="outline" onClick={() => setReviewDialogOpen(false)}>Cancel</Button>
               <Button
-                className="bg-purple-600 hover:bg-purple-700 text-white"
+                className="text-white"
+                style={{ background: 'var(--theme-accent)' }}
                 disabled={!pendingDocId || confirmInspectionMutation.isPending}
                 onClick={() => {
                   if (!pendingDocId) return;
@@ -767,7 +775,8 @@ export default function Documents() {
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={() => { setEditDocId(null); setEditDoc(null); }}>Cancel</Button>
                 <Button
-                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                  className="text-white"
+                  style={{ background: 'var(--theme-accent)' }}
                   disabled={updateMutation.isPending}
                   onClick={() => {
                     if (!editDocId || !editDoc) return;

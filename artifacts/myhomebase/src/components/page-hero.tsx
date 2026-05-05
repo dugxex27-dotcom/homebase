@@ -10,7 +10,7 @@ interface PageHeroProps {
 export function PageHero({ eyebrow, title, subtitle, action }: PageHeroProps) {
   return (
     <div style={{
-      background: 'var(--theme-primary)',
+      background: 'linear-gradient(160deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)',
       padding: '16px 18px 20px',
     }}>
       {(eyebrow || action) && (

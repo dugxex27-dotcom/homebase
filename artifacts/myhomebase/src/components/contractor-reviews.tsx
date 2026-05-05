@@ -622,7 +622,7 @@ export function ContractorReviews({ contractorId, contractorName }: ContractorRe
             ) : canLeaveReview ? (
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button className="bg-purple-600 hover:bg-purple-700">Write a Review</Button>
+                  <Button style={{ background: 'var(--theme-accent)' }}>Write a Review</Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-lg max-h-[90dvh] overflow-y-auto">
                   <DialogHeader>

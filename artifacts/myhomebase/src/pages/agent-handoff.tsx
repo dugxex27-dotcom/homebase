@@ -582,7 +582,7 @@ function ExtractedDataView({ data }: { data: ExtractedData }) {
           <h3 className="font-semibold text-sm uppercase tracking-wide text-gray-500 mb-3">Appliances ({appliances.length})</h3>
           <div className="space-y-2">
             {appliances.map((app, i) => (
-              <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-purple-50 border border-purple-100">
+              <div key={i} className="flex items-start gap-3 p-3 rounded-lg border" style={{ background: 'var(--purple-tint)', borderColor: 'var(--purple-border)' }}>
                 <div className="flex-1">
                   <p className="font-medium text-gray-900">{app.name}</p>
                   <p className="text-sm text-gray-500">

@@ -70,7 +70,7 @@ export function ProBenefitsDialog({ open, onOpenChange }: ProBenefitsDialogProps
       <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader className="text-center pb-4">
           <div className="flex justify-center mb-4">
-            <div className="p-3 rounded-full bg-gradient-to-br from-purple-500 to-purple-700">
+            <div className="p-3 rounded-full" style={{ background: 'linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)' }}>
               <Crown className="h-8 w-8 text-white" />
             </div>
           </div>
@@ -82,12 +82,12 @@ export function ProBenefitsDialog({ open, onOpenChange }: ProBenefitsDialogProps
 
         <div className="space-y-4 py-4">
           {proFeatures.map((feature, index) => (
-            <Card key={index} className="border-l-4 border-l-purple-500">
+            <Card key={index} style={{ borderLeft: '4px solid var(--theme-accent)' }}>
               <CardContent className="p-4">
                 <div className="flex gap-4">
                   <div className="shrink-0">
-                    <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
-                      <feature.icon className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                    <div className="p-2 rounded-lg" style={{ background: 'var(--theme-fill)' }}>
+                      <feature.icon className="h-5 w-5" style={{ color: 'var(--theme-accent)' }} />
                     </div>
                   </div>
                   <div className="flex-1">
@@ -108,11 +108,11 @@ export function ProBenefitsDialog({ open, onOpenChange }: ProBenefitsDialogProps
           ))}
         </div>
 
-        <div className="bg-gradient-to-r from-purple-100 to-purple-50 dark:from-purple-900/30 dark:to-purple-800/20 rounded-lg p-4 mt-2">
+        <div className="rounded-lg p-4 mt-2" style={{ background: 'var(--theme-fill)' }}>
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <Sparkles className="h-4 w-4 text-purple-600" />
+                <Sparkles className="h-4 w-4" style={{ color: 'var(--theme-accent)' }} />
                 <span className="font-semibold">Contractor Pro</span>
               </div>
               <p className="text-sm text-muted-foreground">Everything you need to run your business</p>
@@ -128,7 +128,7 @@ export function ProBenefitsDialog({ open, onOpenChange }: ProBenefitsDialogProps
           <Button variant="outline" onClick={() => onOpenChange(false)} data-testid="button-close-pro-dialog">
             Maybe Later
           </Button>
-          <Button asChild size="lg" className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800" data-testid="button-upgrade-pro-dialog">
+          <Button asChild size="lg" style={{ background: 'linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)' }} data-testid="button-upgrade-pro-dialog">
             <Link href="/contractor/upgrade">
               <Crown className="h-4 w-4 mr-2" />
               Upgrade to Pro
@@ -171,10 +171,10 @@ export function ProFeatureGate({ children, featureName, featureIcon: FeatureIcon
     <>
       <div className="relative">
         <div className="absolute inset-0 bg-background/80 backdrop-blur-[2px] z-10 flex items-center justify-center rounded-lg">
-          <Card className="w-full max-w-md mx-4 shadow-lg border-2 border-purple-200 dark:border-purple-800">
+          <Card className="w-full max-w-md mx-4 shadow-lg border-2" style={{ borderColor: 'var(--theme-border)' }}>
             <CardContent className="py-8 text-center">
               <div className="mb-4 flex justify-center">
-                <div className="p-4 rounded-full bg-gradient-to-br from-purple-500 to-purple-700">
+                <div className="p-4 rounded-full" style={{ background: 'linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)' }}>
                   <Lock className="h-10 w-10 text-white" />
                 </div>
               </div>
@@ -183,7 +183,7 @@ export function ProFeatureGate({ children, featureName, featureIcon: FeatureIcon
                 Upgrade to Contractor Pro to access {featureName.toLowerCase()} and other powerful business tools.
               </p>
               <div className="flex flex-col gap-3">
-                <Button asChild size="lg" className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800" data-testid="button-upgrade-gate">
+                <Button asChild size="lg" style={{ background: 'linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)' }} data-testid="button-upgrade-gate">
                   <Link href="/contractor/upgrade">
                     <Crown className="h-4 w-4 mr-2" />
                     Upgrade to Pro - $40/mo
@@ -213,10 +213,10 @@ export function ProFeatureGate({ children, featureName, featureIcon: FeatureIcon
 
 export function ProUpgradeBanner({ onShowBenefits }: { onShowBenefits: () => void }) {
   return (
-    <div className="bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 border border-purple-200 dark:border-purple-700 rounded-lg p-4 mb-6">
+    <div className="rounded-lg p-4 mb-6 border" style={{ background: 'var(--theme-fill)', borderColor: 'var(--theme-border)' }}>
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-full bg-gradient-to-br from-purple-500 to-purple-700">
+          <div className="p-2 rounded-full" style={{ background: 'linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)' }}>
             <Crown className="h-5 w-5 text-white" />
           </div>
           <div>
@@ -228,7 +228,7 @@ export function ProUpgradeBanner({ onShowBenefits }: { onShowBenefits: () => voi
           <Button variant="ghost" size="sm" onClick={onShowBenefits} data-testid="button-learn-more-banner">
             Learn More
           </Button>
-          <Button asChild size="sm" className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700" data-testid="button-upgrade-banner">
+          <Button asChild size="sm" style={{ background: 'linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)' }} data-testid="button-upgrade-banner">
             <Link href="/contractor/upgrade">
               <Crown className="h-4 w-4 mr-2" />
               Upgrade Now

@@ -144,7 +144,7 @@ export default function Products() {
               className={`cursor-pointer px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
                 selectedCategory === "" 
                   ? "text-white shadow-md" 
-                  : "text-gray-700 border border-gray-200 hover:border-purple-300 hover:bg-purple-50"
+                  : "text-gray-700 border border-gray-200"
               }`}
               style={selectedCategory === "" ? { backgroundColor: '#2c0f5b' } : { backgroundColor: '#faf8ff' }}
               onClick={() => setSelectedCategory("")}
@@ -158,7 +158,7 @@ export default function Products() {
                 className={`cursor-pointer px-4 py-2 text-sm font-medium rounded-xl transition-all duration-200 ${
                   selectedCategory === category 
                     ? "text-white shadow-md" 
-                    : "text-gray-700 border border-gray-200 hover:border-purple-300 hover:bg-purple-50"
+                    : "text-gray-700 border border-gray-200"
                 }`}
                 style={selectedCategory === category ? { backgroundColor: '#2c0f5b' } : { backgroundColor: '#faf8ff' }}
                 onClick={() => setSelectedCategory(category)}
@@ -225,15 +225,15 @@ export default function Products() {
             {/* Pagination */}
             <div className="mt-8 flex justify-center">
               <nav className="flex items-center space-x-2">
-                <Button variant="outline" size="sm" disabled className="hover:bg-purple-50">
+                <Button variant="outline" size="sm" disabled>
                   <ChevronLeft className="h-4 w-4" style={{ color: '#b6a6f4' }} />
                 </Button>
                 <Button size="sm" style={{ backgroundColor: '#2c0f5b', color: '#fff' }}>1</Button>
-                <Button variant="outline" size="sm" className="hover:bg-purple-50" style={{ color: '#b6a6f4' }}>2</Button>
-                <Button variant="outline" size="sm" className="hover:bg-purple-50" style={{ color: '#b6a6f4' }}>3</Button>
+                <Button variant="outline" size="sm" style={{ color: '#b6a6f4' }}>2</Button>
+                <Button variant="outline" size="sm" style={{ color: '#b6a6f4' }}>3</Button>
                 <span className="px-3 py-2 text-gray-400">...</span>
-                <Button variant="outline" size="sm" className="hover:bg-purple-50" style={{ color: '#b6a6f4' }}>5</Button>
-                <Button variant="outline" size="sm" className="hover:bg-purple-50">
+                <Button variant="outline" size="sm" style={{ color: '#b6a6f4' }}>5</Button>
+                <Button variant="outline" size="sm">
                   <ChevronRight className="h-4 w-4" style={{ color: '#b6a6f4' }} />
                 </Button>
               </nav>

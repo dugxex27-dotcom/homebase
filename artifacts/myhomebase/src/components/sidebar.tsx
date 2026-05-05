@@ -83,8 +83,8 @@ export default function Sidebar() {
     const arr = Array.isArray(path) ? path : [path];
     const active = arr.some(p => location === p || location.startsWith(p + '/'));
     return active
-      ? { backgroundColor: 'var(--theme-fill)', color: 'var(--theme-accent)' }
-      : { color: 'rgba(0,0,0,0.5)' };
+      ? { backgroundColor: 'var(--theme-fill)', color: 'var(--theme-accent)', borderLeft: '3px solid var(--theme-accent)', paddingLeft: '10px', borderRadius: '8px' }
+      : { color: 'rgba(0,0,0,0.5)', borderLeft: '3px solid transparent', paddingLeft: '10px' };
   };
 
   const isHomeowner  = typedUser.role === 'homeowner';

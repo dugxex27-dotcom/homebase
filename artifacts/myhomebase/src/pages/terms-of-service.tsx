@@ -3,12 +3,12 @@ import { FileText } from "lucide-react";
 
 export default function TermsOfService() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         <Card className="shadow-lg">
           <CardHeader className="text-center border-b">
             <div className="flex items-center justify-center gap-3 mb-2">
-              <FileText className="w-8 h-8 text-purple-600" />
+              <FileText className="w-8 h-8" style={{ color: 'var(--purple)' }} />
               <CardTitle className="text-3xl font-bold">Terms of Service</CardTitle>
             </div>
             <p className="text-sm text-gray-500">Last Updated: November 15, 2025</p>
@@ -273,7 +273,7 @@ export default function TermsOfService() {
             <div className="border-t pt-6 mt-6">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">17. Contact Information</h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                For questions about these Terms, please contact us through our <a href="/support" className="text-purple-600 hover:text-purple-700 underline">Support Center</a>.
+                For questions about these Terms, please contact us through our <a href="/support" className="underline" style={{ color: 'var(--purple)' }}>Support Center</a>.
               </p>
             </div>
           </CardContent>

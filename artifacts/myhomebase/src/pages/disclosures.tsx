@@ -172,11 +172,10 @@ function QuestionWidget({
               key={opt}
               type="button"
               onClick={() => onChange(opt)}
-              className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                displayVal === opt
-                  ? "border-purple-600 bg-purple-50 text-purple-700"
-                  : "border-gray-200 hover:border-purple-300 hover:bg-gray-50"
-              }`}
+              className="px-4 py-2 rounded-lg border text-sm font-medium transition-colors"
+              style={displayVal === opt
+                ? { borderColor: 'var(--purple)', background: 'var(--purple-tint)', color: 'var(--hw-primary)' }
+                : {}}
             >
               {opt}
             </button>
@@ -191,11 +190,10 @@ function QuestionWidget({
               key={opt}
               type="button"
               onClick={() => onChange(opt)}
-              className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                displayVal === opt
-                  ? "border-purple-600 bg-purple-50 text-purple-700"
-                  : "border-gray-200 hover:border-purple-300 hover:bg-gray-50"
-              }`}
+              className="px-4 py-2 rounded-lg border text-sm font-medium transition-colors"
+              style={displayVal === opt
+                ? { borderColor: 'var(--purple)', background: 'var(--purple-tint)', color: 'var(--hw-primary)' }
+                : {}}
             >
               {opt}
             </button>
@@ -205,7 +203,7 @@ function QuestionWidget({
 
       {question.type === "select" && question.options && (
         <Select value={displayVal} onValueChange={v => onChange(v)}>
-          <SelectTrigger className={`w-full max-w-xs ${prefilled ? "border-purple-300 bg-purple-50" : ""}`}>
+          <SelectTrigger className="w-full max-w-xs" style={prefilled ? { borderColor: 'var(--purple-border)', background: 'var(--purple-tint)' } : {}}>
             <SelectValue placeholder="Select an option…" />
           </SelectTrigger>
           <SelectContent>
@@ -219,7 +217,8 @@ function QuestionWidget({
       {question.type === "number" && (
         <Input
           type="number"
-          className={`w-40 ${prefilled ? "border-purple-300 bg-purple-50" : ""}`}
+          className="w-40"
+          style={prefilled ? { borderColor: 'var(--purple-border)', background: 'var(--purple-tint)' } : {}}
           value={displayVal}
           onChange={e => onChange(e.target.value === "" ? null : Number(e.target.value))}
           placeholder="e.g. 2005"
@@ -535,7 +534,7 @@ export default function Disclosures({ embedded = false }: { embedded?: boolean }
   if (disclosureLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--theme-accent)' }} />
       </div>
     );
   }
@@ -564,7 +563,8 @@ export default function Disclosures({ embedded = false }: { embedded?: boolean }
           <div className="flex items-center gap-3 mb-6 print:hidden">
             <button
               onClick={() => setShowSummary(false)}
-              className="text-purple-700 hover:underline text-sm font-medium flex items-center gap-1"
+              className="hover:underline text-sm font-medium flex items-center gap-1"
+              style={{ color: 'var(--hw-primary)' }}
             >
               <ChevronLeft className="w-4 h-4" /> Back to wizard
             </button>
@@ -655,7 +655,7 @@ export default function Disclosures({ embedded = false }: { embedded?: boolean }
         <div className="mb-4">
           <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
             <div className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-purple-700" />
+              <FileText className="w-5 h-5" style={{ color: 'var(--hw-primary)' }} />
               <h1 className="text-xl font-bold text-gray-900">Property Disclosure Wizard</h1>
               <Badge variant="secondary" className="text-xs">
                 {stateCode !== "UNKNOWN" ? `${stateCode} Form` : "Generic Form"}
@@ -666,7 +666,8 @@ export default function Disclosures({ embedded = false }: { embedded?: boolean }
               variant="outline"
               onClick={() => { if (houseId) aiSuggestMutation.mutate(houseId); }}
               disabled={aiSuggestMutation.isPending || !houseId}
-              className="border-purple-300 text-purple-700 hover:bg-purple-50 h-8 px-3 text-xs font-medium"
+              className="h-8 px-3 text-xs font-medium"
+              style={{ borderColor: 'var(--purple-border)', color: 'var(--hw-primary)' }}
             >
               {aiSuggestMutation.isPending ? (
                 <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Analyzing…</>
@@ -703,7 +704,7 @@ export default function Disclosures({ embedded = false }: { embedded?: boolean }
 
         {/* Pre-fill banner */}
         {prefillKeys.size > 0 && (
-          <div className="mb-4 flex items-start gap-2 text-xs text-purple-700 bg-purple-50 rounded-lg px-3 py-2">
+          <div className="mb-4 flex items-start gap-2 text-xs rounded-lg px-3 py-2" style={{ color: 'var(--hw-primary)', background: 'var(--purple-tint)' }}>
             <Sparkles className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
             <span>
               <strong>{prefillKeys.size} answers</strong> were pre-filled from your home profile and home systems. Review and adjust as needed.
@@ -731,11 +732,12 @@ export default function Disclosures({ embedded = false }: { embedded?: boolean }
                 onClick={() => setSectionIdx(idx)}
                 className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
                   active
-                    ? "bg-purple-700 text-white border-purple-700"
+                    ? "text-white border-transparent"
                     : pct === 100
                     ? "bg-green-50 text-green-700 border-green-200"
-                    : "bg-white text-gray-600 border-gray-200 hover:border-purple-300"
+                    : "bg-white text-gray-600 border-gray-200"
                 }`}
+                style={active ? { background: 'var(--hw-primary)', borderColor: 'var(--hw-primary)' } : {}}
               >
                 {pct === 100 && !active && <CheckCircle className="w-3 h-3 inline-block mr-1 text-green-600" />}
                 {section.title}
@@ -763,7 +765,8 @@ export default function Disclosures({ embedded = false }: { embedded?: boolean }
                   size="sm"
                   onClick={() => { if (houseId) aiSuggestMutation.mutate(houseId); }}
                   disabled={aiSuggestMutation.isPending || !houseId}
-                  className="text-xs h-7 px-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                  className="text-xs h-7 px-2"
+                  style={{ color: 'var(--hw-primary)' }}
                   title="Suggest answers for all blank fields in the form using AI"
                 >
                   {aiSuggestMutation.isPending ? (
@@ -796,17 +799,17 @@ export default function Disclosures({ embedded = false }: { embedded?: boolean }
                 <div key={question.id} className="space-y-2">
                   <div>
                     <p className="text-sm font-medium text-gray-800 leading-snug">
-                      <span className="font-bold text-purple-700 mr-1">Q{question.questionNumber}.</span>
+                      <span className="font-bold mr-1" style={{ color: 'var(--hw-primary)' }}>Q{question.questionNumber}.</span>
                       {question.text}
                     </p>
                     <div className="flex items-center gap-2 flex-wrap mt-0.5">
                       {question.hint && isPrefilled && (
-                        <span className="inline-flex items-center gap-1 text-xs text-purple-600">
+                        <span className="inline-flex items-center gap-1 text-xs" style={{ color: 'var(--hw-primary)' }}>
                           <Info className="w-3 h-3" />{question.hint}
                         </span>
                       )}
                       {isAiSuggested && (
-                        <span className="inline-flex items-center gap-1 text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full font-medium">
+                        <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full font-medium" style={{ background: 'var(--purple-border)', color: 'var(--hw-primary)' }}>
                           <Sparkles className="w-3 h-3" />AI suggested
                         </span>
                       )}

@@ -87,7 +87,7 @@ export function HomeownerBenefitsDialog({ open, onOpenChange, trialDaysRemaining
       <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader className="text-center pb-4">
           <div className="flex justify-center mb-4">
-            <div className="p-3 rounded-full bg-gradient-to-br from-purple-500 to-purple-700">
+            <div className="p-3 rounded-full" style={{ background: 'linear-gradient(135deg, var(--hw-primary) 0%, var(--hw-accent) 100%)' }}>
               <Crown className="h-8 w-8 text-white" />
             </div>
           </div>
@@ -115,12 +115,12 @@ export function HomeownerBenefitsDialog({ open, onOpenChange, trialDaysRemaining
 
         <div className="space-y-4 py-4">
           {homeownerFeatures.map((feature, index) => (
-            <Card key={index} className="border-l-4 border-l-purple-600">
+            <Card key={index} style={{ borderLeft: '4px solid var(--hw-primary)' }}>
               <CardContent className="p-4">
                 <div className="flex gap-4">
                   <div className="shrink-0">
-                    <div className="p-2 rounded-lg bg-purple-100">
-                      <feature.icon className="h-5 w-5 text-purple-600" />
+                    <div className="p-2 rounded-lg" style={{ background: 'var(--purple-tint)' }}>
+                      <feature.icon className="h-5 w-5" style={{ color: 'var(--hw-primary)' }} />
                     </div>
                   </div>
                   <div className="flex-1">
@@ -141,11 +141,11 @@ export function HomeownerBenefitsDialog({ open, onOpenChange, trialDaysRemaining
           ))}
         </div>
 
-        <div className="bg-gradient-to-r from-purple-100 to-purple-50 rounded-lg p-4 mt-2">
+        <div className="rounded-lg p-4 mt-2" style={{ background: 'var(--purple-tint)' }}>
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <Sparkles className="h-4 w-4 text-purple-600" />
+                <Sparkles className="h-4 w-4" style={{ color: 'var(--hw-primary)' }} />
                 <span className="font-semibold" style={{ color: '#2c0f5b' }}>MyHomeBase™ Subscription</span>
               </div>
               <p className="text-sm text-muted-foreground">Everything you need to maintain your home</p>
@@ -161,7 +161,7 @@ export function HomeownerBenefitsDialog({ open, onOpenChange, trialDaysRemaining
           <Button variant="outline" onClick={() => onOpenChange(false)} data-testid="button-close-homeowner-dialog">
             Maybe Later
           </Button>
-          <Button asChild size="lg" className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800" data-testid="button-subscribe-dialog">
+          <Button asChild size="lg" style={{ background: 'linear-gradient(135deg, var(--hw-primary) 0%, var(--hw-accent) 100%)' }} data-testid="button-subscribe-dialog">
             <Link href="/homeowner-pricing">
               <Crown className="h-4 w-4 mr-2" />
               View Plans
@@ -195,10 +195,10 @@ export function HomeownerFeatureGate({ children, featureName, featureIcon: Featu
     <>
       <div className="relative">
         <div className="absolute inset-0 bg-background/80 backdrop-blur-[2px] z-10 flex items-center justify-center rounded-lg">
-          <Card className="w-full max-w-md mx-4 shadow-lg border-2 border-purple-200">
+          <Card className="w-full max-w-md mx-4 shadow-lg border-2" style={{ borderColor: 'var(--purple-border)' }}>
             <CardContent className="py-8 text-center">
               <div className="mb-4 flex justify-center">
-                <div className="p-4 rounded-full bg-gradient-to-br from-purple-500 to-purple-700">
+                <div className="p-4 rounded-full" style={{ background: 'linear-gradient(135deg, var(--hw-primary) 0%, var(--hw-accent) 100%)' }}>
                   <Crown className="h-10 w-10 text-white" />
                 </div>
               </div>
@@ -207,7 +207,7 @@ export function HomeownerFeatureGate({ children, featureName, featureIcon: Featu
                 Subscribe to MyHomeBase™ to access {featureName.toLowerCase()} and all premium home management features.
               </p>
               <div className="flex flex-col gap-3">
-                <Button asChild size="lg" className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800" data-testid="button-subscribe-gate">
+                <Button asChild size="lg" style={{ background: 'linear-gradient(135deg, var(--hw-primary) 0%, var(--hw-accent) 100%)' }} data-testid="button-subscribe-gate">
                   <Link href="/homeowner-pricing">
                     <Crown className="h-4 w-4 mr-2" />
                     Start Free Trial - $5/mo
@@ -250,10 +250,10 @@ export function HomeownerTrialBanner() {
   if (isInTrial) {
     return (
       <>
-        <div className="bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200 rounded-lg p-4 mb-6">
+        <div className="rounded-lg p-4 mb-6 border" style={{ background: 'var(--purple-tint)', borderColor: 'var(--purple-border)' }}>
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-gradient-to-br from-purple-500 to-purple-700">
+              <div className="p-2 rounded-full" style={{ background: 'linear-gradient(135deg, var(--hw-primary) 0%, var(--hw-accent) 100%)' }}>
                 <Clock className="h-5 w-5 text-white" />
               </div>
               <div>
@@ -267,7 +267,7 @@ export function HomeownerTrialBanner() {
               <Button variant="ghost" size="sm" onClick={() => setShowBenefitsDialog(true)} data-testid="button-learn-more-trial">
                 Learn More
               </Button>
-              <Button asChild size="sm" className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800" data-testid="button-subscribe-trial">
+              <Button asChild size="sm" style={{ background: 'linear-gradient(135deg, var(--hw-primary) 0%, var(--hw-accent) 100%)' }} data-testid="button-subscribe-trial">
                 <Link href="/homeowner-pricing">
                   <Crown className="h-4 w-4 mr-2" />
                   Subscribe Now
@@ -302,7 +302,7 @@ export function HomeownerTrialBanner() {
             <Button variant="ghost" size="sm" onClick={() => setShowBenefitsDialog(true)} data-testid="button-learn-more-expired">
               Learn More
             </Button>
-            <Button asChild size="sm" className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800" data-testid="button-subscribe-expired">
+            <Button asChild size="sm" style={{ background: 'linear-gradient(135deg, var(--hw-primary) 0%, var(--hw-accent) 100%)' }} data-testid="button-subscribe-expired">
               <Link href="/homeowner-pricing">
                 <Crown className="h-4 w-4 mr-2" />
                 Subscribe - $5/mo
@@ -335,20 +335,20 @@ export function PaidSubscriberGate({ children, featureName }: { children: React.
     <>
       <div className="relative">
         <div className="absolute inset-0 bg-background/80 backdrop-blur-[2px] z-10 flex items-center justify-center rounded-lg">
-          <Card className="w-full max-w-md mx-4 shadow-lg border-2 border-purple-200">
+          <Card className="w-full max-w-md mx-4 shadow-lg border-2" style={{ borderColor: 'var(--purple-border)' }}>
             <CardContent className="py-8 text-center">
               <div className="mb-4 flex justify-center">
-                <div className="p-4 rounded-full bg-gradient-to-br from-purple-500 to-purple-700">
+                <div className="p-4 rounded-full" style={{ background: 'linear-gradient(135deg, var(--hw-primary) 0%, var(--hw-accent) 100%)' }}>
                   <Gift className="h-10 w-10 text-white" />
                 </div>
               </div>
-              <Badge className="mb-4 bg-purple-100 text-purple-700">Paid Subscriber Exclusive</Badge>
+              <Badge className="mb-4" style={{ background: 'var(--purple-tint)', color: 'var(--hw-primary)' }}>Paid Subscriber Exclusive</Badge>
               <h3 className="text-xl font-bold mb-2" style={{ color: '#2c0f5b' }}>Unlock {featureName}</h3>
               <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
                 {featureName} is available exclusively for paid subscribers. Subscribe to unlock this feature and start earning rewards!
               </p>
               <div className="flex flex-col gap-3">
-                <Button asChild size="lg" className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800" data-testid="button-subscribe-paid-gate">
+                <Button asChild size="lg" style={{ background: 'linear-gradient(135deg, var(--hw-primary) 0%, var(--hw-accent) 100%)' }} data-testid="button-subscribe-paid-gate">
                   <Link href="/homeowner-pricing">
                     <Crown className="h-4 w-4 mr-2" />
                     Subscribe Now - $5/mo
@@ -409,10 +409,10 @@ export function FreeUserUpgradePrompt() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: '#eeedf9' }}>
-      <Card className="border-2 border-purple-200 shadow-lg max-w-4xl w-full">
+      <Card className="border-2 shadow-lg max-w-4xl w-full" style={{ borderColor: 'var(--purple-border)' }}>
         <CardContent className="py-8 text-center">
           <div className="mb-4 flex justify-center">
-            <div className="p-4 rounded-full bg-gradient-to-br from-purple-500 to-purple-700">
+            <div className="p-4 rounded-full" style={{ background: 'linear-gradient(135deg, var(--hw-primary) 0%, var(--hw-accent) 100%)' }}>
               <Home className="h-10 w-10 text-white" />
             </div>
           </div>
@@ -438,14 +438,15 @@ export function FreeUserUpgradePrompt() {
             {plans.map((plan) => (
               <Link key={plan.name} href={`/homeowner-pricing?plan=${plan.planId}`}>
                 <Card 
-                  className="relative border cursor-pointer transition-all hover:border-purple-500 hover:shadow-lg h-full"
+                  className="relative border cursor-pointer transition-all hover:shadow-lg h-full"
+                  style={{ '--tw-border-opacity': '1' } as React.CSSProperties}
                 >
                   <CardContent className="pt-6 pb-4">
                     <h4 className="font-bold text-lg" style={{ color: '#2c0f5b' }}>{plan.name}</h4>
                     <div className="text-3xl font-bold my-2" style={{ color: '#2c0f5b' }}>
                       {plan.price}<span className="text-sm font-normal text-muted-foreground">/mo</span>
                     </div>
-                    <p className="text-sm text-purple-600 font-medium mb-3">{plan.homes}</p>
+                    <p className="text-sm font-medium mb-3" style={{ color: 'var(--hw-primary)' }}>{plan.homes}</p>
                     <ul className="text-sm text-left space-y-1">
                       {plan.features.map((feature, i) => (
                         <li key={i} className="flex items-start gap-2">
@@ -461,7 +462,7 @@ export function FreeUserUpgradePrompt() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button asChild size="lg" className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800" data-testid="button-upgrade-free-user">
+            <Button asChild size="lg" style={{ background: 'linear-gradient(135deg, var(--hw-primary) 0%, var(--hw-accent) 100%)' }} data-testid="button-upgrade-free-user">
               <Link href="/homeowner-pricing">
                 <Crown className="h-4 w-4 mr-2" />
                 View Plans & Sign Up

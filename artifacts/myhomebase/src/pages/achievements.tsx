@@ -355,7 +355,7 @@ export default function Achievements() {
                 >
                   <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
                     <div className="text-center">
-                      <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#6d28d9' }}>
+                      <p className="text-2xl sm:text-3xl font-bold" style={{ color: 'var(--purple)' }}>
                         {unlockedCount}/{totalCount}
                       </p>
                       <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Total Achievements</p>
@@ -381,7 +381,7 @@ export default function Achievements() {
                 >
                   <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
                     <div className="text-center">
-                      <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#3b82f6' }}>
+                      <p className="text-2xl sm:text-3xl font-bold" style={{ color: 'var(--purple)' }}>
                         {categoryStats.seasonal.unlocked}/{categoryStats.seasonal.total}
                       </p>
                       <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Seasonal ({categoryStats.seasonal.total})</p>
@@ -407,7 +407,7 @@ export default function Achievements() {
                 >
                   <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
                     <div className="text-center">
-                      <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#10b981' }}>
+                      <p className="text-2xl sm:text-3xl font-bold" style={{ color: 'var(--purple)' }}>
                         {categoryStats.financial.unlocked}/{categoryStats.financial.total}
                       </p>
                       <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Financial ({categoryStats.financial.total})</p>
@@ -433,7 +433,7 @@ export default function Achievements() {
                 >
                   <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
                     <div className="text-center">
-                      <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#f59e0b' }}>
+                      <p className="text-2xl sm:text-3xl font-bold" style={{ color: 'var(--purple)' }}>
                         {categoryStats.organization.unlocked}/{categoryStats.organization.total}
                       </p>
                       <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Organization ({categoryStats.organization.total})</p>
@@ -459,7 +459,7 @@ export default function Achievements() {
                 >
                   <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
                     <div className="text-center">
-                      <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#ec4899' }}>
+                      <p className="text-2xl sm:text-3xl font-bold" style={{ color: 'var(--purple)' }}>
                         {categoryStats.referral.unlocked}/{categoryStats.referral.total}
                       </p>
                       <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Referrals ({categoryStats.referral.total})</p>
@@ -485,7 +485,7 @@ export default function Achievements() {
                 >
                   <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
                     <div className="text-center">
-                      <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#8b5cf6' }}>
+                      <p className="text-2xl sm:text-3xl font-bold" style={{ color: 'var(--purple)' }}>
                         {categoryStats.milestones.unlocked}/{categoryStats.milestones.total}
                       </p>
                       <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Milestones ({categoryStats.milestones.total})</p>
@@ -511,7 +511,7 @@ export default function Achievements() {
                 >
                   <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
                     <div className="text-center">
-                      <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#ef4444' }}>
+                      <p className="text-2xl sm:text-3xl font-bold" style={{ color: 'var(--purple)' }}>
                         {categoryStats.streaks.unlocked}/{categoryStats.streaks.total}
                       </p>
                       <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Streaks ({categoryStats.streaks.total})</p>
@@ -537,7 +537,7 @@ export default function Achievements() {
                 >
                   <CardContent className="pt-4 sm:pt-6 pb-4 sm:pb-6">
                     <div className="text-center">
-                      <p className="text-2xl sm:text-3xl font-bold" style={{ color: '#06b6d4' }}>
+                      <p className="text-2xl sm:text-3xl font-bold" style={{ color: 'var(--purple)' }}>
                         {categoryStats.special.unlocked}/{categoryStats.special.total}
                       </p>
                       <p className="text-xs sm:text-sm" style={{ color: '#2c0f5b' }}>Special ({categoryStats.special.total})</p>
@@ -553,15 +553,15 @@ export default function Achievements() {
 
           {/* Category Tabs */}
           <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="mb-6 sm:mb-8">
-            <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-4 md:grid-cols-8 mb-4 sm:mb-6" >
-              <TabsTrigger value="all" data-testid="tab-all" className="text-xs sm:text-sm text-[#4b435c]" style={{ backgroundColor: '#e9d5ff' }}>All</TabsTrigger>
-              <TabsTrigger value="seasonal" data-testid="tab-seasonal" className="text-xs sm:text-sm text-[#4b435c]" style={{ backgroundColor: '#e9d5ff' }}>Seasonal</TabsTrigger>
-              <TabsTrigger value="financial savvy" data-testid="tab-financial" className="text-xs sm:text-sm text-[#4b435c]" style={{ backgroundColor: '#e9d5ff' }}>Financial</TabsTrigger>
-              <TabsTrigger value="organization" data-testid="tab-organization" className="text-xs sm:text-sm text-[#4b435c]" style={{ backgroundColor: '#e9d5ff' }}>Organization</TabsTrigger>
-              <TabsTrigger value="referral & community" data-testid="tab-referral" className="text-xs sm:text-sm text-[#4b435c]" style={{ backgroundColor: '#e9d5ff' }}>Referrals</TabsTrigger>
-              <TabsTrigger value="milestones" data-testid="tab-milestones" className="text-xs sm:text-sm text-[#4b435c]" style={{ backgroundColor: '#e9d5ff' }}>Milestones</TabsTrigger>
-              <TabsTrigger value="streaks" data-testid="tab-streaks" className="text-xs sm:text-sm text-[#4b435c]" style={{ backgroundColor: '#e9d5ff' }}>Streaks</TabsTrigger>
-              <TabsTrigger value="special" data-testid="tab-special" className="text-xs sm:text-sm text-[#4b435c]" style={{ backgroundColor: '#e9d5ff' }}>Special</TabsTrigger>
+            <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-4 md:grid-cols-8 mb-4 sm:mb-6" style={{ backgroundColor: 'var(--purple-tint)' }}>
+              <TabsTrigger value="all" data-testid="tab-all" className="text-xs sm:text-sm text-[#4b435c]">All</TabsTrigger>
+              <TabsTrigger value="seasonal" data-testid="tab-seasonal" className="text-xs sm:text-sm text-[#4b435c]">Seasonal</TabsTrigger>
+              <TabsTrigger value="financial savvy" data-testid="tab-financial" className="text-xs sm:text-sm text-[#4b435c]">Financial</TabsTrigger>
+              <TabsTrigger value="organization" data-testid="tab-organization" className="text-xs sm:text-sm text-[#4b435c]">Organization</TabsTrigger>
+              <TabsTrigger value="referral & community" data-testid="tab-referral" className="text-xs sm:text-sm text-[#4b435c]">Referrals</TabsTrigger>
+              <TabsTrigger value="milestones" data-testid="tab-milestones" className="text-xs sm:text-sm text-[#4b435c]">Milestones</TabsTrigger>
+              <TabsTrigger value="streaks" data-testid="tab-streaks" className="text-xs sm:text-sm text-[#4b435c]">Streaks</TabsTrigger>
+              <TabsTrigger value="special" data-testid="tab-special" className="text-xs sm:text-sm text-[#4b435c]">Special</TabsTrigger>
             </TabsList>
 
             <TabsContent value={selectedCategory}>
@@ -603,18 +603,18 @@ export default function Achievements() {
                           onClick={() => setSelectedAchievement(achievement)}
                           className={`relative p-6 rounded-lg border-2 transition-all cursor-pointer hover:shadow-lg ${
                             isUnlocked
-                              ? 'border-purple-500 bg-gradient-to-br from-purple-50 to-blue-50 hover:border-purple-600'
+                              ? 'hover:shadow-lg'
                               : 'border-gray-300 bg-white opacity-75 hover:opacity-90'
                           }`}
+                          style={isUnlocked ? { borderColor: 'var(--purple)', background: 'var(--purple-tint)' } : {}}
                           data-testid={`achievement-${achievement.key}`}
                         >
                           <div className="flex items-start gap-4">
                             <div
                               className={`p-3 rounded-full ${
-                                isUnlocked
-                                  ? 'bg-gradient-to-br from-purple-500 to-blue-500 text-white'
-                                  : 'bg-gray-300 text-gray-500'
+                                isUnlocked ? 'text-white' : 'bg-gray-300 text-gray-500'
                               }`}
+                              style={isUnlocked ? { background: 'var(--purple)' } : {}}
                             >
                               {isUnlocked ? (
                                 <IconComponent className="w-6 h-6" data-testid={`icon-${achievement.key}`} />
@@ -637,7 +637,7 @@ export default function Achievements() {
                                     <span className="text-xs font-semibold" style={{ color: '#6b7280' }}>
                                       {getProgressLabel(achievement)}
                                     </span>
-                                    <span className="text-xs font-semibold" style={{ color: '#6d28d9' }}>
+                                    <span className="text-xs font-semibold" style={{ color: 'var(--purple)' }}>
                                       {Math.round(progress)}%
                                     </span>
                                   </div>
@@ -655,7 +655,7 @@ export default function Achievements() {
                               {isUnlocked && (
                                 <div className="flex items-center gap-2">
                                   <Badge 
-                                    className="bg-gradient-to-r from-purple-500 to-blue-500 text-white"
+                                    style={{ background: 'var(--purple)', color: '#fff' }}
                                     data-testid={`badge-unlocked-${achievement.key}`}
                                   >
                                     Unlocked
@@ -696,10 +696,9 @@ export default function Achievements() {
                     <div className="flex items-center gap-4 mb-2">
                       <div
                         className={`p-4 rounded-full ${
-                          selectedAchievement.isUnlocked
-                            ? 'bg-gradient-to-br from-purple-500 to-blue-500 text-white'
-                            : 'bg-gray-300 text-gray-500'
+                          selectedAchievement.isUnlocked ? 'text-white' : 'bg-gray-300 text-gray-500'
                         }`}
+                      style={selectedAchievement.isUnlocked ? { background: 'var(--purple)' } : {}}
                       >
                         {selectedAchievement.isUnlocked ? (
                           (() => {
@@ -712,7 +711,7 @@ export default function Achievements() {
                       </div>
                       <div>
                         <DialogTitle style={{ color: '#2c0f5b' }}>{selectedAchievement.name}</DialogTitle>
-                        <Badge className={selectedAchievement.isUnlocked ? "bg-purple-500" : "bg-gray-400"}>
+                        <Badge style={selectedAchievement.isUnlocked ? { background: 'var(--purple)', color: '#fff' } : { background: '#9CA3AF', color: '#fff' }}>
                           {selectedAchievement.category}
                         </Badge>
                       </div>
@@ -752,12 +751,12 @@ export default function Achievements() {
                             <span className="text-sm font-semibold" style={{ color: '#6b7280' }}>
                               {getProgressLabel(selectedAchievement)}
                             </span>
-                            <span className="text-sm font-semibold" style={{ color: '#6d28d9' }}>
+                            <span className="text-sm font-semibold" style={{ color: 'var(--purple)' }}>
                               {Math.round(selectedAchievement.progress)}%
                             </span>
                           </div>
                           <Progress value={selectedAchievement.progress} className="h-2 mb-2" />
-                          <div className="text-sm font-medium" style={{ color: '#6d28d9' }}>
+                          <div className="text-sm font-medium" style={{ color: 'var(--purple)' }}>
                             {getRemainingText(selectedAchievement, selectedAchievement.progress)}
                           </div>
                         </div>
@@ -772,7 +771,7 @@ export default function Achievements() {
                           <ul className="space-y-1 text-sm" style={{ color: '#6b7280' }}>
                             {Object.entries(selectedAchievement.criteria).map(([key, value]) => (
                               <li key={key} className="flex items-start gap-2">
-                                <span className="text-purple-500">•</span>
+                                <span style={{ color: 'var(--purple)' }}>•</span>
                                 <span>
                                   {key === 'seasonalTasksCount' && `Complete ${value} seasonal maintenance tasks`}
                                   {key === 'costSavingsAmount' && `Save $${value} through maintenance`}
@@ -791,8 +790,8 @@ export default function Achievements() {
 
                     {/* Tips */}
                     {!selectedAchievement.isUnlocked && (
-                      <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
-                        <p className="text-sm" style={{ color: '#6d28d9' }}>
+                      <div className="p-3 rounded-lg border" style={{ background: 'var(--purple-tint)', borderColor: 'var(--purple-border)' }}>
+                        <p className="text-sm" style={{ color: 'var(--purple)' }}>
                           <strong>Tip:</strong> Keep completing your {selectedAchievement.category.toLowerCase()} tasks to unlock this achievement!
                         </p>
                       </div>
@@ -839,19 +838,17 @@ export default function Achievements() {
                     <div
                       key={achievement.key}
                       className={`p-4 rounded-lg border-2 transition-all ${
-                        isUnlocked
-                          ? 'border-purple-500 bg-gradient-to-br from-purple-50 to-blue-50'
-                          : 'border-gray-300 bg-white opacity-75'
+                        isUnlocked ? '' : 'border-gray-300 bg-white opacity-75'
                       }`}
+                      style={isUnlocked ? { borderColor: 'var(--purple)', background: 'var(--purple-tint)' } : {}}
                       data-testid={`modal-achievement-${achievement.key}`}
                     >
                       <div className="flex items-start gap-4">
                         <div
                           className={`p-3 rounded-full shrink-0 ${
-                            isUnlocked
-                              ? 'bg-gradient-to-br from-purple-500 to-blue-500 text-white'
-                              : 'bg-gray-300 text-gray-500'
+                            isUnlocked ? 'text-white' : 'bg-gray-300 text-gray-500'
                           }`}
+                        style={isUnlocked ? { background: 'var(--purple)' } : {}}
                         >
                           {isUnlocked ? (
                             <IconComponent className="w-6 h-6" />
@@ -874,7 +871,7 @@ export default function Achievements() {
                                 <span className="text-xs font-semibold" style={{ color: '#6b7280' }}>
                                   {getProgressLabel(achievement)}
                                 </span>
-                                <span className="text-xs font-semibold" style={{ color: '#6d28d9' }}>
+                                <span className="text-xs font-semibold" style={{ color: 'var(--purple)' }}>
                                   {Math.round(progress)}%
                                 </span>
                               </div>
@@ -891,9 +888,7 @@ export default function Achievements() {
                           
                           {isUnlocked && (
                             <div className="flex items-center gap-2">
-                              <Badge 
-                                className="bg-gradient-to-r from-purple-500 to-blue-500 text-white"
-                              >
+                              <Badge style={{ background: 'var(--purple)', color: '#fff' }}>
                                 Unlocked
                               </Badge>
                               {achievement.unlockedAt && (

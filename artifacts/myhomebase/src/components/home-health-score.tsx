@@ -23,8 +23,10 @@ const IMPROVEMENT_TIPS = [
     icon: ClipboardList,
     label: "Complete seasonal maintenance tasks",
     detail: `Every task you mark done adds +${POINTS_PER_TASK} pts to your score`,
-    color: "text-purple-600",
-    bg: "bg-purple-50",
+    color: "",
+    bg: "",
+    colorStyle: { color: 'var(--hw-primary)' } as React.CSSProperties,
+    bgStyle: { background: 'var(--purple-tint)' } as React.CSSProperties,
   },
   {
     icon: Wrench,
@@ -229,8 +231,8 @@ export default function HomeHealthScore({ houseId, houseName, compact = false }:
           </div>
           <div className="space-y-2">
             {IMPROVEMENT_TIPS.map((tip) => (
-              <div key={tip.label} className={`flex items-start gap-3 rounded-xl p-3 ${tip.bg}`}>
-                <tip.icon className={`w-4 h-4 mt-0.5 flex-shrink-0 ${tip.color}`} />
+              <div key={tip.label} className={`flex items-start gap-3 rounded-xl p-3 ${tip.bg}`} style={'bgStyle' in tip ? tip.bgStyle : undefined}>
+                <tip.icon className={`w-4 h-4 mt-0.5 flex-shrink-0 ${tip.color}`} style={'colorStyle' in tip ? tip.colorStyle : undefined} />
                 <div>
                   <p className="text-sm font-medium text-gray-800">{tip.label}</p>
                   <p className="text-xs text-gray-500 mt-0.5">{tip.detail}</p>

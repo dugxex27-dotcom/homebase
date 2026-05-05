@@ -118,7 +118,7 @@ export function StripeConnectOnboarding() {
     return (
       <Card>
         <CardContent className="py-8 flex justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+          <Loader2 className="h-8 w-8 animate-spin" style={{ color: 'var(--theme-accent)' }} />
         </CardContent>
       </Card>
     );
@@ -150,7 +150,7 @@ export function StripeConnectOnboarding() {
               <p className="text-sm text-muted-foreground">Funds go to your bank account</p>
             </div>
             <div className="p-4 rounded-lg bg-gray-50">
-              <Shield className="h-6 w-6 mx-auto mb-2 text-purple-600" />
+              <Shield className="h-6 w-6 mx-auto mb-2" style={{ color: 'var(--theme-accent)' }} />
               <h4 className="font-medium">Secure & Trusted</h4>
               <p className="text-sm text-muted-foreground">Powered by Stripe</p>
             </div>

@@ -4,12 +4,12 @@ import { Link } from "wouter";
 
 export default function LegalDisclaimer() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
       <div className="container mx-auto px-4 py-12 max-w-4xl">
         <Card className="shadow-lg">
           <CardHeader className="text-center border-b">
             <div className="flex items-center justify-center gap-3 mb-2">
-              <AlertTriangle className="w-8 h-8 text-purple-600" />
+              <AlertTriangle className="w-8 h-8" style={{ color: 'var(--purple)' }} />
               <CardTitle className="text-3xl font-bold">Legal Disclaimer</CardTitle>
             </div>
             <p className="text-sm text-gray-500">Last Updated: November 15, 2025</p>
@@ -112,7 +112,7 @@ export default function LegalDisclaimer() {
             <div className="border-t pt-6 mt-6">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">6. Contact</h2>
               <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                If you have questions about this legal section or need further clarification, please visit our <Link href="/support" className="text-purple-600 hover:text-purple-700 underline font-medium">Support Center</Link>.
+                If you have questions about this legal section or need further clarification, please visit our <Link href="/support" className="underline font-medium" style={{ color: 'var(--purple)' }}>Support Center</Link>.
               </p>
             </div>
           </CardContent>

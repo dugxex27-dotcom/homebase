@@ -606,7 +606,7 @@ export function InsurancePrepTab({ houses }: Props) {
                   {result.evidenceTimeline.map((item, i) => (
                     <div key={i} className="flex items-start gap-3">
                       <div className="flex-shrink-0 mt-0.5">
-                        <div className={`w-2 h-2 rounded-full mt-1.5 ${item.source === "service_record" ? "bg-blue-500" : "bg-purple-400"}`} />
+                        <div className={`w-2 h-2 rounded-full mt-1.5 ${item.source === "service_record" ? "bg-blue-500" : ""}`} style={item.source !== "service_record" ? { background: 'var(--purple)' } : undefined} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-wrap items-center gap-2 mb-0.5">
@@ -614,7 +614,7 @@ export function InsurancePrepTab({ houses }: Props) {
                           <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wide ${
                             item.source === "service_record"
                               ? "bg-blue-100 text-blue-700"
-                              : "bg-purple-100 text-purple-700"
+                              : "bg-[var(--purple-border)] text-[var(--purple-deep)]"
                           }`}>
                             {item.source === "service_record" ? "Contractor" : "Owner"}
                           </span>

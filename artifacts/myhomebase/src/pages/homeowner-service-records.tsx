@@ -711,7 +711,7 @@ export default function HomeownerServiceRecords() {
                             {log.serviceDescription}
                           </h4>
                           {aiVerifiedLogIds.has(log.id) && (
-                            <Badge className="text-xs gap-1 bg-purple-100 text-purple-800 border-purple-200 font-medium">
+                            <Badge className="text-xs gap-1 font-medium" style={{ background: 'var(--purple-border)', color: 'var(--purple-deep)', borderColor: 'var(--purple-border)' }}>
                               <CheckCircle2 className="w-3 h-3" /> Verified by AI
                             </Badge>
                           )}
@@ -953,13 +953,15 @@ export default function HomeownerServiceRecords() {
                   <div className="flex gap-3">
                     <button
                       onClick={() => setAiCompletionMethod("contractor")}
-                      className={`flex-1 py-2 px-3 rounded border text-sm font-medium transition-colors ${aiCompletionMethod === "contractor" ? "border-purple-600 bg-purple-50 text-purple-800" : "border-gray-200 hover:border-gray-300"}`}
+                      className="flex-1 py-2 px-3 rounded border text-sm font-medium transition-colors border-gray-200"
+                      style={aiCompletionMethod === "contractor" ? { borderColor: 'var(--purple)', background: 'var(--purple-tint)', color: 'var(--purple-deep)' } : {}}
                     >
                       Contractor / Professional
                     </button>
                     <button
                       onClick={() => setAiCompletionMethod("diy")}
-                      className={`flex-1 py-2 px-3 rounded border text-sm font-medium transition-colors ${aiCompletionMethod === "diy" ? "border-purple-600 bg-purple-50 text-purple-800" : "border-gray-200 hover:border-gray-300"}`}
+                      className="flex-1 py-2 px-3 rounded border text-sm font-medium transition-colors border-gray-200"
+                      style={aiCompletionMethod === "diy" ? { borderColor: 'var(--purple)', background: 'var(--purple-tint)', color: 'var(--purple-deep)' } : {}}
                     >
                       DIY
                     </button>
@@ -971,7 +973,7 @@ export default function HomeownerServiceRecords() {
                   <label className="block text-sm font-medium mb-1">
                     Invoice / Receipt <span className="text-muted-foreground">(photo or PDF)</span>
                   </label>
-                  <label className="flex items-center justify-center gap-2 border-2 border-dashed rounded-lg p-4 cursor-pointer hover:border-purple-400 transition-colors" style={{ borderColor: '#b6a6f4' }}>
+                  <label className="flex items-center justify-center gap-2 border-2 border-dashed rounded-lg p-4 cursor-pointer transition-colors" style={{ borderColor: '#b6a6f4' }}>
                     <Upload className="w-4 h-4 text-muted-foreground" />
                     <span className="text-sm text-muted-foreground">Click to upload</span>
                     <input
@@ -995,7 +997,7 @@ export default function HomeownerServiceRecords() {
                   <>
                     <div>
                       <label className="block text-sm font-medium mb-1">Material Receipts <span className="text-muted-foreground text-xs">(optional — for AI to extract service details)</span></label>
-                      <label className="flex items-center justify-center gap-2 border-2 border-dashed rounded-lg p-3 cursor-pointer hover:border-purple-400 transition-colors" style={{ borderColor: '#b6a6f4' }}>
+                      <label className="flex items-center justify-center gap-2 border-2 border-dashed rounded-lg p-3 cursor-pointer transition-colors" style={{ borderColor: '#b6a6f4' }}>
                         <Upload className="w-4 h-4 text-muted-foreground" />
                         <span className="text-sm text-muted-foreground">Upload receipts</span>
                         <input type="file" accept="image/*,.pdf" multiple className="hidden" data-testid="input-ai-receipt-files" onChange={(e) => setAiReceiptFiles(prev => [...prev, ...Array.from(e.target.files || [])])} />
@@ -1048,8 +1050,8 @@ export default function HomeownerServiceRecords() {
                 <div className="space-y-3">
                   <div>
                     <label className="block text-xs font-medium mb-1 text-gray-700">Before Photos *</label>
-                    <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-purple-50" style={{ borderColor: '#b6a6f4' }}>
-                      <Upload className="w-5 h-5 mb-1" style={{ color: '#7c3aed' }} />
+                    <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer" style={{ borderColor: '#b6a6f4' }}>
+                      <Upload className="w-5 h-5 mb-1" style={{ color: 'var(--hw-primary)' }} />
                       <span className="text-xs text-gray-600">Upload before photos</span>
                       <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => setAiDiyVerifyFiles((p) => ({ ...p, before: Array.from(e.target.files || []) }))} />
                     </label>
@@ -1057,8 +1059,8 @@ export default function HomeownerServiceRecords() {
                   </div>
                   <div>
                     <label className="block text-xs font-medium mb-1 text-gray-700">After Photos *</label>
-                    <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-purple-50" style={{ borderColor: '#b6a6f4' }}>
-                      <Upload className="w-5 h-5 mb-1" style={{ color: '#7c3aed' }} />
+                    <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer" style={{ borderColor: '#b6a6f4' }}>
+                      <Upload className="w-5 h-5 mb-1" style={{ color: 'var(--hw-primary)' }} />
                       <span className="text-xs text-gray-600">Upload after photos</span>
                       <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => setAiDiyVerifyFiles((p) => ({ ...p, after: Array.from(e.target.files || []) }))} />
                     </label>
@@ -1066,8 +1068,8 @@ export default function HomeownerServiceRecords() {
                   </div>
                   <div>
                     <label className="block text-xs font-medium mb-1 text-gray-700">Receipt (optional)</label>
-                    <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed rounded-lg cursor-pointer hover:bg-purple-50" style={{ borderColor: '#b6a6f4' }}>
-                      <Upload className="w-5 h-5 mb-1" style={{ color: '#7c3aed' }} />
+                    <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed rounded-lg cursor-pointer" style={{ borderColor: '#b6a6f4' }}>
+                      <Upload className="w-5 h-5 mb-1" style={{ color: 'var(--hw-primary)' }} />
                       <span className="text-xs text-gray-600">Upload receipt</span>
                       <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => setAiDiyVerifyFiles((p) => ({ ...p, receipt: Array.from(e.target.files || []) }))} />
                     </label>
@@ -1461,7 +1463,7 @@ export default function HomeownerServiceRecords() {
                         file:mr-4 file:py-2 file:px-4
                         file:rounded-full file:border-0
                         file:text-sm file:font-semibold
-                        file:bg-white file:text-purple-700
+                        file:bg-white file:text-[var(--hw-primary)]
                         hover:file:bg-gray-100"
                       data-testid="input-receipt-files"
                     />
@@ -1500,7 +1502,7 @@ export default function HomeownerServiceRecords() {
                         file:mr-4 file:py-2 file:px-4
                         file:rounded-full file:border-0
                         file:text-sm file:font-semibold
-                        file:bg-white file:text-purple-700
+                        file:bg-white file:text-[var(--hw-primary)]
                         hover:file:bg-gray-100"
                       data-testid="input-before-photos"
                     />
@@ -1539,7 +1541,7 @@ export default function HomeownerServiceRecords() {
                         file:mr-4 file:py-2 file:px-4
                         file:rounded-full file:border-0
                         file:text-sm file:font-semibold
-                        file:bg-white file:text-purple-700
+                        file:bg-white file:text-[var(--hw-primary)]
                         hover:file:bg-gray-100"
                       data-testid="input-after-photos"
                     />

@@ -226,7 +226,7 @@ export default function HomeownerSetupWizard({ onComplete }: HomeownerSetupWizar
       <div className="sticky top-0 z-10 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 px-6 py-3">
         <div className="max-w-2xl mx-auto">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-purple-700 dark:text-purple-400">
+            <span className="text-sm font-medium" style={{ color: 'var(--hw-primary)' }}>
               Step {step} of {TOTAL_STEPS}
             </span>
             <span className="text-xs text-gray-400">{progressPercent}% complete</span>
@@ -239,17 +239,17 @@ export default function HomeownerSetupWizard({ onComplete }: HomeownerSetupWizar
         {/* Step 1: Welcome */}
         {step === 1 && (
           <div className="text-center space-y-6">
-            <div className="w-20 h-20 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mx-auto">
-              <Home className="w-10 h-10 text-purple-600" />
+            <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto" style={{ background: 'var(--purple-tint)' }}>
+              <Home className="w-10 h-10" style={{ color: 'var(--hw-primary)' }} />
             </div>
             <div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Welcome to MyHomeBase™!</h1>
               <p className="text-gray-500 dark:text-gray-400">Let's get your home set up. This takes about 5 minutes.</p>
             </div>
-            <div className="bg-purple-50 dark:bg-purple-950/30 rounded-xl p-6 text-left space-y-3">
+            <div className="rounded-xl p-6 text-left space-y-3" style={{ background: 'var(--purple-tint)' }}>
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Shield className="w-4 h-4 text-purple-600" />
+                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: 'var(--purple-border)' }}>
+                  <Shield className="w-4 h-4" style={{ color: 'var(--hw-primary)' }} />
                 </div>
                 <div>
                   <p className="font-semibold text-gray-900 dark:text-white">Protect your home</p>
@@ -257,8 +257,8 @@ export default function HomeownerSetupWizard({ onComplete }: HomeownerSetupWizar
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Wrench className="w-4 h-4 text-purple-600" />
+                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: 'var(--purple-border)' }}>
+                  <Wrench className="w-4 h-4" style={{ color: 'var(--hw-primary)' }} />
                 </div>
                 <div>
                   <p className="font-semibold text-gray-900 dark:text-white">Document your maintenance</p>
@@ -266,8 +266,8 @@ export default function HomeownerSetupWizard({ onComplete }: HomeownerSetupWizar
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Star className="w-4 h-4 text-purple-600" />
+                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: 'var(--purple-border)' }}>
+                  <Star className="w-4 h-4" style={{ color: 'var(--hw-primary)' }} />
                 </div>
                 <div>
                   <p className="font-semibold text-gray-900 dark:text-white">Build your Home Wellness Score™</p>
@@ -277,7 +277,8 @@ export default function HomeownerSetupWizard({ onComplete }: HomeownerSetupWizar
             </div>
             <div className="space-y-3">
               <Button
-                className="w-full bg-purple-600 hover:bg-purple-700 text-white h-12 text-base"
+                className="w-full text-white h-12 text-base"
+                style={{ background: 'var(--hw-primary)' }}
                 onClick={goNext}
               >
                 Enter My Home Info Manually
@@ -285,7 +286,8 @@ export default function HomeownerSetupWizard({ onComplete }: HomeownerSetupWizar
               </Button>
               <Button
                 variant="outline"
-                className="w-full h-12 text-base border-purple-200 text-purple-700 hover:bg-purple-50"
+                className="w-full h-12 text-base"
+                style={{ borderColor: 'var(--purple-border)', color: 'var(--hw-primary)' }}
                 onClick={() => {
                   onComplete();
                   setLocation("/documents");
@@ -320,7 +322,7 @@ export default function HomeownerSetupWizard({ onComplete }: HomeownerSetupWizar
                   variant="outline"
                   onClick={() => detectClimateZone(addressInput)}
                   disabled={isDetectingZone || !addressInput.trim()}
-                  className="border-purple-200 text-purple-700"
+                  style={{ borderColor: 'var(--purple-border)', color: 'var(--hw-primary)' }}
                 >
                   {isDetectingZone ? "..." : "Detect"}
                 </Button>
@@ -349,7 +351,8 @@ export default function HomeownerSetupWizard({ onComplete }: HomeownerSetupWizar
                 Skip for Now
               </Button>
               <Button
-                className="ml-auto bg-purple-600 hover:bg-purple-700 text-white"
+                className="ml-auto text-white"
+                style={{ background: 'var(--hw-primary)' }}
                 onClick={() => {
                   setData(d => ({ ...d, address: addressInput, climateZone: climateZoneDetected || undefined }));
                   goNext();
@@ -423,7 +426,8 @@ export default function HomeownerSetupWizard({ onComplete }: HomeownerSetupWizar
                 Back
               </Button>
               <Button
-                className="ml-auto bg-purple-600 hover:bg-purple-700 text-white"
+                className="ml-auto text-white"
+                style={{ background: 'var(--hw-primary)' }}
                 onClick={goNext}
               >
                 Continue
@@ -587,7 +591,8 @@ export default function HomeownerSetupWizard({ onComplete }: HomeownerSetupWizar
                 Skip for Now
               </Button>
               <Button
-                className="ml-auto bg-purple-600 hover:bg-purple-700 text-white"
+                className="ml-auto text-white"
+                style={{ background: 'var(--hw-primary)' }}
                 onClick={goNext}
               >
                 Continue
@@ -679,7 +684,7 @@ export default function HomeownerSetupWizard({ onComplete }: HomeownerSetupWizar
                 <Button
                   variant="outline"
                   size="sm"
-                  className="border-purple-200 text-purple-700"
+                  style={{ borderColor: 'var(--purple-border)', color: 'var(--hw-primary)' }}
                   disabled={!newAppliance.type}
                   onClick={addAppliance}
                 >
@@ -699,7 +704,8 @@ export default function HomeownerSetupWizard({ onComplete }: HomeownerSetupWizar
                 Skip for Now
               </Button>
               <Button
-                className="ml-auto bg-purple-600 hover:bg-purple-700 text-white"
+                className="ml-auto text-white"
+                style={{ background: 'var(--hw-primary)' }}
                 onClick={goNext}
               >
                 Continue
@@ -741,7 +747,8 @@ export default function HomeownerSetupWizard({ onComplete }: HomeownerSetupWizar
                 Skip for Now
               </Button>
               <Button
-                className="ml-auto bg-purple-600 hover:bg-purple-700 text-white"
+                className="ml-auto text-white"
+                style={{ background: 'var(--hw-primary)' }}
                 onClick={goNext}
               >
                 Continue
@@ -765,7 +772,7 @@ export default function HomeownerSetupWizard({ onComplete }: HomeownerSetupWizar
             <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-5 text-left space-y-3">
               {data.address && (
                 <div className="flex items-center gap-2 text-sm">
-                  <Home className="w-4 h-4 text-purple-500" />
+                  <Home className="w-4 h-4" style={{ color: 'var(--hw-primary)' }} />
                   <span className="text-gray-700 dark:text-gray-300">{data.address}</span>
                 </div>
               )}
@@ -791,7 +798,7 @@ export default function HomeownerSetupWizard({ onComplete }: HomeownerSetupWizar
               )}
               {(data.hasPool || data.hasGarage || data.hasBasement || data.hasSolarPanels || data.hasDeckOrPatio) && (
                 <div className="flex items-center gap-2 text-sm">
-                  <Home className="w-4 h-4 text-purple-400" />
+                  <Home className="w-4 h-4" style={{ color: 'var(--hw-accent)' }} />
                   <span className="text-gray-700 dark:text-gray-300">
                     {[data.hasPool && "Pool", data.hasGarage && "Garage", data.hasBasement && "Basement", data.hasSolarPanels && "Solar", data.hasDeckOrPatio && "Deck"].filter(Boolean).join(", ")}
                   </span>
@@ -801,7 +808,8 @@ export default function HomeownerSetupWizard({ onComplete }: HomeownerSetupWizar
 
             <div className="space-y-3">
               <Button
-                className="w-full bg-purple-600 hover:bg-purple-700 text-white h-12 text-base"
+                className="w-full text-white h-12 text-base"
+                style={{ background: 'var(--hw-primary)' }}
                 disabled={applyWizardDataMutation.isPending}
                 onClick={() => applyWizardDataMutation.mutate(data)}
               >

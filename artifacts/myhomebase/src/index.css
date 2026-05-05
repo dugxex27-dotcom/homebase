@@ -172,6 +172,8 @@ body[data-role="homeowner"],
   --theme-border-active:  var(--hw-accent);
   --theme-modal-backdrop: var(--hw-modal-bg);
   --theme-eyebrow:        var(--hw-eyebrow);
+  --theme-gradient-start: var(--hw-primary);
+  --theme-gradient-end:   var(--hw-accent);
 
   /* Shadcn semantic tokens */
   --background:          #ffffff;
@@ -224,6 +226,8 @@ body[data-role="contractor"],
   --theme-border-active:  var(--co-accent);
   --theme-modal-backdrop: var(--co-modal-bg);
   --theme-eyebrow:        var(--co-eyebrow);
+  --theme-gradient-start: var(--blue-deep);
+  --theme-gradient-end:   var(--co-primary);
 
   --background:           #ffffff;
   --foreground:           #000000;
@@ -272,6 +276,8 @@ body[data-role="agent"],
   --theme-border-active:  var(--ag-accent);
   --theme-modal-backdrop: var(--ag-modal-bg);
   --theme-eyebrow:        var(--ag-eyebrow);
+  --theme-gradient-start: var(--green-deep);
+  --theme-gradient-end:   var(--ag-accent);
 
   --background:           #ffffff;
   --foreground:           #000000;

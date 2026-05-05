@@ -595,7 +595,7 @@ export default function Messages() {
           <div className="lg:col-span-4 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-4 border-b border-gray-100 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <MessageCircle className="h-5 w-5 text-blue-600" />
+                <MessageCircle className="h-5 w-5" style={{ color: 'var(--theme-accent)' }} />
                 Conversations
               </h2>
               
@@ -603,7 +603,7 @@ export default function Messages() {
               {typedUser.role === 'homeowner' && (
                 <Dialog open={isComposeDialogOpen} onOpenChange={setIsComposeDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button size="sm" variant="default" className="bg-purple-600 hover:bg-purple-700" data-testid="button-compose">
+                    <Button size="sm" variant="default" style={{ background: 'var(--theme-accent)' }} data-testid="button-compose">
                       <Plus className="h-4 w-4 mr-1" />
                       New
                     </Button>
@@ -642,16 +642,17 @@ export default function Messages() {
                               <button
                                 type="button"
                                 onClick={() => setAiComposeOpen(true)}
-                                className="flex items-center gap-1.5 text-xs text-purple-600 hover:text-purple-700 font-medium"
+                                className="flex items-center gap-1.5 text-xs font-medium"
+                                style={{ color: 'var(--theme-accent)' }}
                                 data-testid="button-ai-draft-compose"
                               >
                                 <Sparkles className="h-3.5 w-3.5" />
                                 Draft with AI
                               </button>
                             ) : (
-                              <div className="border border-purple-200 rounded-lg p-3 bg-purple-50 space-y-2">
+                              <div className="border rounded-lg p-3 space-y-2" style={{ borderColor: 'var(--theme-border)', background: 'var(--theme-fill)' }}>
                                 <div className="flex items-center justify-between">
-                                  <span className="flex items-center gap-1.5 text-xs font-semibold text-purple-700">
+                                  <span className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: 'var(--theme-accent)' }}>
                                     <Sparkles className="h-3.5 w-3.5" /> Draft with AI
                                   </span>
                                   <button type="button" onClick={() => setAiComposeOpen(false)} className="text-gray-400 hover:text-gray-600">
@@ -671,7 +672,8 @@ export default function Messages() {
                                   size="sm"
                                   disabled={!aiComposeIssue.trim() || draftMutation.isPending}
                                   onClick={() => draftMutation.mutate({ issueDescription: aiComposeIssue, targetField: "compose" })}
-                                  className="bg-purple-600 hover:bg-purple-700 text-white text-xs h-7 px-3"
+                                  className="text-white text-xs h-7 px-3"
+                                  style={{ background: 'var(--theme-accent)' }}
                                   data-testid="button-ai-generate-compose"
                                 >
                                   {draftMutation.isPending ? (
@@ -728,7 +730,7 @@ export default function Messages() {
                         <Button
                           onClick={() => composeConversationMutation.mutate(composeForm)}
                           disabled={composeConversationMutation.isPending || !composeForm.subject || !composeForm.message || composeForm.selectedContractors.length === 0}
-                          className="bg-purple-600 hover:bg-purple-700"
+                          style={{ background: 'var(--theme-accent)' }}
                           data-testid="button-send-compose"
                         >
                           {composeConversationMutation.isPending ? "Sending..." : "Send Message"}
@@ -959,9 +961,10 @@ export default function Messages() {
                                 isOwnMessage
                                   ? typedUser.role === 'contractor'
                                     ? 'bg-blue-600 text-white'
-                                    : 'bg-purple-600 text-white'
+                                    : 'text-white'
                                   : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700'
                               }`}
+                              style={isOwnMessage && typedUser.role !== 'contractor' ? { background: 'var(--theme-accent)' } : undefined}
                             >
                               {(message as any).imageUrl && (
                                 <img 
@@ -1115,7 +1118,8 @@ export default function Messages() {
                         <Button
                           onClick={handleSubmitReview}
                           disabled={submitReviewMutation.isPending || !reviewForm.comment.trim()}
-                          className="w-full bg-purple-600 hover:bg-purple-700"
+                          className="w-full"
+                          style={{ background: 'var(--theme-accent)' }}
                           data-testid="button-submit-review"
                         >
                           {submitReviewMutation.isPending ? 'Submitting...' : 'Submit Review'}
@@ -1170,16 +1174,17 @@ export default function Messages() {
                         <button
                           type="button"
                           onClick={() => setAiDraftOpen(true)}
-                          className="flex items-center gap-1.5 text-xs text-purple-600 hover:text-purple-700 font-medium"
+                          className="flex items-center gap-1.5 text-xs font-medium"
+                          style={{ color: 'var(--theme-accent)' }}
                           data-testid="button-ai-draft-conversation"
                         >
                           <Sparkles className="h-3.5 w-3.5" />
                           Draft with AI
                         </button>
                       ) : (
-                        <div className="border border-purple-200 rounded-lg p-3 bg-purple-50 space-y-2">
+                        <div className="border rounded-lg p-3 space-y-2" style={{ borderColor: 'var(--theme-border)', background: 'var(--theme-fill)' }}>
                           <div className="flex items-center justify-between">
-                            <span className="flex items-center gap-1.5 text-xs font-semibold text-purple-700">
+                            <span className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: 'var(--theme-accent)' }}>
                               <Sparkles className="h-3.5 w-3.5" /> Draft with AI
                             </span>
                             <button type="button" onClick={() => setAiDraftOpen(false)} className="text-gray-400 hover:text-gray-600">
@@ -1199,7 +1204,8 @@ export default function Messages() {
                             size="sm"
                             disabled={!aiDraftIssue.trim() || draftMutation.isPending}
                             onClick={() => draftMutation.mutate({ issueDescription: aiDraftIssue, targetField: "conversation" })}
-                            className="bg-purple-600 hover:bg-purple-700 text-white text-xs h-7 px-3"
+                            className="text-white text-xs h-7 px-3"
+                            style={{ background: 'var(--theme-accent)' }}
                             data-testid="button-ai-generate-conversation"
                           >
                             {draftMutation.isPending ? (
@@ -1313,7 +1319,8 @@ export default function Messages() {
                       onClick={handleSendMessage}
                       disabled={sendMessageMutation.isPending || (!newMessage.trim() && !selectedImage && selectedFiles.length === 0)}
                       size="icon"
-                      className={typedUser.role === 'contractor' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-purple-600 hover:bg-purple-700'}
+                      className={typedUser.role === 'contractor' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+                      style={typedUser.role !== 'contractor' ? { background: 'var(--theme-accent)' } : undefined}
                       data-testid="button-send-message"
                     >
                       <Send className="h-5 w-5" />

@@ -240,11 +240,12 @@ export function OnboardingWizard({ onComplete, isLoading, initialData }: Onboard
               <div 
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
                   step < currentStep 
-                    ? 'bg-green-500 text-white' 
+                    ? 'text-white' 
                     : step === currentStep 
                     ? 'bg-primary text-primary-foreground' 
                     : 'bg-muted text-muted-foreground'
                 }`}
+                style={step < currentStep ? { background: '#3C258E' } : {}}
               >
                 {step < currentStep ? <Check className="w-4 h-4" /> : step}
               </div>

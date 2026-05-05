@@ -187,6 +187,21 @@ export default function Header() {
               <Notifications />
             )}
 
+            {/* User avatar + name — desktop only */}
+            {isAuthenticated && typedUser && (
+              <div className="hidden lg:flex items-center gap-1.5">
+                <div
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
+                  style={{ background: 'rgba(255,255,255,0.2)', color: '#fff' }}
+                >
+                  {typedUser.firstName?.[0]?.toUpperCase() || typedUser.email?.[0]?.toUpperCase() || 'U'}
+                </div>
+                <span className="text-xs font-semibold max-w-[90px] truncate" style={{ color: 'rgba(255,255,255,0.85)' }}>
+                  {typedUser.firstName || typedUser.email?.split('@')[0] || 'Account'}
+                </span>
+              </div>
+            )}
+
             {/* Install app (desktop/tablet only) */}
             {isInstallable && isAuthenticated && (
               <button

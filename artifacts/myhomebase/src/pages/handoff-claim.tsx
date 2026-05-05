@@ -196,7 +196,7 @@ export default function HandoffClaim() {
                 <div className="text-xs text-gray-500">Home System{preview.systemCount !== 1 ? "s" : ""}</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">{preview.applianceCount}</div>
+                <div className="text-2xl font-bold" style={{ color: 'var(--purple)' }}>{preview.applianceCount}</div>
                 <div className="text-xs text-gray-500">Appliance{preview.applianceCount !== 1 ? "s" : ""}</div>
               </div>
               <div className="text-center">
@@ -235,8 +235,8 @@ export default function HandoffClaim() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Home className="w-4 h-4 text-purple-600" />
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'var(--purple-tint)' }}>
+                  <Home className="w-4 h-4" style={{ color: 'var(--purple)' }} />
                 </div>
                 <div>
                   <p className="font-medium text-gray-800">Appliance Records</p>

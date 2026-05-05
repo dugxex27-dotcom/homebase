@@ -60,7 +60,7 @@ const severityColors: Record<string, string> = {
 };
 
 const typeColors: Record<string, string> = {
-  client: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
+  client: "bg-[var(--purple-tint)] text-[var(--purple-deep)]",
   api: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
   server: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300",
 };

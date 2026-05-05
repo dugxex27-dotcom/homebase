@@ -63,8 +63,8 @@ export default function SubscriptionSuccess() {
               <div className="p-4 rounded-full bg-green-100">
                 <CheckCircle2 className="h-16 w-16 text-green-500" />
               </div>
-              <div className="absolute -top-2 -right-2 p-2 rounded-full bg-purple-100">
-                <PartyPopper className="h-6 w-6 text-purple-600" />
+              <div className="absolute -top-2 -right-2 p-2 rounded-full" style={{ background: 'var(--theme-fill)' }}>
+                <PartyPopper className="h-6 w-6" style={{ color: 'var(--theme-accent)' }} />
               </div>
             </div>
           </div>
@@ -88,12 +88,12 @@ export default function SubscriptionSuccess() {
             </div>
           )}
           
-          <div className="bg-purple-50 rounded-lg p-4 mb-6">
+          <div className="rounded-lg p-4 mb-6" style={{ background: 'var(--theme-fill)' }}>
             <div className="flex items-center justify-center gap-2 mb-2">
               {role === 'contractor' ? (
-                <Wrench className="h-5 w-5 text-purple-600" />
+                <Wrench className="h-5 w-5" style={{ color: 'var(--theme-accent)' }} />
               ) : (
-                <Home className="h-5 w-5 text-purple-600" />
+                <Home className="h-5 w-5" style={{ color: 'var(--theme-accent)' }} />
               )}
               <span className="font-semibold" style={{ color: '#2c0f5b' }}>
                 {role === 'contractor' ? 'Contractor Account' : 'Homeowner Account'}
@@ -110,7 +110,8 @@ export default function SubscriptionSuccess() {
           
           <Button 
             onClick={() => setLocation(dashboardPath)}
-            className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+            className="w-full text-white"
+            style={{ background: 'var(--theme-gradient-start)' }}
             size="lg"
           >
             Go to Dashboard Now

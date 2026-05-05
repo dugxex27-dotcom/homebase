@@ -320,7 +320,7 @@ The MyHomeBase™ Team`);
           <Card data-testid="card-total-users">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-              <Users className="h-4 w-4 text-purple-600" />
+              <Users className="h-4 w-4" style={{ color: 'var(--purple)' }} />
             </CardHeader>
             <CardContent>
               {statsLoading ? (
@@ -334,7 +334,7 @@ The MyHomeBase™ Team`);
           <Card data-testid="card-homeowner-count">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <CardTitle className="text-sm font-medium">Homeowners</CardTitle>
-              <Home className="h-4 w-4 text-purple-600" />
+              <Home className="h-4 w-4" style={{ color: 'var(--purple)' }} />
             </CardHeader>
             <CardContent>
               {statsLoading ? (
@@ -348,7 +348,7 @@ The MyHomeBase™ Team`);
           <Card data-testid="card-contractor-count">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <CardTitle className="text-sm font-medium">Contractors</CardTitle>
-              <Briefcase className="h-4 w-4 text-purple-600" />
+              <Briefcase className="h-4 w-4" style={{ color: 'var(--purple)' }} />
             </CardHeader>
             <CardContent>
               {statsLoading ? (
@@ -615,7 +615,7 @@ The MyHomeBase™ Team`);
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5 text-purple-600" />
+                  <MessageSquare className="h-5 w-5" style={{ color: 'var(--purple)' }} />
                   Support Tickets Management
                 </CardTitle>
                 <CardDescription className="mt-2">
@@ -1086,7 +1086,7 @@ The MyHomeBase™ Team`);
                   <CardTitle>Active Users Over Time</CardTitle>
                   <CardDescription>Daily active user signups</CardDescription>
                 </div>
-                <TrendingUp className="h-5 w-5 text-purple-600" />
+                <TrendingUp className="h-5 w-5" style={{ color: 'var(--purple)' }} />
               </div>
             </CardHeader>
             <CardContent>
@@ -1115,7 +1115,7 @@ The MyHomeBase™ Team`);
                   <CardTitle>Referral Growth</CardTitle>
                   <CardDescription>Cumulative referrals over time</CardDescription>
                 </div>
-                <Users className="h-5 w-5 text-purple-600" />
+                <Users className="h-5 w-5" style={{ color: 'var(--purple)' }} />
               </div>
             </CardHeader>
             <CardContent>
@@ -1516,7 +1516,7 @@ The MyHomeBase™ Team`);
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Gift className="w-5 h-5 text-purple-600" />
+              <Gift className="w-5 h-5" style={{ color: 'var(--purple)' }} />
               Referral Free Months
             </CardTitle>
             <CardDescription>
@@ -1570,7 +1570,7 @@ The MyHomeBase™ Team`);
                             )}
                           </TableCell>
                           <TableCell className="text-center font-mono">{row.applied_free_months ?? 0}</TableCell>
-                          <TableCell className="text-center font-bold text-purple-700">{row.total_free_months ?? 0}</TableCell>
+                          <TableCell className="text-center font-bold" style={{ color: 'var(--purple-deep)' }}>{row.total_free_months ?? 0}</TableCell>
                           <TableCell className="text-xs text-gray-500">
                             {row.last_free_month_earned_at
                               ? format(new Date(row.last_free_month_earned_at), "MMM d, yyyy")

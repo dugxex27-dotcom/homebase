@@ -533,7 +533,7 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
                         variant="ghost"
                         size="sm"
                         onClick={() => handleEdit(task)}
-                        className="hover:bg-purple-50"
+                        className="hover:bg-[var(--purple-tint)]"
                         style={{ color: '#2c0f5b' }}
                       >
                         <Edit className="h-4 w-4" />

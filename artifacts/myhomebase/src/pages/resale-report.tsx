@@ -115,7 +115,8 @@ export default function ResaleReport() {
         <div className="flex items-center justify-between mb-6 print:hidden">
           <button
             onClick={() => setLocation("/")}
-            className="flex items-center gap-2 text-sm text-purple-600 hover:text-purple-800 font-medium"
+            className="flex items-center gap-2 text-sm font-medium"
+            style={{ color: 'var(--hw-primary)' }}
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Dashboard
@@ -127,7 +128,8 @@ export default function ResaleReport() {
                 size="sm"
                 onClick={() => generateMutation.mutate()}
                 disabled={generateMutation.isPending}
-                className="border-purple-200 text-purple-700 hover:bg-purple-50"
+                className=""
+                style={{ borderColor: 'var(--purple-border)', color: 'var(--hw-primary)' }}
                 data-testid="button-regenerate-report"
               >
                 <RefreshCw className="h-4 w-4 mr-1" />
@@ -163,10 +165,10 @@ export default function ResaleReport() {
 
         {/* Initial state — generate button */}
         {!report && !generateMutation.isPending && !generateMutation.isError && (
-          <Card className="border-2 border-purple-200 bg-purple-50/40 shadow-lg">
+          <Card className="border-2 shadow-lg" style={{ borderColor: 'var(--purple-border)', background: 'var(--purple-tint)' }}>
             <CardContent className="p-8 text-center">
-              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Sparkles className="h-8 w-8 text-purple-600" />
+              <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: 'var(--purple-border)' }}>
+                <Sparkles className="h-8 w-8" style={{ color: 'var(--hw-primary)' }} />
               </div>
               <h2 className="text-xl font-bold text-gray-900 mb-2">Get Your Resale Readiness Report</h2>
               <p className="text-gray-600 mb-6 max-w-md mx-auto text-sm">
@@ -174,7 +176,8 @@ export default function ResaleReport() {
               </p>
               <Button
                 onClick={() => generateMutation.mutate()}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-5 text-base"
+                className="text-white px-8 py-5 text-base"
+                style={{ background: 'var(--hw-primary)' }}
                 data-testid="button-generate-report"
               >
                 <Sparkles className="h-5 w-5 mr-2" />
@@ -186,9 +189,9 @@ export default function ResaleReport() {
 
         {/* Loading state */}
         {generateMutation.isPending && (
-          <Card className="border border-purple-200 shadow">
+          <Card className="border shadow" style={{ borderColor: 'var(--purple-border)' }}>
             <CardContent className="p-12 text-center">
-              <Loader2 className="h-10 w-10 animate-spin text-purple-500 mx-auto mb-4" />
+              <Loader2 className="h-10 w-10 animate-spin mx-auto mb-4" style={{ color: 'var(--hw-primary)' }} />
               <p className="text-lg font-semibold text-gray-700 mb-2">Analyzing your home's history…</p>
               <p className="text-sm text-gray-500">Reviewing maintenance logs, systems, and wellness score. This takes 5–10 seconds.</p>
             </CardContent>
@@ -295,12 +298,12 @@ export default function ResaleReport() {
 
             {/* Action Items */}
             {report.actionItems.length > 0 && (
-              <Card className="border border-purple-200 shadow-sm">
+              <Card className="border shadow-sm" style={{ borderColor: 'var(--purple-border)' }}>
                 <CardContent className="p-5">
                   <div className="flex items-center gap-2 mb-4">
-                    <CheckSquare className="h-5 w-5 text-purple-600" />
-                    <h3 className="font-bold text-purple-800 text-base">Before You List</h3>
-                    <span className="text-xs text-purple-600 ml-1">Prioritized action plan</span>
+                    <CheckSquare className="h-5 w-5" style={{ color: 'var(--hw-primary)' }} />
+                    <h3 className="font-bold text-base" style={{ color: 'var(--purple-deep)' }}>Before You List</h3>
+                    <span className="text-xs ml-1" style={{ color: 'var(--hw-primary)' }}>Prioritized action plan</span>
                   </div>
                   <ul className="space-y-3">
                     {report.actionItems.map((item, i) => (
@@ -310,9 +313,10 @@ export default function ResaleReport() {
                           onClick={() => toggleCheck(i)}
                           className={`flex-shrink-0 mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors print:hidden ${
                             checkedItems.has(i)
-                              ? "bg-purple-600 border-purple-600"
-                              : "border-gray-300 hover:border-purple-400"
+                              ? "text-white border-transparent"
+                              : "border-gray-300"
                           }`}
+                          style={checkedItems.has(i) ? { background: 'var(--hw-primary)', borderColor: 'var(--hw-primary)' } : undefined}
                           aria-label={checkedItems.has(i) ? "Mark incomplete" : "Mark complete"}
                         >
                           {checkedItems.has(i) && <span className="text-white text-xs">✓</span>}
@@ -324,7 +328,7 @@ export default function ResaleReport() {
                     ))}
                   </ul>
                   {checkedItems.size > 0 && (
-                    <p className="mt-4 text-xs text-purple-600 font-medium print:hidden">
+                    <p className="mt-4 text-xs font-medium print:hidden" style={{ color: 'var(--hw-primary)' }}>
                       {checkedItems.size} of {report.actionItems.length} action item{report.actionItems.length !== 1 ? "s" : ""} completed
                     </p>
                   )}
@@ -352,7 +356,8 @@ export default function ResaleReport() {
               <Button
                 onClick={() => generateMutation.mutate()}
                 disabled={generateMutation.isPending}
-                className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
+                className="flex-1 text-white"
+                style={{ background: 'var(--hw-primary)' }}
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Regenerate Report

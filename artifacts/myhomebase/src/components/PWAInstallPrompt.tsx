@@ -95,7 +95,8 @@ export function PWAInstallPrompt() {
 
   return (
     <div 
-      className="fixed bottom-0 left-0 right-0 z-50 p-3 sm:p-4 bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-2xl animate-in slide-in-from-bottom duration-300"
+      className="fixed bottom-0 left-0 right-0 z-50 p-3 sm:p-4 text-white shadow-2xl animate-in slide-in-from-bottom duration-300"
+      style={{ background: 'linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)' }}
       data-testid="pwa-install-prompt"
     >
       <div className="max-w-2xl mx-auto flex items-center gap-4">
@@ -113,7 +114,7 @@ export function PWAInstallPrompt() {
           <h3 className="font-semibold text-base mb-0.5">
             Install MyHomeBase™
           </h3>
-          <p className="text-sm text-purple-100 line-clamp-1">
+          <p className="text-sm text-white/80 line-clamp-1">
             Get quick access to your home maintenance from your home screen
           </p>
         </div>
@@ -123,7 +124,8 @@ export function PWAInstallPrompt() {
           <Button
             onClick={handleInstallClick}
             size="sm"
-            className="bg-white text-purple-700 hover:bg-purple-50 font-medium"
+            className="bg-white font-medium"
+            style={{ color: 'var(--theme-primary)' }}
             data-testid="button-install-pwa"
           >
             <Download className="w-4 h-4 mr-1" />
@@ -134,7 +136,7 @@ export function PWAInstallPrompt() {
             onClick={handleDismiss}
             size="sm"
             variant="ghost"
-            className="text-white hover:bg-purple-600/50"
+            className="text-white hover:bg-white/10"
             data-testid="button-dismiss-pwa"
           >
             <X className="w-4 h-4" />

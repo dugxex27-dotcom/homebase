@@ -469,6 +469,7 @@ export default function HomeownerAccount() {
       <div className="dash-body">
         <div className="space-y-4 max-w-2xl mx-auto">
           {/* Basic Profile */}
+          <p className="dash-section-label">Profile</p>
           <Card style={{ backgroundColor: '#ffffff' }}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -569,6 +570,7 @@ export default function HomeownerAccount() {
               </CardContent>
             </Card>
 
+            <p className="dash-section-label">Security</p>
             {/* Account Security */}
             <Card style={{ backgroundColor: '#ffffff' }}>
               <CardHeader>
@@ -621,6 +623,7 @@ export default function HomeownerAccount() {
               </CardContent>
             </Card>
 
+          <p className="dash-section-label">Subscription</p>
           {/* Subscription & Billing */}
           <Card style={{ backgroundColor: '#ffffff' }}>
             <CardHeader>
@@ -684,8 +687,8 @@ export default function HomeownerAccount() {
 
                 {/* Free user message */}
                 {isFreeUser && (
-                  <div className="mt-3 p-3 rounded-lg bg-purple-50 border border-purple-200">
-                    <p className="text-sm text-purple-800">
+                  <div className="mt-3 p-3 rounded-lg border" style={{ background: 'var(--purple-tint)', borderColor: 'var(--purple-border)' }}>
+                    <p className="text-sm" style={{ color: 'var(--hw-primary)' }}>
                       Upgrade to unlock maintenance tracking, home health scores, DIY savings tracker, and more!
                     </p>
                   </div>
@@ -705,7 +708,8 @@ export default function HomeownerAccount() {
               {(isFreeUser || isInTrial) && (
                 <Link href="/homeowner-pricing">
                   <Button 
-                    className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800"
+                    className="w-full"
+                    style={{ background: 'linear-gradient(135deg, var(--hw-primary) 0%, var(--hw-accent) 100%)' }}
                     size="lg"
                     data-testid="button-subscribe-account"
                   >
@@ -735,6 +739,7 @@ export default function HomeownerAccount() {
             </CardContent>
           </Card>
 
+          <p className="dash-section-label">Notifications</p>
           {/* Notification Preferences */}
           <Card style={{ backgroundColor: '#ffffff' }}>
               <CardHeader>
@@ -838,7 +843,7 @@ export default function HomeownerAccount() {
                     </div>
 
                     {notificationPrefs.weatherAlerts && (
-                      <div className="mt-4 ml-2 border-l-2 border-purple-100 pl-4 space-y-4">
+                      <div className="mt-4 ml-2 border-l-2 pl-4 space-y-4" style={{ borderColor: 'var(--purple-tint)' }}>
                         <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Alert Types</p>
                         {ALL_WEATHER_ALERT_TYPES.map(group => (
                           <div key={group.group}>
@@ -882,6 +887,7 @@ export default function HomeownerAccount() {
               </div>
             )}
 
+            <p className="dash-section-label">Referral Rewards</p>
             {/* Referral Sharing */}
             <Card style={{ backgroundColor: '#ffffff' }}>
               <CardHeader>
@@ -1035,6 +1041,7 @@ export default function HomeownerAccount() {
             </Card>
 
             {/* Shareable Graphics */}
+            <p className="dash-section-label">Shareable Graphics</p>
             <Card style={{ backgroundColor: '#ffffff' }}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -1062,7 +1069,8 @@ export default function HomeownerAccount() {
                       <Button
                         onClick={() => downloadImageWithCode(instagramPostImg, `homebase-referral-instagram-${referralCode}.png`, { x: 312, y: 734, fontSize: 39, color: '#2c0f5b' })}
                         size="sm"
-                        className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                        className="w-full"
+                        style={{ background: 'linear-gradient(135deg, var(--hw-primary) 0%, var(--hw-accent) 100%)' }}
                         data-testid="button-download-instagram-post"
                       >
                         <Download className="w-4 h-4 mr-2" />
@@ -1082,7 +1090,8 @@ export default function HomeownerAccount() {
                       <Button
                         onClick={() => downloadImageWithCode(instagramStoryImg, `homebase-referral-story-${referralCode}.png`, { x: 372, y: 878, color: '#2c0f5b' })}
                         size="sm"
-                        className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                        className="w-full"
+                        style={{ background: 'linear-gradient(135deg, var(--hw-primary) 0%, var(--hw-accent) 100%)' }}
                         data-testid="button-download-instagram-story"
                       >
                         <Download className="w-4 h-4 mr-2" />
@@ -1102,7 +1111,8 @@ export default function HomeownerAccount() {
                       <Button
                         onClick={() => downloadImageWithCode(facebookTwitterImg, `homebase-referral-facebook-${referralCode}.png`, { x: 1200, y: 964, fontSize: 43 })}
                         size="sm"
-                        className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                        className="w-full"
+                        style={{ background: 'linear-gradient(135deg, var(--hw-primary) 0%, var(--hw-accent) 100%)' }}
                         data-testid="button-download-facebook-twitter"
                       >
                         <Download className="w-4 h-4 mr-2" />
@@ -1120,6 +1130,7 @@ export default function HomeownerAccount() {
               </CardContent>
             </Card>
 
+            <p className="dash-section-label">House Transfers</p>
             {/* House Transfers */}
             <Card>
               <CardHeader>
@@ -1210,10 +1221,10 @@ export default function HomeownerAccount() {
                 {/* Incoming Transfers (pending acceptance) */}
                 {Array.isArray(transfers) && (transfers as any).filter((t: any) => t.status === 'pending' && t.toHomeownerEmail === (user as any)?.email).length > 0 && (
                   <div>
-                    <h4 className="font-medium mb-3 text-purple-600">Incoming House Transfers</h4>
+                    <h4 className="font-medium mb-3" style={{ color: 'var(--theme-accent)' }}>Incoming House Transfers</h4>
                     <div className="space-y-2">
                       {Array.isArray(transfers) && (transfers as any).filter((t: any) => t.status === 'pending' && t.toHomeownerEmail === (user as any)?.email).map((transfer: any) => (
-                        <div key={transfer.id} className="flex flex-col gap-3 p-4 border rounded-lg bg-purple-50">
+                        <div key={transfer.id} className="flex flex-col gap-3 p-4 border rounded-lg" style={{ background: 'var(--purple-tint)' }}>
                           <div className="flex-1">
                             <p className="font-medium text-sm" data-testid={`transfer-from-${transfer.id}`}>
                               From: {transfer.fromHomeownerId}
@@ -1261,10 +1272,10 @@ export default function HomeownerAccount() {
                 {/* Transfers Awaiting Confirmation */}
                 {Array.isArray(transfers) && (transfers as any).filter((t: any) => t.status === 'accepted').length > 0 && (
                   <div>
-                    <h4 className="font-medium mb-3 text-purple-600">Transfers Awaiting Your Confirmation</h4>
+                    <h4 className="font-medium mb-3" style={{ color: 'var(--theme-accent)' }}>Transfers Awaiting Your Confirmation</h4>
                     <div className="space-y-2">
                       {Array.isArray(transfers) && (transfers as any).filter((t: any) => t.status === 'accepted').map((transfer: any) => (
-                        <div key={transfer.id} className="flex items-center justify-between p-3 border rounded-lg bg-purple-50">
+                        <div key={transfer.id} className="flex items-center justify-between p-3 border rounded-lg" style={{ background: 'var(--purple-tint)' }}>
                           <div className="flex-1">
                             <p className="font-medium text-sm" data-testid={`transfer-email-${transfer.id}`}>
                               To: {transfer.toHomeownerEmail}

@@ -178,7 +178,7 @@ const leadStatusLabels: Record<string, string> = {
 const leadStatusColors: Record<string, string> = {
   new: "bg-blue-500",
   contacted: "bg-yellow-500",
-  qualified: "bg-purple-500",
+  qualified: "bg-[var(--theme-accent)]",
   proposal_sent: "bg-orange-500",
   won: "bg-green-500",
   lost: "bg-red-500",
@@ -238,7 +238,7 @@ const quoteStatusLabels: Record<string, string> = {
 const quoteStatusColors: Record<string, string> = {
   draft: "bg-gray-500",
   sent: "bg-blue-500",
-  viewed: "bg-purple-500",
+  viewed: "bg-[var(--theme-accent)]",
   accepted: "bg-green-500",
   declined: "bg-red-500",
   expired: "bg-orange-500"
@@ -257,7 +257,7 @@ const invoiceStatusLabels: Record<string, string> = {
 const invoiceStatusColors: Record<string, string> = {
   draft: "bg-gray-500",
   sent: "bg-blue-500",
-  viewed: "bg-purple-500",
+  viewed: "bg-[var(--theme-accent)]",
   paid: "bg-green-500",
   partial: "bg-yellow-500",
   overdue: "bg-red-500",
@@ -2481,29 +2481,29 @@ export default function ContractorCRMPage() {
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div className="text-center p-4">
-                      <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-3">
-                        <span className="font-bold text-purple-600">1</span>
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: 'var(--theme-fill)' }}>
+                        <span className="font-bold" style={{ color: 'var(--theme-accent)' }}>1</span>
                       </div>
                       <h4 className="font-medium mb-1">Create Invoice</h4>
                       <p className="text-sm text-muted-foreground">Create an invoice in the Invoices tab</p>
                     </div>
                     <div className="text-center p-4">
-                      <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-3">
-                        <span className="font-bold text-purple-600">2</span>
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: 'var(--theme-fill)' }}>
+                        <span className="font-bold" style={{ color: 'var(--theme-accent)' }}>2</span>
                       </div>
                       <h4 className="font-medium mb-1">Send Payment Link</h4>
                       <p className="text-sm text-muted-foreground">Share the payment link with your customer</p>
                     </div>
                     <div className="text-center p-4">
-                      <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-3">
-                        <span className="font-bold text-purple-600">3</span>
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: 'var(--theme-fill)' }}>
+                        <span className="font-bold" style={{ color: 'var(--theme-accent)' }}>3</span>
                       </div>
                       <h4 className="font-medium mb-1">Customer Pays</h4>
                       <p className="text-sm text-muted-foreground">Customer pays securely via Stripe</p>
                     </div>
                     <div className="text-center p-4">
-                      <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-3">
-                        <span className="font-bold text-purple-600">4</span>
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: 'var(--theme-fill)' }}>
+                        <span className="font-bold" style={{ color: 'var(--theme-accent)' }}>4</span>
                       </div>
                       <h4 className="font-medium mb-1">Get Paid</h4>
                       <p className="text-sm text-muted-foreground">Funds deposited to your bank</p>

@@ -117,7 +117,7 @@ export default function ContractorDetail() {
                     className="w-32 h-32 rounded-2xl object-cover border-4 border-blue-100 dark:border-blue-900/30"
                   />
                 ) : (
-                  <div className="w-32 h-32 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+                  <div className="w-32 h-32 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-lg">
                     <span className="text-2xl font-bold text-white">
                       {contractor.company.split(' ').map(n => n[0]).join('')}
                     </span>
@@ -177,7 +177,7 @@ export default function ContractorDetail() {
                     <span>{contractor.experience}+ years experience</span>
                   </div>
                   <div className="flex items-center text-gray-600 dark:text-gray-300">
-                    <Shield className="h-4 w-4 mr-2 text-purple-500" />
+                    <Shield className="h-4 w-4 mr-2" style={{ color: 'var(--theme-accent)' }} />
                     <span>Licensed & Insured{contractor.insuranceCoverageAmount ? ` (${contractor.insuranceCoverageAmount})` : ''}</span>
                   </div>
                   <div className="flex items-center text-gray-600 dark:text-gray-300">
@@ -232,7 +232,7 @@ export default function ContractorDetail() {
             <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-lg">
               <CardHeader>
                 <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
-                  <Building className="h-6 w-6 mr-3 text-purple-600 dark:text-purple-400" />
+                  <Building className="h-6 w-6 mr-3" style={{ color: 'var(--theme-accent)' }} />
                   Project Portfolio
                 </CardTitle>
               </CardHeader>
@@ -278,7 +278,7 @@ export default function ContractorDetail() {
                   </div>
                 </div>
                 <div className="flex items-start text-gray-600 dark:text-gray-300">
-                  <Mail className="w-5 h-5 mr-3 text-purple-500 mt-1" />
+                  <Mail className="w-5 h-5 mr-3 mt-1" style={{ color: 'var(--theme-accent)' }} />
                   <div>
                     <div className="font-medium">Email</div>
                     <div className="text-sm">{contractor.email}</div>
@@ -299,7 +299,7 @@ export default function ContractorDetail() {
                   </div>
                 </div>
                 <div className="flex items-start text-gray-600 dark:text-gray-300">
-                  <Shield className="w-5 h-5 mr-3 text-purple-500 mt-1" />
+                  <Shield className="w-5 h-5 mr-3 mt-1" style={{ color: 'var(--theme-accent)' }} />
                   <div>
                     <div className="font-medium">License</div>
                     <div className="text-sm">{contractor.licenseNumber}</div>

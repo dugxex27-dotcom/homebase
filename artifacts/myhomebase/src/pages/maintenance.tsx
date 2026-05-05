@@ -3906,7 +3906,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         {referringAgent.profileImageUrl ? (
-                          <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-purple-200 dark:border-purple-800">
+                          <div className="w-14 h-14 rounded-full overflow-hidden border-2" style={{ borderColor: 'var(--purple-border)' }}>
                             <img 
                               src={`/public/${referringAgent.profileImageUrl}`}
                               alt={`${referringAgent.firstName} ${referringAgent.lastName}`}
@@ -3932,7 +3932,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                           </p>
                           {referringAgent.referralCode && (
                             <div className="flex items-center gap-2 mt-1">
-                              <span className="text-xs bg-purple-100 dark:bg-purple-900/30 px-2 py-1 rounded" style={{ color: 'var(--purple-deep)' }}>
+                              <span className="text-xs px-2 py-1 rounded" style={{ background: 'var(--purple-tint)', color: 'var(--purple-deep)' }}>
                                 Referral Code: {referringAgent.referralCode}
                               </span>
                             </div>
@@ -4095,7 +4095,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             {/* AI Maintenance Coach Card */}
             {selectedHouseId && !isContractor && (
               <div className="mb-6">
-                <div className="rounded-xl border border-purple-200 bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/30 dark:to-background dark:border-purple-800 overflow-hidden">
+                <div className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--purple-border)', background: 'linear-gradient(135deg, var(--purple-tint) 0%, var(--background, #fff) 100%)' }}>
                   {/* Header — always visible */}
                   <button
                     type="button"
@@ -4103,11 +4103,11 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     onClick={() => setCoachOpen(o => !o)}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/50">
-                        <Sparkles className="w-4 h-4 text-[#3C258E] dark:text-[#3C258E]" />
+                      <div className="p-2 rounded-lg" style={{ background: 'var(--purple-border)' }}>
+                        <Sparkles className="w-4 h-4" style={{ color: 'var(--hw-primary)' }} />
                       </div>
                       <div>
-                        <p className="font-semibold text-sm text-purple-900 dark:text-purple-100">AI Maintenance Coach</p>
+                        <p className="font-semibold text-sm" style={{ color: 'var(--hw-primary)' }}>AI Maintenance Coach</p>
                         <p className="text-xs text-[#3C258E] dark:text-[#3C258E]">
                           {coachResult ? "Personalized plan ready" : "Get a personalized maintenance plan for this month"}
                         </p>
@@ -4122,16 +4122,16 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
                   {/* Collapsible body */}
                   {coachOpen && (
-                    <div className="px-5 pb-5 space-y-4 border-t border-purple-100 dark:border-purple-800 pt-4">
+                    <div className="px-5 pb-5 space-y-4 border-t pt-4" style={{ borderColor: 'var(--purple-border)' }}>
                       {/* Loading skeleton */}
                       {coachMutation.isPending && (
                         <div className="space-y-3 animate-pulse">
-                          <div className="h-3 bg-purple-100 dark:bg-purple-900/40 rounded w-full" />
-                          <div className="h-3 bg-purple-100 dark:bg-purple-900/40 rounded w-4/5" />
-                          <div className="h-3 bg-purple-100 dark:bg-purple-900/40 rounded w-3/5" />
+                          <div className="h-3 rounded w-full" style={{ background: 'var(--purple-border)' }} />
+                          <div className="h-3 rounded w-4/5" style={{ background: 'var(--purple-border)' }} />
+                          <div className="h-3 rounded w-3/5" style={{ background: 'var(--purple-border)' }} />
                           <div className="mt-4 space-y-2">
                             {[1,2,3].map(i => (
-                              <div key={i} className="h-14 bg-purple-50 dark:bg-purple-900/20 rounded-lg" />
+                              <div key={i} className="h-14 rounded-lg" style={{ background: 'var(--purple-tint)' }} />
                             ))}
                           </div>
                         </div>
@@ -4173,7 +4173,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
                           {coachResult.topTasks.length > 0 && (
                             <div className="space-y-2">
-                              <p className="text-xs font-semibold text-purple-700 dark:text-purple-300 uppercase tracking-wide">Focus on these first</p>
+                              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--hw-primary)' }}>Focus on these first</p>
                               {coachResult.topTasks.map((t, i) => (
                                 <button
                                   key={t.title}
@@ -4186,13 +4186,13 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                                       setTimeout(() => setHighlightedTask(null), 2500);
                                     }
                                   }}
-                                  className="w-full text-left flex items-start gap-3 p-3 rounded-lg bg-white dark:bg-purple-950/30 border border-[#CECBF6] dark:border-purple-800 hover:border-purple-300 dark:hover:border-purple-600 transition-colors group/task"
+                                  className="w-full text-left flex items-start gap-3 p-3 rounded-lg bg-white border border-[#CECBF6] transition-colors group/task"
                                 >
-                                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 text-xs font-bold flex items-center justify-center mt-0.5">
+                                  <span className="flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center mt-0.5" style={{ background: 'var(--purple-border)', color: 'var(--hw-primary)' }}>
                                     {i + 1}
                                   </span>
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 group-hover/task:text-purple-700 dark:group-hover/task:text-purple-300 transition-colors">{t.title}</p>
+                                    <p className="text-sm font-medium text-gray-900 transition-colors">{t.title}</p>
                                     <p className="text-xs text-muted-foreground mt-0.5">{t.reason}</p>
                                   </div>
                                   <ChevronRight className="w-4 h-4 text-[#3C258E] flex-shrink-0 mt-1 opacity-0 group-hover/task:opacity-100 transition-opacity" />
@@ -4205,7 +4205,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="text-xs text-[#3C258E] hover:text-purple-700 hover:bg-[#EEEDFE] dark:hover:bg-purple-900/30 h-7 px-2"
+                              className="text-xs h-7 px-2 hover:bg-[#EEEDFE]"
+                              style={{ color: 'var(--hw-primary)' }}
                               onClick={() => { if (selectedHouseId) coachMutation.mutate(selectedHouseId); }}
                               disabled={coachMutation.isPending}
                             >

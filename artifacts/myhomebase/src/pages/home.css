@@ -1,6 +1,6 @@
 /* ─── DASHBOARD HEADER ─────────────────────────────────────────── */
 .dash-header {
-  background: #3C258E;
+  background: linear-gradient(160deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%);
   padding: 16px 18px 0;
   flex-shrink: 0;
 }
@@ -144,7 +144,7 @@
 
 /* ─── AI COACH CARD ───────────────────────────────────────────── */
 .ai-coach-card {
-  background: #3C258E;
+  background: var(--theme-accent);
   border-radius: 14px;
   padding: 14px;
   display: flex;
