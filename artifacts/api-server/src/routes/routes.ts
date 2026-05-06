@@ -11184,6 +11184,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch { /* non-JSON */ }
       }
 
+      // If ATTOM still has no building data, try Estated as a fallback
+      if (!attom.yearBuilt && !attom.bedrooms && !attom.sqft) {
+        const estatedKey = process.env.ESTATED_API_KEY;
+        if (estatedKey) {
+          // Estated needs street_address + zip_code separately
+          const zipMatch = address2.match(/(\d{5}(?:-\d{4})?)/);
+          const zip = zipMatch ? zipMatch[1] : '';
+          if (zip) {
+            try {
+              const estatedUrl = `https://apis.estated.com/v4/property?token=${estatedKey}&street_address=${encodeURIComponent(address1)}&zip_code=${encodeURIComponent(zip)}`;
+              const estatedRes = await fetch(estatedUrl);
+              const estatedText = await estatedRes.text();
+              req.log.info({ estatedStatus: estatedRes.status, estatedSnippet: estatedText.slice(0, 400) }, 'Estated raw');
+              if (estatedRes.ok) {
+                const ed: any = JSON.parse(estatedText);
+                const struct = ed?.data?.structure || {};
+                const parcel = ed?.data?.parcel    || {};
+                const estated: Record<string, any> = {
+                  yearBuilt:    struct.year_built      ?? null,
+                  bedrooms:     struct.beds_count      ?? null,
+                  bathrooms:    struct.baths != null
+                    ? (struct.baths + (struct.partial_baths_count ?? 0) * 0.5)
+                    : null,
+                  sqft:         struct.total_area_sq_ft ?? null,
+                  lotSqft:      parcel.area_sq_ft       ?? null,
+                  propertyType: struct.type             ?? null,
+                };
+                if (estated.yearBuilt || estated.bedrooms || estated.sqft) {
+                  // Merge: keep any ATTOM values we already have (e.g. lotSqft from lot data)
+                  attom = { ...estated, ...Object.fromEntries(Object.entries(attom).filter(([, v]) => v != null)) };
+                  req.log.info('Estated fallback used for building data');
+                }
+              }
+            } catch (estErr: any) {
+              req.log.warn({ err: estErr.message }, 'Estated fallback failed');
+            }
+          }
+        }
+      }
+
       if (avmRes.ok) {
         const d: any = await avmRes.json();
         const val = d?.property?.[0]?.avm?.amount?.value;
@@ -11198,7 +11238,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lotSqft:       attom.lotSqft      ?? null,
         propertyType:  attom.propertyType ?? stored.propertyType,
         estimatedValue,
-        source: Object.keys(attom).length > 0 ? 'attom' : 'stored',
+        source: Object.keys(attom).length > 0 ? 'attom+estated' : 'stored',
       });
     } catch (err: any) {
       req.log.error({ err }, 'ATTOM snapshot error');
