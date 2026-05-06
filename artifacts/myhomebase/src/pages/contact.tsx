@@ -1,17 +1,16 @@
 import { useState } from "react";
+import "./home.css";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Mail, MessageCircle, CheckCircle } from "lucide-react";
+import { CheckCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 const contactFormSchema = z.object({
@@ -77,164 +76,212 @@ export default function Contact() {
 
   if (submitted) {
     return (
-      <div className="flex-1 flex items-center justify-center p-4" style={{ background: 'var(--page-background)' }}>
-        <Card className="max-w-md w-full text-center">
-          <CardContent className="pt-8 pb-8">
-            <div className="mb-6">
-              <div className="w-16 h-16 mx-auto rounded-full bg-[#F0FAF4] flex items-center justify-center">
-                <CheckCircle className="w-8 h-8 text-[#079669]" />
-              </div>
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', background: 'var(--page-background)' }}>
+        <div className="dash-header">
+          <div className="dash-header-top" style={{ marginBottom: 0 }}>
+            <span className="dash-eyebrow">Support</span>
+          </div>
+          <p className="dash-title">Contact Us</p>
+          <p className="dash-subtitle">We're here to help.</p>
+        </div>
+        <div style={{ flex: 1, padding: '24px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{
+            background: '#fff',
+            borderRadius: 16,
+            border: '0.5px solid var(--gray-200, #E5E7EB)',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+            padding: '40px 28px',
+            width: '100%',
+            maxWidth: 520,
+            textAlign: 'center',
+          }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: '50%',
+              background: '#F0FAF4',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              margin: '0 auto 20px',
+            }}>
+              <CheckCircle size={28} color="var(--green, #079669)" />
             </div>
-            <h2 className="text-2xl font-bold mb-3" style={{ color: 'var(--purple-deep)' }}>Message Sent!</h2>
-            <p className="text-gray-600 mb-6">
-              Thank you for contacting us. We'll review your message and get back to you within 24-48 hours.
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--purple-deep, #2C0F5B)', marginBottom: 8 }}>
+              Message Sent!
+            </h2>
+            <p style={{ fontSize: 14, color: 'var(--gray-600, #4B5563)', marginBottom: 24, lineHeight: 1.5 }}>
+              Thank you for reaching out. We'll review your message and get back to you within 24–48 hours.
             </p>
-            <Button
+            <button
               onClick={() => window.location.href = '/'}
-              style={{ backgroundColor: 'var(--purple-deep)' }}
-              className="text-white"
+              style={{
+                background: 'linear-gradient(135deg, var(--hw-primary, #2C0F5B), var(--hw-accent, #3C258E))',
+                color: '#fff', border: 'none', borderRadius: 12,
+                padding: '11px 28px', fontSize: 14, fontWeight: 600,
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}
             >
               Return Home
-            </Button>
-          </CardContent>
-        </Card>
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="py-8 sm:py-12 px-4" style={{ background: 'var(--page-background)' }}>
-      <div className="max-w-2xl mx-auto">
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#EEEDFE] mb-4">
-              <Mail className="w-8 h-8 text-[#3C258E]" />
-            </div>
-            <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--purple-deep)' }}>Contact Us</h1>
-            <p className="text-gray-600">Have a question or need help? Send us a message and we'll get back to you.</p>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', background: 'var(--page-background)' }}>
+      {/* ── Gradient header ── */}
+      <div className="dash-header">
+        <div className="dash-header-top" style={{ marginBottom: 0 }}>
+          <span className="dash-eyebrow">Support</span>
+        </div>
+        <p className="dash-title">Contact Us</p>
+        <p className="dash-subtitle">Have a question or need help? Send us a message.</p>
+      </div>
+
+      {/* ── Body ── */}
+      <div style={{ flex: 1, padding: '20px 20px 32px' }}>
+        <div style={{
+          background: '#fff',
+          borderRadius: 16,
+          border: '0.5px solid var(--gray-200, #E5E7EB)',
+          boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+          overflow: 'hidden',
+          maxWidth: 640,
+          margin: '0 auto',
+        }}>
+          {/* Card header */}
+          <div style={{
+            padding: '18px 22px 14px',
+            borderBottom: '1px solid var(--gray-200, #E5E7EB)',
+          }}>
+            <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--purple-deep, #2C0F5B)', margin: 0 }}>
+              Send a Message
+            </p>
+            <p style={{ fontSize: 13, color: 'var(--gray-600, #4B5563)', margin: '4px 0 0' }}>
+              Fill out the form below and our team will respond within 24–48 hours.
+            </p>
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageCircle className="w-5 h-5" />
-                Send a Message
-              </CardTitle>
-              <CardDescription>
-                Fill out the form below and our team will respond within 24-48 hours.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Your Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="John Smith" {...field} data-testid="input-contact-name" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email Address</FormLabel>
-                          <FormControl>
-                            <Input type="email" placeholder="you@example.com" {...field} data-testid="input-contact-email" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
+          {/* Form */}
+          <div style={{ padding: '20px 22px 24px' }}>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <FormField
                     control={form.control}
-                    name="category"
+                    name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Category</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger data-testid="select-contact-category">
-                              <SelectValue placeholder="Select a category" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="general">General Inquiry</SelectItem>
-                            <SelectItem value="billing">Billing & Payments</SelectItem>
-                            <SelectItem value="technical">Technical Issue</SelectItem>
-                            <SelectItem value="account">Account Help</SelectItem>
-                            <SelectItem value="contractor">Contractor Services</SelectItem>
-                            <SelectItem value="feature_request">Feature Request</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="subject"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Subject</FormLabel>
+                        <FormLabel style={{ fontSize: 13, fontWeight: 600, color: 'var(--purple-deep, #2C0F5B)' }}>Your Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="Brief description of your inquiry" {...field} data-testid="input-contact-subject" />
+                          <Input placeholder="John Smith" {...field} data-testid="input-contact-name" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-
                   <FormField
                     control={form.control}
-                    name="message"
+                    name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Message</FormLabel>
+                        <FormLabel style={{ fontSize: 13, fontWeight: 600, color: 'var(--purple-deep, #2C0F5B)' }}>Email Address</FormLabel>
                         <FormControl>
-                          <Textarea 
-                            placeholder="Please describe your question or issue in detail..."
-                            className="min-h-[150px]"
-                            {...field}
-                            data-testid="textarea-contact-message"
-                          />
+                          <Input type="email" placeholder="you@example.com" {...field} data-testid="input-contact-email" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+                </div>
 
-                  <Button 
-                    type="submit" 
-                    className="w-full text-white"
-                    style={{ backgroundColor: 'var(--purple-deep)' }}
-                    disabled={submitMutation.isPending}
-                    data-testid="button-contact-submit"
-                  >
-                    {submitMutation.isPending ? 'Sending...' : 'Send Message'}
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
+                <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel style={{ fontSize: 13, fontWeight: 600, color: 'var(--purple-deep, #2C0F5B)' }}>Category</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-contact-category">
+                            <SelectValue placeholder="Select a category" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="general">General Inquiry</SelectItem>
+                          <SelectItem value="billing">Billing &amp; Payments</SelectItem>
+                          <SelectItem value="technical">Technical Issue</SelectItem>
+                          <SelectItem value="account">Account Help</SelectItem>
+                          <SelectItem value="contractor">Contractor Services</SelectItem>
+                          <SelectItem value="feature_request">Feature Request</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-          <p className="text-center text-sm text-gray-500 mt-6">
-            Already have an account?{' '}
-            <a href="/support" className="font-medium hover:underline" style={{ color: 'var(--purple-deep)' }}>
-              Visit the Help Center
-            </a>
-          </p>
+                <FormField
+                  control={form.control}
+                  name="subject"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel style={{ fontSize: 13, fontWeight: 600, color: 'var(--purple-deep, #2C0F5B)' }}>Subject</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Brief description of your inquiry" {...field} data-testid="input-contact-subject" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="message"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel style={{ fontSize: 13, fontWeight: 600, color: 'var(--purple-deep, #2C0F5B)' }}>Message</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Please describe your question or issue in detail..."
+                          style={{ minHeight: 140 }}
+                          {...field}
+                          data-testid="textarea-contact-message"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <button
+                  type="submit"
+                  disabled={submitMutation.isPending}
+                  data-testid="button-contact-submit"
+                  style={{
+                    background: submitMutation.isPending
+                      ? '#9090b0'
+                      : 'linear-gradient(135deg, var(--hw-primary, #2C0F5B), var(--hw-accent, #3C258E))',
+                    color: '#fff', border: 'none', borderRadius: 12,
+                    padding: '12px', fontSize: 14, fontWeight: 600,
+                    cursor: submitMutation.isPending ? 'not-allowed' : 'pointer',
+                    width: '100%', fontFamily: 'inherit',
+                    transition: 'opacity .15s',
+                  }}
+                >
+                  {submitMutation.isPending ? 'Sending…' : 'Send Message'}
+                </button>
+              </form>
+            </Form>
+          </div>
         </div>
+
+        <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--gray-600, #4B5563)', marginTop: 20 }}>
+          Already have an account?{' '}
+          <a href="/support" style={{ color: 'var(--purple, #3C258E)', fontWeight: 600, textDecoration: 'none' }}>
+            Visit the Help Center
+          </a>
+        </p>
+      </div>
     </div>
   );
 }
