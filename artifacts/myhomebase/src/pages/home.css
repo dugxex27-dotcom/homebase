@@ -791,6 +791,28 @@
 }
 .mhb-modal-close:hover { background: rgba(0,0,0,0.15); }
 
+@media (max-width: 639px) {
+  .mhb-overlay {
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
+  }
+  .mhb-modal-card {
+    border-radius: 20px 20px 0 0;
+    max-width: 100%;
+    max-height: 88dvh;
+    animation: hdm-in-mobile 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  @keyframes hdm-in-mobile {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+  .mhb-modal-close {
+    top: 16px;
+    margin: 16px 16px 0 0;
+  }
+}
+
 /* ─── STAT CHIP MODAL CONTENT (.hdm-*) ───────────────────────── */
 .hdm-wrap { display: flex; flex-direction: column; padding-bottom: 8px; }
 
