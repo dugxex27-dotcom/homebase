@@ -315,9 +315,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ATTOM snapshot for homeowner dashboard — parallel property + AVM fetch
-  app.get('/api/houses/:houseId/attom-snapshot', isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.get('/api/houses/:id/attom-snapshot', isAuthenticated, requirePropertyOwner, async (req: any, res) => {
     try {
-      const house = await storage.getHouse(req.params.houseId);
+      const house = await storage.getHouse(req.params.id);
       if (!house) return res.status(404).json({ error: 'House not found' });
 
       const stored = {
