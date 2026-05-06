@@ -26,6 +26,17 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
 
+## ATTOM Data Integration
+
+Two public (no auth required) server routes back the onboarding property pre-population flow:
+
+- **`GET /api/property`** — calls `api.gateway.attomdata.com/propertyapi/v1.0.0/property/detail` with `address1` + `address2` params. Returns `{ yearBuilt, bedrooms, bathrooms, sqft, lotSqft, propertyType, lastSaleDate, lastSalePrice, assessedValue, marketValue }`. Returns `{}` silently if address not found (ATTOM returns HTTP 400 for "SuccessWithoutResult").
+- **`GET /api/avm`** — calls `api.gateway.attomdata.com/propertyapi/v1.0.0/attomavm/detail`. Returns `{ estimatedValue }` or `{}`.
+- Requires `ATTOM_API_KEY` secret. If missing, routes return `{}` with a warning log — onboarding still works without it.
+- All calls are server-side only; the API key is never exposed to the browser.
+
+---
+
 ## Landing Page Architecture (artifacts/myhomebase)
 
 The landing page (`artifacts/myhomebase/src/pages/landing.tsx` + `landing.css`) follows the conversion architecture: Problem → Stakes → Villain → Hero → Proof → CTA.

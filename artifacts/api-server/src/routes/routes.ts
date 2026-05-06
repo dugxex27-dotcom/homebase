@@ -227,6 +227,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ATTOM property detail — used by onboarding to pre-populate home profile
+  app.get('/api/property', async (req, res) => {
+    const address1 = (req.query.address1 as string || '').trim();
+    const address2 = (req.query.address2 as string || '').trim();
+    if (!address1 || !address2) return res.json({});
+
+    const apiKey = process.env.ATTOM_API_KEY;
+    if (!apiKey) {
+      req.log.warn('ATTOM_API_KEY not set — returning empty property data');
+      return res.json({});
+    }
+
+    try {
+      const url = `https://api.gateway.attomdata.com/propertyapi/v1.0.0/property/detail?address1=${encodeURIComponent(address1)}&address2=${encodeURIComponent(address2)}`;
+      const attomRes = await fetch(url, {
+        headers: { apikey: apiKey, Accept: 'application/json' }
+      });
+
+      if (!attomRes.ok) {
+        req.log.warn({ status: attomRes.status }, 'ATTOM property detail returned non-200');
+        return res.json({});
+      }
+
+      const data: any = await attomRes.json();
+      const prop = data?.property?.[0];
+      if (!prop) return res.json({});
+
+      const building = prop.building || {};
+      const rooms = building.rooms || {};
+      const size = building.size || {};
+      const lot = prop.lot || {};
+      const summary = prop.summary || {};
+      const sale = prop.sale || {};
+      const assessment = prop.assessment || {};
+
+      res.json({
+        yearBuilt:     summary.yearbuilt ?? null,
+        bedrooms:      rooms.beds ?? null,
+        bathrooms:     rooms.bathsfull != null ? (rooms.bathsfull + (rooms.bathshalf ?? 0) * 0.5) : null,
+        sqft:          size.livingsize ?? size.universalsize ?? null,
+        lotSqft:       lot.lotsize1 ?? null,
+        propertyType:  summary.proptype ?? null,
+        lastSaleDate:  sale.salesearchdate ?? null,
+        lastSalePrice: sale.salesprice ?? null,
+        assessedValue: assessment.assessed?.assdttlvalue ?? null,
+        marketValue:   assessment.market?.mktttlvalue ?? null,
+      });
+    } catch (err: any) {
+      req.log.error({ err }, 'ATTOM property detail error');
+      res.json({});
+    }
+  });
+
+  // ATTOM AVM — estimated current market value
+  app.get('/api/avm', async (req, res) => {
+    const address1 = (req.query.address1 as string || '').trim();
+    const address2 = (req.query.address2 as string || '').trim();
+    if (!address1 || !address2) return res.json({});
+
+    const apiKey = process.env.ATTOM_API_KEY;
+    if (!apiKey) {
+      req.log.warn('ATTOM_API_KEY not set — returning empty AVM data');
+      return res.json({});
+    }
+
+    try {
+      const url = `https://api.gateway.attomdata.com/propertyapi/v1.0.0/attomavm/detail?address1=${encodeURIComponent(address1)}&address2=${encodeURIComponent(address2)}`;
+      const attomRes = await fetch(url, {
+        headers: { apikey: apiKey, Accept: 'application/json' }
+      });
+
+      if (!attomRes.ok) {
+        req.log.warn({ status: attomRes.status }, 'ATTOM AVM returned non-200');
+        return res.json({});
+      }
+
+      const data: any = await attomRes.json();
+      const prop = data?.property?.[0];
+      const avmValue = prop?.avm?.amount?.value ?? null;
+
+      res.json({ estimatedValue: avmValue });
+    } catch (err: any) {
+      req.log.error({ err }, 'ATTOM AVM error');
+      res.json({});
+    }
+  });
+
   app.get('/api/health', async (_req, res) => {
     try {
       // Quick database connectivity check
