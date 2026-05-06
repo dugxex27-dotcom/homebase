@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import AddressAutocomplete from "@/components/address-autocomplete";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -309,24 +310,21 @@ export default function HomeownerSetupWizard({ onComplete }: HomeownerSetupWizar
             </div>
             <div>
               <Label htmlFor="address">Full Property Address</Label>
-              <div className="flex gap-2 mt-2">
-                <Input
+              <div className="mt-2">
+                <AddressAutocomplete
                   id="address"
                   value={addressInput}
-                  onChange={e => setAddressInput(e.target.value)}
+                  onChange={v => setAddressInput(v)}
+                  onSelect={(_fmt, raw) => {
+                    setAddressInput(_fmt);
+                    detectClimateZone(_fmt);
+                  }}
                   placeholder="123 Main St, Portland, OR 97201"
-                  className="flex-1"
-                  onKeyDown={e => { if (e.key === "Enter") detectClimateZone(addressInput); }}
                 />
-                <Button
-                  variant="outline"
-                  onClick={() => detectClimateZone(addressInput)}
-                  disabled={isDetectingZone || !addressInput.trim()}
-                  style={{ borderColor: 'var(--purple-border)', color: 'var(--hw-primary)' }}
-                >
-                  {isDetectingZone ? "..." : "Detect"}
-                </Button>
               </div>
+              {isDetectingZone && (
+                <p className="text-xs text-gray-500 mt-1">Detecting climate zone…</p>
+              )}
             </div>
             {climateZoneDetected && (
               <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-4">

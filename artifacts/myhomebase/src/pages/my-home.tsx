@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import AddressAutocomplete from "@/components/address-autocomplete";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -124,9 +125,6 @@ export default function MyHome() {
   const [selectedForBulk, setSelectedForBulk] = useState<string[]>([]);
   const [showTemplateDialog, setShowTemplateDialog] = useState(false);
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
-  const [addressSuggestions, setAddressSuggestions] = useState<any[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [houseToDelete, setHouseToDelete] = useState<House | null>(null);
   const queryClient = useQueryClient();
@@ -208,157 +206,51 @@ export default function MyHome() {
   const hasMultipleProperties = houses.length >= 3;
   const isSuperUser = hasMultipleProperties && (user as any)?.isPremium;
 
-  // Geolocation functions for address autocomplete
-  const getAddressSuggestions = async (query: string) => {
-    if (!query || query.length < 3) {
-      setAddressSuggestions([]);
-      setShowSuggestions(false);
-      return;
+  // Auto-detect climate zone from Nominatim result on address select
+  const handleAddressSelect = (_formatted: string, raw: any) => {
+    const countryCode = raw.address?.country_code?.toLowerCase();
+    const country = raw.address?.country;
+    const lat = parseFloat(raw.lat);
+    const lon = parseFloat(raw.lon);
+
+    let detectedZone = '';
+    if (countryCode === 'gb') {
+      if (lat > 57) detectedZone = 'uk_1';
+      else if (lat > 55) detectedZone = 'uk_2';
+      else if (lat > 52) detectedZone = 'uk_3';
+      else if (lat > 50.5) detectedZone = 'uk_4';
+      else detectedZone = 'uk_5';
+    } else if (countryCode === 'ca') {
+      if (lat > 60) detectedZone = 'ca_1';
+      else if (lat > 55) detectedZone = 'ca_2';
+      else if (lat > 50) detectedZone = 'ca_3';
+      else if (lat > 45) detectedZone = 'ca_4';
+      else if (lat > 40) detectedZone = 'ca_5';
+      else detectedZone = 'ca_6';
+    } else if (countryCode === 'au') {
+      const state = raw.address?.state?.toLowerCase() || '';
+      if (lat < -35) detectedZone = 'au_4';
+      else if (lat < -30 && (state.includes('western') || state.includes('south'))) detectedZone = 'au_5';
+      else if (lat < -30) detectedZone = 'au_3';
+      else if (lat < -25) detectedZone = 'au_2';
+      else if (lat < -20) detectedZone = 'au_1';
+      else if (lon > 130) detectedZone = 'au_6';
+      else detectedZone = 'au_7';
+    } else if (countryCode === 'us') {
+      if (lat > 47) detectedZone = '1';
+      else if (lat > 45) detectedZone = '2';
+      else if (lat > 42) detectedZone = '3';
+      else if (lat > 38) detectedZone = '4';
+      else if (lat > 33) detectedZone = '5';
+      else if (lat > 30) detectedZone = '6';
+      else if (lat > 25) detectedZone = '7';
+      else detectedZone = '8';
     }
 
-    setIsLoadingSuggestions(true);
-    try {
-      // Use LocationIQ API for address suggestions with focus on UK, Canada, Australia
-      const response = await fetch(
-        `https://us1.locationiq.com/v1/search.php?key=${import.meta.env.VITE_LOCATIONIQ_API_KEY || 'pk.3e1d1a4cb7bf7b8b11e0e0a2d9f4e5c6'}&q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=5&countrycodes=gb,ca,au,us`
-      );
-      
-      if (!response.ok) {
-        // Fallback to OpenStreetMap Nominatim
-        const nominatimResponse = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1&countrycodes=gb,ca,au,us`
-        );
-        if (nominatimResponse.ok) {
-          const data = await nominatimResponse.json();
-          setAddressSuggestions(data);
-          setShowSuggestions(true);
-        }
-      } else {
-        const data = await response.json();
-        setAddressSuggestions(data);
-        setShowSuggestions(true);
-      }
-    } catch (error) {
-      console.error('Error fetching address suggestions:', error);
-      setAddressSuggestions([]);
-    } finally {
-      setIsLoadingSuggestions(false);
+    if (detectedZone) {
+      form.setValue('climateZone', detectedZone);
+      toast({ title: "Climate zone detected", description: `Auto-set for ${country}` });
     }
-  };
-
-  const geocodeAddress = async (address: string) => {
-    try {
-      // Use LocationIQ for geocoding
-      const response = await fetch(
-        `https://us1.locationiq.com/v1/search.php?key=${import.meta.env.VITE_LOCATIONIQ_API_KEY || 'pk.3e1d1a4cb7bf7b8b11e0e0a2d9f4e5c6'}&q=${encodeURIComponent(address)}&format=json&limit=1&addressdetails=1`
-      );
-      
-      let result = null;
-      if (!response.ok) {
-        // Fallback to OpenStreetMap Nominatim
-        const nominatimResponse = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1&addressdetails=1`
-        );
-        if (nominatimResponse.ok) {
-          const data = await nominatimResponse.json();
-          result = data[0];
-        }
-      } else {
-        const data = await response.json();
-        result = data[0];
-      }
-
-      if (result) {
-        const countryCode = result.address?.country_code?.toLowerCase();
-        const country = result.address?.country;
-        const lat = parseFloat(result.lat);
-        const lon = parseFloat(result.lon);
-        
-        // Auto-detect climate zone based on location
-        let detectedZone = '';
-        if (countryCode === 'gb') {
-          // UK climate zones based on latitude
-          if (lat > 57) detectedZone = 'uk_1'; // Scottish Highlands
-          else if (lat > 55) detectedZone = 'uk_2'; // Northern England, Scotland
-          else if (lat > 52) detectedZone = 'uk_3'; // Southern England, Northern Ireland
-          else if (lat > 50.5) detectedZone = 'uk_4'; // London, Southeast
-          else detectedZone = 'uk_5'; // Southwest England, Coastal
-        } else if (countryCode === 'ca') {
-          // Canada climate zones based on latitude
-          if (lat > 60) detectedZone = 'ca_1'; // Very Cold
-          else if (lat > 55) detectedZone = 'ca_2'; // Cold
-          else if (lat > 50) detectedZone = 'ca_3'; // Cool
-          else if (lat > 45) detectedZone = 'ca_4'; // Moderate
-          else if (lat > 40) detectedZone = 'ca_5'; // Mild
-          else detectedZone = 'ca_6'; // Coastal
-        } else if (countryCode === 'au') {
-          // Australia climate zones based on latitude and location
-          const state = result.address?.state?.toLowerCase();
-          if (lat < -35) detectedZone = 'au_4'; // Cool Temperate (Tasmania)
-          else if (lat < -30 && (state?.includes('western') || state?.includes('south'))) detectedZone = 'au_5'; // Mediterranean
-          else if (lat < -30) detectedZone = 'au_3'; // Temperate
-          else if (lat < -25) detectedZone = 'au_2'; // Sub-tropical
-          else if (lat < -20) detectedZone = 'au_1'; // Tropical North
-          else if (lon > 130) detectedZone = 'au_6'; // Hot Dry Central
-          else detectedZone = 'au_7'; // Desert Outback
-        } else if (countryCode === 'us') {
-          // US climate zones (existing logic)
-          if (lat > 47) detectedZone = '1';
-          else if (lat > 45) detectedZone = '2';
-          else if (lat > 42) detectedZone = '3';
-          else if (lat > 38) detectedZone = '4';
-          else if (lat > 33) detectedZone = '5';
-          else if (lat > 30) detectedZone = '6';
-          else if (lat > 25) detectedZone = '7';
-          else detectedZone = '8';
-        }
-
-        if (detectedZone) {
-          form.setValue('climateZone', detectedZone);
-          toast({
-            title: "Climate zone detected",
-            description: `Auto-set climate zone for ${country}`,
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error geocoding address:', error);
-    }
-  };
-
-  // Debounce address suggestions
-  const [addressDebounceTimer, setAddressDebounceTimer] = useState<NodeJS.Timeout>();
-  
-  const handleAddressChange = (address: string) => {
-    form.setValue('address', address);
-    
-    // Clear existing timer
-    if (addressDebounceTimer) {
-      clearTimeout(addressDebounceTimer);
-    }
-    
-    // Set new timer for suggestions
-    const suggestionTimer = setTimeout(() => {
-      getAddressSuggestions(address);
-    }, 300);
-    setAddressDebounceTimer(suggestionTimer);
-    
-    // Set separate timer for geocoding
-    const geocodeTimer = setTimeout(() => {
-      if (address.length > 10) {
-        geocodeAddress(address);
-      }
-    }, 1000);
-  };
-
-  const handleSuggestionSelect = (suggestion: any) => {
-    const fullAddress = suggestion.display_name;
-    form.setValue('address', fullAddress);
-    setShowSuggestions(false);
-    setAddressSuggestions([]);
-    
-    // Auto-geocode the selected address
-    geocodeAddress(fullAddress);
   };
 
   const form = useForm<HouseFormData>({
@@ -956,50 +848,21 @@ export default function MyHome() {
                   name="address"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Address (UK, Canada, Australia, US supported)</FormLabel>
+                      <FormLabel>Address (US, UK, Canada, Australia supported)</FormLabel>
                       <FormControl>
-                        <div className="relative">
-                          <Input 
-                            placeholder="Start typing address (e.g., 10 Downing Street, London)" 
-                            value={field.value}
-                            onChange={(e) => {
-                              field.onChange(e.target.value);
-                              handleAddressChange(e.target.value);
-                            }}
-                            data-testid="input-house-address"
-                          />
-                          {isLoadingSuggestions && (
-                            <div className="absolute right-3 top-3">
-                              <div className="animate-spin w-4 h-4 border-2 border-[#3C258E] border-t-transparent rounded-full"></div>
-                            </div>
-                          )}
-                          {/* Address suggestions dropdown */}
-                          {showSuggestions && addressSuggestions.length > 0 && (
-                            <div className="absolute z-50 w-full mt-1 max-h-60 overflow-auto bg-white border border-gray-300 rounded-md shadow-lg">
-                              {addressSuggestions.map((suggestion, index) => (
-                                <div
-                                  key={index}
-                                  className="px-4 py-2 hover:bg-[#EEEDFE] cursor-pointer border-b border-gray-100 last:border-b-0"
-                                  onClick={() => handleSuggestionSelect(suggestion)}
-                                  data-testid={`address-suggestion-${index}`}
-                                >
-                                  <div className="font-medium text-sm text-gray-900">
-                                    {suggestion.display_name}
-                                  </div>
-                                  <div className="text-xs text-gray-500 mt-1 flex items-center">
-                                    <MapPin className="w-3 h-3 mr-1" />
-                                    {suggestion.address?.country || 'Unknown country'}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
+                        <AddressAutocomplete
+                          value={field.value}
+                          onChange={field.onChange}
+                          onSelect={handleAddressSelect}
+                          placeholder="Start typing an address…"
+                          data-testid="input-house-address"
+                          countryCodes="us,gb,ca,au"
+                        />
                       </FormControl>
                       <FormMessage />
-                      <div className="text-xs text-gray-500 mt-1">
-                        🌍 International support: Type addresses from UK, Canada, Australia, or US for automatic climate zone detection
-                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Climate zone is detected automatically when you select an address.
+                      </p>
                     </FormItem>
                   )}
                 />

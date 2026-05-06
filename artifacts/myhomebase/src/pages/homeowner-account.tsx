@@ -40,6 +40,7 @@ import {
   CreditCard,
   ChevronUp
 } from "lucide-react";
+import AddressAutocomplete from "@/components/address-autocomplete";
 import { Link } from "wouter";
 import PushNotificationManager from "@/components/push-notification-manager";
 import { HomeownerConnectionCodes } from "@/components/ConnectionCodes";
@@ -543,18 +544,13 @@ export default function HomeownerAccount() {
 
                   <div>
                     <Label htmlFor="address" style={{ color: '#2c0f5b' }}>Primary Address</Label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                      <Input
-                        id="address"
-                        data-testid="input-address"
-                        value={profileData.address}
-                        onChange={(e) => handleInputChange('address', e.target.value)}
-                        placeholder="Enter your primary address"
-                        className="pl-10"
-                        style={{ backgroundColor: 'white', color: '#2c0f5b' }}
-                      />
-                    </div>
+                    <AddressAutocomplete
+                      id="address"
+                      data-testid="input-address"
+                      value={profileData.address}
+                      onChange={(v) => handleInputChange('address', v)}
+                      placeholder="Start typing your address…"
+                    />
                   </div>
 
                   <Button
