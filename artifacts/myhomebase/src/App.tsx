@@ -8,6 +8,7 @@ import { queryClient } from "./lib/queryClient";
 import LoadingFallback from "@/components/loading-fallback";
 import AuthenticatedLayout from "@/layouts/authenticated-layout";
 import UnauthenticatedLayout from "@/layouts/unauthenticated-layout";
+import BackToTop from "@/components/back-to-top";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { GuidedTour, ContractorGuidedTour, AgentGuidedTour } from "@/components/guided-tour";
 
@@ -128,6 +129,7 @@ function Router() {
     return (
       <UnauthenticatedLayout>
         <ScrollToTop />
+        <BackToTop />
         <Switch>
           <Route path="/invite/:code" component={Invite} />
           <Route path="/homeowner">{() => { window.location.replace('/homeowner.html'); return null; }}</Route>
@@ -171,6 +173,7 @@ function Router() {
   return (
     <AuthenticatedLayout>
       <ScrollToTop />
+      <BackToTop />
       <GuidedTour />
       <ContractorGuidedTour />
       <AgentGuidedTour />
