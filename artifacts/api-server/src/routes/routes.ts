@@ -314,78 +314,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ATTOM snapshot for homeowner dashboard — parallel property + AVM fetch
-  app.get('/api/houses/:id/attom-snapshot', isAuthenticated, requirePropertyOwner, async (req: any, res) => {
-    try {
-      const house = await storage.getHouse(req.params.id);
-      if (!house) return res.status(404).json({ error: 'House not found' });
-
-      const stored = {
-        yearBuilt:    house.yearBuilt ?? null,
-        sqft:         house.squareFootage ?? null,
-        propertyType: house.homeType ?? null,
-      };
-
-      const address = (house.address || '').trim();
-      const commaIdx = address.indexOf(',');
-      const address1 = commaIdx > 0 ? address.slice(0, commaIdx).trim() : address;
-      const address2 = commaIdx > 0 ? address.slice(commaIdx + 1).trim() : '';
-
-      const apiKey = process.env.ATTOM_API_KEY;
-      if (!apiKey || !address1 || !address2) {
-        return res.json({ ...stored, bedrooms: null, bathrooms: null, lotSqft: null, estimatedValue: null, source: 'stored' });
-      }
-
-      const headers = { apikey: apiKey, Accept: 'application/json' };
-      const [propRes, avmRes] = await Promise.all([
-        fetch(`https://api.gateway.attomdata.com/propertyapi/v1.0.0/property/detail?address1=${encodeURIComponent(address1)}&address2=${encodeURIComponent(address2)}`, { headers }),
-        fetch(`https://api.gateway.attomdata.com/propertyapi/v1.0.0/attomavm/detail?address1=${encodeURIComponent(address1)}&address2=${encodeURIComponent(address2)}`, { headers }),
-      ]);
-
-      let attom: Record<string, any> = {};
-      let estimatedValue: number | null = null;
-
-      if (propRes.ok) {
-        const d: any = await propRes.json();
-        const prop = d?.property?.[0];
-        if (prop) {
-          const rooms = prop.building?.rooms || {};
-          const size  = prop.building?.size  || {};
-          const lot   = prop.lot    || {};
-          const sum   = prop.summary || {};
-          attom = {
-            yearBuilt:    sum.yearbuilt    ?? null,
-            bedrooms:     rooms.beds       ?? null,
-            bathrooms:    rooms.bathsfull != null ? (rooms.bathsfull + (rooms.bathshalf ?? 0) * 0.5) : null,
-            sqft:         size.livingsize  ?? size.universalsize ?? null,
-            lotSqft:      lot.lotsize1     ?? null,
-            propertyType: sum.proptype     ?? null,
-          };
-        }
-      }
-
-      if (avmRes.ok) {
-        const d: any = await avmRes.json();
-        const val = d?.property?.[0]?.avm?.amount?.value;
-        if (val) estimatedValue = val;
-      }
-
-      res.json({
-        yearBuilt:     attom.yearBuilt    ?? stored.yearBuilt,
-        sqft:          attom.sqft         ?? stored.sqft,
-        bedrooms:      attom.bedrooms     ?? null,
-        bathrooms:     attom.bathrooms    ?? null,
-        lotSqft:       attom.lotSqft      ?? null,
-        propertyType:  attom.propertyType ?? stored.propertyType,
-        estimatedValue,
-        source: Object.keys(attom).length > 0 ? 'attom' : 'stored',
-      });
-    } catch (err: any) {
-      req.log.error({ err }, 'ATTOM snapshot error');
-      res.status(500).json({ error: 'Failed to fetch property snapshot' });
-    }
-  });
-
   app.get('/api/health', async (_req, res) => {
     try {
       // Quick database connectivity check
@@ -11115,6 +11043,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("[ERROR] Failed to generate maintenance schedule:", error);
       res.status(500).json({ message: "Failed to generate maintenance schedule" });
+    }
+  });
+
+  // ATTOM snapshot for homeowner dashboard — parallel property + AVM fetch
+  // NOTE: must live AFTER setupAuth (line ~705) so req.session is populated
+  app.get('/api/houses/:id/attom-snapshot', isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+    try {
+      const house = await storage.getHouse(req.params.id);
+      if (!house) return res.status(404).json({ error: 'House not found' });
+
+      const stored = {
+        yearBuilt:    house.yearBuilt ?? null,
+        sqft:         house.squareFootage ?? null,
+        propertyType: house.homeType ?? null,
+      };
+
+      const address = (house.address || '').trim();
+      const commaIdx = address.indexOf(',');
+      const address1 = commaIdx > 0 ? address.slice(0, commaIdx).trim() : address;
+      const address2 = commaIdx > 0 ? address.slice(commaIdx + 1).trim() : '';
+
+      const apiKey = process.env.ATTOM_API_KEY;
+      if (!apiKey || !address1 || !address2) {
+        return res.json({ ...stored, bedrooms: null, bathrooms: null, lotSqft: null, estimatedValue: null, source: 'stored' });
+      }
+
+      const headers = { apikey: apiKey, Accept: 'application/json' };
+      const [propRes, avmRes] = await Promise.all([
+        fetch(`https://api.gateway.attomdata.com/propertyapi/v1.0.0/property/detail?address1=${encodeURIComponent(address1)}&address2=${encodeURIComponent(address2)}`, { headers }),
+        fetch(`https://api.gateway.attomdata.com/propertyapi/v1.0.0/attomavm/detail?address1=${encodeURIComponent(address1)}&address2=${encodeURIComponent(address2)}`, { headers }),
+      ]);
+
+      let attom: Record<string, any> = {};
+      let estimatedValue: number | null = null;
+
+      if (propRes.ok) {
+        const d: any = await propRes.json();
+        const prop = d?.property?.[0];
+        if (prop) {
+          const rooms = prop.building?.rooms || {};
+          const size  = prop.building?.size  || {};
+          const lot   = prop.lot    || {};
+          const sum   = prop.summary || {};
+          attom = {
+            yearBuilt:    sum.yearbuilt    ?? null,
+            bedrooms:     rooms.beds       ?? null,
+            bathrooms:    rooms.bathsfull != null ? (rooms.bathsfull + (rooms.bathshalf ?? 0) * 0.5) : null,
+            sqft:         size.livingsize  ?? size.universalsize ?? null,
+            lotSqft:      lot.lotsize1     ?? null,
+            propertyType: sum.proptype     ?? null,
+          };
+        }
+      }
+
+      if (avmRes.ok) {
+        const d: any = await avmRes.json();
+        const val = d?.property?.[0]?.avm?.amount?.value;
+        if (val) estimatedValue = val;
+      }
+
+      res.json({
+        yearBuilt:     attom.yearBuilt    ?? stored.yearBuilt,
+        sqft:          attom.sqft         ?? stored.sqft,
+        bedrooms:      attom.bedrooms     ?? null,
+        bathrooms:     attom.bathrooms    ?? null,
+        lotSqft:       attom.lotSqft      ?? null,
+        propertyType:  attom.propertyType ?? stored.propertyType,
+        estimatedValue,
+        source: Object.keys(attom).length > 0 ? 'attom' : 'stored',
+      });
+    } catch (err: any) {
+      req.log.error({ err }, 'ATTOM snapshot error');
+      res.status(500).json({ error: 'Failed to fetch property snapshot' });
     }
   });
 
