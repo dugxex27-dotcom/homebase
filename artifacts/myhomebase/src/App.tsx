@@ -200,6 +200,10 @@ function Router() {
         <Route path="/privacy-policy" component={PrivacyPolicy} />
         <Route path="/legal-disclaimer" component={LegalDisclaimer} />
         <Route path="/signin" component={SignIn} />
+        {/* Redirect authenticated users away from role-specific sign-in pages */}
+        <Route path="/signin/homeowner">{() => { window.location.replace('/dashboard'); return null; }}</Route>
+        <Route path="/signin/contractor">{() => { window.location.replace('/contractor-dashboard'); return null; }}</Route>
+        <Route path="/signin/agent">{() => { window.location.replace('/agent-dashboard'); return null; }}</Route>
         <Route path="/pay/invoice/:invoiceId" component={PayInvoice} />
         <Route path="/pay/success" component={PaymentSuccess} />
         <Route path="/pay/cancelled" component={PaymentCancelled} />

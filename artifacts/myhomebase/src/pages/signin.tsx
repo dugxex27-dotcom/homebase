@@ -127,7 +127,7 @@ export default function SignIn() {
       const response = await apiRequest(endpoint, 'POST', {});
       if (response.ok) {
         toast({ title: "Demo login successful" });
-        window.location.href = role === 'contractor' ? '/contractor-dashboard' : '/';
+        window.location.href = role === 'contractor' ? '/contractor-dashboard' : '/dashboard';
       }
     } catch (error: any) {
       toast({ title: "Demo login failed", description: error?.message, variant: "destructive" });

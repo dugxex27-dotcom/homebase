@@ -121,10 +121,14 @@ export async function setupGoogleAuth(app: Express) {
           }
 
           // Redirect to appropriate dashboard based on role
+          // NOTE: Must use /dashboard (not /) because / serves index-selector.html
+          // in production (static rewrite), not the React SPA.
           const redirectPath =
             user.role === 'contractor'
               ? '/contractor-dashboard'
-              : '/';
+              : user.role === 'agent'
+              ? '/agent-dashboard'
+              : '/dashboard';
           res.redirect(redirectPath);
         });
       } catch (error) {
