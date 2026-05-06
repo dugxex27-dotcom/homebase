@@ -11138,23 +11138,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let attom: Record<string, any> = {};
       let estimatedValue: number | null = null;
 
-      if (propRes.ok) {
-        const d: any = await propRes.json();
+      req.log.info({ propStatus: propRes.status, avmStatus: avmRes.status }, 'ATTOM response statuses');
+
+      // Try to parse property detail — ATTOM sometimes returns 400 for "SuccessWithoutResult"
+      // but other times returns 200 with empty property array. Try to parse either way.
+      function extractPropData(d: any): Record<string, any> {
         const prop = d?.property?.[0];
-        if (prop) {
-          const rooms = prop.building?.rooms || {};
-          const size  = prop.building?.size  || {};
-          const lot   = prop.lot    || {};
-          const sum   = prop.summary || {};
-          attom = {
-            yearBuilt:    sum.yearbuilt    ?? null,
-            bedrooms:     rooms.beds       ?? null,
-            bathrooms:    rooms.bathsfull != null ? (rooms.bathsfull + (rooms.bathshalf ?? 0) * 0.5) : null,
-            sqft:         size.livingsize  ?? size.universalsize ?? null,
-            lotSqft:      lot.lotsize1     ?? null,
-            propertyType: sum.proptype     ?? null,
-          };
-        }
+        if (!prop) return {};
+        const rooms = prop.building?.rooms || {};
+        const size  = prop.building?.size  || {};
+        const lot   = prop.lot    || {};
+        const sum   = prop.summary || {};
+        return {
+          yearBuilt:    sum.yearbuilt    ?? null,
+          bedrooms:     rooms.beds       ?? null,
+          bathrooms:    rooms.bathsfull != null ? (rooms.bathsfull + (rooms.bathshalf ?? 0) * 0.5) : null,
+          sqft:         size.livingsize  ?? size.universalsize ?? null,
+          lotSqft:      lot.lotsize1     ?? null,
+          propertyType: sum.proptype     ?? null,
+        };
+      }
+
+      const propText = await propRes.text();
+      req.log.info({ propStatus: propRes.status, propSnippet: propText.slice(0, 300) }, 'ATTOM property detail raw');
+      try {
+        const d = JSON.parse(propText);
+        attom = extractPropData(d);
+      } catch { /* non-JSON */ }
+
+      // If property/detail gave no data, fall back to property/basicprofile
+      if (!attom.yearBuilt && !attom.bedrooms && !attom.sqft) {
+        const basicRes = await fetch(
+          `https://api.gateway.attomdata.com/propertyapi/v1.0.0/property/basicprofile?address1=${encodeURIComponent(address1)}&address2=${encodeURIComponent(address2)}`,
+          { headers }
+        );
+        const basicText = await basicRes.text();
+        req.log.info({ basicStatus: basicRes.status, basicSnippet: basicText.slice(0, 300) }, 'ATTOM basicprofile raw');
+        try {
+          const d = JSON.parse(basicText);
+          const extracted = extractPropData(d);
+          if (extracted.yearBuilt || extracted.bedrooms || extracted.sqft) {
+            attom = extracted;
+          }
+        } catch { /* non-JSON */ }
       }
 
       if (avmRes.ok) {
