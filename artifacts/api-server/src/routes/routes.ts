@@ -11060,14 +11060,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const address = (house.address || '').trim();
-      const commaIdx = address.indexOf(',');
-      const address1 = commaIdx > 0 ? address.slice(0, commaIdx).trim() : address;
-      const address2 = commaIdx > 0 ? address.slice(commaIdx + 1).trim() : '';
+
+      // Parse address into ATTOM-compatible address1 + address2.
+      // Handles both standard US format ("123 Main St, City, ST ZIP") and
+      // Nominatim/OSM format ("10, Farmstead Road, Town of Smithtown, Suffolk County, New York, 11725, United States")
+      // where the house number is its own comma-delimited token.
+      const STATE_ABBREVS: Record<string, string> = {
+        'Alabama':'AL','Alaska':'AK','Arizona':'AZ','Arkansas':'AR','California':'CA',
+        'Colorado':'CO','Connecticut':'CT','Delaware':'DE','Florida':'FL','Georgia':'GA',
+        'Hawaii':'HI','Idaho':'ID','Illinois':'IL','Indiana':'IN','Iowa':'IA','Kansas':'KS',
+        'Kentucky':'KY','Louisiana':'LA','Maine':'ME','Maryland':'MD','Massachusetts':'MA',
+        'Michigan':'MI','Minnesota':'MN','Mississippi':'MS','Missouri':'MO','Montana':'MT',
+        'Nebraska':'NE','Nevada':'NV','New Hampshire':'NH','New Jersey':'NJ','New Mexico':'NM',
+        'New York':'NY','North Carolina':'NC','North Dakota':'ND','Ohio':'OH','Oklahoma':'OK',
+        'Oregon':'OR','Pennsylvania':'PA','Rhode Island':'RI','South Carolina':'SC',
+        'South Dakota':'SD','Tennessee':'TN','Texas':'TX','Utah':'UT','Vermont':'VT',
+        'Virginia':'VA','Washington':'WA','West Virginia':'WV','Wisconsin':'WI','Wyoming':'WY',
+        'District of Columbia':'DC',
+      };
+
+      const parts = address.split(',').map((s: string) => s.trim()).filter(Boolean);
+      let address1 = '';
+      let address2 = '';
+
+      if (parts.length >= 2) {
+        // Nominatim puts house number alone before street: "10, Farmstead Road, ..."
+        const bareHouseNum = /^\d+[A-Za-z]?$/.test(parts[0]);
+        if (bareHouseNum) {
+          address1 = `${parts[0]} ${parts[1]}`;
+        } else {
+          address1 = parts[0];
+        }
+
+        const remaining = parts.slice(bareHouseNum ? 2 : 1);
+        // Remove noise: country name, anything containing "County" or "District"
+        const filtered = remaining.filter((p: string) =>
+          !/^United States$/i.test(p) &&
+          !/\b(County|District|Province)\b/i.test(p)
+        );
+
+        // Find a part containing a 5-digit zip code
+        const zipPartIdx = filtered.findIndex((p: string) => /\d{5}/.test(p));
+        if (zipPartIdx >= 0) {
+          const zipMatch = filtered[zipPartIdx].match(/(\d{5}(?:-\d{4})?)/);
+          const zip = zipMatch ? zipMatch[1] : '';
+          // State may be embedded in the same token (e.g. "IL 62701") or in the previous one
+          const stateRaw = filtered[zipPartIdx].replace(/\d{5}(?:-\d{4})?/, '').trim() ||
+                           (zipPartIdx > 0 ? filtered[zipPartIdx - 1] : '');
+          const stateCode = STATE_ABBREVS[stateRaw] || stateRaw;
+          // City = last remaining part before the state, stripping "Town/City/Village of"
+          const cityParts = filtered.slice(0, zipPartIdx > 0 && !filtered[zipPartIdx].replace(/\d{5}(?:-\d{4})?/, '').trim() ? zipPartIdx - 1 : zipPartIdx);
+          const city = cityParts
+            .map((p: string) => p.replace(/^(?:Town|City|Village|Borough|Township) of\s+/i, '').trim())
+            .filter(Boolean)
+            .pop() || '';
+          address2 = city ? `${city}, ${stateCode} ${zip}`.trim() : `${stateCode} ${zip}`.trim();
+        } else {
+          // No zip in address string — fall back to house.postalCode if available
+          const zip = (house as any).postalCode || '';
+          address2 = [...filtered, zip].filter(Boolean).join(', ');
+        }
+      }
 
       const apiKey = process.env.ATTOM_API_KEY;
       if (!apiKey || !address1 || !address2) {
         return res.json({ ...stored, bedrooms: null, bathrooms: null, lotSqft: null, estimatedValue: null, source: 'stored' });
       }
+
+      req.log.info({ address1, address2 }, 'ATTOM snapshot address parsed');
 
       const headers = { apikey: apiKey, Accept: 'application/json' };
       const [propRes, avmRes] = await Promise.all([
