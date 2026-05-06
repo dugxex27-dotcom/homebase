@@ -187,6 +187,14 @@
       transition: opacity .2s;
     }
     .hero-cta-primary:hover { opacity: .92; }
+    .hero-cta-quiz {
+      display: inline-block; background: transparent; color: rgba(255,255,255,0.85);
+      text-decoration: none; padding: 14px 24px; border-radius: 12px;
+      font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer;
+      border: 1.5px solid rgba(255,255,255,0.35);
+      transition: border-color .2s, color .2s, background .2s;
+    }
+    .hero-cta-quiz:hover { border-color: rgba(255,255,255,0.7); color: #fff; background: rgba(255,255,255,0.07); }
     .hero-note { font-size: 13px; color: rgba(255,255,255,0.45); }
 
     /* ══ STAT TILES ══ */
@@ -981,8 +989,9 @@
     <p class="hero-sub">Homeownership is a full-time job nobody trained you for. MyHomeBase™ tells you exactly what your home needs, when to do it, and who to call — so nothing falls through the cracks.</p>
     <div class="hero-cta-row">
       <a href="/onboarding" class="hero-cta-primary">Start for $5/month — no guesswork →</a>
-      <span class="hero-note">14-day free trial · No credit card required</span>
+      <button class="hero-cta-quiz" onclick="openQuiz()">Free 2-minute quiz →</button>
     </div>
+    <p class="hero-note" style="margin-top:10px;">14-day free trial · No credit card required</p>
   </div>
 </section>
 
