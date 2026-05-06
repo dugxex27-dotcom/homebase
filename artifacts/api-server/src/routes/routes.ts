@@ -11153,9 +11153,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           yearBuilt:    sum.yearbuilt    ?? null,
           bedrooms:     rooms.beds       ?? null,
           bathrooms:    rooms.bathsfull != null ? (rooms.bathsfull + (rooms.bathshalf ?? 0) * 0.5) : null,
-          sqft:         size.livingsize  ?? size.universalsize ?? null,
-          lotSqft:      lot.lotsize1     ?? null,
-          propertyType: sum.proptype     ?? null,
+          sqft:         size.livingsize  ?? size.universalsize ?? size.bldgsize ?? null,
+          // lotsize2 is sqft; lotsize1 is acres — use sqft for the strip
+          lotSqft:      lot.lotsize2     ?? (lot.lotsize1 ? Math.round(lot.lotsize1 * 43560) : null),
+          propertyType: sum.propertyType ?? sum.proptype ?? null,
         };
       }
 

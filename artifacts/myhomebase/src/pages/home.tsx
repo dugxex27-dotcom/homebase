@@ -254,6 +254,7 @@ export default function Home() {
               if (s.bedrooms)  stats.push({ val: String(s.bedrooms), label: "Beds" });
               if (s.bathrooms) stats.push({ val: String(s.bathrooms), label: "Baths" });
               if (s.sqft)      stats.push({ val: s.sqft.toLocaleString(), label: "Sq Ft" });
+              if (s.lotSqft)   stats.push({ val: s.lotSqft.toLocaleString(), label: "Lot Sq Ft" });
               if (s.estimatedValue) stats.push({ val: `$${Math.round(s.estimatedValue / 1000)}K`, label: "Est. Value" });
               if (stats.length === 0) return null;
               return (
