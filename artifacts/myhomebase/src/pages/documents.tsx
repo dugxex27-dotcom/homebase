@@ -46,6 +46,25 @@ function formatBytes(bytes: number | null | undefined) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+interface InspectionAppliance {
+  name: string;
+  make: string;
+  model: string;
+  yearInstalled?: number | null;
+  age?: string | null;
+  condition: string;
+  location: string;
+  notes: string;
+}
+
+interface InspectionMechanicalSystem {
+  systemType: string;
+  brand: string;
+  installationYear?: number | null;
+  condition: string;
+  notes: string;
+}
+
 interface InspectionExtractionData {
   propertyAddress?: string | null;
   inspectionDate?: string | null;
@@ -59,9 +78,14 @@ interface InspectionExtractionData {
   electricalPanelType?: string | null;
   electricalPanelCondition?: string | null;
   plumbingCondition?: string | null;
+  plumbingType?: string | null;
   foundationCondition?: string | null;
+  foundationType?: string | null;
   waterHeaterAge?: string | null;
   waterHeaterCondition?: string | null;
+  waterHeaterType?: string | null;
+  appliances?: InspectionAppliance[];
+  mechanicalSystems?: InspectionMechanicalSystem[];
   deficiencies?: { description: string; severity: string; area: string }[];
   generalSummary?: string | null;
 }
@@ -159,18 +183,23 @@ export default function Documents() {
 
   const confirmInspectionMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: InspectionExtractionData }) => {
-      return apiRequest(`/api/home-documents/inspection/${id}/confirm`, "POST", { extractedData: data });
+      const res = await apiRequest(`/api/home-documents/inspection/${id}/confirm`, "POST", { extractedData: data });
+      return res.json();
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/home-documents"] });
       queryClient.invalidateQueries({ queryKey: ["/api/homeowner/inspection-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/appliances"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/home-systems"] });
       setReviewDialogOpen(false);
       const tasksCreated = data?.tasksCreated || 0;
+      const appliancesSaved = data?.appliancesSaved || 0;
+      const parts: string[] = [];
+      if (appliancesSaved > 0) parts.push(`${appliancesSaved} appliance${appliancesSaved > 1 ? "s" : ""} added`);
+      if (tasksCreated > 0) parts.push(`${tasksCreated} maintenance task${tasksCreated > 1 ? "s" : ""} created`);
       toast({
         title: "Inspection report saved!",
-        description: tasksCreated > 0
-          ? `${tasksCreated} maintenance task${tasksCreated > 1 ? "s" : ""} created from flagged items.`
-          : "Your home profile has been updated.",
+        description: parts.length > 0 ? parts.join(", ") + "." : "Your home profile has been updated.",
       });
     },
     onError: (err: Error) => {
@@ -653,10 +682,13 @@ export default function Documents() {
                   { label: "HVAC Age", key: "hvacAge" },
                   { label: "HVAC Condition", key: "hvacCondition" },
                   { label: "HVAC Type", key: "hvacType" },
-                  { label: "Electrical Panel", key: "electricalPanelType" },
+                  { label: "Electrical Panel Type", key: "electricalPanelType" },
                   { label: "Electrical Condition", key: "electricalPanelCondition" },
+                  { label: "Plumbing Type", key: "plumbingType" },
                   { label: "Plumbing Condition", key: "plumbingCondition" },
+                  { label: "Foundation Type", key: "foundationType" },
                   { label: "Foundation Condition", key: "foundationCondition" },
+                  { label: "Water Heater Type", key: "waterHeaterType" },
                   { label: "Water Heater Age", key: "waterHeaterAge" },
                   { label: "Water Heater Condition", key: "waterHeaterCondition" },
                 ].map(({ label, key }) => (
@@ -677,6 +709,85 @@ export default function Documents() {
                 ))}
               </div>
             </div>
+
+            {/* Appliances */}
+            {(extractedData.appliances?.length ?? 0) > 0 && (
+              <div>
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-3">
+                  Appliances <span className="text-sm font-normal text-gray-500">({extractedData.appliances!.length} found)</span>
+                </h3>
+                <div className="space-y-2">
+                  {extractedData.appliances!.map((appliance, i) => (
+                    <div key={i} className={`p-3 rounded-lg border text-sm ${
+                      appliance.condition === "Poor" ? "bg-red-50 border-red-200" :
+                      appliance.condition === "Fair" ? "bg-amber-50 border-amber-200" :
+                      "bg-gray-50 border-gray-200"
+                    }`}>
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-gray-900">{appliance.name}</span>
+                          {appliance.location && (
+                            <span className="text-xs text-gray-500">— {appliance.location}</span>
+                          )}
+                        </div>
+                        <Badge variant="outline" className={`text-xs ${
+                          appliance.condition === "Poor" ? "border-red-400 text-red-700" :
+                          appliance.condition === "Fair" ? "border-amber-400 text-amber-700" :
+                          "border-gray-300 text-gray-600"
+                        }`}>
+                          {appliance.condition}
+                        </Badge>
+                      </div>
+                      {(appliance.make || appliance.model) && (
+                        <p className="text-xs text-gray-500">
+                          {[appliance.make, appliance.model].filter(Boolean).join(" · ")}
+                        </p>
+                      )}
+                      {appliance.age && (
+                        <p className="text-xs text-gray-500">Age: {appliance.age}</p>
+                      )}
+                      {appliance.notes && (
+                        <p className="text-xs text-gray-600 mt-1">{appliance.notes}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400 mt-2">These will be added to your Appliances list.</p>
+              </div>
+            )}
+
+            {/* Mechanical Systems */}
+            {(extractedData.mechanicalSystems?.length ?? 0) > 0 && (
+              <div>
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-3">
+                  Other Mechanical Systems <span className="text-sm font-normal text-gray-500">({extractedData.mechanicalSystems!.length} found)</span>
+                </h3>
+                <div className="space-y-2">
+                  {extractedData.mechanicalSystems!.map((sys, i) => (
+                    <div key={i} className={`p-3 rounded-lg border text-sm ${
+                      sys.condition === "Poor" ? "bg-red-50 border-red-200" :
+                      sys.condition === "Fair" ? "bg-amber-50 border-amber-200" :
+                      "bg-gray-50 border-gray-200"
+                    }`}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-medium text-gray-900">{sys.systemType}</span>
+                        <Badge variant="outline" className={`text-xs ${
+                          sys.condition === "Poor" ? "border-red-400 text-red-700" :
+                          sys.condition === "Fair" ? "border-amber-400 text-amber-700" :
+                          "border-gray-300 text-gray-600"
+                        }`}>
+                          {sys.condition}
+                        </Badge>
+                      </div>
+                      {sys.brand && <p className="text-xs text-gray-500">Brand: {sys.brand}</p>}
+                      {sys.installationYear && <p className="text-xs text-gray-500">Installed: {sys.installationYear}</p>}
+                      {sys.notes && <p className="text-xs text-gray-600 mt-1">{sys.notes}</p>}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-400 mt-2">These will be added to your Home Systems list.</p>
+              </div>
+            )}
 
             {/* Deficiencies */}
             {deficiencies.length > 0 && (

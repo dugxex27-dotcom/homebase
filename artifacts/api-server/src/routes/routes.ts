@@ -16434,37 +16434,62 @@ If the document contains no relevant home information, return the structure with
 
   // Helper: Extract structured home inspection data from text using GPT-4o
   async function extractInspectionData(content: string | null, imageBase64: string | null, mimeType: string): Promise<Record<string, unknown>> {
-    const systemPrompt = `You are an expert home inspection analyst. Extract structured information from this home inspection report.
-Return ONLY valid JSON with this structure (use null for fields that cannot be determined):
+    const systemPrompt = `You are an expert home inspection analyst. Extract ALL structured information from this home inspection report.
+Return ONLY valid JSON with this exact structure (use null for fields that cannot be determined, empty arrays [] when none found):
 {
   "propertyAddress": "string|null",
   "inspectionDate": "string|null (ISO date or human-readable)",
   "inspectorName": "string|null",
   "inspectorLicense": "string|null",
   "roofAge": "string|null (e.g. '10 years', 'Approximately 15 years')",
-  "roofCondition": "string|null",
+  "roofCondition": "string|null (e.g. 'Good', 'Fair', 'Poor', 'End of Life')",
   "hvacAge": "string|null",
   "hvacCondition": "string|null",
-  "hvacType": "string|null",
-  "electricalPanelType": "string|null",
+  "hvacType": "string|null (e.g. 'Gas Furnace', 'Heat Pump', 'Central Air', 'Boiler')",
+  "electricalPanelType": "string|null (e.g. '200-amp', '100-amp', 'Federal Pacific')",
   "electricalPanelCondition": "string|null",
   "plumbingCondition": "string|null",
+  "plumbingType": "string|null (e.g. 'Copper', 'PEX', 'Galvanized', 'CPVC')",
   "foundationCondition": "string|null",
+  "foundationType": "string|null (e.g. 'Slab', 'Crawl Space', 'Full Basement', 'Pier and Beam')",
   "waterHeaterAge": "string|null",
   "waterHeaterCondition": "string|null",
+  "waterHeaterType": "string|null (e.g. 'Tank', 'Tankless', 'Hybrid')",
+  "appliances": [
+    {
+      "name": "string (e.g. Refrigerator, Dishwasher, Washer, Dryer, Range/Oven, Microwave, Garbage Disposal, Trash Compactor)",
+      "make": "string (brand/manufacturer, or empty string if unknown)",
+      "model": "string (model number, or empty string if unknown)",
+      "yearInstalled": "number|null (4-digit year if determinable)",
+      "age": "string|null (e.g. '5 years', 'Approximately 8 years')",
+      "condition": "string (Good|Fair|Poor|Not Inspected)",
+      "location": "string (e.g. Kitchen, Laundry Room, Basement, Garage)",
+      "notes": "string (any condition notes, deficiencies, or recommendations)"
+    }
+  ],
+  "mechanicalSystems": [
+    {
+      "systemType": "string (e.g. Sump Pump, Generator, Garage Door Opener, Attic Fan, Whole-House Fan, Ceiling Fans, Security System, Central Vacuum, Intercom, Sprinkler System, Pool Equipment)",
+      "brand": "string (or empty string if unknown)",
+      "installationYear": "number|null",
+      "condition": "string (Good|Fair|Poor|Not Inspected)",
+      "notes": "string"
+    }
+  ],
   "deficiencies": [
     {
       "description": "string",
       "severity": "critical|monitor|informational",
-      "area": "string (e.g. Roof, Electrical, Plumbing)"
+      "area": "string (e.g. Roof, Electrical, Plumbing, HVAC, Foundation, Kitchen, Bathroom)"
     }
   ],
   "generalSummary": "string|null"
 }
 Severity levels:
-- critical: items needing immediate attention, safety hazards, major defects
-- monitor: items to watch, minor defects, items past their useful life
-- informational: maintenance recommendations, cosmetic issues`;
+- critical: items needing immediate attention, safety hazards, major defects, structural issues
+- monitor: items to watch, minor defects, items past their useful life, maintenance needed
+- informational: routine maintenance recommendations, cosmetic issues, upgrades suggested
+IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report, even if only briefly noted. Include condition even if it is just "Not Inspected"."`;
 
     try {
       let response;
@@ -16719,19 +16744,136 @@ Severity levels:
       // Populate home profile if a house is linked
       if (doc.houseId) {
         const profileUpdate: Record<string, unknown> = {};
-        if (confirmedData.roofCondition) profileUpdate.notes = `Roof condition (from inspection): ${confirmedData.roofCondition}`;
-        // Map extracted fields to house schema fields
+
+        // Map HVAC type to enum
         const hvacType = confirmedData.hvacType as string | null;
         if (hvacType) {
           const hvacMap: Record<string, string> = {
-            "furnace": "furnace", "gas furnace": "furnace", "heat pump": "heat_pump",
-            "central air": "central_air", "boiler": "boiler", "ductless": "ductless",
+            "furnace": "furnace", "gas furnace": "furnace", "oil furnace": "furnace",
+            "heat pump": "heat_pump", "central air": "central_air", "central ac": "central_air",
+            "boiler": "boiler", "ductless": "ductless", "mini split": "ductless",
           };
           const mappedHvac = hvacMap[hvacType.toLowerCase()] || null;
           if (mappedHvac) profileUpdate.hvacType = mappedHvac;
         }
+
+        // Map plumbing type to enum
+        const plumbingType = confirmedData.plumbingType as string | null;
+        if (plumbingType) {
+          const plumbMap: Record<string, string> = {
+            "copper": "copper", "pex": "pex", "cpvc": "cpvc", "galvanized": "galvanized", "mixed": "mixed",
+          };
+          const mappedPlumb = plumbMap[plumbingType.toLowerCase()] || null;
+          if (mappedPlumb) profileUpdate.plumbingType = mappedPlumb;
+        }
+
+        // Map foundation type to enum
+        const foundationType = confirmedData.foundationType as string | null;
+        if (foundationType) {
+          const foundMap: Record<string, string> = {
+            "slab": "slab", "crawl space": "crawl_space", "crawlspace": "crawl_space",
+            "basement": "basement", "full basement": "basement",
+            "pier and beam": "pier_and_beam", "pier & beam": "pier_and_beam",
+          };
+          const mappedFound = foundMap[foundationType.toLowerCase()] || null;
+          if (mappedFound) profileUpdate.foundationType = mappedFound;
+        }
+
+        // Map water heater type to enum
+        const waterHeaterType = confirmedData.waterHeaterType as string | null;
+        if (waterHeaterType) {
+          const whMap: Record<string, string> = {
+            "tank": "tank", "storage tank": "tank", "tankless": "tankless",
+            "on-demand": "tankless", "hybrid": "hybrid", "heat pump water heater": "hybrid",
+          };
+          const mappedWh = whMap[waterHeaterType.toLowerCase()] || null;
+          if (mappedWh) profileUpdate.waterHeaterType = mappedWh;
+        }
+
         if (Object.keys(profileUpdate).length > 0) {
           await db.update(houses).set(profileUpdate as any).where(eq(houses.id, doc.houseId));
+        }
+
+        // Save appliances to homeAppliances table
+        const appliancesRaw = Array.isArray(confirmedData.appliances) ? confirmedData.appliances as Record<string, unknown>[] : [];
+        for (const appliance of appliancesRaw) {
+          const name = (appliance.name as string | null) || "";
+          if (!name) continue;
+          try {
+            const yearInstalled = typeof appliance.yearInstalled === "number" ? appliance.yearInstalled : null;
+            const conditionNote = appliance.condition ? `Condition: ${appliance.condition}` : "";
+            const userNotes = (appliance.notes as string | null) || "";
+            const combinedNotes = [conditionNote, userNotes].filter(Boolean).join(". ");
+            await db.insert(homeAppliances).values({
+              homeownerId: userId,
+              houseId: doc.houseId,
+              name,
+              make: (appliance.make as string | null) || "",
+              model: (appliance.model as string | null) || "",
+              yearInstalled,
+              location: (appliance.location as string | null) || null,
+              notes: combinedNotes || null,
+            } as any);
+          } catch (appErr) {
+            console.warn("[INSPECTION] Failed to save appliance:", name, appErr);
+          }
+        }
+
+        // Save mechanical systems to homeSystems table
+        const mechanicalRaw = Array.isArray(confirmedData.mechanicalSystems) ? confirmedData.mechanicalSystems as Record<string, unknown>[] : [];
+        // Also create system records for major structural systems found in the report
+        const structuralSystems: Array<{ systemType: string; notes: string; installationYear: number | null }> = [];
+        if (confirmedData.roofCondition || confirmedData.roofAge) {
+          structuralSystems.push({
+            systemType: "Roof",
+            notes: [
+              confirmedData.roofCondition ? `Condition: ${confirmedData.roofCondition}` : null,
+              confirmedData.roofAge ? `Age: ${confirmedData.roofAge}` : null,
+            ].filter(Boolean).join(". "),
+            installationYear: null,
+          });
+        }
+        if (confirmedData.waterHeaterCondition || confirmedData.waterHeaterAge || confirmedData.waterHeaterType) {
+          structuralSystems.push({
+            systemType: "Water Heater",
+            notes: [
+              confirmedData.waterHeaterType ? `Type: ${confirmedData.waterHeaterType}` : null,
+              confirmedData.waterHeaterCondition ? `Condition: ${confirmedData.waterHeaterCondition}` : null,
+              confirmedData.waterHeaterAge ? `Age: ${confirmedData.waterHeaterAge}` : null,
+            ].filter(Boolean).join(". "),
+            installationYear: null,
+          });
+        }
+        if (confirmedData.electricalPanelCondition || confirmedData.electricalPanelType) {
+          structuralSystems.push({
+            systemType: "Electrical Panel",
+            notes: [
+              confirmedData.electricalPanelType ? `Type: ${confirmedData.electricalPanelType}` : null,
+              confirmedData.electricalPanelCondition ? `Condition: ${confirmedData.electricalPanelCondition}` : null,
+            ].filter(Boolean).join(". "),
+            installationYear: null,
+          });
+        }
+
+        for (const sys of [...structuralSystems, ...mechanicalRaw.map((m) => ({
+          systemType: (m.systemType as string | null) || "",
+          notes: [m.condition ? `Condition: ${m.condition}` : null, m.notes].filter(Boolean).join(". "),
+          installationYear: typeof m.installationYear === "number" ? m.installationYear : null,
+          brand: (m.brand as string | null) || undefined,
+        }))]) {
+          if (!sys.systemType) continue;
+          try {
+            await db.insert(homeSystems).values({
+              homeownerId: userId,
+              houseId: doc.houseId,
+              systemType: sys.systemType,
+              installationYear: sys.installationYear || null,
+              brand: (sys as any).brand || null,
+              notes: sys.notes || null,
+            } as any);
+          } catch (sysErr) {
+            console.warn("[INSPECTION] Failed to save system:", sys.systemType, sysErr);
+          }
         }
 
         // Create a service record for the inspection baseline
@@ -16739,18 +16881,15 @@ Severity levels:
         const inspectorName = confirmedData.inspectorName as string | null;
         const serviceDesc = `Home Inspection${inspectorName ? ` by ${inspectorName}` : ""}${inspectionDate ? ` on ${inspectionDate}` : ""}`;
         try {
-          const [homeowner] = await db.select({ id: users.id }).from(users).where(eq(users.id, userId));
-          if (homeowner) {
-            await db.insert(serviceRecords).values({
-              homeownerId: userId,
-              houseId: doc.houseId,
-              serviceType: "Home Inspection",
-              description: serviceDesc,
-              status: "completed",
-              completedAt: inspectionDate ? new Date(inspectionDate) : new Date(),
-              notes: `Inspector: ${inspectorName || "Unknown"}\nLicense: ${confirmedData.inspectorLicense || "N/A"}\nFlagged items: ${deficiencies.length}`,
-            } as any);
-          }
+          await db.insert(serviceRecords).values({
+            homeownerId: userId,
+            houseId: doc.houseId,
+            serviceType: "Home Inspection",
+            description: serviceDesc,
+            status: "completed",
+            completedAt: inspectionDate ? new Date(inspectionDate) : new Date(),
+            notes: `Inspector: ${inspectorName || "Unknown"}\nLicense: ${confirmedData.inspectorLicense || "N/A"}\nAppliances found: ${appliancesRaw.length}\nFlagged items: ${deficiencies.length}`,
+          } as any);
         } catch (srErr) {
           console.warn("[INSPECTION] Failed to create service record:", srErr);
         }
@@ -16780,7 +16919,9 @@ Severity levels:
       }
 
       const [updated] = await db.select().from(homeDocuments).where(eq(homeDocuments.id, doc.id));
-      res.json({ document: updated, tasksCreated: deficiencies.length });
+      const appliancesSaved = Array.isArray(confirmedData.appliances) ? (confirmedData.appliances as unknown[]).length : 0;
+      const mechanicalSaved = Array.isArray(confirmedData.mechanicalSystems) ? (confirmedData.mechanicalSystems as unknown[]).length : 0;
+      res.json({ document: updated, tasksCreated: deficiencies.length, appliancesSaved, mechanicalSaved });
     } catch (err) {
       console.error("[INSPECTION] Confirm error:", err);
       res.status(500).json({ message: "Failed to confirm inspection data" });
