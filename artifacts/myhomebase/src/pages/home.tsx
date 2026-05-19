@@ -376,13 +376,13 @@ export default function Home() {
 
             {/* Upload Inspection Prompt */}
             {!inspectionSummary && (
-              <Link href="/documents" className="action-row" style={{ textDecoration: 'none' }}>
-                <div className="action-icon">
-                  <ClipboardList size={18} />
+              <Link href="/documents?upload=inspection" className="action-row" style={{ textDecoration: 'none' }}>
+                <div className="action-icon" style={{ background: '#EEF2FF' }}>
+                  <ClipboardList size={18} style={{ color: '#4338CA' }} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="action-title">Upload inspection report</div>
-                  <div className="action-sub">AI extracts everything automatically</div>
+                  <div className="action-title">Upload home inspection PDF</div>
+                  <div className="action-sub">AI extracts roof, HVAC, deficiencies & more</div>
                 </div>
                 <span className="action-cta">Upload →</span>
               </Link>

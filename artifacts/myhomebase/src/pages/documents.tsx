@@ -73,7 +73,9 @@ export default function Documents() {
 
   const [activeTab, setActiveTab] = useState("all");
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
-  const [inspectionDialogOpen, setInspectionDialogOpen] = useState(false);
+  const [inspectionDialogOpen, setInspectionDialogOpen] = useState(
+    () => new URLSearchParams(window.location.search).get("upload") === "inspection"
+  );
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [editDocId, setEditDocId] = useState<string | null>(null);
