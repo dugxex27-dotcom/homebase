@@ -12825,6 +12825,10 @@ ${esc(claimMemo)}
       const packages = await storage.getInsuranceClaimPackages(houseId, homeownerId);
       res.json(packages);
     } catch (error) {
+      const msg = (error as any)?.cause?.message ?? (error as Error)?.message ?? "";
+      if (msg.includes("insurance_claim_packages") || (error as any)?.cause?.code === "42P01") {
+        return res.json([]);
+      }
       console.error("[INSURANCE CLAIM PACKAGES] Error:", error);
       res.status(500).json({ message: "Failed to fetch claim packages" });
     }
@@ -12839,6 +12843,10 @@ ${esc(claimMemo)}
       if (!pkg) return res.status(404).json({ message: "Claim package not found" });
       res.json(pkg);
     } catch (error) {
+      const msg = (error as any)?.cause?.message ?? (error as Error)?.message ?? "";
+      if (msg.includes("insurance_claim_packages") || (error as any)?.cause?.code === "42P01") {
+        return res.status(404).json({ message: "Claim package not found" });
+      }
       console.error("[INSURANCE CLAIM PACKAGE] Error:", error);
       res.status(500).json({ message: "Failed to fetch claim package" });
     }

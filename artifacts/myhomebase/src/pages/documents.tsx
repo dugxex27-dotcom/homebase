@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, lazy, Suspense } from "react";
 const DisclosuresContent = lazy(() => import("./disclosures"));
 import { InsurancePrepTab } from "./insurance-prep-tab";
+import ErrorBoundary from "@/components/error-boundary";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
@@ -158,7 +159,7 @@ export default function Documents() {
 
   const confirmInspectionMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: InspectionExtractionData }) => {
-      return apiRequest("POST", `/api/home-documents/inspection/${id}/confirm`, { extractedData: data });
+      return apiRequest(`/api/home-documents/inspection/${id}/confirm`, "POST", { extractedData: data });
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/home-documents"] });
@@ -178,7 +179,7 @@ export default function Documents() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => apiRequest("DELETE", `/api/home-documents/${id}`),
+    mutationFn: async (id: string) => apiRequest(`/api/home-documents/${id}`, "DELETE"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/home-documents"] });
       queryClient.invalidateQueries({ queryKey: ["/api/homeowner/inspection-summary"] });
@@ -190,7 +191,7 @@ export default function Documents() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: { fileName?: string; notes?: string; category?: string } }) =>
-      apiRequest("PUT", `/api/home-documents/${id}`, data),
+      apiRequest(`/api/home-documents/${id}`, "PUT", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/home-documents"] });
       setEditDocId(null);
@@ -308,7 +309,9 @@ export default function Documents() {
             <DisclosuresContent embedded />
           </Suspense>
         ) : topSection === "insurance" ? (
-          <InsurancePrepTab houses={houses} />
+          <ErrorBoundary>
+            <InsurancePrepTab houses={houses} />
+          </ErrorBoundary>
         ) : (
         <>
 
