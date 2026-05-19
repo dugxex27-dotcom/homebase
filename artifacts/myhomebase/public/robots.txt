@@ -1,0 +1,34 @@
+User-agent: *
+
+# Allow public-facing pages
+Allow: /$
+Allow: /coming-soon$
+
+# Disallow authenticated app pages
+Disallow: /dashboard
+Disallow: /documents
+Disallow: /tasks
+Disallow: /maintenance-log
+Disallow: /appliances
+Disallow: /home-systems
+Disallow: /service-records
+Disallow: /messages
+Disallow: /settings
+Disallow: /profile
+Disallow: /billing
+Disallow: /admin
+Disallow: /achievements
+Disallow: /resale-report
+Disallow: /insurance-prep
+Disallow: /products
+Disallow: /handoff
+Disallow: /invite
+Disallow: /my-home
+Disallow: /notifications
+Disallow: /market-intel
+
+# Disallow API routes
+Disallow: /api/
+
+# Sitemap
+Sitemap: https://www.gotohomebase.com/sitemap.xml
