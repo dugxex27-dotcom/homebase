@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, lazy, Suspense } from "react";
+import { useState, useRef, lazy, Suspense } from "react";
 const DisclosuresContent = lazy(() => import("./disclosures"));
 import { InsurancePrepTab } from "./insurance-prep-tab";
 import ErrorBoundary from "@/components/error-boundary";
@@ -7,21 +7,18 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   FileText, Upload, Download, Trash2, FolderOpen, Shield, AlertTriangle,
-  CheckCircle, Clock, Info, Eye, Home, Pencil, X, Star, AlertCircle, Search, ChevronUp
+  CheckCircle, Clock, Info, Eye, Home, Pencil, X, Star, AlertCircle, Search
 } from "lucide-react";
-import logoHomeowner from "@assets/my-homebase-logo-tm-howner-white-final_1776538414393.png";
 import "./home.css";
 import type { House, HomeDocument } from "@shared/schema";
 

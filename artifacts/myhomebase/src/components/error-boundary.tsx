@@ -24,6 +24,19 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: any) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
+    try {
+      fetch('/api/client-error', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          message: error?.message ?? String(error),
+          stack: error?.stack ?? null,
+          componentStack: errorInfo?.componentStack ?? null,
+          url: window.location.href,
+        }),
+      }).catch(() => {});
+    } catch {}
   }
 
   handleRetry = () => {

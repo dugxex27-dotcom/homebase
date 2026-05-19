@@ -17456,6 +17456,18 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     });
   });
   
+  // POST /api/client-error — receive and log frontend JS errors (from ErrorBoundary)
+  app.post("/api/client-error", async (req: any, res) => {
+    try {
+      const { message, stack, componentStack, url } = req.body || {};
+      const userId = req.session?.user?.id ?? "anonymous";
+      console.error(`[CLIENT-ERROR] user=${userId} url=${url}\nmessage: ${message}\nstack: ${stack}\ncomponentStack: ${componentStack}`);
+      res.status(204).end();
+    } catch {
+      res.status(204).end();
+    }
+  });
+
   wss.on('connection', (ws: WebSocket) => {
     // Get the authenticated userId from the WebSocket
     const userId = (ws as any).userId as string;
