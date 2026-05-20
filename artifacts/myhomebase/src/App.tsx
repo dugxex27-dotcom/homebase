@@ -23,6 +23,23 @@ function ScrollToTop() {
   return null;
 }
 
+// Manage robots meta tag based on auth state.
+// Authenticated pages (dashboard, documents, etc.) must not be indexed —
+// they require login and contain personal data.
+// Public pages (landing, quiz entry, legal) keep index, follow from index.html.
+function RobotsManager({ authenticated }: { authenticated: boolean }) {
+  useEffect(() => {
+    let tag = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
+    if (!tag) {
+      tag = document.createElement('meta');
+      tag.name = 'robots';
+      document.head.appendChild(tag);
+    }
+    tag.content = authenticated ? 'noindex, nofollow' : 'index, follow';
+  }, [authenticated]);
+  return null;
+}
+
 // Lazy-loaded pages - Common
 const Home = lazy(() => import("./pages/home"));
 const Messages = lazy(() => import("./pages/messages"));
@@ -128,6 +145,7 @@ function Router() {
   if (!isAuthenticated) {
     return (
       <UnauthenticatedLayout>
+        <RobotsManager authenticated={false} />
         <ScrollToTop />
         <BackToTop />
         <Switch>
@@ -172,6 +190,7 @@ function Router() {
   
   return (
     <AuthenticatedLayout>
+      <RobotsManager authenticated={true} />
       <ScrollToTop />
       <BackToTop />
       <GuidedTour />
