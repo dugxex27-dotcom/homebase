@@ -2056,12 +2056,12 @@ export default function ContractorCRMPage() {
                         <FormField control={invoiceForm.control} name="jobId" render={({ field }) => (
                           <FormItem>
                             <FormLabel>Related Job (Optional)</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select onValueChange={v => field.onChange(v === "none" ? "" : v)} value={field.value || "none"}>
                               <FormControl>
                                 <SelectTrigger data-testid="select-invoice-job"><SelectValue placeholder="Select a job" /></SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="">None</SelectItem>
+                                <SelectItem value="none">None</SelectItem>
                                 {jobs?.filter(job => job.status === 'completed').map((job) => (
                                   <SelectItem key={job.id} value={job.id}>{job.title}</SelectItem>
                                 ))}

@@ -581,12 +581,12 @@ export default function Documents() {
             {houses.length > 0 && (
               <div>
                 <Label>Link to Property</Label>
-                <Select value={editingHouseId || ""} onValueChange={v => setEditingHouseId(v || null)}>
+                <Select value={editingHouseId || "none"} onValueChange={v => setEditingHouseId(v === "none" ? null : v)}>
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Select a property (optional)" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No specific property</SelectItem>
+                    <SelectItem value="none">No specific property</SelectItem>
                     {houses.map(h => (
                       <SelectItem key={h.id} value={h.id}>{h.address || `Property ${h.id.slice(0, 6)}`}</SelectItem>
                     ))}
