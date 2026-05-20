@@ -487,61 +487,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ success: true, message: "Test endpoint works!" });
   });
 
-  // DEBUG: Test endpoint to check what Drizzle returns
-  app.get('/api/test-user-data', async (_req, res) => {
-    try {
-      const testUser = await storage.getUser('google_103315263202734374496');
-      console.log('[TEST] User from storage:', testUser);
-      res.json({
-        user: testUser,
-        companyId: testUser?.companyId,
-        companyRole: testUser?.companyRole,
-        hasCompanyIdField: testUser?.hasOwnProperty('companyId'),
-        rawKeys: testUser ? Object.keys(testUser) : []
-      });
-    } catch (error) {
-      res.status(500).json({ error: String(error) });
-    }
-  });
-
-  // CRITICAL TEST: Force login with correct data
-  app.get('/api/force-login-test', async (req: any, res) => {
-    try {
-      const userId = 'google_103315263202734374496';
-      const freshUser = await storage.getUser(userId);
-      
-      if (!freshUser) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-      
-      // Create fresh session with mapped data
-      req.session.regenerate((err: any) => {
-        if (err) {
-          return res.status(500).json({ error: 'Session error' });
-        }
-        
-        req.session.isAuthenticated = true;
-        req.session.user = freshUser;
-        
-        req.session.save((saveErr: any) => {
-          if (saveErr) {
-            return res.status(500).json({ error: 'Save error' });
-          }
-          
-          res.json({
-            success: true,
-            message: 'Session created with fresh user data',
-            companyId: freshUser.companyId,
-            companyRole: freshUser.companyRole,
-            user: freshUser
-          });
-        });
-      });
-    } catch (error) {
-      res.status(500).json({ error: String(error) });
-    }
-  });
-
   // Set up Replit Auth (handles Google OAuth via Replit)
   await setupAuth(app);
 
@@ -1750,37 +1695,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error revoking sessions:", error);
       res.status(500).json({ message: "Failed to revoke sessions" });
-    }
-  });
-
-  // TEMPORARY: Test login endpoint for debugging OAuth issues
-  app.post('/api/auth/test-login', async (req: any, res) => {
-    try {
-      const { email } = req.body;
-      if (!email) {
-        return res.status(400).json({ message: "Email required" });
-      }
-
-      const user = await storage.getUserByEmail(email);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      // Create session
-      req.session.user = user;
-      req.session.isAuthenticated = true;
-
-      await new Promise<void>((resolve, reject) => {
-        req.session.save((err: any) => {
-          if (err) reject(err);
-          else resolve();
-        });
-      });
-
-      res.json({ success: true, user });
-    } catch (error) {
-      console.error('Test login failed:', error);
-      res.status(500).json({ message: "Test login failed" });
     }
   });
 
