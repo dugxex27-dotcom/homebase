@@ -4054,51 +4054,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // DIRECT endpoint - works with email, no session needed
-  console.error('[ROUTES] Registering /api/contractor/upload-logo endpoint');
-  app.post('/api/contractor/upload-logo', async (req: any, res) => {
+  app.post('/api/contractor/upload-logo', isAuthenticated, async (req: any, res) => {
     try {
-      console.error('[UPLOAD-LOGO] REQUEST RECEIVED!');
-      console.error('[UPLOAD-LOGO] Body keys:', Object.keys(req.body));
-      
-      const { imageData, email } = req.body;
+      const { imageData } = req.body;
       
       if (!imageData) {
-        console.log('[UPLOAD-LOGO] Missing imageData');
         return res.status(400).json({ message: "Missing imageData" });
       }
       
-      if (!email) {
-        console.log('[UPLOAD-LOGO] Missing email');
-        return res.status(400).json({ message: "Missing email" });
-      }
-      
-      console.error('[UPLOAD-LOGO] Looking up user by email:', email);
-      
-      // Look up user by email (bypasses broken session)
-      const user = await storage.getUserByEmail(email);
+      // Use the authenticated session to identify the user — never trust client-supplied identity
+      const user = await storage.getUser(req.session.user.id);
       if (!user) {
-        console.error('[UPLOAD-LOGO] User not found:', email);
         return res.status(404).json({ message: "User not found" });
       }
       
-      console.error('[UPLOAD-LOGO] Raw user object:', JSON.stringify(user, null, 2));
-      console.error('[UPLOAD-LOGO] user.companyId:', user.companyId);
-      console.error('[UPLOAD-LOGO] user.company_id:', (user as any).company_id);
-      console.error('[UPLOAD-LOGO] Full user keys:', Object.keys(user));
-      
-      // CRITICAL FIX: Manually map company_id if not already mapped
-      if (!user.companyId && (user as any).company_id) {
-        console.error('[UPLOAD-LOGO] MANUALLY MAPPING company_id to companyId');
-        (user as any).companyId = (user as any).company_id;
-      }
-      
       if (!user.companyId) {
-        console.error('[UPLOAD-LOGO] User STILL has no companyId after manual mapping!');
         return res.status(400).json({ message: "User must belong to a company to upload logo" });
       }
-      
-      console.log('[UPLOAD-LOGO] Found user:', user.id, 'companyId:', user.companyId);
 
       // Upload to object storage
       const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
@@ -8690,13 +8662,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Remove employee from company
       const employee = await storage.getUser(req.params.userId);
-      if (employee) {
-        await storage.upsertUser({
-          ...employee,
-          companyId: null,
-          companyRole: null
-        });
+      if (!employee) {
+        return res.status(404).json({ message: "Employee not found" });
       }
+
+      // Verify the target user actually belongs to this company
+      if (employee.companyId !== req.params.id) {
+        return res.status(403).json({ message: "User does not belong to this company" });
+      }
+
+      await storage.upsertUser({
+        ...employee,
+        companyId: null,
+        companyRole: null
+      });
 
       res.json({ message: "Employee removed successfully" });
     } catch (error) {
@@ -13517,8 +13496,8 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       const contractorId = req.params.contractorId;
       const userId = req.session.user.id;
       
-      // Verify the user is the contractor or has permission
-      if (userId !== contractorId && req.session.user.role !== 'contractor') {
+      // Verify the requesting user is the contractor whose list is being accessed
+      if (userId !== contractorId) {
         return res.status(403).json({ message: "Access denied" });
       }
       
