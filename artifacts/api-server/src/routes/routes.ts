@@ -179,6 +179,15 @@ const uploadLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Rate limiting for AI support chat to prevent cost amplification
+const aiChatLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 20, // Max 20 AI queries per hour per IP
+  message: 'Too many AI chat requests, please try again later',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 export async function registerRoutes(app: Express): Promise<Server> {
   console.error('========================================');
   console.error('REGISTER ROUTES CALLED - NEW CODE VERSION 2025-11-02-21:28');
@@ -245,35 +254,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Test email endpoint (for development testing)
-  app.post('/api/test-email', async (_req, res) => {
-    try {
-      const html = emailService.wrapEmailContent(
-        emailService.getEmailHeader(),
-        `
-          <p>This is a test email from HomeBase to verify the email service is working correctly.</p>
-          <p>If you received this email, the SendGrid integration is functioning properly!</p>
-          <p>Timestamp: ${new Date().toISOString()}</p>
-        `
-      );
-      
-      const success = await sendEmail({
-        to: 'lihandyman2008@gmail.com',
-        subject: 'HomeBase Test Email',
-        text: 'This is a test email from HomeBase to verify the email service is working correctly.',
-        html,
-      });
-      
-      if (success) {
-        res.json({ success: true, message: 'Test email sent to lihandyman2008@gmail.com' });
-      } else {
-        res.status(500).json({ success: false, message: 'Failed to send test email - SendGrid may not be configured' });
-      }
-    } catch (error) {
-      console.error('[TEST EMAIL] Error:', error);
-      res.status(500).json({ success: false, message: 'Error sending test email' });
-    }
-  });
+  // NOTE: /api/test-email removed — dev-only endpoint was publicly reachable and could be abused
+  // to send unlimited SendGrid mail at operator expense. Use internal tooling for email testing.
 
   // ========================================
   // SUBSCRIPTION PLANS
@@ -4927,8 +4909,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // AI support chat
-  app.post('/api/support/ai-chat', async (req: any, res) => {
+  // AI support chat — requires authentication and rate limiting to prevent cost amplification
+  app.post('/api/support/ai-chat', isAuthenticated, aiChatLimiter, async (req: any, res) => {
     try {
       const { question, role } = req.body;
       if (!question || typeof question !== 'string' || question.trim().length === 0) {

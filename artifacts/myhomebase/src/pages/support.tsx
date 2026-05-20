@@ -254,6 +254,10 @@ export default function SupportPage() {
 
   const handleAsk = async () => {
     if (!aiInput.trim()) return;
+    if (!isAuthenticated) {
+      setAiResponse("Please sign in to use the AI Assistant.");
+      return;
+    }
     setAiLoading(true);
     setAiResponse(null);
     try {
