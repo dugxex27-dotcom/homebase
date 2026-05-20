@@ -9030,6 +9030,11 @@ class DbStorage implements IStorage {
 
   // Proposal operations (database-backed)
   async getProposals(contractorId?: string, homeownerId?: string): Promise<Proposal[]> {
+    if (contractorId && homeownerId) {
+      return await db.select().from(proposals).where(
+        or(eq(proposals.contractorId, contractorId), eq(proposals.homeownerId, homeownerId))
+      );
+    }
     if (contractorId) {
       return await db.select().from(proposals).where(eq(proposals.contractorId, contractorId));
     }

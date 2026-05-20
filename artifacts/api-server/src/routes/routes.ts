@@ -10019,22 +10019,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Proposal routes
-  app.get("/api/proposals", async (req, res) => {
+  app.get("/api/proposals", isAuthenticated, async (req: any, res) => {
     try {
-      const contractorId = req.query.contractorId as string;
-      const homeownerId = req.query.homeownerId as string;
-      const proposals = await storage.getProposals(contractorId, homeownerId);
+      const userId = req.session.user.id;
+      const contractorId = req.query.contractorId as string | undefined;
+      const homeownerId = req.query.homeownerId as string | undefined;
+
+      // Callers may only retrieve proposals where they are a party.
+      // If a filter param is supplied it must match the authenticated user.
+      if (contractorId && contractorId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      if (homeownerId && homeownerId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Always scope the query to the authenticated user's own proposals.
+      // When no filter is supplied, fetch all proposals where the user is
+      // either the contractor or the homeowner (OR query via storage).
+      // When an explicit role filter is supplied it has already been
+      // validated to match userId above, so pass it through directly.
+      const proposals = await storage.getProposals(
+        contractorId ?? userId,
+        homeownerId ?? userId
+      );
       res.json(proposals);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch proposals" });
     }
   });
 
-  app.get("/api/proposals/:id", async (req, res) => {
+  app.get("/api/proposals/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.session.user.id;
       const proposal = await storage.getProposal(req.params.id);
       if (!proposal) {
         return res.status(404).json({ message: "Proposal not found" });
+      }
+      if (proposal.contractorId !== userId && proposal.homeownerId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
       }
       res.json(proposal);
     } catch (error) {
@@ -10084,6 +10107,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.session.user.id;
       const partialData = insertProposalSchema.partial().parse(req.body);
       const oldProposal = await storage.getProposal(req.params.id);
+      if (!oldProposal) {
+        return res.status(404).json({ message: "Proposal not found" });
+      }
+      if (oldProposal.contractorId !== userId && oldProposal.homeownerId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
       const proposal = await storage.updateProposal(req.params.id, partialData);
       if (!proposal) {
         return res.status(404).json({ message: "Proposal not found" });
