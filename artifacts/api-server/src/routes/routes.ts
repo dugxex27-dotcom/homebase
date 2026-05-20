@@ -16217,6 +16217,14 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       }
 
       const { category = "other", notes, houseId, fileName } = req.body;
+
+      // Verify the caller owns the referenced house before attaching a document to it
+      if (houseId) {
+        const [ownedHouse] = await db.select({ id: houses.id }).from(houses)
+          .where(and(eq(houses.id, houseId as string), eq(houses.homeownerId, userId)));
+        if (!ownedHouse) return res.status(403).json({ message: "You do not have permission to attach documents to this house" });
+      }
+
       const ext = req.file.originalname.split(".").pop()?.toLowerCase() || "bin";
       const storageKey = `home-documents/${userId}/${randomUUID()}.${ext}`;
 
@@ -16271,6 +16279,14 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       }
 
       const { houseId } = req.body;
+
+      // Verify the caller owns the referenced house before attaching an inspection to it
+      if (houseId) {
+        const [ownedHouse] = await db.select({ id: houses.id }).from(houses)
+          .where(and(eq(houses.id, houseId as string), eq(houses.homeownerId, userId)));
+        if (!ownedHouse) return res.status(403).json({ message: "You do not have permission to attach documents to this house" });
+      }
+
       const ext = req.file.originalname.split(".").pop()?.toLowerCase() || "bin";
       const storageKey = `home-documents/${userId}/${randomUUID()}.${ext}`;
 
@@ -16349,6 +16365,16 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
       // Populate home profile if a house is linked
       if (doc.houseId) {
+        // Re-verify the linked house still belongs to the authenticated homeowner.
+        // The document-ownership check above only confirms the document belongs to
+        // this user; it does not prove the stored houseId was legitimately theirs
+        // (an attacker could have uploaded a document with a foreign houseId).
+        const [ownedHouse] = await db.select({ id: houses.id }).from(houses)
+          .where(and(eq(houses.id, doc.houseId), eq(houses.homeownerId, userId)));
+        if (!ownedHouse) {
+          return res.status(403).json({ message: "You do not have permission to modify this house" });
+        }
+
         const profileUpdate: Record<string, unknown> = {};
 
         // Map HVAC type to enum
