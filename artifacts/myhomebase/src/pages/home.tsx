@@ -172,17 +172,6 @@ export default function Home() {
   const referralsRemaining = Math.max(0, referralsNeeded - referralCount);
   const progressPercentage = Math.min(100, (referralCount / referralsNeeded) * 100);
 
-  // ATTOM property snapshot for first house (dashboard strip)
-  const { data: attomSnapshot } = useQuery<{
-    yearBuilt: number | null; sqft: number | null; bedrooms: number | null;
-    bathrooms: number | null; lotSqft: number | null; estimatedValue: number | null;
-    propertyType: string | null; source: string;
-  } | null>({
-    queryKey: ["/api/houses", houses[0]?.id, "attom-snapshot"],
-    enabled: !!houses[0]?.id && typedUser?.role === "homeowner",
-    staleTime: 1000 * 60 * 60, // 1 hour — ATTOM data doesn't change often
-  });
-
   // Stat chip computations
   const rawScores = [score0?.score, score1?.score];
   const houseScores = houses.map((h, i) => ({ house: h, score: rawScores[i] }));
@@ -243,32 +232,6 @@ export default function Home() {
                 </div>
               </button>
             </div>
-          )}
-
-          {/* ATTOM Property Data Strip */}
-          {houses.length > 0 && attomSnapshot && (
-            (() => {
-              const s = attomSnapshot;
-              const stats: { val: string; label: string }[] = [];
-              if (s.yearBuilt) stats.push({ val: String(s.yearBuilt), label: "Built" });
-              if (s.bedrooms)  stats.push({ val: String(s.bedrooms), label: "Beds" });
-              if (s.bathrooms) stats.push({ val: String(s.bathrooms), label: "Baths" });
-              if (s.sqft)      stats.push({ val: s.sqft.toLocaleString(), label: "Sq Ft" });
-              if (s.lotSqft)   stats.push({ val: s.lotSqft.toLocaleString(), label: "Lot Sq Ft" });
-              if (s.estimatedValue) stats.push({ val: `$${Math.round(s.estimatedValue / 1000)}K`, label: "Est. Value" });
-              if (stats.length === 0) return null;
-              return (
-                <div className="attom-strip">
-                  {stats.map(({ val, label }) => (
-                    <div className="attom-stat" key={label}>
-                      <div className="attom-stat-val">{val}</div>
-                      <div className="attom-stat-label">{label}</div>
-                    </div>
-                  ))}
-                  <div className="attom-strip-badge">ATTOM</div>
-                </div>
-              );
-            })()
           )}
 
         </div>

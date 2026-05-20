@@ -932,60 +932,6 @@
   font-size: 13px; color: #9ca3af; text-align: center;
 }
 
-/* ─── ATTOM PROPERTY DATA STRIP ───────────────────────────────── */
-.attom-strip {
-  display: flex;
-  align-items: center;
-  background: rgba(0, 0, 0, 0.20);
-  border: 0.5px solid rgba(255, 255, 255, 0.10);
-  border-radius: 12px;
-  padding: 10px 16px;
-  margin: 0 0 20px 0;
-  gap: 0;
-  overflow: hidden;
-}
-
-.attom-stat {
-  flex: 1;
-  text-align: center;
-  padding: 0 10px;
-  border-right: 0.5px solid rgba(255, 255, 255, 0.12);
-  min-width: 0;
-}
-.attom-stat:first-child { padding-left: 0; }
-.attom-stat:last-of-type { border-right: none; }
-
-.attom-stat-val {
-  font-size: 13px;
-  font-weight: 700;
-  color: #ffffff;
-  line-height: 1;
-  margin-bottom: 3px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.attom-stat-label {
-  font-size: 8.5px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.42);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.attom-strip-badge {
-  font-size: 7.5px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.25);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  padding-left: 12px;
-  flex-shrink: 0;
-  border-left: 0.5px solid rgba(255, 255, 255, 0.12);
-  margin-left: 4px;
-}
 
 /* CTA row */
 .hdm-cta-row {

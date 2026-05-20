@@ -1008,7 +1008,7 @@
   <div class="body-content">
     <div class="card">
       <div class="card-header">
-        <div class="card-eyebrow">Auto-populated from ATTOM Data</div>
+        <div class="card-eyebrow">Property Details</div>
         <div class="card-title">Property Details</div>
       </div>
       <div class="card-body">
@@ -1485,13 +1485,13 @@ function renderScreen4() {
   // Pre-pop list
   const items = [
     { label: 'Address',        value: state.confirmed,                     source: 'Google Maps' },
-    { label: 'Year Built',     value: fmt.year(state.yearBuilt),           source: 'ATTOM Public Records' },
-    { label: 'Bedrooms',       value: state.bedrooms,                      source: 'ATTOM Public Records' },
-    { label: 'Bathrooms',      value: state.bathrooms,                     source: 'ATTOM Public Records' },
-    { label: 'Living Area',    value: fmt.sqft(state.sqft),                source: 'ATTOM Public Records' },
-    { label: 'Lot Size',       value: fmt.sqft(state.lotSqft),             source: 'ATTOM Public Records' },
-    { label: 'Estimated Value',value: fmt.money(state.estimatedValue),     source: 'ATTOM AVM' },
-    { label: 'Property Type',  value: state.propertyType,                  source: 'ATTOM Public Records' },
+    { label: 'Year Built',     value: fmt.year(state.yearBuilt),           source: 'Public Records' },
+    { label: 'Bedrooms',       value: state.bedrooms,                      source: 'Public Records' },
+    { label: 'Bathrooms',      value: state.bathrooms,                     source: 'Public Records' },
+    { label: 'Living Area',    value: fmt.sqft(state.sqft),                source: 'Public Records' },
+    { label: 'Lot Size',       value: fmt.sqft(state.lotSqft),             source: 'Public Records' },
+    { label: 'Estimated Value',value: fmt.money(state.estimatedValue),     source: 'Estimated' },
+    { label: 'Property Type',  value: state.propertyType,                  source: 'Public Records' },
   ].filter(i => i.value);
 
   document.getElementById('s4PrepopList').innerHTML = items.map(i => `
