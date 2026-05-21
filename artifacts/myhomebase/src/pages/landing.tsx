@@ -1116,18 +1116,7 @@ export default function Landing() {
           </button>
         </div>
       </section>
-      {/* ═══════════════════════════════════════
-          SECTION 09 — PRE-FOOTER CTA
-      ═══════════════════════════════════════ */}
-      <section className="mhb-prefooter-section">
-        <div className="mhb-prefooter-inner">
-          <h2 className="mhb-prefooter-heading">Your home is probably your biggest investment.</h2>
-          <p className="mhb-prefooter-sub">Treat it like one. Start your free home health check — takes 2 minutes.</p>
-          <a href="/onboarding" className="mhb-prefooter-cta">
-            Check my home's risk — free →
-          </a>
-        </div>
-      </section>
+
     </div>
   );
 }
