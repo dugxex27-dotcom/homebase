@@ -33,7 +33,11 @@ import {
   AlertCircle,
   Plus,
   Sparkles,
-  UserCog
+  UserCog,
+  Mail,
+  Copy,
+  Check,
+  PauseCircle,
 } from "lucide-react";
 import type { User as UserType, Proposal, ContractorAppointment } from "@shared/schema";
 import { Link } from "wouter";
@@ -112,6 +116,11 @@ export default function ContractorDashboard() {
   const [invoiceEndDate, setInvoiceEndDate] = useState('');
   const [invoiceHomeownerName, setInvoiceHomeownerName] = useState('');
   const [pendingRemoveMember, setPendingRemoveMember] = useState<TeamMember | null>(null);
+  const [pendingSuspendMember, setPendingSuspendMember] = useState<TeamMember | null>(null);
+  const [inviteFirstName, setInviteFirstName] = useState('');
+  const [inviteLastName, setInviteLastName] = useState('');
+  const [inviteResult, setInviteResult] = useState<{ inviteUrl: string } | null>(null);
+  const [copiedInviteUrl, setCopiedInviteUrl] = useState(false);
 
   const isAdminRole = (typedUser as any)?.companyRole === 'owner' || (typedUser as any)?.companyRole === 'admin';
 
@@ -143,27 +152,43 @@ export default function ContractorDashboard() {
   });
 
   const inviteMutation = useMutation({
-    mutationFn: async (email: string) => {
+    mutationFn: async ({ email, firstName, lastName }: { email: string; firstName?: string; lastName?: string }) => {
       const res = await fetch('/api/contractor/invite-tech', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, firstName: firstName || undefined, lastName: lastName || undefined }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to send invite');
-      return data;
+      return data as { inviteUrl: string; message: string };
     },
-    onSuccess: () => {
-      setInviteModalOpen(false);
-      setInviteEmail('');
+    onSuccess: (data) => {
       refetchTeam();
-      toast({ title: "Invite sent", description: "Invitation email sent successfully" });
+      setInviteResult(data);
+      toast({ title: "Invite sent", description: `Invitation email sent to ${inviteEmail}` });
     },
     onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     },
   });
+
+  const resetInviteModal = () => {
+    setInviteModalOpen(false);
+    setInviteEmail('');
+    setInviteFirstName('');
+    setInviteLastName('');
+    setInviteResult(null);
+    setCopiedInviteUrl(false);
+  };
+
+  const copyInviteUrl = () => {
+    if (inviteResult?.inviteUrl) {
+      navigator.clipboard.writeText(inviteResult.inviteUrl);
+      setCopiedInviteUrl(true);
+      setTimeout(() => setCopiedInviteUrl(false), 2000);
+    }
+  };
 
   const teamActionMutation = useMutation({
     mutationFn: async ({ userId, action }: { userId: string; action: 'suspend' | 'reactivate' | 'remove' }) => {
@@ -467,12 +492,22 @@ export default function ContractorDashboard() {
                 const fullName = [member.firstName, member.lastName].filter(Boolean).join(' ') || member.email || 'Unknown';
                 const isSuspended = member.status === 'suspended';
                 const isPending = member.status === 'pending_invite';
+                const avatarLetter = (member.firstName?.[0] || member.email?.[0] || '?').toUpperCase();
                 return (
                   <div key={member.id} className="dash-light-card" style={{ marginBottom: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                      {/* Avatar */}
+                      <div style={{
+                        width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+                        background: 'linear-gradient(135deg, #0C3460, #1560A2)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: '#fff', fontSize: 14, fontWeight: 700,
+                      }}>{avatarLetter}</div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 600, fontSize: 13, color: '#111827' }}>{fullName}</div>
-                        <div style={{ fontSize: 12, color: '#64748b' }}>{member.email}</div>
+                        <div style={{ fontSize: 12, color: '#64748b', display: 'flex', alignItems: 'center', gap: 3 }}>
+                          <Mail size={11} style={{ flexShrink: 0 }} />{member.email}
+                        </div>
                         {isPending && member.inviteExpiresAt && (
                           <div style={{ fontSize: 11, color: '#d97706', marginTop: 2 }}>
                             Invite expires {format(new Date(member.inviteExpiresAt), 'MMM d, yyyy')}
@@ -483,16 +518,18 @@ export default function ContractorDashboard() {
                             Last login: {format(new Date(member.lastLoginAt), 'MMM d, yyyy')}
                           </div>
                         )}
-                        <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>
-                          {member.invoiceCount} invoice{member.invoiceCount !== 1 ? 's' : ''} submitted
-                        </div>
+                        {member.invoiceCount > 0 && (
+                          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>
+                            {member.invoiceCount} invoice{member.invoiceCount !== 1 ? 's' : ''} submitted
+                          </div>
+                        )}
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
                         <span style={{
                           fontSize: 10, fontWeight: 700, textTransform: 'uppercase', borderRadius: 5, padding: '2px 8px',
                           background: isSuspended ? '#fee2e2' : isPending ? '#fef3c7' : '#f0faf4',
                           color: isSuspended ? '#dc2626' : isPending ? '#d97706' : '#09694a',
-                        }}>{member.status}</span>
+                        }}>{isSuspended ? 'Suspended' : isPending ? 'Invite Pending' : 'Active'}</span>
                         <div style={{ display: 'flex', gap: 4 }}>
                           {isSuspended ? (
                             <button
@@ -502,10 +539,10 @@ export default function ContractorDashboard() {
                             >Reactivate</button>
                           ) : !isPending ? (
                             <button
-                              onClick={() => teamActionMutation.mutate({ userId: member.id, action: 'suspend' })}
+                              onClick={() => setPendingSuspendMember(member)}
                               disabled={teamActionMutation.isPending}
-                              style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer' }}
-                            >Suspend</button>
+                              style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}
+                            ><PauseCircle size={12} />Suspend</button>
                           ) : null}
                           <button
                             onClick={() => setPendingRemoveMember(member)}
@@ -519,6 +556,18 @@ export default function ContractorDashboard() {
                 );
               })
           )}
+
+          {/* Suspend team member confirm dialog */}
+          <ConfirmDialog
+            open={!!pendingSuspendMember}
+            onOpenChange={(o) => { if (!o) setPendingSuspendMember(null); }}
+            title="Suspend Team Member?"
+            description={`${pendingSuspendMember?.firstName || pendingSuspendMember?.email} will no longer be able to access the company dashboard until reactivated.`}
+            confirmText="Suspend"
+            cancelText="Cancel"
+            variant="destructive"
+            onConfirm={() => { if (pendingSuspendMember) teamActionMutation.mutate({ userId: pendingSuspendMember.id, action: 'suspend' }); }}
+          />
 
           {/* Remove team member confirm dialog */}
           <ConfirmDialog
@@ -535,25 +584,80 @@ export default function ContractorDashboard() {
           {/* Invite modal */}
           {inviteModalOpen && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-              <div style={{ background: '#fff', borderRadius: 16, padding: 24, width: '100%', maxWidth: 400 }}>
-                <div style={{ fontWeight: 700, fontSize: 16, color: '#0C3460', marginBottom: 8 }}>Invite Technician</div>
-                <div style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>We'll send them a "Set your password" link by email.</div>
-                <input
-                  type="email"
-                  placeholder="technician@example.com"
-                  value={inviteEmail}
-                  onChange={e => setInviteEmail(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && inviteEmail.includes('@') && inviteMutation.mutate(inviteEmail)}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, marginBottom: 12, boxSizing: 'border-box', outline: 'none' }}
-                />
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                  <button onClick={() => { setInviteModalOpen(false); setInviteEmail(''); }} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer', fontSize: 13 }}>Cancel</button>
-                  <button
-                    onClick={() => inviteMutation.mutate(inviteEmail)}
-                    disabled={!inviteEmail.includes('@') || inviteMutation.isPending}
-                    style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#1560A2', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
-                  >{inviteMutation.isPending ? 'Sending…' : 'Send Invite'}</button>
-                </div>
+              <div style={{ background: '#fff', borderRadius: 16, padding: 24, width: '100%', maxWidth: 420 }}>
+                {inviteResult ? (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f0fdf4', borderRadius: 10, padding: '10px 14px', marginBottom: 16 }}>
+                      <CheckCircle size={18} style={{ color: '#16a34a', flexShrink: 0 }} />
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#15803d' }}>Invite sent to {inviteEmail}</span>
+                    </div>
+                    <div style={{ fontSize: 13, color: '#64748b', marginBottom: 8 }}>Or share this invite link directly:</div>
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
+                      <input
+                        readOnly
+                        value={inviteResult.inviteUrl}
+                        style={{ flex: 1, fontSize: 11, border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 10px', background: '#f8fafc', color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis', outline: 'none' }}
+                      />
+                      <button
+                        onClick={copyInviteUrl}
+                        style={{ padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 8, background: '#fff', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                        title="Copy invite link"
+                      >
+                        {copiedInviteUrl ? <Check size={15} style={{ color: '#16a34a' }} /> : <Copy size={15} />}
+                      </button>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <button onClick={resetInviteModal} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#1560A2', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>Done</button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontWeight: 700, fontSize: 16, color: '#0C3460', marginBottom: 4 }}>Invite Field Technician</div>
+                    <div style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>They'll receive an email with a link to set up their account. Invite links expire in 7 days.</div>
+                    <div style={{ marginBottom: 10 }}>
+                      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+                        Email Address <span style={{ color: '#dc2626' }}>*</span>
+                      </label>
+                      <input
+                        type="email"
+                        placeholder="tech@example.com"
+                        value={inviteEmail}
+                        onChange={e => setInviteEmail(e.target.value)}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, boxSizing: 'border-box', outline: 'none' }}
+                      />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>First Name</label>
+                        <input
+                          type="text"
+                          placeholder="Jane"
+                          value={inviteFirstName}
+                          onChange={e => setInviteFirstName(e.target.value)}
+                          style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, boxSizing: 'border-box', outline: 'none' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Last Name</label>
+                        <input
+                          type="text"
+                          placeholder="Smith"
+                          value={inviteLastName}
+                          onChange={e => setInviteLastName(e.target.value)}
+                          style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, boxSizing: 'border-box', outline: 'none' }}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                      <button onClick={resetInviteModal} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer', fontSize: 13 }}>Cancel</button>
+                      <button
+                        onClick={() => inviteMutation.mutate({ email: inviteEmail, firstName: inviteFirstName, lastName: inviteLastName })}
+                        disabled={!inviteEmail.includes('@') || inviteMutation.isPending}
+                        style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#1560A2', color: '#fff', cursor: inviteEmail.includes('@') ? 'pointer' : 'not-allowed', opacity: inviteEmail.includes('@') ? 1 : 0.6, fontSize: 13, fontWeight: 600 }}
+                      >{inviteMutation.isPending ? 'Sending…' : 'Send Invite'}</button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}
