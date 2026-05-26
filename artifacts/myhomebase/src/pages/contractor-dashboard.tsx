@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { Proposals } from "@/components/proposals";
 import { ContractorCodeEntry } from "@/components/ConnectionCodes";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -110,6 +111,7 @@ export default function ContractorDashboard() {
   const [invoiceStartDate, setInvoiceStartDate] = useState('');
   const [invoiceEndDate, setInvoiceEndDate] = useState('');
   const [invoiceHomeownerName, setInvoiceHomeownerName] = useState('');
+  const [pendingRemoveMember, setPendingRemoveMember] = useState<TeamMember | null>(null);
 
   const isAdminRole = (typedUser as any)?.companyRole === 'owner' || (typedUser as any)?.companyRole === 'admin';
 
@@ -504,7 +506,7 @@ export default function ContractorDashboard() {
                             >Suspend</button>
                           ) : null}
                           <button
-                            onClick={() => { if (confirm(`Remove ${fullName}? Their invoice history will be preserved.`)) teamActionMutation.mutate({ userId: member.id, action: 'remove' }); }}
+                            onClick={() => setPendingRemoveMember(member)}
                             disabled={teamActionMutation.isPending}
                             style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, border: '1px solid #fee2e2', background: '#fff', color: '#dc2626', cursor: 'pointer' }}
                           >Remove</button>
@@ -515,6 +517,18 @@ export default function ContractorDashboard() {
                 );
               })
           )}
+
+          {/* Remove team member confirm dialog */}
+          <ConfirmDialog
+            open={!!pendingRemoveMember}
+            onOpenChange={(o) => { if (!o) setPendingRemoveMember(null); }}
+            title="Remove from Team?"
+            description={`${[pendingRemoveMember?.firstName, pendingRemoveMember?.lastName].filter(Boolean).join(' ') || pendingRemoveMember?.email} will be unlinked from your company. Their invoice history will be preserved.`}
+            confirmText="Remove"
+            cancelText="Cancel"
+            variant="destructive"
+            onConfirm={() => { if (pendingRemoveMember) teamActionMutation.mutate({ userId: pendingRemoveMember.id, action: 'remove' }); }}
+          />
 
           {/* Invite modal */}
           {inviteModalOpen && (

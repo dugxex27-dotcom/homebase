@@ -1132,6 +1132,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     '/api/contractor/team',
     '/api/contractor/validate-token',
     '/api/contractor/accept-invite',
+    '/api/contractor/company-homeowners',
   ];
   app.use('/api/contractor', (req: any, res: any, next: any) => {
     if (!req.session?.isAuthenticated) return next();
