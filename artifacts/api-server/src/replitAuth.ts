@@ -284,8 +284,8 @@ export const requireNotSuspended = (): RequestHandler => {
       return res.status(401).json({ message: "Unauthorized" });
     }
     const user = req.session.user;
-    if (user.status === 'suspended' || suspendedUserIds.has(user.id)) {
-      return res.status(401).json({ message: "Account suspended" });
+    if (['suspended', 'removed', 'pending_invite'].includes(user.status) || suspendedUserIds.has(user.id)) {
+      return res.status(401).json({ message: "Account access revoked. Contact your company administrator." });
     }
     next();
   };

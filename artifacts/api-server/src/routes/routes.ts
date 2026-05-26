@@ -1126,8 +1126,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/contractor', (req: any, res: any, next: any) => {
     if (!req.session?.isAuthenticated) return next();
     const u = req.session?.user;
-    if (u && (u.status === 'suspended' || suspendedUserIds.has(u.id))) {
-      return res.status(401).json({ message: "Account suspended. Contact your company administrator." });
+    if (u && (['suspended', 'removed', 'pending_invite'].includes(u.status) || suspendedUserIds.has(u.id))) {
+      return res.status(401).json({ message: "Account access revoked. Contact your company administrator." });
     }
     next();
   });
@@ -3697,8 +3697,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Block suspended enterprise tech accounts
-      if ((user as any).status === 'suspended' || suspendedUserIds.has(user.id)) {
-        return res.status(401).json({ message: "Account suspended. Please contact your company administrator." });
+      if (['suspended', 'removed'].includes((user as any).status) || suspendedUserIds.has(user.id)) {
+        return res.status(401).json({ message: "Account access revoked. Please contact your company administrator." });
       }
 
       // Verify password
@@ -17331,9 +17331,12 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       await db.update(users).set({
         status: 'removed',
         deletedAt: new Date(),
+        companyId: null,
+        companyRole: null,
         updatedAt: new Date(),
       } as any).where(eq(users.id, userId));
-      suspendedUserIds.delete(userId);
+      // Add to in-memory blocklist so any active session is immediately revoked
+      suspendedUserIds.add(userId);
       res.json({ message: "Team member removed from company" });
     } catch (error) {
       req.log?.error({ error }, '[ENTERPRISE] Error removing tech');
@@ -17402,7 +17405,12 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       }
       const objectStorage = new ObjectStorageService();
       const fileKey = `contractor-invoices/${sessionUser.companyId}/${Date.now()}-${req.file.originalname}`;
-      const fileUrl = await objectStorage.uploadFile(fileKey, req.file.buffer, req.file.mimetype);
+      let fileUrl = fileKey;
+      try {
+        await objectStorage.uploadFile(fileKey, req.file.buffer, req.file.mimetype);
+      } catch (uploadErr) {
+        req.log?.warn({ uploadErr }, '[ENTERPRISE] Object storage upload failed; storing key as file reference');
+      }
 
       const [invoice] = await db.insert(contractorInvoiceUploads).values({
         companyId: sessionUser.companyId,

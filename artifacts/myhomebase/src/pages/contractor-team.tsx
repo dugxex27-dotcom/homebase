@@ -74,9 +74,11 @@ export default function ContractorTeam() {
   const maxTechSeats = teamResponse?.maxTechSeats ?? 3;
 
   const inviteMutation = useMutation({
-    mutationFn: async (data: { email: string; firstName?: string; lastName?: string }) =>
-      apiRequest("/api/contractor/invite-tech", "POST", data),
-    onSuccess: (data: any) => {
+    mutationFn: async (data: { email: string; firstName?: string; lastName?: string }) => {
+      const res = await apiRequest("/api/contractor/invite-tech", "POST", data);
+      return res.json() as Promise<{ inviteUrl: string; message: string }>;
+    },
+    onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["/api/contractor/team"] });
       setInviteResult(data);
       toast({ title: "Invite sent", description: `Invitation email sent to ${inviteEmail}` });
