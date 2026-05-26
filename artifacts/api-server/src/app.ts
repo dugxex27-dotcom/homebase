@@ -109,8 +109,10 @@ const generalLimiter = rateLimit({
 
 app.use('/api/', generalLimiter);
 
+const STRIPE_WEBHOOK_PATHS = ['/api/webhooks/stripe', '/api/stripe/webhook'];
+
 app.use((req: Request, res: Response, next: NextFunction) => {
-  if (req.path === '/api/webhooks/stripe') {
+  if (STRIPE_WEBHOOK_PATHS.includes(req.path)) {
     next();
   } else {
     express.json({ limit: '100mb' })(req, res, next);
@@ -118,7 +120,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 app.use((req: Request, res: Response, next: NextFunction) => {
-  if (req.path === '/api/webhooks/stripe') {
+  if (STRIPE_WEBHOOK_PATHS.includes(req.path)) {
     next();
   } else {
     express.urlencoded({ extended: false, limit: '100mb' })(req, res, next);

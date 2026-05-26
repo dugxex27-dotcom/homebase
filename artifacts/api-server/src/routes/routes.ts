@@ -678,8 +678,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Stripe webhook handler - Uses raw body parser for signature verification
-  app.post('/api/webhooks/stripe', express.raw({ type: 'application/json' }), async (req: any, res) => {
+  // Stripe webhook handler - registered at both paths (Stripe dashboard uses /api/stripe/webhook)
+  app.post(['/api/webhooks/stripe', '/api/stripe/webhook'], express.raw({ type: 'application/json' }), async (req: any, res) => {
     if (!stripe) {
       return res.status(500).json({ error: 'Stripe not configured' });
     }
