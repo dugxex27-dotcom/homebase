@@ -28,7 +28,8 @@ const contractorToolsItems = [
 export default function BottomNav() {
   const [location] = useLocation();
   const { user } = useAuth();
-  const typedUser = user as (UserType & { isAdmin?: boolean }) | undefined;
+  const typedUser = user as (UserType & { isAdmin?: boolean; companyRole?: string }) | undefined;
+  const isTech = typedUser?.role === 'contractor' && typedUser?.companyRole === 'tech';
   const [toolsOpen, setToolsOpen] = useState(false);
   const flyoutRef = useRef<HTMLDivElement>(null);
 
@@ -82,9 +83,13 @@ export default function BottomNav() {
           { href: '/account',     icon: User,          label: 'Account', active: isActive(['/account', '/billing', '/homeowner-referral']) },
         ]
       : typedUser?.role === 'contractor'
-      ? [
-          { href: '/contractor-profile', icon: User, label: 'Profile', active: isActive(['/contractor-profile', '/billing', '/contractor-pricing']) },
-        ]
+      ? isTech
+        ? [
+            { href: '/contractor-dashboard', icon: LayoutDashboard, label: 'Dashboard', active: isActive('/contractor-dashboard') },
+          ]
+        : [
+            { href: '/contractor-profile', icon: User, label: 'Profile', active: isActive(['/contractor-profile', '/billing', '/contractor-pricing']) },
+          ]
       : typedUser?.role === 'agent'
       ? [
           { href: '/agent-dashboard', icon: LayoutDashboard, label: 'Dashboard', active: isActive(['/agent-dashboard', '/']) },
@@ -96,7 +101,10 @@ export default function BottomNav() {
 
   if (!typedUser || (navItems.length === 0 && !hasFlyout)) return null;
 
-  const activeFlyoutItems = typedUser?.role === 'contractor' ? contractorToolsItems : homeownerToolsItems;
+  const techToolsItems = contractorToolsItems.filter(i => i.href !== '/crm');
+  const activeFlyoutItems = typedUser?.role === 'contractor'
+    ? (isTech ? techToolsItems : contractorToolsItems)
+    : homeownerToolsItems;
 
   return (
     <>

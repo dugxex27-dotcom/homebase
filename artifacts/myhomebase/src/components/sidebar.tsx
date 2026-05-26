@@ -99,6 +99,7 @@ export default function Sidebar() {
   const isHomeowner  = typedUser.role === 'homeowner';
   const isContractor = typedUser.role === 'contractor';
   const isAgent      = typedUser.role === 'agent';
+  const isTech       = isContractor && (typedUser as any)?.companyRole === 'tech';
 
   const NavItem = ({
     href,
@@ -212,11 +213,11 @@ export default function Sidebar() {
         {isContractor && (
           <>
             <NavItem href="/contractor-dashboard" icon={LayoutDashboard} label="Dashboard" badge={hasNotif('dashboard')} testId="nav-dashboard" />
-            <NavItem href="/manage-team" icon={Users} label="Manage Team" testId="nav-manage-team" />
+            {!isTech && <NavItem href="/manage-team" icon={Users} label="Manage Team" testId="nav-manage-team" />}
             <NavItem href="/messages" icon={MessageCircle} label="Messages" badge={hasNotif('messages')} testId="nav-messages" />
-            <NavItem href="/crm" icon={Wrench} label="CRM" testId="nav-crm" />
-            <NavItem href="/contractor-referral" icon={Gift} label="Referral" testId="nav-referral" />
-            <NavItem href="/contractor-profile" icon={UserIcon} label="Account" testId="nav-account" />
+            {!isTech && <NavItem href="/crm" icon={Wrench} label="CRM" testId="nav-crm" />}
+            {!isTech && <NavItem href="/contractor-referral" icon={Gift} label="Referral" testId="nav-referral" />}
+            {!isTech && <NavItem href="/contractor-profile" icon={UserIcon} label="Account" testId="nav-account" />}
             <NavItem href="/support" icon={HelpCircle} label="Support" testId="nav-support" />
             {isInstallable && (
               <button onClick={handleInstall} className={navItemClass('/install')} style={{ ...navItemStyle('/install'), color: 'var(--theme-accent)' }} data-testid="button-install-app-sidebar">
