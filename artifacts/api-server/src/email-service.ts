@@ -1579,6 +1579,34 @@ export async function sendInvoicePaymentConfirmationEmail(
   });
 }
 
+export async function sendTechInviteEmail(
+  toEmail: string,
+  companyName: string,
+  inviterName: string,
+  inviteUrl: string
+): Promise<void> {
+  try {
+    const subject = `You're invited to join ${companyName} on MyHomeBase™`;
+    const html = wrapEmailContent(
+      getEmailHeader('Team Invitation'),
+      `
+      <p style="color: #333; font-size: 16px;">Hi there!</p>
+      <p style="color: #333; font-size: 16px;"><strong>${inviterName}</strong> has invited you to join <strong>${companyName}</strong> as a field technician on MyHomeBase™.</p>
+      <p style="color: #333; font-size: 16px;">Click the button below to set up your account. This invite expires in 7 days.</p>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${inviteUrl}" style="background: #1560A2; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: bold; display: inline-block;">Accept Invitation</a>
+      </div>
+      <p style="color: #666; font-size: 14px;">Or copy this link: <a href="${inviteUrl}" style="color: #1560A2;">${inviteUrl}</a></p>
+      <p style="color: #999; font-size: 12px; margin-top: 24px;">If you did not expect this invitation, you can safely ignore this email.</p>
+      `
+    );
+    const text = `${inviterName} has invited you to join ${companyName} on MyHomeBase™. Accept your invitation: ${inviteUrl}`;
+    await sendEmail({ to: toEmail, subject, text, html });
+  } catch (error) {
+    console.error('[EMAIL] Error sending tech invite email:', error);
+  }
+}
+
 export const emailService = {
   sendEmail,
   sendWelcomeEmail,
@@ -1599,6 +1627,7 @@ export const emailService = {
   sendNewLinkedInvoiceEmail,
   sendInvoiceUpdatedEmail,
   sendInvoicePaymentConfirmationEmail,
+  sendTechInviteEmail,
   getEmailHeader,
   wrapEmailContent,
 };

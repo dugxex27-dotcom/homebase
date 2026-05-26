@@ -18,6 +18,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useContractorSubscription } from "@/hooks/useContractorSubscription";
 import { ContractorTrialExpiredPaywall, ContractorTrialBanner } from "@/components/contractor-feature-gate";
+import { TechDashboard } from "./tech-dashboard";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   Gift, 
@@ -205,6 +206,13 @@ export default function ContractorDashboard() {
   // Check subscription status AFTER all hooks are called (React hooks rule)
   if (needsSubscription && !subscriptionLoading) {
     return <ContractorTrialExpiredPaywall />;
+  }
+
+  // Enterprise tech role — show stripped dashboard (no CRM, billing, referrals, team)
+  const companyRole = (typedUser as any)?.companyRole;
+  const companyStatus = (typedUser as any)?.companyStatus;
+  if (companyRole === 'tech') {
+    return <TechDashboard user={{ firstName: typedUser?.firstName, email: typedUser?.email, companyStatus }} />;
   }
   
   const referralCount = (referralData as any)?.referralCount || 0;

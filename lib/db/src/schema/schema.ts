@@ -116,6 +116,8 @@ export const companies = pgTable("companies", {
   stripeChargesEnabled: boolean("stripe_charges_enabled").default(false),
   stripePayoutsEnabled: boolean("stripe_payouts_enabled").default(false),
   stripeDefaultCurrency: varchar("stripe_default_currency", { length: 3 }).default("usd"),
+  subscriptionTier: text("subscription_tier").default("individual"), // "individual" | "enterprise"
+  maxTechSeats: integer("max_tech_seats").default(3), // Enterprise: max number of tech seat licenses
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -158,7 +160,10 @@ export const users = pgTable("users", {
   emailVerificationTokenExpiry: timestamp("email_verification_token_expiry"),
   // Company fields for contractors
   companyId: varchar("company_id").references(() => companies.id, { onDelete: 'set null' }),
-  companyRole: text("company_role"), // 'owner' or 'employee' (nullable for homeowners)
+  companyRole: text("company_role"), // 'owner', 'employee', 'tech' (nullable for homeowners)
+  companyStatus: text("company_status").default("active"), // "active" | "suspended" | "pending_invite"
+  inviteToken: varchar("invite_token").unique(),
+  inviteExpiresAt: timestamp("invite_expires_at"),
   canRespondToProposals: boolean("can_respond_to_proposals").notNull().default(false), // For employees: owner can toggle
   // Subscription fields
   subscriptionPlanId: varchar("subscription_plan_id").references(() => subscriptionPlans.id, { onDelete: 'set null' }), // FK to subscription_plans.id
@@ -189,6 +194,7 @@ export const users = pgTable("users", {
   index("IDX_users_zip_code").on(table.zipCode),
   index("IDX_users_company_id").on(table.companyId),
   index("IDX_users_email_verification_token").on(table.emailVerificationToken),
+  index("IDX_users_invite_token").on(table.inviteToken),
 ]);
 
 // Password reset tokens table
@@ -2339,3 +2345,30 @@ export const quizResults = pgTable("quiz_results", {
 export const insertQuizResultSchema = createInsertSchema(quizResults).omit({ id: true, createdAt: true });
 export type InsertQuizResult = z.infer<typeof insertQuizResultSchema>;
 export type QuizResult = typeof quizResults.$inferSelect;
+
+// ─── Enterprise Contractor Tech Invoices ─────────────────────────────────────
+// Techs and admins upload proof-of-work invoices scoped to their company.
+// Admins can see all company invoices; techs can only see their own.
+
+export const contractorTechInvoices = pgTable("contractor_tech_invoices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  uploadedByUserId: varchar("uploaded_by_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  homeownerId: varchar("homeowner_id"), // optional: linked homeowner
+  houseId: varchar("house_id"), // optional: linked house
+  fileName: text("file_name").notNull(),
+  fileUrl: text("file_url").notNull(),
+  storageKey: text("storage_key").notNull(),
+  description: text("description"),
+  amount: decimal("amount", { precision: 10, scale: 2 }),
+  invoiceDate: text("invoice_date"), // e.g. "2025-05-01"
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_cti_company_id").on(table.companyId),
+  index("IDX_cti_uploaded_by").on(table.uploadedByUserId),
+  index("IDX_cti_created_at").on(table.createdAt),
+]);
+
+export const insertContractorTechInvoiceSchema = createInsertSchema(contractorTechInvoices).omit({ id: true, createdAt: true });
+export type InsertContractorTechInvoice = z.infer<typeof insertContractorTechInvoiceSchema>;
+export type ContractorTechInvoice = typeof contractorTechInvoices.$inferSelect;

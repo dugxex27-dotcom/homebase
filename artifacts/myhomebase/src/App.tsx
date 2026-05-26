@@ -72,6 +72,7 @@ const ContractorProfile = lazy(() => import("./pages/contractor-profile"));
 const ContractorReferral = lazy(() => import("./pages/contractor-referral"));
 const ServiceRecords = lazy(() => import("./pages/service-records"));
 const ManageTeam = lazy(() => import("./pages/manage-team"));
+const ContractorTeam = lazy(() => import("./pages/contractor-team"));
 const ContractorCRM = lazy(() => import("./pages/contractor-crm"));
 const CrmLeadDetail = lazy(() => import("./pages/crm-lead-detail"));
 const ContractorUpgrade = lazy(() => import("./pages/contractor-upgrade"));
@@ -107,6 +108,7 @@ const SignInHomeowner = lazy(() => import("./pages/signin-homeowner"));
 const SignInContractor = lazy(() => import("./pages/signin-contractor"));
 const SignInAgent = lazy(() => import("./pages/signin-agent"));
 const Invite = lazy(() => import("./pages/invite"));
+const AcceptInvite = lazy(() => import("./pages/accept-invite"));
 
 // Lazy-loaded pages - Payment (public)
 const PayInvoice = lazy(() => import("./pages/pay-invoice").then(m => ({ default: m.default })));
@@ -149,6 +151,7 @@ function Router() {
         <ScrollToTop />
         <BackToTop />
         <Switch>
+          <Route path="/accept-invite" component={AcceptInvite} />
           <Route path="/invite/:code" component={Invite} />
           <Route path="/homeowner">{() => { window.location.replace('/homeowner.html'); return null; }}</Route>
           <Route path="/contractor">{() => { window.location.replace('/contractor.html'); return null; }}</Route>
@@ -271,6 +274,7 @@ function Router() {
             <Route path="/contractor-referral" component={ContractorReferral} />
             <Route path="/service-records" component={ServiceRecords} />
             <Route path="/manage-team" component={ManageTeam} />
+            <Route path="/contractor/team" component={ContractorTeam} />
             <Route path="/contractor/:id" component={ContractorDetail} />
           </>
         )}

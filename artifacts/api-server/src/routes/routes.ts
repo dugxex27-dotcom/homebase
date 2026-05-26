@@ -12,7 +12,7 @@ import { eq, and, sql as drizzleSql, isNotNull, desc } from "drizzle-orm";
 import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertTaskCompletionSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, customMaintenanceTasks, insertSupportTicketSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, securitySessions, referralCredits, referralFreeMonths, agentProfiles, users, siteContent, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, insertReviewFlagSchema, homeDocuments, quizResults, type House } from "@workspace/db";
 import { calculateDIYSavingsAmount } from "../shared/cost-helpers";
 import { extractInvoiceData, verifyDIYPhotos, type InvoiceExtraction } from "../invoice-analysis-service";
-import { invoiceAnalyses, contractorBoosts, affiliateReferrals, subscriptionCycleEvents } from "@workspace/db";
+import { invoiceAnalyses, contractorBoosts, affiliateReferrals, subscriptionCycleEvents, contractorTechInvoices, companies } from "@workspace/db";
 import pushRoutes from "../push-routes";
 import { pushService } from "../push-service";
 import { ObjectStorageService, ObjectNotFoundError } from "../objectStorage";
@@ -17016,6 +17016,406 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     } catch (err: any) {
       console.error("[INVOICE ANALYSIS] list error:", err);
       res.status(500).json({ message: "Failed to fetch invoice analyses" });
+    }
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Enterprise Contractor Team Management
+  // Owner/admin can invite techs, suspend/reactivate/remove them.
+  // Tech role has restricted access (no CRM, billing, referrals, team tabs).
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // Validate invite token (public — returns company info for the invite UI)
+  app.get('/api/contractor/enterprise/validate-token', async (req: any, res) => {
+    try {
+      const { token } = req.query;
+      if (!token || typeof token !== 'string') {
+        return res.status(400).json({ message: "Token is required" });
+      }
+      const [invitedUser] = await db.select({
+        id: users.id,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        companyId: users.companyId,
+        inviteExpiresAt: users.inviteExpiresAt,
+        companyStatus: users.companyStatus,
+      }).from(users).where(eq(users.inviteToken, token)).limit(1);
+
+      if (!invitedUser) {
+        return res.status(404).json({ message: "Invalid or expired invite token" });
+      }
+      if ((invitedUser as any).companyStatus !== 'pending_invite') {
+        return res.status(400).json({ message: "This invite has already been accepted" });
+      }
+      if ((invitedUser as any).inviteExpiresAt && new Date() > new Date((invitedUser as any).inviteExpiresAt)) {
+        return res.status(400).json({ message: "This invite has expired" });
+      }
+
+      const companyId = invitedUser.companyId!;
+      const [company] = await db.select({ id: companies.id, name: companies.name })
+        .from(companies).where(eq(companies.id, companyId)).limit(1);
+
+      res.json({
+        email: invitedUser.email,
+        firstName: invitedUser.firstName,
+        lastName: invitedUser.lastName,
+        companyName: company?.name || 'Your Company',
+        expiresAt: (invitedUser as any).inviteExpiresAt,
+      });
+    } catch (error) {
+      console.error('[ENTERPRISE] Error validating invite token:', error);
+      res.status(500).json({ message: "Failed to validate invite token" });
+    }
+  });
+
+  // Accept invite (public — tech sets password and activates their account)
+  app.post('/api/contractor/enterprise/accept-invite', async (req: any, res) => {
+    try {
+      const bodySchema = z.object({
+        token: z.string().min(1),
+        firstName: z.string().min(1, "First name is required"),
+        lastName: z.string().min(1, "Last name is required"),
+        password: z.string().min(8, "Password must be at least 8 characters"),
+      });
+      const parsed = bodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid data", errors: parsed.error.flatten() });
+      }
+      const { token, firstName, lastName, password } = parsed.data;
+
+      const [invitedUser] = await db.select().from(users).where(eq(users.inviteToken, token)).limit(1);
+      if (!invitedUser) {
+        return res.status(404).json({ message: "Invalid or expired invite token" });
+      }
+      if ((invitedUser as any).companyStatus !== 'pending_invite') {
+        return res.status(400).json({ message: "This invite has already been accepted" });
+      }
+      if ((invitedUser as any).inviteExpiresAt && new Date() > new Date((invitedUser as any).inviteExpiresAt)) {
+        return res.status(400).json({ message: "This invite has expired" });
+      }
+
+      const bcrypt = await import('bcryptjs');
+      const passwordHash = await bcrypt.hash(password, 10);
+
+      await db.update(users).set({
+        firstName,
+        lastName,
+        passwordHash,
+        companyStatus: 'active',
+        inviteToken: null,
+        inviteExpiresAt: null,
+        accountStatus: 'active',
+        emailVerified: true,
+        updatedAt: new Date(),
+      } as any).where(eq(users.id, invitedUser.id));
+
+      const updatedUser = await storage.getUser(invitedUser.id);
+      req.session.isAuthenticated = true;
+      req.session.user = updatedUser;
+      await new Promise<void>((resolve, reject) =>
+        req.session.save((err: any) => (err ? reject(err) : resolve()))
+      );
+
+      res.json({ message: "Account activated successfully", user: updatedUser });
+    } catch (error) {
+      console.error('[ENTERPRISE] Error accepting invite:', error);
+      res.status(500).json({ message: "Failed to accept invite" });
+    }
+  });
+
+  // Send tech invite (owner only)
+  app.post('/api/contractor/enterprise/invite-tech', isAuthenticated, async (req: any, res) => {
+    try {
+      if (!req.session?.isAuthenticated || !req.session?.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const adminUser = req.session.user;
+      if (adminUser.role !== 'contractor' || (adminUser.companyRole !== 'owner' && adminUser.companyRole !== 'admin')) {
+        return res.status(403).json({ message: "Only company owners can invite techs" });
+      }
+      if (!adminUser.companyId) {
+        return res.status(400).json({ message: "You must belong to a company to invite techs" });
+      }
+
+      const bodySchema = z.object({
+        email: z.string().email("Valid email is required"),
+        firstName: z.string().min(1).optional(),
+        lastName: z.string().min(1).optional(),
+      });
+      const parsed = bodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid data", errors: parsed.error.flatten() });
+      }
+      const { email, firstName, lastName } = parsed.data;
+
+      // Check seat limit
+      const [companyRow] = await db.select().from(companies).where(eq(companies.id, adminUser.companyId)).limit(1);
+      const maxSeats = (companyRow as any)?.maxTechSeats ?? 3;
+      const currentTechs = await db.select({ id: users.id }).from(users)
+        .where(and(eq(users.companyId, adminUser.companyId), eq(users.companyRole as any, 'tech')));
+      if (currentTechs.length >= maxSeats) {
+        return res.status(400).json({ message: `Tech seat limit reached (${maxSeats}). Contact support to add more seats.` });
+      }
+
+      const [existingUser] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+      const inviteToken = randomUUID();
+      const inviteExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+      if (existingUser) {
+        if (existingUser.companyId && existingUser.companyId !== adminUser.companyId) {
+          return res.status(400).json({ message: "This user already belongs to another company" });
+        }
+        await db.update(users).set({
+          companyId: adminUser.companyId,
+          companyRole: 'tech',
+          companyStatus: 'pending_invite',
+          inviteToken,
+          inviteExpiresAt,
+          updatedAt: new Date(),
+        } as any).where(eq(users.id, existingUser.id));
+      } else {
+        await db.insert(users).values({
+          id: randomUUID(),
+          email,
+          firstName: firstName || null,
+          lastName: lastName || null,
+          role: 'contractor',
+          companyId: adminUser.companyId,
+          companyRole: 'tech',
+          companyStatus: 'pending_invite',
+          inviteToken,
+          inviteExpiresAt,
+          accountStatus: 'active',
+          subscriptionStatus: 'active',
+          emailVerified: false,
+        } as any);
+      }
+
+      const domain = process.env.REPLIT_DOMAINS?.split(',')[0]?.trim() || 'gotohomebase.com';
+      const inviteUrl = `https://${domain}/accept-invite?token=${inviteToken}`;
+      await emailService.sendTechInviteEmail(
+        email,
+        companyRow?.name || 'Your Company',
+        adminUser.firstName || 'Your manager',
+        inviteUrl
+      );
+
+      res.json({ message: "Invite sent successfully", inviteUrl });
+    } catch (error) {
+      console.error('[ENTERPRISE] Error inviting tech:', error);
+      res.status(500).json({ message: "Failed to send invite" });
+    }
+  });
+
+  // Get team members (owner/admin only)
+  app.get('/api/contractor/enterprise/team', isAuthenticated, async (req: any, res) => {
+    try {
+      if (!req.session?.isAuthenticated || !req.session?.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const adminUser = req.session.user;
+      if (adminUser.role !== 'contractor' || (adminUser.companyRole !== 'owner' && adminUser.companyRole !== 'admin')) {
+        return res.status(403).json({ message: "Only company owners can view team members" });
+      }
+      if (!adminUser.companyId) {
+        return res.status(400).json({ message: "You must belong to a company" });
+      }
+
+      const teamMembers = await db.select({
+        id: users.id,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        companyRole: users.companyRole,
+        companyStatus: users.companyStatus,
+        inviteExpiresAt: users.inviteExpiresAt,
+        createdAt: users.createdAt,
+      } as any).from(users).where(and(
+        eq(users.companyId, adminUser.companyId),
+        eq(users.companyRole as any, 'tech')
+      ));
+
+      res.json(teamMembers);
+    } catch (error) {
+      console.error('[ENTERPRISE] Error fetching team:', error);
+      res.status(500).json({ message: "Failed to fetch team members" });
+    }
+  });
+
+  // Suspend a tech (owner/admin only)
+  app.patch('/api/contractor/enterprise/team/:userId/suspend', isAuthenticated, async (req: any, res) => {
+    try {
+      if (!req.session?.isAuthenticated || !req.session?.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const adminUser = req.session.user;
+      if (adminUser.role !== 'contractor' || (adminUser.companyRole !== 'owner' && adminUser.companyRole !== 'admin')) {
+        return res.status(403).json({ message: "Only company owners can suspend team members" });
+      }
+      const { userId } = req.params;
+      const [targetUser] = await db.select().from(users).where(and(
+        eq(users.id, userId),
+        eq(users.companyId, adminUser.companyId),
+        eq(users.companyRole as any, 'tech')
+      )).limit(1);
+      if (!targetUser) return res.status(404).json({ message: "Team member not found" });
+
+      await db.update(users).set({ companyStatus: 'suspended', updatedAt: new Date() } as any).where(eq(users.id, userId));
+      res.json({ message: "Team member suspended" });
+    } catch (error) {
+      console.error('[ENTERPRISE] Error suspending tech:', error);
+      res.status(500).json({ message: "Failed to suspend team member" });
+    }
+  });
+
+  // Reactivate a tech (owner/admin only)
+  app.patch('/api/contractor/enterprise/team/:userId/reactivate', isAuthenticated, async (req: any, res) => {
+    try {
+      if (!req.session?.isAuthenticated || !req.session?.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const adminUser = req.session.user;
+      if (adminUser.role !== 'contractor' || (adminUser.companyRole !== 'owner' && adminUser.companyRole !== 'admin')) {
+        return res.status(403).json({ message: "Only company owners can reactivate team members" });
+      }
+      const { userId } = req.params;
+      const [targetUser] = await db.select().from(users).where(and(
+        eq(users.id, userId),
+        eq(users.companyId, adminUser.companyId),
+        eq(users.companyRole as any, 'tech')
+      )).limit(1);
+      if (!targetUser) return res.status(404).json({ message: "Team member not found" });
+
+      await db.update(users).set({ companyStatus: 'active', updatedAt: new Date() } as any).where(eq(users.id, userId));
+      res.json({ message: "Team member reactivated" });
+    } catch (error) {
+      console.error('[ENTERPRISE] Error reactivating tech:', error);
+      res.status(500).json({ message: "Failed to reactivate team member" });
+    }
+  });
+
+  // Remove a tech from the team (owner/admin only)
+  app.delete('/api/contractor/enterprise/team/:userId', isAuthenticated, async (req: any, res) => {
+    try {
+      if (!req.session?.isAuthenticated || !req.session?.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const adminUser = req.session.user;
+      if (adminUser.role !== 'contractor' || (adminUser.companyRole !== 'owner' && adminUser.companyRole !== 'admin')) {
+        return res.status(403).json({ message: "Only company owners can remove team members" });
+      }
+      const { userId } = req.params;
+      const [targetUser] = await db.select().from(users).where(and(
+        eq(users.id, userId),
+        eq(users.companyId, adminUser.companyId),
+        eq(users.companyRole as any, 'tech')
+      )).limit(1);
+      if (!targetUser) return res.status(404).json({ message: "Team member not found" });
+
+      // Unlink from company (do not delete the user account)
+      await db.update(users).set({
+        companyId: null,
+        companyRole: null,
+        companyStatus: 'active',
+        updatedAt: new Date(),
+      } as any).where(eq(users.id, userId));
+
+      res.json({ message: "Team member removed from company" });
+    } catch (error) {
+      console.error('[ENTERPRISE] Error removing tech:', error);
+      res.status(500).json({ message: "Failed to remove team member" });
+    }
+  });
+
+  // Upload tech invoice (any contractor belonging to a company, not suspended)
+  app.post('/api/contractor/enterprise/invoices/upload', isAuthenticated, upload.single('file'), async (req: any, res) => {
+    try {
+      if (!req.session?.isAuthenticated || !req.session?.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const sessionUser = req.session.user;
+      if (sessionUser.role !== 'contractor') {
+        return res.status(403).json({ message: "Only contractors can upload invoices" });
+      }
+      if (!sessionUser.companyId) {
+        return res.status(400).json({ message: "You must belong to a company to upload invoices" });
+      }
+      if ((sessionUser as any).companyStatus === 'suspended') {
+        return res.status(403).json({ message: "Your account has been suspended. Contact your company administrator." });
+      }
+      if (!req.file) {
+        return res.status(400).json({ message: "File is required" });
+      }
+
+      const { description, amount, invoiceDate, homeownerId, houseId } = req.body;
+      const objectStorage = new ObjectStorageService();
+      const fileKey = `contractor-invoices/${sessionUser.companyId}/${Date.now()}-${req.file.originalname}`;
+      const fileUrl = await objectStorage.uploadFile(fileKey, req.file.buffer, req.file.mimetype);
+
+      const [invoice] = await db.insert(contractorTechInvoices).values({
+        companyId: sessionUser.companyId,
+        uploadedByUserId: sessionUser.id,
+        homeownerId: homeownerId || null,
+        houseId: houseId || null,
+        fileName: req.file.originalname,
+        fileUrl,
+        storageKey: fileKey,
+        description: description || null,
+        amount: amount ? String(amount) : null,
+        invoiceDate: invoiceDate || null,
+      } as any).returning();
+
+      res.status(201).json(invoice);
+    } catch (error) {
+      console.error('[ENTERPRISE] Error uploading invoice:', error);
+      res.status(500).json({ message: "Failed to upload invoice" });
+    }
+  });
+
+  // Get tech invoices (admin sees all company invoices; tech sees own)
+  app.get('/api/contractor/enterprise/invoices', isAuthenticated, async (req: any, res) => {
+    try {
+      if (!req.session?.isAuthenticated || !req.session?.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const sessionUser = req.session.user;
+      if (sessionUser.role !== 'contractor') {
+        return res.status(403).json({ message: "Only contractors can view invoices" });
+      }
+      if (!sessionUser.companyId) {
+        return res.status(400).json({ message: "You must belong to a company" });
+      }
+
+      const isAdmin = sessionUser.companyRole === 'owner' || sessionUser.companyRole === 'admin';
+      const whereClause = isAdmin
+        ? eq(contractorTechInvoices.companyId, sessionUser.companyId)
+        : and(
+            eq(contractorTechInvoices.companyId, sessionUser.companyId),
+            eq(contractorTechInvoices.uploadedByUserId, sessionUser.id)
+          );
+
+      const invoiceList = await db.select({
+        id: contractorTechInvoices.id,
+        companyId: contractorTechInvoices.companyId,
+        fileName: contractorTechInvoices.fileName,
+        fileUrl: contractorTechInvoices.fileUrl,
+        description: contractorTechInvoices.description,
+        amount: contractorTechInvoices.amount,
+        invoiceDate: contractorTechInvoices.invoiceDate,
+        createdAt: contractorTechInvoices.createdAt,
+        uploaderFirstName: users.firstName,
+        uploaderLastName: users.lastName,
+        uploaderEmail: users.email,
+      }).from(contractorTechInvoices)
+        .leftJoin(users, eq(contractorTechInvoices.uploadedByUserId, users.id))
+        .where(whereClause!)
+        .orderBy(desc(contractorTechInvoices.createdAt));
+
+      res.json(invoiceList);
+    } catch (error) {
+      console.error('[ENTERPRISE] Error fetching invoices:', error);
+      res.status(500).json({ message: "Failed to fetch invoices" });
     }
   });
 
