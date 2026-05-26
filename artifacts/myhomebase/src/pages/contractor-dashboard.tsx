@@ -135,6 +135,7 @@ export default function ContractorDashboard() {
   });
 
   const activeTeamCount = teamData?.teamMembers.filter(m => m.status === 'active').length ?? null;
+  const pendingTeamCount = teamData?.teamMembers.filter(m => m.status !== 'active').length ?? 0;
 
   const { data: adminInvoices = [], isLoading: isLoadingInvoices } = useQuery<AdminInvoice[]>({
     queryKey: ['/api/contractor/invoices', invoiceTechFilter, invoiceStartDate, invoiceEndDate, invoiceHomeownerName],
@@ -814,7 +815,7 @@ export default function ContractorDashboard() {
                 {isLoadingTeam
                   ? 'Loading team…'
                   : activeTeamCount !== null
-                    ? `${activeTeamCount} active ${activeTeamCount === 1 ? 'technician' : 'technicians'}`
+                    ? `${activeTeamCount} active ${activeTeamCount === 1 ? 'technician' : 'technicians'}${pendingTeamCount > 0 ? ` · ${pendingTeamCount} pending` : ''}`
                     : 'Invite and manage field technicians'}
               </div>
             </div>
