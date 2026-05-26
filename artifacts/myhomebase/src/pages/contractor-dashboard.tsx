@@ -815,7 +815,10 @@ export default function ContractorDashboard() {
                 {isLoadingTeam
                   ? 'Loading team…'
                   : activeTeamCount !== null
-                    ? `${activeTeamCount} active ${activeTeamCount === 1 ? 'technician' : 'technicians'}${pendingTeamCount > 0 ? ` · ${pendingTeamCount} pending` : ''}`
+                    ? `${teamData?.maxTechSeats 
+                        ? `${activeTeamCount} of ${teamData.maxTechSeats} seats active` 
+                        : `${activeTeamCount} active ${activeTeamCount === 1 ? 'technician' : 'technicians'}`
+                      }${pendingTeamCount > 0 ? ` · ${pendingTeamCount} pending` : ''}`
                     : 'Invite and manage field technicians'}
               </div>
             </div>
