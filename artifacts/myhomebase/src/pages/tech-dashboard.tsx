@@ -45,6 +45,8 @@ export function TechDashboard({ user }: TechDashboardProps) {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [invoiceDate, setInvoiceDate] = useState("");
+  const [homeownerEmail, setHomeownerEmail] = useState("");
+  const [jobId, setJobId] = useState("");
   const [uploading, setUploading] = useState(false);
 
   const { data: invoices = [], isLoading } = useQuery<TechInvoice[]>({
@@ -61,6 +63,8 @@ export function TechDashboard({ user }: TechDashboardProps) {
       if (description) fd.append("notes", description);
       if (amount) fd.append("amount", amount);
       if (invoiceDate) fd.append("invoiceDate", invoiceDate);
+      if (homeownerEmail) fd.append("homeownerEmail", homeownerEmail);
+      if (jobId) fd.append("jobId", jobId);
 
       const res = await fetch("/api/contractor/invoices/upload", {
         method: "POST",
@@ -71,13 +75,17 @@ export function TechDashboard({ user }: TechDashboardProps) {
         const data = await res.json();
         throw new Error(data.message || "Upload failed");
       }
+      const uploaded = await res.json();
       await qc.invalidateQueries({ queryKey: ["/api/contractor/invoices"] });
-      toast({ title: "Invoice uploaded", description: `${file.name} uploaded successfully.` });
+      const homeownerLabel = uploaded.homeownerId ? "homeowner's home history" : "your account";
+      toast({ title: "Invoice uploaded", description: `${file.name} uploaded to ${homeownerLabel}.` });
       setUploadOpen(false);
       setFile(null);
       setDescription("");
       setAmount("");
       setInvoiceDate("");
+      setHomeownerEmail("");
+      setJobId("");
     } catch (err: any) {
       toast({ title: "Upload failed", description: err.message, variant: "destructive" });
     } finally {
@@ -258,7 +266,29 @@ export function TechDashboard({ user }: TechDashboardProps) {
               <p className="text-xs text-slate-400 mt-1">PDF, PNG, JPG or JPEG — max 10 MB</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Homeowner Email <span className="text-slate-400 font-normal">(optional)</span>
+              </label>
+              <Input
+                type="email"
+                value={homeownerEmail}
+                onChange={(e) => setHomeownerEmail(e.target.value)}
+                placeholder="homeowner@example.com"
+              />
+              <p className="text-xs text-slate-400 mt-1">Links this invoice to a homeowner's home history</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Job ID <span className="text-slate-400 font-normal">(optional)</span>
+              </label>
+              <Input
+                value={jobId}
+                onChange={(e) => setJobId(e.target.value)}
+                placeholder="e.g. WO-2024-001"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
               <Input
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}

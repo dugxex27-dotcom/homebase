@@ -32,13 +32,14 @@ interface TeamMember {
   firstName: string | null;
   lastName: string | null;
   companyRole: string | null;
-  companyStatus: string | null;
+  status: string | null;
   inviteExpiresAt: string | null;
+  lastLoginAt: string | null;
   createdAt: string | null;
   invoiceCount: number;
 }
 
-function statusBadge(status: string | null) {
+function statusBadge(status: string | null): React.ReactNode {
   switch (status) {
     case "active":
       return <Badge className="bg-green-100 text-green-700 border-green-200">Active</Badge>;
@@ -66,15 +67,17 @@ export default function ContractorTeam() {
   const [removeTarget, setRemoveTarget] = useState<TeamMember | null>(null);
   const [suspendTarget, setSuspendTarget] = useState<TeamMember | null>(null);
 
-  const { data: team = [], isLoading } = useQuery<TeamMember[]>({
-    queryKey: ["/api/contractor/enterprise/team"],
+  const { data: teamResponse, isLoading } = useQuery<{ teamMembers: TeamMember[]; maxTechSeats: number }>({
+    queryKey: ["/api/contractor/team"],
   });
+  const team = teamResponse?.teamMembers ?? [];
+  const maxTechSeats = teamResponse?.maxTechSeats ?? 3;
 
   const inviteMutation = useMutation({
     mutationFn: async (data: { email: string; firstName?: string; lastName?: string }) =>
-      apiRequest("/api/contractor/enterprise/invite-tech", "POST", data),
+      apiRequest("/api/contractor/invite-tech", "POST", data),
     onSuccess: (data: any) => {
-      qc.invalidateQueries({ queryKey: ["/api/contractor/enterprise/team"] });
+      qc.invalidateQueries({ queryKey: ["/api/contractor/team"] });
       setInviteResult(data);
       toast({ title: "Invite sent", description: `Invitation email sent to ${inviteEmail}` });
     },
@@ -85,9 +88,9 @@ export default function ContractorTeam() {
 
   const suspendMutation = useMutation({
     mutationFn: (userId: string) =>
-      apiRequest(`/api/contractor/enterprise/team/${userId}/suspend`, "PATCH"),
+      apiRequest(`/api/contractor/team/${userId}/suspend`, "PATCH"),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/contractor/enterprise/team"] });
+      qc.invalidateQueries({ queryKey: ["/api/contractor/team"] });
       toast({ title: "Team member suspended" });
       setSuspendTarget(null);
     },
@@ -97,9 +100,9 @@ export default function ContractorTeam() {
 
   const reactivateMutation = useMutation({
     mutationFn: (userId: string) =>
-      apiRequest(`/api/contractor/enterprise/team/${userId}/reactivate`, "PATCH"),
+      apiRequest(`/api/contractor/team/${userId}/reactivate`, "PATCH"),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/contractor/enterprise/team"] });
+      qc.invalidateQueries({ queryKey: ["/api/contractor/team"] });
       toast({ title: "Team member reactivated" });
     },
     onError: (e: any) =>
@@ -108,9 +111,9 @@ export default function ContractorTeam() {
 
   const removeMutation = useMutation({
     mutationFn: (userId: string) =>
-      apiRequest(`/api/contractor/enterprise/team/${userId}`, "DELETE"),
+      apiRequest(`/api/contractor/team/${userId}`, "DELETE"),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/contractor/enterprise/team"] });
+      qc.invalidateQueries({ queryKey: ["/api/contractor/team"] });
       toast({ title: "Team member removed" });
       setRemoveTarget(null);
     },
@@ -241,7 +244,7 @@ export default function ContractorTeam() {
                       <Mail size={11} />
                       {member.email}
                     </p>
-                    {member.companyStatus === "pending_invite" && member.inviteExpiresAt && (
+                    {member.status === "pending_invite" && member.inviteExpiresAt && (
                       <p className="text-xs text-amber-600 flex items-center gap-1 mt-0.5">
                         <Clock size={11} />
                         Invite expires{" "}
@@ -254,9 +257,9 @@ export default function ContractorTeam() {
                       </p>
                     )}
                   </div>
-                  <div className="shrink-0">{statusBadge(member.companyStatus)}</div>
+                  <div className="shrink-0">{statusBadge(member.status)}</div>
                   <div className="flex items-center gap-1 shrink-0">
-                    {member.companyStatus === "active" && (
+                    {member.status === "active" && (
                       <button
                         title="Suspend"
                         className="p-1.5 rounded hover:bg-amber-50 text-amber-500 hover:text-amber-700"
@@ -265,7 +268,7 @@ export default function ContractorTeam() {
                         <PauseCircle size={16} />
                       </button>
                     )}
-                    {member.companyStatus === "suspended" && (
+                    {member.status === "suspended" && (
                       <button
                         title="Reactivate"
                         className="p-1.5 rounded hover:bg-green-50 text-green-500 hover:text-green-700"

@@ -1121,6 +1121,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Block suspended contractor accounts from ALL authenticated /api/contractor/* routes.
+  // Public routes (validate-token, accept-invite) pass through because they are unauthenticated.
+  app.use('/api/contractor', (req: any, res: any, next: any) => {
+    if (!req.session?.isAuthenticated) return next();
+    const u = req.session?.user;
+    if (u && (u.status === 'suspended' || suspendedUserIds.has(u.id))) {
+      return res.status(401).json({ message: "Account suspended. Contact your company administrator." });
+    }
+    next();
+  });
+
   // ========================================
   // STRIPE CONNECT - Contractor Payment Processing
   // ========================================
@@ -17343,7 +17354,16 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         return res.status(400).json({ message: "File must be 10 MB or less" });
       }
 
-      const { notes, amount, invoiceDate, homeownerId, jobId } = req.body;
+      const { notes, amount, invoiceDate, jobId } = req.body;
+      let homeownerId: string | null = req.body.homeownerId || null;
+      // If caller supplied homeownerEmail instead of homeownerId, resolve it
+      if (!homeownerId && req.body.homeownerEmail) {
+        const [hw] = await db.select({ id: users.id })
+          .from(users)
+          .where(and(eq(users.email, req.body.homeownerEmail), eq(users.role as any, 'homeowner')))
+          .limit(1);
+        homeownerId = hw?.id || null;
+      }
       const objectStorage = new ObjectStorageService();
       const fileKey = `contractor-invoices/${sessionUser.companyId}/${Date.now()}-${req.file.originalname}`;
       const fileUrl = await objectStorage.uploadFile(fileKey, req.file.buffer, req.file.mimetype);
@@ -17378,7 +17398,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       }
 
       const isAdmin = sessionUser.companyRole === 'owner' || sessionUser.companyRole === 'admin';
-      const { techId, homeownerId, startDate, endDate } = req.query as Record<string, string | undefined>;
+      const { techId, homeownerId, homeownerName, startDate, endDate } = req.query as Record<string, string | undefined>;
 
       const conditions: any[] = [eq(contractorInvoiceUploads.companyId, sessionUser.companyId)];
       if (!isAdmin) {
@@ -17386,6 +17406,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       } else {
         if (techId) conditions.push(eq(contractorInvoiceUploads.uploadedByUserId, techId));
         if (homeownerId) conditions.push(eq(contractorInvoiceUploads.homeownerId as any, homeownerId));
+        if (homeownerName) conditions.push(drizzleSql`LOWER(COALESCE((SELECT first_name FROM users WHERE id = ${contractorInvoiceUploads.homeownerId}), '') || ' ' || COALESCE((SELECT last_name FROM users WHERE id = ${contractorInvoiceUploads.homeownerId}), '')) LIKE ${'%' + homeownerName.toLowerCase() + '%'}`);
         if (startDate) conditions.push(drizzleSql`${contractorInvoiceUploads.invoiceDate} >= ${startDate}`);
         if (endDate) conditions.push(drizzleSql`${contractorInvoiceUploads.invoiceDate} <= ${endDate}`);
       }
@@ -17404,6 +17425,8 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         uploaderFirstName: users.firstName,
         uploaderLastName: users.lastName,
         uploaderEmail: users.email,
+        homeownerFirstName: drizzleSql<string | null>`(SELECT first_name FROM users WHERE id = ${contractorInvoiceUploads.homeownerId})`,
+        homeownerLastName: drizzleSql<string | null>`(SELECT last_name FROM users WHERE id = ${contractorInvoiceUploads.homeownerId})`,
       }).from(contractorInvoiceUploads)
         .leftJoin(users, eq(contractorInvoiceUploads.uploadedByUserId, users.id))
         .where(and(...conditions))

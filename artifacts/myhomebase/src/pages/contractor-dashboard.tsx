@@ -107,6 +107,7 @@ export default function ContractorDashboard() {
   const [invoiceTechFilter, setInvoiceTechFilter] = useState('');
   const [invoiceStartDate, setInvoiceStartDate] = useState('');
   const [invoiceEndDate, setInvoiceEndDate] = useState('');
+  const [invoiceHomeownerName, setInvoiceHomeownerName] = useState('');
 
   const isAdminRole = (typedUser as any)?.companyRole === 'owner' || (typedUser as any)?.companyRole === 'admin';
 
@@ -121,12 +122,13 @@ export default function ContractorDashboard() {
   });
 
   const { data: adminInvoices = [], isLoading: isLoadingInvoices } = useQuery<AdminInvoice[]>({
-    queryKey: ['/api/contractor/invoices', invoiceTechFilter, invoiceStartDate, invoiceEndDate],
+    queryKey: ['/api/contractor/invoices', invoiceTechFilter, invoiceStartDate, invoiceEndDate, invoiceHomeownerName],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (invoiceTechFilter) params.set('techId', invoiceTechFilter);
       if (invoiceStartDate) params.set('startDate', invoiceStartDate);
       if (invoiceEndDate) params.set('endDate', invoiceEndDate);
+      if (invoiceHomeownerName) params.set('homeownerName', invoiceHomeownerName);
       const res = await fetch(`/api/contractor/invoices?${params}`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch invoices');
       return res.json();
@@ -555,6 +557,13 @@ export default function ContractorDashboard() {
                   <option key={m.id} value={m.id}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
                 ))}
               </select>
+              <input
+                type="text"
+                value={invoiceHomeownerName}
+                onChange={e => setInvoiceHomeownerName(e.target.value)}
+                placeholder="Search homeowner…"
+                style={{ flex: 1, minWidth: 150, padding: '7px 10px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, outline: 'none' }}
+              />
               <input type="date" value={invoiceStartDate} onChange={e => setInvoiceStartDate(e.target.value)}
                 style={{ flex: 1, minWidth: 130, padding: '7px 10px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, outline: 'none' }}
               />
