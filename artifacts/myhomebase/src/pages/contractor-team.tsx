@@ -392,10 +392,10 @@ export default function ContractorTeam() {
         onOpenChange={(o) => { if (!o) setSuspendTarget(null); }}
         title="Suspend Team Member?"
         description={`${suspendTarget?.firstName || suspendTarget?.email} will no longer be able to access the company dashboard until reactivated.`}
-        confirmLabel="Suspend"
-        cancelLabel="Cancel"
+        confirmText="Suspend"
+        cancelText="Cancel"
         variant="destructive"
-        onConfirm={() => suspendTarget && suspendMutation.mutate(suspendTarget.id)}
+        onConfirm={() => { if (suspendTarget) suspendMutation.mutate(suspendTarget.id); }}
       />
 
       {/* Remove Confirm */}
@@ -404,10 +404,10 @@ export default function ContractorTeam() {
         onOpenChange={(o) => { if (!o) setRemoveTarget(null); }}
         title="Remove from Team?"
         description={`${removeTarget?.firstName || removeTarget?.email} will be unlinked from your company. Their account will remain active.`}
-        confirmLabel="Remove"
-        cancelLabel="Cancel"
+        confirmText="Remove"
+        cancelText="Cancel"
         variant="destructive"
-        onConfirm={() => removeTarget && removeMutation.mutate(removeTarget.id)}
+        onConfirm={() => { if (removeTarget) removeMutation.mutate(removeTarget.id); }}
       />
     </div>
   );

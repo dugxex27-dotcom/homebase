@@ -45,9 +45,14 @@ export function TechDashboard({ user }: TechDashboardProps) {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [invoiceDate, setInvoiceDate] = useState("");
-  const [homeownerEmail, setHomeownerEmail] = useState("");
+  const [homeownerId, setHomeownerId] = useState("");
   const [jobId, setJobId] = useState("");
   const [uploading, setUploading] = useState(false);
+
+  const { data: companyHomeowners = [] } = useQuery<{ id: string; firstName: string | null; lastName: string | null; email: string | null }[]>({
+    queryKey: ["/api/contractor/company-homeowners"],
+    enabled: uploadOpen,
+  });
 
   const { data: invoices = [], isLoading } = useQuery<TechInvoice[]>({
     queryKey: ["/api/contractor/invoices"],
@@ -63,7 +68,7 @@ export function TechDashboard({ user }: TechDashboardProps) {
       if (description) fd.append("notes", description);
       if (amount) fd.append("amount", amount);
       if (invoiceDate) fd.append("invoiceDate", invoiceDate);
-      if (homeownerEmail) fd.append("homeownerEmail", homeownerEmail);
+      if (homeownerId) fd.append("homeownerId", homeownerId);
       if (jobId) fd.append("jobId", jobId);
 
       const res = await fetch("/api/contractor/invoices/upload", {
@@ -77,14 +82,17 @@ export function TechDashboard({ user }: TechDashboardProps) {
       }
       const uploaded = await res.json();
       await qc.invalidateQueries({ queryKey: ["/api/contractor/invoices"] });
-      const homeownerLabel = uploaded.homeownerId ? "homeowner's home history" : "your account";
+      const hw = companyHomeowners.find(h => h.id === homeownerId);
+      const homeownerLabel = uploaded.homeownerId && hw
+        ? `${hw.firstName || hw.email || "homeowner"}'s home history`
+        : "your account";
       toast({ title: "Invoice uploaded", description: `${file.name} uploaded to ${homeownerLabel}.` });
       setUploadOpen(false);
       setFile(null);
       setDescription("");
       setAmount("");
       setInvoiceDate("");
-      setHomeownerEmail("");
+      setHomeownerId("");
       setJobId("");
     } catch (err: any) {
       toast({ title: "Upload failed", description: err.message, variant: "destructive" });
@@ -267,14 +275,20 @@ export function TechDashboard({ user }: TechDashboardProps) {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
-                Homeowner Email <span className="text-slate-400 font-normal">(optional)</span>
+                Homeowner <span className="text-slate-400 font-normal">(optional)</span>
               </label>
-              <Input
-                type="email"
-                value={homeownerEmail}
-                onChange={(e) => setHomeownerEmail(e.target.value)}
-                placeholder="homeowner@example.com"
-              />
+              <select
+                value={homeownerId}
+                onChange={(e) => setHomeownerId(e.target.value)}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <option value="">None</option>
+                {companyHomeowners.map(hw => (
+                  <option key={hw.id} value={hw.id}>
+                    {[hw.firstName, hw.lastName].filter(Boolean).join(" ") || hw.email || hw.id}
+                  </option>
+                ))}
+              </select>
               <p className="text-xs text-slate-400 mt-1">Links this invoice to a homeowner's home history</p>
             </div>
             <div>

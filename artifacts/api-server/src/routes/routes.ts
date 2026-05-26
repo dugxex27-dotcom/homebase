@@ -12,7 +12,7 @@ import { eq, and, ne, sql as drizzleSql, isNotNull, desc } from "drizzle-orm";
 import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertTaskCompletionSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, customMaintenanceTasks, insertSupportTicketSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, securitySessions, referralCredits, referralFreeMonths, agentProfiles, users, siteContent, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, insertReviewFlagSchema, homeDocuments, quizResults, type House } from "@workspace/db";
 import { calculateDIYSavingsAmount } from "../shared/cost-helpers";
 import { extractInvoiceData, verifyDIYPhotos, type InvoiceExtraction } from "../invoice-analysis-service";
-import { invoiceAnalyses, contractorBoosts, affiliateReferrals, subscriptionCycleEvents, contractorInvoiceUploads, companies } from "@workspace/db";
+import { invoiceAnalyses, contractorBoosts, affiliateReferrals, subscriptionCycleEvents, contractorInvoiceUploads, companies, proposals } from "@workspace/db";
 import pushRoutes from "../push-routes";
 import { pushService } from "../push-service";
 import { ObjectStorageService, ObjectNotFoundError } from "../objectStorage";
@@ -17124,6 +17124,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         firstName,
         lastName,
         passwordHash,
+        role: 'contractor',
         status: 'active',
         inviteToken: null,
         inviteExpiresAt: null,
@@ -17183,6 +17184,10 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       const inviteExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
       if (existingUser) {
+        // Only contractor-role accounts may be onboarded as techs; mutating homeowner/agent accounts is forbidden
+        if ((existingUser as any).role !== 'contractor') {
+          return res.status(400).json({ message: "An account with this email already exists and cannot be invited as a field technician. Please use a different email address." });
+        }
         if (existingUser.companyId && existingUser.companyId !== adminUser.companyId) {
           return res.status(400).json({ message: "This user already belongs to another company" });
         }
@@ -17337,7 +17342,33 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // Upload invoice (admin or tech, not suspended); max 10 MB, PDF/JPG/PNG only
-  app.post('/api/contractor/invoices/upload', isAuthenticated, requireNotSuspended(), upload.single('file'), async (req: any, res) => {
+  // List homeowners who have proposals with this company (used by tech invoice upload selector)
+  app.get('/api/contractor/company-homeowners', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin', 'tech'), async (req: any, res) => {
+    try {
+      const sessionUser = req.session.user;
+      if (!sessionUser.companyId) {
+        return res.status(400).json({ message: "You must belong to a company" });
+      }
+      const homeowners = await db.selectDistinct({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+      }).from(proposals)
+        .innerJoin(users, eq(proposals.homeownerId, users.id))
+        .where(and(
+          eq(proposals.companyId, sessionUser.companyId),
+          isNotNull(proposals.homeownerId)
+        ))
+        .orderBy(users.firstName);
+      res.json(homeowners);
+    } catch (error) {
+      req.log?.error({ error }, '[ENTERPRISE] Error fetching company homeowners');
+      res.status(500).json({ message: "Failed to fetch homeowners" });
+    }
+  });
+
+  app.post('/api/contractor/invoices/upload', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin', 'tech'), upload.single('file'), async (req: any, res) => {
     try {
       const sessionUser = req.session.user;
       if (sessionUser.role !== 'contractor' || !sessionUser.companyId) {
@@ -17356,13 +17387,18 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
       const { notes, amount, invoiceDate, jobId } = req.body;
       let homeownerId: string | null = req.body.homeownerId || null;
-      // If caller supplied homeownerEmail instead of homeownerId, resolve it
-      if (!homeownerId && req.body.homeownerEmail) {
-        const [hw] = await db.select({ id: users.id })
-          .from(users)
-          .where(and(eq(users.email, req.body.homeownerEmail), eq(users.role as any, 'homeowner')))
+      // Validate that the homeowner is scoped to this company (has a proposal relationship)
+      if (homeownerId) {
+        const [proposal] = await db.select({ id: proposals.id })
+          .from(proposals)
+          .where(and(
+            eq(proposals.companyId, sessionUser.companyId),
+            eq(proposals.homeownerId, homeownerId)
+          ))
           .limit(1);
-        homeownerId = hw?.id || null;
+        if (!proposal) {
+          homeownerId = null; // silently drop unscoped homeowner reference
+        }
       }
       const objectStorage = new ObjectStorageService();
       const fileKey = `contractor-invoices/${sessionUser.companyId}/${Date.now()}-${req.file.originalname}`;
@@ -17389,8 +17425,8 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // List invoices — admins see all company invoices; techs see only their own
-  // Query params: techId, homeownerId, startDate, endDate
-  app.get('/api/contractor/invoices', isAuthenticated, requireNotSuspended(), async (req: any, res) => {
+  // Query params: techId, homeownerId, homeownerName, startDate, endDate
+  app.get('/api/contractor/invoices', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin', 'tech'), async (req: any, res) => {
     try {
       const sessionUser = req.session.user;
       if (sessionUser.role !== 'contractor' || !sessionUser.companyId) {
