@@ -63,6 +63,8 @@ interface TeamMember {
 interface AdminInvoice {
   id: string;
   homeownerId: string | null;
+  homeownerFirstName: string | null;
+  homeownerLastName: string | null;
   jobId: string | null;
   fileName: string;
   fileUrl: string;
@@ -591,6 +593,12 @@ export default function ContractorDashboard() {
                       By {[inv.uploaderFirstName, inv.uploaderLastName].filter(Boolean).join(' ') || inv.uploaderEmail || 'Unknown'}
                       {inv.invoiceDate && ` · ${inv.invoiceDate}`}
                     </div>
+                    {(inv.homeownerFirstName || inv.homeownerLastName) && (
+                      <div style={{ fontSize: 12, color: '#1560A2', marginTop: 2 }}>
+                        Homeowner: {[inv.homeownerFirstName, inv.homeownerLastName].filter(Boolean).join(' ')}
+                      </div>
+                    )}
+                    {inv.jobId && <div style={{ fontSize: 12, color: '#64748b', marginTop: 1 }}>Job: {inv.jobId}</div>}
                     {inv.notes && <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>{inv.notes}</div>}
                     {inv.amount && <div style={{ fontSize: 13, fontWeight: 600, color: '#09694a', marginTop: 4 }}>${parseFloat(inv.amount).toFixed(2)}</div>}
                   </div>

@@ -1127,7 +1127,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.session?.isAuthenticated) return next();
     const u = req.session?.user;
     if (u && (['suspended', 'removed', 'pending_invite'].includes(u.status) || suspendedUserIds.has(u.id))) {
-      return res.status(401).json({ message: "Account access revoked. Contact your company administrator." });
+      return res.status(401).json({ message: "Account suspended. Contact your company administrator." });
     }
     next();
   });
@@ -3698,7 +3698,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Block suspended enterprise tech accounts
       if (['suspended', 'removed'].includes((user as any).status) || suspendedUserIds.has(user.id)) {
-        return res.status(401).json({ message: "Account access revoked. Please contact your company administrator." });
+        return res.status(401).json({ message: "Account suspended. Please contact your company administrator." });
       }
 
       // Verify password
@@ -17405,12 +17405,8 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       }
       const objectStorage = new ObjectStorageService();
       const fileKey = `contractor-invoices/${sessionUser.companyId}/${Date.now()}-${req.file.originalname}`;
-      let fileUrl = fileKey;
-      try {
-        await objectStorage.uploadFile(fileKey, req.file.buffer, req.file.mimetype);
-      } catch (uploadErr) {
-        req.log?.warn({ uploadErr }, '[ENTERPRISE] Object storage upload failed; storing key as file reference');
-      }
+      await objectStorage.uploadFile(fileKey, req.file.buffer, req.file.mimetype);
+      const fileUrl = fileKey;
 
       const [invoice] = await db.insert(contractorInvoiceUploads).values({
         companyId: sessionUser.companyId,
