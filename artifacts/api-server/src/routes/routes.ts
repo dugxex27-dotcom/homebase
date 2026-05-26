@@ -17437,7 +17437,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       const objectStorage = new ObjectStorageService();
       const fileKey = `contractor-invoices/${sessionUser.companyId}/${Date.now()}-${req.file.originalname}`;
       await objectStorage.uploadFile(fileKey, req.file.buffer, req.file.mimetype);
-      const fileUrl = fileKey;
+      const fileUrl = `/public/${fileKey}`;
 
       const [invoice] = await db.insert(contractorInvoiceUploads).values({
         companyId: sessionUser.companyId,
