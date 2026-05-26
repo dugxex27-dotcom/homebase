@@ -31,7 +31,8 @@ import {
   CheckCircle,
   AlertCircle,
   Plus,
-  Sparkles
+  Sparkles,
+  UserCog
 } from "lucide-react";
 import type { User as UserType, Proposal, ContractorAppointment } from "@shared/schema";
 import { Link } from "wouter";
@@ -344,6 +345,17 @@ export default function ContractorDashboard() {
           </div>
           <span className="action-cta" style={{ color: '#079669' }}>Log →</span>
         </Link>
+
+        {companyRole === 'owner' && (
+          <Link href="/contractor/team" className="action-row" style={{ textDecoration: 'none' }} data-testid="button-manage-team">
+            <div className="action-icon" style={{ background: '#EAF4FD', color: '#1560A2' }}><UserCog size={18} /></div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="action-title">Manage Team</div>
+              <div className="action-sub">Invite and manage field technicians</div>
+            </div>
+            <span className="action-cta" style={{ color: '#1560A2' }}>Manage →</span>
+          </Link>
+        )}
 
         {/* Homeowner Connection */}
         <span className="dash-section-label" style={{ marginTop: 8 }}>Homeowner Connection</span>

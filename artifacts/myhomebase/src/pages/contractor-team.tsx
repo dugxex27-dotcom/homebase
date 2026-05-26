@@ -35,6 +35,7 @@ interface TeamMember {
   companyStatus: string | null;
   inviteExpiresAt: string | null;
   createdAt: string | null;
+  invoiceCount: number;
 }
 
 function statusBadge(status: string | null) {
@@ -245,6 +246,11 @@ export default function ContractorTeam() {
                         <Clock size={11} />
                         Invite expires{" "}
                         {format(new Date(member.inviteExpiresAt), "MMM d, yyyy")}
+                      </p>
+                    )}
+                    {member.invoiceCount > 0 && (
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {member.invoiceCount} invoice{member.invoiceCount !== 1 ? "s" : ""} submitted
                       </p>
                     )}
                   </div>

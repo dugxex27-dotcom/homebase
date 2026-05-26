@@ -164,6 +164,7 @@ export const users = pgTable("users", {
   companyStatus: text("company_status").default("active"), // "active" | "suspended" | "pending_invite"
   inviteToken: varchar("invite_token").unique(),
   inviteExpiresAt: timestamp("invite_expires_at"),
+  companyLeftAt: timestamp("company_left_at"), // Set when a tech is removed from company (preserves history)
   canRespondToProposals: boolean("can_respond_to_proposals").notNull().default(false), // For employees: owner can toggle
   // Subscription fields
   subscriptionPlanId: varchar("subscription_plan_id").references(() => subscriptionPlans.id, { onDelete: 'set null' }), // FK to subscription_plans.id

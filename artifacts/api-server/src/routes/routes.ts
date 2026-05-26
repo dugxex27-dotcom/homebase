@@ -8,7 +8,7 @@ import { setupGoogleAuth } from "../googleAuth";
 import { z } from "zod";
 import { randomUUID } from "crypto";
 import rateLimit from "express-rate-limit";
-import { eq, and, sql as drizzleSql, isNotNull, desc } from "drizzle-orm";
+import { eq, and, ne, sql as drizzleSql, isNotNull, desc } from "drizzle-orm";
 import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertTaskCompletionSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, customMaintenanceTasks, insertSupportTicketSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, securitySessions, referralCredits, referralFreeMonths, agentProfiles, users, siteContent, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, insertReviewFlagSchema, homeDocuments, quizResults, type House } from "@workspace/db";
 import { calculateDIYSavingsAmount } from "../shared/cost-helpers";
 import { extractInvoiceData, verifyDIYPhotos, type InvoiceExtraction } from "../invoice-analysis-service";
@@ -17153,7 +17153,11 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       const [companyRow] = await db.select().from(companies).where(eq(companies.id, adminUser.companyId)).limit(1);
       const maxSeats = (companyRow as any)?.maxTechSeats ?? 3;
       const currentTechs = await db.select({ id: users.id }).from(users)
-        .where(and(eq(users.companyId, adminUser.companyId), eq(users.companyRole as any, 'tech')));
+        .where(and(
+          eq(users.companyId, adminUser.companyId),
+          eq(users.companyRole as any, 'tech'),
+          ne(users.companyStatus as any, 'removed')
+        ));
       if (currentTechs.length >= maxSeats) {
         return res.status(400).json({ message: `Tech seat limit reached (${maxSeats}). Contact support to add more seats.` });
       }
@@ -17193,7 +17197,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       }
 
       const domain = process.env.REPLIT_DOMAINS?.split(',')[0]?.trim() || 'gotohomebase.com';
-      const inviteUrl = `https://${domain}/accept-invite?token=${inviteToken}`;
+      const inviteUrl = `https://${domain}/contractor/accept-invite?token=${inviteToken}`;
       await emailService.sendTechInviteEmail(
         email,
         companyRow?.name || 'Your Company',
@@ -17231,10 +17235,18 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         companyStatus: users.companyStatus,
         inviteExpiresAt: users.inviteExpiresAt,
         createdAt: users.createdAt,
-      } as any).from(users).where(and(
-        eq(users.companyId, adminUser.companyId),
-        eq(users.companyRole as any, 'tech')
-      ));
+        invoiceCount: drizzleSql<number>`cast(count(${contractorTechInvoices.id}) as int)`,
+      } as any).from(users)
+        .leftJoin(contractorTechInvoices, eq(contractorTechInvoices.uploadedByUserId, users.id))
+        .where(and(
+          eq(users.companyId, adminUser.companyId),
+          eq(users.companyRole as any, 'tech'),
+          ne(users.companyStatus as any, 'removed')
+        ))
+        .groupBy(
+          users.id, users.email, users.firstName, users.lastName,
+          users.companyRole, users.companyStatus, users.inviteExpiresAt, users.createdAt
+        );
 
       res.json(teamMembers);
     } catch (error) {
@@ -17313,11 +17325,10 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       )).limit(1);
       if (!targetUser) return res.status(404).json({ message: "Team member not found" });
 
-      // Unlink from company (do not delete the user account)
+      // Soft-remove: preserve company link for invoice history, mark as removed
       await db.update(users).set({
-        companyId: null,
-        companyRole: null,
-        companyStatus: 'active',
+        companyStatus: 'removed',
+        companyLeftAt: new Date(),
         updatedAt: new Date(),
       } as any).where(eq(users.id, userId));
 
@@ -17346,6 +17357,11 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       }
       if (!req.file) {
         return res.status(400).json({ message: "File is required" });
+      }
+
+      const allowedMimes = ['application/pdf', 'image/jpeg', 'image/png'];
+      if (!allowedMimes.includes(req.file.mimetype)) {
+        return res.status(400).json({ message: "Only PDF, JPG, and PNG files are allowed" });
       }
 
       const { description, amount, invoiceDate, homeownerId, houseId } = req.body;

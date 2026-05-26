@@ -151,7 +151,7 @@ function Router() {
         <ScrollToTop />
         <BackToTop />
         <Switch>
-          <Route path="/accept-invite" component={AcceptInvite} />
+          <Route path="/contractor/accept-invite" component={AcceptInvite} />
           <Route path="/invite/:code" component={Invite} />
           <Route path="/homeowner">{() => { window.location.replace('/homeowner.html'); return null; }}</Route>
           <Route path="/contractor">{() => { window.location.replace('/contractor.html'); return null; }}</Route>
