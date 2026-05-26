@@ -1,0 +1,160 @@
+I need you to build an Enterprise Contractor Account system for the contractor side of the MyHomeBase™ app. This is a TypeScript/Node.js application. Here is exactly what needs to be built:
+
+---
+
+## OVERVIEW
+
+Contractors currently have individual accounts. We need to support ENTERPRISE contractor companies where:
+- A company has one ADMIN account (the business owner or office manager)
+- The admin can add up to N technician seats (TECH role)
+- Techs can upload invoices to homeowner job histories
+- Techs have ZERO admin capabilities — no billing, no settings, no team management, no homeowner data beyond what they're assigned
+
+---
+
+## DATABASE / DATA MODEL
+
+Add the following to the schema:
+
+### contractor_companies table
+- id (uuid, PK)
+- company_name (string)
+- subscription_tier: 'individual' | 'enterprise'
+- max_tech_seats (integer, default 5 — configurable per plan)
+- active (boolean)
+- created_at
+
+### contractor_users table (replaces/extends current contractor accounts)
+- id (uuid, PK)
+- company_id (FK → contractor_companies)
+- email
+- hashed_password
+- full_name
+- phone
+- role: 'admin' | 'tech'
+- status: 'active' | 'suspended' | 'pending_invite'
+- invited_by (FK → contractor_users, nullable)
+- invite_token (string, nullable — for email invite flow)
+- invite_expires_at (timestamp, nullable)
+- created_at
+- last_login_at
+
+### invoice_uploads table (attach to existing job/homeowner history)
+- id (uuid, PK)
+- homeowner_id (FK)
+- job_id (FK, nullable)
+- uploaded_by_user_id (FK → contractor_users)
+- company_id (FK → contractor_companies)
+- file_url (string)
+- file_name (string)
+- invoice_date (date)
+- amount (decimal, nullable)
+- notes (text, nullable)
+- created_at
+
+---
+
+## ROLE PERMISSIONS MATRIX
+
+Implement a middleware permission guard. Apply it to every route.
+
+| Action | ADMIN | TECH |
+|---|---|---|
+| View company dashboard | ✅ | ❌ |
+| Add/remove tech seats | ✅ | ❌ |
+| Suspend/reactivate a tech | ✅ | ❌ |
+| View billing & subscription | ✅ | ❌ |
+| Change company settings | ✅ | ❌ |
+| View assigned homeowners | ✅ | ✅ |
+| Upload invoice to homeowner history | ✅ | ✅ |
+| View own upload history | ✅ | ✅ |
+| View other techs' uploads | ✅ | ❌ |
+
+---
+
+## BACKEND API ENDPOINTS
+
+Build all of these as RESTful Express routes with JWT auth middleware:
+
+### Auth
+- POST /api/contractor/login — returns JWT with { userId, companyId, role }
+- POST /api/contractor/accept-invite — accepts invite token, sets password, activates account
+
+### Admin: Team Management
+- GET /api/admin/team — list all techs in the company (name, email, status, last login, upload count)
+- POST /api/admin/team/invite — send invite to new tech (email). Enforce max_tech_seats limit. Generate invite_token, set expiry 72 hours. Send invite email.
+- PATCH /api/admin/team/:userId/suspend — set status to 'suspended', revoke active JWT sessions
+- PATCH /api/admin/team/:userId/reactivate — set status back to 'active'
+- DELETE /api/admin/team/:userId — permanently remove tech (soft delete, retain invoice history)
+
+### Invoices (both roles, filtered by role)
+- GET /api/invoices — admins see all company invoices; techs see only their own uploads
+- POST /api/invoices/upload — multipart form, attach to homeowner history. Fields: homeowner_id, job_id (optional), invoice_date, amount, notes, file. Store file to cloud storage. Log uploaded_by_user_id.
+- GET /api/invoices/:id — get single invoice detail (tech can only access own invoices)
+
+---
+
+## FRONTEND SCREENS
+
+### Admin Side
+
+**Team Management Dashboard** (/contractor/admin/team)
+- Header shows: "Your Team — X of Y seats used" with a progress bar
+- Table of techs: Name | Email | Status (active/suspended badge) | Last Login | Invoices Uploaded | Actions
+- Actions per row: Suspend button (turns red/grayed when suspended), Reactivate button, Remove button (with confirmation modal)
+- "Add Technician" button — opens modal with email input field → sends invite
+- If at seat limit, "Add Technician" is disabled with tooltip: "Seat limit reached. Contact support to upgrade."
+
+**Invoice History (Admin view)** (/contractor/admin/invoices)
+- Filterable by: tech name, homeowner, date range
+- Table: Date | Homeowner | Tech Name | File | Amount | Notes | View
+
+### Tech Side
+
+**Tech Dashboard** (/contractor/tech/dashboard)
+- Simple view: "Upload Invoice" CTA button, list of their own recent uploads
+- NO navigation links to admin areas — they must not exist in the DOM for tech role users
+- Show: assigned homeowner list (read-only)
+
+**Upload Invoice** (/contractor/tech/upload)
+- Form: Select Homeowner (dropdown of assigned homeowners), Job ID (optional text), Invoice Date, Amount, Notes, File Upload (PDF/JPG/PNG, max 10MB)
+- On submit: POST to /api/invoices/upload
+- Success state: "Invoice uploaded to [Homeowner Name]'s home history ✓"
+
+---
+
+## MIDDLEWARE & SECURITY REQUIREMENTS
+
+1. **requireRole(...roles)** middleware — attach to every route. Checks JWT role field. Returns 403 if role not in allowed list.
+2. **requireSameCompany** middleware — ensures the resource being accessed belongs to the user's company_id. Prevents cross-company data leaks.
+3. **requireNotSuspended** middleware — check status === 'active' on every authenticated request. Return 401 with message "Your account has been suspended. Contact your company administrator." if suspended.
+4. When an admin suspends a tech, add their userId to a token blocklist (Redis or in-memory set) so existing JWTs are immediately invalid.
+
+---
+
+## INVITE FLOW
+
+1. Admin enters tech email → server generates a secure random invite_token (uuid or crypto.randomBytes), saves to contractor_users with status 'pending_invite', expiry 72hr
+2. Server sends email (use existing email service or nodemailer) with link: https://app.myhomebase.com/contractor/accept-invite?token=TOKEN
+3. Tech clicks link → frontend shows "Set Your Password" form
+4. On submit → POST /api/contractor/accept-invite with { token, password }
+5. Server validates token not expired, hashes password, sets status to 'active', clears invite_token
+6. Tech is redirected to their tech dashboard
+
+---
+
+## SEAT LIMIT ENFORCEMENT
+
+- On every POST /api/admin/team/invite: count WHERE company_id = X AND status != 'deleted' and compare to max_tech_seats
+- If at limit, return 400 with { error: 'seat_limit_reached', message: 'You have reached your technician seat limit.' }
+- Suspended techs STILL count against the seat limit (they hold a seat)
+- Deleted techs do NOT count against the seat limit
+
+---
+
+## NOTES
+- Keep all existing individual contractor account functionality intact — this is an additive enterprise layer
+- Individual contractors (non-enterprise) have company_id pointing to a single-user company with max_tech_seats = 0 and role = 'admin'
+- Use existing auth patterns, file storage, and email service already in the codebase
+- Add a 'role' claim to the JWT at login time
+- All API responses must be consistent JSON: { success: boolean, data?: any, error?: string }
