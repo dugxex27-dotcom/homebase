@@ -1122,22 +1122,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Block suspended contractor accounts from ALL authenticated /api/contractor/* routes.
-  // Public routes (validate-token, accept-invite) pass through because they are unauthenticated.
+  // Guard for all /api/contractor/* routes:
+  // 1. Block suspended/removed/pending_invite accounts.
+  // 2. Block tech users from admin-only paths — techs may only access invoices, team,
+  //    validate-token, and accept-invite. req.originalUrl preserves the full path
+  //    regardless of Express middleware URL-stripping.
+  const TECH_ALLOWED_CONTRACTOR_PREFIXES = [
+    '/api/contractor/invoices',
+    '/api/contractor/team',
+    '/api/contractor/validate-token',
+    '/api/contractor/accept-invite',
+  ];
   app.use('/api/contractor', (req: any, res: any, next: any) => {
     if (!req.session?.isAuthenticated) return next();
     const u = req.session?.user;
     if (u && (['suspended', 'removed', 'pending_invite'].includes(u.status) || suspendedUserIds.has(u.id))) {
       return res.status(401).json({ message: "Account suspended. Contact your company administrator." });
     }
+    if (u?.companyRole === 'tech') {
+      const urlPath = req.originalUrl.split('?')[0];
+      const allowed = TECH_ALLOWED_CONTRACTOR_PREFIXES.some(p => urlPath === p || urlPath.startsWith(p + '/'));
+      if (!allowed) {
+        return res.status(403).json({ message: "Forbidden - tech accounts cannot access this resource" });
+      }
+    }
     next();
   });
 
-  // Suspend guard for all CRM routes (covers contractor-scoped endpoints outside /api/contractor/*)
+  // Guard for all /api/crm/* routes:
+  // Block suspended accounts and tech users (CRM is admin/owner only).
   app.use('/api/crm', (req: any, res: any, next: any) => {
     if (!req.session?.isAuthenticated) return next();
     const u = req.session?.user;
     if (u && (['suspended', 'removed', 'pending_invite'].includes(u.status) || suspendedUserIds.has(u.id))) {
       return res.status(401).json({ message: "Account suspended. Contact your company administrator." });
+    }
+    if (u?.companyRole === 'tech') {
+      return res.status(403).json({ message: "Forbidden - tech accounts cannot access this resource" });
     }
     next();
   });
