@@ -21,7 +21,7 @@ interface TechInvoice {
   id: string;
   fileName: string;
   fileUrl: string;
-  description: string | null;
+  notes: string | null;
   amount: string | null;
   invoiceDate: string | null;
   createdAt: string | null;
@@ -33,7 +33,7 @@ interface TechDashboardProps {
   user: {
     firstName?: string | null;
     email?: string | null;
-    companyStatus?: string | null;
+    status?: string | null;
   };
 }
 
@@ -48,7 +48,7 @@ export function TechDashboard({ user }: TechDashboardProps) {
   const [uploading, setUploading] = useState(false);
 
   const { data: invoices = [], isLoading } = useQuery<TechInvoice[]>({
-    queryKey: ["/api/contractor/enterprise/invoices"],
+    queryKey: ["/api/contractor/invoices"],
   });
 
   const handleUpload = async (e: React.FormEvent) => {
@@ -58,11 +58,11 @@ export function TechDashboard({ user }: TechDashboardProps) {
     try {
       const fd = new FormData();
       fd.append("file", file);
-      if (description) fd.append("description", description);
+      if (description) fd.append("notes", description);
       if (amount) fd.append("amount", amount);
       if (invoiceDate) fd.append("invoiceDate", invoiceDate);
 
-      const res = await fetch("/api/contractor/enterprise/invoices/upload", {
+      const res = await fetch("/api/contractor/invoices/upload", {
         method: "POST",
         credentials: "include",
         body: fd,
@@ -71,7 +71,7 @@ export function TechDashboard({ user }: TechDashboardProps) {
         const data = await res.json();
         throw new Error(data.message || "Upload failed");
       }
-      await qc.invalidateQueries({ queryKey: ["/api/contractor/enterprise/invoices"] });
+      await qc.invalidateQueries({ queryKey: ["/api/contractor/invoices"] });
       toast({ title: "Invoice uploaded", description: `${file.name} uploaded successfully.` });
       setUploadOpen(false);
       setFile(null);
@@ -85,7 +85,7 @@ export function TechDashboard({ user }: TechDashboardProps) {
     }
   };
 
-  const isSuspended = user.companyStatus === "suspended";
+  const isSuspended = user.status === "suspended";
   const firstName = user.firstName || user.email?.split("@")[0] || "Tech";
 
   if (isSuspended) {
@@ -198,8 +198,8 @@ export function TechDashboard({ user }: TechDashboardProps) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-slate-900 truncate">{inv.fileName}</p>
-                  {inv.description && (
-                    <p className="text-sm text-slate-500 truncate">{inv.description}</p>
+                  {inv.notes && (
+                    <p className="text-sm text-slate-500 truncate">{inv.notes}</p>
                   )}
                   <div className="flex items-center gap-3 mt-1">
                     {inv.amount && (

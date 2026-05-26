@@ -38,7 +38,7 @@ export default function AcceptInvite() {
       setError("No invite token found in this link. Please check your invitation email.");
       return;
     }
-    fetch(`/api/contractor/enterprise/validate-token?token=${encodeURIComponent(token)}`)
+    fetch(`/api/contractor/validate-token?token=${encodeURIComponent(token)}`)
       .then((r) => r.json())
       .then((data) => {
         if (data.message && !data.companyName) {
@@ -77,7 +77,7 @@ export default function AcceptInvite() {
     }
     setStatus("submitting");
     try {
-      const res = await fetch("/api/contractor/enterprise/accept-invite", {
+      const res = await fetch("/api/contractor/accept-invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

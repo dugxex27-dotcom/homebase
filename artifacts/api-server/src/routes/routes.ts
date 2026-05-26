@@ -3,7 +3,7 @@ import express from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage, type IStorage } from "../storage";
-import { setupAuth, isAuthenticated, requireRole, requirePropertyOwner } from "../replitAuth";
+import { setupAuth, isAuthenticated, requireRole, requirePropertyOwner, suspendedUserIds, requireCompanyRole, requireNotSuspended, requireSameCompany } from "../replitAuth";
 import { setupGoogleAuth } from "../googleAuth";
 import { z } from "zod";
 import { randomUUID } from "crypto";
@@ -12,7 +12,7 @@ import { eq, and, ne, sql as drizzleSql, isNotNull, desc } from "drizzle-orm";
 import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertTaskCompletionSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, customMaintenanceTasks, insertSupportTicketSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, securitySessions, referralCredits, referralFreeMonths, agentProfiles, users, siteContent, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, insertReviewFlagSchema, homeDocuments, quizResults, type House } from "@workspace/db";
 import { calculateDIYSavingsAmount } from "../shared/cost-helpers";
 import { extractInvoiceData, verifyDIYPhotos, type InvoiceExtraction } from "../invoice-analysis-service";
-import { invoiceAnalyses, contractorBoosts, affiliateReferrals, subscriptionCycleEvents, contractorTechInvoices, companies } from "@workspace/db";
+import { invoiceAnalyses, contractorBoosts, affiliateReferrals, subscriptionCycleEvents, contractorInvoiceUploads, companies } from "@workspace/db";
 import pushRoutes from "../push-routes";
 import { pushService } from "../push-service";
 import { ObjectStorageService, ObjectNotFoundError } from "../objectStorage";
@@ -3685,6 +3685,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
+      // Block suspended enterprise tech accounts
+      if ((user as any).status === 'suspended' || suspendedUserIds.has(user.id)) {
+        return res.status(401).json({ message: "Account suspended. Please contact your company administrator." });
+      }
+
       // Verify password
       const bcrypt = await import('bcryptjs');
       const isValid = await bcrypt.compare(password, user.passwordHash);
@@ -3707,6 +3712,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create session
       req.session.user = user;
       req.session.isAuthenticated = true;
+
+      // Update lastLoginAt for enterprise team management tracking (non-blocking)
+      db.update(users).set({ lastLoginAt: new Date() } as any).where(eq(users.id, user.id)).catch(() => {});
 
       // Log successful login (non-blocking - don't fail login if audit fails)
       try {
@@ -17026,7 +17034,10 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   // ─────────────────────────────────────────────────────────────────────────────
 
   // Validate invite token (public — returns company info for the invite UI)
-  app.get('/api/contractor/enterprise/validate-token', async (req: any, res) => {
+  // ─── Enterprise Contractor Team & Invoice Routes ─────────────────────────────
+
+  // Validate invite token (public — linked from invite email)
+  app.get('/api/contractor/validate-token', async (req: any, res) => {
     try {
       const { token } = req.query;
       if (!token || typeof token !== 'string') {
@@ -17039,16 +17050,16 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         lastName: users.lastName,
         companyId: users.companyId,
         inviteExpiresAt: users.inviteExpiresAt,
-        companyStatus: users.companyStatus,
+        status: users.status,
       }).from(users).where(eq(users.inviteToken, token)).limit(1);
 
       if (!invitedUser) {
         return res.status(404).json({ message: "Invalid or expired invite token" });
       }
-      if ((invitedUser as any).companyStatus !== 'pending_invite') {
+      if (invitedUser.status !== 'pending_invite') {
         return res.status(400).json({ message: "This invite has already been accepted" });
       }
-      if ((invitedUser as any).inviteExpiresAt && new Date() > new Date((invitedUser as any).inviteExpiresAt)) {
+      if (invitedUser.inviteExpiresAt && new Date() > new Date(invitedUser.inviteExpiresAt)) {
         return res.status(400).json({ message: "This invite has expired" });
       }
 
@@ -17061,16 +17072,16 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         firstName: invitedUser.firstName,
         lastName: invitedUser.lastName,
         companyName: company?.name || 'Your Company',
-        expiresAt: (invitedUser as any).inviteExpiresAt,
+        expiresAt: invitedUser.inviteExpiresAt,
       });
     } catch (error) {
-      console.error('[ENTERPRISE] Error validating invite token:', error);
+      req.log?.error({ error }, '[ENTERPRISE] Error validating invite token');
       res.status(500).json({ message: "Failed to validate invite token" });
     }
   });
 
   // Accept invite (public — tech sets password and activates their account)
-  app.post('/api/contractor/enterprise/accept-invite', async (req: any, res) => {
+  app.post('/api/contractor/accept-invite', async (req: any, res) => {
     try {
       const bodySchema = z.object({
         token: z.string().min(1),
@@ -17088,7 +17099,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       if (!invitedUser) {
         return res.status(404).json({ message: "Invalid or expired invite token" });
       }
-      if ((invitedUser as any).companyStatus !== 'pending_invite') {
+      if ((invitedUser as any).status !== 'pending_invite') {
         return res.status(400).json({ message: "This invite has already been accepted" });
       }
       if ((invitedUser as any).inviteExpiresAt && new Date() > new Date((invitedUser as any).inviteExpiresAt)) {
@@ -17102,7 +17113,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         firstName,
         lastName,
         passwordHash,
-        companyStatus: 'active',
+        status: 'active',
         inviteToken: null,
         inviteExpiresAt: null,
         accountStatus: 'active',
@@ -17119,23 +17130,17 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
       res.json({ message: "Account activated successfully", user: updatedUser });
     } catch (error) {
-      console.error('[ENTERPRISE] Error accepting invite:', error);
+      req.log?.error({ error }, '[ENTERPRISE] Error accepting invite');
       res.status(500).json({ message: "Failed to accept invite" });
     }
   });
 
-  // Send tech invite (owner only)
-  app.post('/api/contractor/enterprise/invite-tech', isAuthenticated, async (req: any, res) => {
+  // Invite a tech (admin/owner only)
+  app.post('/api/contractor/invite-tech', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), async (req: any, res) => {
     try {
-      if (!req.session?.isAuthenticated || !req.session?.user) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
       const adminUser = req.session.user;
-      if (adminUser.role !== 'contractor' || (adminUser.companyRole !== 'owner' && adminUser.companyRole !== 'admin')) {
-        return res.status(403).json({ message: "Only company owners can invite techs" });
-      }
-      if (!adminUser.companyId) {
-        return res.status(400).json({ message: "You must belong to a company to invite techs" });
+      if (adminUser.role !== 'contractor' || !adminUser.companyId) {
+        return res.status(400).json({ message: "You must be a contractor with a company to invite techs" });
       }
 
       const bodySchema = z.object({
@@ -17149,21 +17154,21 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       }
       const { email, firstName, lastName } = parsed.data;
 
-      // Check seat limit
       const [companyRow] = await db.select().from(companies).where(eq(companies.id, adminUser.companyId)).limit(1);
       const maxSeats = (companyRow as any)?.maxTechSeats ?? 3;
       const currentTechs = await db.select({ id: users.id }).from(users)
         .where(and(
           eq(users.companyId, adminUser.companyId),
           eq(users.companyRole as any, 'tech'),
-          ne(users.companyStatus as any, 'removed')
+          ne(users.status as any, 'removed')
         ));
       if (currentTechs.length >= maxSeats) {
         return res.status(400).json({ message: `Tech seat limit reached (${maxSeats}). Contact support to add more seats.` });
       }
 
       const [existingUser] = await db.select().from(users).where(eq(users.email, email)).limit(1);
-      const inviteToken = randomUUID();
+      const cryptoMod = await import('crypto');
+      const inviteToken = cryptoMod.randomBytes(32).toString('hex');
       const inviteExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
       if (existingUser) {
@@ -17173,7 +17178,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         await db.update(users).set({
           companyId: adminUser.companyId,
           companyRole: 'tech',
-          companyStatus: 'pending_invite',
+          status: 'pending_invite',
           inviteToken,
           inviteExpiresAt,
           updatedAt: new Date(),
@@ -17187,7 +17192,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
           role: 'contractor',
           companyId: adminUser.companyId,
           companyRole: 'tech',
-          companyStatus: 'pending_invite',
+          status: 'pending_invite',
           inviteToken,
           inviteExpiresAt,
           accountStatus: 'active',
@@ -17207,24 +17212,21 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
       res.json({ message: "Invite sent successfully", inviteUrl });
     } catch (error) {
-      console.error('[ENTERPRISE] Error inviting tech:', error);
+      req.log?.error({ error }, '[ENTERPRISE] Error inviting tech');
       res.status(500).json({ message: "Failed to send invite" });
     }
   });
 
-  // Get team members (owner/admin only)
-  app.get('/api/contractor/enterprise/team', isAuthenticated, async (req: any, res) => {
+  // Get team members with seat usage (admin/owner only)
+  app.get('/api/contractor/team', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), async (req: any, res) => {
     try {
-      if (!req.session?.isAuthenticated || !req.session?.user) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
       const adminUser = req.session.user;
-      if (adminUser.role !== 'contractor' || (adminUser.companyRole !== 'owner' && adminUser.companyRole !== 'admin')) {
-        return res.status(403).json({ message: "Only company owners can view team members" });
-      }
       if (!adminUser.companyId) {
         return res.status(400).json({ message: "You must belong to a company" });
       }
+
+      const [companyRow] = await db.select({ maxTechSeats: companies.maxTechSeats })
+        .from(companies).where(eq(companies.id, adminUser.companyId)).limit(1);
 
       const teamMembers = await db.select({
         id: users.id,
@@ -17232,40 +17234,35 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         firstName: users.firstName,
         lastName: users.lastName,
         companyRole: users.companyRole,
-        companyStatus: users.companyStatus,
+        status: users.status,
+        lastLoginAt: users.lastLoginAt,
         inviteExpiresAt: users.inviteExpiresAt,
         createdAt: users.createdAt,
-        invoiceCount: drizzleSql<number>`cast(count(${contractorTechInvoices.id}) as int)`,
+        invoiceCount: drizzleSql<number>`cast(count(${contractorInvoiceUploads.id}) as int)`,
       } as any).from(users)
-        .leftJoin(contractorTechInvoices, eq(contractorTechInvoices.uploadedByUserId, users.id))
+        .leftJoin(contractorInvoiceUploads, eq(contractorInvoiceUploads.uploadedByUserId, users.id))
         .where(and(
           eq(users.companyId, adminUser.companyId),
           eq(users.companyRole as any, 'tech'),
-          ne(users.companyStatus as any, 'removed')
+          ne(users.status as any, 'removed')
         ))
         .groupBy(
           users.id, users.email, users.firstName, users.lastName,
-          users.companyRole, users.companyStatus, users.inviteExpiresAt, users.createdAt
+          users.companyRole, users.status, users.lastLoginAt, users.inviteExpiresAt, users.createdAt
         );
 
-      res.json(teamMembers);
+      res.json({ teamMembers, maxTechSeats: (companyRow as any)?.maxTechSeats ?? 3 });
     } catch (error) {
-      console.error('[ENTERPRISE] Error fetching team:', error);
+      req.log?.error({ error }, '[ENTERPRISE] Error fetching team');
       res.status(500).json({ message: "Failed to fetch team members" });
     }
   });
 
-  // Suspend a tech (owner/admin only)
-  app.patch('/api/contractor/enterprise/team/:userId/suspend', isAuthenticated, async (req: any, res) => {
+  // Suspend a tech (admin/owner only)
+  app.patch('/api/contractor/team/:userId/suspend', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), requireSameCompany(), async (req: any, res) => {
     try {
-      if (!req.session?.isAuthenticated || !req.session?.user) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-      const adminUser = req.session.user;
-      if (adminUser.role !== 'contractor' || (adminUser.companyRole !== 'owner' && adminUser.companyRole !== 'admin')) {
-        return res.status(403).json({ message: "Only company owners can suspend team members" });
-      }
       const { userId } = req.params;
+      const adminUser = req.session.user;
       const [targetUser] = await db.select().from(users).where(and(
         eq(users.id, userId),
         eq(users.companyId, adminUser.companyId),
@@ -17273,25 +17270,20 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       )).limit(1);
       if (!targetUser) return res.status(404).json({ message: "Team member not found" });
 
-      await db.update(users).set({ companyStatus: 'suspended', updatedAt: new Date() } as any).where(eq(users.id, userId));
+      await db.update(users).set({ status: 'suspended', updatedAt: new Date() } as any).where(eq(users.id, userId));
+      suspendedUserIds.add(userId);
       res.json({ message: "Team member suspended" });
     } catch (error) {
-      console.error('[ENTERPRISE] Error suspending tech:', error);
+      req.log?.error({ error }, '[ENTERPRISE] Error suspending tech');
       res.status(500).json({ message: "Failed to suspend team member" });
     }
   });
 
-  // Reactivate a tech (owner/admin only)
-  app.patch('/api/contractor/enterprise/team/:userId/reactivate', isAuthenticated, async (req: any, res) => {
+  // Reactivate a tech (admin/owner only)
+  app.patch('/api/contractor/team/:userId/reactivate', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), requireSameCompany(), async (req: any, res) => {
     try {
-      if (!req.session?.isAuthenticated || !req.session?.user) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-      const adminUser = req.session.user;
-      if (adminUser.role !== 'contractor' || (adminUser.companyRole !== 'owner' && adminUser.companyRole !== 'admin')) {
-        return res.status(403).json({ message: "Only company owners can reactivate team members" });
-      }
       const { userId } = req.params;
+      const adminUser = req.session.user;
       const [targetUser] = await db.select().from(users).where(and(
         eq(users.id, userId),
         eq(users.companyId, adminUser.companyId),
@@ -17299,25 +17291,20 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       )).limit(1);
       if (!targetUser) return res.status(404).json({ message: "Team member not found" });
 
-      await db.update(users).set({ companyStatus: 'active', updatedAt: new Date() } as any).where(eq(users.id, userId));
+      await db.update(users).set({ status: 'active', updatedAt: new Date() } as any).where(eq(users.id, userId));
+      suspendedUserIds.delete(userId);
       res.json({ message: "Team member reactivated" });
     } catch (error) {
-      console.error('[ENTERPRISE] Error reactivating tech:', error);
+      req.log?.error({ error }, '[ENTERPRISE] Error reactivating tech');
       res.status(500).json({ message: "Failed to reactivate team member" });
     }
   });
 
-  // Remove a tech from the team (owner/admin only)
-  app.delete('/api/contractor/enterprise/team/:userId', isAuthenticated, async (req: any, res) => {
+  // Remove a tech from the team — soft-delete, preserves invoice history (admin/owner only)
+  app.delete('/api/contractor/team/:userId', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), requireSameCompany(), async (req: any, res) => {
     try {
-      if (!req.session?.isAuthenticated || !req.session?.user) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-      const adminUser = req.session.user;
-      if (adminUser.role !== 'contractor' || (adminUser.companyRole !== 'owner' && adminUser.companyRole !== 'admin')) {
-        return res.status(403).json({ message: "Only company owners can remove team members" });
-      }
       const { userId } = req.params;
+      const adminUser = req.session.user;
       const [targetUser] = await db.select().from(users).where(and(
         eq(users.id, userId),
         eq(users.companyId, adminUser.companyId),
@@ -17325,117 +17312,153 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       )).limit(1);
       if (!targetUser) return res.status(404).json({ message: "Team member not found" });
 
-      // Soft-remove: preserve company link for invoice history, mark as removed
       await db.update(users).set({
-        companyStatus: 'removed',
-        companyLeftAt: new Date(),
+        status: 'removed',
+        deletedAt: new Date(),
         updatedAt: new Date(),
       } as any).where(eq(users.id, userId));
-
+      suspendedUserIds.delete(userId);
       res.json({ message: "Team member removed from company" });
     } catch (error) {
-      console.error('[ENTERPRISE] Error removing tech:', error);
+      req.log?.error({ error }, '[ENTERPRISE] Error removing tech');
       res.status(500).json({ message: "Failed to remove team member" });
     }
   });
 
-  // Upload tech invoice (any contractor belonging to a company, not suspended)
-  app.post('/api/contractor/enterprise/invoices/upload', isAuthenticated, upload.single('file'), async (req: any, res) => {
+  // Upload invoice (admin or tech, not suspended); max 10 MB, PDF/JPG/PNG only
+  app.post('/api/contractor/invoices/upload', isAuthenticated, requireNotSuspended(), upload.single('file'), async (req: any, res) => {
     try {
-      if (!req.session?.isAuthenticated || !req.session?.user) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
       const sessionUser = req.session.user;
-      if (sessionUser.role !== 'contractor') {
-        return res.status(403).json({ message: "Only contractors can upload invoices" });
-      }
-      if (!sessionUser.companyId) {
-        return res.status(400).json({ message: "You must belong to a company to upload invoices" });
-      }
-      if ((sessionUser as any).companyStatus === 'suspended') {
-        return res.status(403).json({ message: "Your account has been suspended. Contact your company administrator." });
+      if (sessionUser.role !== 'contractor' || !sessionUser.companyId) {
+        return res.status(403).json({ message: "Only company contractors can upload invoices" });
       }
       if (!req.file) {
         return res.status(400).json({ message: "File is required" });
       }
-
       const allowedMimes = ['application/pdf', 'image/jpeg', 'image/png'];
       if (!allowedMimes.includes(req.file.mimetype)) {
         return res.status(400).json({ message: "Only PDF, JPG, and PNG files are allowed" });
       }
+      if (req.file.size > 10 * 1024 * 1024) {
+        return res.status(400).json({ message: "File must be 10 MB or less" });
+      }
 
-      const { description, amount, invoiceDate, homeownerId, houseId } = req.body;
+      const { notes, amount, invoiceDate, homeownerId, jobId } = req.body;
       const objectStorage = new ObjectStorageService();
       const fileKey = `contractor-invoices/${sessionUser.companyId}/${Date.now()}-${req.file.originalname}`;
       const fileUrl = await objectStorage.uploadFile(fileKey, req.file.buffer, req.file.mimetype);
 
-      const [invoice] = await db.insert(contractorTechInvoices).values({
+      const [invoice] = await db.insert(contractorInvoiceUploads).values({
         companyId: sessionUser.companyId,
         uploadedByUserId: sessionUser.id,
         homeownerId: homeownerId || null,
-        houseId: houseId || null,
+        jobId: jobId || null,
         fileName: req.file.originalname,
         fileUrl,
         storageKey: fileKey,
-        description: description || null,
+        notes: notes || null,
         amount: amount ? String(amount) : null,
         invoiceDate: invoiceDate || null,
       } as any).returning();
 
       res.status(201).json(invoice);
     } catch (error) {
-      console.error('[ENTERPRISE] Error uploading invoice:', error);
+      req.log?.error({ error }, '[ENTERPRISE] Error uploading invoice');
       res.status(500).json({ message: "Failed to upload invoice" });
     }
   });
 
-  // Get tech invoices (admin sees all company invoices; tech sees own)
-  app.get('/api/contractor/enterprise/invoices', isAuthenticated, async (req: any, res) => {
+  // List invoices — admins see all company invoices; techs see only their own
+  // Query params: techId, homeownerId, startDate, endDate
+  app.get('/api/contractor/invoices', isAuthenticated, requireNotSuspended(), async (req: any, res) => {
     try {
-      if (!req.session?.isAuthenticated || !req.session?.user) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
       const sessionUser = req.session.user;
-      if (sessionUser.role !== 'contractor') {
-        return res.status(403).json({ message: "Only contractors can view invoices" });
-      }
-      if (!sessionUser.companyId) {
-        return res.status(400).json({ message: "You must belong to a company" });
+      if (sessionUser.role !== 'contractor' || !sessionUser.companyId) {
+        return res.status(403).json({ message: "Only company contractors can view invoices" });
       }
 
       const isAdmin = sessionUser.companyRole === 'owner' || sessionUser.companyRole === 'admin';
-      const whereClause = isAdmin
-        ? eq(contractorTechInvoices.companyId, sessionUser.companyId)
-        : and(
-            eq(contractorTechInvoices.companyId, sessionUser.companyId),
-            eq(contractorTechInvoices.uploadedByUserId, sessionUser.id)
-          );
+      const { techId, homeownerId, startDate, endDate } = req.query as Record<string, string | undefined>;
+
+      const conditions: any[] = [eq(contractorInvoiceUploads.companyId, sessionUser.companyId)];
+      if (!isAdmin) {
+        conditions.push(eq(contractorInvoiceUploads.uploadedByUserId, sessionUser.id));
+      } else {
+        if (techId) conditions.push(eq(contractorInvoiceUploads.uploadedByUserId, techId));
+        if (homeownerId) conditions.push(eq(contractorInvoiceUploads.homeownerId as any, homeownerId));
+        if (startDate) conditions.push(drizzleSql`${contractorInvoiceUploads.invoiceDate} >= ${startDate}`);
+        if (endDate) conditions.push(drizzleSql`${contractorInvoiceUploads.invoiceDate} <= ${endDate}`);
+      }
 
       const invoiceList = await db.select({
-        id: contractorTechInvoices.id,
-        companyId: contractorTechInvoices.companyId,
-        fileName: contractorTechInvoices.fileName,
-        fileUrl: contractorTechInvoices.fileUrl,
-        description: contractorTechInvoices.description,
-        amount: contractorTechInvoices.amount,
-        invoiceDate: contractorTechInvoices.invoiceDate,
-        createdAt: contractorTechInvoices.createdAt,
+        id: contractorInvoiceUploads.id,
+        companyId: contractorInvoiceUploads.companyId,
+        homeownerId: contractorInvoiceUploads.homeownerId,
+        jobId: contractorInvoiceUploads.jobId,
+        fileName: contractorInvoiceUploads.fileName,
+        fileUrl: contractorInvoiceUploads.fileUrl,
+        notes: contractorInvoiceUploads.notes,
+        amount: contractorInvoiceUploads.amount,
+        invoiceDate: contractorInvoiceUploads.invoiceDate,
+        createdAt: contractorInvoiceUploads.createdAt,
         uploaderFirstName: users.firstName,
         uploaderLastName: users.lastName,
         uploaderEmail: users.email,
-      }).from(contractorTechInvoices)
-        .leftJoin(users, eq(contractorTechInvoices.uploadedByUserId, users.id))
-        .where(whereClause!)
-        .orderBy(desc(contractorTechInvoices.createdAt));
+      }).from(contractorInvoiceUploads)
+        .leftJoin(users, eq(contractorInvoiceUploads.uploadedByUserId, users.id))
+        .where(and(...conditions))
+        .orderBy(desc(contractorInvoiceUploads.createdAt));
 
       res.json(invoiceList);
     } catch (error) {
-      console.error('[ENTERPRISE] Error fetching invoices:', error);
+      req.log?.error({ error }, '[ENTERPRISE] Error fetching invoices');
       res.status(500).json({ message: "Failed to fetch invoices" });
     }
   });
 
-  // ─────────────────────────────────────────────────────────────────────────────
+  // Get single invoice — tech can only access their own; admin can access any company invoice
+  app.get('/api/contractor/invoices/:id', isAuthenticated, requireNotSuspended(), async (req: any, res) => {
+    try {
+      const sessionUser = req.session.user;
+      if (sessionUser.role !== 'contractor' || !sessionUser.companyId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      const [invoice] = await db.select({
+        id: contractorInvoiceUploads.id,
+        companyId: contractorInvoiceUploads.companyId,
+        uploadedByUserId: contractorInvoiceUploads.uploadedByUserId,
+        homeownerId: contractorInvoiceUploads.homeownerId,
+        jobId: contractorInvoiceUploads.jobId,
+        fileName: contractorInvoiceUploads.fileName,
+        fileUrl: contractorInvoiceUploads.fileUrl,
+        notes: contractorInvoiceUploads.notes,
+        amount: contractorInvoiceUploads.amount,
+        invoiceDate: contractorInvoiceUploads.invoiceDate,
+        createdAt: contractorInvoiceUploads.createdAt,
+        uploaderFirstName: users.firstName,
+        uploaderLastName: users.lastName,
+      }).from(contractorInvoiceUploads)
+        .leftJoin(users, eq(contractorInvoiceUploads.uploadedByUserId, users.id))
+        .where(eq(contractorInvoiceUploads.id, req.params.id))
+        .limit(1);
+
+      if (!invoice) return res.status(404).json({ message: "Invoice not found" });
+      if (invoice.companyId !== sessionUser.companyId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const isAdmin = sessionUser.companyRole === 'owner' || sessionUser.companyRole === 'admin';
+      if (!isAdmin && invoice.uploadedByUserId !== sessionUser.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
+      res.json(invoice);
+    } catch (error) {
+      req.log?.error({ error }, '[ENTERPRISE] Error fetching invoice');
+      res.status(500).json({ message: "Failed to fetch invoice" });
+    }
+  });
+
   // Quiz Results — save Home Health Score to the database
   // Works for both anonymous visitors (no userId stored) and authenticated users.
 

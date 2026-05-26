@@ -161,10 +161,11 @@ export const users = pgTable("users", {
   // Company fields for contractors
   companyId: varchar("company_id").references(() => companies.id, { onDelete: 'set null' }),
   companyRole: text("company_role"), // 'owner', 'employee', 'tech' (nullable for homeowners)
-  companyStatus: text("company_status").default("active"), // "active" | "suspended" | "pending_invite"
+  status: text("company_status").default("active"), // "active" | "suspended" | "pending_invite" | "removed" (enterprise tech status)
   inviteToken: varchar("invite_token").unique(),
   inviteExpiresAt: timestamp("invite_expires_at"),
-  companyLeftAt: timestamp("company_left_at"), // Set when a tech is removed from company (preserves history)
+  deletedAt: timestamp("company_left_at"), // Set when a tech is removed from company (preserves history)
+  lastLoginAt: timestamp("last_login_at"), // Last successful login timestamp
   canRespondToProposals: boolean("can_respond_to_proposals").notNull().default(false), // For employees: owner can toggle
   // Subscription fields
   subscriptionPlanId: varchar("subscription_plan_id").references(() => subscriptionPlans.id, { onDelete: 'set null' }), // FK to subscription_plans.id
@@ -2351,16 +2352,16 @@ export type QuizResult = typeof quizResults.$inferSelect;
 // Techs and admins upload proof-of-work invoices scoped to their company.
 // Admins can see all company invoices; techs can only see their own.
 
-export const contractorTechInvoices = pgTable("contractor_tech_invoices", {
+export const contractorInvoiceUploads = pgTable("contractor_tech_invoices", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
   uploadedByUserId: varchar("uploaded_by_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   homeownerId: varchar("homeowner_id"), // optional: linked homeowner
-  houseId: varchar("house_id"), // optional: linked house
+  jobId: varchar("job_id"), // optional job identifier
   fileName: text("file_name").notNull(),
   fileUrl: text("file_url").notNull(),
   storageKey: text("storage_key").notNull(),
-  description: text("description"),
+  notes: text("notes"), // invoice notes
   amount: decimal("amount", { precision: 10, scale: 2 }),
   invoiceDate: text("invoice_date"), // e.g. "2025-05-01"
   createdAt: timestamp("created_at").defaultNow(),
@@ -2370,6 +2371,6 @@ export const contractorTechInvoices = pgTable("contractor_tech_invoices", {
   index("IDX_cti_created_at").on(table.createdAt),
 ]);
 
-export const insertContractorTechInvoiceSchema = createInsertSchema(contractorTechInvoices).omit({ id: true, createdAt: true });
-export type InsertContractorTechInvoice = z.infer<typeof insertContractorTechInvoiceSchema>;
-export type ContractorTechInvoice = typeof contractorTechInvoices.$inferSelect;
+export const insertContractorInvoiceUploadSchema = createInsertSchema(contractorInvoiceUploads).omit({ id: true, createdAt: true });
+export type InsertContractorInvoiceUpload = z.infer<typeof insertContractorInvoiceUploadSchema>;
+export type ContractorInvoiceUpload = typeof contractorInvoiceUploads.$inferSelect;

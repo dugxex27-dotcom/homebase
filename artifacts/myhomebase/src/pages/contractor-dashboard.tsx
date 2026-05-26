@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import type { User as UserType, Proposal, ContractorAppointment } from "@shared/schema";
 import { Link } from "wouter";
+import { format } from "date-fns";
 import "./home.css";
 
 interface ContactedHomeowner {
@@ -44,6 +45,34 @@ interface ContactedHomeowner {
   firstName?: string;
   lastName?: string;
   lastContactedAt: Date;
+}
+
+interface TeamMember {
+  id: string;
+  email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  companyRole: string | null;
+  status: string | null;
+  lastLoginAt: string | null;
+  inviteExpiresAt: string | null;
+  createdAt: string | null;
+  invoiceCount: number;
+}
+
+interface AdminInvoice {
+  id: string;
+  homeownerId: string | null;
+  jobId: string | null;
+  fileName: string;
+  fileUrl: string;
+  notes: string | null;
+  amount: string | null;
+  invoiceDate: string | null;
+  createdAt: string | null;
+  uploaderFirstName: string | null;
+  uploaderLastName: string | null;
+  uploaderEmail: string | null;
 }
 
 const proposalFormSchema = z.object({
@@ -71,7 +100,81 @@ export default function ContractorDashboard() {
   const { toast } = useToast();
   const queryClientInstance = useQueryClient();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  
+  const [activeTab, setActiveTab] = useState<'overview' | 'team' | 'invoices'>('overview');
+  const [teamSearch, setTeamSearch] = useState('');
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [invoiceTechFilter, setInvoiceTechFilter] = useState('');
+  const [invoiceStartDate, setInvoiceStartDate] = useState('');
+  const [invoiceEndDate, setInvoiceEndDate] = useState('');
+
+  const isAdminRole = (typedUser as any)?.companyRole === 'owner' || (typedUser as any)?.companyRole === 'admin';
+
+  const { data: teamData, isLoading: isLoadingTeam, refetch: refetchTeam } = useQuery<{ teamMembers: TeamMember[]; maxTechSeats: number }>({
+    queryKey: ['/api/contractor/team'],
+    queryFn: async () => {
+      const res = await fetch('/api/contractor/team', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch team');
+      return res.json();
+    },
+    enabled: isAdminRole && !!typedUser,
+  });
+
+  const { data: adminInvoices = [], isLoading: isLoadingInvoices } = useQuery<AdminInvoice[]>({
+    queryKey: ['/api/contractor/invoices', invoiceTechFilter, invoiceStartDate, invoiceEndDate],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (invoiceTechFilter) params.set('techId', invoiceTechFilter);
+      if (invoiceStartDate) params.set('startDate', invoiceStartDate);
+      if (invoiceEndDate) params.set('endDate', invoiceEndDate);
+      const res = await fetch(`/api/contractor/invoices?${params}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch invoices');
+      return res.json();
+    },
+    enabled: isAdminRole && !!typedUser,
+  });
+
+  const inviteMutation = useMutation({
+    mutationFn: async (email: string) => {
+      const res = await fetch('/api/contractor/invite-tech', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to send invite');
+      return data;
+    },
+    onSuccess: () => {
+      setInviteModalOpen(false);
+      setInviteEmail('');
+      refetchTeam();
+      toast({ title: "Invite sent", description: "Invitation email sent successfully" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const teamActionMutation = useMutation({
+    mutationFn: async ({ userId, action }: { userId: string; action: 'suspend' | 'reactivate' | 'remove' }) => {
+      const method = action === 'remove' ? 'DELETE' : 'PATCH';
+      const url = action === 'remove' ? `/api/contractor/team/${userId}` : `/api/contractor/team/${userId}/${action}`;
+      const res = await fetch(url, { method, credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Action failed');
+      return data;
+    },
+    onSuccess: (_, { action }) => {
+      refetchTeam();
+      toast({ title: "Done", description: action === 'suspend' ? "Tech suspended" : action === 'reactivate' ? "Tech reactivated" : "Tech removed" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
   const { needsSubscription, isInTrial, isLoading: subscriptionLoading } = useContractorSubscription();
   
   const form = useForm<ProposalFormData>({
@@ -211,9 +314,9 @@ export default function ContractorDashboard() {
 
   // Enterprise tech role — show stripped dashboard (no CRM, billing, referrals, team)
   const companyRole = (typedUser as any)?.companyRole;
-  const companyStatus = (typedUser as any)?.companyStatus;
+  const techStatus = (typedUser as any)?.status;
   if (companyRole === 'tech') {
-    return <TechDashboard user={{ firstName: typedUser?.firstName, email: typedUser?.email, companyStatus }} />;
+    return <TechDashboard user={{ firstName: typedUser?.firstName, email: typedUser?.email, status: techStatus }} />;
   }
   
   const referralCount = (referralData as any)?.referralCount || 0;
@@ -275,7 +378,225 @@ export default function ContractorDashboard() {
 
       {isInTrial && <ContractorTrialBanner />}
 
-      <div className="dash-body">
+      {/* ── Enterprise admin tab navigation ── */}
+      {isAdminRole && (
+        <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', background: '#f8fafc', padding: '0 16px' }}>
+          {(['overview', 'team', 'invoices'] as const).map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              style={{
+                padding: '10px 18px',
+                fontSize: 13,
+                fontWeight: activeTab === tab ? 700 : 500,
+                color: activeTab === tab ? '#1560A2' : '#64748b',
+                background: 'none',
+                border: 'none',
+                borderBottom: activeTab === tab ? '2px solid #1560A2' : '2px solid transparent',
+                cursor: 'pointer',
+                textTransform: 'capitalize',
+              }}
+            >
+              {tab === 'team' ? `Team (${teamData?.teamMembers.length ?? 0})` : tab === 'invoices' ? `Invoices (${adminInvoices.length})` : 'Overview'}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ── Team tab ── */}
+      {isAdminRole && activeTab === 'team' && (
+        <div className="dash-body">
+          {/* Seat usage bar */}
+          <div className="dash-light-card" style={{ marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#0C3460' }}>
+                {teamData?.teamMembers.length ?? 0} of {teamData?.maxTechSeats ?? 3} seats used
+              </span>
+              <button
+                onClick={() => setInviteModalOpen(true)}
+                title={(teamData?.teamMembers.length ?? 0) >= (teamData?.maxTechSeats ?? 3) ? `Seat limit (${teamData?.maxTechSeats ?? 3}) reached. Contact support to add more.` : undefined}
+                disabled={(teamData?.teamMembers.length ?? 0) >= (teamData?.maxTechSeats ?? 3) || inviteMutation.isPending}
+                style={{
+                  background: (teamData?.teamMembers.length ?? 0) >= (teamData?.maxTechSeats ?? 3) ? '#e2e8f0' : '#1560A2',
+                  color: (teamData?.teamMembers.length ?? 0) >= (teamData?.maxTechSeats ?? 3) ? '#94a3b8' : '#fff',
+                  border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 600,
+                  cursor: (teamData?.teamMembers.length ?? 0) >= (teamData?.maxTechSeats ?? 3) ? 'not-allowed' : 'pointer',
+                }}
+              >
+                + Invite Technician
+              </button>
+            </div>
+            <div style={{ background: '#e2e8f0', borderRadius: 6, height: 6, overflow: 'hidden' }}>
+              <div style={{
+                width: `${Math.min(100, ((teamData?.teamMembers.length ?? 0) / (teamData?.maxTechSeats ?? 3)) * 100)}%`,
+                height: 6, borderRadius: 6, background: '#1560A2', transition: 'width 0.4s'
+              }} />
+            </div>
+          </div>
+
+          <input
+            placeholder="Search by name or email…"
+            value={teamSearch}
+            onChange={e => setTeamSearch(e.target.value)}
+            style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, background: '#fff', outline: 'none', marginBottom: 10, boxSizing: 'border-box' }}
+          />
+
+          {isLoadingTeam ? (
+            <div style={{ textAlign: 'center', padding: 32, color: '#64748b' }}>Loading team…</div>
+          ) : !teamData?.teamMembers.length ? (
+            <div className="dash-light-card" style={{ textAlign: 'center', padding: '24px 14px' }}>
+              <Users size={28} style={{ color: 'var(--gray-400)', margin: '0 auto 8px', display: 'block' }} />
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gray-600)' }}>No techs yet</div>
+              <div style={{ fontSize: 12, color: 'var(--gray-400)', marginTop: 4 }}>Invite your first technician above</div>
+            </div>
+          ) : (
+            teamData.teamMembers
+              .filter(m => {
+                const q = teamSearch.toLowerCase();
+                return !q || m.email?.toLowerCase().includes(q) || m.firstName?.toLowerCase().includes(q) || m.lastName?.toLowerCase().includes(q);
+              })
+              .map(member => {
+                const fullName = [member.firstName, member.lastName].filter(Boolean).join(' ') || member.email || 'Unknown';
+                const isSuspended = member.status === 'suspended';
+                const isPending = member.status === 'pending_invite';
+                return (
+                  <div key={member.id} className="dash-light-card" style={{ marginBottom: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 13, color: '#111827' }}>{fullName}</div>
+                        <div style={{ fontSize: 12, color: '#64748b' }}>{member.email}</div>
+                        {isPending && member.inviteExpiresAt && (
+                          <div style={{ fontSize: 11, color: '#d97706', marginTop: 2 }}>
+                            Invite expires {format(new Date(member.inviteExpiresAt), 'MMM d, yyyy')}
+                          </div>
+                        )}
+                        {member.lastLoginAt && (
+                          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                            Last login: {format(new Date(member.lastLoginAt), 'MMM d, yyyy')}
+                          </div>
+                        )}
+                        <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>
+                          {member.invoiceCount} invoice{member.invoiceCount !== 1 ? 's' : ''} submitted
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
+                        <span style={{
+                          fontSize: 10, fontWeight: 700, textTransform: 'uppercase', borderRadius: 5, padding: '2px 8px',
+                          background: isSuspended ? '#fee2e2' : isPending ? '#fef3c7' : '#f0faf4',
+                          color: isSuspended ? '#dc2626' : isPending ? '#d97706' : '#09694a',
+                        }}>{member.status}</span>
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          {isSuspended ? (
+                            <button
+                              onClick={() => teamActionMutation.mutate({ userId: member.id, action: 'reactivate' })}
+                              disabled={teamActionMutation.isPending}
+                              style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, border: '1px solid #09694a', background: '#f0faf4', color: '#09694a', cursor: 'pointer' }}
+                            >Reactivate</button>
+                          ) : !isPending ? (
+                            <button
+                              onClick={() => teamActionMutation.mutate({ userId: member.id, action: 'suspend' })}
+                              disabled={teamActionMutation.isPending}
+                              style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer' }}
+                            >Suspend</button>
+                          ) : null}
+                          <button
+                            onClick={() => { if (confirm(`Remove ${fullName}? Their invoice history will be preserved.`)) teamActionMutation.mutate({ userId: member.id, action: 'remove' }); }}
+                            disabled={teamActionMutation.isPending}
+                            style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, border: '1px solid #fee2e2', background: '#fff', color: '#dc2626', cursor: 'pointer' }}
+                          >Remove</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+          )}
+
+          {/* Invite modal */}
+          {inviteModalOpen && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+              <div style={{ background: '#fff', borderRadius: 16, padding: 24, width: '100%', maxWidth: 400 }}>
+                <div style={{ fontWeight: 700, fontSize: 16, color: '#0C3460', marginBottom: 8 }}>Invite Technician</div>
+                <div style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>We'll send them a "Set your password" link by email.</div>
+                <input
+                  type="email"
+                  placeholder="technician@example.com"
+                  value={inviteEmail}
+                  onChange={e => setInviteEmail(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && inviteEmail.includes('@') && inviteMutation.mutate(inviteEmail)}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, marginBottom: 12, boxSizing: 'border-box', outline: 'none' }}
+                />
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <button onClick={() => { setInviteModalOpen(false); setInviteEmail(''); }} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer', fontSize: 13 }}>Cancel</button>
+                  <button
+                    onClick={() => inviteMutation.mutate(inviteEmail)}
+                    disabled={!inviteEmail.includes('@') || inviteMutation.isPending}
+                    style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#1560A2', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+                  >{inviteMutation.isPending ? 'Sending…' : 'Send Invite'}</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Invoices tab ── */}
+      {isAdminRole && activeTab === 'invoices' && (
+        <div className="dash-body">
+          <div className="dash-light-card" style={{ marginBottom: 12 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              <select
+                value={invoiceTechFilter}
+                onChange={e => setInvoiceTechFilter(e.target.value)}
+                style={{ flex: 1, minWidth: 150, padding: '7px 10px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, background: '#fff', outline: 'none' }}
+              >
+                <option value="">All Technicians</option>
+                {teamData?.teamMembers.map(m => (
+                  <option key={m.id} value={m.id}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
+                ))}
+              </select>
+              <input type="date" value={invoiceStartDate} onChange={e => setInvoiceStartDate(e.target.value)}
+                style={{ flex: 1, minWidth: 130, padding: '7px 10px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, outline: 'none' }}
+              />
+              <input type="date" value={invoiceEndDate} onChange={e => setInvoiceEndDate(e.target.value)}
+                style={{ flex: 1, minWidth: 130, padding: '7px 10px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, outline: 'none' }}
+              />
+            </div>
+          </div>
+
+          {isLoadingInvoices ? (
+            <div style={{ textAlign: 'center', padding: 32, color: '#64748b' }}>Loading invoices…</div>
+          ) : !adminInvoices.length ? (
+            <div className="dash-light-card" style={{ textAlign: 'center', padding: '24px 14px' }}>
+              <FileText size={28} style={{ color: 'var(--gray-400)', margin: '0 auto 8px', display: 'block' }} />
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gray-600)' }}>No invoices yet</div>
+              <div style={{ fontSize: 12, color: 'var(--gray-400)', marginTop: 4 }}>Invoices uploaded by your team will appear here</div>
+            </div>
+          ) : (
+            adminInvoices.map(inv => (
+              <div key={inv.id} className="dash-light-card" style={{ marginBottom: 10 }}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: '#111827' }}>{inv.fileName}</div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginTop: 1 }}>
+                      By {[inv.uploaderFirstName, inv.uploaderLastName].filter(Boolean).join(' ') || inv.uploaderEmail || 'Unknown'}
+                      {inv.invoiceDate && ` · ${inv.invoiceDate}`}
+                    </div>
+                    {inv.notes && <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>{inv.notes}</div>}
+                    {inv.amount && <div style={{ fontSize: 13, fontWeight: 600, color: '#09694a', marginTop: 4 }}>${parseFloat(inv.amount).toFixed(2)}</div>}
+                  </div>
+                  <a href={inv.fileUrl} target="_blank" rel="noopener noreferrer"
+                    style={{ fontSize: 12, padding: '6px 10px', borderRadius: 6, border: '1px solid #1560A2', color: '#1560A2', textDecoration: 'none', flexShrink: 0 }}
+                  >Download</a>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* ── Overview tab (always rendered, hidden when another tab is active) ── */}
+      <div className="dash-body" style={{ display: isAdminRole && activeTab !== 'overview' ? 'none' : undefined }}>
 
         {/* AI Business Coach */}
         <Link href="/ai-contractor-help" className="ai-coach-card" data-tour-id="contractor-ai-coach" style={{ background: 'linear-gradient(135deg, #0C3460, #1560A2)' }}>

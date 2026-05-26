@@ -257,6 +257,65 @@ export const requireRole = (role: 'homeowner' | 'contractor'): RequestHandler =>
   };
 };
 
+// ─── Enterprise contractor role helpers ───────────────────────────────────────
+
+// In-memory blocklist: IDs added when admin suspends a tech, removed on reactivate.
+// Checked on every authenticated contractor request for instant revocation.
+export const suspendedUserIds = new Set<string>();
+
+// Check that the session user's companyRole is one of the allowed roles
+export const requireCompanyRole = (...roles: string[]): RequestHandler => {
+  return (req: any, res, next) => {
+    if (!req.session?.isAuthenticated || !req.session?.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const user = req.session.user;
+    if (!roles.includes(user.companyRole)) {
+      return res.status(403).json({ message: "Forbidden - insufficient company role" });
+    }
+    next();
+  };
+};
+
+// Block suspended users from all authenticated contractor routes
+export const requireNotSuspended = (): RequestHandler => {
+  return (req: any, res, next) => {
+    if (!req.session?.isAuthenticated || !req.session?.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const user = req.session.user;
+    if (user.status === 'suspended' || suspendedUserIds.has(user.id)) {
+      return res.status(401).json({ message: "Account suspended" });
+    }
+    next();
+  };
+};
+
+// Verify a :userId route param belongs to the same company as the session user
+export const requireSameCompany = (): RequestHandler => {
+  return async (req: any, res, next) => {
+    if (!req.session?.isAuthenticated || !req.session?.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const adminUser = req.session.user;
+    const targetId = req.params.userId;
+    if (!targetId) return next();
+    try {
+      const { db } = await import('./db');
+      const { users } = await import('@workspace/db');
+      const { eq } = await import('drizzle-orm');
+      const [target] = await db.select({ companyId: users.companyId })
+        .from(users).where(eq(users.id, targetId)).limit(1);
+      if (!target || target.companyId !== adminUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - different company" });
+      }
+    } catch {
+      return res.status(500).json({ message: "Internal server error" });
+    }
+    next();
+  };
+};
+
 // Helper function to validate house ownership
 export const validateHouseOwnership = async (houseId: string, userId: string): Promise<boolean> => {
   try {
