@@ -403,7 +403,7 @@ export default function ContractorDashboard() {
                 textTransform: 'capitalize',
               }}
             >
-              {tab === 'team' ? `Team (${teamData?.teamMembers.length ?? 0})` : tab === 'invoices' ? `Invoices (${adminInvoices.length})` : 'Overview'}
+              {tab === 'team' ? `Team (${teamData?.teamMembers.length ?? 0})` : tab === 'invoices' ? `Tech Invoices (${adminInvoices.length})` : 'Overview'}
             </button>
           ))}
         </div>
@@ -561,6 +561,7 @@ export default function ContractorDashboard() {
       {/* ── Invoices tab ── */}
       {isAdminRole && activeTab === 'invoices' && (
         <div className="dash-body">
+          <span className="dash-section-label">Tech Invoices</span>
           <div className="dash-light-card" style={{ marginBottom: 12 }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               <select
@@ -618,7 +619,7 @@ export default function ContractorDashboard() {
                   </div>
                   <a href={inv.fileUrl} target="_blank" rel="noopener noreferrer"
                     style={{ fontSize: 12, padding: '6px 10px', borderRadius: 6, border: '1px solid #1560A2', color: '#1560A2', textDecoration: 'none', flexShrink: 0 }}
-                  >Download</a>
+                  >View</a>
                 </div>
               </div>
             ))
