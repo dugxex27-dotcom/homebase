@@ -1132,6 +1132,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   });
 
+  // Suspend guard for all CRM routes (covers contractor-scoped endpoints outside /api/contractor/*)
+  app.use('/api/crm', (req: any, res: any, next: any) => {
+    if (!req.session?.isAuthenticated) return next();
+    const u = req.session?.user;
+    if (u && (['suspended', 'removed', 'pending_invite'].includes(u.status) || suspendedUserIds.has(u.id))) {
+      return res.status(401).json({ message: "Account suspended. Contact your company administrator." });
+    }
+    next();
+  });
+
   // ========================================
   // STRIPE CONNECT - Contractor Payment Processing
   // ========================================

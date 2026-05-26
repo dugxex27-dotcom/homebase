@@ -186,7 +186,7 @@ function Router() {
   }
 
   // Authenticated user routes
-  const typedUser = user as { role?: string; email?: string; isAdmin?: boolean } | undefined;
+  const typedUser = user as { role?: string; email?: string; isAdmin?: boolean; companyRole?: string } | undefined;
   
   // Use server-provided isAdmin flag (more reliable than build-time env vars)
   const isAdmin = typedUser?.isAdmin === true;
@@ -262,10 +262,15 @@ function Router() {
           </>
         )}
         
-        {/* Contractor-specific routes */}
+        {/* Contractor-specific routes — all contractor roles get the dashboard */}
         {typedUser?.role === 'contractor' && (
           <>
             <Route path="/contractor-dashboard" component={ContractorDashboard} />
+          </>
+        )}
+        {/* Contractor admin/owner routes — tech users are excluded */}
+        {typedUser?.role === 'contractor' && typedUser?.companyRole !== 'tech' && (
+          <>
             <Route path="/contractor-onboarding" component={ContractorOnboarding} />
             <Route path="/contractor/upgrade" component={ContractorUpgrade} />
             <Route path="/crm/leads/:id" component={CrmLeadDetail} />
