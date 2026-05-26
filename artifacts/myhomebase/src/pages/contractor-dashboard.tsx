@@ -125,6 +125,8 @@ export default function ContractorDashboard() {
     enabled: isAdminRole && !!typedUser,
   });
 
+  const activeTeamCount = teamData?.teamMembers.filter(m => m.status === 'active').length ?? null;
+
   const { data: adminInvoices = [], isLoading: isLoadingInvoices } = useQuery<AdminInvoice[]>({
     queryKey: ['/api/contractor/invoices', invoiceTechFilter, invoiceStartDate, invoiceEndDate, invoiceHomeownerName],
     queryFn: async () => {
@@ -704,7 +706,13 @@ export default function ContractorDashboard() {
             <div className="action-icon" style={{ background: '#EAF4FD', color: '#1560A2' }}><UserCog size={18} /></div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div className="action-title">Manage Team</div>
-              <div className="action-sub">Invite and manage field technicians</div>
+              <div className="action-sub">
+                {isLoadingTeam
+                  ? 'Loading team…'
+                  : activeTeamCount !== null
+                    ? `${activeTeamCount} active ${activeTeamCount === 1 ? 'technician' : 'technicians'}`
+                    : 'Invite and manage field technicians'}
+              </div>
             </div>
             <span className="action-cta" style={{ color: '#1560A2' }}>Manage →</span>
           </Link>
