@@ -186,6 +186,7 @@ export function ContractorCodeEntry() {
   const { toast } = useToast();
   const [code, setCode] = useState("");
   const [homeownerInfo, setHomeownerInfo] = useState<any>(null);
+  const [selectedHouseId, setSelectedHouseId] = useState("");
 
   const validateMutation = useMutation({
     mutationFn: async (code: string) => {
@@ -194,6 +195,9 @@ export function ContractorCodeEntry() {
     },
     onSuccess: (data) => {
       setHomeownerInfo(data);
+      // Auto-select if the homeowner has exactly one home
+      const houses: Array<{ id: string; name: string; address: string }> = data.houses ?? [];
+      setSelectedHouseId(houses.length === 1 ? houses[0].id : "");
       toast({
         title: "Code validated!",
         description: `Connected to ${data.homeownerName}`,
@@ -217,7 +221,19 @@ export function ContractorCodeEntry() {
       });
       return;
     }
+    setHomeownerInfo(null);
+    setSelectedHouseId("");
     validateMutation.mutate(code.toUpperCase().trim());
+  };
+
+  const houses: Array<{ id: string; name: string; address: string }> = homeownerInfo?.houses ?? [];
+  const needsHousePick = houses.length > 1;
+  const canProceed = !!homeownerInfo && (!needsHousePick || !!selectedHouseId);
+
+  const handleAddServiceRecord = () => {
+    const params = new URLSearchParams({ homeownerId: homeownerInfo.homeownerId });
+    if (selectedHouseId) params.set("houseId", selectedHouseId);
+    window.location.href = `/service-records?${params.toString()}`;
   };
 
   return (
@@ -254,7 +270,7 @@ export function ContractorCodeEntry() {
         </div>
 
         {homeownerInfo && (
-          <div className="p-4 border rounded-lg space-y-2" data-testid="div-homeowner-info" style={{ backgroundColor: '#e6f2ff', borderColor: '#1560a2' }}>
+          <div className="p-4 border rounded-lg space-y-3" data-testid="div-homeowner-info" style={{ backgroundColor: '#e6f2ff', borderColor: '#1560a2' }}>
             <h3 className="font-semibold" style={{ color: '#1560a2' }}>Connected to:</h3>
             <div className="space-y-1 text-sm" style={{ color: '#000000' }}>
               <div><strong>Name:</strong> {homeownerInfo.homeownerName}</div>
@@ -263,12 +279,52 @@ export function ContractorCodeEntry() {
                 <div><strong>Zip Code:</strong> {homeownerInfo.homeownerZipCode}</div>
               )}
             </div>
-            <div className="pt-2">
+
+            {/* House picker — required when homeowner has multiple properties */}
+            {needsHousePick && (
+              <div className="space-y-1">
+                <Label style={{ color: '#1560a2', fontSize: 13 }}>
+                  Select property for this job <span style={{ color: '#dc2626' }}>*</span>
+                </Label>
+                <select
+                  value={selectedHouseId}
+                  onChange={(e) => setSelectedHouseId(e.target.value)}
+                  data-testid="select-house-id"
+                  style={{
+                    width: '100%', padding: '8px 10px', borderRadius: 6,
+                    border: '1.5px solid #1560a2', backgroundColor: '#fff',
+                    color: '#1560a2', fontSize: 13, outline: 'none',
+                  }}
+                >
+                  <option value="">— choose a property —</option>
+                  {houses.map(h => (
+                    <option key={h.id} value={h.id}>
+                      {h.name || h.address}
+                    </option>
+                  ))}
+                </select>
+                {!selectedHouseId && (
+                  <p style={{ fontSize: 11, color: '#dc2626', marginTop: 2 }}>
+                    You must select a property before adding a service record.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Single house — show it for clarity */}
+            {houses.length === 1 && (
+              <div style={{ fontSize: 12, color: '#1560a2' }}>
+                📍 Property: <strong>{houses[0].name || houses[0].address}</strong>
+              </div>
+            )}
+
+            <div className="pt-1">
               <Button
-                onClick={() => window.location.href = `/service-records?homeownerId=${homeownerInfo.homeownerId}`}
+                onClick={handleAddServiceRecord}
+                disabled={!canProceed}
                 className="w-full"
                 data-testid="button-add-service-record"
-                style={{ backgroundColor: '#1560a2', color: 'white' }}
+                style={{ backgroundColor: canProceed ? '#1560a2' : '#93a8c4', color: 'white' }}
               >
                 Add Service Record
               </Button>

@@ -148,6 +148,9 @@ export default function Home() {
   const [agentModalOpen, setAgentModalOpen] = useState(false);
   const [contractorInvoicesExpanded, setContractorInvoicesExpanded] = useState(false);
   const [claimedInvoiceIds, setClaimedInvoiceIds] = useState<Set<string>>(new Set());
+  // Per-invoice house overrides: homeowner can reassign before saving
+  const [invoiceHouseOverrides, setInvoiceHouseOverrides] = useState<Record<string, string>>({});
+  const [changingHouseForInvoice, setChangingHouseForInvoice] = useState<string | null>(null);
   const [hwsModalOpen, setHwsModalOpen] = useState(false);
   const [tasksModalOpen, setTasksModalOpen] = useState(false);
   const [systemsModalOpen, setSystemsModalOpen] = useState(false);
@@ -440,60 +443,131 @@ export default function Home() {
                 </button>
 
                 {contractorInvoicesExpanded && (
-                  <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {linkedInvoices.map(inv => {
                       const isClaimed = claimedInvoiceIds.has(inv.id);
-                      // Use house from invoice when set; fall back to sole house for single-property homeowners.
-                      // For multi-house homeowners without a specific house on the invoice, direct to the pay page.
-                      const claimHouseId = inv.houseId || (houses.length === 1 ? houses[0]?.id : null);
+                      // Effective house: homeowner override > contractor-set > auto-select for single-home owners
+                      const effectiveHouseId = invoiceHouseOverrides[inv.id] ?? inv.houseId ?? (houses.length === 1 ? (houses[0] as House)?.id : undefined);
+                      const effectiveHouse = effectiveHouseId ? (houses as House[]).find(h => h.id === effectiveHouseId) : undefined;
+                      const isChanging = changingHouseForInvoice === inv.id;
+                      const multiHouse = (houses as House[]).length > 1;
+                      const canSave = !isClaimed && !!effectiveHouseId;
+
                       return (
                         <div key={inv.id} style={{
                           background: 'var(--purple-tint)', border: '1px solid var(--purple-border)', borderRadius: 10,
-                          padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10,
+                          padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8,
                         }}>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                              <div style={{ fontWeight: 600, fontSize: 13, color: '#2C0F5B', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                {inv.title}
+                          {/* Top row: title + status + view link */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                <div style={{ fontWeight: 600, fontSize: 13, color: '#2C0F5B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {inv.title}
+                                </div>
+                                <span style={{
+                                  fontSize: 10, fontWeight: 600, borderRadius: 5, padding: '1px 6px',
+                                  background: inv.status === 'paid' ? '#dcfce7' : inv.status === 'overdue' ? '#fee2e2' : inv.status === 'sent' ? '#dbeafe' : '#f3f4f6',
+                                  color: inv.status === 'paid' ? '#16a34a' : inv.status === 'overdue' ? '#dc2626' : inv.status === 'sent' ? '#1d4ed8' : '#6b7280',
+                                  textTransform: 'uppercase',
+                                }}>
+                                  {inv.status}
+                                </span>
                               </div>
-                              <span style={{
-                                fontSize: 10, fontWeight: 600, borderRadius: 5, padding: '1px 6px',
-                                background: inv.status === 'paid' ? '#dcfce7' : inv.status === 'overdue' ? '#fee2e2' : inv.status === 'sent' ? '#dbeafe' : '#f3f4f6',
-                                color: inv.status === 'paid' ? '#16a34a' : inv.status === 'overdue' ? '#dc2626' : inv.status === 'sent' ? '#1d4ed8' : '#6b7280',
-                                textTransform: 'uppercase',
-                              }}>
-                                {inv.status}
-                              </span>
+                              <div style={{ fontSize: 11, color: '#7B6FA0', marginTop: 2 }}>
+                                {inv.companyName || inv.contractorName} · ${parseFloat(inv.total).toFixed(2)}
+                              </div>
                             </div>
-                            <div style={{ fontSize: 11, color: '#7B6FA0', marginTop: 2 }}>
-                              {inv.companyName || inv.contractorName} · ${parseFloat(inv.total).toFixed(2)}
-                            </div>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                             <a
                               href={`/pay/invoice/${inv.id}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="dash-light-card-btn"
-                              style={{ fontSize: 11, padding: '4px 8px' }}
+                              style={{ fontSize: 11, padding: '4px 8px', flexShrink: 0 }}
                             >
                               View →
                             </a>
-                            {!isClaimed && claimHouseId && (
-                              <button
-                                className="btn-primary"
-                                style={{ fontSize: 11, padding: '4px 10px', borderRadius: 7 }}
-                                disabled={claimInvoiceMutation.isPending}
-                                onClick={() => claimInvoiceMutation.mutate({ invoiceId: inv.id, houseId: claimHouseId })}
-                                data-testid={`button-claim-invoice-${inv.id}`}
-                              >
-                                Save to history
-                              </button>
-                            )}
-                            {isClaimed && (
-                              <span style={{ fontSize: 11, color: '#22c55e', fontWeight: 600 }}>✓ Saved</span>
-                            )}
                           </div>
+
+                          {/* Home assignment row */}
+                          {!isClaimed && (
+                            <div style={{ borderTop: '1px solid var(--purple-border)', paddingTop: 8 }}>
+                              {isChanging ? (
+                                /* Inline home picker */
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                  <div style={{ fontSize: 11, color: '#7B6FA0', fontWeight: 600 }}>Select the correct property:</div>
+                                  <select
+                                    defaultValue={effectiveHouseId ?? ''}
+                                    onChange={(e) => {
+                                      setInvoiceHouseOverrides(prev => ({ ...prev, [inv.id]: e.target.value }));
+                                      setChangingHouseForInvoice(null);
+                                    }}
+                                    style={{
+                                      width: '100%', padding: '6px 8px', borderRadius: 6,
+                                      border: '1.5px solid var(--purple-border)', backgroundColor: '#fff',
+                                      color: '#2C0F5B', fontSize: 12, outline: 'none',
+                                    }}
+                                    data-testid={`select-house-override-${inv.id}`}
+                                  >
+                                    <option value="">— choose a property —</option>
+                                    {(houses as House[]).map((h) => (
+                                      <option key={h.id} value={h.id}>
+                                        {(h as any).name || (h as any).address || h.id}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <button
+                                    style={{ fontSize: 11, color: '#7B6FA0', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                                    onClick={() => setChangingHouseForInvoice(null)}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                                  <div style={{ fontSize: 11, color: '#2C0F5B' }}>
+                                    {effectiveHouse
+                                      ? <>📍 <strong>{(effectiveHouse as any).name || (effectiveHouse as any).address || 'Your home'}</strong></>
+                                      : <span style={{ color: '#dc2626' }}>⚠ No property selected — choose one before saving</span>
+                                    }
+                                    {multiHouse && effectiveHouse && (
+                                      <button
+                                        style={{ marginLeft: 8, fontSize: 11, color: '#7B6FA0', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                                        onClick={() => setChangingHouseForInvoice(inv.id)}
+                                        data-testid={`button-change-house-${inv.id}`}
+                                      >
+                                        Change
+                                      </button>
+                                    )}
+                                    {multiHouse && !effectiveHouse && (
+                                      <button
+                                        style={{ marginLeft: 4, fontSize: 11, color: '#1560a2', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontWeight: 600 }}
+                                        onClick={() => setChangingHouseForInvoice(inv.id)}
+                                        data-testid={`button-select-house-${inv.id}`}
+                                      >
+                                        Select property
+                                      </button>
+                                    )}
+                                  </div>
+                                  <button
+                                    className="btn-primary"
+                                    style={{ fontSize: 11, padding: '4px 10px', borderRadius: 7, opacity: canSave ? 1 : 0.45, cursor: canSave ? 'pointer' : 'default' }}
+                                    disabled={!canSave || claimInvoiceMutation.isPending}
+                                    onClick={() => canSave && claimInvoiceMutation.mutate({ invoiceId: inv.id, houseId: effectiveHouseId! })}
+                                    data-testid={`button-claim-invoice-${inv.id}`}
+                                  >
+                                    Save to history
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {isClaimed && (
+                            <div style={{ borderTop: '1px solid var(--purple-border)', paddingTop: 8, fontSize: 11, color: '#22c55e', fontWeight: 600 }}>
+                              ✓ Saved to {effectiveHouse ? ((effectiveHouse as any).name || (effectiveHouse as any).address) : 'your home history'}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
