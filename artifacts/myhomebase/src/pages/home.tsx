@@ -265,6 +265,22 @@ export default function Home() {
         <HomeownerFeatureGate featureName="Home Dashboard">
           <div className="dash-body">
 
+            {/* Agent Banner — in body (purple-tint area) per reference design */}
+            {referringAgent && (
+              <button className="dash-agent-banner" onClick={() => setAgentModalOpen(true)} aria-label="View your agent">
+                <div className="dash-agent-banner-photo">
+                  {referringAgent.profileImageUrl
+                    ? <img src={referringAgent.profileImageUrl} alt={`${referringAgent.firstName} ${referringAgent.lastName}`} className="dash-agent-banner-img" />
+                    : <span className="dash-agent-banner-initial">{referringAgent.firstName?.[0]?.toUpperCase() ?? "A"}</span>}
+                </div>
+                <div className="dash-agent-banner-copy">
+                  <div className="dash-agent-banner-label">Your Real Estate Agent</div>
+                  <div className="dash-agent-banner-name">{referringAgent.firstName} {referringAgent.lastName}</div>
+                </div>
+                <div className="dash-agent-banner-cta">View info →</div>
+              </button>
+            )}
+
             {/* Property Cards */}
             <span className="dash-section-label">Your {houses.length === 1 ? "property" : "properties"}</span>
             <div data-tour-id="health-score">
