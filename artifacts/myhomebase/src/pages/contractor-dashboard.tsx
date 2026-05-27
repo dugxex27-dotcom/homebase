@@ -31,6 +31,7 @@ import {
   MessageSquare,
   CheckCircle,
   AlertCircle,
+  AlertTriangle,
   Plus,
   Sparkles,
   UserCog,
@@ -1002,25 +1003,56 @@ export default function ContractorDashboard() {
           <span className="action-cta" style={{ color: '#079669' }}>Log →</span>
         </Link>
 
-        {companyRole === 'owner' && (
-          <Link href="/contractor/team" className="action-row" style={{ textDecoration: 'none' }} data-testid="button-manage-team">
-            <div className="action-icon" style={{ background: '#EAF4FD', color: '#1560A2' }}><UserCog size={18} /></div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="action-title">Manage Team</div>
-              <div className="action-sub">
-                {isLoadingTeam
-                  ? 'Loading team…'
-                  : activeTeamCount !== null
-                    ? `${teamData?.maxTechSeats 
-                        ? `${activeTeamCount} of ${teamData.maxTechSeats} seats active` 
-                        : `${activeTeamCount} active ${activeTeamCount === 1 ? 'technician' : 'technicians'}`
-                      }${pendingTeamCount > 0 ? ` · ${pendingTeamCount} pending` : ''}`
-                    : 'Invite and manage field technicians'}
+        {companyRole === 'owner' && (() => {
+          const maxSeats = teamData?.maxTechSeats ?? null;
+          const isFull = activeTeamCount !== null && maxSeats !== null && activeTeamCount >= maxSeats;
+          const isNearlyFull = activeTeamCount !== null && maxSeats !== null && !isFull && activeTeamCount === maxSeats - 1;
+          const pendingSuffix = pendingTeamCount > 0 ? ` · ${pendingTeamCount} pending` : '';
+          const seatText = maxSeats !== null && activeTeamCount !== null
+            ? `${activeTeamCount} of ${maxSeats} seats active`
+            : activeTeamCount !== null
+              ? `${activeTeamCount} active ${activeTeamCount === 1 ? 'technician' : 'technicians'}`
+              : null;
+
+          return (
+            <Link href="/contractor/team" className="action-row" style={{ textDecoration: 'none' }} data-testid="button-manage-team">
+              <div className="action-icon" style={{ background: isFull ? '#FEF3C7' : '#EAF4FD', color: isFull ? '#D97706' : '#1560A2' }}>
+                {isFull ? <AlertTriangle size={18} /> : <UserCog size={18} />}
               </div>
-            </div>
-            <span className="action-cta" style={{ color: '#1560A2' }}>Manage →</span>
-          </Link>
-        )}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="action-title">Manage Team</div>
+                <div className="action-sub" style={isFull ? { color: '#B45309' } : isNearlyFull ? { color: '#D97706' } : undefined}>
+                  {isLoadingTeam
+                    ? 'Loading team…'
+                    : isFull
+                      ? (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                          <AlertTriangle size={11} style={{ flexShrink: 0 }} />
+                          <span>All {maxSeats} seats used{pendingSuffix}</span>
+                          <span style={{ color: '#94a3b8' }}>·</span>
+                          <a
+                            href="/contractor-pricing"
+                            onClick={e => e.stopPropagation()}
+                            style={{ color: '#B45309', textDecoration: 'underline', fontWeight: 600 }}
+                          >Upgrade plan</a>
+                        </span>
+                      )
+                      : isNearlyFull
+                        ? (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <AlertTriangle size={11} style={{ flexShrink: 0 }} />
+                            <span>{seatText}{pendingSuffix} — 1 seat left</span>
+                          </span>
+                        )
+                        : seatText !== null
+                          ? `${seatText}${pendingSuffix}`
+                          : 'Invite and manage field technicians'}
+                </div>
+              </div>
+              <span className="action-cta" style={{ color: '#1560A2' }}>Manage →</span>
+            </Link>
+          );
+        })()}
 
         {/* Homeowner Connection */}
         <span className="dash-section-label" style={{ marginTop: 8 }}>Homeowner Connection</span>
