@@ -291,11 +291,25 @@ function TeamAuditLog() {
     },
   });
 
+  const [nameSearch, setNameSearch] = useState('');
+  const [actionFilter, setActionFilter] = useState<string>('');
+
   const actionMeta: Record<string, { label: string; color: string; bg: string }> = {
     suspended:   { label: 'Suspended',   color: '#dc2626', bg: '#fee2e2' },
     reactivated: { label: 'Reactivated', color: '#09694a', bg: '#f0faf4' },
     removed:     { label: 'Removed',     color: '#7c3aed', bg: '#ede9fe' },
   };
+
+  const actionTypes = ['suspended', 'reactivated', 'removed'] as const;
+
+  const filtered = entries.filter(entry => {
+    const matchesName =
+      !nameSearch.trim() ||
+      (entry.targetName ?? '').toLowerCase().includes(nameSearch.trim().toLowerCase()) ||
+      (entry.actorName ?? '').toLowerCase().includes(nameSearch.trim().toLowerCase());
+    const matchesAction = !actionFilter || entry.teamAction === actionFilter;
+    return matchesName && matchesAction;
+  });
 
   if (isLoading) {
     return <div style={{ padding: '12px 0', color: '#94a3b8', fontSize: 12 }}>Loading audit log…</div>;
@@ -310,36 +324,116 @@ function TeamAuditLog() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      {entries.map(entry => {
-        const meta = actionMeta[entry.teamAction ?? ''] ?? { label: entry.teamAction ?? 'Action', color: '#64748b', bg: '#f1f5f9' };
-        const dateStr = format(new Date(entry.createdAt), 'MMM d, yyyy');
-        return (
-          <div key={entry.id} style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr auto auto auto',
-            alignItems: 'center',
-            gap: 10,
-            background: '#f8fafc',
-            borderRadius: 8,
-            padding: '8px 12px',
-            border: '1px solid #e2e8f0',
-          }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: '#111827', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {entry.targetName ?? '—'}
-            </div>
-            <span style={{
-              fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
-              borderRadius: 5, padding: '2px 8px',
-              background: meta.bg, color: meta.color, whiteSpace: 'nowrap',
-            }}>{meta.label}</span>
-            <div style={{ fontSize: 11, color: '#64748b', whiteSpace: 'nowrap' }}>
-              by {entry.actorName ?? '—'}
-            </div>
-            <div style={{ fontSize: 11, color: '#94a3b8', whiteSpace: 'nowrap' }}>{dateStr}</div>
-          </div>
-        );
-      })}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', flex: '1 1 160px', minWidth: 140 }}>
+          <svg
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="#94a3b8"
+            strokeWidth="1.5"
+            style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', width: 13, height: 13, pointerEvents: 'none' }}
+          >
+            <circle cx="6.5" cy="6.5" r="5" />
+            <line x1="10.5" y1="10.5" x2="14" y2="14" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search by member name…"
+            value={nameSearch}
+            onChange={e => setNameSearch(e.target.value)}
+            style={{
+              width: '100%',
+              boxSizing: 'border-box',
+              paddingLeft: 28,
+              paddingRight: 8,
+              paddingTop: 6,
+              paddingBottom: 6,
+              fontSize: 12,
+              border: '1px solid #e2e8f0',
+              borderRadius: 7,
+              outline: 'none',
+              color: '#111827',
+              background: '#fff',
+            }}
+          />
+        </div>
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+          <button
+            onClick={() => setActionFilter('')}
+            style={{
+              fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 20,
+              border: '1px solid',
+              borderColor: actionFilter === '' ? '#6366f1' : '#e2e8f0',
+              background: actionFilter === '' ? '#eef2ff' : '#fff',
+              color: actionFilter === '' ? '#4f46e5' : '#64748b',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            All
+          </button>
+          {actionTypes.map(type => {
+            const m = actionMeta[type];
+            const active = actionFilter === type;
+            return (
+              <button
+                key={type}
+                onClick={() => setActionFilter(active ? '' : type)}
+                style={{
+                  fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 20,
+                  border: '1px solid',
+                  borderColor: active ? m.color : '#e2e8f0',
+                  background: active ? m.bg : '#fff',
+                  color: active ? m.color : '#64748b',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {m.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {filtered.length === 0 ? (
+        <div style={{ padding: '14px 0', textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>
+          No events match your search.
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {filtered.map(entry => {
+            const meta = actionMeta[entry.teamAction ?? ''] ?? { label: entry.teamAction ?? 'Action', color: '#64748b', bg: '#f1f5f9' };
+            const dateStr = format(new Date(entry.createdAt), 'MMM d, yyyy');
+            return (
+              <div key={entry.id} style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr auto auto auto',
+                alignItems: 'center',
+                gap: 10,
+                background: '#f8fafc',
+                borderRadius: 8,
+                padding: '8px 12px',
+                border: '1px solid #e2e8f0',
+              }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#111827', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {entry.targetName ?? '—'}
+                </div>
+                <span style={{
+                  fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
+                  borderRadius: 5, padding: '2px 8px',
+                  background: meta.bg, color: meta.color, whiteSpace: 'nowrap',
+                }}>{meta.label}</span>
+                <div style={{ fontSize: 11, color: '#64748b', whiteSpace: 'nowrap' }}>
+                  by {entry.actorName ?? '—'}
+                </div>
+                <div style={{ fontSize: 11, color: '#94a3b8', whiteSpace: 'nowrap' }}>{dateStr}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
