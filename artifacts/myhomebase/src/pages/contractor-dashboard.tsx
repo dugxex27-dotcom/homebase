@@ -48,7 +48,7 @@ import {
   Clock,
 } from "lucide-react";
 import type { User as UserType, Proposal, ContractorAppointment } from "@shared/schema";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { format, formatDistanceToNow } from "date-fns";
 import "./home.css";
 
@@ -522,17 +522,19 @@ export default function ContractorDashboard() {
   const { toast } = useToast();
   const queryClientInstance = useQueryClient();
   const [location] = useLocation();
+  const search = useSearch();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'team' | 'invoices'>(() => {
     const tab = new URLSearchParams(window.location.search).get('tab');
     return (tab === 'team' || tab === 'invoices') ? tab : 'overview';
   });
 
-  // Sync tab when URL changes (e.g. clicking "Manage →" from overview while already on this page)
+  // Sync tab when query string changes — useSearch() is reactive to ?tab= changes
+  // (useLocation only tracks pathname, so it never fires when only the search changes)
   useEffect(() => {
-    const tab = new URLSearchParams(window.location.search).get('tab');
+    const tab = new URLSearchParams(search).get('tab');
     setActiveTab((tab === 'team' || tab === 'invoices') ? tab : 'overview');
-  }, [location]);
+  }, [search]);
   const [teamSearch, setTeamSearch] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
@@ -1497,58 +1499,6 @@ export default function ContractorDashboard() {
           </div>
           <span className="action-cta" style={{ color: '#079669' }}>Log →</span>
         </Link>
-
-        {companyRole === 'owner' && (() => {
-          const maxSeats = teamData?.maxTechSeats ?? null;
-          const isFull = activeTeamCount !== null && maxSeats !== null && activeTeamCount >= maxSeats;
-          const isNearlyFull = activeTeamCount !== null && maxSeats !== null && !isFull && activeTeamCount / maxSeats >= SEAT_WARN_THRESHOLD;
-          const seatsLeft = maxSeats !== null && activeTeamCount !== null ? maxSeats - activeTeamCount : null;
-          const pendingSuffix = pendingTeamCount > 0 ? ` · ${pendingTeamCount} pending` : '';
-          const seatText = maxSeats !== null && activeTeamCount !== null
-            ? `${activeTeamCount} of ${maxSeats} seats active`
-            : activeTeamCount !== null
-              ? `${activeTeamCount} active ${activeTeamCount === 1 ? 'technician' : 'technicians'}`
-              : null;
-
-          return (
-            <Link href="/contractor-dashboard?tab=team" className="action-row" style={{ textDecoration: 'none' }} data-testid="button-manage-team">
-              <div className="action-icon" style={{ background: isFull ? '#FEF3C7' : '#EAF4FD', color: isFull ? '#D97706' : '#1560A2' }}>
-                {isFull ? <AlertTriangle size={18} /> : <UserCog size={18} />}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="action-title">Manage Team</div>
-                <div className="action-sub" style={isFull ? { color: '#B45309' } : isNearlyFull ? { color: '#D97706' } : undefined}>
-                  {isLoadingTeam
-                    ? 'Loading team…'
-                    : isFull
-                      ? (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-                          <AlertTriangle size={11} style={{ flexShrink: 0 }} />
-                          <span>All {maxSeats} seats used{pendingSuffix}</span>
-                          <span style={{ color: '#94a3b8' }}>·</span>
-                          <a
-                            href="/contractor-pricing"
-                            onClick={e => e.stopPropagation()}
-                            style={{ color: '#B45309', textDecoration: 'underline', fontWeight: 600 }}
-                          >Upgrade plan</a>
-                        </span>
-                      )
-                      : isNearlyFull
-                        ? (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <AlertTriangle size={11} style={{ flexShrink: 0 }} />
-                            <span>{seatText}{pendingSuffix} — {seatsLeft === 1 ? '1 seat left' : `${seatsLeft} seats left`}</span>
-                          </span>
-                        )
-                        : seatText !== null
-                          ? `${seatText}${pendingSuffix}`
-                          : 'Invite and manage field technicians'}
-                </div>
-              </div>
-              <span className="action-cta" style={{ color: '#1560A2' }}>Manage →</span>
-            </Link>
-          );
-        })()}
 
         {/* Homeowner Connection */}
         <span className="dash-section-label" style={{ marginTop: 8 }}>Homeowner Connection</span>
