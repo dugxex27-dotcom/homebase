@@ -17265,6 +17265,55 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     }
   });
 
+  // Resend invite email to a pending tech (admin/owner only)
+  app.post('/api/contractor/team/:userId/resend-invite', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), async (req: any, res) => {
+    try {
+      const adminUser = req.session.user;
+      if (adminUser.role !== 'contractor' || !adminUser.companyId) {
+        return res.status(400).json({ message: "You must be a contractor with a company to resend invites" });
+      }
+
+      const { userId } = req.params;
+      const [techUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+
+      if (!techUser) {
+        return res.status(404).json({ message: "Team member not found" });
+      }
+      if (techUser.companyId !== adminUser.companyId) {
+        return res.status(403).json({ message: "This user does not belong to your company" });
+      }
+      if ((techUser as any).status !== 'pending_invite') {
+        return res.status(400).json({ message: "Invite can only be resent to pending members" });
+      }
+
+      const cryptoMod = await import('crypto');
+      const inviteToken = cryptoMod.randomBytes(32).toString('hex');
+      const inviteExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+      await db.update(users).set({
+        inviteToken,
+        inviteExpiresAt,
+        updatedAt: new Date(),
+      } as any).where(eq(users.id, userId));
+
+      const [companyRow] = await db.select().from(companies).where(eq(companies.id, adminUser.companyId)).limit(1);
+      const domain = process.env.REPLIT_DOMAINS?.split(',')[0]?.trim() || 'gotohomebase.com';
+      const inviteUrl = `https://${domain}/contractor/accept-invite?token=${inviteToken}`;
+
+      await emailService.sendTechInviteEmail(
+        techUser.email!,
+        companyRow?.name || 'Your Company',
+        adminUser.firstName || 'Your manager',
+        inviteUrl
+      );
+
+      res.json({ message: "Invite resent successfully", inviteUrl });
+    } catch (error) {
+      req.log?.error({ error }, '[ENTERPRISE] Error resending tech invite');
+      res.status(500).json({ message: "Failed to resend invite" });
+    }
+  });
+
   // Get team members with seat usage (admin/owner only)
   app.get('/api/contractor/team', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), async (req: any, res) => {
     try {

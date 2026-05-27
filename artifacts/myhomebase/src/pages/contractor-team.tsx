@@ -22,6 +22,7 @@ import {
   ArrowLeft,
   Copy,
   Check,
+  RefreshCw,
 } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
@@ -134,6 +135,22 @@ export default function ContractorTeam() {
     },
     onError: (e: any) =>
       toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const resendInviteMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await apiRequest(`/api/contractor/team/${userId}/resend-invite`, "POST");
+      return res.json() as Promise<{ inviteUrl: string; message: string }>;
+    },
+    onSuccess: (_data, userId) => {
+      const member = team.find((m) => m.id === userId);
+      toast({
+        title: "Invite resent",
+        description: `A new invitation email was sent to ${member?.email ?? "the technician"}.`,
+      });
+    },
+    onError: (e: any) =>
+      toast({ title: "Error", description: e.message || "Failed to resend invite", variant: "destructive" }),
   });
 
   const typedUser = user as any;
@@ -275,13 +292,23 @@ export default function ContractorTeam() {
                   <div className="shrink-0">{statusBadge(member.status)}</div>
                   <div className="flex items-center gap-1 shrink-0">
                     {member.status === "pending_invite" && (
-                      <button
-                        title="Cancel Invite"
-                        className="p-1.5 rounded hover:bg-red-50 text-amber-500 hover:text-red-600"
-                        onClick={() => setCancelInviteTarget(member)}
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      <>
+                        <button
+                          title="Resend Invite"
+                          className="p-1.5 rounded hover:bg-blue-50 text-slate-400 hover:text-blue-600 disabled:opacity-50"
+                          onClick={() => resendInviteMutation.mutate(member.id)}
+                          disabled={resendInviteMutation.isPending && resendInviteMutation.variables === member.id}
+                        >
+                          <RefreshCw size={16} className={resendInviteMutation.isPending && resendInviteMutation.variables === member.id ? "animate-spin" : ""} />
+                        </button>
+                        <button
+                          title="Cancel Invite"
+                          className="p-1.5 rounded hover:bg-red-50 text-amber-500 hover:text-red-600"
+                          onClick={() => setCancelInviteTarget(member)}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </>
                     )}
                     {member.status === "active" && (
                       <button
