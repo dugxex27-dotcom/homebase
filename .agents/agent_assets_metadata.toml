@@ -66,3 +66,9 @@ id = "7A8msDf6nyYLb0ceSLPhY"
 uri = "file://project_structure.txt"
 type = "text"
 title = "Project Structure"
+
+[[outputs]]
+id = "RWwMNh9NBWh0K_NeRB2V9"
+uri = "file://project_summary.txt"
+type = "text"
+title = "Project Summary"
