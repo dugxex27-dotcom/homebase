@@ -72,3 +72,21 @@ id = "RWwMNh9NBWh0K_NeRB2V9"
 uri = "file://project_summary.txt"
 type = "text"
 title = "Project Summary"
+
+[[outputs]]
+id = "eOkcd2K2ZKXL0NZIN9_qb"
+uri = "file://codebase_part1.txt"
+type = "text"
+title = "Codebase Part 1 (27.6 MB)"
+
+[[outputs]]
+id = "bUvA3H-QSz4nN8Ut_iMiw"
+uri = "file://codebase_part2.txt"
+type = "text"
+title = "Codebase Part 2 (29.8 MB)"
+
+[[outputs]]
+id = "_SgcK9cgBVnJ3zdFrcCuY"
+uri = "file://codebase_part3.txt"
+type = "text"
+title = "Codebase Part 3 (18.8 MB)"
