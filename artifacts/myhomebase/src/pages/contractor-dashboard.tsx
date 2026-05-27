@@ -168,7 +168,11 @@ interface AuditEntry {
   createdAt: string;
 }
 
+type AuditFilter = 'all' | 'suspended' | 'reactivated' | 'removed';
+
 function MemberAuditHistory({ memberId }: { memberId: string }) {
+  const [filter, setFilter] = React.useState<AuditFilter>('all');
+
   const { data: entries = [], isLoading } = useQuery<AuditEntry[]>({
     queryKey: ['/api/contractor/team', memberId, 'audit-log'],
     queryFn: async () => {
@@ -192,32 +196,72 @@ function MemberAuditHistory({ memberId }: { memberId: string }) {
     removed: { label: 'Removed', color: '#7c3aed' },
   };
 
+  const filterPills: { key: AuditFilter; label: string; activeColor: string }[] = [
+    { key: 'all', label: 'All', activeColor: '#334155' },
+    { key: 'suspended', label: 'Suspended', activeColor: '#dc2626' },
+    { key: 'reactivated', label: 'Reactivated', activeColor: '#09694a' },
+    { key: 'removed', label: 'Removed', activeColor: '#7c3aed' },
+  ];
+
+  const visible = filter === 'all' ? entries : entries.filter(e => e.teamAction === filter);
+
   return (
     <div style={{ marginTop: 10 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
-        Activity · {entries.length} event{entries.length !== 1 ? 's' : ''}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, flexWrap: 'wrap', gap: 6 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          Activity · {visible.length} event{visible.length !== 1 ? 's' : ''}{filter !== 'all' ? ` (filtered)` : ''}
+        </div>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {filterPills.map(pill => {
+            const active = filter === pill.key;
+            return (
+              <button
+                key={pill.key}
+                onClick={() => setFilter(pill.key)}
+                style={{
+                  fontSize: 10,
+                  fontWeight: 600,
+                  padding: '2px 8px',
+                  borderRadius: 999,
+                  border: `1px solid ${active ? pill.activeColor : '#e2e8f0'}`,
+                  background: active ? pill.activeColor : '#f8fafc',
+                  color: active ? '#fff' : '#64748b',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                  lineHeight: '16px',
+                }}
+              >
+                {pill.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {entries.map(entry => {
-          const meta = actionLabel[entry.teamAction ?? ''] ?? { label: entry.teamAction ?? 'Action', color: '#64748b' };
-          const dateStr = format(new Date(entry.createdAt), 'MMM d, yyyy');
-          const byLine = entry.actorName ? ` by ${entry.actorName}` : '';
-          return (
-            <div key={entry.id} style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              background: '#f8fafc', borderRadius: 8, padding: '6px 10px',
-              border: '1px solid #e2e8f0',
-            }}>
-              <Clock size={12} style={{ color: '#94a3b8', flexShrink: 0 }} />
-              <div style={{ flex: 1, fontSize: 12, color: '#374151' }}>
-                <span style={{ fontWeight: 600, color: meta.color }}>{meta.label}</span>
-                {byLine}
-                <span style={{ color: '#94a3b8', marginLeft: 4 }}>· {dateStr}</span>
+      {visible.length === 0 ? (
+        <div style={{ padding: '6px 0 2px', color: '#94a3b8', fontSize: 11 }}>No {filter} events recorded.</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {visible.map(entry => {
+            const meta = actionLabel[entry.teamAction ?? ''] ?? { label: entry.teamAction ?? 'Action', color: '#64748b' };
+            const dateStr = format(new Date(entry.createdAt), 'MMM d, yyyy');
+            const byLine = entry.actorName ? ` by ${entry.actorName}` : '';
+            return (
+              <div key={entry.id} style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                background: '#f8fafc', borderRadius: 8, padding: '6px 10px',
+                border: '1px solid #e2e8f0',
+              }}>
+                <Clock size={12} style={{ color: '#94a3b8', flexShrink: 0 }} />
+                <div style={{ flex: 1, fontSize: 12, color: '#374151' }}>
+                  <span style={{ fontWeight: 600, color: meta.color }}>{meta.label}</span>
+                  {byLine}
+                  <span style={{ color: '#94a3b8', marginLeft: 4 }}>· {dateStr}</span>
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
