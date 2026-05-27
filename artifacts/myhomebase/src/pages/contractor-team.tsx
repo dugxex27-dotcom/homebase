@@ -69,11 +69,11 @@ export default function ContractorTeam() {
   const [suspendTarget, setSuspendTarget] = useState<TeamMember | null>(null);
   const [cancelInviteTarget, setCancelInviteTarget] = useState<TeamMember | null>(null);
 
-  const { data: teamResponse, isLoading } = useQuery<{ teamMembers: TeamMember[]; maxTechSeats: number }>({
+  const { data: teamResponse, isLoading } = useQuery<{ teamMembers: TeamMember[]; maxTechSeats: number | null }>({
     queryKey: ["/api/contractor/team"],
   });
   const team = teamResponse?.teamMembers ?? [];
-  const maxTechSeats = teamResponse?.maxTechSeats ?? 3;
+  const maxTechSeats = teamResponse?.maxTechSeats ?? null;
 
   const inviteMutation = useMutation({
     mutationFn: async (data: { email: string; firstName?: string; lastName?: string }) => {
@@ -236,6 +236,27 @@ export default function ContractorTeam() {
           <CardDescription>
             {team.length} tech{team.length !== 1 ? "s" : ""} on your team
           </CardDescription>
+          {maxTechSeats > 0 && (
+            <div className="mt-2">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-slate-500">
+                  {team.length} of {maxTechSeats} seat{maxTechSeats !== 1 ? "s" : ""} used
+                </span>
+                {team.length >= maxTechSeats && (
+                  <span className="text-xs font-medium text-amber-600">Limit reached</span>
+                )}
+              </div>
+              <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${Math.min(100, (team.length / maxTechSeats) * 100)}%`,
+                    background: team.length >= maxTechSeats ? "#f59e0b" : "#1560A2",
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {isLoading ? (
