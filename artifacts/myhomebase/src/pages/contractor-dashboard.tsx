@@ -294,6 +294,7 @@ function TeamAuditLog() {
 
   const [nameSearch, setNameSearch] = useState('');
   const [actionFilter, setActionFilter] = useState<string>('');
+  const [roleFilter, setRoleFilter] = useState<string>('');
 
   const actionMeta: Record<string, { label: string; color: string; bg: string }> = {
     suspended:   { label: 'Suspended',   color: '#dc2626', bg: '#fee2e2' },
@@ -303,13 +304,20 @@ function TeamAuditLog() {
 
   const actionTypes = ['suspended', 'reactivated', 'removed'] as const;
 
+  const roleMeta: Record<string, { label: string; color: string; bg: string; borderColor: string }> = {
+    Owner: { label: 'Owner', color: '#b45309', bg: '#fffbeb', borderColor: '#d97706' },
+    Admin: { label: 'Admin', color: '#1d4ed8', bg: '#eff6ff', borderColor: '#3b82f6' },
+  };
+  const roleTypes = ['Owner', 'Admin'] as const;
+
   const filtered = entries.filter(entry => {
     const matchesName =
       !nameSearch.trim() ||
       (entry.targetName ?? '').toLowerCase().includes(nameSearch.trim().toLowerCase()) ||
       (entry.actorName ?? '').toLowerCase().includes(nameSearch.trim().toLowerCase());
     const matchesAction = !actionFilter || entry.teamAction === actionFilter;
-    return matchesName && matchesAction;
+    const matchesRole = !roleFilter || (entry.actorRole ?? '').toLowerCase() === roleFilter.toLowerCase();
+    return matchesName && matchesAction && matchesRole;
   });
 
   if (isLoading) {
@@ -385,6 +393,44 @@ function TeamAuditLog() {
                   fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 20,
                   border: '1px solid',
                   borderColor: active ? m.color : '#e2e8f0',
+                  background: active ? m.bg : '#fff',
+                  color: active ? m.color : '#64748b',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {m.label}
+              </button>
+            );
+          })}
+        </div>
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500, marginRight: 2 }}>Actor:</span>
+          <button
+            onClick={() => setRoleFilter('')}
+            style={{
+              fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 20,
+              border: '1px solid',
+              borderColor: roleFilter === '' ? '#6366f1' : '#e2e8f0',
+              background: roleFilter === '' ? '#eef2ff' : '#fff',
+              color: roleFilter === '' ? '#4f46e5' : '#64748b',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            All
+          </button>
+          {roleTypes.map(role => {
+            const m = roleMeta[role];
+            const active = roleFilter === role;
+            return (
+              <button
+                key={role}
+                onClick={() => setRoleFilter(active ? '' : role)}
+                style={{
+                  fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 20,
+                  border: '1px solid',
+                  borderColor: active ? m.borderColor : '#e2e8f0',
                   background: active ? m.bg : '#fff',
                   color: active ? m.color : '#64748b',
                   cursor: 'pointer',
