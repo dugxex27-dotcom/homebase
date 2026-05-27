@@ -17569,6 +17569,42 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     }
   });
 
+  // Fetch company-wide team audit log (owner only) — must be registered before /:userId/audit-log
+  app.get('/api/contractor/team/audit-log', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner'), async (req: any, res) => {
+    try {
+      const sessionUser = req.session.user;
+      if (!sessionUser.companyId) return res.status(400).json({ message: "You must belong to a company" });
+
+      const logs = await db
+        .select({
+          id: securityAuditLogs.id,
+          action: securityAuditLogs.action,
+          actionDetails: securityAuditLogs.actionDetails,
+          createdAt: securityAuditLogs.createdAt,
+        })
+        .from(securityAuditLogs)
+        .where(
+          and(
+            eq(securityAuditLogs.targetResourceType, 'team_member'),
+            drizzleSql`(${securityAuditLogs.actionDetails}->>'companyId') = ${sessionUser.companyId}`
+          )
+        )
+        .orderBy(desc(securityAuditLogs.createdAt))
+        .limit(50);
+
+      res.json(logs.map(l => ({
+        id: l.id,
+        targetName: (l.actionDetails as any)?.targetName ?? null,
+        teamAction: (l.actionDetails as any)?.teamAction ?? null,
+        actorName: (l.actionDetails as any)?.actorName ?? null,
+        createdAt: l.createdAt,
+      })));
+    } catch (error) {
+      req.log?.error({ error }, '[ENTERPRISE] Error fetching company-wide team audit log');
+      res.status(500).json({ message: "Failed to fetch audit log" });
+    }
+  });
+
   // Fetch audit trail for a specific team member (owner/admin only, scoped to their company)
   app.get('/api/contractor/team/:userId/audit-log', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), async (req: any, res) => {
     try {

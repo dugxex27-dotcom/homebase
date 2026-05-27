@@ -222,6 +222,77 @@ function MemberAuditHistory({ memberId }: { memberId: string }) {
   );
 }
 
+interface CompanyAuditEntry {
+  id: string;
+  targetName: string | null;
+  teamAction: 'suspended' | 'reactivated' | 'removed' | null;
+  actorName: string | null;
+  createdAt: string;
+}
+
+function TeamAuditLog() {
+  const { data: entries = [], isLoading } = useQuery<CompanyAuditEntry[]>({
+    queryKey: ['/api/contractor/team/audit-log'],
+    queryFn: async () => {
+      const res = await fetch('/api/contractor/team/audit-log', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch audit log');
+      return res.json();
+    },
+  });
+
+  const actionMeta: Record<string, { label: string; color: string; bg: string }> = {
+    suspended:   { label: 'Suspended',   color: '#dc2626', bg: '#fee2e2' },
+    reactivated: { label: 'Reactivated', color: '#09694a', bg: '#f0faf4' },
+    removed:     { label: 'Removed',     color: '#7c3aed', bg: '#ede9fe' },
+  };
+
+  if (isLoading) {
+    return <div style={{ padding: '12px 0', color: '#94a3b8', fontSize: 12 }}>Loading audit log…</div>;
+  }
+
+  if (!entries.length) {
+    return (
+      <div style={{ padding: '16px 0', textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>
+        No team actions recorded yet. Suspend, reactivate, or remove a member to see events here.
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {entries.map(entry => {
+        const meta = actionMeta[entry.teamAction ?? ''] ?? { label: entry.teamAction ?? 'Action', color: '#64748b', bg: '#f1f5f9' };
+        const dateStr = format(new Date(entry.createdAt), 'MMM d, yyyy');
+        return (
+          <div key={entry.id} style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr auto auto auto',
+            alignItems: 'center',
+            gap: 10,
+            background: '#f8fafc',
+            borderRadius: 8,
+            padding: '8px 12px',
+            border: '1px solid #e2e8f0',
+          }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#111827', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {entry.targetName ?? '—'}
+            </div>
+            <span style={{
+              fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
+              borderRadius: 5, padding: '2px 8px',
+              background: meta.bg, color: meta.color, whiteSpace: 'nowrap',
+            }}>{meta.label}</span>
+            <div style={{ fontSize: 11, color: '#64748b', whiteSpace: 'nowrap' }}>
+              by {entry.actorName ?? '—'}
+            </div>
+            <div style={{ fontSize: 11, color: '#94a3b8', whiteSpace: 'nowrap' }}>{dateStr}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 const proposalFormSchema = z.object({
   contractorId: z.string().min(1),
   homeownerId: z.string().min(1, "Please select a customer"),
@@ -267,6 +338,7 @@ export default function ContractorDashboard() {
   const [inviteResult, setInviteResult] = useState<{ inviteUrl: string } | null>(null);
   const [copiedInviteUrl, setCopiedInviteUrl] = useState(false);
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
+  const [auditLogOpen, setAuditLogOpen] = useState(false);
   const [editFirstName, setEditFirstName] = useState('');
   const [editLastName, setEditLastName] = useState('');
   const [editEmail, setEditEmail] = useState('');
@@ -895,6 +967,36 @@ export default function ContractorDashboard() {
                   </div>
                 );
               })
+          )}
+
+          {/* Team Audit Log — owner only */}
+          {isOwner && (
+            <div style={{ marginTop: 16 }}>
+              <button
+                onClick={() => setAuditLogOpen(o => !o)}
+                style={{
+                  all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                  width: '100%', padding: '10px 14px', borderRadius: 10,
+                  background: auditLogOpen ? '#eff6ff' : '#f8fafc',
+                  border: `1px solid ${auditLogOpen ? '#bfdbfe' : '#e2e8f0'}`,
+                  transition: 'background 0.15s, border-color 0.15s',
+                }}
+              >
+                {auditLogOpen
+                  ? <ChevronDown size={15} style={{ color: '#1560A2', flexShrink: 0 }} />
+                  : <ChevronRight size={15} style={{ color: '#64748b', flexShrink: 0 }} />
+                }
+                <span style={{ fontSize: 13, fontWeight: 700, color: auditLogOpen ? '#1560A2' : '#374151', flex: 1, textAlign: 'left' }}>
+                  Team Audit Log
+                </span>
+                <span style={{ fontSize: 11, color: '#94a3b8' }}>suspend · reactivate · remove</span>
+              </button>
+              {auditLogOpen && (
+                <div style={{ marginTop: 10 }}>
+                  <TeamAuditLog />
+                </div>
+              )}
+            </div>
           )}
 
           {/* Suspend team member confirm dialog */}
