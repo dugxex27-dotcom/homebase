@@ -38,6 +38,9 @@ import {
   Copy,
   Check,
   PauseCircle,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
 } from "lucide-react";
 import type { User as UserType, Proposal, ContractorAppointment } from "@shared/schema";
 import { Link } from "wouter";
@@ -82,6 +85,74 @@ interface AdminInvoice {
   uploaderEmail: string | null;
 }
 
+function TechJobHistory({ memberId, memberName }: { memberId: string; memberName: string }) {
+  const { data: invoices = [], isLoading } = useQuery<AdminInvoice[]>({
+    queryKey: ['/api/contractor/invoices', 'tech', memberId],
+    queryFn: async () => {
+      const params = new URLSearchParams({ techId: memberId });
+      const res = await fetch(`/api/contractor/invoices?${params}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div style={{ padding: '10px 0 4px', color: '#94a3b8', fontSize: 12 }}>Loading job history…</div>
+    );
+  }
+
+  if (!invoices.length) {
+    return (
+      <div style={{ padding: '10px 0 4px', color: '#94a3b8', fontSize: 12 }}>No invoices submitted yet.</div>
+    );
+  }
+
+  return (
+    <div style={{ marginTop: 10 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+        Job History · {invoices.length} invoice{invoices.length !== 1 ? 's' : ''}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {invoices.map(inv => {
+          const homeownerName = [inv.homeownerFirstName, inv.homeownerLastName].filter(Boolean).join(' ') || 'Unknown homeowner';
+          const dateStr = inv.invoiceDate
+            ? format(new Date(inv.invoiceDate), 'MMM d, yyyy')
+            : inv.createdAt
+              ? format(new Date(inv.createdAt), 'MMM d, yyyy')
+              : '—';
+          const amountStr = inv.amount != null ? `$${parseFloat(inv.amount).toFixed(2)}` : '—';
+          return (
+            <div key={inv.id} style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              background: '#f8fafc', borderRadius: 8, padding: '7px 10px',
+              border: '1px solid #e2e8f0',
+            }}>
+              <FileText size={13} style={{ color: '#94a3b8', flexShrink: 0 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {homeownerName}
+                </div>
+                <div style={{ fontSize: 11, color: '#64748b' }}>{dateStr}</div>
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#0C3460', flexShrink: 0 }}>{amountStr}</div>
+              <a
+                href={inv.fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: '#1560A2', display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, flexShrink: 0, textDecoration: 'none' }}
+                title="View invoice"
+              >
+                <ExternalLink size={12} />
+              </a>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 const proposalFormSchema = z.object({
   contractorId: z.string().min(1),
   homeownerId: z.string().min(1, "Please select a customer"),
@@ -117,6 +188,7 @@ export default function ContractorDashboard() {
   const [invoiceHomeownerName, setInvoiceHomeownerName] = useState('');
   const [pendingRemoveMember, setPendingRemoveMember] = useState<TeamMember | null>(null);
   const [pendingSuspendMember, setPendingSuspendMember] = useState<TeamMember | null>(null);
+  const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
   const [inviteFirstName, setInviteFirstName] = useState('');
   const [inviteLastName, setInviteLastName] = useState('');
   const [inviteResult, setInviteResult] = useState<{ inviteUrl: string } | null>(null);
@@ -494,6 +566,8 @@ export default function ContractorDashboard() {
                 const isSuspended = member.status === 'suspended';
                 const isPending = member.status === 'pending_invite';
                 const avatarLetter = (member.firstName?.[0] || member.email?.[0] || '?').toUpperCase();
+                const isExpanded = expandedMemberId === member.id;
+                const hasInvoices = member.invoiceCount > 0;
                 return (
                   <div key={member.id} className="dash-light-card" style={{ marginBottom: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
@@ -505,8 +579,20 @@ export default function ContractorDashboard() {
                         color: '#fff', fontSize: 14, fontWeight: 700,
                       }}>{avatarLetter}</div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 600, fontSize: 13, color: '#111827' }}>{fullName}</div>
-                        <div style={{ fontSize: 12, color: '#64748b', display: 'flex', alignItems: 'center', gap: 3 }}>
+                        <button
+                          onClick={() => setExpandedMemberId(isExpanded ? null : member.id)}
+                          style={{
+                            all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                            fontWeight: 600, fontSize: 13, color: '#111827',
+                          }}
+                        >
+                          {isExpanded
+                            ? <ChevronDown size={14} style={{ color: '#64748b', flexShrink: 0 }} />
+                            : <ChevronRight size={14} style={{ color: '#64748b', flexShrink: 0 }} />
+                          }
+                          {fullName}
+                        </button>
+                        <div style={{ fontSize: 12, color: '#64748b', display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}>
                           <Mail size={11} style={{ flexShrink: 0 }} />{member.email}
                         </div>
                         {isPending && member.inviteExpiresAt && (
@@ -519,7 +605,7 @@ export default function ContractorDashboard() {
                             Last login: {format(new Date(member.lastLoginAt), 'MMM d, yyyy')}
                           </div>
                         )}
-                        {member.invoiceCount > 0 && (
+                        {hasInvoices && (
                           <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>
                             {member.invoiceCount} invoice{member.invoiceCount !== 1 ? 's' : ''} submitted
                           </div>
@@ -553,6 +639,11 @@ export default function ContractorDashboard() {
                         </div>
                       </div>
                     </div>
+                    {isExpanded && (
+                      <div style={{ borderTop: '1px solid #e2e8f0', marginTop: 10, paddingTop: 4 }}>
+                        <TechJobHistory memberId={member.id} memberName={fullName} />
+                      </div>
+                    )}
                   </div>
                 );
               })
