@@ -840,7 +840,35 @@ export default function ContractorDashboard() {
             cancelText="Cancel"
             variant="destructive"
             onConfirm={() => { if (pendingSuspendMember) teamActionMutation.mutate({ userId: pendingSuspendMember.id, action: 'suspend' }); }}
-          />
+          >
+            {pendingSuspendMember?.companyRole === 'admin' && (() => {
+              const lastLogin = pendingSuspendMember.lastLoginAt ? new Date(pendingSuspendMember.lastLoginAt) : null;
+              const minutesAgo = lastLogin ? (Date.now() - lastLogin.getTime()) / 60000 : null;
+              const isRecentlyActive = minutesAgo !== null && minutesAgo <= 30;
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+                  <div style={{ fontSize: 13, color: '#64748b' }}>
+                    <span style={{ fontWeight: 600 }}>Last active: </span>
+                    {lastLogin
+                      ? formatDistanceToNow(lastLogin, { addSuffix: true })
+                      : 'Never signed in'}
+                  </div>
+                  {isRecentlyActive && (
+                    <div style={{
+                      display: 'flex', alignItems: 'flex-start', gap: 8,
+                      background: '#fffbeb', border: '1px solid #fcd34d',
+                      borderRadius: 8, padding: '10px 12px',
+                    }}>
+                      <AlertTriangle size={15} style={{ color: '#d97706', flexShrink: 0, marginTop: 1 }} />
+                      <span style={{ fontSize: 13, color: '#92400e', lineHeight: 1.4 }}>
+                        This admin was recently active — are you sure?
+                      </span>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </ConfirmDialog>
 
           {/* Remove team member confirm dialog */}
           <ConfirmDialog
