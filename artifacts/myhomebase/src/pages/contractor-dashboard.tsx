@@ -639,6 +639,11 @@ export default function ContractorDashboard() {
                 const isExpanded = expandedMemberId === member.id;
                 const hasInvoices = member.invoiceCount > 0;
                 const isEditing = editingMemberId === member.id;
+                const INACTIVE_THRESHOLD_MS = 90 * 24 * 60 * 60 * 1000;
+                const isInactiveAdmin = isAdmin && (
+                  !member.lastLoginAt ||
+                  (Date.now() - new Date(member.lastLoginAt).getTime()) > INACTIVE_THRESHOLD_MS
+                );
                 return (
                   <div key={member.id} className="dash-light-card" style={{ marginBottom: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
@@ -694,6 +699,14 @@ export default function ContractorDashboard() {
                             background: isSuspended ? '#fee2e2' : isPending ? '#fef3c7' : '#f0faf4',
                             color: isSuspended ? '#dc2626' : isPending ? '#d97706' : '#09694a',
                           }}>{isSuspended ? 'Suspended' : isPending ? 'Pending' : 'Active'}</span>
+                          {isInactiveAdmin && (
+                            <span
+                              title="No sign-in in 90+ days — consider reviewing access"
+                              style={{ display: 'flex', alignItems: 'center', cursor: 'default' }}
+                            >
+                              <AlertTriangle size={13} style={{ color: '#d97706' }} />
+                            </span>
+                          )}
                         </div>
                         <div style={{ display: 'flex', gap: 4 }}>
                           <button
