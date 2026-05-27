@@ -213,7 +213,7 @@ export default function Sidebar() {
         {isContractor && (
           <>
             <NavItem href="/contractor-dashboard" icon={LayoutDashboard} label="Dashboard" badge={hasNotif('dashboard')} testId="nav-dashboard" />
-            {!isTech && <NavItem href="/manage-team" icon={Users} label="Manage Team" testId="nav-manage-team" />}
+            {!isTech && <NavItem href="/contractor-dashboard?tab=team" icon={Users} label="Manage Team" testId="nav-manage-team" />}
             <NavItem href="/messages" icon={MessageCircle} label="Messages" badge={hasNotif('messages')} testId="nav-messages" />
             {!isTech && <NavItem href="/crm" icon={Wrench} label="CRM" testId="nav-crm" />}
             {!isTech && <NavItem href="/contractor-referral" icon={Gift} label="Referral" testId="nav-referral" />}

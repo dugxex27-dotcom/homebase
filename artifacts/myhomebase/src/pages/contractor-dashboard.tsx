@@ -181,7 +181,10 @@ export default function ContractorDashboard() {
   const { toast } = useToast();
   const queryClientInstance = useQueryClient();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'team' | 'invoices'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'team' | 'invoices'>(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    return (tab === 'team' || tab === 'invoices') ? tab : 'overview';
+  });
   const [teamSearch, setTeamSearch] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
@@ -192,6 +195,7 @@ export default function ContractorDashboard() {
   const [pendingRemoveMember, setPendingRemoveMember] = useState<TeamMember | null>(null);
   const [pendingSuspendMember, setPendingSuspendMember] = useState<TeamMember | null>(null);
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
+  const [pendingCancelInviteMember, setPendingCancelInviteMember] = useState<TeamMember | null>(null);
   const [inviteFirstName, setInviteFirstName] = useState('');
   const [inviteLastName, setInviteLastName] = useState('');
   const [inviteResult, setInviteResult] = useState<{ inviteUrl: string } | null>(null);
@@ -310,12 +314,30 @@ export default function ContractorDashboard() {
     },
   });
 
+  const cancelInviteMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await fetch(`/api/contractor/team/${userId}/invite`, { method: 'DELETE', credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to cancel invite');
+      return data;
+    },
+    onSuccess: () => {
+      refetchTeam();
+      setPendingCancelInviteMember(null);
+      toast({ title: "Invite cancelled", description: "The invite link is no longer valid." });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
   const startEditing = (member: TeamMember) => {
     setEditingMemberId(member.id);
     setEditFirstName(member.firstName ?? '');
     setEditLastName(member.lastName ?? '');
     setEditCompanyRole((member.companyRole as 'tech' | 'admin') ?? 'tech');
   };
+
 
   const { needsSubscription, isInTrial, isLoading: subscriptionLoading } = useContractorSubscription();
   
@@ -681,11 +703,19 @@ export default function ContractorDashboard() {
                               style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}
                             ><PauseCircle size={12} />Suspend</button>
                           ) : null}
-                          <button
-                            onClick={() => setPendingRemoveMember(member)}
-                            disabled={teamActionMutation.isPending}
-                            style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, border: '1px solid #fee2e2', background: '#fff', color: '#dc2626', cursor: 'pointer' }}
-                          >Remove</button>
+                          {isPending ? (
+                            <button
+                              onClick={() => setPendingCancelInviteMember(member)}
+                              disabled={cancelInviteMutation.isPending}
+                              style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, border: '1px solid #fee2e2', background: '#fff', color: '#dc2626', cursor: 'pointer' }}
+                            >Cancel Invite</button>
+                          ) : (
+                            <button
+                              onClick={() => setPendingRemoveMember(member)}
+                              disabled={teamActionMutation.isPending}
+                              style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, border: '1px solid #fee2e2', background: '#fff', color: '#dc2626', cursor: 'pointer' }}
+                            >Remove</button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -777,6 +807,18 @@ export default function ContractorDashboard() {
             cancelText="Cancel"
             variant="destructive"
             onConfirm={() => { if (pendingRemoveMember) teamActionMutation.mutate({ userId: pendingRemoveMember.id, action: 'remove' }); }}
+          />
+
+          {/* Cancel invite confirm dialog */}
+          <ConfirmDialog
+            open={!!pendingCancelInviteMember}
+            onOpenChange={(o) => { if (!o) setPendingCancelInviteMember(null); }}
+            title="Cancel Invite?"
+            description={`The invite sent to ${pendingCancelInviteMember?.email} will be revoked. The invite link will no longer work.`}
+            confirmText="Cancel Invite"
+            cancelText="Keep Invite"
+            variant="destructive"
+            onConfirm={() => { if (pendingCancelInviteMember) cancelInviteMutation.mutate(pendingCancelInviteMember.id); }}
           />
 
           {/* Invite modal */}
@@ -1015,7 +1057,7 @@ export default function ContractorDashboard() {
               : null;
 
           return (
-            <Link href="/contractor/team" className="action-row" style={{ textDecoration: 'none' }} data-testid="button-manage-team">
+            <Link href="/contractor-dashboard?tab=team" className="action-row" style={{ textDecoration: 'none' }} data-testid="button-manage-team">
               <div className="action-icon" style={{ background: isFull ? '#FEF3C7' : '#EAF4FD', color: isFull ? '#D97706' : '#1560A2' }}>
                 {isFull ? <AlertTriangle size={18} /> : <UserCog size={18} />}
               </div>

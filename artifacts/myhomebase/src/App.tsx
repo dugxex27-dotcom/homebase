@@ -71,8 +71,6 @@ const ContractorOnboarding = lazy(() => import("./pages/contractor-onboarding"))
 const ContractorProfile = lazy(() => import("./pages/contractor-profile"));
 const ContractorReferral = lazy(() => import("./pages/contractor-referral"));
 const ServiceRecords = lazy(() => import("./pages/service-records"));
-const ManageTeam = lazy(() => import("./pages/manage-team"));
-const ContractorTeam = lazy(() => import("./pages/contractor-team"));
 const ContractorCRM = lazy(() => import("./pages/contractor-crm"));
 const CrmLeadDetail = lazy(() => import("./pages/crm-lead-detail"));
 const ContractorUpgrade = lazy(() => import("./pages/contractor-upgrade"));
@@ -278,8 +276,8 @@ function Router() {
             <Route path="/contractor-profile" component={ContractorProfile} />
             <Route path="/contractor-referral" component={ContractorReferral} />
             <Route path="/service-records" component={ServiceRecords} />
-            <Route path="/manage-team" component={ManageTeam} />
-            <Route path="/contractor/team" component={ContractorTeam} />
+            <Route path="/manage-team">{() => { window.location.replace('/contractor-dashboard?tab=team'); return null; }}</Route>
+            <Route path="/contractor/team">{() => { window.location.replace('/contractor-dashboard?tab=team'); return null; }}</Route>
             <Route path="/contractor/:id" component={ContractorDetail} />
           </>
         )}

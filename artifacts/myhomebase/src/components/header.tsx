@@ -66,7 +66,7 @@ function TabletNav({ role, location }: { role: string; location: string }) {
       <Link href="/crm" className={itemClass('/crm')}>
         <Users className="w-4 h-4" />Clients
       </Link>
-      <Link href="/manage-team" className={itemClass('/manage-team')}>
+      <Link href="/contractor-dashboard?tab=team" className={itemClass('/contractor-dashboard')}>
         <Users className="w-4 h-4" />Team
       </Link>
       <Link href="/contractor-profile" className={itemClass('/contractor-profile')}>
