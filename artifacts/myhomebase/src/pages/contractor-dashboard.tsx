@@ -48,7 +48,7 @@ import {
   Clock,
 } from "lucide-react";
 import type { User as UserType, Proposal, ContractorAppointment } from "@shared/schema";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { format, formatDistanceToNow } from "date-fns";
 import "./home.css";
 
@@ -521,11 +521,18 @@ export default function ContractorDashboard() {
   const typedUser = user as UserType | undefined;
   const { toast } = useToast();
   const queryClientInstance = useQueryClient();
+  const [location] = useLocation();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'team' | 'invoices'>(() => {
     const tab = new URLSearchParams(window.location.search).get('tab');
     return (tab === 'team' || tab === 'invoices') ? tab : 'overview';
   });
+
+  // Sync tab when URL changes (e.g. clicking "Manage →" from overview while already on this page)
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    setActiveTab((tab === 'team' || tab === 'invoices') ? tab : 'overview');
+  }, [location]);
   const [teamSearch, setTeamSearch] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
