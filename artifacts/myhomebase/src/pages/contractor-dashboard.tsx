@@ -212,7 +212,7 @@ export default function ContractorDashboard() {
 
   const isAdminRole = (typedUser as any)?.companyRole === 'owner' || (typedUser as any)?.companyRole === 'admin';
 
-  const { data: teamData, isLoading: isLoadingTeam, refetch: refetchTeam } = useQuery<{ teamMembers: TeamMember[]; maxTechSeats: number; techCount: number }>({
+  const { data: teamData, isLoading: isLoadingTeam, refetch: refetchTeam } = useQuery<{ teamMembers: TeamMember[]; maxTechSeats: number; techCount: number; adminCount: number }>({
     queryKey: ['/api/contractor/team'],
     queryFn: async () => {
       const res = await fetch('/api/contractor/team', { credentials: 'include' });
@@ -581,6 +581,11 @@ export default function ContractorDashboard() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: '#0C3460' }}>
                 {teamData?.techCount ?? 0} of {teamData?.maxTechSeats ?? 3} tech seats used
+                {(teamData?.adminCount ?? 0) > 0 && (
+                  <span style={{ fontWeight: 400, color: '#64748b', marginLeft: 8 }}>
+                    · {teamData!.adminCount} {teamData!.adminCount === 1 ? 'admin' : 'admins'}
+                  </span>
+                )}
               </span>
               <button
                 onClick={() => setInviteModalOpen(true)}

@@ -17349,7 +17349,8 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         );
 
       const techCount = teamMembers.filter((m: any) => m.companyRole === 'tech').length;
-      res.json({ teamMembers, maxTechSeats: (companyRow as any)?.maxTechSeats ?? 3, techCount });
+      const adminCount = teamMembers.filter((m: any) => m.companyRole === 'admin').length;
+      res.json({ teamMembers, maxTechSeats: (companyRow as any)?.maxTechSeats ?? 3, techCount, adminCount });
     } catch (error) {
       req.log?.error({ error }, '[ENTERPRISE] Error fetching team');
       res.status(500).json({ message: "Failed to fetch team members" });
