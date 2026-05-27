@@ -873,25 +873,83 @@ export default function ContractorDashboard() {
       <div className="dash-header" style={{ background: 'linear-gradient(135deg, #0C3460 0%, #1560A2 100%)' }}>
         <span className="dash-eyebrow" style={{ color: '#AFD6F9' }}>CONTRACTOR</span>
         <div className="dash-title" data-testid="text-welcome-message">Welcome back, {firstName}</div>
-        <div className="dash-subtitle">Manage your work and grow your client base</div>
-        <div className="dash-chips" data-tour-id="contractor-stats">
-          <div className="dash-chip">
-            <div className={`dash-chip-num${totalEarnings > 0 ? ' good' : ''}`} data-testid="text-monthly-earnings">${totalEarnings.toLocaleString()}</div>
-            <div className="dash-chip-label">This Month</div>
-          </div>
-          <div className="dash-chip">
-            <div className={`dash-chip-num${acceptedProposals.length > 0 ? ' good' : ''}`} data-testid="text-active-jobs">{acceptedProposals.length}</div>
-            <div className="dash-chip-label">Active Jobs</div>
-          </div>
-          <div className="dash-chip">
-            <div className={`dash-chip-num${pendingProposals.length > 0 ? ' warn' : ''}`} data-testid="text-pending-proposals">{pendingProposals.length}</div>
-            <div className="dash-chip-label">Proposals</div>
-          </div>
-          <div className="dash-chip">
-            <div className={`dash-chip-num${referralCount > 0 ? ' good' : ''}`} data-testid="text-new-leads">{referralCount}</div>
-            <div className="dash-chip-label">New Leads</div>
-          </div>
-        </div>
+
+        {/* Jobs / Overview tab header */}
+        {activeTab === 'overview' && (
+          <>
+            <div className="dash-subtitle">Manage your work and grow your client base</div>
+            <div className="dash-chips" data-tour-id="contractor-stats">
+              <div className="dash-chip">
+                <div className={`dash-chip-num${totalEarnings > 0 ? ' good' : ''}`} data-testid="text-monthly-earnings">${totalEarnings.toLocaleString()}</div>
+                <div className="dash-chip-label">This Month</div>
+              </div>
+              <div className="dash-chip">
+                <div className={`dash-chip-num${acceptedProposals.length > 0 ? ' good' : ''}`} data-testid="text-active-jobs">{acceptedProposals.length}</div>
+                <div className="dash-chip-label">Active Jobs</div>
+              </div>
+              <div className="dash-chip">
+                <div className={`dash-chip-num${pendingProposals.length > 0 ? ' warn' : ''}`} data-testid="text-pending-proposals">{pendingProposals.length}</div>
+                <div className="dash-chip-label">Proposals</div>
+              </div>
+              <div className="dash-chip">
+                <div className={`dash-chip-num${referralCount > 0 ? ' good' : ''}`} data-testid="text-new-leads">{referralCount}</div>
+                <div className="dash-chip-label">New Leads</div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Team tab header */}
+        {activeTab === 'team' && (
+          <>
+            <div className="dash-subtitle">Manage your field technicians and admins</div>
+            <div className="dash-chips">
+              <div className="dash-chip">
+                <div className={`dash-chip-num${activeTeamCount !== null && activeTeamCount > 0 ? ' good' : ''}`}>
+                  {isLoadingTeam ? '–' : (activeTeamCount ?? 0)}
+                </div>
+                <div className="dash-chip-label">Active</div>
+              </div>
+              <div className="dash-chip">
+                <div className={`dash-chip-num${pendingTeamCount > 0 ? ' warn' : ''}`}>
+                  {isLoadingTeam ? '–' : pendingTeamCount}
+                </div>
+                <div className="dash-chip-label">Pending</div>
+              </div>
+              <div className="dash-chip">
+                <div className="dash-chip-num">
+                  {isLoadingTeam ? '–' : (teamData?.maxTechSeats ?? '–')}
+                </div>
+                <div className="dash-chip-label">Seats</div>
+              </div>
+              <div className="dash-chip">
+                <div className={`dash-chip-num${activeTeamCount !== null && teamData?.maxTechSeats != null && teamData.maxTechSeats - activeTeamCount <= 1 ? ' warn' : ' good'}`}>
+                  {isLoadingTeam ? '–' : (teamData?.maxTechSeats != null && activeTeamCount != null ? teamData.maxTechSeats - activeTeamCount : '–')}
+                </div>
+                <div className="dash-chip-label">Available</div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Invoices tab header */}
+        {activeTab === 'invoices' && (
+          <>
+            <div className="dash-subtitle">Review and manage technician invoices</div>
+            <div className="dash-chips">
+              <div className="dash-chip">
+                <div className={`dash-chip-num${adminInvoices.length > 0 ? ' good' : ''}`}>{adminInvoices.length}</div>
+                <div className="dash-chip-label">Invoices</div>
+              </div>
+              <div className="dash-chip">
+                <div className={`dash-chip-num${adminInvoices.length > 0 ? ' good' : ''}`}>
+                  ${adminInvoices.reduce((s, i) => s + parseFloat(i.amount || '0'), 0).toLocaleString()}
+                </div>
+                <div className="dash-chip-label">Total Value</div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {isInTrial && <ContractorTrialBanner />}
