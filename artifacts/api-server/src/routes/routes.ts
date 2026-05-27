@@ -8,7 +8,7 @@ import { setupGoogleAuth } from "../googleAuth";
 import { z } from "zod";
 import { randomUUID } from "crypto";
 import rateLimit from "express-rate-limit";
-import { eq, and, ne, sql as drizzleSql, isNotNull, desc } from "drizzle-orm";
+import { eq, and, ne, inArray, sql as drizzleSql, isNotNull, desc } from "drizzle-orm";
 import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertTaskCompletionSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, customMaintenanceTasks, insertSupportTicketSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, securitySessions, referralCredits, referralFreeMonths, agentProfiles, users, siteContent, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, insertReviewFlagSchema, homeDocuments, quizResults, type House } from "@workspace/db";
 import { calculateDIYSavingsAmount } from "../shared/cost-helpers";
 import { extractInvoiceData, verifyDIYPhotos, type InvoiceExtraction } from "../invoice-analysis-service";
@@ -17340,7 +17340,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         .leftJoin(contractorInvoiceUploads, eq(contractorInvoiceUploads.uploadedByUserId, users.id))
         .where(and(
           eq(users.companyId, adminUser.companyId),
-          eq(users.companyRole as any, 'tech'),
+          inArray(users.companyRole as any, ['tech', 'admin']),
           ne(users.status as any, 'removed')
         ))
         .groupBy(
@@ -17348,7 +17348,8 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
           users.companyRole, users.status, users.lastLoginAt, users.inviteExpiresAt, users.createdAt
         );
 
-      res.json({ teamMembers, maxTechSeats: (companyRow as any)?.maxTechSeats ?? 3 });
+      const techCount = teamMembers.filter((m: any) => m.companyRole === 'tech').length;
+      res.json({ teamMembers, maxTechSeats: (companyRow as any)?.maxTechSeats ?? 3, techCount });
     } catch (error) {
       req.log?.error({ error }, '[ENTERPRISE] Error fetching team');
       res.status(500).json({ message: "Failed to fetch team members" });
@@ -17424,6 +17425,44 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     } catch (error) {
       req.log?.error({ error }, '[ENTERPRISE] Error cancelling invite');
       res.status(500).json({ message: "Failed to cancel invite" });
+    }
+  });
+
+  // Update a team member's name or role (admin/owner only)
+  app.patch('/api/contractor/team/:userId', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), requireSameCompany(), async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      const adminUser = req.session.user;
+
+      const schema = z.object({
+        firstName: z.string().min(1).max(100).optional(),
+        lastName: z.string().min(1).max(100).optional(),
+        companyRole: z.enum(['tech', 'admin']).optional(),
+      }).refine(d => d.firstName !== undefined || d.lastName !== undefined || d.companyRole !== undefined, {
+        message: "At least one field must be provided",
+      });
+
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0]?.message ?? "Invalid input" });
+
+      const [targetUser] = await db.select().from(users).where(and(
+        eq(users.id, userId),
+        eq(users.companyId, adminUser.companyId),
+        inArray(users.companyRole as any, ['tech', 'admin']),
+        ne(users.status as any, 'removed')
+      )).limit(1);
+      if (!targetUser) return res.status(404).json({ message: "Team member not found" });
+
+      const updates: Record<string, any> = { updatedAt: new Date() };
+      if (parsed.data.firstName !== undefined) updates.firstName = parsed.data.firstName;
+      if (parsed.data.lastName !== undefined) updates.lastName = parsed.data.lastName;
+      if (parsed.data.companyRole !== undefined) updates.companyRole = parsed.data.companyRole;
+
+      await db.update(users).set(updates).where(eq(users.id, userId));
+      res.json({ message: "Team member updated" });
+    } catch (error) {
+      req.log?.error({ error }, '[ENTERPRISE] Error updating team member');
+      res.status(500).json({ message: "Failed to update team member" });
     }
   });
 

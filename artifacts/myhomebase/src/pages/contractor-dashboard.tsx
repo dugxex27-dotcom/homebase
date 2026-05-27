@@ -41,6 +41,8 @@ import {
   ChevronDown,
   ChevronRight,
   ExternalLink,
+  Pencil,
+  X,
 } from "lucide-react";
 import type { User as UserType, Proposal, ContractorAppointment } from "@shared/schema";
 import { Link } from "wouter";
@@ -193,10 +195,14 @@ export default function ContractorDashboard() {
   const [inviteLastName, setInviteLastName] = useState('');
   const [inviteResult, setInviteResult] = useState<{ inviteUrl: string } | null>(null);
   const [copiedInviteUrl, setCopiedInviteUrl] = useState(false);
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
+  const [editFirstName, setEditFirstName] = useState('');
+  const [editLastName, setEditLastName] = useState('');
+  const [editCompanyRole, setEditCompanyRole] = useState<'tech' | 'admin'>('tech');
 
   const isAdminRole = (typedUser as any)?.companyRole === 'owner' || (typedUser as any)?.companyRole === 'admin';
 
-  const { data: teamData, isLoading: isLoadingTeam, refetch: refetchTeam } = useQuery<{ teamMembers: TeamMember[]; maxTechSeats: number }>({
+  const { data: teamData, isLoading: isLoadingTeam, refetch: refetchTeam } = useQuery<{ teamMembers: TeamMember[]; maxTechSeats: number; techCount: number }>({
     queryKey: ['/api/contractor/team'],
     queryFn: async () => {
       const res = await fetch('/api/contractor/team', { credentials: 'include' });
@@ -280,6 +286,35 @@ export default function ContractorDashboard() {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     },
   });
+
+  const updateMemberMutation = useMutation({
+    mutationFn: async ({ userId, firstName, lastName, companyRole }: { userId: string; firstName: string; lastName: string; companyRole: 'tech' | 'admin' }) => {
+      const res = await fetch(`/api/contractor/team/${userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ firstName: firstName.trim() || undefined, lastName: lastName.trim() || undefined, companyRole }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Update failed');
+      return data;
+    },
+    onSuccess: () => {
+      refetchTeam();
+      setEditingMemberId(null);
+      toast({ title: "Saved", description: "Team member updated" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const startEditing = (member: TeamMember) => {
+    setEditingMemberId(member.id);
+    setEditFirstName(member.firstName ?? '');
+    setEditLastName(member.lastName ?? '');
+    setEditCompanyRole((member.companyRole as 'tech' | 'admin') ?? 'tech');
+  };
 
   const { needsSubscription, isInTrial, isLoading: subscriptionLoading } = useContractorSubscription();
   
@@ -516,17 +551,17 @@ export default function ContractorDashboard() {
           <div className="dash-light-card" style={{ marginBottom: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: '#0C3460' }}>
-                {teamData?.teamMembers.length ?? 0} of {teamData?.maxTechSeats ?? 3} seats used
+                {teamData?.techCount ?? 0} of {teamData?.maxTechSeats ?? 3} tech seats used
               </span>
               <button
                 onClick={() => setInviteModalOpen(true)}
-                title={(teamData?.teamMembers.length ?? 0) >= (teamData?.maxTechSeats ?? 3) ? `Seat limit (${teamData?.maxTechSeats ?? 3}) reached. Contact support to add more.` : undefined}
-                disabled={(teamData?.teamMembers.length ?? 0) >= (teamData?.maxTechSeats ?? 3) || inviteMutation.isPending}
+                title={(teamData?.techCount ?? 0) >= (teamData?.maxTechSeats ?? 3) ? `Seat limit (${teamData?.maxTechSeats ?? 3}) reached. Contact support to add more.` : undefined}
+                disabled={(teamData?.techCount ?? 0) >= (teamData?.maxTechSeats ?? 3) || inviteMutation.isPending}
                 style={{
-                  background: (teamData?.teamMembers.length ?? 0) >= (teamData?.maxTechSeats ?? 3) ? '#e2e8f0' : '#1560A2',
-                  color: (teamData?.teamMembers.length ?? 0) >= (teamData?.maxTechSeats ?? 3) ? '#94a3b8' : '#fff',
+                  background: (teamData?.techCount ?? 0) >= (teamData?.maxTechSeats ?? 3) ? '#e2e8f0' : '#1560A2',
+                  color: (teamData?.techCount ?? 0) >= (teamData?.maxTechSeats ?? 3) ? '#94a3b8' : '#fff',
                   border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 600,
-                  cursor: (teamData?.teamMembers.length ?? 0) >= (teamData?.maxTechSeats ?? 3) ? 'not-allowed' : 'pointer',
+                  cursor: (teamData?.techCount ?? 0) >= (teamData?.maxTechSeats ?? 3) ? 'not-allowed' : 'pointer',
                 }}
               >
                 + Invite Technician
@@ -534,7 +569,7 @@ export default function ContractorDashboard() {
             </div>
             <div style={{ background: '#e2e8f0', borderRadius: 6, height: 6, overflow: 'hidden' }}>
               <div style={{
-                width: `${Math.min(100, ((teamData?.teamMembers.length ?? 0) / (teamData?.maxTechSeats ?? 3)) * 100)}%`,
+                width: `${Math.min(100, ((teamData?.techCount ?? 0) / (teamData?.maxTechSeats ?? 3)) * 100)}%`,
                 height: 6, borderRadius: 6, background: '#1560A2', transition: 'width 0.4s'
               }} />
             </div>
@@ -565,16 +600,18 @@ export default function ContractorDashboard() {
                 const fullName = [member.firstName, member.lastName].filter(Boolean).join(' ') || member.email || 'Unknown';
                 const isSuspended = member.status === 'suspended';
                 const isPending = member.status === 'pending_invite';
+                const isAdmin = member.companyRole === 'admin';
                 const avatarLetter = (member.firstName?.[0] || member.email?.[0] || '?').toUpperCase();
                 const isExpanded = expandedMemberId === member.id;
                 const hasInvoices = member.invoiceCount > 0;
+                const isEditing = editingMemberId === member.id;
                 return (
                   <div key={member.id} className="dash-light-card" style={{ marginBottom: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                       {/* Avatar */}
                       <div style={{
                         width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-                        background: 'linear-gradient(135deg, #0C3460, #1560A2)',
+                        background: isAdmin ? 'linear-gradient(135deg, #7c3aed, #a78bfa)' : 'linear-gradient(135deg, #0C3460, #1560A2)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         color: '#fff', fontSize: 14, fontWeight: 700,
                       }}>{avatarLetter}</div>
@@ -612,12 +649,24 @@ export default function ContractorDashboard() {
                         )}
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
-                        <span style={{
-                          fontSize: 10, fontWeight: 700, textTransform: 'uppercase', borderRadius: 5, padding: '2px 8px',
-                          background: isSuspended ? '#fee2e2' : isPending ? '#fef3c7' : '#f0faf4',
-                          color: isSuspended ? '#dc2626' : isPending ? '#d97706' : '#09694a',
-                        }}>{isSuspended ? 'Suspended' : isPending ? 'Invite Pending' : 'Active'}</span>
+                        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                          <span style={{
+                            fontSize: 10, fontWeight: 700, textTransform: 'uppercase', borderRadius: 5, padding: '2px 8px',
+                            background: isAdmin ? '#ede9fe' : '#f1f5f9',
+                            color: isAdmin ? '#7c3aed' : '#475569',
+                          }}>{isAdmin ? 'Admin' : 'Tech'}</span>
+                          <span style={{
+                            fontSize: 10, fontWeight: 700, textTransform: 'uppercase', borderRadius: 5, padding: '2px 8px',
+                            background: isSuspended ? '#fee2e2' : isPending ? '#fef3c7' : '#f0faf4',
+                            color: isSuspended ? '#dc2626' : isPending ? '#d97706' : '#09694a',
+                          }}>{isSuspended ? 'Suspended' : isPending ? 'Pending' : 'Active'}</span>
+                        </div>
                         <div style={{ display: 'flex', gap: 4 }}>
+                          <button
+                            onClick={() => isEditing ? setEditingMemberId(null) : startEditing(member)}
+                            style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, border: '1px solid #e2e8f0', background: isEditing ? '#f1f5f9' : '#fff', color: '#475569', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}
+                            title={isEditing ? 'Cancel edit' : 'Edit name or role'}
+                          >{isEditing ? <X size={12} /> : <Pencil size={12} />}{isEditing ? 'Cancel' : 'Edit'}</button>
                           {isSuspended ? (
                             <button
                               onClick={() => teamActionMutation.mutate({ userId: member.id, action: 'reactivate' })}
@@ -642,6 +691,62 @@ export default function ContractorDashboard() {
                     {isExpanded && (
                       <div style={{ borderTop: '1px solid #e2e8f0', marginTop: 10, paddingTop: 4 }}>
                         <TechJobHistory memberId={member.id} memberName={fullName} />
+                      </div>
+                    )}
+
+                    {/* Inline edit panel */}
+                    {isEditing && (
+                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+                          <div>
+                            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#374151', marginBottom: 3 }}>First Name</label>
+                            <input
+                              type="text"
+                              value={editFirstName}
+                              onChange={e => setEditFirstName(e.target.value)}
+                              placeholder="First name"
+                              style={{ width: '100%', padding: '7px 10px', borderRadius: 7, border: '1px solid #e2e8f0', fontSize: 12, boxSizing: 'border-box', outline: 'none' }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#374151', marginBottom: 3 }}>Last Name</label>
+                            <input
+                              type="text"
+                              value={editLastName}
+                              onChange={e => setEditLastName(e.target.value)}
+                              placeholder="Last name"
+                              style={{ width: '100%', padding: '7px 10px', borderRadius: 7, border: '1px solid #e2e8f0', fontSize: 12, boxSizing: 'border-box', outline: 'none' }}
+                            />
+                          </div>
+                        </div>
+                        <div style={{ marginBottom: 10 }}>
+                          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#374151', marginBottom: 3 }}>Role</label>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            {(['tech', 'admin'] as const).map(role => (
+                              <button
+                                key={role}
+                                onClick={() => setEditCompanyRole(role)}
+                                style={{
+                                  flex: 1, padding: '7px 0', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                                  border: editCompanyRole === role ? (role === 'admin' ? '2px solid #7c3aed' : '2px solid #1560A2') : '1px solid #e2e8f0',
+                                  background: editCompanyRole === role ? (role === 'admin' ? '#ede9fe' : '#eff6ff') : '#fff',
+                                  color: editCompanyRole === role ? (role === 'admin' ? '#7c3aed' : '#1560A2') : '#64748b',
+                                }}
+                              >{role === 'tech' ? 'Field Tech' : 'Admin'}</button>
+                            ))}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                          <button
+                            onClick={() => setEditingMemberId(null)}
+                            style={{ padding: '6px 14px', borderRadius: 7, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer', fontSize: 12 }}
+                          >Cancel</button>
+                          <button
+                            onClick={() => updateMemberMutation.mutate({ userId: member.id, firstName: editFirstName, lastName: editLastName, companyRole: editCompanyRole })}
+                            disabled={updateMemberMutation.isPending}
+                            style={{ padding: '6px 14px', borderRadius: 7, border: 'none', background: '#1560A2', color: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600, opacity: updateMemberMutation.isPending ? 0.7 : 1 }}
+                          >{updateMemberMutation.isPending ? 'Saving…' : 'Save Changes'}</button>
+                        </div>
                       </div>
                     )}
                   </div>
