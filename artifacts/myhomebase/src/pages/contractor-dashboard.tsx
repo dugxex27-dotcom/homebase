@@ -211,6 +211,7 @@ export default function ContractorDashboard() {
   const [editCompanyRole, setEditCompanyRole] = useState<'tech' | 'admin'>('tech');
 
   const isAdminRole = (typedUser as any)?.companyRole === 'owner' || (typedUser as any)?.companyRole === 'admin';
+  const isOwner = (typedUser as any)?.companyRole === 'owner';
 
   const { data: teamData, isLoading: isLoadingTeam, refetch: refetchTeam } = useQuery<{ teamMembers: TeamMember[]; maxTechSeats: number; techCount: number; adminCount: number }>({
     queryKey: ['/api/contractor/team'],
@@ -290,7 +291,7 @@ export default function ContractorDashboard() {
     },
     onSuccess: (_, { action }) => {
       refetchTeam();
-      toast({ title: "Done", description: action === 'suspend' ? "Tech suspended" : action === 'reactivate' ? "Tech reactivated" : "Tech removed" });
+      toast({ title: "Done", description: action === 'suspend' ? "Member suspended" : action === 'reactivate' ? "Member reactivated" : "Member removed" });
     },
     onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -714,7 +715,7 @@ export default function ContractorDashboard() {
                             style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, border: '1px solid #e2e8f0', background: isEditing ? '#f1f5f9' : '#fff', color: '#475569', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}
                             title={isEditing ? 'Cancel edit' : 'Edit name or role'}
                           >{isEditing ? <X size={12} /> : <Pencil size={12} />}{isEditing ? 'Cancel' : 'Edit'}</button>
-                          {isSuspended ? (
+                          {(!isAdmin || isOwner) && (isSuspended ? (
                             <button
                               onClick={() => teamActionMutation.mutate({ userId: member.id, action: 'reactivate' })}
                               disabled={teamActionMutation.isPending}
@@ -726,8 +727,8 @@ export default function ContractorDashboard() {
                               disabled={teamActionMutation.isPending}
                               style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}
                             ><PauseCircle size={12} />Suspend</button>
-                          ) : null}
-                          {isPending ? (
+                          ) : null)}
+                          {(!isAdmin || isOwner) && (isPending ? (
                             <button
                               onClick={() => setPendingCancelInviteMember(member)}
                               disabled={cancelInviteMutation.isPending}
@@ -739,7 +740,7 @@ export default function ContractorDashboard() {
                               disabled={teamActionMutation.isPending}
                               style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, border: '1px solid #fee2e2', background: '#fff', color: '#dc2626', cursor: 'pointer' }}
                             >Remove</button>
-                          )}
+                          ))}
                         </div>
                       </div>
                     </div>

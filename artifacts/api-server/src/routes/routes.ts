@@ -17357,15 +17357,19 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     }
   });
 
-  // Suspend a tech (admin/owner only)
+  // Suspend a tech or admin (owner can target either; admin can only target techs)
   app.patch('/api/contractor/team/:userId/suspend', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), requireSameCompany(), async (req: any, res) => {
     try {
       const { userId } = req.params;
       const adminUser = req.session.user;
+      const requesterRole = adminUser.companyRole;
+      const roleCondition = requesterRole === 'owner'
+        ? inArray(users.companyRole as any, ['tech', 'admin'])
+        : eq(users.companyRole as any, 'tech');
       const [targetUser] = await db.select().from(users).where(and(
         eq(users.id, userId),
         eq(users.companyId, adminUser.companyId),
-        eq(users.companyRole as any, 'tech')
+        roleCondition
       )).limit(1);
       if (!targetUser) return res.status(404).json({ message: "Team member not found" });
 
@@ -17373,20 +17377,24 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       suspendedUserIds.add(userId);
       res.json({ message: "Team member suspended" });
     } catch (error) {
-      req.log?.error({ error }, '[ENTERPRISE] Error suspending tech');
+      req.log?.error({ error }, '[ENTERPRISE] Error suspending team member');
       res.status(500).json({ message: "Failed to suspend team member" });
     }
   });
 
-  // Reactivate a tech (admin/owner only)
+  // Reactivate a tech or admin (owner can target either; admin can only target techs)
   app.patch('/api/contractor/team/:userId/reactivate', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), requireSameCompany(), async (req: any, res) => {
     try {
       const { userId } = req.params;
       const adminUser = req.session.user;
+      const requesterRole = adminUser.companyRole;
+      const roleCondition = requesterRole === 'owner'
+        ? inArray(users.companyRole as any, ['tech', 'admin'])
+        : eq(users.companyRole as any, 'tech');
       const [targetUser] = await db.select().from(users).where(and(
         eq(users.id, userId),
         eq(users.companyId, adminUser.companyId),
-        eq(users.companyRole as any, 'tech')
+        roleCondition
       )).limit(1);
       if (!targetUser) return res.status(404).json({ message: "Team member not found" });
 
@@ -17394,7 +17402,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       suspendedUserIds.delete(userId);
       res.json({ message: "Team member reactivated" });
     } catch (error) {
-      req.log?.error({ error }, '[ENTERPRISE] Error reactivating tech');
+      req.log?.error({ error }, '[ENTERPRISE] Error reactivating team member');
       res.status(500).json({ message: "Failed to reactivate team member" });
     }
   });
@@ -17404,10 +17412,14 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     try {
       const { userId } = req.params;
       const adminUser = req.session.user;
+      const requesterRole = adminUser.companyRole;
+      const roleCondition = requesterRole === 'owner'
+        ? inArray(users.companyRole as any, ['tech', 'admin'])
+        : eq(users.companyRole as any, 'tech');
       const [targetUser] = await db.select().from(users).where(and(
         eq(users.id, userId),
         eq(users.companyId, adminUser.companyId),
-        eq(users.companyRole as any, 'tech'),
+        roleCondition,
         eq(users.status as any, 'pending_invite')
       )).limit(1);
       if (!targetUser) return res.status(404).json({ message: "Pending invite not found" });
@@ -17480,15 +17492,19 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     }
   });
 
-  // Remove a tech from the team — soft-delete, preserves invoice history (admin/owner only)
+  // Remove a team member — soft-delete, preserves invoice history (owner can remove tech or admin; admin can only remove techs)
   app.delete('/api/contractor/team/:userId', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), requireSameCompany(), async (req: any, res) => {
     try {
       const { userId } = req.params;
       const adminUser = req.session.user;
+      const requesterRole = adminUser.companyRole;
+      const roleCondition = requesterRole === 'owner'
+        ? inArray(users.companyRole as any, ['tech', 'admin'])
+        : eq(users.companyRole as any, 'tech');
       const [targetUser] = await db.select().from(users).where(and(
         eq(users.id, userId),
         eq(users.companyId, adminUser.companyId),
-        eq(users.companyRole as any, 'tech')
+        roleCondition
       )).limit(1);
       if (!targetUser) return res.status(404).json({ message: "Team member not found" });
 
