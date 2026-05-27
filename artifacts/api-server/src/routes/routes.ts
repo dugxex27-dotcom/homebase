@@ -17348,6 +17348,36 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     }
   });
 
+  // Cancel a pending invite (admin/owner only) — nulls the invite token so the link no longer works
+  app.delete('/api/contractor/team/:userId/invite', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), requireSameCompany(), async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      const adminUser = req.session.user;
+      const [targetUser] = await db.select().from(users).where(and(
+        eq(users.id, userId),
+        eq(users.companyId, adminUser.companyId),
+        eq(users.companyRole as any, 'tech'),
+        eq(users.status as any, 'pending_invite')
+      )).limit(1);
+      if (!targetUser) return res.status(404).json({ message: "Pending invite not found" });
+
+      await db.update(users).set({
+        status: 'removed',
+        deletedAt: new Date(),
+        companyId: null,
+        companyRole: null,
+        inviteToken: null,
+        inviteExpiresAt: null,
+        updatedAt: new Date(),
+      } as any).where(eq(users.id, userId));
+      suspendedUserIds.add(userId);
+      res.json({ message: "Invite cancelled" });
+    } catch (error) {
+      req.log?.error({ error }, '[ENTERPRISE] Error cancelling invite');
+      res.status(500).json({ message: "Failed to cancel invite" });
+    }
+  });
+
   // Remove a tech from the team — soft-delete, preserves invoice history (admin/owner only)
   app.delete('/api/contractor/team/:userId', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), requireSameCompany(), async (req: any, res) => {
     try {

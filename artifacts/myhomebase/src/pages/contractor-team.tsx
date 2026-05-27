@@ -66,6 +66,7 @@ export default function ContractorTeam() {
 
   const [removeTarget, setRemoveTarget] = useState<TeamMember | null>(null);
   const [suspendTarget, setSuspendTarget] = useState<TeamMember | null>(null);
+  const [cancelInviteTarget, setCancelInviteTarget] = useState<TeamMember | null>(null);
 
   const { data: teamResponse, isLoading } = useQuery<{ teamMembers: TeamMember[]; maxTechSeats: number }>({
     queryKey: ["/api/contractor/team"],
@@ -118,6 +119,18 @@ export default function ContractorTeam() {
       qc.invalidateQueries({ queryKey: ["/api/contractor/team"] });
       toast({ title: "Team member removed" });
       setRemoveTarget(null);
+    },
+    onError: (e: any) =>
+      toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const cancelInviteMutation = useMutation({
+    mutationFn: (userId: string) =>
+      apiRequest(`/api/contractor/team/${userId}/invite`, "DELETE"),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/contractor/team"] });
+      toast({ title: "Invite cancelled", description: "The invite link is no longer valid." });
+      setCancelInviteTarget(null);
     },
     onError: (e: any) =>
       toast({ title: "Error", description: e.message, variant: "destructive" }),
@@ -261,6 +274,15 @@ export default function ContractorTeam() {
                   </div>
                   <div className="shrink-0">{statusBadge(member.status)}</div>
                   <div className="flex items-center gap-1 shrink-0">
+                    {member.status === "pending_invite" && (
+                      <button
+                        title="Cancel Invite"
+                        className="p-1.5 rounded hover:bg-red-50 text-amber-500 hover:text-red-600"
+                        onClick={() => setCancelInviteTarget(member)}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
                     {member.status === "active" && (
                       <button
                         title="Suspend"
@@ -280,13 +302,15 @@ export default function ContractorTeam() {
                         <PlayCircle size={16} />
                       </button>
                     )}
-                    <button
-                      title="Remove from team"
-                      className="p-1.5 rounded hover:bg-red-50 text-slate-400 hover:text-red-600"
-                      onClick={() => setRemoveTarget(member)}
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    {member.status !== "pending_invite" && (
+                      <button
+                        title="Remove from team"
+                        className="p-1.5 rounded hover:bg-red-50 text-slate-400 hover:text-red-600"
+                        onClick={() => setRemoveTarget(member)}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -410,6 +434,18 @@ export default function ContractorTeam() {
         cancelText="Cancel"
         variant="destructive"
         onConfirm={() => { if (removeTarget) removeMutation.mutate(removeTarget.id); }}
+      />
+
+      {/* Cancel Invite Confirm */}
+      <ConfirmDialog
+        open={!!cancelInviteTarget}
+        onOpenChange={(o) => { if (!o) setCancelInviteTarget(null); }}
+        title="Cancel Invite?"
+        description={`The invite sent to ${cancelInviteTarget?.email} will be revoked. The invite link will no longer work.`}
+        confirmText="Cancel Invite"
+        cancelText="Keep Invite"
+        variant="destructive"
+        onConfirm={() => { if (cancelInviteTarget) cancelInviteMutation.mutate(cancelInviteTarget.id); }}
       />
     </div>
   );
