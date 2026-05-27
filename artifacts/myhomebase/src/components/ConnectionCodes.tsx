@@ -83,14 +83,14 @@ export function HomeownerConnectionCodes() {
           <CardTitle>Your Contractor Connection Code</CardTitle>
           <CardDescription>Share this permanent code with contractors so they can add service records to your account.  Contractor must be a Homebase user</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-3 pt-0">
           {isLoading ? (
             <p className="text-muted-foreground">Loading...</p>
           ) : codeData?.code ? (
             <>
-              <div className="flex items-center justify-center p-8 border-2 border-dashed rounded-lg">
-                <div className="text-center space-y-4">
-                  <div className="font-mono text-4xl font-bold tracking-wider" data-testid="text-connection-code">
+              <div className="flex items-center justify-center p-4 border-2 border-dashed rounded-lg">
+                <div className="text-center space-y-2">
+                  <div className="font-mono text-3xl font-bold tracking-wider" data-testid="text-connection-code">
                     {codeData.code}
                   </div>
                   <div className="flex gap-2 justify-center">
@@ -118,22 +118,18 @@ export function HomeownerConnectionCodes() {
                 </div>
               </div>
 
-              <div className="pt-4 border-t">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">Need a new code?</p>
-                    <p className="text-sm text-muted-foreground">
-                      Regenerating will invalidate your current code
-                    </p>
-                  </div>
+              <div className="pt-2 border-t">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs text-muted-foreground">Regenerating will invalidate your current code</p>
                   <Button
                     variant="outline"
+                    size="sm"
                     onClick={() => regenerateMutation.mutate()}
                     disabled={regenerateMutation.isPending}
                     data-testid="button-regenerate-code"
-                    style={{ backgroundColor: '#2c0f5b', color: 'white', borderColor: '#2c0f5b' }}
+                    style={{ backgroundColor: '#2c0f5b', color: 'white', borderColor: '#2c0f5b', flexShrink: 0 }}
                   >
-                    <RefreshCw className="h-4 w-4 mr-2" />
+                    <RefreshCw className="h-3 w-3 mr-1.5" />
                     {regenerateMutation.isPending ? "Regenerating..." : "Regenerate Code"}
                   </Button>
                 </div>
