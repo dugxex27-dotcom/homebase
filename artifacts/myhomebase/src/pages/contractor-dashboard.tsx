@@ -48,7 +48,7 @@ import {
 } from "lucide-react";
 import type { User as UserType, Proposal, ContractorAppointment } from "@shared/schema";
 import { Link } from "wouter";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import "./home.css";
 
 /** Fraction of seats used at which the amber "nearly full" warning appears (e.g. 0.8 = 80%). */
@@ -671,11 +671,11 @@ export default function ContractorDashboard() {
                             Invite expires {format(new Date(member.inviteExpiresAt), 'MMM d, yyyy')}
                           </div>
                         )}
-                        {member.lastLoginAt && (
-                          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
-                            Last login: {format(new Date(member.lastLoginAt), 'MMM d, yyyy')}
-                          </div>
-                        )}
+                        <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                          {member.lastLoginAt
+                            ? `Last active: ${formatDistanceToNow(new Date(member.lastLoginAt), { addSuffix: true })}`
+                            : 'Never signed in'}
+                        </div>
                         {hasInvoices && (
                           <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>
                             {member.invoiceCount} invoice{member.invoiceCount !== 1 ? 's' : ''} submitted
