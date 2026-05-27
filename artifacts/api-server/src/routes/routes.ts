@@ -12,7 +12,7 @@ import { eq, and, ne, inArray, sql as drizzleSql, isNotNull, desc } from "drizzl
 import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertTaskCompletionSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, customMaintenanceTasks, insertSupportTicketSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, securitySessions, referralCredits, referralFreeMonths, agentProfiles, users, siteContent, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, insertReviewFlagSchema, homeDocuments, quizResults, type House } from "@workspace/db";
 import { calculateDIYSavingsAmount } from "../shared/cost-helpers";
 import { extractInvoiceData, verifyDIYPhotos, type InvoiceExtraction } from "../invoice-analysis-service";
-import { invoiceAnalyses, contractorBoosts, affiliateReferrals, subscriptionCycleEvents, contractorInvoiceUploads, companies, proposals } from "@workspace/db";
+import { invoiceAnalyses, contractorBoosts, affiliateReferrals, subscriptionCycleEvents, contractorInvoiceUploads, companies, proposals, securityAuditLogs } from "@workspace/db";
 import pushRoutes from "../push-routes";
 import { pushService } from "../push-service";
 import { ObjectStorageService, ObjectNotFoundError } from "../objectStorage";
@@ -17375,6 +17375,21 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
       await db.update(users).set({ status: 'suspended', updatedAt: new Date() } as any).where(eq(users.id, userId));
       suspendedUserIds.add(userId);
+      const actorName = [adminUser.firstName, adminUser.lastName].filter(Boolean).join(' ') || adminUser.email || adminUser.id;
+      const targetName = [(targetUser as any).firstName, (targetUser as any).lastName].filter(Boolean).join(' ') || (targetUser as any).email || userId;
+      await auditLogger.log({
+        eventType: AuditEventTypes.ADMIN_USER_MODIFY,
+        action: 'Team member suspended',
+        userId: adminUser.id,
+        userEmail: adminUser.email,
+        userRole: adminUser.companyRole,
+        targetUserId: userId,
+        targetResourceType: 'team_member',
+        targetResourceId: userId,
+        actionDetails: { teamAction: 'suspended', companyId: adminUser.companyId, actorName, targetName },
+        req,
+        severity: 'warning' as any,
+      });
       res.json({ message: "Team member suspended" });
     } catch (error) {
       req.log?.error({ error }, '[ENTERPRISE] Error suspending team member');
@@ -17400,6 +17415,21 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
       await db.update(users).set({ status: 'active', updatedAt: new Date() } as any).where(eq(users.id, userId));
       suspendedUserIds.delete(userId);
+      const actorName = [adminUser.firstName, adminUser.lastName].filter(Boolean).join(' ') || adminUser.email || adminUser.id;
+      const targetName = [(targetUser as any).firstName, (targetUser as any).lastName].filter(Boolean).join(' ') || (targetUser as any).email || userId;
+      await auditLogger.log({
+        eventType: AuditEventTypes.ADMIN_USER_MODIFY,
+        action: 'Team member reactivated',
+        userId: adminUser.id,
+        userEmail: adminUser.email,
+        userRole: adminUser.companyRole,
+        targetUserId: userId,
+        targetResourceType: 'team_member',
+        targetResourceId: userId,
+        actionDetails: { teamAction: 'reactivated', companyId: adminUser.companyId, actorName, targetName },
+        req,
+        severity: 'info' as any,
+      });
       res.json({ message: "Team member reactivated" });
     } catch (error) {
       req.log?.error({ error }, '[ENTERPRISE] Error reactivating team member');
@@ -17517,10 +17547,62 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       } as any).where(eq(users.id, userId));
       // Add to in-memory blocklist so any active session is immediately revoked
       suspendedUserIds.add(userId);
+      const actorName = [adminUser.firstName, adminUser.lastName].filter(Boolean).join(' ') || adminUser.email || adminUser.id;
+      const targetName = [(targetUser as any).firstName, (targetUser as any).lastName].filter(Boolean).join(' ') || (targetUser as any).email || userId;
+      await auditLogger.log({
+        eventType: AuditEventTypes.ADMIN_USER_MODIFY,
+        action: 'Team member removed',
+        userId: adminUser.id,
+        userEmail: adminUser.email,
+        userRole: adminUser.companyRole,
+        targetUserId: userId,
+        targetResourceType: 'team_member',
+        targetResourceId: userId,
+        actionDetails: { teamAction: 'removed', companyId: adminUser.companyId, actorName, targetName },
+        req,
+        severity: 'warning' as any,
+      });
       res.json({ message: "Team member removed from company" });
     } catch (error) {
       req.log?.error({ error }, '[ENTERPRISE] Error removing tech');
       res.status(500).json({ message: "Failed to remove team member" });
+    }
+  });
+
+  // Fetch audit trail for a specific team member (owner/admin only, scoped to their company)
+  app.get('/api/contractor/team/:userId/audit-log', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      const sessionUser = req.session.user;
+      if (!sessionUser.companyId) return res.status(400).json({ message: "You must belong to a company" });
+
+      const logs = await db
+        .select({
+          id: securityAuditLogs.id,
+          action: securityAuditLogs.action,
+          actionDetails: securityAuditLogs.actionDetails,
+          createdAt: securityAuditLogs.createdAt,
+        })
+        .from(securityAuditLogs)
+        .where(
+          and(
+            eq(securityAuditLogs.targetUserId, userId),
+            eq(securityAuditLogs.targetResourceType, 'team_member'),
+            drizzleSql`(${securityAuditLogs.actionDetails}->>'companyId') = ${sessionUser.companyId}`
+          )
+        )
+        .orderBy(desc(securityAuditLogs.createdAt))
+        .limit(20);
+
+      res.json(logs.map(l => ({
+        id: l.id,
+        teamAction: (l.actionDetails as any)?.teamAction ?? null,
+        actorName: (l.actionDetails as any)?.actorName ?? null,
+        createdAt: l.createdAt,
+      })));
+    } catch (error) {
+      req.log?.error({ error }, '[ENTERPRISE] Error fetching team audit log');
+      res.status(500).json({ message: "Failed to fetch audit log" });
     }
   });
 

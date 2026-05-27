@@ -45,6 +45,7 @@ import {
   ExternalLink,
   Pencil,
   X,
+  Clock,
 } from "lucide-react";
 import type { User as UserType, Proposal, ContractorAppointment } from "@shared/schema";
 import { Link } from "wouter";
@@ -152,6 +153,67 @@ function TechJobHistory({ memberId, memberName }: { memberId: string; memberName
               >
                 <ExternalLink size={12} />
               </a>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+interface AuditEntry {
+  id: string;
+  teamAction: 'suspended' | 'reactivated' | 'removed' | null;
+  actorName: string | null;
+  createdAt: string;
+}
+
+function MemberAuditHistory({ memberId }: { memberId: string }) {
+  const { data: entries = [], isLoading } = useQuery<AuditEntry[]>({
+    queryKey: ['/api/contractor/team', memberId, 'audit-log'],
+    queryFn: async () => {
+      const res = await fetch(`/api/contractor/team/${memberId}/audit-log`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch audit log');
+      return res.json();
+    },
+  });
+
+  if (isLoading) {
+    return <div style={{ padding: '6px 0 2px', color: '#94a3b8', fontSize: 11 }}>Loading activity…</div>;
+  }
+
+  if (!entries.length) {
+    return <div style={{ padding: '6px 0 2px', color: '#94a3b8', fontSize: 11 }}>No activity recorded yet.</div>;
+  }
+
+  const actionLabel: Record<string, { label: string; color: string }> = {
+    suspended: { label: 'Suspended', color: '#dc2626' },
+    reactivated: { label: 'Reactivated', color: '#09694a' },
+    removed: { label: 'Removed', color: '#7c3aed' },
+  };
+
+  return (
+    <div style={{ marginTop: 10 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+        Activity · {entries.length} event{entries.length !== 1 ? 's' : ''}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {entries.map(entry => {
+          const meta = actionLabel[entry.teamAction ?? ''] ?? { label: entry.teamAction ?? 'Action', color: '#64748b' };
+          const dateStr = format(new Date(entry.createdAt), 'MMM d, yyyy');
+          const byLine = entry.actorName ? ` by ${entry.actorName}` : '';
+          return (
+            <div key={entry.id} style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              background: '#f8fafc', borderRadius: 8, padding: '6px 10px',
+              border: '1px solid #e2e8f0',
+            }}>
+              <Clock size={12} style={{ color: '#94a3b8', flexShrink: 0 }} />
+              <div style={{ flex: 1, fontSize: 12, color: '#374151' }}>
+                <span style={{ fontWeight: 600, color: meta.color }}>{meta.label}</span>
+                {byLine}
+                <span style={{ color: '#94a3b8', marginLeft: 4 }}>· {dateStr}</span>
+              </div>
             </div>
           );
         })}
@@ -747,6 +809,11 @@ export default function ContractorDashboard() {
                     {isExpanded && (
                       <div style={{ borderTop: '1px solid #e2e8f0', marginTop: 10, paddingTop: 4 }}>
                         <TechJobHistory memberId={member.id} memberName={fullName} />
+                        {isOwner && (
+                          <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #f1f5f9' }}>
+                            <MemberAuditHistory memberId={member.id} />
+                          </div>
+                        )}
                       </div>
                     )}
 
