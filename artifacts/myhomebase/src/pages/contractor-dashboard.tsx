@@ -278,6 +278,7 @@ interface CompanyAuditEntry {
   targetName: string | null;
   teamAction: 'suspended' | 'reactivated' | 'removed' | null;
   actorName: string | null;
+  actorRole: string | null;
   createdAt: string;
 }
 
@@ -425,8 +426,20 @@ function TeamAuditLog() {
                   borderRadius: 5, padding: '2px 8px',
                   background: meta.bg, color: meta.color, whiteSpace: 'nowrap',
                 }}>{meta.label}</span>
-                <div style={{ fontSize: 11, color: '#64748b', whiteSpace: 'nowrap' }}>
+                <div style={{ fontSize: 11, color: '#64748b', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 5 }}>
                   by {entry.actorName ?? '—'}
+                  {entry.actorRole && (
+                    <span style={{
+                      fontSize: 9,
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                      background: entry.actorRole === 'owner' ? '#fef3c7' : '#e0e7ff',
+                      color: entry.actorRole === 'owner' ? '#92400e' : '#3730a3',
+                      borderRadius: 4,
+                      padding: '1px 5px',
+                    }}>{entry.actorRole}</span>
+                  )}
                 </div>
                 <div style={{ fontSize: 11, color: '#94a3b8', whiteSpace: 'nowrap' }}>{dateStr}</div>
               </div>

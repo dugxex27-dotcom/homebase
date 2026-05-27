@@ -17376,6 +17376,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       await db.update(users).set({ status: 'suspended', updatedAt: new Date() } as any).where(eq(users.id, userId));
       suspendedUserIds.add(userId);
       const actorName = [adminUser.firstName, adminUser.lastName].filter(Boolean).join(' ') || adminUser.email || adminUser.id;
+      const actorRole = adminUser.companyRole ?? null;
       const targetName = [(targetUser as any).firstName, (targetUser as any).lastName].filter(Boolean).join(' ') || (targetUser as any).email || userId;
       await auditLogger.log({
         eventType: AuditEventTypes.ADMIN_USER_MODIFY,
@@ -17386,7 +17387,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         targetUserId: userId,
         targetResourceType: 'team_member',
         targetResourceId: userId,
-        actionDetails: { teamAction: 'suspended', companyId: adminUser.companyId, actorName, targetName },
+        actionDetails: { teamAction: 'suspended', companyId: adminUser.companyId, actorName, actorRole, targetName },
         req,
         severity: 'warning' as any,
       });
@@ -17416,6 +17417,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       await db.update(users).set({ status: 'active', updatedAt: new Date() } as any).where(eq(users.id, userId));
       suspendedUserIds.delete(userId);
       const actorName = [adminUser.firstName, adminUser.lastName].filter(Boolean).join(' ') || adminUser.email || adminUser.id;
+      const actorRole = adminUser.companyRole ?? null;
       const targetName = [(targetUser as any).firstName, (targetUser as any).lastName].filter(Boolean).join(' ') || (targetUser as any).email || userId;
       await auditLogger.log({
         eventType: AuditEventTypes.ADMIN_USER_MODIFY,
@@ -17426,7 +17428,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         targetUserId: userId,
         targetResourceType: 'team_member',
         targetResourceId: userId,
-        actionDetails: { teamAction: 'reactivated', companyId: adminUser.companyId, actorName, targetName },
+        actionDetails: { teamAction: 'reactivated', companyId: adminUser.companyId, actorName, actorRole, targetName },
         req,
         severity: 'info' as any,
       });
@@ -17548,6 +17550,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       // Add to in-memory blocklist so any active session is immediately revoked
       suspendedUserIds.add(userId);
       const actorName = [adminUser.firstName, adminUser.lastName].filter(Boolean).join(' ') || adminUser.email || adminUser.id;
+      const actorRole = adminUser.companyRole ?? null;
       const targetName = [(targetUser as any).firstName, (targetUser as any).lastName].filter(Boolean).join(' ') || (targetUser as any).email || userId;
       await auditLogger.log({
         eventType: AuditEventTypes.ADMIN_USER_MODIFY,
@@ -17558,7 +17561,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         targetUserId: userId,
         targetResourceType: 'team_member',
         targetResourceId: userId,
-        actionDetails: { teamAction: 'removed', companyId: adminUser.companyId, actorName, targetName },
+        actionDetails: { teamAction: 'removed', companyId: adminUser.companyId, actorName, actorRole, targetName },
         req,
         severity: 'warning' as any,
       });
@@ -17597,6 +17600,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         targetName: (l.actionDetails as any)?.targetName ?? null,
         teamAction: (l.actionDetails as any)?.teamAction ?? null,
         actorName: (l.actionDetails as any)?.actorName ?? null,
+        actorRole: (l.actionDetails as any)?.actorRole ?? null,
         createdAt: l.createdAt,
       })));
     } catch (error) {
@@ -17634,6 +17638,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         id: l.id,
         teamAction: (l.actionDetails as any)?.teamAction ?? null,
         actorName: (l.actionDetails as any)?.actorName ?? null,
+        actorRole: (l.actionDetails as any)?.actorRole ?? null,
         createdAt: l.createdAt,
       })));
     } catch (error) {
