@@ -10,6 +10,7 @@ import { ChevronLeft, ChevronRight, Search, ChevronDown, X, Home, ChevronUp } fr
 import type { Contractor, House } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
 import { getDistanceOptions, getDistanceUnit, extractCountryFromAddress, convertDistanceForStorage } from '@shared/distance-utils';
+import { HomeownerConnectionCodes } from "@/components/ConnectionCodes";
 import "./home.css";
 
 export default function Contractors() {
@@ -376,6 +377,12 @@ export default function Contractors() {
       </div>
 
       <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-6 sm:py-8">
+        {/* Contractor Connection Code */}
+        <p className="dash-section-label">Contractor Access</p>
+        <div className="mb-6 sm:mb-8">
+          <HomeownerConnectionCodes />
+        </div>
+
         {/* Filters Card */}
         <div className="mb-6 sm:mb-8">
           {/* Horizontal Filters */}

@@ -10,7 +10,6 @@ import { useAuth } from "@/hooks/useAuth";
 import type { User as UserType, House } from "@shared/schema";
 import { Link, useLocation } from "wouter";
 import { HomeownerFeatureGate } from "@/components/homeowner-feature-gate";
-import { HomeownerConnectionCodes } from "@/components/ConnectionCodes";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
 import logoHomeowner from "@assets/my-homebase-logo-tm-final-white_1777417516350.png";
 import "./home.css";
@@ -502,10 +501,6 @@ export default function Home() {
                 )}
               </div>
             )}
-
-            {/* Contractor Connection Codes */}
-            <p className="dash-section-label">Contractor Access</p>
-            <HomeownerConnectionCodes />
 
           </div>
         </HomeownerFeatureGate>
