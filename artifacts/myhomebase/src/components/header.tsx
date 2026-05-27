@@ -29,6 +29,11 @@ function TabletNav({ role, location }: { role: string; location: string }) {
   const itemClass = (paths: string | string[]) =>
     `tablet-nav-item ${isActive(paths) ? 'tablet-nav-item-active' : ''}`;
 
+  // Query-param-aware active check for contractor dashboard tabs
+  const dashTab = new URLSearchParams(window.location.search).get('tab');
+  const isJobsTabActive = location === '/contractor-dashboard' && dashTab !== 'team' && dashTab !== 'invoices';
+  const isTeamTabActive = location === '/contractor-dashboard' && dashTab === 'team';
+
   if (role === 'homeowner') return (
     <nav className="tablet-nav-bar items-center px-4 overflow-x-auto" aria-label="Tablet navigation">
       <Link href="/" className={itemClass('/')}>
@@ -57,7 +62,7 @@ function TabletNav({ role, location }: { role: string; location: string }) {
 
   if (role === 'contractor') return (
     <nav className="tablet-nav-bar items-center px-4 overflow-x-auto" aria-label="Tablet navigation">
-      <Link href="/contractor-dashboard" className={itemClass(['/contractor-dashboard', '/'])}>
+      <Link href="/contractor-dashboard" className={`tablet-nav-item ${isJobsTabActive ? 'tablet-nav-item-active' : ''}`}>
         <LayoutDashboard className="w-4 h-4" />Jobs
       </Link>
       <Link href="/messages" className={itemClass('/messages')}>
@@ -66,7 +71,7 @@ function TabletNav({ role, location }: { role: string; location: string }) {
       <Link href="/crm" className={itemClass('/crm')}>
         <Users className="w-4 h-4" />Clients
       </Link>
-      <Link href="/contractor-dashboard?tab=team" className={itemClass('/contractor-dashboard')}>
+      <Link href="/contractor-dashboard?tab=team" className={`tablet-nav-item ${isTeamTabActive ? 'tablet-nav-item-active' : ''}`}>
         <Users className="w-4 h-4" />Team
       </Link>
       <Link href="/contractor-profile" className={itemClass('/contractor-profile')}>
