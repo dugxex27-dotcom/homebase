@@ -809,7 +809,7 @@ export default function ContractorDashboard() {
                     {isExpanded && (
                       <div style={{ borderTop: '1px solid #e2e8f0', marginTop: 10, paddingTop: 4 }}>
                         <TechJobHistory memberId={member.id} memberName={fullName} />
-                        {isOwner && (
+                        {(!isAdmin || isOwner) && (
                           <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #f1f5f9' }}>
                             <MemberAuditHistory memberId={member.id} />
                           </div>
