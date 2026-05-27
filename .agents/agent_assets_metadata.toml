@@ -60,3 +60,9 @@ id = "LbirmsWcH706SpJLauhgx"
 uri = "file://screenshots/10-invite-page.jpg"
 type = "image"
 title = "9. Invite/Referral Link (invalid code state)"
+
+[[outputs]]
+id = "7A8msDf6nyYLb0ceSLPhY"
+uri = "file://project_structure.txt"
+type = "text"
+title = "Project Structure"
