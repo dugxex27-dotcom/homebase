@@ -207,6 +207,7 @@ export default function ContractorDashboard() {
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [editFirstName, setEditFirstName] = useState('');
   const [editLastName, setEditLastName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
   const [editCompanyRole, setEditCompanyRole] = useState<'tech' | 'admin'>('tech');
 
   const isAdminRole = (typedUser as any)?.companyRole === 'owner' || (typedUser as any)?.companyRole === 'admin';
@@ -297,12 +298,12 @@ export default function ContractorDashboard() {
   });
 
   const updateMemberMutation = useMutation({
-    mutationFn: async ({ userId, firstName, lastName, companyRole }: { userId: string; firstName: string; lastName: string; companyRole: 'tech' | 'admin' }) => {
+    mutationFn: async ({ userId, firstName, lastName, companyRole, email }: { userId: string; firstName: string; lastName: string; companyRole: 'tech' | 'admin'; email?: string }) => {
       const res = await fetch(`/api/contractor/team/${userId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ firstName: firstName.trim() || undefined, lastName: lastName.trim() || undefined, companyRole }),
+        body: JSON.stringify({ firstName: firstName.trim() || undefined, lastName: lastName.trim() || undefined, companyRole, email: email?.trim() || undefined }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Update failed');
@@ -339,6 +340,7 @@ export default function ContractorDashboard() {
     setEditingMemberId(member.id);
     setEditFirstName(member.firstName ?? '');
     setEditLastName(member.lastName ?? '');
+    setEditEmail(member.email ?? '');
     setEditCompanyRole((member.companyRole as 'tech' | 'admin') ?? 'tech');
   };
 
@@ -754,6 +756,26 @@ export default function ContractorDashboard() {
                             />
                           </div>
                         </div>
+                        <div style={{ marginBottom: 8 }}>
+                          <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#374151', marginBottom: 3 }}>
+                            Email
+                            {!isPending && <span style={{ fontWeight: 400, color: '#94a3b8', marginLeft: 4 }}>(read-only — account already activated)</span>}
+                          </label>
+                          <input
+                            type="email"
+                            value={editEmail}
+                            onChange={e => setEditEmail(e.target.value)}
+                            readOnly={!isPending}
+                            placeholder="Email address"
+                            style={{
+                              width: '100%', padding: '7px 10px', borderRadius: 7,
+                              border: '1px solid #e2e8f0', fontSize: 12, boxSizing: 'border-box', outline: 'none',
+                              background: isPending ? '#fff' : '#f8fafc',
+                              color: isPending ? '#111827' : '#94a3b8',
+                              cursor: isPending ? 'text' : 'not-allowed',
+                            }}
+                          />
+                        </div>
                         <div style={{ marginBottom: 10 }}>
                           <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#374151', marginBottom: 3 }}>Role</label>
                           <div style={{ display: 'flex', gap: 6 }}>
@@ -777,7 +799,7 @@ export default function ContractorDashboard() {
                             style={{ padding: '6px 14px', borderRadius: 7, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer', fontSize: 12 }}
                           >Cancel</button>
                           <button
-                            onClick={() => updateMemberMutation.mutate({ userId: member.id, firstName: editFirstName, lastName: editLastName, companyRole: editCompanyRole })}
+                            onClick={() => updateMemberMutation.mutate({ userId: member.id, firstName: editFirstName, lastName: editLastName, companyRole: editCompanyRole, email: isPending ? editEmail : undefined })}
                             disabled={updateMemberMutation.isPending}
                             style={{ padding: '6px 14px', borderRadius: 7, border: 'none', background: '#1560A2', color: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600, opacity: updateMemberMutation.isPending ? 0.7 : 1 }}
                           >{updateMemberMutation.isPending ? 'Saving…' : 'Save Changes'}</button>

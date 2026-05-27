@@ -17438,7 +17438,8 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         firstName: z.string().min(1).max(100).optional(),
         lastName: z.string().min(1).max(100).optional(),
         companyRole: z.enum(['tech', 'admin']).optional(),
-      }).refine(d => d.firstName !== undefined || d.lastName !== undefined || d.companyRole !== undefined, {
+        email: z.string().email().max(254).optional(),
+      }).refine(d => d.firstName !== undefined || d.lastName !== undefined || d.companyRole !== undefined || d.email !== undefined, {
         message: "At least one field must be provided",
       });
 
@@ -17457,6 +17458,18 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       if (parsed.data.firstName !== undefined) updates.firstName = parsed.data.firstName;
       if (parsed.data.lastName !== undefined) updates.lastName = parsed.data.lastName;
       if (parsed.data.companyRole !== undefined) updates.companyRole = parsed.data.companyRole;
+
+      if (parsed.data.email !== undefined) {
+        if ((targetUser as any).status !== 'pending_invite') {
+          return res.status(400).json({ message: "Email can only be changed for pending invitations" });
+        }
+        const normalizedEmail = parsed.data.email.toLowerCase().trim();
+        if (normalizedEmail !== (targetUser as any).email?.toLowerCase()) {
+          const [conflict] = await db.select({ id: users.id }).from(users).where(eq(users.email, normalizedEmail)).limit(1);
+          if (conflict) return res.status(409).json({ message: "An account with that email already exists" });
+        }
+        updates.email = parsed.data.email.toLowerCase().trim();
+      }
 
       await db.update(users).set(updates).where(eq(users.id, userId));
       res.json({ message: "Team member updated" });
