@@ -196,11 +196,16 @@ function MemberAuditHistory({ memberId }: { memberId: string }) {
     removed: { label: 'Removed', color: '#7c3aed' },
   };
 
-  const filterPills: { key: AuditFilter; label: string; activeColor: string }[] = [
-    { key: 'all', label: 'All', activeColor: '#334155' },
-    { key: 'suspended', label: 'Suspended', activeColor: '#dc2626' },
-    { key: 'reactivated', label: 'Reactivated', activeColor: '#09694a' },
-    { key: 'removed', label: 'Removed', activeColor: '#7c3aed' },
+  const counts: Record<string, number> = { suspended: 0, reactivated: 0, removed: 0 };
+  for (const e of entries) {
+    if (e.teamAction && e.teamAction in counts) counts[e.teamAction]++;
+  }
+
+  const filterPills: { key: AuditFilter; label: string; activeColor: string; count: number }[] = [
+    { key: 'all', label: 'All', activeColor: '#334155', count: entries.length },
+    { key: 'suspended', label: 'Suspended', activeColor: '#dc2626', count: counts.suspended },
+    { key: 'reactivated', label: 'Reactivated', activeColor: '#09694a', count: counts.reactivated },
+    { key: 'removed', label: 'Removed', activeColor: '#7c3aed', count: counts.removed },
   ];
 
   const visible = filter === 'all' ? entries : entries.filter(e => e.teamAction === filter);
@@ -214,6 +219,7 @@ function MemberAuditHistory({ memberId }: { memberId: string }) {
         <div style={{ display: 'flex', gap: 4 }}>
           {filterPills.map(pill => {
             const active = filter === pill.key;
+            const empty = pill.count === 0;
             return (
               <button
                 key={pill.key}
@@ -226,12 +232,13 @@ function MemberAuditHistory({ memberId }: { memberId: string }) {
                   border: `1px solid ${active ? pill.activeColor : '#e2e8f0'}`,
                   background: active ? pill.activeColor : '#f8fafc',
                   color: active ? '#fff' : '#64748b',
-                  cursor: 'pointer',
+                  cursor: empty && !active ? 'default' : 'pointer',
+                  opacity: empty && !active ? 0.45 : 1,
                   transition: 'all 0.15s',
                   lineHeight: '16px',
                 }}
               >
-                {pill.label}
+                {pill.label}{pill.key !== 'all' ? ` (${pill.count})` : ''}
               </button>
             );
           })}
