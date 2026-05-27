@@ -18,6 +18,7 @@ import { apiRequest } from "@/lib/queryClient";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useContractorSubscription } from "@/hooks/useContractorSubscription";
+
 import { ContractorTrialExpiredPaywall, ContractorTrialBanner } from "@/components/contractor-feature-gate";
 import { TechDashboard } from "./tech-dashboard";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -49,6 +50,9 @@ import type { User as UserType, Proposal, ContractorAppointment } from "@shared/
 import { Link } from "wouter";
 import { format } from "date-fns";
 import "./home.css";
+
+/** Fraction of seats used at which the amber "nearly full" warning appears (e.g. 0.8 = 80%). */
+const SEAT_WARN_THRESHOLD = 0.8;
 
 interface ContactedHomeowner {
   id: string;
@@ -1048,7 +1052,8 @@ export default function ContractorDashboard() {
         {companyRole === 'owner' && (() => {
           const maxSeats = teamData?.maxTechSeats ?? null;
           const isFull = activeTeamCount !== null && maxSeats !== null && activeTeamCount >= maxSeats;
-          const isNearlyFull = activeTeamCount !== null && maxSeats !== null && !isFull && activeTeamCount === maxSeats - 1;
+          const isNearlyFull = activeTeamCount !== null && maxSeats !== null && !isFull && activeTeamCount / maxSeats >= SEAT_WARN_THRESHOLD;
+          const seatsLeft = maxSeats !== null && activeTeamCount !== null ? maxSeats - activeTeamCount : null;
           const pendingSuffix = pendingTeamCount > 0 ? ` · ${pendingTeamCount} pending` : '';
           const seatText = maxSeats !== null && activeTeamCount !== null
             ? `${activeTeamCount} of ${maxSeats} seats active`
@@ -1083,7 +1088,7 @@ export default function ContractorDashboard() {
                         ? (
                           <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                             <AlertTriangle size={11} style={{ flexShrink: 0 }} />
-                            <span>{seatText}{pendingSuffix} — 1 seat left</span>
+                            <span>{seatText}{pendingSuffix} — {seatsLeft === 1 ? '1 seat left' : `${seatsLeft} seats left`}</span>
                           </span>
                         )
                         : seatText !== null
