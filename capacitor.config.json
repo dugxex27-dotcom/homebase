@@ -3,6 +3,7 @@
   "appName": "HomeBase",
   "webDir": "artifacts/myhomebase/dist/public",
   "server": {
+    "url": "https://gotohomebase.com",
     "cleartext": false
   },
   "ios": {
@@ -12,7 +13,7 @@
   "android": {
     "allowMixedContent": false,
     "captureInput": true,
-    "webContentsDebuggingEnabled": false
+    "webContentsDebuggingEnabled": true
   },
   "plugins": {
     "SplashScreen": {

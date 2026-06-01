@@ -4,10 +4,10 @@ const config: CapacitorConfig = {
   appId: 'com.gotohomebase.app',
   appName: 'HomeBase',
   webDir: 'dist/public',
-  // server: {
-  //   url: 'https://gotohomebase.com',
-  //   cleartext: false,
-  // },
+  server: {
+    url: 'https://gotohomebase.com',
+    cleartext: false,
+  },
   ios: {
     contentInset: 'automatic',
     scheme: 'HomeBase',
