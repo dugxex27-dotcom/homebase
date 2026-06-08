@@ -80,7 +80,6 @@ export default function BottomNav() {
       ? [
           { href: '/',            icon: Home,          label: 'Home',    active: isActive('/'), badge: unclaimedInvoiceCount },
           { href: '/maintenance', icon: ClipboardList, label: 'Tasks',   active: isActive('/maintenance') },
-          { href: '/account',     icon: User,          label: 'Account', active: isActive(['/account', '/billing', '/homeowner-referral']) },
         ]
       : typedUser?.role === 'contractor'
       ? isTech
@@ -295,6 +294,41 @@ export default function BottomNav() {
               )}
             </button>
           )}
+
+          {/* Account — homeowner only, rendered after Tools */}
+          {typedUser?.role === 'homeowner' && (() => {
+            const accountActive = isActive(['/account', '/billing', '/homeowner-referral']);
+            return (
+              <Link
+                href="/account"
+                className="flex flex-col items-center justify-center gap-0.5 px-2 py-2 flex-1 transition-all duration-200 relative focus:outline-none"
+                data-testid="nav-account"
+                aria-current={accountActive ? 'page' : undefined}
+              >
+                <div
+                  className="flex items-center justify-center w-8 h-8 rounded-[9px] transition-all duration-200"
+                  style={accountActive ? { backgroundColor: 'var(--theme-fill)' } : {}}
+                >
+                  <User
+                    className={cn("transition-all duration-200", accountActive ? "w-[22px] h-[22px]" : "w-5 h-5")}
+                    style={{ color: accountActive ? 'var(--theme-accent)' : '#c0bfc8' }}
+                  />
+                </div>
+                <span
+                  className="text-[9px] font-bold leading-none tracking-wide"
+                  style={{ color: accountActive ? 'var(--theme-accent)' : '#c0bfc8' }}
+                >
+                  Account
+                </span>
+                {accountActive && (
+                  <span
+                    className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
+                    style={{ backgroundColor: 'var(--theme-accent)' }}
+                  />
+                )}
+              </Link>
+            );
+          })()}
         </div>
       </nav>
     </>
