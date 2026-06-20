@@ -2,9 +2,8 @@
 	"appId": "com.gotohomebase.app",
 	"appName": "HomeBase",
 	"webDir": "artifacts/myhomebase/dist/public",
-
 	"ios": {
-		"contentInset": "never",
+		"contentInset": "automatic",
 		"scheme": "HomeBase"
 	},
 	"android": {
