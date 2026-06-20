@@ -122,6 +122,13 @@ function Router() {
     window.matchMedia('(display-mode: standalone)').matches ||
     (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
 
+  // Hide Capacitor splash screen as soon as React mounts (launchAutoHide: false)
+  useEffect(() => {
+    import('@capacitor/splash-screen')
+      .then(({ SplashScreen }) => SplashScreen.hide({ fadeOutDuration: 300 }))
+      .catch(() => {});
+  }, []);
+
   // Set data-role attribute and theme class on body for role-based theming
   useEffect(() => {
     const typedUser = user as { role?: string } | undefined;
