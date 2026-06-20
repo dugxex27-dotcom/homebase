@@ -62,3 +62,4 @@ channel = "stable-25_05"
 
 [userenv.shared]
 ADMIN_EMAILS = "lihandyman2008@gmail.com"
+GITHUB_TOKEN = "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"
