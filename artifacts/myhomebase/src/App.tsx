@@ -40,6 +40,11 @@ function RobotsManager({ authenticated }: { authenticated: boolean }) {
   return null;
 }
 
+function StaticPageRedirect({ to }: { to: string }) {
+  window.location.replace(to);
+  return null;
+}
+
 // Lazy-loaded pages - Common
 const Home = lazy(() => import("./pages/home"));
 const Messages = lazy(() => import("./pages/messages"));
@@ -177,8 +182,12 @@ function Router() {
           <Route path="/pay/cancelled" component={PaymentCancelled} />
           <Route path="/handoff/:token" component={HandoffClaim} />
           <Route path="/coming-soon" component={ComingSoon} />
-          <Route path="/" component={Landing} />
-          <Route component={Landing} />
+          <Route path="/">
+            {() => <StaticPageRedirect to="/index-selector.html" />}
+          </Route>
+          <Route>
+            {() => <StaticPageRedirect to="/index-selector.html" />}
+          </Route>
         </Switch>
       </UnauthenticatedLayout>
     );
