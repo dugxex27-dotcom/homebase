@@ -17,9 +17,10 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
 
   return (
     <div
+      className="mhb-app-shell"
       style={{
         display: 'flex',
-        height: '100vh',
+        height: '100dvh',
         overflow: 'hidden',
         background: 'var(--gray-50, #F9FAFB)',
       }}

@@ -23,7 +23,8 @@ export default function UnauthenticatedLayout({ children, hideHeader = false }: 
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.15, ease: 'easeInOut' }}
-        className="min-h-screen flex flex-col"
+        className="mhb-page-shell min-h-screen flex flex-col"
+        style={{ minHeight: '100dvh' }}
       >
         {!hideHeader && <PublicHeader />}
         <ErrorBoundary>

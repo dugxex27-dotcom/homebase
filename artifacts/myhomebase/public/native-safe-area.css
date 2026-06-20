@@ -1,0 +1,43 @@
+:root {
+  --native-safe-top: env(safe-area-inset-top, 0px);
+  --native-safe-right: env(safe-area-inset-right, 0px);
+  --native-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --native-safe-left: env(safe-area-inset-left, 0px);
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  min-height: 100dvh;
+  padding-bottom: var(--native-safe-bottom);
+}
+
+.nav {
+  padding-top: var(--native-safe-top) !important;
+}
+
+.nav .nav-inner {
+  height: 56px !important;
+  padding-top: 0 !important;
+}
+
+nav:not(.sidebar):not(.nav) {
+  height: calc(56px + var(--native-safe-top)) !important;
+  padding-top: var(--native-safe-top) !important;
+  align-items: flex-end !important;
+}
+
+.progress-wrap {
+  padding-top: calc(14px + var(--native-safe-top)) !important;
+}
+
+.screen > .hero:first-child {
+  padding-top: calc(32px + var(--native-safe-top)) !important;
+}
+
+body > .quiz-hero:first-child {
+  padding-top: calc(40px + var(--native-safe-top)) !important;
+}

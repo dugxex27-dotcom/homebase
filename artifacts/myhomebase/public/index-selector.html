@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>MyHomeBase™ — Who Are You?</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -27,6 +27,8 @@
   --gray-400:#9CA3AF;
   --gray-600:#4B5563;
   --gray-900:#111827;
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bottom:env(safe-area-inset-bottom,0px);
 }
 html,body{
   font-family:var(--font);
@@ -39,7 +41,7 @@ html,body{
 /* ── HERO ── */
 .hero{
   background:linear-gradient(160deg,#0C0A1A 0%,#1A1040 50%,#0C1A30 100%);
-  padding:48px 24px 60px;
+  padding:calc(84px + var(--safe-top)) 24px 60px;
   text-align:center;
   position:relative;
   overflow:hidden;
@@ -304,7 +306,7 @@ html,body{
 }
 
 /* ── SIGN-IN FLYOUT ── */
-.signin-wrap { position: absolute; top: 16px; right: 24px; z-index: 100; flex-shrink: 0; }
+.signin-wrap { position: absolute; top: calc(18px + var(--safe-top)); right: 24px; z-index: 100; flex-shrink: 0; }
 .nav-signin-btn {
   font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.7);
   background: none; border: none;
