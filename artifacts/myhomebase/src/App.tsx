@@ -122,11 +122,25 @@ function Router() {
     window.matchMedia('(display-mode: standalone)').matches ||
     (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
 
-  // Hide Capacitor splash screen as soon as React mounts (launchAutoHide: false)
+  // Hide Capacitor splash screen as soon as React mounts
   useEffect(() => {
-    import('@capacitor/splash-screen')
-      .then(({ SplashScreen }) => SplashScreen.hide({ fadeOutDuration: 300 }))
-      .catch(() => {});
+    // Strategy 1: Capacitor plugin bridge (works when plugin is registered natively)
+    const hideSplash = () =>
+      import('@capacitor/splash-screen')
+        .then(({ SplashScreen }) => SplashScreen.hide({ fadeOutDuration: 300 }))
+        .catch(() => {});
+
+    hideSplash();
+
+    // Strategy 2: Direct Capacitor bridge call (no dynamic import delay)
+    try {
+      const cap = (window as unknown as { Capacitor?: { Plugins?: { SplashScreen?: { hide: (o: object) => void } } } }).Capacitor;
+      cap?.Plugins?.SplashScreen?.hide({ fadeOutDuration: 300 });
+    } catch { /* non-Capacitor environment */ }
+
+    // Strategy 3: Hard timeout — force hide after 2s regardless
+    const timer = setTimeout(hideSplash, 2000);
+    return () => clearTimeout(timer);
   }, []);
 
   // Set data-role attribute and theme class on body for role-based theming
