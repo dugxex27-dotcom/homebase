@@ -24,6 +24,12 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: any) {
+    // Always hide splash screen — even on crash
+    try {
+      import('@capacitor/splash-screen').then(({ SplashScreen }) => SplashScreen.hide({ fadeOutDuration: 0 })).catch(() => {});
+      const cap = (window as unknown as { Capacitor?: { Plugins?: { SplashScreen?: { hide: (o: object) => void } } } }).Capacitor;
+      cap?.Plugins?.SplashScreen?.hide({ fadeOutDuration: 0 });
+    } catch { /* ignore */ }
     errorLogger.logError(error, {
       errorType: 'client',
       severity: 'critical',
