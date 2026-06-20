@@ -15,3 +15,9 @@ root.render(
     </ErrorBoundary>
   </StrictMode>
 );
+
+import("@capacitor/splash-screen")
+  .then(({ SplashScreen }) => {
+    SplashScreen.hide({ fadeOutDuration: 300 }).catch(() => {});
+  })
+  .catch(() => {});
