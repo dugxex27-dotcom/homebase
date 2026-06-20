@@ -24,11 +24,7 @@ export default function PublicHeader() {
   return (
     <header
       className="sticky top-0 z-50"
-      style={{
-        background: NAV_BG,
-        borderBottom: `0.5px solid ${NAV_BORDER}`,
-        paddingTop: 'env(safe-area-inset-top, 0px)',
-      }}
+      style={{ background: NAV_BG, borderBottom: `0.5px solid ${NAV_BORDER}` }}
     >
       <div className="flex items-center justify-between px-6 h-14 max-w-[1200px] mx-auto w-full">
 

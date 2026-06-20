@@ -1,12 +1,12 @@
-import type { CapacitorConfig } from "@capacitor/cli";
+import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: "com.gotohomebase.app",
-  appName: "HomeBase",
-  webDir: "artifacts/myhomebase/dist/public",
+  appId: 'com.gotohomebase.app',
+  appName: 'HomeBase',
+  webDir: 'artifacts/myhomebase/dist/public',
   ios: {
-    contentInset: "never",
-    scheme: "HomeBase",
+    contentInset: 'automatic',
+    scheme: 'HomeBase',
   },
   android: {
     allowMixedContent: false,
@@ -15,17 +15,17 @@ const config: CapacitorConfig = {
   },
   plugins: {
     SplashScreen: {
-      launchShowDuration: 0,
+      launchShowDuration: 2000,
       launchAutoHide: true,
-      backgroundColor: "#8B70D4",
-      androidSplashResourceName: "splash",
-      androidScaleType: "CENTER_CROP",
+      backgroundColor: '#8B70D4',
+      androidSplashResourceName: 'splash',
+      androidScaleType: 'CENTER_CROP',
       showSpinner: false,
       splashFullScreen: true,
       splashImmersive: true,
     },
     PushNotifications: {
-      presentationOptions: ["badge", "sound", "alert"],
+      presentationOptions: ['badge', 'sound', 'alert'],
     },
   },
 };

@@ -6,24 +6,11 @@
     "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
-    "mobile:doctor": "npx cap doctor",
-    "mobile:build:web": "BASE_PATH=/ VITE_API_BASE_URL=https://gotohomebase.com npx pnpm --filter @workspace/myhomebase run build",
-    "mobile:sync": "npm run mobile:build:web && npx cap sync",
-    "mobile:sync:android": "npm run mobile:build:web && npx cap sync android",
-    "mobile:sync:ios": "npm run mobile:build:web && npx cap sync ios",
-    "mobile:open:android": "npx cap open android",
-    "mobile:open:ios": "npx cap open ios"
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
   },
   "private": true,
   "devDependencies": {
-    "@capacitor/android": "^8.4.0",
-    "@capacitor/cli": "^8.4.0",
-    "@capacitor/ios": "^8.4.0",
-    "@capacitor/push-notifications": "^8.0.3",
-    "@esbuild/darwin-arm64": "^0.27.3",
-    "@rollup/rollup-darwin-arm64": "4.59.0",
-    "prettier": "^3.8.1",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "prettier": "^3.8.1"
   }
 }
