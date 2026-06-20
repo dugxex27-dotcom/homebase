@@ -5,13 +5,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
-        guard let windowScene = scene as? UIWindowScene else { return }
-        let storyboard = UIStoryboard(name: "Main", bundle: nil)
-        let rootVC = storyboard.instantiateInitialViewController()
-        let window = UIWindow(windowScene: windowScene)
-        window.rootViewController = rootVC
-        window.makeKeyAndVisible()
-        self.window = window
+        // Window is created automatically from UIMainStoryboardFile (Main.storyboard).
+        // Do NOT manually create UIWindow here — it breaks Capacitor bridge initialisation.
+        guard let _ = (scene as? UIWindowScene) else { return }
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {}
