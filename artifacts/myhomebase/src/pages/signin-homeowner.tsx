@@ -153,7 +153,7 @@ export default function SignInHomeowner() {
     try {
       try { await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); queryClient.clear(); } catch {}
       const response = await apiRequest('/api/auth/homeowner-demo-login', 'POST', { email: 'demo@homeowner.com', name: 'Demo Homeowner', role: 'homeowner' });
-      if (response.ok) { toast({ title: "Demo login successful" }); window.location.href = '/'; }
+      if (response.ok) { toast({ title: "Demo login successful" }); window.location.href = '/dashboard'; }
     } catch (error: any) {
       toast({ title: "Demo login failed", description: error?.message, variant: "destructive" });
     }
