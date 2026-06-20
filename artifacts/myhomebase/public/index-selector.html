@@ -39,7 +39,7 @@ html,body{
 /* ── HERO ── */
 .hero{
   background:linear-gradient(160deg,#0C0A1A 0%,#1A1040 50%,#0C1A30 100%);
-  padding:48px 24px 60px;
+  padding:calc(48px + env(safe-area-inset-top, 0px)) 24px 60px;
   text-align:center;
   position:relative;
   overflow:hidden;
@@ -304,7 +304,7 @@ html,body{
 }
 
 /* ── SIGN-IN FLYOUT ── */
-.signin-wrap { position: absolute; top: 16px; right: 24px; z-index: 100; flex-shrink: 0; }
+.signin-wrap { position: absolute; top: calc(16px + env(safe-area-inset-top, 0px)); right: 24px; z-index: 100; flex-shrink: 0; }
 .nav-signin-btn {
   font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.7);
   background: none; border: none;

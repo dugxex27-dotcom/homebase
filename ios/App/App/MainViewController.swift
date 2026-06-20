@@ -7,25 +7,17 @@ class MainViewController: CAPBridgeViewController {
 
     override open func viewDidLoad() {
         super.viewDidLoad()
-        applyEdgeToEdgeLayout()
+        view.backgroundColor = appBackground
+        webView?.backgroundColor = appBackground
+        webView?.scrollView.backgroundColor = appBackground
+        webView?.isOpaque = false
+        webView?.scrollView.contentInsetAdjustmentBehavior = .never
     }
 
     override open func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        applyEdgeToEdgeLayout()
-    }
-
-    private func applyEdgeToEdgeLayout() {
         view.backgroundColor = appBackground
-        additionalSafeAreaInsets = .zero
-
-        guard let webView else { return }
-
-        webView.backgroundColor = appBackground
-        webView.scrollView.backgroundColor = appBackground
-        webView.isOpaque = false
-        webView.scrollView.contentInsetAdjustmentBehavior = .never
-        webView.scrollView.contentInset = .zero
-        webView.scrollView.scrollIndicatorInsets = .zero
+        webView?.backgroundColor = appBackground
+        webView?.scrollView.backgroundColor = appBackground
     }
 }
