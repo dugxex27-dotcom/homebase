@@ -16,3 +16,8 @@ root.render(
   </StrictMode>
 );
 
+void import("@capacitor/splash-screen")
+  .then(({ SplashScreen }) => SplashScreen.hide({ fadeOutDuration: 0 }))
+  .catch(() => {
+    // Web/PWA builds do not have a native splash screen to hide.
+  });

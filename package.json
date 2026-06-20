@@ -16,6 +16,7 @@
     "@capacitor/core": "^8.4.0",
     "@capacitor/ios": "^8.4.1",
     "@capacitor/push-notifications": "^8.0.3",
+    "@capacitor/splash-screen": "^8.0.1",
     "@esbuild/darwin-arm64": "0.27.3",
     "@rollup/rollup-darwin-arm64": "4.59.0",
     "prettier": "^3.8.1",

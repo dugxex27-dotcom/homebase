@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'HomeBase',
   webDir: 'artifacts/myhomebase/dist/public',
   ios: {
-    contentInset: 'automatic',
+    contentInset: 'never',
     scheme: 'HomeBase',
   },
   android: {
@@ -14,6 +14,16 @@ const config: CapacitorConfig = {
     webContentsDebuggingEnabled: false,
   },
   plugins: {
+    SplashScreen: {
+      launchShowDuration: 0,
+      launchAutoHide: true,
+      backgroundColor: '#8B70D4',
+      androidSplashResourceName: 'splash',
+      androidScaleType: 'CENTER_CROP',
+      showSpinner: false,
+      splashFullScreen: true,
+      splashImmersive: true,
+    },
     PushNotifications: {
       presentationOptions: ['badge', 'sound', 'alert'],
     },
