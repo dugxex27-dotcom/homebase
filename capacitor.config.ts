@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: "HomeBase",
   webDir: "artifacts/myhomebase/dist/public",
   ios: {
-    contentInset: "automatic",
+    contentInset: "never",
     scheme: "HomeBase",
   },
   android: {
