@@ -5,48 +5,48 @@ import Capacitor
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
+    private var splashOverlay: UIView?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        return true
-    }
+        // iOS 26 fix: add a native UIView with splash colour immediately.
+        // WKWebView HTML does not register as the "first native frame" in iOS 26
+        // ExtendedLaunchMetrics, so the system LaunchScreen never dismisses.
+        // A plain UIView forces that signal and the LaunchScreen transitions away.
+        if let window = self.window {
+            let overlay = UIView(frame: window.bounds)
+            overlay.backgroundColor = UIColor(red: 0.545, green: 0.439, blue: 0.831, alpha: 1.0)
+            overlay.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            overlay.tag = 88421
 
-    func applicationDidBecomeActive(_ application: UIApplication) {
-        // Try at 1.5s and 3s — covers both fast and slow WebView loads
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { self.forceSplashHide() }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { self.forceSplashHide() }
-    }
+            // Logo label
+            let label = UILabel()
+            label.text = "MyHomeBase™"
+            label.textColor = .white
+            label.font = UIFont.systemFont(ofSize: 24, weight: .semibold)
+            label.sizeToFit()
+            label.center = CGPoint(x: window.bounds.midX, y: window.bounds.midY)
+            overlay.addSubview(label)
 
-    private func forceSplashHide() {
-        guard let rootVC = self.window?.rootViewController else { return }
-        removeFrom(vc: rootVC)
-    }
+            window.addSubview(overlay)
+            self.splashOverlay = overlay
 
-    private func removeFrom(vc: UIViewController) {
-        // Strategy 1: remove child VCs whose class name contains Splash
-        for child in vc.children {
-            let name = String(describing: type(of: child)).lowercased()
-            if name.contains("splash") || name.contains("launch") {
-                child.willMove(toParent: nil)
-                UIView.animate(withDuration: 0.3, animations: {
-                    child.view.alpha = 0
+            // Fade out after 2 s
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                UIView.animate(withDuration: 0.4, animations: {
+                    overlay.alpha = 0
                 }, completion: { _ in
-                    child.view.removeFromSuperview()
-                    child.removeFromParent()
+                    overlay.removeFromSuperview()
+                    self.splashOverlay = nil
                 })
-                return
             }
-            removeFrom(vc: child)
         }
-        // Strategy 2: JS bridge call (works when plugin IS registered)
-        if let bridgeVC = vc as? CAPBridgeViewController {
-            let js = "try{var c=window.Capacitor;if(c&&c.Plugins&&c.Plugins.SplashScreen){c.Plugins.SplashScreen.hide({fadeOutDuration:300})}}catch(e){}"
-            bridgeVC.bridge?.webView?.evaluateJavaScript(js, completionHandler: nil)
-        }
+        return true
     }
 
     func applicationWillResignActive(_ application: UIApplication) {}
     func applicationDidEnterBackground(_ application: UIApplication) {}
     func applicationWillEnterForeground(_ application: UIApplication) {}
+    func applicationDidBecomeActive(_ application: UIApplication) {}
     func applicationWillTerminate(_ application: UIApplication) {}
 
     func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
