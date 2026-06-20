@@ -11,19 +11,37 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
-        // Force-hide splash via JS bridge after 3 s — works without plugin SPM registration
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-            self.forceSplashHide(in: self.window?.rootViewController)
-        }
+        // Try at 1.5s and 3s — covers both fast and slow WebView loads
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { self.forceSplashHide() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { self.forceSplashHide() }
     }
 
-    private func forceSplashHide(in vc: UIViewController?) {
-        guard let vc = vc else { return }
+    private func forceSplashHide() {
+        guard let rootVC = self.window?.rootViewController else { return }
+        removeFrom(vc: rootVC)
+    }
+
+    private func removeFrom(vc: UIViewController) {
+        // Strategy 1: remove child VCs whose class name contains Splash
+        for child in vc.children {
+            let name = String(describing: type(of: child)).lowercased()
+            if name.contains("splash") || name.contains("launch") {
+                child.willMove(toParent: nil)
+                UIView.animate(withDuration: 0.3, animations: {
+                    child.view.alpha = 0
+                }, completion: { _ in
+                    child.view.removeFromSuperview()
+                    child.removeFromParent()
+                })
+                return
+            }
+            removeFrom(vc: child)
+        }
+        // Strategy 2: JS bridge call (works when plugin IS registered)
         if let bridgeVC = vc as? CAPBridgeViewController {
-            let js = "try{var c=window.Capacitor;if(c&&c.Plugins&&c.Plugins.SplashScreen){c.Plugins.SplashScreen.hide({fadeOutDuration:0})}}catch(e){}"
+            let js = "try{var c=window.Capacitor;if(c&&c.Plugins&&c.Plugins.SplashScreen){c.Plugins.SplashScreen.hide({fadeOutDuration:300})}}catch(e){}"
             bridgeVC.bridge?.webView?.evaluateJavaScript(js, completionHandler: nil)
         }
-        for child in vc.children { forceSplashHide(in: child) }
     }
 
     func applicationWillResignActive(_ application: UIApplication) {}
