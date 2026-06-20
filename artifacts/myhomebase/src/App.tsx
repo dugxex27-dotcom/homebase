@@ -176,8 +176,8 @@ function Router() {
           <Route path="/pay/cancelled" component={PaymentCancelled} />
           <Route path="/handoff/:token" component={HandoffClaim} />
           <Route path="/coming-soon" component={ComingSoon} />
-          <Route path="/" component={isStandalone ? SignIn : Landing} />
-          <Route component={isStandalone ? SignIn : Landing} />
+          <Route path="/" component={Landing} />
+          <Route component={Landing} />
         </Switch>
       </UnauthenticatedLayout>
     );
