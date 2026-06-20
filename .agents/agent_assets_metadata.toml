@@ -90,3 +90,9 @@ id = "_SgcK9cgBVnJ3zdFrcCuY"
 uri = "file://codebase_part3.txt"
 type = "text"
 title = "Codebase Part 3 (18.8 MB)"
+
+[[outputs]]
+id = "eF-LBsYnMTsqhFxFdQSSc"
+uri = "file://replit-patches.zip"
+type = "unspecified"
+title = "Replit Patches (3 commits)"
