@@ -12,6 +12,13 @@ import BackToTop from "@/components/back-to-top";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { GuidedTour, ContractorGuidedTour, AgentGuidedTour } from "@/components/guided-tour";
 
+// SPA redirect — no full reload, works in Capacitor native
+function RedirectTo({ to }: { to: string }) {
+  const [, setLoc] = useLocation();
+  useEffect(() => { setLoc(to); }, [to, setLoc]);
+  return null;
+}
+
 // Scroll to top on route changes
 function ScrollToTop() {
   const [location] = useLocation();
@@ -221,10 +228,10 @@ function Router() {
         <Route path="/privacy-policy" component={PrivacyPolicy} />
         <Route path="/legal-disclaimer" component={LegalDisclaimer} />
         <Route path="/signin" component={SignIn} />
-        {/* Redirect authenticated users away from role-specific sign-in pages */}
-        <Route path="/signin/homeowner">{() => { window.location.replace('/dashboard'); return null; }}</Route>
-        <Route path="/signin/contractor">{() => { window.location.replace('/contractor-dashboard'); return null; }}</Route>
-        <Route path="/signin/agent">{() => { window.location.replace('/agent-dashboard'); return null; }}</Route>
+        {/* Redirect authenticated users away from role-specific sign-in pages — SPA nav, no reload */}
+        <Route path="/signin/homeowner"><RedirectTo to="/dashboard" /></Route>
+        <Route path="/signin/contractor"><RedirectTo to="/contractor-dashboard" /></Route>
+        <Route path="/signin/agent"><RedirectTo to="/agent-dashboard" /></Route>
         <Route path="/pay/invoice/:invoiceId" component={PayInvoice} />
         <Route path="/pay/success" component={PaymentSuccess} />
         <Route path="/pay/cancelled" component={PaymentCancelled} />
