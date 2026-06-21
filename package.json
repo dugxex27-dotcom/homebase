@@ -5,10 +5,6 @@
   "scripts": {
     "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
-    "build:mobile:web": "cd artifacts/myhomebase && BASE_PATH=/ VITE_API_BASE_URL=https://gotohomebase.com pnpm run build",
-    "build:mobile:ios": "pnpm run build:mobile:web && npx cap sync ios",
-    "build:mobile:android": "pnpm run build:mobile:web && npx cap sync android",
-    "build:mobile": "pnpm run build:mobile:web && npx cap sync ios && npx cap sync android",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
     "sync": "python3 scripts/sync-to-github.py"

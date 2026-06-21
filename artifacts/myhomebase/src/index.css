@@ -403,6 +403,10 @@ body[data-role="agent"],
   body.native-shell #root {
     min-height: 100dvh;
   }
+
+  body.native-shell {
+    padding-bottom: var(--native-safe-bottom);
+  }
 }
 
 body.native-shell .mhb-app-shell {
@@ -413,31 +417,19 @@ body.native-shell .mhb-page-shell {
   min-height: 100dvh !important;
 }
 
-/* ── Native safe areas: apply only where chrome actually exists ── */
+/* ── Global safe area: single source of truth for native status bar ──
+   html fills the status bar slot with the header color (edge-to-edge look).
+   body is pushed down so ALL content — regardless of which header is rendered —
+   starts below the Dynamic Island / status bar automatically.             */
 html.native-shell {
   background-color: var(--theme-primary, #3D1F87);
 }
-
-body.native-shell .mhb-safe-top {
-  padding-top: env(safe-area-inset-top, 0px) !important;
-}
-
-body.native-shell .mhb-safe-bottom {
-  padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+html.native-shell body {
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 body.native-shell [data-testid="bottom-nav"] {
-  padding-bottom: env(safe-area-inset-bottom, 0px) !important;
-}
-
-body.native-shell .mhb-authed-main {
-  padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px)) !important;
-}
-
-@media (min-width: 1024px) {
-  body.native-shell .mhb-authed-main {
-    padding-bottom: 0 !important;
-  }
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px) !important;
 }
 
 /* ════════════════════════════════════

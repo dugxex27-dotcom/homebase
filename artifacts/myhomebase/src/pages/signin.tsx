@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, waitForAuthSession } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Eye, EyeOff } from "lucide-react";
 import logoWhite from '@assets/my-homebase-logo-tm-final-white_1777417516350.png';
 
@@ -78,15 +78,12 @@ export default function SignIn() {
       return result;
     },
     onSuccess: (data) => {
-      waitForAuthSession(data.user).then(() => {
-        toast({ title: "Welcome back!" });
-        const role = data.user?.role || 'homeowner';
-        if (role === 'contractor') setLocation('/contractor-dashboard');
-        else if (role === 'agent') setLocation('/agent-dashboard');
-        else setLocation('/');
-      }).catch((error: Error) => {
-        toast({ title: "Login failed", description: error.message, variant: "destructive" });
-      });
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      toast({ title: "Welcome back!" });
+      const role = data.user?.role || 'homeowner';
+      if (role === 'contractor') setLocation('/contractor-dashboard');
+      else if (role === 'agent') setLocation('/agent-dashboard');
+      else setLocation('/');
     },
     onError: (e: Error) => toast({ title: "Login failed", description: e.message || "Invalid credentials. Please try again.", variant: "destructive" }),
   });
@@ -125,14 +122,12 @@ export default function SignIn() {
 
   const handleDemoLogin = async (role: 'homeowner' | 'contractor') => {
     try {
-      try { await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); } catch {}
+      try { await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); queryClient.clear(); } catch {}
       const endpoint = role === 'homeowner' ? '/api/auth/homeowner-demo-login' : '/api/auth/contractor-demo-login';
       const response = await apiRequest(endpoint, 'POST', {});
       if (response.ok) {
-        const data = await response.json();
-        await waitForAuthSession(data.user);
         toast({ title: "Demo login successful" });
-        setLocation(role === 'contractor' ? '/contractor-dashboard' : '/dashboard');
+        window.location.href = role === 'contractor' ? '/contractor-dashboard' : '/dashboard';
       }
     } catch (error: any) {
       toast({ title: "Demo login failed", description: error?.message, variant: "destructive" });
@@ -148,7 +143,7 @@ export default function SignIn() {
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: C.bg }}>
 
       {/* ── Header ── */}
-      <div style={{ background: C.header, padding: 'calc(16px + var(--native-safe-top, 0px)) 24px 44px', textAlign: 'center', flexShrink: 0, position: 'relative' }}>
+      <div style={{ background: C.header, padding: 'calc(40px + var(--native-safe-top, 0px)) 24px 44px', textAlign: 'center', flexShrink: 0, position: 'relative' }}>
         <div style={{ marginBottom: 18, position: 'relative', zIndex: 2, display: 'flex', justifyContent: 'center' }}>
           <a href="/" style={{ display: 'inline-block' }}>
             <img src={logoWhite} alt="MyHomeBase™ — go to home" style={{ width: 200, height: 'auto', display: 'block' }} />

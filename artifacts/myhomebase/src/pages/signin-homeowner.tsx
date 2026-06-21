@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, primeAuthUserCache, waitForAuthSession } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Eye, EyeOff } from "lucide-react";
 import logoHomeowner from '@assets/my-homebase-logo-tm-final-white_1777417516350.png';
 import { PLAN_LABELS } from '@/lib/planLabels';
@@ -111,8 +111,8 @@ export default function SignInHomeowner() {
 
   const loginMutation = useMutation({
     mutationFn: async (data: LoginFormData) => (await apiRequest("/api/auth/login", "POST", data)).json(),
-    onSuccess: async (data) => {
-      await waitForAuthSession(data.user);
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
       toast({ title: "Welcome back!" });
       setLocation(resolvePostAuthRedirect('/dashboard'));
     },
@@ -121,8 +121,8 @@ export default function SignInHomeowner() {
 
   const registerMutation = useMutation({
     mutationFn: async (data: RegisterFormData) => (await apiRequest("/api/auth/register", "POST", { ...data, role: 'homeowner' })).json(),
-    onSuccess: async (data) => {
-      await waitForAuthSession(data.user);
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
       const pendingHandoff = resolvePostAuthRedirect('');
       if (pendingHandoff) { toast({ title: "Account created!" }); setLocation(pendingHandoff); }
       else if (data.requiresPaymentSetup) {
@@ -155,9 +155,8 @@ export default function SignInHomeowner() {
       const response = await apiRequest('/api/auth/homeowner-demo-login', 'POST', { email: 'demo@homeowner.com', name: 'Demo Homeowner', role: 'homeowner' });
       if (response.ok) {
         const data = await response.json();
-        await waitForAuthSession(data.user);
+        queryClient.setQueryData(['/api/auth/user'], data.user);
         toast({ title: "Demo login successful" });
-        setLocation('/dashboard');
       }
     } catch (error: any) {
       toast({ title: "Demo login failed", description: error?.message, variant: "destructive" });
@@ -182,7 +181,7 @@ export default function SignInHomeowner() {
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: C.bg }}>
 
       {/* ── Role header ── */}
-      <div style={{ background: C.header, padding: 'calc(16px + var(--native-safe-top, 0px)) 24px 44px', textAlign: 'center', flexShrink: 0, position: 'relative' }}>
+      <div style={{ background: C.header, padding: 'calc(40px + var(--native-safe-top, 0px)) 24px 44px', textAlign: 'center', flexShrink: 0, position: 'relative' }}>
         <div style={{ marginBottom: 18, position: 'relative', zIndex: 2, display: 'flex', justifyContent: 'center' }}>
           <a href="/" style={{ display: 'inline-block' }}>
             <img src={logoHomeowner} alt="MyHomeBase™ — go to home" style={{ width: 200, height: 'auto', display: 'block' }} />
@@ -265,8 +264,14 @@ export default function SignInHomeowner() {
                 <button type="submit" disabled={loginMutation.isPending} data-testid="button-login-homeowner" style={primaryBtn(loginMutation.isPending)}>
                   {loginMutation.isPending ? 'Signing in…' : 'Sign in'}
                 </button>
-                {/* Google sign-in is intentionally disabled for native stability.
-                    Re-enable this block when the OAuth mobile flow is ready. */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <div style={{ flex: 1, height: 1, background: C.border }} />
+                  <span style={{ fontSize: 10, fontWeight: 700, color: C.inactive }}>or</span>
+                  <div style={{ flex: 1, height: 1, background: C.border }} />
+                </div>
+                <button type="button" data-testid="button-google-signin-homeowner" onClick={() => { if (selectedPlan) { sessionStorage.setItem('pendingPlan', selectedPlan.slug); } else { sessionStorage.removeItem('pendingPlan'); } window.location.href = '/auth/google'; }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', background: '#fff', border: '1.5px solid rgba(0,0,0,0.12)', borderRadius: 12, padding: '12px 0', fontSize: 13, fontWeight: 700, color: '#1a1a1a', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', fontFamily: 'inherit' }}>
+                  <GoogleSVG />Continue with Google
+                </button>
               </form>
             </Form>
           )}
@@ -345,8 +350,14 @@ export default function SignInHomeowner() {
                 <button type="submit" disabled={registerMutation.isPending} data-testid="button-register-homeowner" style={primaryBtn(registerMutation.isPending)}>
                   {registerMutation.isPending ? 'Creating account…' : 'Create Account'}
                 </button>
-                {/* Google sign-in is intentionally disabled for native stability.
-                    Re-enable this block when the OAuth mobile flow is ready. */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <div style={{ flex: 1, height: 1, background: C.border }} />
+                  <span style={{ fontSize: 10, fontWeight: 700, color: C.inactive }}>or</span>
+                  <div style={{ flex: 1, height: 1, background: C.border }} />
+                </div>
+                <button type="button" onClick={() => { if (selectedPlan) { sessionStorage.setItem('pendingPlan', selectedPlan.slug); } else { sessionStorage.removeItem('pendingPlan'); } window.location.href = '/auth/google'; }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', background: '#fff', border: '1.5px solid rgba(0,0,0,0.12)', borderRadius: 12, padding: '12px 0', fontSize: 13, fontWeight: 700, color: '#1a1a1a', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', fontFamily: 'inherit' }}>
+                  <GoogleSVG />Continue with Google
+                </button>
               </form>
             </Form>
           )}
