@@ -40,38 +40,6 @@ function RobotsManager({ authenticated }: { authenticated: boolean }) {
   return null;
 }
 
-function StaticPageRedirect({ to }: { to: string }) {
-  window.location.replace(to);
-  return null;
-}
-
-function isPublicBootstrapPath(pathname: string) {
-  return (
-    pathname === "/" ||
-    pathname === "/index-selector.html" ||
-    pathname === "/homeowner" ||
-    pathname === "/homeowner.html" ||
-    pathname === "/contractor" ||
-    pathname === "/contractor.html" ||
-    pathname === "/agent" ||
-    pathname === "/agent.html" ||
-    pathname === "/agent-onboarding" ||
-    pathname === "/agent-onboarding.html" ||
-    pathname === "/onboarding" ||
-    pathname === "/onboarding.html" ||
-    pathname.startsWith("/signin") ||
-    pathname.startsWith("/invite") ||
-    pathname.startsWith("/contact") ||
-    pathname.startsWith("/faq") ||
-    pathname.startsWith("/support") ||
-    pathname.startsWith("/terms-of-service") ||
-    pathname.startsWith("/privacy-policy") ||
-    pathname.startsWith("/legal-disclaimer") ||
-    pathname.startsWith("/pay/") ||
-    pathname.startsWith("/handoff/")
-  );
-}
-
 // Lazy-loaded pages - Common
 const Home = lazy(() => import("./pages/home"));
 const Messages = lazy(() => import("./pages/messages"));
@@ -148,7 +116,6 @@ const SubscriptionSuccess = lazy(() => import("./pages/subscription-success"));
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
-  const currentPath = window.location.pathname;
 
   // Detect if running as installed PWA / from App Store (standalone mode)
   const isStandalone =
@@ -171,7 +138,7 @@ function Router() {
   }, [user]);
 
   // Show loading screen while checking authentication
-  if (isLoading && !isPublicBootstrapPath(currentPath)) {
+  if (isLoading) {
     return <LoadingFallback />;
   }
 
@@ -210,12 +177,8 @@ function Router() {
           <Route path="/pay/cancelled" component={PaymentCancelled} />
           <Route path="/handoff/:token" component={HandoffClaim} />
           <Route path="/coming-soon" component={ComingSoon} />
-          <Route path="/">
-            {() => <StaticPageRedirect to="/index-selector.html" />}
-          </Route>
-          <Route>
-            {() => <StaticPageRedirect to="/index-selector.html" />}
-          </Route>
+          <Route path="/" component={Landing} />
+          <Route component={Landing} />
         </Switch>
       </UnauthenticatedLayout>
     );

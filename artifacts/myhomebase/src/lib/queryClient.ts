@@ -1,13 +1,10 @@
-import { Capacitor } from "@capacitor/core";
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 // In native Capacitor builds, VITE_API_BASE_URL is set to the production API root
 // (e.g. https://gotohomebase.com) so relative /api/* paths resolve correctly.
 // In development and in the live-URL Capacitor approach the value is empty and
 // relative paths are used as-is.
-const NATIVE_FALLBACK_API_BASE = 'https://gotohomebase.com';
-const API_BASE = (import.meta.env.VITE_API_BASE_URL as string)
-  || (Capacitor.isNativePlatform() ? NATIVE_FALLBACK_API_BASE : '');
+const API_BASE = (import.meta.env.VITE_API_BASE_URL as string) || '';
 
 // The Vite base path (e.g. "/myhomebase" in dev, "/" in production).
 // window.location.pathname includes this prefix, so we must strip it before

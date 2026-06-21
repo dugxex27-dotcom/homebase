@@ -114,7 +114,7 @@ export default function SignInHomeowner() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
       toast({ title: "Welcome back!" });
-      setLocation(resolvePostAuthRedirect('/'));
+      setLocation(resolvePostAuthRedirect('/dashboard'));
     },
     onError: (e: Error) => toast({ title: "Login failed", description: e.message || "Invalid credentials.", variant: "destructive" }),
   });
@@ -132,7 +132,7 @@ export default function SignInHomeowner() {
           : '/homeowner-pricing?onboarding=true';
         setLocation(pricingUrl);
       }
-      else { toast({ title: "Account created!", description: "Welcome to MyHomeBase™." }); setLocation('/'); }
+      else { toast({ title: "Account created!", description: "Welcome to MyHomeBase™." }); setLocation('/dashboard'); }
     },
     onError: (e: Error) => toast({ title: "Registration failed", description: e.message, variant: "destructive" }),
   });
@@ -177,7 +177,7 @@ export default function SignInHomeowner() {
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: C.bg }}>
 
       {/* ── Role header ── */}
-      <div style={{ background: C.header, padding: 'calc(40px + var(--native-safe-top, 0px)) 24px 44px', textAlign: 'center', flexShrink: 0, position: 'relative' }}>
+      <div style={{ background: C.header, padding: '40px 24px 44px', textAlign: 'center', flexShrink: 0, position: 'relative' }}>
         <div style={{ marginBottom: 18, position: 'relative', zIndex: 2, display: 'flex', justifyContent: 'center' }}>
           <a href="/" style={{ display: 'inline-block' }}>
             <img src={logoHomeowner} alt="MyHomeBase™ — go to home" style={{ width: 200, height: 'auto', display: 'block' }} />
