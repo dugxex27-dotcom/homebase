@@ -1,4 +1,4 @@
-import { lazy, useEffect } from "react";
+import { lazy, useEffect, useState } from "react";
 import { Router as WouterRouter, Switch, Route, useLocation } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -17,6 +17,37 @@ function RedirectTo({ to }: { to: string }) {
   const [, setLoc] = useLocation();
   useEffect(() => { setLoc(to); }, [to, setLoc]);
   return null;
+}
+
+// Full-page redirect for static public entry HTML files.
+// This keeps production builds aligned with the live site and the Vite dev
+// middleware, both of which use the static marketing/onboarding pages as the
+// public source of truth.
+function StaticPageRedirect({ to }: { to: string }) {
+  useEffect(() => {
+    window.location.replace(to);
+  }, [to]);
+  return null;
+}
+
+// Shows a loading spinner while auth resolves after demo/regular login.
+// If auth doesn't confirm within 1800 ms, redirects to the given signin page.
+function AuthTransitionFallback({ to }: { to: string }) {
+  const { isAuthenticated } = useAuth();
+  const [, setLoc] = useLocation();
+  const [timedOut, setTimedOut] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setTimedOut(true), 1800);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!timedOut || isAuthenticated) return;
+    setLoc(to);
+  }, [timedOut, isAuthenticated, setLoc, to]);
+
+  return <LoadingFallback />;
 }
 
 // Scroll to top on route changes
@@ -129,7 +160,6 @@ function Router() {
     window.matchMedia('(display-mode: standalone)').matches ||
     (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
 
-
   // Set data-role attribute and theme class on body for role-based theming
   useEffect(() => {
     const typedUser = user as { role?: string } | undefined;
@@ -159,6 +189,10 @@ function Router() {
         <Switch>
           <Route path="/contractor/accept-invite" component={AcceptInvite} />
           <Route path="/invite/:code" component={Invite} />
+          {/* Auth-transition holding pages: show spinner while setQueryData propagates */}
+          <Route path="/dashboard"><AuthTransitionFallback to="/signin/homeowner" /></Route>
+          <Route path="/contractor-dashboard"><AuthTransitionFallback to="/signin/contractor" /></Route>
+          <Route path="/agent-dashboard"><AuthTransitionFallback to="/signin/agent" /></Route>
           <Route path="/homeowner">{() => { window.location.replace('/homeowner.html'); return null; }}</Route>
           <Route path="/contractor">{() => { window.location.replace('/contractor.html'); return null; }}</Route>
           <Route path="/agent">{() => { window.location.replace('/agent.html'); return null; }}</Route>
@@ -184,8 +218,9 @@ function Router() {
           <Route path="/pay/cancelled" component={PaymentCancelled} />
           <Route path="/handoff/:token" component={HandoffClaim} />
           <Route path="/coming-soon" component={ComingSoon} />
-          <Route path="/" component={Landing} />
-          <Route component={Landing} />
+          <Route path="/landing" component={Landing} />
+          <Route path="/"><StaticPageRedirect to="/index-selector.html" /></Route>
+          <Route><StaticPageRedirect to="/index-selector.html" /></Route>
         </Switch>
       </UnauthenticatedLayout>
     );
@@ -209,6 +244,10 @@ function Router() {
         {/* Home route */}
         <Route path="/" component={Home} />
         <Route path="/homeowner" component={Home} />
+        <Route path="/contractor" component={Home} />
+        <Route path="/agent" component={Home} />
+        <Route path="/onboarding" component={Home} />
+        <Route path="/welcome" component={Home} />
         <Route path="/dashboard" component={Home} />
         
         {/* Shared routes - all authenticated users */}
