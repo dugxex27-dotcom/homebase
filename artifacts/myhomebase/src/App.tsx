@@ -19,6 +19,17 @@ function RedirectTo({ to }: { to: string }) {
   return null;
 }
 
+// Full-page redirect for static public entry HTML files.
+// This keeps production builds aligned with the live site and the Vite dev
+// middleware, both of which use the static marketing/onboarding pages as the
+// public source of truth.
+function StaticPageRedirect({ to }: { to: string }) {
+  useEffect(() => {
+    window.location.replace(to);
+  }, [to]);
+  return null;
+}
+
 // Scroll to top on route changes
 function ScrollToTop() {
   const [location] = useLocation();
@@ -184,8 +195,9 @@ function Router() {
           <Route path="/pay/cancelled" component={PaymentCancelled} />
           <Route path="/handoff/:token" component={HandoffClaim} />
           <Route path="/coming-soon" component={ComingSoon} />
-          <Route path="/" component={Landing} />
-          <Route component={Landing} />
+          <Route path="/landing" component={Landing} />
+          <Route path="/"><StaticPageRedirect to="/index-selector.html" /></Route>
+          <Route><StaticPageRedirect to="/index-selector.html" /></Route>
         </Switch>
       </UnauthenticatedLayout>
     );
