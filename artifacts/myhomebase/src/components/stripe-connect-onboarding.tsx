@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
   Shield
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { openPaymentUrl, openExternalUrl, onBrowserFinished } from "@/lib/nativeBrowser";
 
 interface StripeConnectStatus {
   hasAccount: boolean;
@@ -61,6 +62,13 @@ export function StripeConnectOnboarding() {
     },
   });
 
+  useEffect(() => {
+    return onBrowserFinished(() => {
+      refetch();
+      setIsRedirecting(false);
+    });
+  }, [refetch]);
+
   const onboardingMutation = useMutation({
     mutationFn: async () => {
       const response = await fetch('/api/contractor/stripe-connect/onboarding-link', {
@@ -73,10 +81,10 @@ export function StripeConnectOnboarding() {
       }
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       if (data.url) {
         setIsRedirecting(true);
-        window.location.href = data.url;
+        await openPaymentUrl(data.url);
       }
     },
     onError: (error: Error) => {
@@ -100,9 +108,9 @@ export function StripeConnectOnboarding() {
       }
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       if (data.url) {
-        window.open(data.url, '_blank');
+        await openExternalUrl(data.url);
       }
     },
     onError: (error: Error) => {

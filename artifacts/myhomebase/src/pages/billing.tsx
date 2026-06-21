@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { PageHero } from "@/components/page-hero";
+import { openPaymentUrl, onBrowserFinished } from "@/lib/nativeBrowser";
 
 type Plan = 'trial' | 'base' | 'premium' | 'premium_plus' | 'contractor' | 'contractor_pro' | 'grandfathered';
 
@@ -42,14 +43,24 @@ export default function Billing() {
   });
 
   // Subscription checkout mutation
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    return onBrowserFinished(() => {
+      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/billing-history'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+    });
+  }, [queryClient]);
+
   const subscriptionMutation = useMutation({
     mutationFn: async (plan: string) => {
       const res = await apiRequest('/api/create-subscription-checkout', 'POST', { plan });
       return res.json();
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       if (data.url) {
-        window.location.href = data.url;
+        await openPaymentUrl(data.url);
       }
     },
     onError: (error: Error) => {

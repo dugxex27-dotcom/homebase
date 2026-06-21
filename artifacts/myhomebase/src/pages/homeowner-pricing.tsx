@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
 import { apiRequest } from "@/lib/queryClient";
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Check, CreditCard, Home, Zap, Crown, Loader2, ShieldCheck } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { openPaymentUrl, onBrowserFinished } from "@/lib/nativeBrowser";
 
 const PLAN_SLUG_MAP: Record<string, string> = {
   base: 'base',
@@ -41,15 +42,25 @@ export default function HomeownerPricing() {
   } = useHomeownerSubscription();
 
   // Direct Stripe checkout mutation
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    return onBrowserFinished(() => {
+      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      setCheckoutPlan(null);
+    });
+  }, [queryClient]);
+
   const checkoutMutation = useMutation({
     mutationFn: async (plan: string) => {
       setCheckoutPlan(plan);
       const res = await apiRequest('/api/create-subscription-checkout', 'POST', { plan, trialMode: isOnboarding });
       return res.json();
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       if (data.url) {
-        window.location.href = data.url;
+        await openPaymentUrl(data.url);
       }
     },
     onError: (error: Error) => {

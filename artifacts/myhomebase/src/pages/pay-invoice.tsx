@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { CreditCard, CheckCircle2, XCircle, Loader2, Building2, Calendar, FileTe
 import { format } from "date-fns";
 import { Helmet } from "react-helmet";
 import type { House } from "@shared/schema";
+import { openPaymentUrl, onBrowserFinished } from "@/lib/nativeBrowser";
 
 interface InvoiceDetails {
   id: string;
@@ -114,10 +115,16 @@ function SaveToHistoryCard({ invoiceId, invoiceHouseId }: { invoiceId: string; i
 export default function PayInvoicePage() {
   const { invoiceId } = useParams<{ invoiceId: string }>();
 
-  const { data: invoice, isLoading, error } = useQuery<InvoiceDetails>({
+  const { data: invoice, isLoading, error, refetch: refetchInvoice } = useQuery<InvoiceDetails>({
     queryKey: ['/api/pay/invoice', invoiceId],
     enabled: !!invoiceId,
   });
+
+  useEffect(() => {
+    return onBrowserFinished(() => {
+      refetchInvoice();
+    });
+  }, [refetchInvoice]);
 
   const checkoutMutation = useMutation({
     mutationFn: async () => {
@@ -131,9 +138,9 @@ export default function PayInvoicePage() {
       }
       return response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       if (data.url) {
-        window.location.href = data.url;
+        await openPaymentUrl(data.url);
       }
     },
   });
