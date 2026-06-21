@@ -417,9 +417,15 @@ body.native-shell .mhb-page-shell {
   min-height: 100dvh !important;
 }
 
-body.native-shell .mhb-public-header,
-body.native-shell .mhb-authed-header {
-  padding-top: var(--native-safe-top);
+/* ── Global safe area: single source of truth for native status bar ──
+   html fills the status bar slot with the header color (edge-to-edge look).
+   body is pushed down so ALL content — regardless of which header is rendered —
+   starts below the Dynamic Island / status bar automatically.             */
+html.native-shell {
+  background-color: var(--theme-primary, #3D1F87);
+}
+html.native-shell body {
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 body.native-shell [data-testid="bottom-nav"] {
