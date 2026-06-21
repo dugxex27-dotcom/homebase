@@ -16,12 +16,14 @@ if (Capacitor.isNativePlatform()) {
 
   const originalFetch = window.fetch.bind(window);
   window.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+    const withCreds: RequestInit = { ...init, credentials: 'include' };
+
     if (typeof input === "string" && (input.startsWith("/api/") || input.startsWith("/auth/"))) {
-      return originalFetch(`${nativeApiBase}${input}`, init);
+      return originalFetch(`${nativeApiBase}${input}`, withCreds);
     }
 
     if (input instanceof URL && (input.pathname.startsWith("/api/") || input.pathname.startsWith("/auth/"))) {
-      return originalFetch(new URL(`${nativeApiBase}${input.pathname}${input.search}`), init);
+      return originalFetch(new URL(`${nativeApiBase}${input.pathname}${input.search}`), withCreds);
     }
 
     return originalFetch(input, init);
