@@ -65,6 +65,7 @@ const GoogleSVG = () => (
 );
 
 export default function SignInContractor() {
+  const isNative = document.body.classList.contains('native-shell');
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
@@ -218,6 +219,7 @@ export default function SignInContractor() {
                 <button type="submit" disabled={loginMutation.isPending} data-testid="button-login-contractor" style={primaryBtn(loginMutation.isPending)}>
                   {loginMutation.isPending ? 'Signing in…' : 'Sign in'}
                 </button>
+                {!isNative && (<>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                   <div style={{ flex: 1, height: 1, background: C.border }} />
                   <span style={{ fontSize: 10, fontWeight: 700, color: C.inactive }}>or</span>
@@ -226,6 +228,7 @@ export default function SignInContractor() {
                 <a href="/auth/google" data-testid="button-google-signin-contractor" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', background: '#fff', border: '1.5px solid rgba(0,0,0,0.12)', borderRadius: 12, padding: '12px 0', fontSize: 13, fontWeight: 700, color: '#1a1a1a', textDecoration: 'none', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
                   <GoogleSVG />Continue with Google
                 </a>
+                </>)}
               </form>
             </Form>
           )}
@@ -283,6 +286,7 @@ export default function SignInContractor() {
                 <button type="submit" disabled={registerMutation.isPending} data-testid="button-register-contractor" style={primaryBtn(registerMutation.isPending)}>
                   {registerMutation.isPending ? 'Creating account…' : 'Create Account'}
                 </button>
+                {!isNative && (<>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                   <div style={{ flex: 1, height: 1, background: C.border }} />
                   <span style={{ fontSize: 10, fontWeight: 700, color: C.inactive }}>or</span>
@@ -291,6 +295,7 @@ export default function SignInContractor() {
                 <a href="/auth/google" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', background: '#fff', border: '1.5px solid rgba(0,0,0,0.12)', borderRadius: 12, padding: '12px 0', fontSize: 13, fontWeight: 700, color: '#1a1a1a', textDecoration: 'none', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
                   <GoogleSVG />Continue with Google
                 </a>
+                </>)}
               </form>
             </Form>
           )}

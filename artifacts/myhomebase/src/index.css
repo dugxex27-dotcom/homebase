@@ -1024,6 +1024,12 @@ body.signin-page footer:last-of-type {
   display: none !important;
 }
 
+/* ── Native signin: hero already adds safe-area-top/bottom — cancel body-level padding to prevent double spacing ── */
+html.native-shell body.signin-page {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
 /* ── Invite page: full-page design, hide layout header/footer ── */
 body.invite-page > div > div > header,
 body.invite-page header:first-of-type {
