@@ -2,11 +2,11 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.gotohomebase.app',
-  appName: 'HomeBase',
+  appName: 'MyHomeBase',
   webDir: 'artifacts/myhomebase/dist/public',
   ios: {
     contentInset: 'never',
-    scheme: 'HomeBase',
+    scheme: 'MyHomeBase',
   },
   android: {
     allowMixedContent: false,
