@@ -1,4 +1,4 @@
-import { lazy, useEffect } from "react";
+import { lazy, useEffect, useState } from "react";
 import { Router as WouterRouter, Switch, Route, useLocation } from "wouter";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -28,6 +28,24 @@ function StaticPageRedirect({ to }: { to: string }) {
     window.location.replace(to);
   }, [to]);
   return null;
+}
+
+function AuthTransitionFallback({ to }: { to: string }) {
+  const { isAuthenticated } = useAuth();
+  const [, setLoc] = useLocation();
+  const [timedOut, setTimedOut] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setTimedOut(true), 1800);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!timedOut || isAuthenticated) return;
+    setLoc(to);
+  }, [timedOut, isAuthenticated, setLoc, to]);
+
+  return <LoadingFallback />;
 }
 
 // Scroll to top on route changes
@@ -170,6 +188,9 @@ function Router() {
         <Switch>
           <Route path="/contractor/accept-invite" component={AcceptInvite} />
           <Route path="/invite/:code" component={Invite} />
+          <Route path="/dashboard"><AuthTransitionFallback to="/signin/homeowner" /></Route>
+          <Route path="/contractor-dashboard"><AuthTransitionFallback to="/signin/contractor" /></Route>
+          <Route path="/agent-dashboard"><AuthTransitionFallback to="/signin/agent" /></Route>
           <Route path="/homeowner">{() => { window.location.replace('/homeowner.html'); return null; }}</Route>
           <Route path="/contractor">{() => { window.location.replace('/contractor.html'); return null; }}</Route>
           <Route path="/agent">{() => { window.location.replace('/agent.html'); return null; }}</Route>
@@ -221,6 +242,10 @@ function Router() {
         {/* Home route */}
         <Route path="/" component={Home} />
         <Route path="/homeowner" component={Home} />
+        <Route path="/contractor" component={Home} />
+        <Route path="/agent" component={Home} />
+        <Route path="/onboarding" component={Home} />
+        <Route path="/welcome" component={Home} />
         <Route path="/dashboard" component={Home} />
         
         {/* Shared routes - all authenticated users */}

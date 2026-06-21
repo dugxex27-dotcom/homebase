@@ -57,14 +57,26 @@
         <string>UIInterfaceOrientationLandscapeLeft</string>
         <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
-    <key>UISupportedInterfaceOrientations~ipad</key>
-    <array>
-        <string>UIInterfaceOrientationPortrait</string>
-        <string>UIInterfaceOrientationPortraitUpsideDown</string>
-        <string>UIInterfaceOrientationLandscapeLeft</string>
-        <string>UIInterfaceOrientationLandscapeRight</string>
-    </array>
-    <key>UIViewControllerBasedStatusBarAppearance</key>
-    <true/>
+	    <key>UISupportedInterfaceOrientations~ipad</key>
+	    <array>
+	        <string>UIInterfaceOrientationPortrait</string>
+	        <string>UIInterfaceOrientationPortraitUpsideDown</string>
+	        <string>UIInterfaceOrientationLandscapeLeft</string>
+	        <string>UIInterfaceOrientationLandscapeRight</string>
+	    </array>
+		<key>NSCameraUsageDescription</key>
+		<string>MyHomeBase uses the camera so you can capture photos for homes, documents, and service records.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>MyHomeBase uses your photo library so you can choose images and files to upload.</string>
+		<key>NSPhotoLibraryAddUsageDescription</key>
+		<string>MyHomeBase may save exported images and documents to your photo library when you choose to do so.</string>
+		<key>NSMicrophoneUsageDescription</key>
+		<string>MyHomeBase uses the microphone when capturing media that includes audio.</string>
+		<key>UIViewControllerBasedStatusBarAppearance</key>
+		<true/>
+		<key>WKAppBoundDomains</key>
+		<array>
+			<string>gotohomebase.com</string>
+	</array>
 </dict>
 </plist>

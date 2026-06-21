@@ -192,6 +192,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   console.error('========================================');
   console.error('REGISTER ROUTES CALLED - NEW CODE VERSION 2025-11-02-21:28');
   console.error('========================================');
+
+  const saveSession = (req: any) =>
+    new Promise<void>((resolve, reject) => {
+      req.session.save((err: any) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
   
   // Health check endpoint for monitoring
   // Public address autocomplete — proxies Nominatim server-side (no auth required)
@@ -3676,6 +3684,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       req.session.user = user;
       req.session.isAuthenticated = true;
 
+      try {
+        await saveSession(req);
+      } catch (sessionError) {
+        console.error('[REGISTER] Session save failed:', sessionError);
+        return res.status(500).json({ message: "Failed to save session" });
+      }
+
       // Log successful registration
       await auditLogger.log({
         eventType: 'auth.registration',
@@ -3755,6 +3770,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create session
       req.session.user = user;
       req.session.isAuthenticated = true;
+
+      try {
+        await saveSession(req);
+      } catch (sessionError) {
+        console.error('[LOGIN] Session save failed:', sessionError);
+        return res.status(500).json({ message: "Failed to save session" });
+      }
 
       // Update lastLoginAt for enterprise team management tracking (non-blocking)
       db.update(users).set({ lastLoginAt: new Date() } as any).where(eq(users.id, user.id)).catch(() => {});

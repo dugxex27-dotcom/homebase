@@ -2,7 +2,7 @@ import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { OnboardingWizard } from "@/components/onboarding-wizard";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, waitForAuthSession } from "@/lib/queryClient";
 import logoImage from '@assets/my-homebase-logo-tm-final_1776295160061.png';
 
 export default function Onboarding() {
@@ -34,9 +34,8 @@ export default function Onboarding() {
       });
       return response.json();
     },
-    onSuccess: (data) => {
-      // Invalidate auth query to refresh user state
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+    onSuccess: async (data) => {
+      await waitForAuthSession(data.user);
 
       // If the user completed the quiz before signing up, associate their result
       // with their new account now that they are authenticated.

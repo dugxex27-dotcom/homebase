@@ -45,7 +45,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.18, ease: 'easeInOut' }}
             style={{ flex: 1, overflowY: 'auto' }}
-            className="pb-16 lg:pb-0"
+            className="mhb-authed-main pb-16 lg:pb-0"
           >
             <ErrorBoundary>
               <Suspense fallback={<LoadingFallback variant="inline" />}>

@@ -12,7 +12,6 @@ body {
 
 body {
   min-height: 100dvh;
-  padding-bottom: var(--native-safe-bottom);
 }
 
 .nav {
