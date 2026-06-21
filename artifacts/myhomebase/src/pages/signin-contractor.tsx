@@ -160,7 +160,7 @@ export default function SignInContractor() {
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: C.bg }}>
 
       {/* ── Role header ── */}
-      <div style={{ background: C.header, padding: '40px 24px 44px', textAlign: 'center', flexShrink: 0, position: 'relative' }}>
+      <div style={{ background: C.header, padding: 'calc(40px + var(--native-safe-top, 0px)) 24px 44px', textAlign: 'center', flexShrink: 0, position: 'relative' }}>
         <div style={{ marginBottom: 18, position: 'relative', zIndex: 2, display: 'flex', justifyContent: 'center' }}>
           <a href="/" style={{ display: 'inline-block' }}>
             <img src={logoContractor} alt="MyHomeBase™ — go to home" style={{ width: 200, height: 'auto', display: 'block' }} />
