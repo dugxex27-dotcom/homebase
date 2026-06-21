@@ -134,9 +134,13 @@ export default function SignInContractor() {
 
   const handleContractorDemoLogin = async () => {
     try {
-      try { await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); queryClient.clear(); } catch {}
+      try { await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); } catch {}
       const response = await apiRequest('/api/auth/contractor-demo-login', 'POST', { email: 'demo@contractor.com', name: 'Demo Contractor', role: 'contractor' });
-      if (response.ok) { toast({ title: "Demo login successful" }); await queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] }); }
+      if (response.ok) {
+        const data = await response.json();
+        queryClient.setQueryData(['/api/auth/user'], data.user);
+        toast({ title: "Demo login successful" });
+      }
     } catch (error: any) {
       toast({ title: "Demo login failed", description: error?.message, variant: "destructive" });
     }
