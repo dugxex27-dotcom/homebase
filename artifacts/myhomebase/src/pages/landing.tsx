@@ -828,14 +828,6 @@ export default function Landing() {
                     </div>
                     <span className="mhb-signin-flyout-arrow">→</span>
                   </a>
-                  <div className="mhb-signin-flyout-footer">
-                    <button
-                      className="mhb-signin-flyout-how"
-                      onClick={() => { setSigninOpen(false); scrollTo('how-it-works'); }}
-                    >
-                      See how it works ↓
-                    </button>
-                  </div>
                 </div>
               )}
             </div>
