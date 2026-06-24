@@ -364,23 +364,11 @@ export default function SignInHomeowner() {
               <button
                 type="button"
                 data-testid="button-continue-to-pricing"
-                onClick={() => {
-                  if (selectedPlan) {
-                    setLocation(`/homeowner-pricing?onboarding=true&plan=${selectedPlan.slug}`);
-                  } else {
-                    setLocation('/homeowner-pricing?onboarding=true');
-                  }
-                }}
-                style={primaryBtn(false)}
+                disabled={!selectedPlanSlug}
+                onClick={() => setLocation(`/homeowner-pricing?onboarding=true&plan=${selectedPlanSlug}`)}
+                style={primaryBtn(!selectedPlanSlug)}
               >
                 Continue
-              </button>
-              <button
-                type="button"
-                onClick={() => setLocation('/dashboard')}
-                style={{ width: '100%', background: 'none', border: 'none', fontSize: 12, fontWeight: 600, color: C.inactive, cursor: 'pointer', fontFamily: 'inherit', padding: '4px 0' }}
-              >
-                Skip for now
               </button>
             </div>
           )}
