@@ -233,7 +233,14 @@ function Router() {
   
   // Use server-provided isAdmin flag (more reliable than build-time env vars)
   const isAdmin = typedUser?.isAdmin === true;
-  
+
+  // Sign-in/register pages must render without the sidebar layout so authenticated
+  // users (e.g. demo users) can register a new account without seeing the dashboard shell.
+  const [authPath] = useLocation();
+  if (authPath === "/signin/homeowner") return <SignInHomeowner />;
+  if (authPath === "/signin/contractor") return <SignInContractor />;
+  if (authPath === "/signin/agent") return <SignInAgent />;
+
   return (
     <AuthenticatedLayout>
       <RobotsManager authenticated={true} />
