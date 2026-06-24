@@ -155,6 +155,7 @@ const SubscriptionSuccess = lazy(() => import("./pages/subscription-success"));
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
+  const [currentPath] = useLocation();
 
   // Detect if running as installed PWA / from App Store (standalone mode)
   const isStandalone =
@@ -236,10 +237,9 @@ function Router() {
 
   // Sign-in/register pages must render without the sidebar layout so authenticated
   // users (e.g. demo users) can register a new account without seeing the dashboard shell.
-  const [authPath] = useLocation();
-  if (authPath === "/signin/homeowner") return <SignInHomeowner />;
-  if (authPath === "/signin/contractor") return <SignInContractor />;
-  if (authPath === "/signin/agent") return <SignInAgent />;
+  if (currentPath === "/signin/homeowner") return <SignInHomeowner />;
+  if (currentPath === "/signin/contractor") return <SignInContractor />;
+  if (currentPath === "/signin/agent") return <SignInAgent />;
 
   return (
     <AuthenticatedLayout>
