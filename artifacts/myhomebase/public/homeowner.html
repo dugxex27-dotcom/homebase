@@ -1600,7 +1600,7 @@
   function handleDemo(btn) {
     if (btn.disabled) return;
     document.querySelectorAll('#nav-demo-btn, #underbar-demo-btn').forEach(b => { b.disabled = true; b.textContent = 'Loading…'; });
-    window.location.href = '/api/auth/homeowner-demo-login';
+    window.location.href = '/demo?role=homeowner';
   }
 </script>
 

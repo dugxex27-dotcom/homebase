@@ -614,7 +614,7 @@ nav{
     if (btn.disabled) return;
     btn.disabled = true;
     btn.textContent = 'Loading…';
-    window.location.href = '/api/auth/agent-demo-login';
+    window.location.href = '/demo?role=agent';
   }
   function handleTourDemo(el) {
     if (el && el.disabled) return;
