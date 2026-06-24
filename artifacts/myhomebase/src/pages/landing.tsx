@@ -716,7 +716,7 @@ export default function Landing() {
             <button className="mhb-nav-demo-btn" onClick={() => openDemoGate('homeowner')} disabled={demoLoading === 'homeowner'}>
               {demoLoading === 'homeowner' ? 'Loading…' : 'Homeowner Demo'}
             </button>
-            <a href="/onboarding.html" className="mhb-nav-get-started-btn">Get Started</a>
+            <a href="/signin/homeowner" className="mhb-nav-get-started-btn">Get Started</a>
             <div className="mhb-signin-flyout-wrap" ref={signinFlyoutRef}>
               <button
                 className={`mhb-nav-signin-btn${signinOpen ? ' mhb-nav-signin-btn-active' : ''}`}
@@ -1036,7 +1036,7 @@ export default function Landing() {
           <p className="mhb-section-eyebrow">Simple, honest pricing</p>
           <h2 className="mhb-section-heading">Less than a cup of coffee.<br />More than you'd pay out of pocket.</h2>
           <div className="mhb-pricing-compare">
-            <a href="/onboarding.html" className="mhb-pricing-left mhb-pricing-left-link">
+            <a href="/signin/homeowner" className="mhb-pricing-left mhb-pricing-left-link">
               <p className="mhb-pricing-amount">$5<span>/month</span></p>
               <p className="mhb-pricing-label">MyHomeBase™</p>
             </a>

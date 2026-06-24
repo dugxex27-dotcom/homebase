@@ -204,7 +204,7 @@ export default function SignIn() {
         {/* Bottom links */}
         <div style={{ textAlign: 'center', fontSize: 12, fontWeight: 600, color: C.inactive, marginBottom: 8 }}>
           <span>Don't have an account? </span>
-          <a href="/onboarding" data-testid="link-create-account" style={{ color: C.primary, fontWeight: 700, textDecoration: 'none' }}>Register free</a>
+          <a href="/signin/homeowner" data-testid="link-create-account" style={{ color: C.primary, fontWeight: 700, textDecoration: 'none' }}>Register free</a>
         </div>
         <div style={{ textAlign: 'center', paddingBottom: 24, display: 'flex', justifyContent: 'center', gap: 16 }}>
           <button type="button" onClick={() => handleDemoLogin('homeowner')} data-testid="button-demo-homeowner" style={{ fontSize: 10, fontWeight: 600, color: 'rgba(0,0,0,0.25)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}>

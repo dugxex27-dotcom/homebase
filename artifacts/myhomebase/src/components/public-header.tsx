@@ -226,7 +226,7 @@ export default function PublicHeader() {
 
           {/* Get Started — desktop only */}
           <a
-            href="/onboarding.html"
+            href="/signin/homeowner"
             className="hidden lg:inline-block text-sm font-semibold rounded-lg px-4 py-2 whitespace-nowrap transition-opacity hover:opacity-90"
             style={{ background: '#fff', color: NAV_BG, textDecoration: 'none' }}
           >

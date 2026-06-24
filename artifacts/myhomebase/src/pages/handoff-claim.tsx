@@ -160,7 +160,7 @@ export default function HandoffClaim() {
   }
 
   const signInUrl = `/signin/homeowner?handoff_token=${token}`;
-  const signUpUrl = `/onboarding?handoff_token=${token}&role=homeowner`;
+  const signUpUrl = `/signin/homeowner?handoff_token=${token}`;
 
   return (
     <div className="min-h-screen" style={{ background: "linear-gradient(to bottom, #059669 0%, #10b981 40%, #ecfdf5 100%)" }}>

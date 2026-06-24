@@ -142,8 +142,6 @@ function onboardingRoutePlugin(): Plugin {
           req.url = "/agent.html" + qs;
         } else if (path === "/agent-onboarding" || path.startsWith("/agent-onboarding/")) {
           req.url = "/agent-onboarding.html" + qs;
-        } else if (path === "/onboarding" || path.startsWith("/onboarding/")) {
-          req.url = "/onboarding.html" + qs;
         }
         next();
       });
