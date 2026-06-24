@@ -75,6 +75,7 @@ export default function SignInHomeowner() {
   const [resetStep, setResetStep] = useState<'request' | 'reset'>('request');
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
+  const [registerStep, setRegisterStep] = useState<'details' | 'plan'>('details');
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
@@ -122,18 +123,12 @@ export default function SignInHomeowner() {
 
   const registerMutation = useMutation({
     mutationFn: async (data: RegisterFormData) => (await apiRequest("/api/auth/register", "POST", { ...data, role: 'homeowner' })).json(),
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
       const pendingHandoff = resolvePostAuthRedirect('');
-      if (pendingHandoff) { toast({ title: "Account created!" }); setLocation(pendingHandoff); }
-      else if (data.requiresPaymentSetup) {
-        toast({ title: "Account created!", description: "Choose your plan to start your free 14-day trial." });
-        const pricingUrl = selectedPlan
-          ? `/homeowner-pricing?onboarding=true&plan=${selectedPlan.slug}`
-          : '/homeowner-pricing?onboarding=true';
-        setLocation(pricingUrl);
-      }
-      else { toast({ title: "Account created!", description: "Welcome to MyHomeBase™." }); setLocation('/dashboard'); }
+      if (pendingHandoff) { toast({ title: "Account created!" }); setLocation(pendingHandoff); return; }
+      toast({ title: "Account created!", description: "Almost done — choose your plan." });
+      setRegisterStep('plan');
     },
     onError: (e: Error) => toast({ title: "Registration failed", description: e.message, variant: "destructive" }),
   });
@@ -207,31 +202,6 @@ export default function SignInHomeowner() {
             <button type="button" onClick={() => setActiveTab('register')} style={toggleBtn(activeTab === 'register')} data-testid="tab-register-homeowner">Register</button>
           </div>
 
-          {/* Plan selector */}
-          <div data-testid="plan-selection-banner" style={{ background: 'rgba(83,74,183,0.08)', border: '1.5px solid rgba(83,74,183,0.2)', borderRadius: 12, padding: '10px 14px', marginBottom: 18 }}>
-            <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: C.label, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Selected plan</p>
-            <div style={{ position: 'relative' }}>
-              <select
-                data-testid="select-plan"
-                value={selectedPlanSlug}
-                onChange={e => setSelectedPlanSlug(e.target.value)}
-                style={{
-                  width: '100%', appearance: 'none', WebkitAppearance: 'none',
-                  background: '#fff', border: `1.5px solid ${C.border}`,
-                  borderRadius: 10, padding: '9px 36px 9px 12px',
-                  fontSize: 13, fontWeight: 700, color: C.primary,
-                  cursor: 'pointer', fontFamily: 'inherit', outline: 'none',
-                }}
-              >
-                <option value="" disabled>Choose a plan…</option>
-                {Object.entries(PLAN_LABELS).map(([slug, { name, price }]) => (
-                  <option key={slug} value={slug}>{name} — {price}</option>
-                ))}
-              </select>
-              <svg style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: C.primary }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </div>
-          </div>
-
           {/* ── LOGIN ── */}
           {activeTab === 'login' && (
             <Form {...loginForm}>
@@ -279,8 +249,8 @@ export default function SignInHomeowner() {
             </Form>
           )}
 
-          {/* ── REGISTER ── */}
-          {activeTab === 'register' && (
+          {/* ── REGISTER step 1: account details ── */}
+          {activeTab === 'register' && registerStep === 'details' && (
             <Form {...registerForm}>
               <form onSubmit={registerForm.handleSubmit((d) => registerMutation.mutate(d))} data-testid="form-register-homeowner">
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 0 }}>
@@ -359,12 +329,60 @@ export default function SignInHomeowner() {
                   <span style={{ fontSize: 10, fontWeight: 700, color: C.inactive }}>or</span>
                   <div style={{ flex: 1, height: 1, background: C.border }} />
                 </div>
-                <button type="button" onClick={() => { if (selectedPlan) { sessionStorage.setItem('pendingPlan', selectedPlan.slug); } else { sessionStorage.removeItem('pendingPlan'); } window.location.href = '/auth/google'; }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', background: '#fff', border: '1.5px solid rgba(0,0,0,0.12)', borderRadius: 12, padding: '12px 0', fontSize: 13, fontWeight: 700, color: '#1a1a1a', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', fontFamily: 'inherit' }}>
+                <button type="button" onClick={() => { sessionStorage.removeItem('pendingPlan'); window.location.href = '/auth/google'; }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', background: '#fff', border: '1.5px solid rgba(0,0,0,0.12)', borderRadius: 12, padding: '12px 0', fontSize: 13, fontWeight: 700, color: '#1a1a1a', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', fontFamily: 'inherit' }}>
                   <GoogleSVG />Continue with Google
                 </button>
                 </>)}
               </form>
             </Form>
+          )}
+
+          {/* ── REGISTER step 2: plan selection ── */}
+          {activeTab === 'register' && registerStep === 'plan' && (
+            <div data-testid="plan-selection-step">
+              <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: C.label, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Selected plan</p>
+              <div style={{ position: 'relative', marginBottom: 20 }}>
+                <select
+                  data-testid="select-plan"
+                  value={selectedPlanSlug}
+                  onChange={e => setSelectedPlanSlug(e.target.value)}
+                  style={{
+                    width: '100%', appearance: 'none', WebkitAppearance: 'none',
+                    background: '#fff', border: `1.5px solid ${C.border}`,
+                    borderRadius: 10, padding: '9px 36px 9px 12px',
+                    fontSize: 13, fontWeight: 700, color: C.primary,
+                    cursor: 'pointer', fontFamily: 'inherit', outline: 'none',
+                  }}
+                >
+                  <option value="" disabled>Choose a plan…</option>
+                  {Object.entries(PLAN_LABELS).map(([slug, { name, price }]) => (
+                    <option key={slug} value={slug}>{name} — {price}</option>
+                  ))}
+                </select>
+                <svg style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: C.primary }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </div>
+              <button
+                type="button"
+                data-testid="button-continue-to-pricing"
+                onClick={() => {
+                  if (selectedPlan) {
+                    setLocation(`/homeowner-pricing?onboarding=true&plan=${selectedPlan.slug}`);
+                  } else {
+                    setLocation('/homeowner-pricing?onboarding=true');
+                  }
+                }}
+                style={primaryBtn(false)}
+              >
+                Continue
+              </button>
+              <button
+                type="button"
+                onClick={() => setLocation('/dashboard')}
+                style={{ width: '100%', background: 'none', border: 'none', fontSize: 12, fontWeight: 600, color: C.inactive, cursor: 'pointer', fontFamily: 'inherit', padding: '4px 0' }}
+              >
+                Skip for now
+              </button>
+            </div>
           )}
         </div>
 
