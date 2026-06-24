@@ -746,7 +746,7 @@ export default function Landing() {
                 ))}
               </div>
               <div className="mhb-faq-cta-row">
-                <a href="/onboarding" className="mhb-faq-cta">Check my home's risk — free →</a>
+                <a href="/quiz/quiz.html" className="mhb-faq-cta">Check my home's risk — free →</a>
               </div>
             </div>
           </div>
