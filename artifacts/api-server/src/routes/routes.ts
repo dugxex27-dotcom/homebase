@@ -17828,6 +17828,26 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   // Quiz Results — save Home Health Score to the database
   // Works for both anonymous visitors (no userId stored) and authenticated users.
 
+  app.post("/api/demo-lead", async (req: any, res) => {
+    try {
+      const bodySchema = z.object({
+        name: z.string().min(1).max(200),
+        email: z.string().email().max(300),
+        zipcode: z.string().min(3).max(20),
+        role: z.enum(['homeowner', 'contractor', 'agent']).default('homeowner'),
+      });
+      const parsed = bodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid lead data" });
+      }
+      req.log.info({ lead: { name: parsed.data.name, email: parsed.data.email, zipcode: parsed.data.zipcode, role: parsed.data.role } }, '[Demo Lead]');
+      return res.json({ ok: true });
+    } catch (err) {
+      req.log.error(err, '[Demo Lead] error');
+      return res.status(500).json({ message: "Server error" });
+    }
+  });
+
   app.post("/api/quiz-result", async (req: any, res) => {
     try {
       const bodySchema = z.object({

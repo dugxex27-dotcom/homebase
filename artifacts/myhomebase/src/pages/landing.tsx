@@ -18,6 +18,12 @@ export default function Landing() {
 
   // ── Existing modal/UI state ──
   const [demoLoading, setDemoLoading] = useState<string | null>(null);
+  const [demoGateOpen, setDemoGateOpen] = useState(false);
+  const [demoGateRole, setDemoGateRole] = useState<'homeowner' | 'contractor' | 'agent'>('homeowner');
+  const [demoGateName, setDemoGateName] = useState('');
+  const [demoGateEmail, setDemoGateEmail] = useState('');
+  const [demoGateZip, setDemoGateZip] = useState('');
+  const [demoGateSubmitting, setDemoGateSubmitting] = useState(false);
   const [quizOpen, setQuizOpen] = useState(false);
   const [claimsOpen, setClaimsOpen] = useState(false);
   const [deniedOpen, setDeniedOpen] = useState(false);
@@ -99,6 +105,32 @@ export default function Landing() {
     window.location.href = url;
   };
 
+  const openDemoGate = (role: 'homeowner' | 'contractor' | 'agent') => {
+    setDemoGateRole(role);
+    setDemoGateName('');
+    setDemoGateEmail('');
+    setDemoGateZip('');
+    setDemoGateOpen(true);
+  };
+
+  const handleDemoGateSubmit = async (e: React.FormEvent, skip = false) => {
+    e.preventDefault();
+    setDemoGateSubmitting(true);
+    if (!skip && demoGateName && demoGateEmail) {
+      try {
+        await apiRequest('/api/demo-lead', 'POST', {
+          name: demoGateName,
+          email: demoGateEmail,
+          zipcode: demoGateZip,
+          role: demoGateRole,
+        });
+      } catch { }
+    }
+    setDemoGateOpen(false);
+    setDemoGateSubmitting(false);
+    handleDemoLogin(demoGateRole);
+  };
+
   const handleDemoLogin = async (role: 'homeowner' | 'contractor' | 'agent') => {
     setDemoLoading(role);
     try {
@@ -121,6 +153,63 @@ export default function Landing() {
 
   return (
     <div className="mhb-landing">
+      {/* ═══ DEMO GATE MODAL ═══ */}
+      {demoGateOpen && (
+        <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setDemoGateOpen(false)}>
+          <div className="mhb-demo-gate" onClick={e => e.stopPropagation()}>
+            <button className="mhb-modal-close" onClick={() => setDemoGateOpen(false)} aria-label="Close"><X size={20} strokeWidth={2.5} /></button>
+            <div className="mhb-demo-gate-bar" />
+            <div className="mhb-demo-gate-inner">
+              <p className="mhb-demo-gate-eyebrow">Quick intro</p>
+              <h2 className="mhb-demo-gate-heading">Before you explore the demo</h2>
+              <p className="mhb-demo-gate-sub">Tell us a little about yourself — takes 10 seconds.</p>
+              <form onSubmit={e => handleDemoGateSubmit(e, false)}>
+                <div className="mhb-demo-gate-field">
+                  <label className="mhb-demo-gate-label">Full Name</label>
+                  <input
+                    className="mhb-demo-gate-input"
+                    type="text"
+                    placeholder="Jane Smith"
+                    value={demoGateName}
+                    onChange={e => setDemoGateName(e.target.value)}
+                    required
+                    autoFocus
+                  />
+                </div>
+                <div className="mhb-demo-gate-field">
+                  <label className="mhb-demo-gate-label">Email Address</label>
+                  <input
+                    className="mhb-demo-gate-input"
+                    type="email"
+                    placeholder="jane@example.com"
+                    value={demoGateEmail}
+                    onChange={e => setDemoGateEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="mhb-demo-gate-field">
+                  <label className="mhb-demo-gate-label">ZIP Code</label>
+                  <input
+                    className="mhb-demo-gate-input"
+                    type="text"
+                    placeholder="90210"
+                    value={demoGateZip}
+                    onChange={e => setDemoGateZip(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    maxLength={10}
+                    required
+                  />
+                </div>
+                <button className="mhb-demo-gate-submit" type="submit" disabled={demoGateSubmitting}>
+                  {demoGateSubmitting ? 'Loading…' : 'Enter Demo →'}
+                </button>
+              </form>
+              <button className="mhb-demo-gate-skip" onClick={e => handleDemoGateSubmit(e as any, true)}>
+                Skip and go straight to demo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* ═══ QUIZ FULL-SCREEN MODAL ═══ */}
       {quizOpen && (
         <div className="mhb-overlay" role="dialog" aria-modal="true" aria-label="Home Health Score Quiz" onClick={() => setQuizOpen(false)}>
@@ -709,7 +798,7 @@ export default function Landing() {
             </div>
           </div>
           <div className="mhb-nav-right">
-            <button className="mhb-nav-demo-btn" onClick={() => handleDemoLogin('homeowner')} disabled={demoLoading === 'homeowner'}>
+            <button className="mhb-nav-demo-btn" onClick={() => openDemoGate('homeowner')} disabled={demoLoading === 'homeowner'}>
               {demoLoading === 'homeowner' ? 'Loading…' : 'Homeowner Demo'}
             </button>
             <a href="/onboarding" className="mhb-nav-get-started-btn">Get Started</a>
@@ -777,7 +866,7 @@ export default function Landing() {
       {/* Mobile-only demo text link below nav */}
       <div className="mhb-nav-demo-underbar">
         <a className="mhb-nav-demo-underbar-back" href="/">← All users</a>
-        <button className="mhb-nav-demo-underbar-btn" onClick={() => handleDemoLogin('homeowner')} disabled={demoLoading === 'homeowner'}>
+        <button className="mhb-nav-demo-underbar-btn" onClick={() => openDemoGate('homeowner')} disabled={demoLoading === 'homeowner'}>
           {demoLoading === 'homeowner' ? 'Loading…' : 'Try the homeowner demo →'}
         </button>
       </div>
