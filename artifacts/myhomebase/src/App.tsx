@@ -131,6 +131,7 @@ const Support = lazy(() => import("./pages/support"));
 const SupportTicketDetail = lazy(() => import("./pages/support-ticket-detail"));
 const Contact = lazy(() => import("./pages/contact"));
 const FAQ = lazy(() => import("./pages/faq"));
+const DemoGate = lazy(() => import("./pages/demo-gate"));
 const TermsOfService = lazy(() => import("./pages/terms-of-service"));
 const PrivacyPolicy = lazy(() => import("./pages/privacy-policy"));
 const LegalDisclaimer = lazy(() => import("./pages/legal-disclaimer"));
@@ -213,6 +214,7 @@ function Router() {
           <Route path="/hws-modal" component={HwsModalPage} />
           <Route path="/contact" component={Contact} />
           <Route path="/faq" component={FAQ} />
+          <Route path="/demo" component={DemoGate} />
           <Route path="/pay/invoice/:invoiceId" component={PayInvoice} />
           <Route path="/pay/success" component={PaymentSuccess} />
           <Route path="/pay/cancelled" component={PaymentCancelled} />
