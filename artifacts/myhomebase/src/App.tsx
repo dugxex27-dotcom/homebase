@@ -270,10 +270,10 @@ function Router() {
         <Route path="/privacy-policy" component={PrivacyPolicy} />
         <Route path="/legal-disclaimer" component={LegalDisclaimer} />
         <Route path="/signin" component={SignIn} />
-        {/* Redirect authenticated users away from role-specific sign-in pages — SPA nav, no reload */}
-        <Route path="/signin/homeowner"><RedirectTo to="/dashboard" /></Route>
-        <Route path="/signin/contractor"><RedirectTo to="/contractor-dashboard" /></Route>
-        <Route path="/signin/agent"><RedirectTo to="/agent-dashboard" /></Route>
+        {/* Allow authenticated users to reach sign-in pages so they can register a new account */}
+        <Route path="/signin/homeowner" component={SignInHomeowner} />
+        <Route path="/signin/contractor" component={SignInContractor} />
+        <Route path="/signin/agent" component={SignInAgent} />
         <Route path="/pay/invoice/:invoiceId" component={PayInvoice} />
         <Route path="/pay/success" component={PaymentSuccess} />
         <Route path="/pay/cancelled" component={PaymentCancelled} />
