@@ -617,10 +617,7 @@ nav{
     window.location.href = '/demo?role=agent';
   }
   function handleTourDemo(el) {
-    if (el && el.disabled) return;
-    if (el) { el.disabled = true; el.textContent = 'Loading…'; }
-    try { localStorage.setItem('mhb_agent_tour', JSON.stringify({ phase: 'welcome', stepIndex: 0 })); } catch(e) {}
-    window.location.href = '/api/auth/agent-demo-login';
+    window.location.href = '/signin/agent';
   }
 </script>
 

@@ -649,29 +649,7 @@ nav{
   }
 
   function handleTourDemo(el) {
-    if (el.dataset.loading) return;
-    el.dataset.loading = '1';
-    const orig = el.textContent;
-    el.textContent = 'Loading dashboard…';
-    el.style.opacity = '0.7';
-    el.style.cursor = 'default';
-    fetch('/api/auth/contractor-demo-login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'demo@contractor.com', name: 'Demo Contractor', role: 'contractor' }),
-      credentials: 'include',
-    })
-      .then(function(r) {
-        if (!r.ok) throw new Error('demo login failed');
-        localStorage.setItem('mhb_contractor_tour', JSON.stringify({ phase: 'welcome', stepIndex: 0 }));
-        window.location.href = '/contractor-dashboard';
-      })
-      .catch(function() {
-        el.textContent = orig;
-        el.style.opacity = '';
-        el.style.cursor = '';
-        delete el.dataset.loading;
-      });
+    window.location.href = '/signin/contractor';
   }
 </script>
 
