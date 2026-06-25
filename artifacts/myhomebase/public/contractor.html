@@ -38,33 +38,50 @@
 html,body{font-family:var(--font);background:var(--off-white);color:var(--gray-900);min-height:100vh;overflow-x:hidden;}
 
 /* ── NAV ── */
-nav{
-  background:#0a1628;
-  border-bottom:0.5px solid rgba(255,255,255,0.08);
-  padding:0 24px;
-  height:56px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  position:sticky;top:0;z-index:100;
-}
-.nav-left{display:flex;align-items:center;gap:16px;}
-.nav-logo a{display:inline-flex;align-items:center;}
-.nav-logo img{height:28px;width:auto;}
-.nav-right{display:flex;align-items:center;gap:12px;}
-.nav-link{font-size:13px;color:rgba(255,255,255,0.7);text-decoration:none;font-weight:500;transition:color .15s;}
+.nav{position:sticky;top:0;z-index:800;background:#0a1628;border-bottom:0.5px solid rgba(255,255,255,0.08);}
+.nav-inner{max-width:1200px;margin:0 auto;padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;gap:16px;}
+.nav-left{display:flex;align-items:center;gap:20px;}
+.nav-logo-link{display:flex;align-items:center;flex-shrink:0;}
+.nav-logo{height:28px;width:auto;object-fit:contain;}
+.nav-links{display:flex;align-items:center;gap:20px;}
+.nav-link{background:none;border:none;color:rgba(255,255,255,0.7);font-size:13px;font-weight:500;cursor:pointer;padding:4px 0;transition:color .15s;font-family:inherit;text-decoration:none;display:inline-block;}
 .nav-link:hover{color:#fff;}
-.nav-cta{
-  padding:8px 18px;
-  background:#fff;
-  color:#0a1628;
-  border-radius:12px;
-  font-size:13px;
-  font-weight:600;
-  text-decoration:none;
-  transition:opacity 0.2s;
-}
-.nav-cta:hover{opacity:0.88;}
+.nav-right{display:flex;align-items:center;gap:12px;}
+.nav-get-started{font-size:13px;font-weight:600;text-decoration:none;color:#0a1628;background:#fff;border:none;padding:8px 18px;border-radius:12px;transition:opacity .2s;white-space:nowrap;}
+.nav-get-started:hover{opacity:.88;}
+.signin-wrap{position:relative;flex-shrink:0;}
+.nav-signin-btn{font-size:13px;font-weight:500;color:rgba(255,255,255,0.7);background:none;border:none;padding:4px 0;transition:color .15s;cursor:pointer;font-family:inherit;}
+.nav-signin-btn:hover,.nav-signin-btn.active{color:#fff;}
+.signin-flyout{display:none;position:absolute;top:calc(100% + 10px);right:0;width:280px;background:#fff;border-radius:18px;box-shadow:0 16px 60px rgba(0,0,0,0.28),0 2px 8px rgba(44,15,91,0.12);z-index:9100;overflow:hidden;animation:flyout-in .18s ease;}
+.signin-flyout.open{display:block;}
+@keyframes flyout-in{from{opacity:0;transform:translateY(-6px) scale(.97);}to{opacity:1;transform:translateY(0) scale(1);}}
+.signin-flyout-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9090b0;border-bottom:1px solid #f0edf8;}
+.signin-flyout-close{display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;border:none;background:rgba(0,0,0,.07);color:#666;cursor:pointer;transition:background .15s;}
+.signin-flyout-close:hover{background:rgba(0,0,0,.14);}
+.signin-flyout-role{display:flex;align-items:center;gap:12px;padding:13px 16px;text-decoration:none;transition:background .15s;border-bottom:1px solid #f7f5fd;}
+.signin-flyout-role:last-of-type{border-bottom:none;}
+.signin-flyout-hw:hover{background:#f5f1ff;}
+.signin-flyout-ct:hover{background:#eff6ff;}
+.signin-flyout-ag:hover{background:#f0fdf4;}
+.signin-flyout-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.signin-flyout-hw .signin-flyout-icon{background:#ede9fe;color:#3C258E;}
+.signin-flyout-ct .signin-flyout-icon{background:#dbeafe;color:#1560a2;}
+.signin-flyout-ag .signin-flyout-icon{background:#dcfce7;color:#166534;}
+.signin-flyout-icon svg{width:18px;height:18px;}
+.signin-flyout-text{display:flex;flex-direction:column;gap:1px;flex:1;}
+.signin-flyout-title{font-size:14px;font-weight:700;}
+.signin-flyout-hw .signin-flyout-title{color:#2C0F5B;}
+.signin-flyout-ct .signin-flyout-title{color:#1560a2;}
+.signin-flyout-ag .signin-flyout-title{color:#166534;}
+.signin-flyout-sub{font-size:11.5px;color:#9090b0;font-weight:500;}
+.signin-flyout-arr{font-size:15px;color:#c0b8d8;flex-shrink:0;transition:transform .15s,color .15s;}
+.signin-flyout-hw:hover .signin-flyout-arr{color:#3C258E;transform:translateX(2px);}
+.signin-flyout-ct:hover .signin-flyout-arr{color:#1560a2;transform:translateX(2px);}
+.signin-flyout-ag:hover .signin-flyout-arr{color:#166534;transform:translateX(2px);}
+.signin-flyout-footer{padding:10px 16px 12px;border-top:1px solid #f0edf8;text-align:center;}
+.signin-flyout-how{background:none;border:none;cursor:pointer;font-size:12px;font-weight:600;color:#9090b0;transition:color .15s;padding:0;font-family:inherit;}
+.signin-flyout-how:hover{color:#1560a2;}
+@media(max-width:767px){.nav-links{display:none;}.signin-flyout{right:-8px;width:260px;}}
 
 /* ── DEMO UNDERBAR ── */
 .demo-underbar{
@@ -404,15 +421,64 @@ nav{
 <body>
 
 <!-- NAV -->
-<nav>
-  <div class="nav-left">
-    <div class="nav-logo">
-      <a href="/contractor"><img src="/my-homebase-logo-tm-final-white.png" alt="MyHomeBase™"></a>
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-left">
+      <a href="/contractor" class="nav-logo-link">
+        <img src="/my-homebase-logo-tm-final-white.png" alt="MyHomeBase™" class="nav-logo" />
+      </a>
+      <div class="nav-links">
+        <a href="#how-it-works" class="nav-link">How It Works</a>
+        <a href="#pricing" class="nav-link">Pricing</a>
+      </div>
     </div>
-  </div>
-  <div class="nav-right">
-    <a href="/login" class="nav-link">Sign in</a>
-    <button class="nav-cta" onclick="handleTourDemo(this)">Get started free</button>
+    <div class="nav-right">
+      <div class="signin-wrap">
+        <button class="nav-signin-btn" id="signin-toggle" onclick="toggleSignin()" aria-expanded="false" aria-haspopup="true">Sign in</button>
+        <div class="signin-flyout" id="signin-flyout" role="menu">
+          <div class="signin-flyout-header">
+            <span>Sign in as…</span>
+            <button class="signin-flyout-close" onclick="toggleSignin()" aria-label="Close">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <a href="/signin/homeowner" class="signin-flyout-role signin-flyout-hw" role="menuitem">
+            <div class="signin-flyout-icon">
+              <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 2L2 7v9h4v-5h6v5h4V7z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+            </div>
+            <div class="signin-flyout-text">
+              <span class="signin-flyout-title">Homeowner</span>
+              <span class="signin-flyout-sub">Track, protect &amp; document</span>
+            </div>
+            <span class="signin-flyout-arr">→</span>
+          </a>
+          <a href="/signin/contractor" class="signin-flyout-role signin-flyout-ct" role="menuitem">
+            <div class="signin-flyout-icon">
+              <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 13l3-6 3 3 3-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="13" cy="5" r="2" stroke="currentColor" stroke-width="1.5"/></svg>
+            </div>
+            <div class="signin-flyout-text">
+              <span class="signin-flyout-title">Contractor</span>
+              <span class="signin-flyout-sub">Grow your business</span>
+            </div>
+            <span class="signin-flyout-arr">→</span>
+          </a>
+          <a href="/signin/agent" class="signin-flyout-role signin-flyout-ag" role="menuitem">
+            <div class="signin-flyout-icon">
+              <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="8" width="14" height="8" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M5 8V6a4 4 0 018 0v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </div>
+            <div class="signin-flyout-text">
+              <span class="signin-flyout-title">Real Estate Agent</span>
+              <span class="signin-flyout-sub">Refer and earn</span>
+            </div>
+            <span class="signin-flyout-arr">→</span>
+          </a>
+          <div class="signin-flyout-footer">
+            <button class="signin-flyout-how" onclick="toggleSignin(); document.getElementById('how-it-works').scrollIntoView({behavior:'smooth'})">See how it works ↓</button>
+          </div>
+        </div>
+      </div>
+      <a href="/signin/contractor" class="nav-get-started">Get Started</a>
+    </div>
   </div>
 </nav>
 <div class="demo-underbar">
@@ -485,6 +551,7 @@ nav{
   </div>
 
   <!-- HOW IT WORKS -->
+  <div id="how-it-works"></div>
   <div class="section-eyebrow">How it works</div>
   <h2 class="section-title" style="margin-bottom:12px;">Four steps to your<br>first MHB job.</h2>
   <p class="section-sub">From signup to first job in under 48 hours.</p>
@@ -567,6 +634,7 @@ nav{
   </div>
 
   <!-- PRICING -->
+  <div id="pricing"></div>
   <div class="section-eyebrow">Simple pricing</div>
   <h2 class="section-title" style="margin-bottom:32px;">One plan. Everything included.</h2>
   <div class="pricing-card">
@@ -651,6 +719,22 @@ nav{
   function handleTourDemo(el) {
     window.location.href = '/signin/contractor';
   }
+
+  function toggleSignin() {
+    const flyout = document.getElementById('signin-flyout');
+    const btn = document.getElementById('signin-toggle');
+    const isOpen = flyout.classList.toggle('open');
+    btn.classList.toggle('active', isOpen);
+    btn.setAttribute('aria-expanded', isOpen);
+  }
+
+  document.addEventListener('mousedown', e => {
+    const wrap = document.querySelector('.signin-wrap');
+    if (wrap && !wrap.contains(e.target)) {
+      document.getElementById('signin-flyout').classList.remove('open');
+      document.getElementById('signin-toggle').classList.remove('active');
+    }
+  });
 </script>
 
 <!-- ── Back to Top ── -->
