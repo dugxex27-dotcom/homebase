@@ -463,12 +463,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   })();
 
-  // IMMEDIATE TEST: Simple test endpoint to verify routing works
-  app.post('/api/test-simple', (_req, res) => {
-    console.error("===== SIMPLE TEST ENDPOINT CALLED =====");
-    res.json({ success: true, message: "Test endpoint works!" });
-  });
-
   // Set up Replit Auth (handles Google OAuth via Replit)
   await setupAuth(app);
 
@@ -14345,14 +14339,8 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.get('/api/admin/review-flags', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/review-flags', requireAdmin, async (req: any, res) => {
     try {
-      // Check admin access via email
-      const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim()).filter(Boolean);
-      if (!req.session.user.email || !adminEmails.includes(req.session.user.email)) {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-      
       const status = req.query.status as string | undefined;
       const flags = await storage.getReviewFlags(status);
       
@@ -14406,14 +14394,8 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.put('/api/admin/review-flags/:id', isAuthenticated, async (req: any, res) => {
+  app.put('/api/admin/review-flags/:id', requireAdmin, async (req: any, res) => {
     try {
-      // Check admin access via email
-      const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim()).filter(Boolean);
-      if (!req.session.user.email || !adminEmails.includes(req.session.user.email)) {
-        return res.status(403).json({ message: "Admin access required" });
-      }
-
       // Verify the flag exists before attempting any update
       const existingFlag = await storage.getReviewFlag(req.params.id);
       if (!existingFlag) {
