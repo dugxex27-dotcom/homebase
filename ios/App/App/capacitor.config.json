@@ -1,36 +1,44 @@
 {
-        "appId": "com.gotohomebase.app",
-        "appName": "MyHomeBase",
-        "webDir": "dist/public",
-        "ios": {
-                "contentInset": "automatic",
-                "scheme": "MyHomeBase"
-        },
-        "android": {
-                "allowMixedContent": false,
-                "captureInput": true,
-                "webContentsDebuggingEnabled": false
-        },
-        "plugins": {
-                "SplashScreen": {
-                        "launchShowDuration": 2000,
-                        "launchAutoHide": true,
-                        "backgroundColor": "#8B70D4",
-                        "androidSplashResourceName": "splash",
-                        "androidScaleType": "CENTER_CROP",
-                        "showSpinner": false,
-                        "splashFullScreen": true,
-                        "splashImmersive": true
-                },
-                "PushNotifications": {
-                        "presentationOptions": [
-                                "badge",
-                                "sound",
-                                "alert"
-                        ]
-                }
-        },
-        "packageClassList": [
-                "PushNotificationsPlugin"
-        ]
+	"appId": "com.gotohomebase.app",
+	"appName": "MyHomeBase",
+	"webDir": "artifacts/myhomebase/dist/public",
+	"ios": {
+		"contentInset": "never",
+		"scheme": "MyHomeBase"
+	},
+	"android": {
+		"allowMixedContent": false,
+		"captureInput": true,
+		"webContentsDebuggingEnabled": false
+	},
+	"plugins": {
+		"CapacitorCookies": {
+			"enabled": true
+		},
+		"CapacitorHttp": {
+			"enabled": true
+		},
+		"SplashScreen": {
+			"launchShowDuration": 0,
+			"launchAutoHide": true,
+			"backgroundColor": "#8B70D4",
+			"androidSplashResourceName": "splash",
+			"androidScaleType": "CENTER_CROP",
+			"showSpinner": false,
+			"splashFullScreen": true,
+			"splashImmersive": true
+		},
+		"PushNotifications": {
+			"presentationOptions": [
+				"badge",
+				"sound",
+				"alert"
+			]
+		}
+	},
+	"packageClassList": [
+		"CAPBrowserPlugin",
+		"PushNotificationsPlugin",
+		"SplashScreenPlugin"
+	]
 }

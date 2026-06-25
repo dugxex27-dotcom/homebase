@@ -4,6 +4,9 @@ packages:
   - lib/integrations/*
   - scripts
 
+allowBuilds:
+  protobufjs: true
+
 autoInstallPeers: false
 
 catalog:
@@ -39,6 +42,7 @@ onlyBuiltDependencies:
   - '@swc/core'
   - esbuild
   - msw
+  - protobufjs
   - unrs-resolver
 
 overrides:
