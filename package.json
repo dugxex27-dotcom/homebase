@@ -27,6 +27,7 @@
     "typescript": "~5.9.2"
   },
   "dependencies": {
-    "@capacitor/browser": "^8.0.3"
+    "@capacitor/browser": "^8.0.3",
+    "cordova-plugin-purchase": "^13.17.2"
   }
 }

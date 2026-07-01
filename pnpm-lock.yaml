@@ -193,6 +193,9 @@ importers:
       '@capacitor/browser':
         specifier: ^8.0.3
         version: 8.0.3(@capacitor/core@8.4.0)
+      cordova-plugin-purchase:
+        specifier: ^13.17.2
+        version: 13.17.2
     devDependencies:
       '@capacitor/android':
         specifier: ^8.4.1
@@ -561,6 +564,9 @@ importers:
       '@capacitor/splash-screen':
         specifier: ^8.0.1
         version: 8.0.1(@capacitor/core@8.4.0)
+      cordova-plugin-purchase:
+        specifier: ^13.17.2
+        version: 13.17.2
       nanoid:
         specifier: ^5.1.9
         version: 5.1.9
@@ -2759,6 +2765,9 @@ packages:
   cookie@0.7.2:
     resolution: {integrity: sha512-yki5XnKuf750l50uGTllt6kKILY4nQ1eNIQatoXEByZ5dWgnKqbnqmTrBE5B4N7lrMJKQ2ytWMiTO2o0v6Ew/w==}
     engines: {node: '>= 0.6'}
+
+  cordova-plugin-purchase@13.17.2:
+    resolution: {integrity: sha512-5PWpF5CGnqdYjH4x2ULVj5fUA304Ftl/UF1wEc4+HOJmAtJeIVb9/UlnckVhAyhQDT7MIk6+YNGSctJeqZGsFQ==}
 
   cors@2.8.6:
     resolution: {integrity: sha512-tJtZBBHA6vjIAaF6EnIaq6laBBP9aq/Y3ouVJjEfoHbRBcHBAHYcMh/w8LDrk2PvIMMq8gmopa5D4V8RmbrxGw==}
@@ -7153,6 +7162,8 @@ snapshots:
   cookie-signature@1.2.2: {}
 
   cookie@0.7.2: {}
+
+  cordova-plugin-purchase@13.17.2: {}
 
   cors@2.8.6:
     dependencies:
