@@ -3,16 +3,16 @@ import express from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage, type IStorage } from "../storage";
-import { setupAuth, isAuthenticated, requireRole, requirePropertyOwner, suspendedUserIds, requireCompanyRole, requireNotSuspended, requireSameCompany } from "../replitAuth";
+import { setupAuth, isAuthenticated, requireRole, requirePropertyOwner, suspendedUserIds, requireCompanyRole, requireCompanyRoleAny, requireDivisionAccess, requireBulkImport, requireApiAccess, requireNotSuspended, requireSameCompany } from "../replitAuth";
 import { setupGoogleAuth } from "../googleAuth";
 import { z } from "zod";
 import { randomUUID } from "crypto";
 import rateLimit from "express-rate-limit";
-import { eq, and, ne, inArray, sql as drizzleSql, isNotNull, desc } from "drizzle-orm";
+import { eq, and, ne, inArray, sql as drizzleSql, isNotNull, isNull, desc } from "drizzle-orm";
 import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertTaskCompletionSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, customMaintenanceTasks, insertSupportTicketSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, securitySessions, referralCredits, referralFreeMonths, agentProfiles, users, siteContent, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, insertReviewFlagSchema, homeDocuments, quizResults, type House } from "@workspace/db";
 import { calculateDIYSavingsAmount } from "../shared/cost-helpers";
 import { extractInvoiceData, verifyDIYPhotos, type InvoiceExtraction } from "../invoice-analysis-service";
-import { invoiceAnalyses, contractorBoosts, affiliateReferrals, subscriptionCycleEvents, contractorInvoiceUploads, companies, proposals, securityAuditLogs } from "@workspace/db";
+import { invoiceAnalyses, contractorBoosts, affiliateReferrals, subscriptionCycleEvents, contractorInvoiceUploads, companies, proposals, securityAuditLogs, companyDivisions, companyBulkImports, insertCompanyDivisionSchema, conversations, messages } from "@workspace/db";
 import pushRoutes from "../push-routes";
 import { pushService } from "../push-service";
 import { ObjectStorageService, ObjectNotFoundError } from "../objectStorage";
@@ -25,6 +25,7 @@ import { auditLogger, sessionManager, AuditEventTypes } from "../security-audit"
 import { smsService } from "../sms-service";
 import { notificationOrchestrator } from "../notification-orchestrator";
 import { sendEmail, emailService } from "../email-service";
+import { verifyAndActivateAppleTransaction, handleAppleServerNotification, AppleIapError } from "../apple-iap";
 
 const stripe = process.env.STRIPE_SECRET_KEY 
   ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2025-08-27.basil" })
@@ -60,6 +61,15 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true, // Don't count successful logins
+});
+
+// Rate limiting for the public quiz-result endpoint
+const quizLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 submissions per IP per 15 minutes
+  message: 'Too many quiz submissions, please try again later',
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 // Grandfathered emails that get free unlimited access forever
@@ -145,11 +155,12 @@ const requireContractorSubscription = async (req: any, res: any, next: any) => {
       return next();
     }
     
-    // Check if active subscription
-    if (user.subscriptionStatus === 'active') {
+    // Check if active subscription (any paid tier passes)
+    const ACTIVE_STATUSES = ['active', 'contractor_business', 'contractor_enterprise'];
+    if (ACTIVE_STATUSES.includes(user.subscriptionStatus ?? '')) {
       return next();
     }
-    
+
     // Check if still in trial
     if (user.subscriptionStatus === 'trialing' && user.trialEndsAt) {
       const trialEnd = new Date(user.trialEndsAt);
@@ -157,8 +168,18 @@ const requireContractorSubscription = async (req: any, res: any, next: any) => {
         return next(); // Still in trial
       }
     }
-    
-    // Trial expired or no subscription - contractors have NO free features
+
+    // Lazily attach companyTier to session if missing (Phase 2.5)
+    if (user.companyId && !req.session.user?.companyTier) {
+      try {
+        const company = await storage.getCompany(user.companyId);
+        if (company) {
+          req.session.user = { ...req.session.user, companyTier: company.tier };
+        }
+      } catch { /* non-fatal */ }
+    }
+
+    // Trial expired or no subscription — contractors have NO free features
     return res.status(403).json({ 
       message: 'Subscription required', 
       code: 'SUBSCRIPTION_REQUIRED',
@@ -320,30 +341,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const CONTRACTOR_PLANS = [
     {
+      // Unified contractor plan: $20/month covers solo + up to 2 techs.
+      // Each additional tech beyond the 2 included = $5/month.
       tierName: 'contractor_basic',
-      displayName: 'Contractor Basic',
-      description: 'Essential tools for independent contractors',
+      displayName: 'Contractor',
+      description: 'Everything you need — solo or with a team. $20/mo covers you and 2 techs; add more for $5/mo each.',
       monthlyPrice: '20.00',
       minHouses: 0,
       maxHouses: 1, // 1 personal home for maintenance tracking
       planType: 'contractor',
-      features: ['Get found by homeowners', 'Messaging with homeowners', 'Send proposals', 'Reviews and ratings profile', 'Earn up to $20/month in referral credits'],
+      features: [
+        'Get found by homeowners',
+        'Messaging with homeowners',
+        'Send proposals',
+        'Reviews and ratings profile',
+        'Full CRM — clients, jobs, quotes & invoices',
+        'Accept payments via Stripe Connect',
+        'Team management (2 techs included)',
+        '$5/mo per additional tech',
+        'Earn up to $20/month in referral credits',
+      ],
       referralCreditCap: '20.00',
-      hasCrmAccess: false,
+      hasCrmAccess: true,
+      includedTechSeats: 2,        // techs bundled in base price
+      additionalSeatPrice: '5.00', // $/month per tech beyond the 2 included
       sortOrder: 0
     },
+    // contractor_pro is retired — pricing now per-seat on contractor_basic.
+    // Kept as inactive so existing FK references don't break.
     {
       tierName: 'contractor_pro',
-      displayName: 'Contractor Pro',
-      description: 'Full CRM for growing contracting businesses',
+      displayName: 'Contractor Pro (legacy)',
+      description: 'Retired — existing subscribers grandfathered. New sign-ups use Contractor plan.',
       monthlyPrice: '40.00',
       minHouses: 0,
       maxHouses: 1,
       planType: 'contractor',
-      features: ['Everything in Basic', 'Full CRM with client management', 'Job scheduling & tracking', 'Quotes & invoices', 'Accept payments via Stripe Connect', 'Team management', 'Import from Jobber, ServiceTitan & more', 'Business analytics dashboard', 'Earn up to $40/month in referral credits'],
+      features: ['Legacy plan — see Contractor plan for current pricing'],
       referralCreditCap: '40.00',
       hasCrmAccess: true,
+      includedTechSeats: null,
+      additionalSeatPrice: null,
+      isActive: false, // hidden from new sign-ups; existing subscribers unaffected
+      sortOrder: 99
+    },
+    // Business tier — adds divisions, manager/dispatcher roles, bulk import, analytics.
+    // Per-seat pricing mirrors base plan: $20 base + $5/tech (no separate Business base fee).
+    {
+      tierName: 'contractor_business',
+      displayName: 'Contractor Business',
+      description: 'Division management, bulk import, and advanced analytics for larger teams.',
+      monthlyPrice: '20.00', // same base; Business unlocks features, not a higher flat fee
+      minHouses: 0,
+      maxHouses: 1,
+      planType: 'contractor',
+      referralCreditCap: '20.00',
+      hasCrmAccess: true,
+      includedTechSeats: 2,
+      additionalSeatPrice: '5.00',
+      maxTechSeats: 99,
+      maxAdminSeats: 5,
+      maxManagerSeats: 10,
+      maxDispatcherSeats: 10,
+      features: [
+        'Everything in Contractor',
+        'Up to 99 field technicians',
+        'Manager role for division leads',
+        'Dispatcher role for scheduling',
+        'Bulk tech import via CSV',
+        'Advanced analytics dashboard',
+        'Custom referral codes',
+        'Priority support',
+      ],
       sortOrder: 1
+    },
+    // Enterprise tier — custom pricing; no Stripe product yet.
+    // TODO: Replace grandfathered billing with custom Stripe arrangement when first enterprise customer signed.
+    {
+      tierName: 'contractor_enterprise',
+      displayName: 'Contractor Enterprise',
+      description: 'Unlimited seats, SSO, API access, and a dedicated CSM.',
+      monthlyPrice: '0.00', // custom pricing — $0 placeholder; billing handled via grandfathered/custom Stripe arrangement
+      minHouses: 0,
+      maxHouses: 1,
+      planType: 'contractor',
+      referralCreditCap: null,
+      hasCrmAccess: true,
+      includedTechSeats: null,     // unlimited; custom contract governs
+      additionalSeatPrice: null,
+      maxTechSeats: null,
+      maxAdminSeats: null,
+      maxManagerSeats: null,
+      maxDispatcherSeats: null,
+      features: [
+        'Everything in Business',
+        'Unlimited team members',
+        'SSO / SAML integration',
+        'API access for integrations',
+        'Dedicated customer success manager',
+        'Custom onboarding',
+        'SLA support',
+      ],
+      sortOrder: 2
     }
   ];
 
@@ -404,6 +503,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               features: plan.features,
               referralCreditCap: (plan as any).referralCreditCap || null,
               hasCrmAccess: (plan as any).hasCrmAccess || false,
+              includedTechSeats: (plan as any).includedTechSeats ?? null,
+              additionalSeatPrice: (plan as any).additionalSeatPrice ?? null,
+              isActive: (plan as any).isActive !== false, // default true unless explicitly false
               sortOrder: plan.sortOrder,
               updatedAt: new Date(),
             })
@@ -422,6 +524,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             features: plan.features,
             referralCreditCap: (plan as any).referralCreditCap || null,
             hasCrmAccess: (plan as any).hasCrmAccess || false,
+            includedTechSeats: (plan as any).includedTechSeats ?? null,
+            additionalSeatPrice: (plan as any).additionalSeatPrice ?? null,
+            isActive: (plan as any).isActive !== false,
             sortOrder: plan.sortOrder,
           });
           created++;
@@ -435,13 +540,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Auto-seed subscription plans on startup
+  // Auto-seed subscription plans on startup (upserts so price/feature changes apply on restart)
   (async () => {
     try {
       const allPlans = [...HOMEOWNER_PLANS, ...CONTRACTOR_PLANS];
       for (const plan of allPlans) {
         const existing = await storage.getSubscriptionPlanByTier(plan.tierName);
-        if (!existing) {
+        if (existing) {
+          // Upsert: keep pricing and feature changes in sync on every restart
+          await db.update(subscriptionPlans)
+            .set({
+              displayName: plan.displayName,
+              description: plan.description,
+              monthlyPrice: plan.monthlyPrice,
+              features: plan.features,
+              referralCreditCap: (plan as any).referralCreditCap || null,
+              hasCrmAccess: (plan as any).hasCrmAccess || false,
+              includedTechSeats: (plan as any).includedTechSeats ?? null,
+              additionalSeatPrice: (plan as any).additionalSeatPrice ?? null,
+              isActive: (plan as any).isActive !== false,
+              sortOrder: plan.sortOrder,
+              updatedAt: new Date(),
+            })
+            .where(eq(subscriptionPlans.tierName, plan.tierName));
+        } else {
           await db.insert(subscriptionPlans).values({
             tierName: plan.tierName,
             displayName: plan.displayName,
@@ -453,6 +575,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             features: plan.features,
             referralCreditCap: (plan as any).referralCreditCap || null,
             hasCrmAccess: (plan as any).hasCrmAccess || false,
+            includedTechSeats: (plan as any).includedTechSeats ?? null,
+            additionalSeatPrice: (plan as any).additionalSeatPrice ?? null,
+            isActive: (plan as any).isActive !== false,
             sortOrder: plan.sortOrder,
           });
           console.log(`[PLANS] Seeded subscription plan: ${plan.tierName}`);
@@ -998,6 +1123,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           else if (subscription.status === 'trialing') status = 'trialing';
           
           await storage.updateUserSubscriptionStatus(user.id, status);
+
+          // Phase 6: Recalculate metered seat quantity for Business tier
+          if (user.companyId && stripe) {
+            try {
+              const meteredItem = subscription.items.data.find((item: any) => item.price?.recurring?.usage_type === 'metered');
+              if (meteredItem) {
+                const [seatCount] = await db.select({ count: drizzleSql<number>`cast(count(*) as int)` })
+                  .from(users).where(and(eq(users.companyId, user.companyId), ne(users.status as any, 'removed')));
+                const totalSeats = seatCount?.count ?? 1;
+                const billedSeats = Math.max(0, totalSeats - 5); // Business: 5 included seats
+                await (stripe as any).subscriptionItems.createUsageRecord(meteredItem.id, { quantity: billedSeats, action: 'set' });
+                console.log('[STRIPE WEBHOOK] Metered seats updated:', billedSeats, 'billed for company:', user.companyId);
+              }
+            } catch (seatErr) {
+              console.error('[STRIPE WEBHOOK] Failed to update metered seats:', seatErr);
+            }
+          }
+
           console.log('[STRIPE WEBHOOK] Subscription updated for user:', user.email, 'Status:', status);
           break;
         }
@@ -1963,6 +2106,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Apple StoreKit In-App Purchase verification (Task #287) — client sends the
+  // signed StoreKit 2 transaction (JWS) after a native purchase completes.
+  app.post('/api/apple/verify-purchase', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.user.id;
+      const { signedTransactionInfo } = req.body;
+
+      console.log(`[APPLE-IAP] /api/apple/verify-purchase called by user ${userId}`);
+
+      if (!signedTransactionInfo || typeof signedTransactionInfo !== 'string') {
+        console.error(`[APPLE-IAP] Missing/invalid signedTransactionInfo in request body from user ${userId}`);
+        return res.status(400).json({ message: "Missing signedTransactionInfo" });
+      }
+
+      const { user, transaction } = await verifyAndActivateAppleTransaction(userId, signedTransactionInfo);
+
+      console.log(`[APPLE-IAP] verify-purchase SUCCESS for user ${userId}, productId=${transaction.productId}`);
+      return res.json({
+        verified: true,
+        subscriptionStatus: user.subscriptionStatus,
+        productId: transaction.productId,
+      });
+    } catch (error: any) {
+      const statusCode = error instanceof AppleIapError ? error.statusCode : 500;
+      console.error(`[APPLE-IAP] verify-purchase FAILED for user ${req.session?.user?.id}:`, error?.message || error);
+      return res.status(statusCode).json({ message: error?.message || "Failed to verify purchase" });
+    }
+  });
+
+  // Apple StoreKit restore — client resends each restored transaction's JWS
+  // through the same verification path used for a fresh purchase.
+  app.post('/api/apple/restore', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session.user.id;
+      const { signedTransactionInfos } = req.body;
+
+      console.log(`[APPLE-IAP] /api/apple/restore called by user ${userId} with ${Array.isArray(signedTransactionInfos) ? signedTransactionInfos.length : 0} transaction(s)`);
+
+      if (!Array.isArray(signedTransactionInfos) || signedTransactionInfos.length === 0) {
+        return res.status(400).json({ message: "Missing signedTransactionInfos" });
+      }
+
+      let restored = false;
+      let lastResult: { subscriptionStatus: string; productId: string } | null = null;
+
+      for (const signedTransactionInfo of signedTransactionInfos) {
+        try {
+          const { user, transaction } = await verifyAndActivateAppleTransaction(userId, signedTransactionInfo);
+          restored = true;
+          lastResult = { subscriptionStatus: user.subscriptionStatus ?? 'inactive', productId: transaction.productId };
+          console.log(`[APPLE-IAP] restore: activated productId=${transaction.productId} for user ${userId}`);
+        } catch (innerError: any) {
+          console.warn(`[APPLE-IAP] restore: skipped one transaction for user ${userId}:`, innerError?.message || innerError);
+        }
+      }
+
+      if (!restored) {
+        return res.status(404).json({ message: "No valid purchases found to restore" });
+      }
+
+      return res.json({ restored: true, ...lastResult });
+    } catch (error: any) {
+      console.error(`[APPLE-IAP] restore FAILED for user ${req.session?.user?.id}:`, error?.message || error);
+      return res.status(500).json({ message: "Failed to restore purchases" });
+    }
+  });
+
+  // Apple Server-to-Server Notifications V2 webhook — no auth (Apple calls this directly).
+  // Configured in App Store Connect. Signature is verified inside handleAppleServerNotification.
+  app.post('/api/apple/notifications', express.json(), async (req: any, res) => {
+    try {
+      const signedPayload = req.body?.signedPayload;
+      console.log(`[APPLE-IAP] /api/apple/notifications received, has signedPayload=${!!signedPayload}`);
+
+      if (!signedPayload || typeof signedPayload !== 'string') {
+        console.error('[APPLE-IAP] /api/apple/notifications: missing signedPayload');
+        return res.status(400).json({ message: "Missing signedPayload" });
+      }
+
+      await handleAppleServerNotification(signedPayload);
+      console.log('[APPLE-IAP] /api/apple/notifications processed successfully');
+      return res.status(200).json({ received: true });
+    } catch (error: any) {
+      console.error('[APPLE-IAP] /api/apple/notifications FAILED:', error?.message || error);
+      // Return 200 to prevent Apple from retry-storming on our own bugs, but log loudly.
+      return res.status(200).json({ received: true, error: 'internal_processing_error' });
+    }
+  });
+
   // Sync subscription status from Stripe - called after successful checkout to ensure DB is updated
   app.post('/api/sync-subscription', isAuthenticated, async (req: any, res) => {
     try {
@@ -2490,6 +2722,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const mainHouseMissing = !cleanedHouseIds.has(mainHouseId);
       const lakeHouseMissing = !cleanedHouseIds.has(lakeHouseId);
 
+      // Seed result tracker — hoisted so it is accessible in the session callback
+      const seedResults: Record<string, { ok: boolean; inserted?: number; expected?: number; error?: string }> = {};
+
       // Create each canonical house independently if missing
       if (mainHouseMissing) {
         try {
@@ -2697,9 +2932,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
               notes: task.completionMethod === 'diy' ? 'Completed as DIY project' : null
             });
           }));
-          console.log(`[DEMO DATA] Inserted ${taskCompletionsData.length} task completions for Sarah Anderson`);
+          const mainLogsExpected = 10;
+          const mainCompletionsExpected = taskCompletionsData.length;
+          req.log.info({ section: 'mainHouse', logsInserted: mainLogsExpected, completionsInserted: mainCompletionsExpected }, '[DEMO DATA] Main Residence seeded for Sarah Anderson');
+          seedResults.mainHouse = { ok: true, inserted: mainLogsExpected + mainCompletionsExpected, expected: 25 };
         } catch (houseError) {
-          console.error("Error creating demo Main Residence:", houseError);
+          const msg = houseError instanceof Error ? houseError.message : String(houseError);
+          req.log.error({ section: 'mainHouse', error: msg }, '[DEMO] Error creating demo Main Residence');
+          seedResults.mainHouse = { ok: false, error: msg };
+        }
+      } else {
+        try {
+          const [{ count: mainLogCount }] = await db
+            .select({ count: drizzleSql<number>`cast(count(*) as integer)` })
+            .from(maintenanceLogs)
+            .where(eq(maintenanceLogs.houseId, mainHouseId));
+          seedResults.mainHouse = { ok: true, healthCheck: { maintenanceLogs: mainLogCount } };
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          req.log.error({ section: 'mainHouse', error: msg }, '[DEMO] Health-check failed for existing Main Residence');
+          seedResults.mainHouse = { ok: false, error: msg };
         }
       }
 
@@ -2773,8 +3025,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
             notes: 'Professional deep clean after summer guests. Carpets, windows, all appliances. Ready for fall bookings.',
             completionMethod: 'contractor'
           });
+          seedResults.lakeHouse = { ok: true, inserted: 3, expected: 3 };
         } catch (houseError) {
-          console.error("Error creating demo Lake House:", houseError);
+          const msg = houseError instanceof Error ? houseError.message : String(houseError);
+          req.log.error({ section: 'lakeHouse', error: msg }, '[DEMO] Error creating demo Lake House');
+          seedResults.lakeHouse = { ok: false, error: msg };
+        }
+      } else {
+        try {
+          const [{ count: lakeLogCount }] = await db
+            .select({ count: drizzleSql<number>`cast(count(*) as integer)` })
+            .from(maintenanceLogs)
+            .where(eq(maintenanceLogs.houseId, lakeHouseId));
+          seedResults.lakeHouse = { ok: true, healthCheck: { maintenanceLogs: lakeLogCount } };
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          req.log.error({ section: 'lakeHouse', error: msg }, '[DEMO] Health-check failed for existing Lake House');
+          seedResults.lakeHouse = { ok: false, error: msg };
         }
       }
 
@@ -2848,17 +3115,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
               });
             }));
 
-            console.log(`[DEMO DATA] Inserted ${taskCompletionsData.length} task completions for Sarah Anderson (existing user)`);
+            const tcExpected = 15;
+            if (taskCompletionsData.length !== tcExpected) {
+              req.log.warn({ section: 'taskCompletions', inserted: taskCompletionsData.length, expected: tcExpected }, '[DEMO] Task completion count mismatch');
+            }
+            req.log.info({ section: 'taskCompletions', inserted: taskCompletionsData.length }, '[DEMO DATA] Task completions inserted for Sarah Anderson (existing user)');
+            seedResults.taskCompletions = { ok: true, inserted: taskCompletionsData.length, expected: tcExpected };
           }
+        } else {
+          seedResults.taskCompletions = { ok: true };
         }
       } catch (taskError) {
-        console.error("Error creating demo task completions:", taskError);
+        const msg = taskError instanceof Error ? taskError.message : String(taskError);
+        req.log.error({ section: 'taskCompletions', error: msg }, '[DEMO] Error creating demo task completions');
+        seedResults.taskCompletions = { ok: false, error: msg };
+      }
+
+      // ── Structured seed summary ───────────────────────────────────────
+      const failedSections = Object.entries(seedResults).filter(([, v]) => !v.ok).map(([k]) => k);
+      const countMismatches = Object.entries(seedResults)
+        .filter(([, v]) => v.ok && v.inserted !== undefined && v.inserted !== v.expected)
+        .map(([k, v]) => ({ section: k, inserted: v.inserted, expected: v.expected }));
+      if (failedSections.length > 0 || countMismatches.length > 0) {
+        req.log.warn({ seedResults, failedSections, countMismatches }, '[DEMO] Homeowner demo seeding completed with issues');
+      } else {
+        req.log.info({ seedResults }, '[DEMO] Homeowner demo seeding completed successfully');
       }
 
       // Regenerate session to prevent session fixation
       req.session.regenerate((err: any) => {
         if (err) {
-          console.error("Session regeneration error:", err);
+          req.log.error({ err }, '[DEMO] Session regeneration error');
           return res.status(500).json({ message: "Session error" });
         }
         
@@ -2867,11 +3154,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         req.session.save((saveErr: any) => {
           if (saveErr) {
-            console.error("Session save error:", saveErr);
+            req.log.error({ err: saveErr }, '[DEMO] Session save error');
             return res.status(500).json({ message: "Failed to save session" });
           }
-          console.log('[DEMO LOGIN] Session saved successfully for user:', user.id);
-          res.json({ success: true, user });
+          req.log.info({ userId: user.id }, '[DEMO LOGIN] Homeowner session saved successfully');
+          const failedSections = Object.entries(seedResults).filter(([, v]) => !v.ok).map(([k]) => k);
+          const responseBody: Record<string, unknown> = { success: true, user };
+          if (process.env.NODE_ENV !== 'production') {
+            responseBody._seedStatus = { seedResults, failedSections };
+          }
+          res.json(responseBody);
         });
       });
     } catch (error) {
@@ -2942,6 +3234,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Seed result tracker — hoisted so it is accessible in the session callback
+      const seedResults: Record<string, { ok: boolean; inserted?: number; expected?: number; error?: string }> = {};
+
       // Always ensure company exists and user is linked (runs for new AND existing users)
       try {
         let company = await storage.getCompany(companyId);
@@ -2990,6 +3285,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           rating: '4.8',
           reviewCount: 127
         });
+          seedResults.company = { ok: true, inserted: 1, expected: 1 };
+        } else {
+          try {
+            const [{ count: teamCount }] = await db
+              .select({ count: drizzleSql<number>`cast(count(*) as integer)` })
+              .from(users)
+              .where(eq(users.companyId, companyId));
+            seedResults.company = { ok: true, healthCheck: { teamMembers: teamCount } };
+          } catch (hcErr) {
+            const msg = hcErr instanceof Error ? hcErr.message : String(hcErr);
+            req.log.error({ section: 'company', error: msg }, '[DEMO] Health-check failed for existing demo company');
+            seedResults.company = { ok: false, error: msg };
+          }
         }
         
         // Update the user with the company reference if not already set
@@ -3005,203 +3313,772 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Step 4: Add realistic 6-month usage data for contractor demo
           try {
             // CRM Leads - showing active pipeline
-            const leadIds = ['demo-lead-1', 'demo-lead-2', 'demo-lead-3', 'demo-lead-4', 'demo-lead-5'];
-            
-            // Hot lead - ready to close
-            await storage.createCrmLead({
-              id: leadIds[0],
-              companyId,
-              createdBy: demoId,
-              customerName: 'Michael Chen',
-              customerEmail: 'michael.chen@email.com',
-              customerPhone: '(206) 555-1234',
-              serviceNeeded: 'HVAC Repair',
-              address: '1523 Pine Street, Seattle, WA 98101',
-              status: 'contacted',
-              priority: 'high',
-              estimatedValue: '850.00',
-              source: 'Website',
-              notes: 'AC not cooling. Customer has 20-year-old unit. Likely needs replacement. Scheduled estimate for next week.',
-              nextFollowUp: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-            });
+            const leadSeed = [
+              {
+                id: 'demo-lead-1',
+                contractorUserId: demoId,
+                companyId,
+                firstName: 'Michael',
+                lastName: 'Chen',
+                email: 'michael.chen@email.com',
+                phone: '(206) 555-1234',
+                projectType: 'HVAC Repair',
+                address: '1523 Pine Street, Seattle, WA 98101',
+                status: 'contacted',
+                priority: 'high',
+                estimatedValue: '850.00',
+                source: 'website',
+                metadata: { notes: 'AC not cooling. Customer has 20-year-old unit. Likely needs replacement. Scheduled estimate for next week.' },
+                followUpDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+              },
+              {
+                id: 'demo-lead-2',
+                contractorUserId: demoId,
+                companyId,
+                firstName: 'Jennifer',
+                lastName: 'Martinez',
+                email: 'jmartinez@email.com',
+                phone: '(206) 555-5678',
+                projectType: 'Water Heater Installation',
+                address: '892 Broadway Ave E, Seattle, WA 98102',
+                status: 'qualified',
+                priority: 'medium',
+                estimatedValue: '1850.00',
+                source: 'referral',
+                metadata: { notes: 'Current water heater is leaking. Wants tankless upgrade. Sent quote yesterday. Waiting for decision.' },
+                followUpDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+              },
+              {
+                id: 'demo-lead-3',
+                contractorUserId: demoId,
+                companyId,
+                firstName: 'Robert',
+                lastName: 'Thompson',
+                email: 'rthompson@email.com',
+                phone: '(206) 555-9012',
+                projectType: 'Furnace Service',
+                address: '3345 15th Ave W, Seattle, WA 98119',
+                status: 'new',
+                priority: 'medium',
+                estimatedValue: '350.00',
+                source: 'other',
+                metadata: { notes: 'Annual maintenance needed before winter. Called this morning. Need to call back to schedule.' },
+                followUpDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
+              },
+              {
+                id: 'demo-lead-4',
+                contractorUserId: demoId,
+                companyId,
+                firstName: 'Susan',
+                lastName: 'Williams',
+                email: 'swilliams@email.com',
+                phone: '(206) 555-3456',
+                projectType: 'AC Installation',
+                address: '7821 Greenwood Ave N, Seattle, WA 98103',
+                status: 'lost',
+                priority: 'low',
+                estimatedValue: '4500.00',
+                source: 'advertisement',
+                metadata: { notes: 'Got 3 quotes. Went with another company that was $500 cheaper. Price-focused customer.' },
+                followUpDate: null,
+              },
+              {
+                id: 'demo-lead-5',
+                contractorUserId: demoId,
+                companyId,
+                firstName: 'David',
+                lastName: 'Park',
+                email: 'dpark@email.com',
+                phone: '(206) 555-7890',
+                projectType: 'Plumbing Repair',
+                address: '2156 Queen Anne Ave N, Seattle, WA 98109',
+                status: 'won',
+                priority: 'high',
+                estimatedValue: '625.00',
+                source: 'other',
+                metadata: { notes: 'Emergency leak repair. Job completed successfully last week. Customer very happy.' },
+                followUpDate: null,
+              },
+            ];
+            let leadInserted = 0;
+            for (const lead of leadSeed) {
+              const existing = await storage.getCrmLead(lead.id);
+              if (!existing) {
+                await storage.createCrmLead(lead as any);
+              }
+              leadInserted++;
+            }
+            const leadExpected = leadSeed.length;
+            if (leadInserted !== leadExpected) {
+              req.log.warn(
+                { section: 'leads', inserted: leadInserted, expected: leadExpected },
+                '[DEMO] CRM lead count mismatch — some leads may not have been seeded'
+              );
+            }
+            seedResults.leads = { ok: true, inserted: leadInserted, expected: leadExpected };
+          } catch (demoDataError) {
+            const msg = demoDataError instanceof Error ? demoDataError.message : String(demoDataError);
+            req.log.warn({ section: 'leads', error: msg }, '[DEMO] Error seeding CRM leads — some or all leads may be missing');
+            seedResults.leads = { ok: false, error: msg };
+          }
 
-            // Warm lead - in progress
-            await storage.createCrmLead({
-              id: leadIds[1],
-              companyId,
-              createdBy: demoId,
-              customerName: 'Jennifer Martinez',
-              customerEmail: 'jmartinez@email.com',
-              customerPhone: '(206) 555-5678',
-              serviceNeeded: 'Water Heater Installation',
-              address: '892 Broadway Ave E, Seattle, WA 98102',
-              status: 'qualified',
-              priority: 'medium',
-              estimatedValue: '1,850.00',
-              source: 'Referral',
-              notes: 'Current water heater is leaking. Wants tankless upgrade. Sent quote yesterday. Waiting for decision.',
-              nextFollowUp: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-            });
-
-            // New lead - just came in
-            await storage.createCrmLead({
-              id: leadIds[2],
-              companyId,
-              createdBy: demoId,
-              customerName: 'Robert Thompson',
-              customerEmail: 'rthompson@email.com',
-              customerPhone: '(206) 555-9012',
-              serviceNeeded: 'Furnace Service',
-              address: '3345 15th Ave W, Seattle, WA 98119',
-              status: 'new',
-              priority: 'medium',
-              estimatedValue: '350.00',
-              source: 'Phone',
-              notes: 'Annual maintenance needed before winter. Called this morning. Need to call back to schedule.',
-              nextFollowUp: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-            });
-
-            // Lost lead - for realistic pipeline
-            await storage.createCrmLead({
-              id: leadIds[3],
-              companyId,
-              createdBy: demoId,
-              customerName: 'Susan Williams',
-              customerEmail: 'swilliams@email.com',
-              customerPhone: '(206) 555-3456',
-              serviceNeeded: 'AC Installation',
-              address: '7821 Greenwood Ave N, Seattle, WA 98103',
-              status: 'lost',
-              priority: 'low',
-              estimatedValue: '4,500.00',
-              source: 'Google',
-              notes: 'Got 3 quotes. Went with another company that was $500 cheaper. Price-focused customer.',
-              nextFollowUp: null
-            });
-
-            // Won lead - converted to job
-            await storage.createCrmLead({
-              id: leadIds[4],
-              companyId,
-              createdBy: demoId,
-              customerName: 'David Park',
-              customerEmail: 'dpark@email.com',
-              customerPhone: '(206) 555-7890',
-              serviceNeeded: 'Plumbing Repair',
-              address: '2156 Queen Anne Ave N, Seattle, WA 98109',
-              status: 'won',
-              priority: 'high',
-              estimatedValue: '625.00',
-              source: 'HomeBase',
-              notes: 'Emergency leak repair. Job completed successfully last week. Customer very happy.',
-              nextFollowUp: null
-            });
-
-            // Create some sample homeowner users for realistic messages/conversations
+          // ── Sample homeowners & conversations ────────────────────────────────
+          try {
             const sampleHomeownerIds = ['sample-homeowner-1', 'sample-homeowner-2', 'sample-homeowner-3'];
-            
-            for (let i = 0; i < sampleHomeownerIds.length; i++) {
-              await storage.upsertUser({
-                id: sampleHomeownerIds[i],
-                email: `homeowner${i + 1}@example.com`,
-                firstName: ['Emma', 'James', 'Sophia'][i],
-                lastName: ['Wilson', 'Brown', 'Davis'][i],
-                role: 'homeowner',
-                zipCode: '98105',
-                subscriptionStatus: 'active'
-              });
+            const homeownerExpected = sampleHomeownerIds.length;
+            let homeownerInserted = 0;
+
+            const existingHomeownerChecks = await Promise.all(sampleHomeownerIds.map(id => storage.getUser(id)));
+            const allExist = existingHomeownerChecks.every(u => u != null);
+            if (allExist) {
+              req.log.info({ section: 'homeowners' }, '[DEMO] Sample homeowners already exist — skipping seeding');
+              homeownerInserted = homeownerExpected;
+            } else {
+              for (let i = 0; i < sampleHomeownerIds.length; i++) {
+                await storage.upsertUser({
+                  id: sampleHomeownerIds[i],
+                  email: `homeowner${i + 1}@example.com`,
+                  firstName: ['Emma', 'James', 'Sophia'][i],
+                  lastName: ['Wilson', 'Brown', 'Davis'][i],
+                  role: 'homeowner',
+                  zipCode: '98105',
+                  subscriptionStatus: 'active'
+                });
+                homeownerInserted++;
+              }
+            }
+            if (homeownerInserted !== homeownerExpected) {
+              req.log.warn(
+                { section: 'conversations', inserted: homeownerInserted, expected: homeownerExpected },
+                '[DEMO] Sample homeowner count mismatch — some conversations may be missing'
+              );
             }
 
-            // Create conversation/messages with homeowners
-            const conv1Id = 'demo-conversation-1';
-            await storage.createConversation({
-              id: conv1Id,
-              homeownerId: sampleHomeownerIds[0],
-              contractorId: demoId,
-              companyId
-            });
+            // Create conversation/messages with homeowners (idempotent — skip entire block if already seeded)
+            const conversationExpected = 2;
 
-            // Message thread 1 - Active inquiry about HVAC service
-            await storage.createMessage({
-              conversationId: conv1Id,
-              senderId: sampleHomeownerIds[0],
-              senderRole: 'homeowner',
-              recipientId: demoId,
-              recipientRole: 'contractor',
-              content: 'Hi David! My furnace is making a strange rattling noise when it starts up. It\'s about 8 years old. Could you take a look at it? I\'m located in Fremont.',
-              createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
-            });
+            const existingDemoConvs = await db.select({ id: conversations.id })
+              .from(conversations)
+              .where(eq(conversations.contractorId, demoId))
+              .limit(1);
 
-            await storage.createMessage({
-              conversationId: conv1Id,
-              senderId: demoId,
-              senderRole: 'contractor',
-              recipientId: sampleHomeownerIds[0],
-              recipientRole: 'homeowner',
-              content: 'Hello Emma! I\'d be happy to help. A rattling noise often indicates a loose component or debris in the blower. I can come by this Thursday or Friday afternoon. Would either of those work for you?',
-              createdAt: new Date(Date.now() - 2.5 * 24 * 60 * 60 * 1000)
-            });
+            if (existingDemoConvs.length > 0) {
+              req.log.info({ section: 'conversations' }, '[DEMO] Demo conversations already exist — skipping seeding');
+              seedResults.conversations = { ok: true, inserted: 0, expected: conversationExpected, skipped: true };
+            } else {
+              const conv1Id = 'demo-conversation-1';
+              await db.insert(conversations).values({
+                id: conv1Id,
+                homeownerId: sampleHomeownerIds[0],
+                contractorId: demoId,
+                subject: 'HVAC furnace inspection inquiry'
+              }).onConflictDoNothing();
 
-            await storage.createMessage({
-              conversationId: conv1Id,
-              senderId: sampleHomeownerIds[0],
-              senderRole: 'homeowner',
-              recipientId: demoId,
-              recipientRole: 'contractor',
-              content: 'Friday at 2pm would be perfect! What\'s your service call fee?',
-              createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
-            });
+              // Message thread 1 - Active inquiry about HVAC service
+              await db.insert(messages).values({
+                id: 'demo-msg-1-1',
+                conversationId: conv1Id,
+                senderId: sampleHomeownerIds[0],
+                senderType: 'homeowner',
+                message: 'Hi David! My furnace is making a strange rattling noise when it starts up. It\'s about 8 years old. Could you take a look at it? I\'m located in Fremont.',
+                createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+              }).onConflictDoNothing();
 
-            await storage.createMessage({
-              conversationId: conv1Id,
-              senderId: demoId,
-              senderRole: 'contractor',
-              recipientId: sampleHomeownerIds[0],
-              recipientRole: 'homeowner',
-              content: 'Great! Friday at 2pm is booked. Our diagnostic service call is $125, which includes the first hour of labor. If repairs are needed, I\'ll provide an estimate before starting any work. See you Friday!',
-              createdAt: new Date(Date.now() - 1.8 * 24 * 60 * 60 * 1000)
-            });
+              await db.insert(messages).values({
+                id: 'demo-msg-1-2',
+                conversationId: conv1Id,
+                senderId: demoId,
+                senderType: 'contractor',
+                message: 'Hello Emma! I\'d be happy to help. A rattling noise often indicates a loose component or debris in the blower. I can come by this Thursday or Friday afternoon. Would either of those work for you?',
+                createdAt: new Date(Date.now() - 2.5 * 24 * 60 * 60 * 1000)
+              }).onConflictDoNothing();
 
-            // Message thread 2 - Past customer follow-up
-            const conv2Id = 'demo-conversation-2';
-            await storage.createConversation({
-              id: conv2Id,
-              homeownerId: sampleHomeownerIds[1],
-              contractorId: demoId,
-              companyId
-            });
+              await db.insert(messages).values({
+                id: 'demo-msg-1-3',
+                conversationId: conv1Id,
+                senderId: sampleHomeownerIds[0],
+                senderType: 'homeowner',
+                message: 'Friday at 2pm would be perfect! What\'s your service call fee?',
+                createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
+              }).onConflictDoNothing();
 
-            await storage.createMessage({
-              conversationId: conv2Id,
-              senderId: demoId,
-              senderRole: 'contractor',
-              recipientId: sampleHomeownerIds[1],
-              recipientRole: 'homeowner',
-              content: 'Hi James! Just following up on the water heater installation we completed last month. Is everything working well? Remember that your 1-year labor warranty covers any installation issues.',
-              createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
-            });
+              await db.insert(messages).values({
+                id: 'demo-msg-1-4',
+                conversationId: conv1Id,
+                senderId: demoId,
+                senderType: 'contractor',
+                message: 'Great! Friday at 2pm is booked. Our diagnostic service call is $125, which includes the first hour of labor. If repairs are needed, I\'ll provide an estimate before starting any work. See you Friday!',
+                createdAt: new Date(Date.now() - 1.8 * 24 * 60 * 60 * 1000)
+              }).onConflictDoNothing();
 
-            await storage.createMessage({
-              conversationId: conv2Id,
-              senderId: sampleHomeownerIds[1],
-              senderRole: 'homeowner',
-              recipientId: demoId,
-              recipientRole: 'contractor',
-              content: 'Everything is great! The tankless system is working perfectly. We love the endless hot water. Thanks for the quality work - I\'ve already recommended you to two neighbors!',
-              createdAt: new Date(Date.now() - 4.5 * 24 * 60 * 60 * 1000)
-            });
+              // Message thread 2 - Past customer follow-up
+              const conv2Id = 'demo-conversation-2';
+              await db.insert(conversations).values({
+                id: conv2Id,
+                homeownerId: sampleHomeownerIds[1],
+                contractorId: demoId,
+                subject: 'Water heater installation follow-up'
+              }).onConflictDoNothing();
 
-          } catch (demoDataError) {
-            console.error("Error creating demo contractor data:", demoDataError);
+              await db.insert(messages).values({
+                id: 'demo-msg-2-1',
+                conversationId: conv2Id,
+                senderId: demoId,
+                senderType: 'contractor',
+                message: 'Hi James! Just following up on the water heater installation we completed last month. Is everything working well? Remember that your 1-year labor warranty covers any installation issues.',
+                createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
+              }).onConflictDoNothing();
+
+              await db.insert(messages).values({
+                id: 'demo-msg-2-2',
+                conversationId: conv2Id,
+                senderId: sampleHomeownerIds[1],
+                senderType: 'homeowner',
+                message: 'Everything is great! The tankless system is working perfectly. We love the endless hot water. Thanks for the quality work - I\'ve already recommended you to two neighbors!',
+                createdAt: new Date(Date.now() - 4.5 * 24 * 60 * 60 * 1000)
+              }).onConflictDoNothing();
+
+              seedResults.conversations = { ok: true, inserted: conversationExpected, expected: conversationExpected };
+            }
+          } catch (convErr) {
+            const msg = convErr instanceof Error ? convErr.message : String(convErr);
+            req.log.warn({ section: 'conversations', error: msg }, '[DEMO] Error seeding conversations — some or all may be missing');
+            seedResults.conversations = { ok: false, error: msg };
           }
+
+          // ── Team members (outside the leads try so they always run) ──────
+          try {
+            const teamSeed = [
+              { id: 'demo-admin-1', email: 'kayla.torres@precisionhvac.com', firstName: 'Kayla', lastName: 'Torres', companyRole: 'admin' },
+              { id: 'demo-tech-1',  email: 'jake.reed@precisionhvac.com',    firstName: 'Jake',  lastName: 'Reed',   companyRole: 'tech' },
+              { id: 'demo-tech-2',  email: 'priya.nair@precisionhvac.com',   firstName: 'Priya', lastName: 'Nair',   companyRole: 'dispatcher' },
+            ];
+            let teamInserted = 0;
+            for (const tm of teamSeed) {
+              await storage.upsertUser({
+                id: tm.id,
+                email: tm.email,
+                firstName: tm.firstName,
+                lastName: tm.lastName,
+                role: 'contractor',
+                companyId,
+                companyRole: tm.companyRole as any,
+                subscriptionStatus: 'grandfathered',
+                zipCode: '98103',
+                canRespondToProposals: false,
+              });
+              teamInserted++;
+            }
+            const teamExpected = 3;
+            if (teamInserted !== teamExpected) {
+              req.log.warn({ section: 'team', inserted: teamInserted, expected: teamExpected }, '[DEMO] Team member count mismatch');
+            }
+            seedResults.team = { ok: true, inserted: teamInserted, expected: teamExpected };
+          } catch (teamErr) {
+            const msg = teamErr instanceof Error ? teamErr.message : String(teamErr);
+            req.log.warn({ section: 'team', error: msg }, '[DEMO] Error seeding team members — some or all team members may be missing');
+            seedResults.team = { ok: false, error: msg };
+          }
+
+          // ── CRM Clients ──────────────────────────────────────────────────
+          try {
+            const clientSeed = [
+              {
+                id: 'demo-client-1',
+                contractorUserId: demoId, companyId,
+                firstName: 'Patricia', lastName: 'Nguyen',
+                email: 'pnguyen@homeemail.com', phone: '(206) 555-2201',
+                address: '4821 Fremont Ave N', city: 'Seattle', state: 'WA', postalCode: '98103',
+                tags: ['HVAC', 'Annual Contract'], preferredContactMethod: 'phone',
+                totalJobsCompleted: 5, totalRevenue: '3240.00',
+                notes: 'Long-term customer since 2018. Annual maintenance contract. Has a Carrier system.',
+                lastServiceDate: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
+              },
+              {
+                id: 'demo-client-2',
+                contractorUserId: demoId, companyId,
+                firstName: 'Brian', lastName: 'Okafor',
+                email: 'bokafor@email.com', phone: '(206) 555-3312',
+                address: '2207 10th Ave E', city: 'Seattle', state: 'WA', postalCode: '98102',
+                tags: ['Plumbing', 'Emergency'], preferredContactMethod: 'email',
+                totalJobsCompleted: 2, totalRevenue: '1480.00',
+                notes: 'New customer from emergency call. Replaced main shutoff valve. Interested in annual plumbing inspection.',
+                lastServiceDate: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000),
+              },
+              {
+                id: 'demo-client-3',
+                contractorUserId: demoId, companyId,
+                firstName: 'Linda', lastName: 'Cho',
+                email: 'linda.cho@email.com', phone: '(206) 555-4433',
+                address: '1108 NW 56th St', city: 'Seattle', state: 'WA', postalCode: '98107',
+                tags: ['HVAC', 'Water Heater'], preferredContactMethod: 'text',
+                totalJobsCompleted: 3, totalRevenue: '4750.00',
+                notes: 'Installed new Trane system last year. Due for first maintenance visit. Also wants to upgrade to tankless water heater.',
+                lastServiceDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
+              },
+              {
+                id: 'demo-client-4',
+                contractorUserId: demoId, companyId,
+                firstName: 'Marcus', lastName: 'Delgado',
+                email: 'mdelgado@email.com', phone: '(206) 555-5544',
+                address: '7623 35th Ave SW', city: 'Seattle', state: 'WA', postalCode: '98126',
+                tags: ['Commercial', 'HVAC'], preferredContactMethod: 'phone',
+                totalJobsCompleted: 8, totalRevenue: '12800.00',
+                notes: 'Owns a small restaurant. Multiple HVAC units. Quarterly maintenance schedule. High-value account.',
+                lastServiceDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+              },
+              {
+                id: 'demo-client-5',
+                contractorUserId: demoId, companyId,
+                firstName: 'Sarah', lastName: 'Johansson',
+                email: 'sjohansson@email.com', phone: '(206) 555-6655',
+                address: '3301 Eastlake Ave E', city: 'Seattle', state: 'WA', postalCode: '98102',
+                tags: ['HVAC'], preferredContactMethod: 'email',
+                totalJobsCompleted: 1, totalRevenue: '325.00',
+                notes: 'First-time customer. Furnace tune-up. Was happy with service — asked about our annual plans.',
+                lastServiceDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
+              },
+              {
+                id: 'demo-client-6',
+                contractorUserId: demoId, companyId,
+                firstName: 'Tony', lastName: 'Vasquez',
+                email: 'tvasquez@email.com', phone: '(206) 555-7766',
+                address: '912 E Union St', city: 'Seattle', state: 'WA', postalCode: '98122',
+                tags: ['Plumbing', 'HVAC'], preferredContactMethod: 'phone',
+                totalJobsCompleted: 4, totalRevenue: '2900.00',
+                notes: 'Rental property owner. 3-unit building. Good steady customer.',
+                lastServiceDate: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
+              },
+            ];
+            let clientInserted = 0;
+            for (const c of clientSeed) {
+              const existing = await storage.getCrmClient(c.id);
+              if (!existing) {
+                const { id: clientId, ...clientData } = c;
+                await storage.createCrmClient({ id: clientId, ...clientData } as any);
+              }
+              clientInserted++;
+            }
+            const clientExpected = 6;
+            if (clientInserted !== clientExpected) {
+              req.log.warn({ section: 'clients', inserted: clientInserted, expected: clientExpected }, '[DEMO] CRM client count mismatch');
+            }
+            seedResults.clients = { ok: true, inserted: clientInserted, expected: clientExpected };
+          } catch (clientErr) {
+            const msg = clientErr instanceof Error ? clientErr.message : String(clientErr);
+            req.log.warn({ section: 'clients', error: msg }, '[DEMO] Error seeding CRM clients — some or all clients may be missing');
+            seedResults.clients = { ok: false, error: msg };
+          }
+
+          // ── CRM Jobs ─────────────────────────────────────────────────────
+          try {
+            const nowMs = Date.now();
+            const hr = 60 * 60 * 1000;
+            const day = 24 * hr;
+            const jobSeed = [
+              {
+                id: 'demo-job-1',
+                contractorUserId: demoId, companyId, clientId: 'demo-client-1',
+                title: 'Annual HVAC Maintenance — Patricia Nguyen',
+                description: 'Full system inspection and tune-up per annual contract terms.',
+                serviceType: 'HVAC Maintenance', status: 'scheduled', priority: 'normal',
+                scheduledDate: new Date(nowMs + 3 * day),
+                scheduledEndDate: new Date(nowMs + 3 * day + 2 * hr),
+                estimatedDuration: 120,
+                address: '4821 Fremont Ave N', city: 'Seattle', state: 'WA', postalCode: '98103',
+                laborCost: '145.00', materialsCost: '35.00', totalCost: '180.00',
+                notes: 'Customer prefers mornings. Key under mat if no answer.',
+              },
+              {
+                id: 'demo-job-2',
+                contractorUserId: demoId, companyId, clientId: 'demo-client-4',
+                title: 'Q3 Commercial HVAC Inspection — Delgado Restaurant',
+                description: 'Quarterly maintenance for restaurant HVAC units — filters, coils, refrigerant levels.',
+                serviceType: 'Commercial HVAC', status: 'scheduled', priority: 'high',
+                scheduledDate: new Date(nowMs + 7 * day),
+                scheduledEndDate: new Date(nowMs + 7 * day + 4 * hr),
+                estimatedDuration: 240,
+                address: '7623 35th Ave SW', city: 'Seattle', state: 'WA', postalCode: '98126',
+                laborCost: '380.00', materialsCost: '120.00', totalCost: '500.00',
+                notes: 'Before 8am — restaurant opens at 11. Ask for Marcus or floor manager.',
+              },
+              {
+                id: 'demo-job-3',
+                contractorUserId: demoId, companyId, clientId: 'demo-client-2',
+                title: 'Water Heater Flush & Inspection — Brian Okafor',
+                description: 'Annual flush and anode rod inspection on 50-gal tank water heater.',
+                serviceType: 'Plumbing', status: 'in_progress', priority: 'normal',
+                scheduledDate: new Date(nowMs - 2 * hr),
+                scheduledEndDate: new Date(nowMs + hr),
+                actualStartTime: new Date(nowMs - 2 * hr),
+                estimatedDuration: 90,
+                address: '2207 10th Ave E', city: 'Seattle', state: 'WA', postalCode: '98102',
+                laborCost: '125.00', materialsCost: '45.00', totalCost: '170.00',
+                notes: 'Anode rod may need replacement. Bring Hex 1-1/16" socket.',
+              },
+              {
+                id: 'demo-job-4',
+                contractorUserId: demoId, companyId, clientId: 'demo-client-6',
+                title: 'Unit 2 Furnace Repair — Tony Vasquez',
+                description: 'Flame sensor cleaning and igniter replacement on aging Bryant furnace.',
+                serviceType: 'HVAC Repair', status: 'completed', priority: 'urgent',
+                scheduledDate: new Date(nowMs - 5 * day),
+                scheduledEndDate: new Date(nowMs - 5 * day + 3 * hr),
+                actualStartTime: new Date(nowMs - 5 * day + 30 * 60 * 1000),
+                actualEndTime: new Date(nowMs - 5 * day + 2.5 * hr),
+                actualDuration: 120, estimatedDuration: 180,
+                address: '912 E Union St Unit 2', city: 'Seattle', state: 'WA', postalCode: '98122',
+                laborCost: '185.00', materialsCost: '68.00', totalCost: '253.00',
+                notes: 'Tenant without heat for 1 day — prioritize.',
+                completionNotes: 'Replaced igniter and cleaned flame sensor. Furnace heating normally. Advised owner heat exchanger showing early wear — may need replacement next season.',
+              },
+              {
+                id: 'demo-job-5',
+                contractorUserId: demoId, companyId, clientId: 'demo-client-3',
+                title: 'Trane System Annual Tune-Up — Linda Cho',
+                description: 'First post-install maintenance visit for new Trane XR15 system.',
+                serviceType: 'HVAC Maintenance', status: 'completed', priority: 'normal',
+                scheduledDate: new Date(nowMs - 14 * day),
+                scheduledEndDate: new Date(nowMs - 14 * day + 2 * hr),
+                actualStartTime: new Date(nowMs - 14 * day),
+                actualEndTime: new Date(nowMs - 14 * day + 1.75 * hr),
+                actualDuration: 105, estimatedDuration: 120,
+                address: '1108 NW 56th St', city: 'Seattle', state: 'WA', postalCode: '98107',
+                laborCost: '145.00', materialsCost: '20.00', totalCost: '165.00',
+                notes: 'Within 1-year warranty. No charge for parts under warranty.',
+                completionNotes: 'System running at peak efficiency. Filter replaced. Customer asked about tankless water heater — quote to follow.',
+              },
+              {
+                id: 'demo-job-6',
+                contractorUserId: demoId, companyId, clientId: 'demo-client-5',
+                title: 'Mini-Split Assessment — Sarah Johansson',
+                description: 'On-site assessment for ductless mini-split in home office addition.',
+                serviceType: 'HVAC Installation', status: 'on_hold', priority: 'low',
+                scheduledDate: new Date(nowMs + 14 * day),
+                scheduledEndDate: new Date(nowMs + 14 * day + hr),
+                estimatedDuration: 60,
+                address: '3301 Eastlake Ave E', city: 'Seattle', state: 'WA', postalCode: '98102',
+                laborCost: '0.00', materialsCost: '0.00', totalCost: '0.00',
+                notes: 'On hold — customer waiting for room framing to finish before site visit.',
+                internalNotes: 'Estimate will be ~$2,800–3,400 installed. Mitsubishi or Daikin preferred.',
+              },
+            ];
+            let jobInserted = 0;
+            for (const j of jobSeed) {
+              const existing = await storage.getCrmJob(j.id);
+              if (!existing) {
+                const { id: jobId, ...jobData } = j;
+                await storage.createCrmJob({ id: jobId, ...jobData } as any);
+              }
+              jobInserted++;
+            }
+            const jobExpected = 6;
+            if (jobInserted !== jobExpected) {
+              req.log.warn({ section: 'jobs', inserted: jobInserted, expected: jobExpected }, '[DEMO] CRM job count mismatch');
+            }
+            seedResults.jobs = { ok: true, inserted: jobInserted, expected: jobExpected };
+          } catch (jobErr) {
+            const msg = jobErr instanceof Error ? jobErr.message : String(jobErr);
+            req.log.warn({ section: 'jobs', error: msg }, '[DEMO] Error seeding CRM jobs — some or all jobs may be missing');
+            seedResults.jobs = { ok: false, error: msg };
+          }
+
+          // ── CRM Quotes ────────────────────────────────────────────────────
+          try {
+            const nowMs = Date.now();
+            const day = 24 * 60 * 60 * 1000;
+            const quoteSeed = [
+              {
+                id: 'demo-quote-1',
+                contractorUserId: demoId, companyId, clientId: 'demo-client-3',
+                quoteNumber: 'Q-DEMO-0001',
+                title: 'Tankless Water Heater Installation — Linda Cho',
+                description: 'Supply and install Rinnai RU199iN condensing tankless unit. Includes gas line upgrade and permit.',
+                serviceType: 'Plumbing',
+                status: 'sent',
+                lineItems: [
+                  { description: 'Rinnai RU199iN Tankless Water Heater', quantity: 1, unitPrice: '1650.00', total: '1650.00' },
+                  { description: 'Labor — installation & gas line upgrade', quantity: 1, unitPrice: '680.00', total: '680.00' },
+                  { description: 'Permit & inspection fee', quantity: 1, unitPrice: '120.00', total: '120.00' },
+                ],
+                subtotal: '2450.00', taxRate: '10.10', taxAmount: '247.45', discount: '0.00', total: '2697.45',
+                validUntil: new Date(nowMs + 21 * day),
+                sentAt: new Date(nowMs - 3 * day),
+                notes: 'Quote valid 30 days. Includes 1-year labor warranty on top of Rinnai 12-year heat exchanger warranty.',
+              },
+              {
+                id: 'demo-quote-2',
+                contractorUserId: demoId, companyId, clientId: 'demo-client-5',
+                quoteNumber: 'Q-DEMO-0002',
+                title: 'Ductless Mini-Split Installation — Sarah Johansson',
+                description: 'Supply and install single-zone Mitsubishi MSZ-GL12NA mini-split for home office addition.',
+                serviceType: 'HVAC Installation',
+                status: 'accepted',
+                lineItems: [
+                  { description: 'Mitsubishi MSZ-GL12NA 12,000 BTU mini-split (indoor + outdoor)', quantity: 1, unitPrice: '1420.00', total: '1420.00' },
+                  { description: 'Labor — installation, line set, electrical connection', quantity: 1, unitPrice: '950.00', total: '950.00' },
+                  { description: 'Line set & accessories', quantity: 1, unitPrice: '185.00', total: '185.00' },
+                  { description: 'Permit', quantity: 1, unitPrice: '95.00', total: '95.00' },
+                ],
+                subtotal: '2650.00', taxRate: '10.10', taxAmount: '267.65', discount: '100.00', total: '2817.65',
+                validUntil: new Date(nowMs + 14 * day),
+                sentAt: new Date(nowMs - 10 * day),
+                acceptedAt: new Date(nowMs - 7 * day),
+                notes: 'Loyalty discount of $100 applied. Scheduling pending room framing completion.',
+              },
+              {
+                id: 'demo-quote-3',
+                contractorUserId: demoId, companyId, clientId: 'demo-client-2',
+                quoteNumber: 'Q-DEMO-0003',
+                title: 'Annual Plumbing Inspection & Water Softener — Brian Okafor',
+                description: 'Annual whole-home plumbing inspection plus supply and install Pentair water softener.',
+                serviceType: 'Plumbing',
+                status: 'draft',
+                lineItems: [
+                  { description: 'Annual plumbing inspection (14-point)', quantity: 1, unitPrice: '195.00', total: '195.00' },
+                  { description: 'Pentair Fleck 5600SXT 48,000 grain water softener', quantity: 1, unitPrice: '780.00', total: '780.00' },
+                  { description: 'Labor — softener installation & bypass valve', quantity: 1, unitPrice: '320.00', total: '320.00' },
+                ],
+                subtotal: '1295.00', taxRate: '10.10', taxAmount: '130.80', discount: '0.00', total: '1425.80',
+                validUntil: new Date(nowMs + 30 * day),
+                notes: 'Draft — pending customer confirmation on softener model preference.',
+              },
+              {
+                id: 'demo-quote-4',
+                contractorUserId: demoId, companyId, clientId: 'demo-client-1',
+                quoteNumber: 'Q-DEMO-0004',
+                title: 'Carrier System Tune-Up & Coil Cleaning — Patricia Nguyen',
+                description: 'Extended annual maintenance visit including evaporator and condenser coil cleaning.',
+                serviceType: 'HVAC Maintenance',
+                status: 'declined',
+                lineItems: [
+                  { description: 'Annual HVAC tune-up (standard)', quantity: 1, unitPrice: '145.00', total: '145.00' },
+                  { description: 'Evaporator coil cleaning', quantity: 1, unitPrice: '220.00', total: '220.00' },
+                  { description: 'Condenser coil cleaning', quantity: 1, unitPrice: '180.00', total: '180.00' },
+                ],
+                subtotal: '545.00', taxRate: '0.00', taxAmount: '0.00', discount: '0.00', total: '545.00',
+                validUntil: new Date(nowMs - 5 * day),
+                sentAt: new Date(nowMs - 20 * day),
+                declinedAt: new Date(nowMs - 12 * day),
+                notes: 'Customer opted for standard tune-up only this season. Follow up next spring for coil cleaning.',
+              },
+            ];
+            let quoteInserted = 0;
+            for (const q of quoteSeed) {
+              const existing = await storage.getCrmQuote(q.id);
+              if (!existing) {
+                const { id: quoteId, ...quoteData } = q;
+                await storage.createCrmQuote({ id: quoteId, ...quoteData } as any);
+              }
+              quoteInserted++;
+            }
+            const quoteExpected = quoteSeed.length;
+            if (quoteInserted !== quoteExpected) {
+              req.log.warn({ section: 'quotes', inserted: quoteInserted, expected: quoteExpected }, '[DEMO] CRM quote count mismatch');
+            }
+            seedResults.quotes = { ok: true, inserted: quoteInserted, expected: quoteExpected };
+          } catch (quoteErr) {
+            const msg = quoteErr instanceof Error ? quoteErr.message : String(quoteErr);
+            req.log.warn({ section: 'quotes', error: msg }, '[DEMO] Error seeding CRM quotes — some or all quotes may be missing');
+            seedResults.quotes = { ok: false, error: msg };
+          }
+
+          // ── CRM Invoices ─────────────────────────────────────────────────
+          try {
+            const nowMs = Date.now();
+            const day = 24 * 60 * 60 * 1000;
+            const invoiceSeed = [
+              {
+                id: 'demo-invoice-1',
+                contractorUserId: demoId, companyId,
+                clientId: 'demo-client-6', jobId: 'demo-job-4',
+                invoiceNumber: 'INV-DEMO-0001',
+                title: 'Furnace Repair — Tony Vasquez (Unit 2)',
+                description: 'Emergency furnace repair: flame sensor cleaning and igniter replacement on aging Bryant furnace.',
+                status: 'paid',
+                lineItems: [
+                  { description: 'Labor — flame sensor cleaning & igniter replacement', quantity: 1, unitPrice: '185.00', total: '185.00' },
+                  { description: 'OEM igniter (Bryant/Carrier compatible)', quantity: 1, unitPrice: '48.00', total: '48.00' },
+                  { description: 'Service call / dispatch fee', quantity: 1, unitPrice: '20.00', total: '20.00' },
+                ],
+                subtotal: '253.00', taxRate: '10.10', taxAmount: '25.55', discount: '0.00', total: '278.55',
+                amountPaid: '278.55', amountDue: '0.00',
+                dueDate: new Date(nowMs - 2 * day),
+                sentAt: new Date(nowMs - 5 * day),
+                viewedAt: new Date(nowMs - 4 * day),
+                paidAt: new Date(nowMs - 3 * day),
+                paymentMethod: 'check',
+                paymentNotes: 'Check #1042 from Tony Vasquez.',
+                notes: 'Emergency after-hours call. Tenant now has heat. Advised owner heat exchanger showing early wear.',
+              },
+              {
+                id: 'demo-invoice-2',
+                contractorUserId: demoId, companyId,
+                clientId: 'demo-client-3', jobId: 'demo-job-5',
+                invoiceNumber: 'INV-DEMO-0002',
+                title: 'Trane Annual Tune-Up — Linda Cho',
+                description: 'First post-install maintenance visit for Trane XR15 system. Filter replaced, full 14-point inspection.',
+                status: 'sent',
+                lineItems: [
+                  { description: 'Annual HVAC tune-up (14-point inspection)', quantity: 1, unitPrice: '145.00', total: '145.00' },
+                  { description: 'Merv-13 filter replacement', quantity: 1, unitPrice: '20.00', total: '20.00' },
+                ],
+                subtotal: '165.00', taxRate: '10.10', taxAmount: '16.67', discount: '0.00', total: '181.67',
+                amountPaid: '0.00', amountDue: '181.67',
+                dueDate: new Date(nowMs + 3 * day),
+                sentAt: new Date(nowMs - 12 * day),
+                notes: 'Covered under 1-year warranty — no parts charge. Please remit within 15 days.',
+              },
+              {
+                id: 'demo-invoice-3',
+                contractorUserId: demoId, companyId,
+                clientId: 'demo-client-2', jobId: 'demo-job-3',
+                invoiceNumber: 'INV-DEMO-0003',
+                title: 'Water Heater Flush & Inspection — Brian Okafor',
+                description: 'Annual flush, anode rod inspection, and T&P valve test on 50-gal tank water heater.',
+                status: 'overdue',
+                lineItems: [
+                  { description: 'Labor — water heater flush & inspection', quantity: 1, unitPrice: '125.00', total: '125.00' },
+                  { description: 'Anode rod (magnesium, 3/4" hex)', quantity: 1, unitPrice: '35.00', total: '35.00' },
+                  { description: 'Teflon tape, fittings, misc materials', quantity: 1, unitPrice: '10.00', total: '10.00' },
+                ],
+                subtotal: '170.00', taxRate: '0.00', taxAmount: '0.00', discount: '0.00', total: '170.00',
+                amountPaid: '0.00', amountDue: '170.00',
+                dueDate: new Date(nowMs - 14 * day),
+                sentAt: new Date(nowMs - 30 * day),
+                viewedAt: new Date(nowMs - 28 * day),
+                notes: 'PAST DUE — Please remit payment at your earliest convenience. A $15 late fee will apply after 45 days.',
+              },
+              {
+                id: 'demo-invoice-4',
+                contractorUserId: demoId, companyId,
+                clientId: 'demo-client-5', jobId: 'demo-job-6', quoteId: 'demo-quote-2',
+                invoiceNumber: 'INV-DEMO-0004',
+                title: 'Ductless Mini-Split Installation — Sarah Johansson',
+                description: 'Supply and install single-zone Mitsubishi MSZ-GL12NA mini-split for home office addition. Converted from accepted quote Q-DEMO-0002.',
+                status: 'viewed',
+                lineItems: [
+                  { description: 'Mitsubishi MSZ-GL12NA 12,000 BTU mini-split (indoor + outdoor unit)', quantity: 1, unitPrice: '1420.00', total: '1420.00' },
+                  { description: 'Labor — installation, line set, electrical connection', quantity: 1, unitPrice: '950.00', total: '950.00' },
+                  { description: 'Line set & accessories', quantity: 1, unitPrice: '185.00', total: '185.00' },
+                  { description: 'Permit', quantity: 1, unitPrice: '95.00', total: '95.00' },
+                ],
+                subtotal: '2650.00', taxRate: '10.10', taxAmount: '267.65', discount: '100.00', total: '2817.65',
+                amountPaid: '0.00', amountDue: '2817.65',
+                dueDate: new Date(nowMs + 23 * day),
+                sentAt: new Date(nowMs - 7 * day),
+                viewedAt: new Date(nowMs - 5 * day),
+                notes: 'Loyalty discount of $100 applied. Installation scheduled pending room framing completion.',
+              },
+            ];
+            let invoiceInserted = 0;
+            for (const inv of invoiceSeed) {
+              const existing = await storage.getCrmInvoice(inv.id);
+              if (!existing) {
+                const { id: invoiceId, ...invoiceData } = inv;
+                await storage.createCrmInvoice({ id: invoiceId, ...invoiceData } as any);
+              }
+              invoiceInserted++;
+            }
+            const invoiceExpected = invoiceSeed.length;
+            if (invoiceInserted !== invoiceExpected) {
+              req.log.warn({ section: 'invoices', inserted: invoiceInserted, expected: invoiceExpected }, '[DEMO] CRM invoice count mismatch');
+            }
+            seedResults.invoices = { ok: true, inserted: invoiceInserted, expected: invoiceExpected };
+          } catch (invoiceErr) {
+            const msg = invoiceErr instanceof Error ? invoiceErr.message : String(invoiceErr);
+            req.log.warn({ section: 'invoices', error: msg }, '[DEMO] Error seeding CRM invoices — some or all invoices may be missing');
+            seedResults.invoices = { ok: false, error: msg };
+          }
+
+          // ── Proposals (contractor→homeowner) ─────────────────────────────
+          try {
+            const nowMs = Date.now();
+            const day = 24 * 60 * 60 * 1000;
+            const demoHomeownerId = 'demo-homeowner-permanent-id';
+            const proposalSeed = [
+              {
+                id: 'demo-proposal-1',
+                contractorId: demoId,
+                companyId,
+                homeownerId: demoHomeownerId,
+                title: 'Furnace Diagnostic & Repair Proposal',
+                description: 'Full diagnostic of furnace rattling noise, cleaning, and repair of loose blower components.',
+                serviceType: 'HVAC Repair',
+                estimatedCost: '325.00',
+                estimatedDuration: '2-4 hours',
+                scope: 'Inspect and diagnose rattling noise, tighten or replace loose blower wheel, clean heat exchanger, verify combustion and airflow, test all safety switches.',
+                materials: ['Blower wheel fasteners', 'Furnace filter (1")', 'Electrical contact cleaner'],
+                warrantyPeriod: '1 year on labor',
+                validUntil: new Date(nowMs + 30 * day).toISOString().split('T')[0],
+                status: 'sent',
+                customerNotes: 'Price includes all labor and standard repair parts. Any major component replacements will be quoted separately before proceeding.',
+              },
+              {
+                id: 'demo-proposal-2',
+                contractorId: demoId,
+                companyId,
+                homeownerId: demoHomeownerId,
+                title: 'Smart Thermostat Installation',
+                description: 'Supply and install Ecobee SmartThermostat Premium with room sensors.',
+                serviceType: 'HVAC Maintenance',
+                estimatedCost: '285.00',
+                estimatedDuration: '1-2 hours',
+                scope: 'Remove old thermostat, install Ecobee SmartThermostat Premium, configure Wi-Fi and app integration, install 2 room sensors, test with existing HVAC system.',
+                materials: ['Ecobee SmartThermostat Premium', 'Ecobee room sensors (2-pack)', 'Mounting screws & wire labels'],
+                warrantyPeriod: '1 year on labor',
+                validUntil: new Date(nowMs + 21 * day).toISOString().split('T')[0],
+                status: 'accepted',
+                customerNotes: 'Ecobee is compatible with your existing Carrier system. Includes 3-year device warranty from Ecobee.',
+              },
+            ];
+            let proposalInserted = 0;
+            for (const p of proposalSeed) {
+              const existing = await storage.getProposal(p.id);
+              if (!existing) {
+                const { id: proposalId, ...proposalData } = p;
+                await storage.createProposal({ id: proposalId, ...proposalData } as any);
+              }
+              proposalInserted++;
+            }
+            const proposalExpected = proposalSeed.length;
+            if (proposalInserted !== proposalExpected) {
+              req.log.warn({ section: 'proposals', inserted: proposalInserted, expected: proposalExpected }, '[DEMO] Proposal count mismatch');
+            }
+            seedResults.proposals = { ok: true, inserted: proposalInserted, expected: proposalExpected };
+          } catch (proposalErr) {
+            const msg = proposalErr instanceof Error ? proposalErr.message : String(proposalErr);
+            req.log.warn({ section: 'proposals', error: msg }, '[DEMO] Error seeding proposals — some or all proposals may be missing');
+            seedResults.proposals = { ok: false, error: msg };
+          }
+
+          // ── Structured seed summary ───────────────────────────────────────
+          const failedSections = Object.entries(seedResults).filter(([, v]) => !v.ok).map(([k]) => k);
+          const countMismatches = Object.entries(seedResults)
+            .filter(([, v]) => v.ok && v.inserted !== undefined && v.inserted !== v.expected)
+            .map(([k, v]) => ({ section: k, inserted: v.inserted, expected: v.expected }));
+          if (failedSections.length > 0 || countMismatches.length > 0) {
+            req.log.warn({ seedResults, failedSections, countMismatches }, '[DEMO] Contractor demo seeding completed with issues');
+          } else {
+            req.log.info({ seedResults }, '[DEMO] Contractor demo seeding completed successfully');
+          }
+
+          if (failedSections.length > 0) {
+            emailService.sendDemoSeedingFailureAlert(user.id, failedSections, seedResults).catch((alertErr: unknown) => {
+              const msg = alertErr instanceof Error ? alertErr.message : String(alertErr);
+              req.log.error({ error: msg }, '[DEMO] Failed to send demo seeding failure alert email');
+            });
+          }
+
         } catch (companyError) {
-          console.error("Error creating demo company:", companyError);
+          const msg = companyError instanceof Error ? companyError.message : String(companyError);
+          req.log.error({ error: msg }, '[DEMO] Error creating demo company or linking user');
         }
 
       // Regenerate session to prevent session fixation
       req.session.regenerate((err: any) => {
         if (err) {
-          console.error("Session regeneration error:", err);
+          req.log.error({ err }, '[DEMO] Session regeneration error');
           return res.status(500).json({ message: "Session error" });
         }
         
@@ -3210,11 +4087,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         req.session.save((saveErr: any) => {
           if (saveErr) {
-            console.error("Session save error:", saveErr);
+            req.log.error({ err: saveErr }, '[DEMO] Session save error');
             return res.status(500).json({ message: "Failed to save session" });
           }
-          console.log('[DEMO LOGIN] Contractor session saved successfully for user:', user.id);
-          res.json({ success: true, user });
+          req.log.info({ userId: user.id }, '[DEMO LOGIN] Contractor session saved successfully');
+          const failedSections = Object.entries(seedResults).filter(([, v]) => !v.ok).map(([k]) => k);
+          const responseBody: Record<string, unknown> = { success: true, user };
+          if (process.env.NODE_ENV !== 'production') {
+            responseBody._seedStatus = { seedResults, failedSections };
+          }
+          res.json(responseBody);
         });
       });
     } catch (error) {
@@ -3242,6 +4124,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error in GET contractor demo login:", error);
       res.redirect('/contractor?demo_error=1');
+    }
+  });
+
+  // Reset demo conversations — deletes and re-seeds the demo contractor's message threads
+  // Only accessible to the demo contractor account; idempotent and safe to call repeatedly.
+  app.post('/api/auth/contractor-demo-reset-conversations', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId: string = req.session.user.id;
+      const DEMO_CONTRACTOR_ID = 'demo-contractor-permanent-id';
+
+      if (userId !== DEMO_CONTRACTOR_ID) {
+        return res.status(403).json({ message: 'Only the demo contractor account can reset demo conversations.' });
+      }
+
+      const sampleHomeownerIds = ['sample-homeowner-1', 'sample-homeowner-2', 'sample-homeowner-3'];
+
+      // Ensure sample homeowners exist (upsert so this is always safe)
+      const homeownerProfiles = [
+        { id: sampleHomeownerIds[0], email: 'homeowner1@example.com', firstName: 'Emma', lastName: 'Wilson' },
+        { id: sampleHomeownerIds[1], email: 'homeowner2@example.com', firstName: 'James', lastName: 'Brown' },
+        { id: sampleHomeownerIds[2], email: 'homeowner3@example.com', firstName: 'Sophia', lastName: 'Davis' },
+      ];
+      for (const ho of homeownerProfiles) {
+        await storage.upsertUser({ ...ho, role: 'homeowner', zipCode: '98105', subscriptionStatus: 'active' });
+      }
+
+      // Step 1: find existing conversation IDs for this contractor
+      const existingConvRows = await db.select({ id: conversations.id })
+        .from(conversations)
+        .where(eq(conversations.contractorId, DEMO_CONTRACTOR_ID));
+      const existingConvIds = existingConvRows.map(r => r.id);
+
+      // Step 2: delete messages belonging to those conversations, then the conversations themselves
+      if (existingConvIds.length > 0) {
+        await db.delete(messages).where(inArray(messages.conversationId, existingConvIds));
+        await db.delete(conversations).where(inArray(conversations.id, existingConvIds));
+      }
+
+      // Step 3: re-seed the two demo conversations
+      const conv1Id = 'demo-conversation-1';
+      await db.insert(conversations).values({
+        id: conv1Id,
+        homeownerId: sampleHomeownerIds[0],
+        contractorId: DEMO_CONTRACTOR_ID,
+        subject: 'HVAC furnace inspection inquiry'
+      }).onConflictDoNothing();
+
+      await db.insert(messages).values([
+        {
+          id: 'demo-msg-1-1',
+          conversationId: conv1Id,
+          senderId: sampleHomeownerIds[0],
+          senderType: 'homeowner',
+          message: 'Hi David! My furnace is making a strange rattling noise when it starts up. It\'s about 8 years old. Could you take a look at it? I\'m located in Fremont.',
+          createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000)
+        },
+        {
+          id: 'demo-msg-1-2',
+          conversationId: conv1Id,
+          senderId: DEMO_CONTRACTOR_ID,
+          senderType: 'contractor',
+          message: 'Hello Emma! I\'d be happy to help. A rattling noise often indicates a loose component or debris in the blower. I can come by this Thursday or Friday afternoon. Would either of those work for you?',
+          createdAt: new Date(Date.now() - 2.5 * 24 * 60 * 60 * 1000)
+        },
+        {
+          id: 'demo-msg-1-3',
+          conversationId: conv1Id,
+          senderId: sampleHomeownerIds[0],
+          senderType: 'homeowner',
+          message: 'Friday at 2pm would be perfect! What\'s your service call fee?',
+          createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
+        },
+        {
+          id: 'demo-msg-1-4',
+          conversationId: conv1Id,
+          senderId: DEMO_CONTRACTOR_ID,
+          senderType: 'contractor',
+          message: 'Great! Friday at 2pm is booked. Our diagnostic service call is $125, which includes the first hour of labor. If repairs are needed, I\'ll provide an estimate before starting any work. See you Friday!',
+          createdAt: new Date(Date.now() - 1.8 * 24 * 60 * 60 * 1000)
+        },
+      ]).onConflictDoNothing();
+
+      const conv2Id = 'demo-conversation-2';
+      await db.insert(conversations).values({
+        id: conv2Id,
+        homeownerId: sampleHomeownerIds[1],
+        contractorId: DEMO_CONTRACTOR_ID,
+        subject: 'Water heater installation follow-up'
+      }).onConflictDoNothing();
+
+      await db.insert(messages).values([
+        {
+          id: 'demo-msg-2-1',
+          conversationId: conv2Id,
+          senderId: DEMO_CONTRACTOR_ID,
+          senderType: 'contractor',
+          message: 'Hi James! Just following up on the water heater installation we completed last month. Is everything working well? Remember that your 1-year labor warranty covers any installation issues.',
+          createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)
+        },
+        {
+          id: 'demo-msg-2-2',
+          conversationId: conv2Id,
+          senderId: sampleHomeownerIds[1],
+          senderType: 'homeowner',
+          message: 'Everything is great! The tankless system is working perfectly. We love the endless hot water. Thanks for the quality work - I\'ve already recommended you to two neighbors!',
+          createdAt: new Date(Date.now() - 4.5 * 24 * 60 * 60 * 1000)
+        },
+      ]).onConflictDoNothing();
+
+      req.log.info({ userId }, '[DEMO] Demo conversations reset and re-seeded successfully');
+      res.json({ success: true, message: 'Demo conversations reset successfully.' });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      req.log.error({ error: msg }, '[DEMO] Error resetting demo conversations');
+      res.status(500).json({ message: 'Failed to reset demo conversations.' });
     }
   });
 
@@ -3399,74 +4396,129 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       ];
 
+      const seedResults: Record<string, { ok: boolean; inserted?: number; expected?: number; error?: string }> = {};
+
       // All writes are atomic: any mid-way failure rolls back the entire block
       // so no partial state is left, and the next retry starts from a clean slate.
-      await db.transaction(async (tx) => {
-        // Persist a freshly generated referral code onto the agent user
-        if (!agentUser?.referralCode) {
-          await tx.update(users)
-            .set({ referralCode: agentReferralCode })
-            .where(eq(users.id, demoId));
-        }
+      try {
+        const referralUserExpected = referralData.length;
+        const referralRecordExpected = referralData.length;
+        const cycleEventExpected = referralData.reduce((sum, r) => sum + r.cyclesPaid, 0);
+        let referralUserInserted = 0;
+        let referralRecordInserted = 0;
+        let cycleEventInserted = 0;
 
-        for (const referral of referralData) {
-          const signupDate = new Date(Date.now() - referral.signupMonthsAgo * 30 * 24 * 60 * 60 * 1000);
-          const trialEndsAt = referral.subscriptionStatus === 'trialing'
-            ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
-            : null;
+        await db.transaction(async (tx) => {
+          // Persist a freshly generated referral code onto the agent user
+          if (!agentUser?.referralCode) {
+            await tx.update(users)
+              .set({ referralCode: agentReferralCode })
+              .where(eq(users.id, demoId));
+          }
 
-          // Upsert the referred user directly via the transaction connection
-          await tx.insert(users).values({
-            id: referral.id,
-            email: referral.email,
-            firstName: referral.firstName,
-            lastName: referral.lastName,
-            role: referral.role as 'homeowner' | 'contractor' | 'agent',
-            zipCode: referral.zipCode,
-            subscriptionStatus: referral.subscriptionStatus,
-            trialEndsAt,
-            maxHousesAllowed: referral.role === 'homeowner' ? 2 : null,
-          }).onConflictDoUpdate({
-            target: users.id,
-            set: {
+          for (const referral of referralData) {
+            const signupDate = new Date(Date.now() - referral.signupMonthsAgo * 30 * 24 * 60 * 60 * 1000);
+            const trialEndsAt = referral.subscriptionStatus === 'trialing'
+              ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+              : null;
+
+            // Upsert the referred user directly via the transaction connection
+            await tx.insert(users).values({
+              id: referral.id,
+              email: referral.email,
+              firstName: referral.firstName,
+              lastName: referral.lastName,
+              role: referral.role as 'homeowner' | 'contractor' | 'agent',
+              zipCode: referral.zipCode,
               subscriptionStatus: referral.subscriptionStatus,
               trialEndsAt,
-            }
-          });
+              maxHousesAllowed: referral.role === 'homeowner' ? 2 : null,
+            }).onConflictDoUpdate({
+              target: users.id,
+              set: {
+                subscriptionStatus: referral.subscriptionStatus,
+                trialEndsAt,
+              }
+            });
+            referralUserInserted++;
 
-          // Insert referral record; skip silently if it already exists
-          await tx.insert(affiliateReferrals).values({
-            agentId: demoId,
-            referredUserId: referral.id,
-            referredUserRole: referral.role as 'homeowner' | 'contractor',
-            referralCode: agentReferralCode,
-            signupDate,
-            status: referral.qualified ? 'eligible' : 'trial',
-          }).onConflictDoNothing();
+            // Insert referral record; skip silently if it already exists.
+            // Conflict target is referredUserId (unique constraint) so a second
+            // run of the seeder never creates a duplicate referral row.
+            await tx.insert(affiliateReferrals).values({
+              agentId: demoId,
+              referredUserId: referral.id,
+              referredUserRole: referral.role as 'homeowner' | 'contractor',
+              referralCode: agentReferralCode,
+              signupDate,
+              status: referral.qualified ? 'eligible' : 'trial',
+            }).onConflictDoNothing({ target: affiliateReferrals.referredUserId });
+            referralRecordInserted++;
 
-          // Insert subscription cycle events for paying users
-          if (referral.cyclesPaid > 0) {
-            for (let month = 0; month < referral.cyclesPaid; month++) {
-              const cycleStart = new Date(signupDate.getTime() + (month * 30 + 14) * 24 * 60 * 60 * 1000);
-              const cycleEnd = new Date(cycleStart.getTime() + 30 * 24 * 60 * 60 * 1000);
+            // Insert subscription cycle events for paying users.
+            // Conflict target is stripeInvoiceId (unique constraint) so
+            // repeated seeder runs never produce duplicate cycle rows.
+            if (referral.cyclesPaid > 0) {
+              for (let month = 0; month < referral.cyclesPaid; month++) {
+                const cycleStart = new Date(signupDate.getTime() + (month * 30 + 14) * 24 * 60 * 60 * 1000);
+                const cycleEnd = new Date(cycleStart.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-              await tx.insert(subscriptionCycleEvents).values({
-                userId: referral.id,
-                periodStart: cycleStart,
-                periodEnd: cycleEnd,
-                amount: referral.monthlyAmount,
-                status: 'paid',
-                stripeInvoiceId: `demo_inv_${referral.id}_${month + 1}`,
-              }).onConflictDoNothing();
+                await tx.insert(subscriptionCycleEvents).values({
+                  userId: referral.id,
+                  periodStart: cycleStart,
+                  periodEnd: cycleEnd,
+                  amount: referral.monthlyAmount,
+                  status: 'paid',
+                  stripeInvoiceId: `demo_inv_${referral.id}_${month + 1}`,
+                }).onConflictDoNothing({ target: subscriptionCycleEvents.stripeInvoiceId });
+                cycleEventInserted++;
+              }
             }
           }
+        });
+
+        if (referralUserInserted !== referralUserExpected) {
+          req.log.warn(
+            { section: 'agent-referral-users', inserted: referralUserInserted, expected: referralUserExpected },
+            '[DEMO] Agent referral user count mismatch — some referred users may not have been seeded'
+          );
         }
-      });
+        if (referralRecordInserted !== referralRecordExpected) {
+          req.log.warn(
+            { section: 'agent-referral-records', inserted: referralRecordInserted, expected: referralRecordExpected },
+            '[DEMO] Agent referral record count mismatch — some referral records may not have been seeded'
+          );
+        }
+        if (cycleEventInserted !== cycleEventExpected) {
+          req.log.warn(
+            { section: 'agent-cycle-events', inserted: cycleEventInserted, expected: cycleEventExpected },
+            '[DEMO] Agent cycle event count mismatch — some subscription cycle events may not have been seeded'
+          );
+        }
+
+        seedResults['agent-referral-users'] = { ok: true, inserted: referralUserInserted, expected: referralUserExpected };
+        seedResults['agent-referral-records'] = { ok: true, inserted: referralRecordInserted, expected: referralRecordExpected };
+        seedResults['agent-cycle-events'] = { ok: true, inserted: cycleEventInserted, expected: cycleEventExpected };
+
+        const failedSections = Object.entries(seedResults).filter(([, v]) => !v.ok).map(([k]) => k);
+        const countMismatches = Object.entries(seedResults)
+          .filter(([, v]) => v.ok && v.inserted !== undefined && v.inserted !== v.expected)
+          .map(([k, v]) => ({ section: k, inserted: v.inserted, expected: v.expected }));
+        if (failedSections.length > 0 || countMismatches.length > 0) {
+          req.log.warn({ seedResults, failedSections, countMismatches }, '[DEMO] Agent demo seeding completed with issues');
+        } else {
+          req.log.info({ seedResults }, '[DEMO] Agent demo seeding completed successfully');
+        }
+      } catch (seedError) {
+        const msg = seedError instanceof Error ? seedError.message : String(seedError);
+        req.log.warn({ section: 'agent-referrals', error: msg }, '[DEMO] Error seeding agent referral data — referral data may be missing');
+        seedResults['agent-referrals'] = { ok: false, error: msg };
+      }
 
       // Regenerate session to prevent session fixation
       req.session.regenerate((err: any) => {
         if (err) {
-          console.error("Session regeneration error:", err);
+          req.log.error({ err }, '[DEMO] Session regeneration error');
           return res.status(500).json({ message: "Session error" });
         }
         
@@ -3475,15 +4527,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         req.session.save((saveErr: any) => {
           if (saveErr) {
-            console.error("Session save error:", saveErr);
+            req.log.error({ err: saveErr }, '[DEMO] Session save error');
             return res.status(500).json({ message: "Failed to save session" });
           }
-          console.log('[DEMO LOGIN] Agent session saved successfully for user:', user.id);
-          res.json({ success: true, user });
+          req.log.info({ userId: user.id }, '[DEMO LOGIN] Agent session saved successfully');
+          const failedSections = Object.entries(seedResults).filter(([, v]) => !v.ok).map(([k]) => k);
+          const responseBody: Record<string, unknown> = { success: true, user };
+          if (process.env.NODE_ENV !== 'production') {
+            responseBody._seedStatus = { seedResults, failedSections };
+          }
+          res.json(responseBody);
         });
       });
     } catch (error) {
-      console.error("Error creating agent demo user:", error);
+      const msg = error instanceof Error ? error.message : String(error);
+      req.log.warn({ section: 'agent-referrals', error: msg }, '[DEMO] Error creating agent demo user');
       res.status(500).json({ message: "Failed to create agent account" });
     }
   });
@@ -3555,18 +4613,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Validate referral code if provided (for homeowners/contractors)
-      // Supports both agent referrals (for affiliate payouts) and user-to-user referrals (for subscription credits)
+      // Supports agent referrals (affiliate payouts), user-to-user referrals (subscription credits),
+      // and contractor company referral codes (shared via contractor referral page)
       let referringAgent = null;
       if (referralCode && (role === 'homeowner' || role === 'contractor')) {
         const referrer = await storage.getUserByReferralCode(referralCode);
-        if (!referrer) {
-          return res.status(400).json({ message: "Invalid referral code" });
-        }
-        
-        if (referrer.role === 'agent') {
-          referringAgent = referrer; // Agent referral - for affiliate payouts
+        if (referrer) {
+          if (referrer.role === 'agent') {
+            referringAgent = referrer; // Agent referral - for affiliate payouts
+          } else {
+            referringUser = referrer; // User-to-user referral - for subscription credits
+          }
         } else {
-          referringUser = referrer; // User-to-user referral - for subscription credits
+          // Contractor company referral codes (contractors share their company code, not user code)
+          const referrerCompany = await storage.getCompanyByReferralCode(referralCode);
+          if (!referrerCompany) {
+            return res.status(400).json({ message: "Invalid referral code" });
+          }
+          if (referrerCompany.ownerId) {
+            const companyOwner = await storage.getUser(referrerCompany.ownerId);
+            if (companyOwner) {
+              referringUser = companyOwner;
+            }
+          }
         }
       }
 
@@ -4300,6 +5369,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user sessions:", error);
       res.status(500).json({ message: "Failed to fetch user sessions" });
+    }
+  });
+
+  // Phase 7: DEPRECATED — EMERGENCY_RESET_SECRET has been removed from production env.
+  // This endpoint is effectively disabled (returns 404 when env var is absent).
+  // Do not delete yet; remove in a future cleanup pass after confirming zero production usage.
+  // Emergency password reset — protected by server-side secret env var (no browser session needed)
+  // Usage: POST /api/admin/emergency-reset with header X-Reset-Secret matching EMERGENCY_RESET_SECRET env var
+  // Delete EMERGENCY_RESET_SECRET from env after use to disable this endpoint permanently.
+  app.post('/api/admin/emergency-reset', async (req: any, res) => {
+    const secret = process.env.EMERGENCY_RESET_SECRET;
+    if (!secret) return res.status(404).json({ message: "Not found" });
+    const provided = req.headers['x-reset-secret'];
+    if (!provided || provided !== secret) return res.status(403).json({ message: "Forbidden" });
+    try {
+      const { email, newPassword } = req.body;
+      if (!email || !newPassword) return res.status(400).json({ message: "email and newPassword required" });
+      const user = await storage.getUserByEmail(email);
+      if (!user) return res.status(404).json({ message: "User not found" });
+      const bcrypt = await import('bcryptjs');
+      const passwordHash = await bcrypt.hash(newPassword, 10);
+      await storage.upsertUser({ ...user, passwordHash });
+      res.json({ success: true, message: `Password updated for ${email}` });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to reset password" });
+    }
+  });
+
+  // Admin — reset any user's password by email (no token required)
+  app.post('/api/admin/users/reset-password', requireAdmin, async (req: any, res) => {
+    try {
+      const { email, newPassword } = req.body;
+      if (!email || !newPassword) {
+        return res.status(400).json({ message: "email and newPassword are required" });
+      }
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      const bcrypt = await import('bcryptjs');
+      const passwordHash = await bcrypt.hash(newPassword, 10);
+      await storage.upsertUser({ ...user, passwordHash });
+      await auditLogger.logAdminAction({
+        userId: req.session.user.id,
+        userEmail: req.session.user.email || '',
+        eventType: AuditEventTypes.AUTH_PASSWORD_RESET_COMPLETE,
+        action: 'Admin reset user password',
+        targetUserId: user.id,
+        details: { targetEmail: email },
+        req,
+      });
+      res.json({ success: true, message: `Password updated for ${email}` });
+    } catch (error) {
+      console.error("Error in admin password reset:", error);
+      res.status(500).json({ message: "Failed to reset password" });
     }
   });
 
@@ -5756,6 +6880,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Helper function to check Pro tier access
   async function hasCrmProAccess(user: any): Promise<boolean> {
     if (!user || user.role !== 'contractor') return false;
+
+    // Demo contractor accounts always have full CRM access — matched only by
+    // the immutable demo user ID prefix, never by user-supplied email content
+    if (user.id?.startsWith('demo-contractor')) {
+      return true;
+    }
+
+    // Grandfathered users get full CRM access
+    if (user.subscriptionStatus === 'grandfathered') {
+      return true;
+    }
     
     // Check if user's subscription plan has CRM access
     if (user.subscriptionPlanId) {
@@ -5802,7 +6937,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         filters.isActive = req.query.isActive === 'true';
       }
 
-      const clients = await storage.getCrmClients(req.session.user.id, filters);
+      // Phase 7: app-level pagination (array shape preserved for frontend compat)
+      const limit = Math.min(parseInt(req.query.limit as string) || 500, 500);
+      const offset = Math.max(parseInt(req.query.offset as string) || 0, 0);
+      const allClients = await storage.getCrmClients(req.session.user.id, filters);
+      const clients = allClients.slice(offset, offset + limit);
+      res.setHeader('X-Total-Count', String(allClients.length));
+      res.setHeader('X-Limit', String(limit));
+      res.setHeader('X-Offset', String(offset));
       res.json(clients);
     } catch (error) {
       console.error("Error fetching CRM clients:", error);
@@ -5847,7 +6989,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/crm/clients/:id - Get single client
-  app.get('/api/crm/clients/:id', isAuthenticated, async (req: any, res) => {
+  // Phase 7: Added requireContractorSubscription for CRM security consistency
+  app.get('/api/crm/clients/:id', isAuthenticated, requireContractorSubscription, async (req: any, res) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -5879,7 +7022,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PATCH /api/crm/clients/:id - Update client
-  app.patch('/api/crm/clients/:id', isAuthenticated, async (req: any, res) => {
+  // Phase 7: Added requireContractorSubscription for CRM security consistency
+  app.patch('/api/crm/clients/:id', isAuthenticated, requireContractorSubscription, async (req: any, res) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -5922,7 +7066,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE /api/crm/clients/:id - Soft delete client (set isActive = false)
-  app.delete('/api/crm/clients/:id', isAuthenticated, async (req: any, res) => {
+  // Phase 7: Added requireContractorSubscription for CRM security consistency
+  app.delete('/api/crm/clients/:id', isAuthenticated, requireContractorSubscription, async (req: any, res) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -5986,7 +7131,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         filters.endDate = new Date(req.query.endDate as string);
       }
 
-      const jobs = await storage.getCrmJobs(req.session.user.id, filters);
+      // Phase 7: app-level pagination (array shape preserved for frontend compat)
+      const limit = Math.min(parseInt(req.query.limit as string) || 500, 500);
+      const offset = Math.max(parseInt(req.query.offset as string) || 0, 0);
+      const allJobs = await storage.getCrmJobs(req.session.user.id, filters);
+      const jobs = allJobs.slice(offset, offset + limit);
+      res.setHeader('X-Total-Count', String(allJobs.length));
+      res.setHeader('X-Limit', String(limit));
+      res.setHeader('X-Offset', String(offset));
       res.json(jobs);
     } catch (error) {
       console.error("Error fetching CRM jobs:", error);
@@ -7946,11 +9098,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
       
-      console.log('[DEBUG] /api/contractors returning', enrichedContractors.length, 'contractors');
-      if (enrichedContractors.length > 0) {
-        console.log('[DEBUG] First contractor ID:', enrichedContractors[0].id);
-      }
-      res.json(enrichedContractors);
+      // Phase 7: app-level pagination (array shape preserved for frontend compat)
+      const limit = Math.min(parseInt(req.query.limit as string) || 200, 500);
+      const offset = Math.max(parseInt(req.query.offset as string) || 0, 0);
+      const totalContractors = enrichedContractors.length;
+      const pagedContractors = enrichedContractors.slice(offset, offset + limit);
+      res.setHeader('X-Total-Count', String(totalContractors));
+      res.setHeader('X-Limit', String(limit));
+      res.setHeader('X-Offset', String(offset));
+      req.log?.debug({ total: totalContractors, returned: pagedContractors.length }, '[contractors] list');
+      res.json(pagedContractors);
     } catch (error) {
       console.error("Error fetching contractors:", error);
       res.status(500).json({ message: "Failed to fetch contractors" });
@@ -8062,7 +9219,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
         });
-      
+
+      // From referral — if homeowner was referred by a contractor via their referral code
+      const homeowner = await storage.getUser(userId);
+      if (homeowner?.referredBy) {
+        let referringContractorId: string | null = null;
+
+        // Check user-level referral code first (homeowners referring other homeowners)
+        const referrerByUserCode = await storage.getUserByReferralCode(homeowner.referredBy);
+        if (referrerByUserCode && referrerByUserCode.role === 'contractor') {
+          referringContractorId = referrerByUserCode.id;
+        }
+
+        // Fall back to company-level referral code (what contractors actually share)
+        if (!referringContractorId) {
+          const referrerCompany = await storage.getCompanyByReferralCode(homeowner.referredBy);
+          if (referrerCompany?.ownerId) {
+            const companyOwner = await storage.getUser(referrerCompany.ownerId);
+            if (companyOwner?.role === 'contractor') {
+              referringContractorId = companyOwner.id;
+            }
+          }
+        }
+
+        // Add referred contractor to the map if not already present from logs/proposals
+        if (referringContractorId && !contractorDataMap.has(referringContractorId)) {
+          contractorDataMap.set(referringContractorId, {
+            lastUsed: homeowner.createdAt || new Date(),
+            serviceType: 'referral',
+          });
+        }
+      }
+
       // Fetch full contractor data for all unique contractor IDs
       const contractorIds = Array.from(contractorDataMap.keys());
       const contractors = await Promise.all(
@@ -12682,22 +13870,48 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
         ? Math.ceil((effectiveTrialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
         : 0;
       
-      // Has active access if: paid subscription active, OR still in trial period
-      const hasActiveSubscription = user.subscriptionStatus === 'active' || isInTrial;
-      
+      // Has active access if: paid subscription active (any tier), OR still in trial period
+      const PAID_STATUSES = ['active', 'contractor_business', 'contractor_enterprise'];
+      const hasActiveSubscription = PAID_STATUSES.includes(user.subscriptionStatus ?? '') || !!isInTrial;
+
       // If trial expired and no paid subscription, they need to pay - contractors have NO free features after trial
       const needsSubscription = trialExpired || (user.subscriptionStatus === 'inactive' && !isInTrial);
-      
+
       // Determine current plan tier
-      let currentPlan: 'none' | 'basic' | 'pro' = 'none';
+      let currentPlan: 'none' | 'basic' | 'pro' | 'business' | 'enterprise' = 'none';
       if (plan) {
-        if (plan.tierName === 'contractor_pro') {
-          currentPlan = 'pro';
-        } else if (plan.tierName === 'contractor_basic' || plan.tierName === 'contractor') {
-          currentPlan = 'basic';
+        if (plan.tierName === 'contractor_enterprise') currentPlan = 'enterprise';
+        else if (plan.tierName === 'contractor_business') currentPlan = 'business';
+        else if (plan.tierName === 'contractor_pro') currentPlan = 'pro';
+        else if (plan.tierName === 'contractor_basic' || plan.tierName === 'contractor') currentPlan = 'basic';
+      }
+
+      // Phase 3.5: Fetch company-level Scale-Up fields if contractor belongs to a company
+      let companyData: any = null;
+      let divisionCount = 0;
+      if (user.companyId) {
+        const [co] = await db.select().from(companies).where(eq(companies.id, user.companyId)).limit(1);
+        companyData = co ?? null;
+        if (companyData) {
+          const [{ cnt }] = await db.select({ cnt: drizzleSql<number>`cast(count(*) as int)` }).from(companyDivisions).where(eq(companyDivisions.companyId, user.companyId));
+          divisionCount = cnt ?? 0;
         }
       }
-      
+
+      // Seat counts (tech + admin, excluding removed)
+      let currentTechCount = 0;
+      let currentAdminCount = 0;
+      if (user.companyId) {
+        const seats = await db.select({ role: users.companyRole })
+          .from(users)
+          .where(and(eq(users.companyId, user.companyId), inArray(users.companyRole as any, ['tech', 'admin']), ne(users.status as any, 'removed')));
+        currentTechCount = seats.filter(s => s.role === 'tech').length;
+        currentAdminCount = seats.filter(s => s.role === 'admin').length;
+      }
+
+      const includedTechSeats = plan?.includedTechSeats ?? null;
+      const additionalSeatPrice = plan?.additionalSeatPrice ? parseFloat(plan.additionalSeatPrice as string) : null;
+
       res.json({
         hasActiveSubscription,
         needsSubscription,
@@ -12712,10 +13926,101 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
         features: plan?.features ?? [],
         planName: plan?.displayName ?? 'No Plan',
         tierName: plan?.tierName ?? null,
+        // Phase 3.5 — Scale-Up fields
+        companyTier: companyData?.tier ?? null,
+        seatInfo: {
+          includedTechSeats,
+          additionalSeatPrice,
+          currentTechCount,
+          currentAdminCount,
+          maxTechSeats: companyData?.maxTechSeats ?? null,
+          maxAdminSeats: companyData?.maxAdminSeats ?? null,
+          maxManagerSeats: companyData?.maxManagerSeats ?? null,
+          maxDispatcherSeats: companyData?.maxDispatcherSeats ?? null,
+        },
+        divisionCount,
+        ssoEnabled: companyData?.ssoEnabled ?? false,
+        bulkImportEnabled: companyData?.bulkImportEnabled ?? false,
+        apiAccessEnabled: companyData?.apiAccessEnabled ?? false,
       });
     } catch (error) {
       console.error('Error fetching contractor subscription:', error);
       res.status(500).json({ message: 'Failed to fetch subscription' });
+    }
+  });
+
+  // Phase 6 — Preview upgrade cost breakdown (Business tier per-seat pricing)
+  app.post('/api/contractor/subscription/preview-upgrade', isAuthenticated, async (req: any, res) => {
+    try {
+      if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: 'User not found' });
+
+      const { targetTier, totalSeats } = req.body as { targetTier?: string; totalSeats?: number };
+      const seats = Math.max(1, parseInt(String(totalSeats ?? 1)) || 1);
+
+      if (targetTier === 'contractor_business' || !targetTier) {
+        const BASE_PRICE = 60;          // $60/mo base covers up to 5 members
+        const PER_SEAT_PRICE = 8;       // $8/seat/mo beyond 5
+        const INCLUDED_SEATS = 5;
+        const additionalSeats = Math.max(0, seats - INCLUDED_SEATS);
+        const additionalCost = additionalSeats * PER_SEAT_PRICE;
+        const monthlyTotal = BASE_PRICE + additionalCost;
+        return res.json({
+          tier: 'contractor_business',
+          totalSeats: seats,
+          includedSeats: INCLUDED_SEATS,
+          additionalSeats,
+          basePriceMonthly: BASE_PRICE,
+          perSeatPriceMonthly: PER_SEAT_PRICE,
+          additionalCostMonthly: additionalCost,
+          monthlyTotal,
+          breakdown: `$${BASE_PRICE}/mo base + ${additionalSeats} extra seat${additionalSeats !== 1 ? 's' : ''} × $${PER_SEAT_PRICE} = $${monthlyTotal}/mo`,
+        });
+      }
+
+      if (targetTier === 'contractor_enterprise') {
+        return res.json({
+          tier: 'contractor_enterprise',
+          totalSeats: seats,
+          monthlyTotal: null,
+          breakdown: 'Enterprise pricing is custom. Our team will reach out within 1 business day.',
+          contactRequired: true,
+        });
+      }
+
+      return res.status(400).json({ message: 'Unsupported target tier' });
+    } catch (error) {
+      req.log?.error({ error }, '[PHASE6] Error previewing upgrade');
+      res.status(500).json({ message: 'Failed to preview upgrade' });
+    }
+  });
+
+  // Phase 6 — Stripe Customer Portal (self-service billing management)
+  app.get('/api/contractor/billing/portal', isAuthenticated, async (req: any, res) => {
+    try {
+      if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+      if (!stripe) return res.status(503).json({ message: 'Billing not configured' });
+
+      const user = await storage.getUser(req.session.user.id);
+      if (!user?.stripeCustomerId) {
+        return res.status(400).json({ message: 'No billing account found. Subscribe to a plan first.' });
+      }
+
+      const returnUrl = req.query.returnUrl as string || `${process.env.APP_URL || ''}/contractor`;
+      const session = await stripe.billingPortal.sessions.create({
+        customer: user.stripeCustomerId,
+        return_url: returnUrl,
+      });
+
+      res.json({ url: session.url });
+    } catch (error) {
+      req.log?.error({ error }, '[PHASE6] Error creating billing portal session');
+      res.status(500).json({ message: 'Failed to open billing portal' });
     }
   });
 
@@ -13011,8 +14316,30 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       }
 
       const updatedProfile = await storage.updateContractorProfile(contractorId, profileData);
-      console.log('[DEBUG] Profile updated successfully');
-      
+      req.log?.info({ contractorId, teamSizeRange: profileData.teamSizeRange }, '[ONBOARDING] Profile updated');
+
+      // Phase 5: Enterprise lead notification for 100+ team size selection
+      if (profileData.teamSizeRange === '100_plus') {
+        const adminEmailsRaw = process.env.ADMIN_EMAILS || '';
+        const adminEmails = adminEmailsRaw.split(',').map((e: string) => e.trim()).filter(Boolean);
+        if (adminEmails.length > 0) {
+          try {
+            const contractorEmail = currentUser?.email || '';
+            const contractorName = profileData.name as string || [currentUser?.firstName, currentUser?.lastName].filter(Boolean).join(' ') || contractorEmail;
+            const companyName = profileData.company as string || 'Unknown';
+            await sendEmail({
+              to: adminEmails[0],
+              subject: `[Enterprise Lead] ${companyName} — 100+ team size`,
+              text: `New enterprise contractor lead:\n\nName: ${contractorName}\nEmail: ${contractorEmail}\nCompany: ${companyName}\nTeam size: 100+\n\nFollow up within 1 business day.`,
+              html: `<p><strong>New enterprise contractor lead</strong></p><p>Name: ${contractorName}<br>Email: ${contractorEmail}<br>Company: ${companyName}<br>Team size: 100+</p><p>Follow up within 1 business day.</p>`,
+            });
+            req.log?.info({ contractorEmail, companyName }, '[ONBOARDING] Enterprise lead email sent');
+          } catch (emailErr) {
+            req.log?.warn({ emailErr }, '[ONBOARDING] Failed to send enterprise lead email');
+          }
+        }
+      }
+
       // Return the profile with companyId so frontend can update
       res.json({ ...updatedProfile, companyId: currentUser?.companyId });
     } catch (error) {
@@ -17173,15 +18500,29 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         email: z.string().email("Valid email is required"),
         firstName: z.string().min(1).optional(),
         lastName: z.string().min(1).optional(),
+        role: z.enum(['tech', 'admin', 'manager', 'dispatcher']).optional().default('tech'),
+        divisionId: z.string().uuid().nullable().optional(),
       });
       const parsed = bodySchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ message: "Invalid data", errors: parsed.error.flatten() });
       }
-      const { email, firstName, lastName } = parsed.data;
+      const { email, firstName, lastName, role: inviteRole, divisionId: inviteDivisionId } = parsed.data;
 
       const [companyRow] = await db.select().from(companies).where(eq(companies.id, adminUser.companyId)).limit(1);
-      const maxSeats = (companyRow as any)?.maxTechSeats ?? 3;
+
+      // Phase 3.3: use includedTechSeats from subscription plan when available (per-seat billing model)
+      let maxSeats = (companyRow as any)?.maxTechSeats ?? 3;
+      let planRow: typeof subscriptionPlans.$inferSelect | null = null;
+      if (adminUser.subscriptionPlanId) {
+        const [pr] = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, adminUser.subscriptionPlanId)).limit(1);
+        planRow = pr ?? null;
+      }
+      if (planRow?.includedTechSeats != null) {
+        // Per-seat model: base seats from plan; company.maxTechSeats is authoritative ceiling
+        maxSeats = (companyRow as any)?.maxTechSeats ?? planRow.includedTechSeats;
+      }
+
       const currentTechs = await db.select({ id: users.id }).from(users)
         .where(and(
           eq(users.companyId, adminUser.companyId),
@@ -17189,7 +18530,10 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
           ne(users.status as any, 'removed')
         ));
       if (currentTechs.length >= maxSeats) {
-        return res.status(400).json({ message: `Tech seat limit reached (${maxSeats}). Contact support to add more seats.` });
+        const seatMsg = planRow?.additionalSeatPrice
+          ? `Tech seat limit reached (${maxSeats} included). Additional seats are $${parseFloat(planRow.additionalSeatPrice as string).toFixed(2)}/mo — contact support to add seats.`
+          : `Tech seat limit reached (${maxSeats}). Contact support to add more seats.`;
+        return res.status(400).json({ message: seatMsg, code: 'SEAT_LIMIT_REACHED', maxSeats, currentCount: currentTechs.length });
       }
 
       const [existingUser] = await db.select().from(users).where(eq(users.email, email)).limit(1);
@@ -17207,7 +18551,8 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         }
         await db.update(users).set({
           companyId: adminUser.companyId,
-          companyRole: 'tech',
+          companyRole: inviteRole,
+          ...(inviteDivisionId ? { divisionId: inviteDivisionId } : {}),
           status: 'pending_invite',
           inviteToken,
           inviteExpiresAt,
@@ -17221,7 +18566,8 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
           lastName: lastName || null,
           role: 'contractor',
           companyId: adminUser.companyId,
-          companyRole: 'tech',
+          companyRole: inviteRole,
+          ...(inviteDivisionId ? { divisionId: inviteDivisionId } : {}),
           status: 'pending_invite',
           inviteToken,
           inviteExpiresAt,
@@ -17304,8 +18650,22 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         return res.status(400).json({ message: "You must belong to a company" });
       }
 
+      // Phase 7: pagination support
+      const limit = Math.min(parseInt(req.query.limit as string) || 200, 500);
+      const offset = Math.max(parseInt(req.query.offset as string) || 0, 0);
+
       const [companyRow] = await db.select({ maxTechSeats: companies.maxTechSeats })
         .from(companies).where(eq(companies.id, adminUser.companyId)).limit(1);
+
+      const teamWhereClause = and(
+        eq(users.companyId, adminUser.companyId),
+        inArray(users.companyRole as any, ['tech', 'admin', 'manager', 'dispatcher']),
+        ne(users.status as any, 'removed')
+      );
+
+      // Count query for pagination metadata
+      const [countRow] = await db.select({ total: drizzleSql<number>`cast(count(*) as int)` })
+        .from(users).where(teamWhereClause);
 
       const teamMembers = await db.select({
         id: users.id,
@@ -17313,6 +18673,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         firstName: users.firstName,
         lastName: users.lastName,
         companyRole: users.companyRole,
+        divisionId: users.divisionId,
         status: users.status,
         lastLoginAt: users.lastLoginAt,
         inviteExpiresAt: users.inviteExpiresAt,
@@ -17320,19 +18681,17 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         invoiceCount: drizzleSql<number>`cast(count(${contractorInvoiceUploads.id}) as int)`,
       } as any).from(users)
         .leftJoin(contractorInvoiceUploads, eq(contractorInvoiceUploads.uploadedByUserId, users.id))
-        .where(and(
-          eq(users.companyId, adminUser.companyId),
-          inArray(users.companyRole as any, ['tech', 'admin']),
-          ne(users.status as any, 'removed')
-        ))
+        .where(teamWhereClause)
         .groupBy(
           users.id, users.email, users.firstName, users.lastName,
-          users.companyRole, users.status, users.lastLoginAt, users.inviteExpiresAt, users.createdAt
-        );
+          users.companyRole, users.divisionId, users.status, users.lastLoginAt, users.inviteExpiresAt, users.createdAt
+        )
+        .limit(limit).offset(offset);
 
       const techCount = teamMembers.filter((m: any) => m.companyRole === 'tech').length;
       const adminCount = teamMembers.filter((m: any) => m.companyRole === 'admin').length;
-      res.json({ teamMembers, maxTechSeats: (companyRow as any)?.maxTechSeats ?? 3, techCount, adminCount });
+      const total = countRow?.total ?? 0;
+      res.json({ teamMembers, total, limit, offset, maxTechSeats: (companyRow as any)?.maxTechSeats ?? 3, techCount, adminCount });
     } catch (error) {
       req.log?.error({ error }, '[ENTERPRISE] Error fetching team');
       res.status(500).json({ message: "Failed to fetch team members" });
@@ -17357,6 +18716,22 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
       await db.update(users).set({ status: 'suspended', updatedAt: new Date() } as any).where(eq(users.id, userId));
       suspendedUserIds.add(userId);
+
+      // Phase 7: Best-effort session destruction for the suspended user.
+      // TODO: Long-term — index sessions by userId in the pg session store for efficient targeted invalidation.
+      // For now, the suspendedUserIds in-memory set causes the next request from this user to 401.
+      req.sessionStore?.all?.((err: any, sessions: Record<string, any> | null) => {
+        if (err || !sessions) return;
+        Object.entries(sessions).forEach(([sid, sess]) => {
+          if (sess?.user?.id === userId) {
+            req.sessionStore.destroy(sid, (destroyErr: any) => {
+              if (destroyErr) req.log?.warn({ destroyErr, sid }, '[SUSPEND] Failed to destroy session');
+              else req.log?.info({ sid }, '[SUSPEND] Session destroyed for suspended user');
+            });
+          }
+        });
+      });
+
       const actorName = [adminUser.firstName, adminUser.lastName].filter(Boolean).join(' ') || adminUser.email || adminUser.id;
       const actorRole = adminUser.companyRole ?? null;
       const targetName = [(targetUser as any).firstName, (targetUser as any).lastName].filter(Boolean).join(' ') || (targetUser as any).email || userId;
@@ -17629,6 +19004,399 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     }
   });
 
+  // ─── Phase 3.1 — Division Management (Business/Enterprise) ───────────────────
+
+  // Helper: ensure caller belongs to a business/enterprise tier
+  const requireDivisionTier = async (req: any, res: any): Promise<boolean> => {
+    const companyId = req.session?.user?.companyId;
+    if (!companyId) { res.status(403).json({ code: 'DIVISION_NOT_AVAILABLE' }); return false; }
+    const [co] = await db.select({ tier: companies.tier }).from(companies).where(eq(companies.id, companyId)).limit(1);
+    if (!co || !['business', 'contractor_business', 'enterprise', 'contractor_enterprise'].includes(co.tier ?? '')) {
+      res.status(403).json({ code: 'DIVISION_NOT_AVAILABLE', message: 'Division management requires Business or Enterprise tier' });
+      return false;
+    }
+    return true;
+  };
+
+  // GET /api/contractor/divisions — list all divisions for this company
+  app.get('/api/contractor/divisions', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin', 'manager'), async (req: any, res) => {
+    try {
+      if (!await requireDivisionTier(req, res)) return;
+      const companyId = req.session.user.companyId;
+      const rows = await db.select({
+        id: companyDivisions.id,
+        name: companyDivisions.name,
+        managerId: companyDivisions.managerId,
+        createdAt: companyDivisions.createdAt,
+        updatedAt: companyDivisions.updatedAt,
+      }).from(companyDivisions)
+        .where(eq(companyDivisions.companyId, companyId))
+        .orderBy(companyDivisions.name);
+
+      // Attach member count per division
+      const memberCounts = await db.select({ divisionId: users.divisionId, cnt: drizzleSql<number>`cast(count(*) as int)` })
+        .from(users)
+        .where(and(eq(users.companyId, companyId), ne(users.status as any, 'removed'), isNotNull(users.divisionId as any)))
+        .groupBy(users.divisionId);
+      const countMap = Object.fromEntries(memberCounts.map(r => [r.divisionId!, r.cnt]));
+
+      res.json(rows.map(d => ({ ...d, memberCount: countMap[d.id] ?? 0 })));
+    } catch (err) {
+      req.log?.error({ err }, '[DIVISION] list error');
+      res.status(500).json({ message: 'Failed to list divisions' });
+    }
+  });
+
+  // POST /api/contractor/divisions — create a division
+  app.post('/api/contractor/divisions', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin'), async (req: any, res) => {
+    try {
+      if (!await requireDivisionTier(req, res)) return;
+      const companyId = req.session.user.companyId;
+      const schema = z.object({ name: z.string().min(1).max(100) });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: 'Invalid data', errors: parsed.error.flatten() });
+
+      const [div] = await db.insert(companyDivisions).values({
+        id: randomUUID(),
+        companyId,
+        name: parsed.data.name,
+      } as any).returning();
+
+      res.status(201).json(div);
+    } catch (err) {
+      req.log?.error({ err }, '[DIVISION] create error');
+      res.status(500).json({ message: 'Failed to create division' });
+    }
+  });
+
+  // GET /api/contractor/divisions/:id — single division detail
+  app.get('/api/contractor/divisions/:id', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin', 'manager'), async (req: any, res) => {
+    try {
+      if (!await requireDivisionTier(req, res)) return;
+      const companyId = req.session.user.companyId;
+      const { id } = req.params;
+      const [div] = await db.select().from(companyDivisions)
+        .where(and(eq(companyDivisions.id, id), eq(companyDivisions.companyId, companyId))).limit(1);
+      if (!div) return res.status(404).json({ message: 'Division not found' });
+
+      const members = await db.select({ id: users.id, firstName: users.firstName, lastName: users.lastName, email: users.email, companyRole: users.companyRole, status: users.status })
+        .from(users)
+        .where(and(eq(users.divisionId as any, id), eq(users.companyId, companyId), ne(users.status as any, 'removed')));
+
+      res.json({ ...div, members });
+    } catch (err) {
+      req.log?.error({ err }, '[DIVISION] get error');
+      res.status(500).json({ message: 'Failed to get division' });
+    }
+  });
+
+  // PATCH /api/contractor/divisions/:id — rename a division
+  app.patch('/api/contractor/divisions/:id', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin'), async (req: any, res) => {
+    try {
+      if (!await requireDivisionTier(req, res)) return;
+      const companyId = req.session.user.companyId;
+      const { id } = req.params;
+      const schema = z.object({ name: z.string().min(1).max(100) });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: 'Invalid data', errors: parsed.error.flatten() });
+
+      const [existing] = await db.select({ id: companyDivisions.id }).from(companyDivisions)
+        .where(and(eq(companyDivisions.id, id), eq(companyDivisions.companyId, companyId))).limit(1);
+      if (!existing) return res.status(404).json({ message: 'Division not found' });
+
+      const [updated] = await db.update(companyDivisions)
+        .set({ name: parsed.data.name, updatedAt: new Date() })
+        .where(eq(companyDivisions.id, id))
+        .returning();
+
+      res.json(updated);
+    } catch (err) {
+      req.log?.error({ err }, '[DIVISION] update error');
+      res.status(500).json({ message: 'Failed to update division' });
+    }
+  });
+
+  // DELETE /api/contractor/divisions/:id — delete a division (owner only; unassigns members first)
+  app.delete('/api/contractor/divisions/:id', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner'), async (req: any, res) => {
+    try {
+      if (!await requireDivisionTier(req, res)) return;
+      const companyId = req.session.user.companyId;
+      const { id } = req.params;
+      const [existing] = await db.select({ id: companyDivisions.id }).from(companyDivisions)
+        .where(and(eq(companyDivisions.id, id), eq(companyDivisions.companyId, companyId))).limit(1);
+      if (!existing) return res.status(404).json({ message: 'Division not found' });
+
+      // Unassign all members before deleting
+      await db.update(users).set({ divisionId: null } as any).where(eq(users.divisionId as any, id));
+      await db.delete(companyDivisions).where(eq(companyDivisions.id, id));
+
+      res.json({ message: 'Division deleted' });
+    } catch (err) {
+      req.log?.error({ err }, '[DIVISION] delete error');
+      res.status(500).json({ message: 'Failed to delete division' });
+    }
+  });
+
+  // POST /api/contractor/divisions/:id/assign-manager — assign a manager to a division
+  app.post('/api/contractor/divisions/:id/assign-manager', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin'), async (req: any, res) => {
+    try {
+      if (!await requireDivisionTier(req, res)) return;
+      const companyId = req.session.user.companyId;
+      const { id } = req.params;
+      const schema = z.object({ userId: z.string().uuid().nullable() });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: 'Invalid data', errors: parsed.error.flatten() });
+
+      const [div] = await db.select({ id: companyDivisions.id }).from(companyDivisions)
+        .where(and(eq(companyDivisions.id, id), eq(companyDivisions.companyId, companyId))).limit(1);
+      if (!div) return res.status(404).json({ message: 'Division not found' });
+
+      if (parsed.data.userId) {
+        const [member] = await db.select({ companyRole: users.companyRole }).from(users)
+          .where(and(eq(users.id, parsed.data.userId), eq(users.companyId, companyId), ne(users.status as any, 'removed'))).limit(1);
+        if (!member) return res.status(404).json({ message: 'User not found in company' });
+        // Promote the user to manager role and assign to this division
+        await db.update(users).set({ companyRole: 'manager', divisionId: id, updatedAt: new Date() } as any).where(eq(users.id, parsed.data.userId));
+      }
+
+      const [updated] = await db.update(companyDivisions)
+        .set({ managerId: parsed.data.userId, updatedAt: new Date() })
+        .where(eq(companyDivisions.id, id))
+        .returning();
+
+      res.json(updated);
+    } catch (err) {
+      req.log?.error({ err }, '[DIVISION] assign-manager error');
+      res.status(500).json({ message: 'Failed to assign manager' });
+    }
+  });
+
+  // GET /api/contractor/divisions/:id/members — list members in a division
+  app.get('/api/contractor/divisions/:id/members', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin', 'manager'), requireDivisionAccess, async (req: any, res) => {
+    try {
+      if (!await requireDivisionTier(req, res)) return;
+      const companyId = req.session.user.companyId;
+      const { id } = req.params;
+      // Manager scoping: if req.divisionFilter is set and doesn't match, deny
+      if ((req as any).divisionFilter && (req as any).divisionFilter !== id) {
+        return res.status(403).json({ message: 'Access restricted to your division' });
+      }
+      const [div] = await db.select({ id: companyDivisions.id }).from(companyDivisions)
+        .where(and(eq(companyDivisions.id, id), eq(companyDivisions.companyId, companyId))).limit(1);
+      if (!div) return res.status(404).json({ message: 'Division not found' });
+
+      const members = await db.select({
+        id: users.id, firstName: users.firstName, lastName: users.lastName,
+        email: users.email, companyRole: users.companyRole, status: users.status, lastLoginAt: users.lastLoginAt,
+      }).from(users)
+        .where(and(eq(users.divisionId as any, id), eq(users.companyId, companyId), ne(users.status as any, 'removed')));
+
+      res.json(members);
+    } catch (err) {
+      req.log?.error({ err }, '[DIVISION] members error');
+      res.status(500).json({ message: 'Failed to list division members' });
+    }
+  });
+
+  // ─── Phase 3.2 — Bulk Tech Import ────────────────────────────────────────────
+
+  // Lightweight inline CSV parser (no external deps needed for simple email,firstName,lastName CSVs)
+  const parseCsvRows = (raw: string): Array<Record<string, string>> => {
+    const lines = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter(l => l.trim());
+    if (lines.length < 2) return [];
+    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
+    return lines.slice(1).map(line => {
+      const vals = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+      return Object.fromEntries(headers.map((h, i) => [h, vals[i] ?? '']));
+    });
+  };
+
+  // POST /api/contractor/bulk-import — upload CSV of techs to invite
+  app.post('/api/contractor/bulk-import', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin'), requireBulkImport, upload.single('file'), async (req: any, res) => {
+    try {
+      const adminUser = req.session.user;
+      if (!adminUser.companyId) return res.status(400).json({ message: 'You must belong to a company' });
+      if (!req.file) return res.status(400).json({ message: 'CSV file is required' });
+      if (!req.file.mimetype.includes('csv') && !req.file.originalname.endsWith('.csv')) {
+        return res.status(400).json({ message: 'Only CSV files are accepted' });
+      }
+
+      const raw = req.file.buffer.toString('utf-8');
+      const rows = parseCsvRows(raw);
+      if (rows.length === 0) return res.status(400).json({ message: 'CSV is empty or has no data rows' });
+      if (rows.length > 200) return res.status(400).json({ message: 'CSV exceeds 200-row limit per import' });
+
+      // Create import record
+      const [importRecord] = await db.insert(companyBulkImports).values({
+        id: randomUUID(),
+        companyId: adminUser.companyId,
+        uploadedBy: adminUser.id,
+        fileName: req.file.originalname,
+        status: 'processing',
+        totalRows: rows.length,
+        successRows: 0,
+        failedRows: 0,
+        errorLog: [],
+      } as any).returning();
+
+      const domain = process.env.REPLIT_DOMAINS?.split(',')[0]?.trim() || 'gotohomebase.com';
+      const [companyRow] = await db.select().from(companies).where(eq(companies.id, adminUser.companyId)).limit(1);
+
+      // Get plan for seat limits
+      let planForImport: typeof subscriptionPlans.$inferSelect | null = null;
+      if (adminUser.subscriptionPlanId) {
+        const [pr] = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, adminUser.subscriptionPlanId)).limit(1);
+        planForImport = pr ?? null;
+      }
+      const maxSeatsForImport = (companyRow as any)?.maxTechSeats ?? (planForImport?.includedTechSeats ?? 10);
+
+      const errors: Array<{ row: number; error: string }> = [];
+      let successCount = 0;
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const email = row['email']?.trim();
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          errors.push({ row: i + 2, error: `Row ${i + 2}: invalid or missing email` });
+          continue;
+        }
+
+        // Check seat limit per iteration
+        const currentTechCount = await db.select({ id: users.id }).from(users)
+          .where(and(eq(users.companyId, adminUser.companyId), eq(users.companyRole as any, 'tech'), ne(users.status as any, 'removed')));
+        if (currentTechCount.length >= maxSeatsForImport) {
+          errors.push({ row: i + 2, error: `Row ${i + 2}: seat limit reached (${maxSeatsForImport})` });
+          continue;
+        }
+
+        try {
+          const [existing] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+          const cryptoMod = await import('crypto');
+          const inviteToken = cryptoMod.randomBytes(32).toString('hex');
+          const inviteExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+          const firstName = row['firstname'] || row['first_name'] || row['first name'] || null;
+          const lastName = row['lastname'] || row['last_name'] || row['last name'] || null;
+
+          if (existing) {
+            if ((existing as any).role !== 'contractor') { errors.push({ row: i + 2, error: `${email}: non-contractor account` }); continue; }
+            if (existing.companyId && existing.companyId !== adminUser.companyId) { errors.push({ row: i + 2, error: `${email}: belongs to another company` }); continue; }
+            await db.update(users).set({ companyId: adminUser.companyId, companyRole: 'tech', status: 'pending_invite', inviteToken, inviteExpiresAt, updatedAt: new Date() } as any).where(eq(users.id, existing.id));
+          } else {
+            await db.insert(users).values({ id: randomUUID(), email, firstName, lastName, role: 'contractor', companyId: adminUser.companyId, companyRole: 'tech', status: 'pending_invite', inviteToken, inviteExpiresAt, accountStatus: 'active', subscriptionStatus: 'active', emailVerified: false } as any);
+          }
+
+          const inviteUrl = `https://${domain}/contractor/accept-invite?token=${inviteToken}`;
+          await emailService.sendTechInviteEmail(email, companyRow?.name || 'Your Company', adminUser.firstName || 'Your manager', inviteUrl);
+          successCount++;
+        } catch (rowErr) {
+          errors.push({ row: i + 2, error: `${email}: ${(rowErr as Error).message}` });
+        }
+      }
+
+      // Update import record with results
+      await db.update(companyBulkImports).set({
+        status: errors.length === rows.length ? 'failed' : 'completed',
+        successRows: successCount,
+        failedRows: errors.length,
+        errorLog: errors as any,
+        completedAt: new Date(),
+      }).where(eq(companyBulkImports.id, importRecord.id));
+
+      res.json({ importId: importRecord.id, totalRows: rows.length, successRows: successCount, failedRows: errors.length, errors });
+    } catch (err) {
+      req.log?.error({ err }, '[BULK_IMPORT] upload error');
+      res.status(500).json({ message: 'Failed to process bulk import' });
+    }
+  });
+
+  // GET /api/contractor/bulk-import/history — list past import records
+  app.get('/api/contractor/bulk-import/history', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin'), requireBulkImport, async (req: any, res) => {
+    try {
+      const companyId = req.session.user.companyId;
+      if (!companyId) return res.status(400).json({ message: 'You must belong to a company' });
+
+      const imports = await db.select({
+        id: companyBulkImports.id,
+        fileName: companyBulkImports.fileName,
+        status: companyBulkImports.status,
+        totalRows: companyBulkImports.totalRows,
+        successRows: companyBulkImports.successRows,
+        failedRows: companyBulkImports.failedRows,
+        errorLog: companyBulkImports.errorLog,
+        createdAt: companyBulkImports.createdAt,
+        completedAt: companyBulkImports.completedAt,
+      }).from(companyBulkImports)
+        .where(eq(companyBulkImports.companyId, companyId))
+        .orderBy(desc(companyBulkImports.createdAt))
+        .limit(50);
+
+      res.json(imports);
+    } catch (err) {
+      req.log?.error({ err }, '[BULK_IMPORT] history error');
+      res.status(500).json({ message: 'Failed to fetch import history' });
+    }
+  });
+
+  // ─── Phase 3.4 — Enterprise SSO Config (stubs) ───────────────────────────────
+
+  // GET /api/contractor/sso — fetch SSO configuration for this company
+  app.get('/api/contractor/sso', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner'), requireApiAccess, async (req: any, res) => {
+    try {
+      const companyId = req.session.user.companyId;
+      if (!companyId) return res.status(403).json({ message: 'No company found' });
+
+      const [co] = await db.select({
+        ssoEnabled: companies.ssoEnabled,
+        ssoProvider: companies.ssoProvider,
+        ssoDomain: companies.ssoDomain,
+      }).from(companies).where(eq(companies.id, companyId)).limit(1);
+
+      if (!co) return res.status(404).json({ message: 'Company not found' });
+
+      res.json({
+        ssoEnabled: co.ssoEnabled ?? false,
+        ssoProvider: co.ssoProvider ?? null,
+        ssoDomain: co.ssoDomain ?? null,
+        note: 'SSO configuration is managed by your account manager. Contact support to enable or change your SSO provider.',
+      });
+    } catch (err) {
+      req.log?.error({ err }, '[SSO] get error');
+      res.status(500).json({ message: 'Failed to fetch SSO config' });
+    }
+  });
+
+  // PATCH /api/contractor/sso — update SSO config (Enterprise only; owner only)
+  // Stub: real SAML/OIDC wiring is deferred to Phase 5. This endpoint records intent and notifies CS.
+  app.patch('/api/contractor/sso', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner'), requireApiAccess, async (req: any, res) => {
+    try {
+      const companyId = req.session.user.companyId;
+      if (!companyId) return res.status(403).json({ message: 'No company found' });
+
+      const schema = z.object({
+        ssoProvider: z.enum(['okta', 'google_workspace', 'azure_ad', 'saml']).nullable().optional(),
+        ssoDomain: z.string().max(253).nullable().optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ message: 'Invalid data', errors: parsed.error.flatten() });
+
+      await db.update(companies).set({
+        ssoProvider: parsed.data.ssoProvider ?? undefined,
+        ssoDomain: parsed.data.ssoDomain ?? undefined,
+        updatedAt: new Date(),
+      } as any).where(eq(companies.id, companyId));
+
+      res.json({
+        message: 'SSO intent recorded. Your account manager will contact you within 1 business day to complete SSO setup.',
+        ssoProvider: parsed.data.ssoProvider ?? null,
+        ssoDomain: parsed.data.ssoDomain ?? null,
+        status: 'pending_cs_activation',
+      });
+    } catch (err) {
+      req.log?.error({ err }, '[SSO] update error');
+      res.status(500).json({ message: 'Failed to update SSO config' });
+    }
+  });
+
   // Upload invoice (admin or tech, not suspended); max 10 MB, PDF/JPG/PNG only
   // List homeowners who have proposals with this company (used by tech invoice upload selector)
   app.get('/api/contractor/company-homeowners', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin', 'tech'), async (req: any, res) => {
@@ -17830,17 +19598,51 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     }
   });
 
-  app.post("/api/quiz-result", async (req: any, res) => {
+  // Fetch the authenticated user's most recent quiz result
+  app.get("/api/quiz-result/me", async (req: any, res) => {
+    try {
+      const userId: string | null = req.session?.isAuthenticated && req.session?.user?.id
+        ? req.session.user.id
+        : null;
+
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const [record] = await db
+        .select()
+        .from(quizResults)
+        .where(eq(quizResults.userId, userId))
+        .orderBy(desc(quizResults.completedAt))
+        .limit(1);
+
+      return res.json(record ?? null);
+    } catch (err: any) {
+      req.log.error(err, "[QUIZ RESULT ME] error");
+      return res.status(500).json({ message: "Failed to fetch quiz result" });
+    }
+  });
+
+  app.post("/api/quiz-result", quizLimiter, async (req: any, res) => {
     try {
       const bodySchema = z.object({
         score: z.number().int().min(0).max(100),
         tier: z.enum(["Home Pro", "Solid Foundation", "Needs Attention", "High Risk"]),
         completedAt: z.string().datetime(),
+        startedAt: z.string().datetime().optional(),
       });
 
       const parsed = bodySchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ message: "Invalid quiz result data", errors: parsed.error.flatten() });
+      }
+
+      // Timing check: reject submissions that completed in under 5 seconds (bot-speed)
+      if (parsed.data.startedAt) {
+        const elapsed = new Date(parsed.data.completedAt).getTime() - new Date(parsed.data.startedAt).getTime();
+        if (elapsed < 5000) {
+          return res.status(400).json({ message: "Quiz completed too quickly" });
+        }
       }
 
       const userId: string | null = req.session?.isAuthenticated && req.session?.user?.id
@@ -17856,8 +19658,53 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
       return res.status(201).json(record);
     } catch (err: any) {
-      console.error("[QUIZ RESULT] save error:", err);
+      req.log.error(err, "[QUIZ RESULT] save error");
       return res.status(500).json({ message: "Failed to save quiz result" });
+    }
+  });
+
+  // Claim an anonymous quiz result after the visitor signs up or logs in.
+  // The client stores the resultId in localStorage immediately after the quiz
+  // POST returns. On login, the frontend calls this endpoint to backfill userId.
+  app.post("/api/quiz-result/claim", async (req: any, res) => {
+    try {
+      const userId: string | null = req.session?.isAuthenticated && req.session?.user?.id
+        ? req.session.user.id
+        : null;
+
+      if (!userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const bodySchema = z.object({
+        resultId: z.string().min(1),
+      });
+
+      const parsed = bodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid request", errors: parsed.error.flatten() });
+      }
+
+      const [updated] = await db
+        .update(quizResults)
+        .set({ userId })
+        .where(
+          and(
+            eq(quizResults.id, parsed.data.resultId),
+            isNull(quizResults.userId)
+          )
+        )
+        .returning();
+
+      if (!updated) {
+        // Either already claimed or doesn't exist — treat as success to avoid leaking IDs
+        return res.json({ ok: true, claimed: false });
+      }
+
+      return res.json({ ok: true, claimed: true, record: updated });
+    } catch (err: any) {
+      req.log.error(err, "[QUIZ RESULT CLAIM] error");
+      return res.status(500).json({ message: "Failed to claim quiz result" });
     }
   });
 

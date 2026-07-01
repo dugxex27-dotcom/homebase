@@ -1,4 +1,4 @@
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import {
   Wrench, Building2, FileText, Package, MessageCircle, Trophy, Gift,
   User as UserIcon, HelpCircle, LogOut, Download, Shield, LayoutDashboard,
@@ -18,6 +18,7 @@ interface BeforeInstallPromptEvent extends Event {
 
 export default function Sidebar() {
   const [location] = useLocation();
+  const search = useSearch();
   const { user, isAuthenticated } = useAuth();
   const typedUser = user as User | undefined;
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
@@ -109,6 +110,7 @@ export default function Sidebar() {
     badge,
     testId,
     external,
+    active: activeOverride,
   }: {
     href: string;
     paths?: string | string[];
@@ -117,16 +119,18 @@ export default function Sidebar() {
     badge?: boolean;
     testId?: string;
     external?: boolean;
+    active?: boolean;
   }) => {
     const matchPaths = paths ?? href;
-    const active = isActive(matchPaths);
+    const active = activeOverride !== undefined ? activeOverride : isActive(matchPaths);
+    const cls = `w-full text-left py-[9px] px-3 rounded-[8px] flex items-center gap-[10px] text-[13px] transition-colors mb-[2px] ${active ? 'sidebar-active-item' : 'hover:bg-gray-100 hover:text-gray-900'}`;
+    const sty = active
+      ? { backgroundColor: 'var(--purple-tint, #EEEDFE)', color: 'var(--purple, #3C258E)', fontWeight: 600, borderRadius: 8, position: 'relative' as const }
+      : { color: 'var(--gray-600, #4B5563)', fontWeight: 500 };
     if (external) {
       return (
         <a href={href} target="_blank" rel="noopener noreferrer" data-testid={testId}>
-          <button
-            className={navItemClass(matchPaths)}
-            style={{ ...navItemStyle(matchPaths), color: 'var(--theme-accent)' }}
-          >
+          <button className={cls} style={{ ...sty, color: 'var(--theme-accent)' }}>
             <Icon className="w-[15px] h-[15px] flex-shrink-0" />
             {label}
           </button>
@@ -135,11 +139,7 @@ export default function Sidebar() {
     }
     return (
       <Link href={href}>
-        <button
-          className={navItemClass(matchPaths)}
-          style={navItemStyle(matchPaths)}
-          data-testid={testId}
-        >
+        <button className={cls} style={sty} data-testid={testId}>
           <Icon className="w-[15px] h-[15px] flex-shrink-0" />
           {label}
           {badge && <span className="ml-auto h-2 w-2 rounded-full bg-red-500 flex-shrink-0" />}
@@ -212,8 +212,18 @@ export default function Sidebar() {
 
         {isContractor && (
           <>
-            <NavItem href="/contractor-dashboard" icon={LayoutDashboard} label="Dashboard" badge={hasNotif('dashboard')} testId="nav-dashboard" />
-            {!isTech && <NavItem href="/contractor-dashboard?tab=team" icon={Users} label="Manage Team" testId="nav-manage-team" />}
+            {(() => {
+              const tabParam = new URLSearchParams(search).get('tab');
+              const onDash = location === '/contractor-dashboard';
+              const isTeamActive = onDash && tabParam === 'team';
+              const isDashActive  = onDash && tabParam !== 'team';
+              return (
+                <>
+                  <NavItem href="/contractor-dashboard" icon={LayoutDashboard} label="Dashboard" badge={hasNotif('dashboard')} testId="nav-dashboard" active={isDashActive} />
+                  {!isTech && <NavItem href="/contractor-dashboard?tab=team" icon={Users} label="Manage Team" testId="nav-manage-team" active={isTeamActive} />}
+                </>
+              );
+            })()}
             <NavItem href="/messages" icon={MessageCircle} label="Messages" badge={hasNotif('messages')} testId="nav-messages" />
             {!isTech && <NavItem href="/crm" icon={Wrench} label="CRM" testId="nav-crm" />}
             {!isTech && <NavItem href="/contractor-referral" icon={Gift} label="Referral" testId="nav-referral" />}

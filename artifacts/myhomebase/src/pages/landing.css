@@ -2381,6 +2381,7 @@ html {
   letter-spacing: 0.1em;
   color: #a78bfa;
   margin: 0 0 16px;
+  text-align: center;
 }
 
 .mhb-quiz-eyebrow { color: #c4b5fd; }
@@ -2455,6 +2456,7 @@ html {
   line-height: 1.2;
   color: #1a0840;
   margin: 0 0 56px;
+  text-align: center;
 }
 
 .mhb-how-features {

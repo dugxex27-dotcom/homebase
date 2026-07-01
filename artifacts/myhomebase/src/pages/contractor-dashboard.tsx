@@ -46,6 +46,9 @@ import {
   Pencil,
   X,
   Clock,
+  Upload,
+  Loader2,
+  Building2,
 } from "lucide-react";
 import type { User as UserType, Proposal, ContractorAppointment } from "@shared/schema";
 import { Link, useLocation, useSearch } from "wouter";
@@ -74,6 +77,20 @@ interface TeamMember {
   inviteExpiresAt: string | null;
   createdAt: string | null;
   invoiceCount: number;
+  divisionId?: string | null;
+}
+
+interface Division {
+  id: string;
+  name: string;
+  managerId: string | null;
+  memberCount: number;
+  createdAt: string;
+}
+
+interface BulkImportError {
+  row: number;
+  error: string;
 }
 
 interface AdminInvoice {
@@ -557,6 +574,21 @@ export default function ContractorDashboard() {
   const [editEmail, setEditEmail] = useState('');
   const [editCompanyRole, setEditCompanyRole] = useState<'tech' | 'admin'>('tech');
 
+  // Phase 4 — invite role + division
+  const [inviteRole, setInviteRole] = useState<'tech' | 'admin' | 'manager' | 'dispatcher'>('tech');
+  const [inviteDivisionId, setInviteDivisionId] = useState('');
+  // Phase 4 — bulk import
+  const [bulkImportModalOpen, setBulkImportModalOpen] = useState(false);
+  const [bulkImportStep, setBulkImportStep] = useState<'upload' | 'processing' | 'results'>('upload');
+  const [bulkImportFile, setBulkImportFile] = useState<File | null>(null);
+  const [bulkImportResult, setBulkImportResult] = useState<{ successRows: number; failedRows: number; errors: BulkImportError[] } | null>(null);
+  const [bulkErrorsOpen, setBulkErrorsOpen] = useState(false);
+  // Phase 4 — divisions
+  const [newDivisionModalOpen, setNewDivisionModalOpen] = useState(false);
+  const [newDivisionName, setNewDivisionName] = useState('');
+  const [newDivisionManagerId, setNewDivisionManagerId] = useState('');
+  const [expandedDivisionId, setExpandedDivisionId] = useState<string | null>(null);
+
   const isAdminRole = (typedUser as any)?.companyRole === 'owner' || (typedUser as any)?.companyRole === 'admin';
   const isOwner = (typedUser as any)?.companyRole === 'owner';
 
@@ -589,12 +621,12 @@ export default function ContractorDashboard() {
   });
 
   const inviteMutation = useMutation({
-    mutationFn: async ({ email, firstName, lastName }: { email: string; firstName?: string; lastName?: string }) => {
+    mutationFn: async ({ email, firstName, lastName, role, divisionId }: { email: string; firstName?: string; lastName?: string; role?: string; divisionId?: string }) => {
       const res = await fetch('/api/contractor/invite-tech', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email, firstName: firstName || undefined, lastName: lastName || undefined }),
+        body: JSON.stringify({ email, firstName: firstName || undefined, lastName: lastName || undefined, role: role || 'tech', divisionId: divisionId || undefined }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to send invite');
@@ -617,6 +649,8 @@ export default function ContractorDashboard() {
     setInviteLastName('');
     setInviteResult(null);
     setCopiedInviteUrl(false);
+    setInviteRole('tech');
+    setInviteDivisionId('');
   };
 
   const copyInviteUrl = () => {
@@ -684,6 +718,87 @@ export default function ContractorDashboard() {
     },
   });
 
+  // Phase 4 — Divisions query
+  const { data: divisions = [], refetch: refetchDivisions } = useQuery<Division[]>({
+    queryKey: ['/api/contractor/divisions'],
+    queryFn: async () => {
+      const res = await fetch('/api/contractor/divisions', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch divisions');
+      return res.json();
+    },
+    enabled: isAdminRole && !!typedUser,
+  });
+
+  const createDivisionMutation = useMutation({
+    mutationFn: async ({ name, managerId }: { name: string; managerId?: string }) => {
+      const res = await fetch('/api/contractor/divisions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ name, managerId: managerId || undefined }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to create division');
+      return data;
+    },
+    onSuccess: () => {
+      refetchDivisions();
+      setNewDivisionModalOpen(false);
+      setNewDivisionName('');
+      setNewDivisionManagerId('');
+      toast({ title: "Division created" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const moveToDivisionMutation = useMutation({
+    mutationFn: async ({ memberId, divisionId }: { memberId: string; divisionId: string | null }) => {
+      const res = await fetch(`/api/contractor/divisions/${divisionId ?? 'none'}/members`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ userId: memberId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to move member');
+      return data;
+    },
+    onSuccess: () => {
+      refetchTeam();
+      refetchDivisions();
+      toast({ title: "Member moved" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const bulkImportMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/contractor/bulk-import/invite', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Bulk import failed');
+      return data as { successRows: number; failedRows: number; errors: BulkImportError[] };
+    },
+    onSuccess: (data) => {
+      refetchTeam();
+      setBulkImportStep('results');
+      setBulkImportResult(data);
+    },
+    onError: (err: Error) => {
+      setBulkImportStep('upload');
+      toast({ title: "Import failed", description: err.message, variant: "destructive" });
+    },
+  });
+
   const startEditing = (member: TeamMember) => {
     setEditingMemberId(member.id);
     setEditFirstName(member.firstName ?? '');
@@ -693,7 +808,7 @@ export default function ContractorDashboard() {
   };
 
 
-  const { needsSubscription, isInTrial, isLoading: subscriptionLoading } = useContractorSubscription();
+  const { needsSubscription, isInTrial, isLoading: subscriptionLoading, hasDivisions, hasBulkImport, seatInfo } = useContractorSubscription();
   
   const form = useForm<ProposalFormData>({
     resolver: zodResolver(proposalFormSchema),
@@ -982,37 +1097,99 @@ export default function ContractorDashboard() {
       {/* ── Team tab ── */}
       {isAdminRole && activeTab === 'team' && (
         <div className="dash-body">
-          {/* Seat usage bar */}
+          {/* 4.1 — Role-Breakdown Seat Gauge */}
           <div className="dash-light-card" style={{ marginBottom: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#0C3460' }}>
-                {teamData?.techCount ?? 0} of {teamData?.maxTechSeats ?? 3} tech seats used
-                {(teamData?.adminCount ?? 0) > 0 && (
-                  <span style={{ fontWeight: 400, color: '#64748b', marginLeft: 8 }}>
-                    · {teamData!.adminCount} {teamData!.adminCount === 1 ? 'admin' : 'admins'}
-                  </span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#0C3460' }}>Team Seats</span>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {hasBulkImport && (
+                  <button
+                    onClick={() => { setBulkImportStep('upload'); setBulkImportFile(null); setBulkImportResult(null); setBulkErrorsOpen(false); setBulkImportModalOpen(true); }}
+                    style={{ background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}
+                  >
+                    <Upload size={13} /> Bulk import
+                  </button>
                 )}
-              </span>
-              <button
-                onClick={() => setInviteModalOpen(true)}
-                title={(teamData?.techCount ?? 0) >= (teamData?.maxTechSeats ?? 3) ? `Seat limit (${teamData?.maxTechSeats ?? 3}) reached. Contact support to add more.` : undefined}
-                disabled={(teamData?.techCount ?? 0) >= (teamData?.maxTechSeats ?? 3) || inviteMutation.isPending}
-                style={{
-                  background: (teamData?.techCount ?? 0) >= (teamData?.maxTechSeats ?? 3) ? '#e2e8f0' : '#1560A2',
-                  color: (teamData?.techCount ?? 0) >= (teamData?.maxTechSeats ?? 3) ? '#94a3b8' : '#fff',
-                  border: 'none', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 600,
-                  cursor: (teamData?.techCount ?? 0) >= (teamData?.maxTechSeats ?? 3) ? 'not-allowed' : 'pointer',
-                }}
-              >
-                + Invite Technician
-              </button>
+                <button
+                  onClick={() => setInviteModalOpen(true)}
+                  style={{ background: '#1560A2', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                >
+                  + Invite Member
+                </button>
+              </div>
             </div>
-            <div style={{ background: '#e2e8f0', borderRadius: 6, height: 6, overflow: 'hidden' }}>
-              <div style={{
-                width: `${Math.min(100, ((teamData?.techCount ?? 0) / (teamData?.maxTechSeats ?? 3)) * 100)}%`,
-                height: 6, borderRadius: 6, background: '#1560A2', transition: 'width 0.4s'
-              }} />
-            </div>
+
+            {/* Techs bar — teal, always shown */}
+            {(() => {
+              const used = seatInfo.currentTechCount || teamData?.techCount || 0;
+              const max = seatInfo.maxTechSeats ?? teamData?.maxTechSeats ?? 3;
+              const pct = max > 0 ? Math.min(100, (used / max) * 100) : 0;
+              return (
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#0e7490' }}>Field Techs</span>
+                    <span style={{ fontSize: 11, color: '#64748b' }}>{used} of {max} seats</span>
+                  </div>
+                  <div style={{ background: '#e2e8f0', borderRadius: 6, height: 6, overflow: 'hidden' }}>
+                    <div style={{ width: `${pct}%`, height: 6, borderRadius: 6, background: '#0891b2', transition: 'width 0.4s' }} />
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Admins bar — purple, always shown for Pro+ */}
+            {(() => {
+              const used = seatInfo.currentAdminCount || teamData?.adminCount || 0;
+              const max = seatInfo.maxAdminSeats;
+              const pct = max != null && max > 0 ? Math.min(100, (used / max) * 100) : used > 0 ? 100 : 0;
+              return (
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#7c3aed' }}>Admins</span>
+                    <span style={{ fontSize: 11, color: '#64748b' }}>{used}{max != null ? ` of ${max} seats` : ''}</span>
+                  </div>
+                  <div style={{ background: '#e2e8f0', borderRadius: 6, height: 6, overflow: 'hidden' }}>
+                    <div style={{ width: `${Math.min(100, pct)}%`, height: 6, borderRadius: 6, background: '#7c3aed', transition: 'width 0.4s' }} />
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Managers bar — coral, only if maxManagerSeats > 0 */}
+            {seatInfo.maxManagerSeats != null && seatInfo.maxManagerSeats > 0 && (() => {
+              const used = teamData?.teamMembers.filter(m => m.companyRole === 'manager' && m.status !== 'removed').length ?? 0;
+              const max = seatInfo.maxManagerSeats!;
+              const pct = max > 0 ? Math.min(100, (used / max) * 100) : 0;
+              return (
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#e11d48' }}>Managers</span>
+                    <span style={{ fontSize: 11, color: '#64748b' }}>{used} of {max} seats</span>
+                  </div>
+                  <div style={{ background: '#e2e8f0', borderRadius: 6, height: 6, overflow: 'hidden' }}>
+                    <div style={{ width: `${pct}%`, height: 6, borderRadius: 6, background: '#f43f5e', transition: 'width 0.4s' }} />
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Dispatchers bar — amber, only if maxDispatcherSeats > 0 */}
+            {seatInfo.maxDispatcherSeats != null && seatInfo.maxDispatcherSeats > 0 && (() => {
+              const used = teamData?.teamMembers.filter(m => m.companyRole === 'dispatcher' && m.status !== 'removed').length ?? 0;
+              const max = seatInfo.maxDispatcherSeats!;
+              const pct = max > 0 ? Math.min(100, (used / max) * 100) : 0;
+              return (
+                <div style={{ marginBottom: 4 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#d97706' }}>Dispatchers</span>
+                    <span style={{ fontSize: 11, color: '#64748b' }}>{used} of {max} seats</span>
+                  </div>
+                  <div style={{ background: '#e2e8f0', borderRadius: 6, height: 6, overflow: 'hidden' }}>
+                    <div style={{ width: `${pct}%`, height: 6, borderRadius: 6, background: '#f59e0b', transition: 'width 0.4s' }} />
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           <input
@@ -1095,11 +1272,20 @@ export default function ContractorDashboard() {
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
                         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                          <span style={{
-                            fontSize: 10, fontWeight: 700, textTransform: 'uppercase', borderRadius: 5, padding: '2px 8px',
-                            background: isAdmin ? '#ede9fe' : '#f1f5f9',
-                            color: isAdmin ? '#7c3aed' : '#475569',
-                          }}>{isAdmin ? 'Admin' : 'Tech'}</span>
+                          {(() => {
+                            const role = member.companyRole ?? 'tech';
+                            const roleStyles: Record<string, { bg: string; color: string; label: string }> = {
+                              admin:      { bg: '#ede9fe', color: '#7c3aed', label: 'Admin' },
+                              owner:      { bg: '#ede9fe', color: '#7c3aed', label: 'Owner' },
+                              manager:    { bg: '#fff1f2', color: '#e11d48', label: 'Manager' },
+                              dispatcher: { bg: '#fffbeb', color: '#d97706', label: 'Dispatcher' },
+                              tech:       { bg: '#f0f9ff', color: '#0e7490', label: 'Tech' },
+                            };
+                            const s = roleStyles[role] ?? roleStyles.tech;
+                            return (
+                              <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', borderRadius: 5, padding: '2px 8px', background: s.bg, color: s.color }}>{s.label}</span>
+                            );
+                          })()}
                           <span style={{
                             fontSize: 10, fontWeight: 700, textTransform: 'uppercase', borderRadius: 5, padding: '2px 8px',
                             background: isSuspended ? '#fee2e2' : isPending ? '#fef3c7' : '#f0faf4',
@@ -1270,6 +1456,223 @@ export default function ContractorDashboard() {
             </div>
           )}
 
+          {/* 4.3 — Divisions sub-section (Business / Enterprise only) */}
+          {hasDivisions && (
+            <div style={{ marginTop: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#0C3460', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Building2 size={15} style={{ color: '#1560A2' }} /> Divisions
+                  <span style={{ fontSize: 11, fontWeight: 400, color: '#94a3b8' }}>({divisions.length})</span>
+                </span>
+                {isOwner && (
+                  <button
+                    onClick={() => setNewDivisionModalOpen(true)}
+                    style={{ background: '#eff6ff', color: '#1560A2', border: '1px solid #bfdbfe', borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    + New Division
+                  </button>
+                )}
+              </div>
+              {divisions.length === 0 ? (
+                <div className="dash-light-card" style={{ textAlign: 'center', padding: '18px 14px', color: '#94a3b8', fontSize: 13 }}>
+                  No divisions yet. Create one to organize your team.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {divisions.map(div => {
+                    const isExpanded = expandedDivisionId === div.id;
+                    const manager = teamData?.teamMembers.find(m => m.id === div.managerId);
+                    const managerName = manager ? ([manager.firstName, manager.lastName].filter(Boolean).join(' ') || manager.email || 'Unknown') : '—';
+                    const members = teamData?.teamMembers.filter(m => m.divisionId === div.id && m.status !== 'removed') ?? [];
+                    return (
+                      <div key={div.id} className="dash-light-card" style={{ padding: '10px 14px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <button
+                            onClick={() => setExpandedDivisionId(isExpanded ? null : div.id)}
+                            style={{ all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}
+                          >
+                            {isExpanded ? <ChevronDown size={14} style={{ color: '#64748b' }} /> : <ChevronRight size={14} style={{ color: '#64748b' }} />}
+                            <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{div.name}</span>
+                          </button>
+                          <span style={{ fontSize: 11, color: '#94a3b8' }}>{div.memberCount} member{div.memberCount !== 1 ? 's' : ''}</span>
+                          {div.managerId && (
+                            <span style={{ fontSize: 11, color: '#64748b', background: '#f1f5f9', borderRadius: 5, padding: '1px 7px' }}>Manager: {managerName}</span>
+                          )}
+                        </div>
+                        {isExpanded && (
+                          <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #f1f5f9' }}>
+                            {members.length === 0 ? (
+                              <div style={{ fontSize: 12, color: '#94a3b8', padding: '4px 0' }}>No members in this division.</div>
+                            ) : (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                {members.map(m => {
+                                  const mName = [m.firstName, m.lastName].filter(Boolean).join(' ') || m.email || 'Unknown';
+                                  return (
+                                    <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                                      <span style={{ flex: 1, color: '#111827', fontWeight: 500 }}>{mName}</span>
+                                      <select
+                                        value={m.divisionId ?? ''}
+                                        onChange={e => moveToDivisionMutation.mutate({ memberId: m.id, divisionId: e.target.value || null })}
+                                        disabled={moveToDivisionMutation.isPending}
+                                        style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: 11, background: '#fff', outline: 'none' }}
+                                      >
+                                        <option value="">No division</option>
+                                        {divisions.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                      </select>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 4.3 — New Division modal */}
+          {newDivisionModalOpen && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+              <div style={{ background: '#fff', borderRadius: 16, padding: 24, width: '100%', maxWidth: 380 }}>
+                <div style={{ fontWeight: 700, fontSize: 16, color: '#0C3460', marginBottom: 14 }}>New Division</div>
+                <div style={{ marginBottom: 10 }}>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Division Name <span style={{ color: '#dc2626' }}>*</span></label>
+                  <input
+                    type="text"
+                    placeholder="e.g. North Bay, Roofing Crew"
+                    value={newDivisionName}
+                    onChange={e => setNewDivisionName(e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, boxSizing: 'border-box', outline: 'none' }}
+                  />
+                </div>
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Manager (optional)</label>
+                  <select
+                    value={newDivisionManagerId}
+                    onChange={e => setNewDivisionManagerId(e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+                  >
+                    <option value="">No manager</option>
+                    {teamData?.teamMembers
+                      .filter(m => (m.companyRole === 'manager' || m.companyRole === 'admin') && m.status !== 'removed')
+                      .map(m => (
+                        <option key={m.id} value={m.id}>{[m.firstName, m.lastName].filter(Boolean).join(' ') || m.email}</option>
+                      ))}
+                  </select>
+                </div>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                  <button onClick={() => { setNewDivisionModalOpen(false); setNewDivisionName(''); setNewDivisionManagerId(''); }} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer', fontSize: 13 }}>Cancel</button>
+                  <button
+                    onClick={() => createDivisionMutation.mutate({ name: newDivisionName.trim(), managerId: newDivisionManagerId || undefined })}
+                    disabled={!newDivisionName.trim() || createDivisionMutation.isPending}
+                    style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#1560A2', color: '#fff', fontSize: 13, fontWeight: 600, cursor: newDivisionName.trim() ? 'pointer' : 'not-allowed', opacity: newDivisionName.trim() ? 1 : 0.6 }}
+                  >{createDivisionMutation.isPending ? 'Creating…' : 'Create Division'}</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 4.4 — Bulk Import modal */}
+          {bulkImportModalOpen && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+              <div style={{ background: '#fff', borderRadius: 16, padding: 24, width: '100%', maxWidth: 460 }}>
+                {bulkImportStep === 'upload' && (
+                  <>
+                    <div style={{ fontWeight: 700, fontSize: 16, color: '#0C3460', marginBottom: 4 }}>Bulk Import Team Members</div>
+                    <div style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>Upload a CSV file with email, first name, last name, and role. Each row creates one invite.</div>
+                    <div style={{ marginBottom: 14 }}>
+                      <a
+                        href="/api/contractor/bulk-import/template"
+                        download="team-import-template.csv"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1px solid #1560A2', color: '#1560A2', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}
+                      >
+                        <Upload size={14} /> Download CSV template
+                      </a>
+                    </div>
+                    <label style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                      gap: 8, padding: '28px 16px', borderRadius: 12, border: '2px dashed #93c5fd',
+                      background: bulkImportFile ? '#eff6ff' : '#f8fafc', cursor: 'pointer', marginBottom: 16,
+                    }}>
+                      <Upload size={24} style={{ color: '#1560A2' }} />
+                      <span style={{ fontSize: 13, color: '#1560A2', fontWeight: 600 }}>
+                        {bulkImportFile ? bulkImportFile.name : 'Click or drag to upload CSV'}
+                      </span>
+                      {bulkImportFile && <span style={{ fontSize: 11, color: '#64748b' }}>{(bulkImportFile.size / 1024).toFixed(1)} KB</span>}
+                      <input
+                        type="file"
+                        accept=".csv"
+                        style={{ display: 'none' }}
+                        onChange={e => { const f = e.target.files?.[0]; if (f) setBulkImportFile(f); }}
+                      />
+                    </label>
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                      <button onClick={() => setBulkImportModalOpen(false)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer', fontSize: 13 }}>Cancel</button>
+                      <button
+                        onClick={() => { if (bulkImportFile) { setBulkImportStep('processing'); bulkImportMutation.mutate(bulkImportFile); } }}
+                        disabled={!bulkImportFile || bulkImportMutation.isPending}
+                        style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#1560A2', color: '#fff', fontSize: 13, fontWeight: 600, cursor: bulkImportFile ? 'pointer' : 'not-allowed', opacity: bulkImportFile ? 1 : 0.6 }}
+                      >Import</button>
+                    </div>
+                  </>
+                )}
+                {bulkImportStep === 'processing' && (
+                  <div style={{ textAlign: 'center', padding: '32px 16px' }}>
+                    <Loader2 size={36} style={{ color: '#1560A2', margin: '0 auto 12px', animation: 'spin 1s linear infinite', display: 'block' }} />
+                    <div style={{ fontSize: 15, fontWeight: 600, color: '#0C3460' }}>Sending invites…</div>
+                    <div style={{ fontSize: 13, color: '#64748b', marginTop: 6 }}>Please wait while we process your CSV.</div>
+                  </div>
+                )}
+                {bulkImportStep === 'results' && bulkImportResult && (
+                  <>
+                    <div style={{ fontWeight: 700, fontSize: 16, color: '#0C3460', marginBottom: 12 }}>Import Complete</div>
+                    <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+                      <div style={{ flex: 1, textAlign: 'center', padding: '14px 10px', borderRadius: 10, background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                        <div style={{ fontSize: 24, fontWeight: 800, color: '#16a34a' }}>{bulkImportResult.successRows}</div>
+                        <div style={{ fontSize: 12, color: '#15803d', marginTop: 2 }}>invites sent</div>
+                      </div>
+                      <div style={{ flex: 1, textAlign: 'center', padding: '14px 10px', borderRadius: 10, background: bulkImportResult.failedRows > 0 ? '#fef2f2' : '#f8fafc', border: `1px solid ${bulkImportResult.failedRows > 0 ? '#fecaca' : '#e2e8f0'}` }}>
+                        <div style={{ fontSize: 24, fontWeight: 800, color: bulkImportResult.failedRows > 0 ? '#dc2626' : '#94a3b8' }}>{bulkImportResult.failedRows}</div>
+                        <div style={{ fontSize: 12, color: bulkImportResult.failedRows > 0 ? '#b91c1c' : '#94a3b8', marginTop: 2 }}>failed</div>
+                      </div>
+                    </div>
+                    {bulkImportResult.errors.length > 0 && (
+                      <div style={{ marginBottom: 16 }}>
+                        <button
+                          onClick={() => setBulkErrorsOpen(o => !o)}
+                          style={{ all: 'unset', cursor: 'pointer', fontSize: 12, color: '#1560A2', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}
+                        >
+                          {bulkErrorsOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                          {bulkErrorsOpen ? 'Hide' : 'Show'} error details ({bulkImportResult.errors.length})
+                        </button>
+                        {bulkErrorsOpen && (
+                          <div style={{ border: '1px solid #fecaca', borderRadius: 8, overflow: 'hidden' }}>
+                            <div style={{ background: '#fef2f2', padding: '6px 12px', borderBottom: '1px solid #fecaca', display: 'grid', gridTemplateColumns: '60px 1fr', gap: 8, fontSize: 11, fontWeight: 700, color: '#9f1239' }}>
+                              <span>Row</span><span>Error</span>
+                            </div>
+                            {bulkImportResult.errors.map((err, i) => (
+                              <div key={i} style={{ padding: '6px 12px', display: 'grid', gridTemplateColumns: '60px 1fr', gap: 8, fontSize: 12, borderBottom: i < bulkImportResult.errors.length - 1 ? '1px solid #fee2e2' : 'none', background: '#fff' }}>
+                                <span style={{ color: '#64748b', fontWeight: 600 }}>#{err.row}</span>
+                                <span style={{ color: '#dc2626' }}>{err.error}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <button onClick={() => setBulkImportModalOpen(false)} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#1560A2', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Done</button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Suspend team member confirm dialog */}
           <ConfirmDialog
             open={!!pendingSuspendMember}
@@ -1365,7 +1768,7 @@ export default function ContractorDashboard() {
                   </>
                 ) : (
                   <>
-                    <div style={{ fontWeight: 700, fontSize: 16, color: '#0C3460', marginBottom: 4 }}>Invite Field Technician</div>
+                    <div style={{ fontWeight: 700, fontSize: 16, color: '#0C3460', marginBottom: 4 }}>Invite Team Member</div>
                     <div style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>They'll receive an email with a link to set up their account. Invite links expire in 7 days.</div>
                     <div style={{ marginBottom: 10 }}>
                       <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
@@ -1373,13 +1776,13 @@ export default function ContractorDashboard() {
                       </label>
                       <input
                         type="email"
-                        placeholder="tech@example.com"
+                        placeholder="member@example.com"
                         value={inviteEmail}
                         onChange={e => setInviteEmail(e.target.value)}
                         style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, boxSizing: 'border-box', outline: 'none' }}
                       />
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
                       <div>
                         <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>First Name</label>
                         <input
@@ -1401,12 +1804,83 @@ export default function ContractorDashboard() {
                         />
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+
+                    {/* 4.2 — Role dropdown */}
+                    <div style={{ marginBottom: 10 }}>
+                      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Role</label>
+                      <select
+                        value={inviteRole}
+                        onChange={e => { setInviteRole(e.target.value as typeof inviteRole); setInviteDivisionId(''); }}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+                      >
+                        <option value="tech">Field Tech</option>
+                        <option value="admin">Admin</option>
+                        {(seatInfo.maxManagerSeats ?? 0) > 0 && <option value="manager">Manager</option>}
+                        {(seatInfo.maxDispatcherSeats ?? 0) > 0 && <option value="dispatcher">Dispatcher</option>}
+                      </select>
+                      {/* Live seat usage label */}
+                      {(() => {
+                        const roleInfo: Record<string, { used: number; max: number | null; label: string; upgradeMsg: string }> = {
+                          tech: { used: seatInfo.currentTechCount || teamData?.techCount || 0, max: seatInfo.maxTechSeats ?? teamData?.maxTechSeats ?? null, label: 'Tech', upgradeMsg: 'Contact support to add more tech seats.' },
+                          admin: { used: seatInfo.currentAdminCount || teamData?.adminCount || 0, max: seatInfo.maxAdminSeats, label: 'Admin', upgradeMsg: 'Upgrade to add more admin seats.' },
+                          manager: { used: teamData?.teamMembers.filter(m => m.companyRole === 'manager' && m.status !== 'removed').length ?? 0, max: seatInfo.maxManagerSeats, label: 'Manager', upgradeMsg: 'Upgrade to Business to add more managers.' },
+                          dispatcher: { used: teamData?.teamMembers.filter(m => m.companyRole === 'dispatcher' && m.status !== 'removed').length ?? 0, max: seatInfo.maxDispatcherSeats, label: 'Dispatcher', upgradeMsg: 'Upgrade to Business to add more dispatchers.' },
+                        };
+                        const info = roleInfo[inviteRole];
+                        const atLimit = info.max != null && info.used >= info.max;
+                        return (
+                          <div style={{ marginTop: 5 }}>
+                            {info.max != null && (
+                              <div style={{ fontSize: 11, color: atLimit ? '#dc2626' : '#64748b' }}>
+                                {info.used} of {info.max} {info.label} seats used
+                              </div>
+                            )}
+                            {atLimit && (
+                              <div style={{ marginTop: 6, padding: '8px 12px', background: '#fef3c7', borderRadius: 8, border: '1px solid #fcd34d', fontSize: 12, color: '#92400e' }}>
+                                ⚠ Seat limit reached. {info.upgradeMsg}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                    {/* 4.2 — Division dropdown (Manager / Dispatcher only) */}
+                    {(inviteRole === 'manager' || inviteRole === 'dispatcher') && divisions.length > 0 && (
+                      <div style={{ marginBottom: 10 }}>
+                        <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Division (optional)</label>
+                        <select
+                          value={inviteDivisionId}
+                          onChange={e => setInviteDivisionId(e.target.value)}
+                          style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+                        >
+                          <option value="">No division</option>
+                          {divisions.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                        </select>
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
                       <button onClick={resetInviteModal} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer', fontSize: 13 }}>Cancel</button>
                       <button
-                        onClick={() => inviteMutation.mutate({ email: inviteEmail, firstName: inviteFirstName, lastName: inviteLastName })}
-                        disabled={!inviteEmail.includes('@') || inviteMutation.isPending}
-                        style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#1560A2', color: '#fff', cursor: inviteEmail.includes('@') ? 'pointer' : 'not-allowed', opacity: inviteEmail.includes('@') ? 1 : 0.6, fontSize: 13, fontWeight: 600 }}
+                        onClick={() => inviteMutation.mutate({ email: inviteEmail, firstName: inviteFirstName, lastName: inviteLastName, role: inviteRole, divisionId: inviteDivisionId || undefined })}
+                        disabled={!inviteEmail.includes('@') || inviteMutation.isPending || (() => {
+                          const roleMaxMap: Record<string, number | null | undefined> = {
+                            tech: seatInfo.maxTechSeats ?? teamData?.maxTechSeats,
+                            admin: seatInfo.maxAdminSeats,
+                            manager: seatInfo.maxManagerSeats,
+                            dispatcher: seatInfo.maxDispatcherSeats,
+                          };
+                          const roleUsedMap: Record<string, number> = {
+                            tech: seatInfo.currentTechCount || teamData?.techCount || 0,
+                            admin: seatInfo.currentAdminCount || teamData?.adminCount || 0,
+                            manager: teamData?.teamMembers.filter(m => m.companyRole === 'manager' && m.status !== 'removed').length ?? 0,
+                            dispatcher: teamData?.teamMembers.filter(m => m.companyRole === 'dispatcher' && m.status !== 'removed').length ?? 0,
+                          };
+                          const max = roleMaxMap[inviteRole];
+                          return max != null && roleUsedMap[inviteRole] >= max;
+                        })()}
+                        style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#1560A2', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: (!inviteEmail.includes('@') || inviteMutation.isPending) ? 0.6 : 1 }}
                       >{inviteMutation.isPending ? 'Sending…' : 'Send Invite'}</button>
                     </div>
                   </>

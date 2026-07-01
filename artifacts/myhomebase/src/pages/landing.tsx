@@ -76,6 +76,13 @@ export default function Landing() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(result),
+      }).then(async (r) => {
+        if (r.ok) {
+          const record = await r.json();
+          if (record?.id) {
+            localStorage.setItem('mhb_quiz_result_id', record.id);
+          }
+        }
       }).catch(() => {});
     }
     window.addEventListener('message', handleQuizMessage);
@@ -792,7 +799,7 @@ export default function Landing() {
         <div className="mhb-hero-content">
           {/* Insurance stat: deploy mid-page or below the fold as a secondary proof point */}
           {/* <p className="mhb-hero-eyebrow">42% of home insurance claims get denied.</p> */}
-          <h1 className="mhb-hero-h1">Finally. A system that runs your home so you don't have to.</h1>
+          <h1 className="mhb-hero-h1">Your home has been keeping score. Have you?</h1>
           <p className="mhb-hero-sub">
             Homeownership is a full-time job nobody trained you for. MyHomeBase™ tells you exactly what your home needs, when to do it, and who to call — so nothing falls through the cracks.
           </p>
@@ -804,33 +811,6 @@ export default function Landing() {
               See how it works ↓
             </button>
           </div>
-        </div>
-      </section>
-      {/* ═══════════════════════════════════════
-          SECTION 03 — STAT TILES
-      ═══════════════════════════════════════ */}
-      <section className="mhb-stats-section">
-        <div className="mhb-stats-grid">
-          <button className="mhb-stat-tile" onClick={() => setDeniedOpen(true)} aria-label="Claims denied nationally">
-            <div className="mhb-stat-tile-num">42%</div>
-            <div className="mhb-stat-tile-label">Claims denied nationally</div>
-            <div className="mhb-stat-tile-hint"><Info size={12} strokeWidth={2.5} /> Tap to learn more</div>
-          </button>
-          <button className="mhb-stat-tile" onClick={() => setCostOpen(true)} aria-label="Average denied claim cost">
-            <div className="mhb-stat-tile-num">$18K</div>
-            <div className="mhb-stat-tile-label">Average denied claim cost</div>
-            <div className="mhb-stat-tile-hint"><Info size={12} strokeWidth={2.5} /> Tap to learn more</div>
-          </button>
-          <button className="mhb-stat-tile mhb-stat-tile-accent" onClick={() => setPlansOpen(true)} aria-label="View pricing plans">
-            <div className="mhb-stat-tile-num">$5<span className="mhb-stat-tile-per">/mo</span></div>
-            <div className="mhb-stat-tile-label">Full protection</div>
-            <div className="mhb-stat-tile-hint"><Info size={12} strokeWidth={2.5} /> See plans</div>
-          </button>
-          <button className="mhb-stat-tile mhb-stat-tile-green" onClick={() => setReferralOpen(true)} aria-label="Referral program">
-            <div className="mhb-stat-tile-num mhb-stat-tile-refer">Refer 5.</div>
-            <div className="mhb-stat-tile-label">Free for life</div>
-            <div className="mhb-stat-tile-hint"><Info size={12} strokeWidth={2.5} /> How it works</div>
-          </button>
         </div>
       </section>
       {/* ═══════════════════════════════════════
@@ -860,8 +840,8 @@ export default function Landing() {
       ═══════════════════════════════════════ */}
       <section id="how-it-works" className="mhb-how-section">
         <div className="mhb-how-inner">
-          <p className="mhb-section-eyebrow">How MyHomeBase™ works</p>
-          <h2 className="mhb-section-heading">Your home, documented.<br />Your claims, protected.</h2>
+          <p className="mhb-section-eyebrow">WHAT YOU GET</p>
+          <h2 className="mhb-section-heading">Your Home Simplified</h2>
 
           <div className="mhb-how-features">
 
@@ -1026,6 +1006,33 @@ export default function Landing() {
             </div>
 
           </div>
+        </div>
+      </section>
+      {/* ═══════════════════════════════════════
+          SECTION 03 — STAT TILES
+      ═══════════════════════════════════════ */}
+      <section className="mhb-stats-section">
+        <div className="mhb-stats-grid">
+          <button className="mhb-stat-tile" onClick={() => setDeniedOpen(true)} aria-label="Claims denied nationally">
+            <div className="mhb-stat-tile-num">42%</div>
+            <div className="mhb-stat-tile-label">Claims denied nationally</div>
+            <div className="mhb-stat-tile-hint"><Info size={12} strokeWidth={2.5} /> Tap to learn more</div>
+          </button>
+          <button className="mhb-stat-tile" onClick={() => setCostOpen(true)} aria-label="Average denied claim cost">
+            <div className="mhb-stat-tile-num">$18K</div>
+            <div className="mhb-stat-tile-label">Average denied claim cost</div>
+            <div className="mhb-stat-tile-hint"><Info size={12} strokeWidth={2.5} /> Tap to learn more</div>
+          </button>
+          <button className="mhb-stat-tile mhb-stat-tile-accent" onClick={() => setPlansOpen(true)} aria-label="View pricing plans">
+            <div className="mhb-stat-tile-num">$5<span className="mhb-stat-tile-per">/mo</span></div>
+            <div className="mhb-stat-tile-label">Full protection</div>
+            <div className="mhb-stat-tile-hint"><Info size={12} strokeWidth={2.5} /> See plans</div>
+          </button>
+          <button className="mhb-stat-tile mhb-stat-tile-green" onClick={() => setReferralOpen(true)} aria-label="Referral program">
+            <div className="mhb-stat-tile-num mhb-stat-tile-refer">Refer 5.</div>
+            <div className="mhb-stat-tile-label">Free for life</div>
+            <div className="mhb-stat-tile-hint"><Info size={12} strokeWidth={2.5} /> How it works</div>
+          </button>
         </div>
       </section>
       {/* ═══════════════════════════════════════

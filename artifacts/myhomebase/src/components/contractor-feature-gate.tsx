@@ -1,18 +1,21 @@
+import { useState } from "react";
 import { useContractorSubscription } from "@/hooks/useContractorSubscription";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Lock, Sparkles, Check, Users, Calendar, FileText, CreditCard, Download, BarChart3, Clock, AlertTriangle } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Lock, Sparkles, Check, Users, Calendar, FileText, CreditCard, Download, BarChart3, Clock, AlertTriangle, Mail } from "lucide-react";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
+import { isNativePlatform } from "@/lib/nativeBrowser";
 
 interface ContractorFeatureGateProps {
   children: React.ReactNode;
-  feature: 'crm' | 'clients' | 'jobs' | 'quotes' | 'invoices' | 'payments' | 'team' | 'imports' | 'analytics';
+  feature: 'crm' | 'clients' | 'jobs' | 'quotes' | 'invoices' | 'payments' | 'team' | 'imports' | 'analytics' | 'divisions' | 'bulk_import' | 'sso' | 'api_access';
   fallback?: React.ReactNode;
 }
 
-const featureLabels: Record<string, { label: string; icon: React.ReactNode; description: string }> = {
+const featureLabels: Record<string, { label: string; icon: React.ReactNode; description: string; upgradeTier?: string }> = {
   crm: { label: 'CRM Features', icon: <Users className="h-5 w-5" />, description: 'Full customer relationship management' },
   clients: { label: 'Client Management', icon: <Users className="h-5 w-5" />, description: 'Manage your customer database' },
   jobs: { label: 'Job Scheduling', icon: <Calendar className="h-5 w-5" />, description: 'Schedule and track jobs' },
@@ -22,21 +25,103 @@ const featureLabels: Record<string, { label: string; icon: React.ReactNode; desc
   team: { label: 'Team Management', icon: <Users className="h-5 w-5" />, description: 'Manage your team members' },
   imports: { label: 'Data Import', icon: <Download className="h-5 w-5" />, description: 'Import from other CRMs' },
   analytics: { label: 'Business Analytics', icon: <BarChart3 className="h-5 w-5" />, description: 'Detailed business insights' },
+  divisions: { label: 'Division Management', icon: <Users className="h-5 w-5" />, description: 'Organize your team into divisions', upgradeTier: 'Business' },
+  bulk_import: { label: 'Bulk Import', icon: <Download className="h-5 w-5" />, description: 'Bulk import team members via CSV', upgradeTier: 'Business' },
+  sso: { label: 'Single Sign-On', icon: <Lock className="h-5 w-5" />, description: 'SSO is available on Enterprise. Contact sales to upgrade.', upgradeTier: 'Enterprise' },
+  api_access: { label: 'API Access', icon: <BarChart3 className="h-5 w-5" />, description: 'Programmatic API access for integrations', upgradeTier: 'Enterprise' },
 };
 
+export function EnterpriseContactModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-xl">Interested in Enterprise?</DialogTitle>
+          <DialogDescription>
+            Get unlimited seats, SSO, API access, and a dedicated customer success manager.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2 py-2">
+          {[
+            'Unlimited team members',
+            'SSO / SAML integration',
+            'API access for integrations',
+            'Dedicated customer success manager',
+            'Custom onboarding & SLA support',
+          ].map(f => (
+            <div key={f} className="flex items-center gap-2 text-sm">
+              <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
+              {f}
+            </div>
+          ))}
+        </div>
+        <DialogFooter className="flex-col gap-2 sm:flex-col">
+          <a
+            href="mailto:Doug@gotohomebase.com?subject=Enterprise+Plan+Inquiry"
+            className="inline-flex items-center justify-center gap-2 w-full px-4 py-2 rounded-md text-sm font-semibold text-white"
+            style={{ background: 'linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)' }}
+          >
+            <Mail className="h-4 w-4" />
+            Email Doug@gotohomebase.com
+          </a>
+          <Button variant="ghost" className="w-full" onClick={onClose}>Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function ContractorFeatureGate({ children, feature, fallback }: ContractorFeatureGateProps) {
-  const { hasCrmAccess, isLoading } = useContractorSubscription();
+  const { hasCrmAccess, hasDivisions, hasBulkImport, hasSSO, hasApiAccess, isLoading } = useContractorSubscription();
+  const [enterpriseOpen, setEnterpriseOpen] = useState(false);
 
   if (isLoading) {
     return <div className="animate-pulse bg-muted h-32 rounded-lg" />;
   }
 
-  if (hasCrmAccess) {
+  const hasAccess = (() => {
+    switch (feature) {
+      case 'divisions': return hasDivisions;
+      case 'bulk_import': return hasBulkImport;
+      case 'sso': return hasSSO;
+      case 'api_access': return hasApiAccess;
+      default: return hasCrmAccess;
+    }
+  })();
+
+  if (hasAccess) {
     return <>{children}</>;
   }
 
   if (fallback) {
     return <>{fallback}</>;
+  }
+
+  // Enterprise-tier features use the contact modal instead of a self-serve upgrade
+  if (feature === 'sso' || feature === 'api_access') {
+    const featureInfo = featureLabels[feature];
+    return (
+      <>
+        <EnterpriseContactModal open={enterpriseOpen} onClose={() => setEnterpriseOpen(false)} />
+        <Card className="border-2 border-dashed" style={{ borderColor: 'var(--theme-border)', background: 'var(--theme-fill)' }}>
+          <CardHeader className="text-center pb-2">
+            <div className="mx-auto mb-3 p-3 rounded-full w-fit" style={{ background: 'var(--theme-fill)' }}>
+              <Lock className="h-6 w-6" style={{ color: 'var(--theme-accent)' }} />
+            </div>
+            <CardTitle className="text-lg">{featureInfo.label}</CardTitle>
+            <CardDescription>Available on the Enterprise plan.</CardDescription>
+          </CardHeader>
+          <CardContent className="text-center">
+            <Button
+              onClick={() => setEnterpriseOpen(true)}
+              style={{ background: 'linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)' }}
+            >
+              Contact Enterprise Sales →
+            </Button>
+          </CardContent>
+        </Card>
+      </>
+    );
   }
 
   return <ContractorUpgradePrompt feature={feature} />;
@@ -49,6 +134,7 @@ interface ContractorUpgradePromptProps {
 function ContractorUpgradePrompt({ feature }: ContractorUpgradePromptProps) {
   const [, setLocation] = useLocation();
   const featureInfo = featureLabels[feature] || { label: feature, icon: <Lock className="h-5 w-5" />, description: '' };
+  const tier = featureInfo.upgradeTier ?? 'Pro';
 
   return (
     <Card className="border-2 border-dashed" style={{ borderColor: 'var(--theme-border)', background: 'var(--theme-fill)' }}>
@@ -56,16 +142,16 @@ function ContractorUpgradePrompt({ feature }: ContractorUpgradePromptProps) {
         <div className="mx-auto mb-3 p-3 rounded-full w-fit" style={{ background: 'var(--theme-fill)' }}>
           <Lock className="h-6 w-6" style={{ color: 'var(--theme-accent)' }} />
         </div>
-        <CardTitle className="text-lg">Upgrade to Pro</CardTitle>
+        <CardTitle className="text-lg">Upgrade to {tier}</CardTitle>
         <CardDescription>
-          {featureInfo.description} is available with Contractor Pro
+          {featureInfo.description}
         </CardDescription>
       </CardHeader>
       <CardContent className="text-center space-y-4">
         <div className="flex items-center justify-center gap-2">
           <Badge variant="secondary" style={{ background: 'var(--theme-fill)', color: 'var(--theme-accent)' }}>
             <Sparkles className="h-3 w-3 mr-1" />
-            Pro Feature
+            {tier} Feature
           </Badge>
         </div>
         <Button 
@@ -73,7 +159,7 @@ function ContractorUpgradePrompt({ feature }: ContractorUpgradePromptProps) {
           style={{ background: 'linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)' }}
           data-testid="button-upgrade-pro"
         >
-          Upgrade to Pro - $40/month
+          Upgrade to {tier}
         </Button>
       </CardContent>
     </Card>
@@ -176,7 +262,7 @@ export function ContractorCRMUpgradePage() {
                 Team management
               </li>
             </ul>
-            {currentPlan !== 'pro' && (
+            {currentPlan !== 'pro' && !isNativePlatform && (
               <Button 
                 className="w-full mt-4"
                 style={{ background: 'linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)' }}
@@ -185,6 +271,11 @@ export function ContractorCRMUpgradePage() {
               >
                 Upgrade to Pro
               </Button>
+            )}
+            {currentPlan !== 'pro' && isNativePlatform && (
+              <p className="text-center text-xs text-muted-foreground mt-4" data-testid="text-pro-web-only">
+                Contractor Pro is available when you sign in at gotohomebase.com on the web.
+              </p>
             )}
           </CardContent>
         </Card>

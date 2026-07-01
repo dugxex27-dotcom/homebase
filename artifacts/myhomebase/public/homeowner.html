@@ -199,9 +199,8 @@
     .hero-note { font-size: 13px; color: rgba(255,255,255,0.45); }
 
     /* ══ STAT TILES ══ */
-    .stats { background: #fff; padding: 0; }
+    .stats { background: #f5f4f8; padding: 0; }
     .stats-grid {
-      max-width: 1200px; margin: 0 auto;
       display: grid; grid-template-columns: repeat(4,1fr);
       gap: 0; border-bottom: 1px solid #e8e4f0;
     }
@@ -244,7 +243,7 @@
     .quiz-inner { max-width: 600px; width: 100%; text-align: center; color: #fff; }
     .section-eyebrow {
       font-size: 12px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: .1em; color: #a78bfa; margin: 0 0 16px;
+      letter-spacing: .1em; color: #1a0840; margin: 0 0 16px; text-align: center;
     }
     .quiz-eyebrow { color: #c4b5fd; }
     .quiz-heading {
@@ -271,7 +270,11 @@
     .how-inner { max-width: 1100px; margin: 0 auto; }
     .section-heading {
       font-size: clamp(26px, 4vw, 40px); font-weight: 800; letter-spacing: -.02em;
-      line-height: 1.2; color: #1a0840; margin: 0 0 56px;
+      line-height: 1.2; color: #1a0840; margin: 0 0 56px; text-align: center;
+    }
+    .section-subhead {
+      font-size: clamp(15px, 2vw, 18px); color: #4a3f6b; line-height: 1.65;
+      max-width: 640px; margin: -36px auto 48px; text-align: center;
     }
     .how-features { display: flex; flex-direction: column; gap: 72px; }
     .how-feature { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 48px; }
@@ -338,7 +341,7 @@
     /* ══ PRICING ══ */
     .pricing { background: #fff; padding: 80px 24px; border-top: 1px solid #e8e4f0; }
     .pricing-inner { max-width: 700px; margin: 0 auto; text-align: center; }
-    .pricing-inner .section-eyebrow { color: #a78bfa; }
+    .pricing-inner .section-eyebrow { color: #1a0840; }
     .pricing-inner .section-heading { color: #1a0840; margin-bottom: 48px; }
     .pricing-compare { display: flex; align-items: center; justify-content: center; gap: 32px; margin-bottom: 24px; flex-wrap: wrap; }
     .pricing-left, .pricing-right { text-align: center; }
@@ -564,7 +567,7 @@
   .diff-section-inner { max-width: 1100px; margin: 0 auto; }
   .section-title {
     font-size: clamp(22px, 3.5vw, 32px); font-weight: 800; letter-spacing: -.02em;
-    line-height: 1.25; color: #1a0840; margin: 0 0 32px;
+    line-height: 1.25; color: #1a0840; margin: 0 0 32px; text-align: center;
   }
   .diff-cards { display: flex; flex-direction: column; gap: 12px; margin-bottom: 0; }
   .diff-card {
@@ -1006,8 +1009,8 @@
 <section class="hero">
   <div class="hero-inner">
     <div class="hero-badge">🏠 For Homeowners</div>
-    <h1 class="hero-h1">Finally. A system that<br><em>runs your home.</em></h1>
-    <p class="hero-sub">Homeownership is a full-time job nobody trained you for. MyHomeBase™ tells you exactly what your home needs, when to do it, and who to call — so nothing falls through the cracks.</p>
+    <h1 class="hero-h1">Your home's history, health and maintenance<br><em>all in one place.</em></h1>
+    <p class="hero-sub">Homeownership is complicated. MyHomeBase™ makes it simple by organizing your home's history, tracking its health, and helping you stay ahead of maintenance before small issues become expensive problems.</p>
     <div class="hero-cta-row">
       <a href="/signin/homeowner" class="hero-cta-primary">Start for $5/month — no guesswork →</a>
       <button class="hero-cta-quiz" onclick="openQuiz()">Free 2-minute quiz →</button>
@@ -1017,52 +1020,12 @@
 </section>
 
 <!-- ═══════════════════════════════════
-     SECTION 03 — STAT TILES
-═══════════════════════════════════ -->
-<section class="stats">
-  <div class="stats-grid">
-    <button class="stat-tile" onclick="openModal('denied-overlay')" aria-label="Claims denied nationally — tap to learn more">
-      <div class="stat-num">42%</div>
-      <div class="stat-label">Claims denied nationally</div>
-      <div class="stat-hint">
-        <svg class="stat-info-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-        Tap to learn more
-      </div>
-    </button>
-    <button class="stat-tile" onclick="openModal('cost-overlay')" aria-label="Average denied claim cost — tap to learn more">
-      <div class="stat-num">$18K</div>
-      <div class="stat-label">Average denied claim cost</div>
-      <div class="stat-hint">
-        <svg class="stat-info-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-        Tap to learn more
-      </div>
-    </button>
-    <button class="stat-tile stat-tile-accent" onclick="openModal('plans-overlay')" aria-label="View pricing plans">
-      <div class="stat-num">$5<span class="stat-per">/mo</span></div>
-      <div class="stat-label">Full protection</div>
-      <div class="stat-hint">
-        <svg class="stat-info-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-        See plans
-      </div>
-    </button>
-    <button class="stat-tile stat-tile-green" onclick="openModal('referral-overlay')" aria-label="Referral program">
-      <div class="stat-num stat-refer">Refer 5.</div>
-      <div class="stat-label">Free for life</div>
-      <div class="stat-hint">
-        <svg class="stat-info-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-        How it works
-      </div>
-    </button>
-  </div>
-</section>
-
-<!-- ═══════════════════════════════════
      SECTION 05 — HOW IT WORKS
 ═══════════════════════════════════ -->
 <section id="how-it-works" class="how">
   <div class="how-inner">
-    <p class="section-eyebrow">How MyHomeBase™ works</p>
-    <h2 class="section-heading">Your home, documented.<br />Your claims, protected.</h2>
+    <p class="section-eyebrow">WHAT YOU GET</p>
+    <h2 class="section-heading">Your Home Simplified</h2>
     <div class="how-features">
 
       <!-- Feature 01: Home Wellness Score -->
@@ -1372,12 +1335,53 @@
 </section>
 
 <!-- ═══════════════════════════════════
+     SECTION 03 — STAT TILES
+═══════════════════════════════════ -->
+<section class="stats">
+  <div class="stats-grid">
+    <button class="stat-tile" onclick="openModal('denied-overlay')" aria-label="Claims denied nationally — tap to learn more">
+      <div class="stat-num">42%</div>
+      <div class="stat-label">Claims denied nationally</div>
+      <div class="stat-hint">
+        <svg class="stat-info-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        Tap to learn more
+      </div>
+    </button>
+    <button class="stat-tile" onclick="openModal('cost-overlay')" aria-label="Average denied claim cost — tap to learn more">
+      <div class="stat-num">$18K</div>
+      <div class="stat-label">Average denied claim cost</div>
+      <div class="stat-hint">
+        <svg class="stat-info-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        Tap to learn more
+      </div>
+    </button>
+    <button class="stat-tile stat-tile-accent" onclick="openModal('plans-overlay')" aria-label="View pricing plans">
+      <div class="stat-num">$5<span class="stat-per">/mo</span></div>
+      <div class="stat-label">Full protection</div>
+      <div class="stat-hint">
+        <svg class="stat-info-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        See plans
+      </div>
+    </button>
+    <button class="stat-tile stat-tile-green" onclick="openModal('referral-overlay')" aria-label="Referral program">
+      <div class="stat-num stat-refer">Refer 5.</div>
+      <div class="stat-label">Free for life</div>
+      <div class="stat-hint">
+        <svg class="stat-info-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        How it works
+      </div>
+    </button>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════
      SECTION 08 — PRICING
 ═══════════════════════════════════ -->
 <section id="pricing" class="pricing">
   <div class="pricing-inner">
-    <p class="section-eyebrow">Simple, honest pricing</p>
-    <h2 class="section-heading">Less than a cup of coffee.<br />More than you'd pay out of pocket.</h2>
+    <p class="section-eyebrow">PROTECT YOUR INVESTMENT</p>
+    <h2 class="section-heading">Your home is too valuable to manage by memory.</h2>
+    <p class="section-subhead">For just $5/month, keep your home's history, documents, and maintenance records organized and accessible—so you're prepared when it matters most.</p>
     <div class="pricing-compare">
       <a href="/signin/homeowner" class="pricing-left pricing-left-link">
         <p class="pricing-amount">$5<span>/month</span></p>
@@ -1389,7 +1393,6 @@
         <p class="pricing-label">Average denied claim</p>
       </div>
     </div>
-    <p class="pricing-tagline">Do the math.</p>
     <button class="pricing-details-btn" onclick="openModal('plans-overlay')">See full plan details →</button>
   </div>
 </section>

@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Check, Briefcase, Wrench, Shield, Rocket, ChevronRight, ChevronLeft, Plus, X } from "lucide-react";
+import { EnterpriseContactModal } from "@/components/contractor-feature-gate";
 import "./home.css";
 
 const C = {
@@ -52,12 +53,15 @@ const STEPS = [
   { icon: Rocket,    label: "Done!" },
 ];
 
+type TeamSizeOption = '' | 'just_me' | '2_10' | '11_99' | '100_plus';
+
 type FormState = {
   company: string;
   name: string;
   phone: string;
   zipCode: string;
   yearsExperience: string;
+  teamSizeSelection: TeamSizeOption;
   services: string[];
   customService: string;
   serviceFilter: string;
@@ -71,9 +75,11 @@ export default function ContractorOnboarding() {
   const [step, setStep] = useState(1);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const [enterpriseOpen, setEnterpriseOpen] = useState(false);
 
   const [form, setForm] = useState<FormState>({
     company: '', name: '', phone: '', zipCode: '', yearsExperience: '',
+    teamSizeSelection: '',
     services: [], customService: '', serviceFilter: '',
     licenseNumber: '', licenseState: '', insuranceCarrier: '',
     skipCredentials: false,
@@ -104,6 +110,7 @@ export default function ContractorOnboarding() {
         postalCode: form.zipCode,
         services: form.services,
         yearsExperience: form.yearsExperience,
+        teamSizeRange: form.teamSizeSelection || undefined,
       };
       if (!form.skipCredentials) {
         payload.licenseNumber = form.licenseNumber;
@@ -138,7 +145,7 @@ export default function ContractorOnboarding() {
   const progress = ((step - 1) / (STEPS.length - 1)) * 100;
 
   const canNext = () => {
-    if (step === 1) return form.company.trim().length > 0 && form.name.trim().length > 0;
+    if (step === 1) return form.company.trim().length > 0 && form.name.trim().length > 0 && form.teamSizeSelection !== '';
     if (step === 2) return form.services.length > 0;
     return true;
   };
@@ -154,6 +161,8 @@ export default function ContractorOnboarding() {
 
   return (
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: '#f4f6f9', fontFamily: "'Inter', system-ui, sans-serif" }}>
+
+      <EnterpriseContactModal open={enterpriseOpen} onClose={() => setEnterpriseOpen(false)} />
 
       {/* ── HEADER ─────────────────────────── */}
       <div className="dash-header" style={{ background: `linear-gradient(135deg, ${C.deep} 0%, ${C.primary} 100%)` }}>
@@ -264,6 +273,79 @@ export default function ContractorOnboarding() {
                   </select>
                 </div>
               </div>
+            </div>
+
+            {/* Phase 5 — Team size selection */}
+            <span className="dash-section-label" style={{ marginTop: 8 }}>Team size</span>
+            <div className="dash-light-card" style={{ marginBottom: 12 }}>
+              {(() => {
+                const options: { value: TeamSizeOption; label: string; sub: string; tier: string; tierColor: string }[] = [
+                  { value: 'just_me',   label: 'Just me',      sub: 'Solo operator',                      tier: 'Basic or Pro',     tierColor: '#1560A2' },
+                  { value: '2_10',      label: '2–10 people',  sub: 'Small team',                         tier: 'Pro required',     tierColor: '#7c3aed' },
+                  { value: '11_99',     label: '11–99 people', sub: 'Growing business',                   tier: 'Business plan',    tierColor: '#d97706' },
+                  { value: '100_plus',  label: '100+ people',  sub: "Enterprise — we'll reach out",       tier: 'Enterprise',       tierColor: '#dc2626' },
+                ];
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {options.map(opt => {
+                      const selected = form.teamSizeSelection === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          onClick={() => set('teamSizeSelection', opt.value)}
+                          style={{
+                            all: 'unset', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '10px 14px', borderRadius: 10,
+                            border: `1.5px solid ${selected ? C.primary : C.border}`,
+                            background: selected ? C.tint : '#fff',
+                            transition: 'all 0.15s',
+                          }}
+                        >
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: selected ? C.deep : '#111827' }}>{opt.label}</div>
+                            <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{opt.sub}</div>
+                          </div>
+                          <span style={{
+                            fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em',
+                            borderRadius: 6, padding: '3px 9px',
+                            background: selected ? opt.tierColor : '#f1f5f9',
+                            color: selected ? '#fff' : '#64748b',
+                            transition: 'all 0.15s',
+                          }}>{opt.tier}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+              {/* Contextual messaging */}
+              {form.teamSizeSelection === 'just_me' && (
+                <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8, background: '#eff6ff', fontSize: 12, color: C.primary }}>
+                  ✓ Start on Basic — upgrade to Pro anytime to unlock CRM and lead tools.
+                </div>
+              )}
+              {form.teamSizeSelection === '2_10' && (
+                <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8, background: '#f5f3ff', fontSize: 12, color: '#7c3aed' }}>
+                  ✓ Pro plan required for teams. Includes 3 tech seats and full CRM access.
+                </div>
+              )}
+              {form.teamSizeSelection === '11_99' && (
+                <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8, background: '#fffbeb', border: '1px solid #fcd34d', fontSize: 12, color: '#92400e' }}>
+                  ✓ Looks like you need the Business plan — divisions, bulk import, and per-seat billing.
+                </div>
+              )}
+              {form.teamSizeSelection === '100_plus' && (
+                <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', fontSize: 12, color: '#b91c1c', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <span>✓ Enterprise plan — custom pricing for large teams.</span>
+                  <button
+                    onClick={() => setEnterpriseOpen(true)}
+                    style={{ all: 'unset', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: '#b91c1c', textDecoration: 'underline', whiteSpace: 'nowrap' }}
+                  >
+                    Contact us →
+                  </button>
+                </div>
+              )}
             </div>
 
             <span className="dash-section-label" style={{ marginTop: 8 }}>What to expect</span>

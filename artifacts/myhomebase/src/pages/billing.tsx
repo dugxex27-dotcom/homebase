@@ -12,7 +12,16 @@ import { apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { PageHero } from "@/components/page-hero";
-import { openPaymentUrl, onBrowserFinished } from "@/lib/nativeBrowser";
+import { openPaymentUrl, openExternalUrl, onBrowserFinished, isNativePlatform } from "@/lib/nativeBrowser";
+import {
+  purchaseNativePlan,
+  initNativePurchase,
+  restoreNativePurchases,
+  onNativePurchaseVerified,
+  onNativePurchaseFailed,
+  isNativePurchaseSupported,
+  type NativePlanKey,
+} from "@/lib/nativePurchase";
 
 type Plan = 'trial' | 'base' | 'premium' | 'premium_plus' | 'contractor' | 'contractor_pro' | 'grandfathered';
 
@@ -53,12 +62,85 @@ export default function Billing() {
     });
   }, [queryClient]);
 
+  useEffect(() => {
+    if (!isNativePlatform) return;
+    console.log('[Billing] Native platform detected, initializing StoreKit...');
+    initNativePurchase();
+  }, []);
+
+  useEffect(() => {
+    const unsubVerified = onNativePurchaseVerified(({ plan, productId }) => {
+      console.log('[Billing] Native purchase verified:', plan, productId);
+      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/billing-history'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      toast({
+        title: "Subscription Activated",
+        description: "Your subscription is now active.",
+      });
+    });
+    const unsubFailed = onNativePurchaseFailed(({ message }) => {
+      console.error('[Billing] Native purchase failed:', message);
+      toast({
+        title: "Purchase Failed",
+        description: message || "We couldn't complete your purchase. Please try again.",
+        variant: "destructive",
+      });
+    });
+    return () => {
+      unsubVerified();
+      unsubFailed();
+    };
+  }, [queryClient, toast]);
+
+  const restoreMutation = useMutation({
+    mutationFn: async () => {
+      console.log('[Billing] Restore purchases requested');
+      if (!userData?.id) {
+        throw new Error('You must be signed in to restore purchases');
+      }
+      return restoreNativePurchases(userData.id);
+    },
+    onSuccess: (result) => {
+      console.log('[Billing] Restore purchases result:', result);
+      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      toast({
+        title: result.restored ? "Purchases Restored" : "Nothing to Restore",
+        description: result.restored
+          ? "Your subscription has been restored."
+          : "We couldn't find any previous purchases to restore.",
+      });
+    },
+    onError: (error: Error) => {
+      console.error('[Billing] Restore purchases failed:', error);
+      toast({
+        title: "Restore Failed",
+        description: error.message || "Failed to restore purchases. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const subscriptionMutation = useMutation({
     mutationFn: async (plan: string) => {
+      if (isNativePurchaseSupported() && plan !== 'pro') {
+        console.log('[Billing] Starting native StoreKit purchase for plan:', plan);
+        if (!userData?.id) {
+          throw new Error('You must be signed in to purchase a subscription');
+        }
+        const nativePlan: NativePlanKey = plan === 'basic' ? 'contractor_basic' : (plan as NativePlanKey);
+        await purchaseNativePlan(nativePlan, userData.id);
+        return { native: true as const };
+      }
       const res = await apiRequest('/api/create-subscription-checkout', 'POST', { plan });
       return res.json();
     },
     onSuccess: async (data) => {
+      if (data?.native) {
+        console.log('[Billing] Native purchase order placed, awaiting StoreKit verification callback');
+        return;
+      }
       if (data.url) {
         await openPaymentUrl(data.url);
       }
@@ -335,7 +417,7 @@ export default function Billing() {
                     <span>$40/month referral credit cap</span>
                   </li>
                 </ul>
-                {(currentPlan === 'trial' || currentPlan === 'contractor') && (
+                {(currentPlan === 'trial' || currentPlan === 'contractor') && !isNativePlatform && (
                   <Button
                     onClick={() => handleSubscribe('contractor_pro')}
                     style={{ backgroundColor: '#b91c1c', color: 'white' }}
@@ -345,6 +427,11 @@ export default function Billing() {
                     <Crown className="h-4 w-4 mr-2" />
                     {currentPlan === 'contractor' ? 'Upgrade to Pro' : 'Start with Pro'}
                   </Button>
+                )}
+                {(currentPlan === 'trial' || currentPlan === 'contractor') && isNativePlatform && (
+                  <p className="text-center text-xs text-gray-500 px-2" data-testid="text-contractor-pro-web-only">
+                    Contractor Pro is available when you sign in at gotohomebase.com on the web.
+                  </p>
                 )}
                 {currentPlan === 'contractor_pro' && (
                   <div className="text-center p-4 bg-red-50 rounded-lg border border-red-200">
@@ -640,8 +727,47 @@ export default function Billing() {
             <div>
               <h3 className="font-semibold mb-1" style={{ color: 'var(--purple-deep)' }}>Secure Payments</h3>
               <p className="text-gray-600">
-                All payments are processed securely through Stripe. We never store your payment information.
+                {isNativePlatform
+                  ? "Payments made in the app are processed securely through Apple's App Store. Web purchases are processed securely through Stripe. We never store your payment information."
+                  : "All payments are processed securely through Stripe. We never store your payment information."}
               </p>
+            </div>
+            {isNativePlatform && (
+              <div>
+                <h3 className="font-semibold mb-1" style={{ color: 'var(--purple-deep)' }}>Restore Purchases</h3>
+                <p className="text-gray-600 mb-2">
+                  Already subscribed on this Apple ID? Restore your purchase to sync your subscription.
+                </p>
+                <Button
+                  onClick={() => restoreMutation.mutate()}
+                  disabled={restoreMutation.isPending}
+                  variant="outline"
+                  size="sm"
+                  data-testid="button-restore-purchases"
+                >
+                  {restoreMutation.isPending ? 'Restoring...' : 'Restore Purchases'}
+                </Button>
+              </div>
+            )}
+            <div className="text-xs text-gray-500 pt-2">
+              By subscribing, you agree to our{' '}
+              <button
+                type="button"
+                className="underline hover:text-gray-700"
+                data-testid="link-privacy-policy"
+                onClick={() => openExternalUrl(`${window.location.origin}/privacy-policy`)}
+              >
+                Privacy Policy
+              </button>{' '}
+              and{' '}
+              <button
+                type="button"
+                className="underline hover:text-gray-700"
+                data-testid="link-eula"
+                onClick={() => openExternalUrl('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')}
+              >
+                End User License Agreement (EULA)
+              </button>.
             </div>
           </CardContent>
         </Card>

@@ -1,7 +1,5 @@
 import { useState, FormEvent } from "react";
-import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
 import logoWhite from "@assets/my-homebase-logo-tm-final-white_1777417516350.png";
 
 type Role = 'homeowner' | 'contractor' | 'agent';
@@ -21,8 +19,6 @@ const ROLE_LABEL: Record<Role, string> = {
 
 export default function DemoGate() {
   const role = getRoleFromSearch();
-  const [, navigate] = useLocation();
-  const { toast } = useToast();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -36,21 +32,13 @@ export default function DemoGate() {
         await apiRequest('/api/demo-lead', 'POST', { ...leadData, role });
       } catch { }
     }
-    try {
-      const endpoint =
-        role === 'homeowner' ? '/api/auth/homeowner-demo-login' :
-        role === 'contractor' ? '/api/auth/contractor-demo-login' :
-        '/api/auth/agent-demo-login';
-      await apiRequest(endpoint, 'POST', {});
-      const redirect =
-        role === 'homeowner' ? '/' :
-        role === 'contractor' ? '/contractor-dashboard' :
-        '/agent-dashboard';
-      window.location.href = redirect;
-    } catch (err: any) {
-      toast({ title: "Demo login failed", description: err?.message || "Please try again.", variant: "destructive" });
-      setSubmitting(false);
-    }
+    // Navigate to the GET demo-login endpoint — it sets the session server-side
+    // and issues a redirect, avoiding the proxy stripping Set-Cookie on AJAX responses.
+    const endpoint =
+      role === 'homeowner' ? '/api/auth/homeowner-demo-login' :
+      role === 'contractor' ? '/api/auth/contractor-demo-login' :
+      '/api/auth/agent-demo-login';
+    window.location.href = endpoint;
   };
 
   const handleSubmit = (e: FormEvent) => {

@@ -38,25 +38,24 @@ export default function Onboarding() {
       // Invalidate auth query to refresh user state
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
 
-      // If the user completed the quiz before signing up, associate their result
-      // with their new account now that they are authenticated.
+      // If the user completed the quiz before signing up, claim their anonymous
+      // quiz result so it appears on their profile. We prefer the stored resultId
+      // (which claims the exact row already in the DB) over re-posting, which
+      // would create a duplicate.
       try {
-        const raw = localStorage.getItem('mhb_quiz_result');
-        if (raw) {
-          const quizResult = JSON.parse(raw);
-          if (quizResult?.score !== undefined && quizResult?.tier && quizResult?.completedAt) {
-            fetch('/api/quiz-result', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify(quizResult),
-            }).catch(() => {
-              // Non-critical — the anonymous result is already in the database
-            });
-          }
+        const resultId = localStorage.getItem('mhb_quiz_result_id');
+        if (resultId) {
+          fetch('/api/quiz-result/claim', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ resultId }),
+          }).then(() => {
+            localStorage.removeItem('mhb_quiz_result_id');
+          }).catch(() => {});
         }
       } catch {
-        // Ignore parse errors
+        // Ignore errors — non-critical
       }
 
       toast({

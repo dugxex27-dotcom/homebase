@@ -38,7 +38,8 @@ import {
   Image as ImageIcon,
   Check,
   CreditCard,
-  ChevronUp
+  ChevronUp,
+  TrendingUp
 } from "lucide-react";
 import AddressAutocomplete from "@/components/address-autocomplete";
 import { Link } from "wouter";
@@ -218,6 +219,14 @@ export default function HomeownerAccount() {
       window.location.href = '/api/logout';
     }
   };
+
+  // Fetch the user's most recent Home Health Score quiz result
+  const { data: quizResult } = useQuery<{
+    id: string; score: number; tier: string; completedAt: string; createdAt: string;
+  } | null>({
+    queryKey: ['/api/quiz-result/me'],
+    enabled: !!user,
+  });
 
   // Fetch full user data for subscription details
   const { data: userData } = useQuery({
@@ -468,6 +477,56 @@ export default function HomeownerAccount() {
       {/* ── PAGE BODY ──────────────────────────────── */}
       <div className="dash-body">
         <div className="space-y-4 max-w-2xl mx-auto">
+          {/* Home Health Score Quiz Result */}
+          {quizResult && (
+            <>
+              <p className="dash-section-label">Home Health Score</p>
+              <Card style={{ backgroundColor: '#ffffff' }}>
+                <CardContent className="pt-5">
+                  <div className="flex items-center gap-4">
+                    <div
+                      className="flex-shrink-0 flex flex-col items-center justify-center rounded-full w-16 h-16 border-4"
+                      style={{
+                        borderColor:
+                          quizResult.score >= 75 ? '#2c0f5b'
+                          : quizResult.score >= 50 ? '#4a9e2f'
+                          : quizResult.score >= 25 ? '#e8a020'
+                          : '#dc2626',
+                      }}
+                    >
+                      <span
+                        className="text-2xl font-bold leading-none"
+                        style={{
+                          color:
+                            quizResult.score >= 75 ? '#2c0f5b'
+                            : quizResult.score >= 50 ? '#4a9e2f'
+                            : quizResult.score >= 25 ? '#e8a020'
+                            : '#dc2626',
+                        }}
+                      >
+                        {quizResult.score}
+                      </span>
+                      <span className="text-[10px] text-gray-500">/100</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <TrendingUp className="w-4 h-4" style={{ color: '#2c0f5b' }} />
+                        <span className="font-semibold text-gray-900 text-sm">Home Health Score™</span>
+                      </div>
+                      <p className="text-sm text-gray-700 font-medium">{quizResult.tier}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Taken {new Date(quizResult.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </p>
+                    </div>
+                    <Link href="/quiz/" className="text-xs font-medium px-3 py-1.5 rounded-lg border flex-shrink-0" style={{ color: '#2c0f5b', borderColor: '#2c0f5b', textDecoration: 'none' }}>
+                      Retake quiz →
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+
           {/* Basic Profile */}
           <p className="dash-section-label">Profile</p>
           <Card style={{ backgroundColor: '#ffffff' }}>

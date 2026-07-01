@@ -29,6 +29,8 @@ export const subscriptionPlans = pgTable("subscription_plans", {
   features: text("features").array().notNull(), // Array of feature descriptions
   referralCreditCap: decimal("referral_credit_cap", { precision: 10, scale: 2 }), // Max referral credits per month (null = use default)
   hasCrmAccess: boolean("has_crm_access").notNull().default(false), // Whether tier includes CRM features
+  includedTechSeats: integer("included_tech_seats"), // How many tech seats are bundled in the base price (null = N/A for homeowner plans)
+  additionalSeatPrice: decimal("additional_seat_price", { precision: 10, scale: 2 }), // $/month per tech beyond includedTechSeats (null = no per-seat billing)
   isActive: boolean("is_active").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0), // For display ordering
   createdAt: timestamp("created_at").defaultNow(),
@@ -118,6 +120,18 @@ export const companies = pgTable("companies", {
   stripeDefaultCurrency: varchar("stripe_default_currency", { length: 3 }).default("usd"),
   subscriptionTier: text("subscription_tier").default("individual"), // "individual" | "enterprise"
   maxTechSeats: integer("max_tech_seats").default(3), // Enterprise: max number of tech seat licenses
+  // Scale-Up Plan: tier model and seat limits
+  tier: varchar("tier").notNull().default("solo"), // "solo" | "pro" | "business" | "enterprise"
+  maxAdminSeats: integer("max_admin_seats").default(2),
+  maxDispatcherSeats: integer("max_dispatcher_seats").default(0),
+  maxManagerSeats: integer("max_manager_seats").default(0),
+  ssoEnabled: boolean("sso_enabled").default(false),
+  ssoProvider: varchar("sso_provider"), // e.g. 'okta', 'google_workspace'
+  ssoDomain: varchar("sso_domain"), // verified domain for SSO
+  customPricingNotes: text("custom_pricing_notes"), // Enterprise custom deal notes
+  accountManagerEmail: varchar("account_manager_email"), // CSM assignment for Enterprise
+  apiAccessEnabled: boolean("api_access_enabled").default(false),
+  bulkImportEnabled: boolean("bulk_import_enabled").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -137,6 +151,23 @@ export const companyInviteCodes = pgTable("company_invite_codes", {
   index("IDX_company_invite_codes_company").on(table.companyId),
   index("IDX_company_invite_codes_code").on(table.code),
 ]);
+
+// Divisions for Business/Enterprise companies (e.g. "HVAC Team", "Electrical")
+export const companyDivisions = pgTable("company_divisions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  name: varchar("name").notNull(), // e.g. "HVAC Team", "Electrical"
+  managerId: varchar("manager_id"), // references users.id — forward ref; nullable
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_company_divisions_company_id").on(table.companyId),
+  index("IDX_company_divisions_manager_id").on(table.managerId),
+]);
+
+export const insertCompanyDivisionSchema = createInsertSchema(companyDivisions).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertCompanyDivision = z.infer<typeof insertCompanyDivisionSchema>;
+export type CompanyDivision = typeof companyDivisions.$inferSelect;
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -160,7 +191,8 @@ export const users = pgTable("users", {
   emailVerificationTokenExpiry: timestamp("email_verification_token_expiry"),
   // Company fields for contractors
   companyId: varchar("company_id").references(() => companies.id, { onDelete: 'set null' }),
-  companyRole: text("company_role"), // 'owner', 'employee', 'tech' (nullable for homeowners)
+  companyRole: text("company_role"), // 'owner' | 'admin' | 'tech' | 'manager' | 'dispatcher' (nullable for homeowners)
+  divisionId: varchar("division_id"), // nullable; set for 'manager' and 'dispatcher' roles (FK to company_divisions.id — forward ref)
   status: text("company_status").default("active"), // "active" | "suspended" | "pending_invite" | "removed" (enterprise tech status)
   inviteToken: varchar("invite_token").unique(),
   inviteExpiresAt: timestamp("invite_expires_at"),
@@ -182,6 +214,10 @@ export const users = pgTable("users", {
   stripePriceId: varchar("stripe_price_id"), // Current Stripe price ID for the subscription
   subscriptionStartDate: timestamp("subscription_start_date"),
   subscriptionEndDate: timestamp("subscription_end_date"),
+  // Apple StoreKit In-App Purchase fields (native iOS subscriptions, Task #287)
+  subscriptionSource: text("subscription_source").notNull().default("stripe"), // "stripe" | "apple"
+  appleOriginalTransactionId: varchar("apple_original_transaction_id"), // Apple's stable subscription identifier, used to correlate ASSN v2 webhook events back to a user
+  appleProductId: varchar("apple_product_id"), // Last known Apple App Store product ID purchased (e.g. com.gotohomebase.app.homeowner.base.monthly)
   accountStatus: text("account_status").notNull().default("active"), // "active", "cancelled", "deleted"
   accountCancelledAt: timestamp("account_cancelled_at"),
   // Home setup wizard for new homeowners (7-step post-signup wizard)
@@ -197,6 +233,7 @@ export const users = pgTable("users", {
   index("IDX_users_company_id").on(table.companyId),
   index("IDX_users_email_verification_token").on(table.emailVerificationToken),
   index("IDX_users_invite_token").on(table.inviteToken),
+  index("IDX_users_apple_original_transaction_id").on(table.appleOriginalTransactionId),
 ]);
 
 // Password reset tokens table
@@ -276,6 +313,7 @@ export const contractors = pgTable("contractors", {
   insuranceInfo: text("insurance_info"), // JSON string of insurance details by region
   postalCode: text("postal_code"), // For international address support
   
+  teamSizeRange: varchar("team_size_range"), // onboarding selection: 'just_me' | '2_10' | '11_99' | '100_plus'
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -2374,3 +2412,25 @@ export const contractorInvoiceUploads = pgTable("contractor_tech_invoices", {
 export const insertContractorInvoiceUploadSchema = createInsertSchema(contractorInvoiceUploads).omit({ id: true, createdAt: true });
 export type InsertContractorInvoiceUpload = z.infer<typeof insertContractorInvoiceUploadSchema>;
 export type ContractorInvoiceUpload = typeof contractorInvoiceUploads.$inferSelect;
+
+// Bulk tech import records for Business/Enterprise teams
+export const companyBulkImports = pgTable("company_bulk_imports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  uploadedBy: varchar("uploaded_by").notNull().references(() => users.id),
+  fileName: varchar("file_name"),
+  status: varchar("status").default("pending"), // 'pending' | 'processing' | 'completed' | 'failed'
+  totalRows: integer("total_rows"),
+  successRows: integer("success_rows"),
+  failedRows: integer("failed_rows"),
+  errorLog: jsonb("error_log"), // [{ row: number, error: string }]
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+}, (table) => [
+  index("IDX_company_bulk_imports_company_id").on(table.companyId),
+  index("IDX_company_bulk_imports_uploaded_by").on(table.uploadedBy),
+]);
+
+export const insertCompanyBulkImportSchema = createInsertSchema(companyBulkImports).omit({ id: true, createdAt: true });
+export type InsertCompanyBulkImport = z.infer<typeof insertCompanyBulkImportSchema>;
+export type CompanyBulkImport = typeof companyBulkImports.$inferSelect;

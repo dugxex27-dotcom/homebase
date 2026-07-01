@@ -263,7 +263,8 @@ export const requireRole = (role: 'homeowner' | 'contractor'): RequestHandler =>
 // Checked on every authenticated contractor request for instant revocation.
 export const suspendedUserIds = new Set<string>();
 
-// Check that the session user's companyRole is one of the allowed roles
+// Check that the session user's companyRole is one of the allowed roles.
+// Accepts any role value including the Phase 2 additions: 'manager' | 'dispatcher'.
 export const requireCompanyRole = (...roles: string[]): RequestHandler => {
   return (req: any, res, next) => {
     if (!req.session?.isAuthenticated || !req.session?.user) {
@@ -275,6 +276,71 @@ export const requireCompanyRole = (...roles: string[]): RequestHandler => {
     }
     next();
   };
+};
+
+// Shorthand factory — use instead of requireCompanyRole when the allowed set is defined
+// at the call site (avoids spreading arrays in every route definition).
+// Examples:
+//   requireCompanyRoleAny('owner','admin','manager')  — division-level actions
+//   requireCompanyRoleAny('owner','admin','dispatcher') — job assignment actions
+export const requireCompanyRoleAny = (...roles: string[]): RequestHandler =>
+  requireCompanyRole(...roles);
+
+// Scopes manager-role requests to their assigned division.
+// Attaches req.divisionFilter (string | undefined) for downstream query filtering.
+// Non-manager roles pass through unfiltered.
+export const requireDivisionAccess = (req: any, res: any, next: any) => {
+  if (!req.session?.isAuthenticated || !req.session?.user) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  if (req.session.user.companyRole === 'manager') {
+    const divisionId = req.session.user.divisionId;
+    if (!divisionId) {
+      return res.status(403).json({ code: 'NO_DIVISION_ASSIGNED', message: 'Manager has no division assigned' });
+    }
+    req.divisionFilter = divisionId;
+  }
+  next();
+};
+
+// Gates routes that require the Business/Enterprise bulk-import feature.
+export const requireBulkImport = async (req: any, res: any, next: any) => {
+  if (!req.session?.isAuthenticated || !req.session?.user) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  const companyId = req.session.user.companyId;
+  if (!companyId) return res.status(403).json({ code: 'BULK_IMPORT_NOT_AVAILABLE' });
+  try {
+    const { storage } = await import('./storage');
+    const company = await (storage as any).getCompany(companyId);
+    const allowed =
+      company?.bulkImportEnabled === true ||
+      ['contractor_business', 'contractor_enterprise'].includes(company?.tier ?? '');
+    if (!allowed) return res.status(403).json({ code: 'BULK_IMPORT_NOT_AVAILABLE' });
+    next();
+  } catch {
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Gates routes that require the Enterprise API-access feature.
+export const requireApiAccess = async (req: any, res: any, next: any) => {
+  if (!req.session?.isAuthenticated || !req.session?.user) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  const companyId = req.session.user.companyId;
+  if (!companyId) return res.status(403).json({ code: 'API_ACCESS_NOT_AVAILABLE' });
+  try {
+    const { storage } = await import('./storage');
+    const company = await (storage as any).getCompany(companyId);
+    const allowed =
+      company?.apiAccessEnabled === true ||
+      company?.tier === 'contractor_enterprise';
+    if (!allowed) return res.status(403).json({ code: 'API_ACCESS_NOT_AVAILABLE' });
+    next();
+  } catch {
+    return res.status(500).json({ message: 'Internal server error' });
+  }
 };
 
 // Block suspended users from all authenticated contractor routes

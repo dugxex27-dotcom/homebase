@@ -19,7 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MessageCircle, Send, User, Calendar, Plus, Users, FileText, DollarSign, Clock, Star, Image as ImageIcon, X, File, Paperclip, Wifi, WifiOff, CheckCheck, Check, Sparkles, Loader2 } from "lucide-react";
+import { MessageCircle, Send, User, Calendar, Plus, Users, FileText, DollarSign, Clock, Star, Image as ImageIcon, X, File, Paperclip, Wifi, WifiOff, CheckCheck, Check, Sparkles, Loader2, RotateCcw } from "lucide-react";
 import "./home.css";
 
 import { insertProposalSchema } from "@shared/schema";
@@ -400,6 +400,26 @@ export default function Messages() {
     });
   };
 
+  // Reset demo conversations (demo contractor only)
+  const isDemoContractor = typedUser?.id === 'demo-contractor-permanent-id';
+  const resetDemoConversationsMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('/api/auth/contractor-demo-reset-conversations', 'POST');
+      if (!res.ok) {
+        const body = await res.json() as { message?: string };
+        throw new Error(body.message ?? 'Failed to reset demo conversations.');
+      }
+    },
+    onSuccess: () => {
+      setSelectedConversationId(null);
+      queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
+      toast({ title: 'Demo conversations reset', description: 'Your demo message threads have been restored.' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Reset failed', description: error.message ?? 'Could not reset demo conversations.', variant: 'destructive' });
+    },
+  });
+
   // Compose new conversation mutation (homeowners only)
   const composeConversationMutation = useMutation({
     mutationFn: async (data: typeof composeForm) => {
@@ -599,6 +619,24 @@ export default function Messages() {
                 Conversations
               </h2>
               
+              {/* Reset Demo Conversations — demo contractor only */}
+              {isDemoContractor && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => resetDemoConversationsMutation.mutate()}
+                  disabled={resetDemoConversationsMutation.isPending}
+                  title="Reset demo conversations"
+                  data-testid="button-reset-demo-conversations"
+                >
+                  {resetDemoConversationsMutation.isPending
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <RotateCcw className="h-4 w-4" />
+                  }
+                  <span className="ml-1 hidden sm:inline">Reset demo</span>
+                </Button>
+              )}
+
               {/* Compose Button - Homeowners only */}
               {typedUser.role === 'homeowner' && (
                 <Dialog open={isComposeDialogOpen} onOpenChange={setIsComposeDialogOpen}>

@@ -361,6 +361,7 @@ export interface IStorage {
 
   // Authentication methods
   getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByAppleOriginalTransactionId(originalTransactionId: string): Promise<User | undefined>;
   createUserWithPassword(data: { 
     email: string; 
     passwordHash: string; 
@@ -7755,6 +7756,11 @@ class DbStorage implements IStorage {
     return result[0];
   }
 
+  async getUserByAppleOriginalTransactionId(originalTransactionId: string): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.appleOriginalTransactionId, originalTransactionId)).limit(1);
+    return result[0];
+  }
+
   async upsertUser(userData: UpsertUser): Promise<User> {
     try {
       console.log('🟢 upsertUser called with:', { id: userData.id, email: userData.email, role: userData.role });
@@ -7807,6 +7813,11 @@ class DbStorage implements IStorage {
           stripePriceId: userData.stripePriceId ?? existingUser.stripePriceId,
           subscriptionStartDate: userData.subscriptionStartDate ?? existingUser.subscriptionStartDate,
           subscriptionEndDate: userData.subscriptionEndDate ?? existingUser.subscriptionEndDate,
+          // Apple StoreKit IAP fields (Task #287)
+          subscriptionSource: userData.subscriptionSource ?? existingUser.subscriptionSource,
+          appleOriginalTransactionId: userData.appleOriginalTransactionId ?? existingUser.appleOriginalTransactionId,
+          appleProductId: userData.appleProductId ?? existingUser.appleProductId,
+          trialEndsAt: userData.trialEndsAt ?? existingUser.trialEndsAt,
           updatedAt: new Date(),
         };
         
@@ -7845,6 +7856,11 @@ class DbStorage implements IStorage {
           stripePriceId: userData.stripePriceId ?? null,
           subscriptionStartDate: userData.subscriptionStartDate ?? null,
           subscriptionEndDate: userData.subscriptionEndDate ?? null,
+          // Apple StoreKit IAP fields (Task #287)
+          subscriptionSource: userData.subscriptionSource ?? 'stripe',
+          appleOriginalTransactionId: userData.appleOriginalTransactionId ?? null,
+          appleProductId: userData.appleProductId ?? null,
+          trialEndsAt: userData.trialEndsAt ?? null,
         };
         
         console.log('🟢 Inserting new user into database:', newUser.id);
@@ -8379,10 +8395,8 @@ class DbStorage implements IStorage {
     const location = profileData.location || 
       (profileData.city && profileData.state ? `${profileData.city}, ${profileData.state}` : '');
     
-    // Convert yearsExperience string to experience number
-    const experience = profileData.experience !== undefined 
-      ? profileData.experience 
-      : (profileData.yearsExperience ? parseInt(profileData.yearsExperience as any) || 0 : 0);
+    // Use experience field directly (yearsExperience was a legacy alias, no longer in schema)
+    const experience = profileData.experience !== undefined ? profileData.experience : 0;
     
     // Get user to access companyId
     const user = await this.getUser(contractorId);
@@ -9560,9 +9574,11 @@ class DbStorage implements IStorage {
     return result[0];
   }
 
-  async createCrmLead(lead: InsertCrmLead): Promise<CrmLead> {
-    const result = await db.insert(crmLeads).values(lead).returning();
-    return result[0];
+  async createCrmLead(lead: InsertCrmLead & { id?: string }): Promise<CrmLead> {
+    const result = await db.insert(crmLeads).values(lead).onConflictDoNothing().returning();
+    if (result[0]) return result[0];
+    const existing = await db.select().from(crmLeads).where(eq(crmLeads.id, (lead as { id: string }).id)).limit(1);
+    return existing[0];
   }
 
   async updateCrmLead(id: string, lead: Partial<InsertCrmLead>): Promise<CrmLead | undefined> {

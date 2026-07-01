@@ -9,7 +9,15 @@ import { Badge } from "@/components/ui/badge";
 import { Check, CreditCard, Home, Zap, Crown, Loader2, ShieldCheck } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
-import { openPaymentUrl, onBrowserFinished } from "@/lib/nativeBrowser";
+import { openPaymentUrl, openExternalUrl, onBrowserFinished, isNativePlatform } from "@/lib/nativeBrowser";
+import {
+  purchaseNativePlan,
+  initNativePurchase,
+  onNativePurchaseVerified,
+  onNativePurchaseFailed,
+  isNativePurchaseSupported,
+  type NativePlanKey,
+} from "@/lib/nativePurchase";
 
 const PLAN_SLUG_MAP: Record<string, string> = {
   base: 'base',
@@ -52,13 +60,58 @@ export default function HomeownerPricing() {
     });
   }, [queryClient]);
 
+  useEffect(() => {
+    if (!isNativePlatform) return;
+    console.log('[HomeownerPricing] Native platform detected, initializing StoreKit...');
+    initNativePurchase();
+  }, []);
+
+  useEffect(() => {
+    const unsubVerified = onNativePurchaseVerified(({ plan, productId }) => {
+      console.log('[HomeownerPricing] Native purchase verified:', plan, productId);
+      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      setCheckoutPlan(null);
+      toast({
+        title: "Subscription Activated",
+        description: `Your ${PRICING_PLAN_INFO[plan]?.name || plan} subscription is now active.`,
+      });
+    });
+    const unsubFailed = onNativePurchaseFailed(({ message }) => {
+      console.error('[HomeownerPricing] Native purchase failed:', message);
+      setCheckoutPlan(null);
+      toast({
+        title: "Purchase Failed",
+        description: message || "We couldn't complete your purchase. Please try again.",
+        variant: "destructive",
+      });
+    });
+    return () => {
+      unsubVerified();
+      unsubFailed();
+    };
+  }, [queryClient, toast]);
+
   const checkoutMutation = useMutation({
     mutationFn: async (plan: string) => {
       setCheckoutPlan(plan);
+      if (isNativePurchaseSupported()) {
+        console.log('[HomeownerPricing] Starting native StoreKit purchase for plan:', plan);
+        const userId = (user as { id?: string } | undefined)?.id;
+        if (!userId) {
+          throw new Error('You must be signed in to purchase a subscription');
+        }
+        await purchaseNativePlan(plan as NativePlanKey, userId);
+        return { native: true as const };
+      }
       const res = await apiRequest('/api/create-subscription-checkout', 'POST', { plan, trialMode: isOnboarding });
       return res.json();
     },
     onSuccess: async (data) => {
+      if (data?.native) {
+        console.log('[HomeownerPricing] Native purchase order placed, awaiting StoreKit verification callback');
+        return;
+      }
       if (data.url) {
         await openPaymentUrl(data.url);
       }
@@ -435,6 +488,27 @@ export default function HomeownerPricing() {
                   <Link href="/billing">View Billing History</Link>
                 </Button>
               </div>
+              <p className="text-xs text-gray-500 max-w-xl mx-auto pt-2">
+                By subscribing, you agree to our{' '}
+                <button
+                  type="button"
+                  className="underline hover:text-gray-700"
+                  data-testid="link-privacy-policy"
+                  onClick={() => openExternalUrl(`${window.location.origin}/privacy-policy`)}
+                >
+                  Privacy Policy
+                </button>{' '}
+                and{' '}
+                <button
+                  type="button"
+                  className="underline hover:text-gray-700"
+                  data-testid="link-eula"
+                  onClick={() => openExternalUrl('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')}
+                >
+                  End User License Agreement (EULA)
+                </button>
+                {isNativePlatform && '. Payment will be charged to your Apple ID account and your subscription automatically renews unless cancelled at least 24 hours before the end of the current period.'}
+              </p>
             </div>
           </CardContent>
         </Card>

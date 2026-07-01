@@ -176,6 +176,28 @@ function Router() {
     };
   }, [user]);
 
+  // After login (OAuth or email), claim any anonymous quiz result taken before
+  // the visitor signed up. This fires once when isAuthenticated first becomes
+  // true so it covers Google OAuth and Replit auth redirect flows in addition
+  // to the email/password registration path handled in onboarding.tsx.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    try {
+      const resultId = localStorage.getItem('mhb_quiz_result_id');
+      if (!resultId) return;
+      fetch('/api/quiz-result/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ resultId }),
+      }).then(() => {
+        localStorage.removeItem('mhb_quiz_result_id');
+      }).catch(() => {});
+    } catch {
+      // Non-critical
+    }
+  }, [isAuthenticated]);
+
   // Show loading screen while checking authentication
   if (isLoading) {
     return <LoadingFallback />;

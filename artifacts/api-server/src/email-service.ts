@@ -1607,6 +1607,68 @@ export async function sendTechInviteEmail(
   }
 }
 
+interface SeedSectionResult {
+  ok: boolean;
+  inserted?: number;
+  expected?: number;
+  error?: string;
+}
+
+export async function sendDemoSeedingFailureAlert(
+  demoUserId: string,
+  failedSections: string[],
+  seedResults: Record<string, SeedSectionResult>
+): Promise<void> {
+  const alertRecipient = process.env.ALERT_EMAIL || 'gotohomebase2025@gmail.com';
+  if (!apiKey) {
+    console.warn('[EMAIL] SendGrid not configured — cannot send demo seeding failure alert');
+    return;
+  }
+  if (failedSections.length === 0) return;
+
+  const failureRows = failedSections
+    .map((section) => {
+      const result = seedResults[section];
+      const errorText = result?.error ?? '(no error message)';
+      return `<tr>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; font-weight: 600;">${section}</td>
+        <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; color: #dc2626; font-family: monospace; font-size: 13px;">${errorText}</td>
+      </tr>`;
+    })
+    .join('');
+
+  const failureRowsText = failedSections
+    .map((s) => `  - ${s}: ${seedResults[s]?.error ?? '(no error message)'}`)
+    .join('\n');
+
+  const html = wrapEmailContent(
+    getEmailHeader('⚠️ Demo Seeding Failure'),
+    `
+    <p style="margin: 0 0 16px 0; color: #374151;">A contractor demo login attempt completed with seeding errors. A prospect may see an incomplete demo experience.</p>
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px;">
+      <thead>
+        <tr style="background: #fef2f2;">
+          <th style="padding: 10px 12px; text-align: left; font-size: 13px; color: #374151; border-bottom: 2px solid #fca5a5;">Section</th>
+          <th style="padding: 10px 12px; text-align: left; font-size: 13px; color: #374151; border-bottom: 2px solid #fca5a5;">Error</th>
+        </tr>
+      </thead>
+      <tbody>${failureRows}</tbody>
+    </table>
+    <p style="margin: 0 0 8px 0; color: #6b7280; font-size: 14px;"><strong>Demo user ID:</strong> <code>${demoUserId}</code></p>
+    <p style="margin: 0; color: #6b7280; font-size: 14px;"><strong>Failed sections (${failedSections.length}):</strong> ${failedSections.join(', ')}</p>
+    `
+  );
+
+  const text = `Demo Seeding Failure Alert\n\nDemo user ID: ${demoUserId}\nFailed sections (${failedSections.length}): ${failedSections.join(', ')}\n\nDetails:\n${failureRowsText}`;
+
+  await sendEmail({
+    to: alertRecipient,
+    subject: `[HomeBase] Demo seeding failure — ${failedSections.length} section${failedSections.length !== 1 ? 's' : ''} failed`,
+    text,
+    html,
+  });
+}
+
 export const emailService = {
   sendEmail,
   sendWelcomeEmail,
@@ -1628,6 +1690,7 @@ export const emailService = {
   sendInvoiceUpdatedEmail,
   sendInvoicePaymentConfirmationEmail,
   sendTechInviteEmail,
+  sendDemoSeedingFailureAlert,
   getEmailHeader,
   wrapEmailContent,
 };
