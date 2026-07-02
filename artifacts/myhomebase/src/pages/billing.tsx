@@ -59,6 +59,8 @@ export default function Billing() {
       queryClient.invalidateQueries({ queryKey: ['/api/user'] });
       queryClient.invalidateQueries({ queryKey: ['/api/billing-history'] });
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/my-subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/contractor/subscription'] });
     });
   }, [queryClient]);
 
@@ -74,6 +76,8 @@ export default function Billing() {
       queryClient.invalidateQueries({ queryKey: ['/api/user'] });
       queryClient.invalidateQueries({ queryKey: ['/api/billing-history'] });
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/my-subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/contractor/subscription'] });
       toast({
         title: "Subscription Activated",
         description: "Your subscription is now active.",
@@ -105,6 +109,8 @@ export default function Billing() {
       console.log('[Billing] Restore purchases result:', result);
       queryClient.invalidateQueries({ queryKey: ['/api/user'] });
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/my-subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/contractor/subscription'] });
       toast({
         title: result.restored ? "Purchases Restored" : "Nothing to Restore",
         description: result.restored
