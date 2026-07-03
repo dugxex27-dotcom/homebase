@@ -106,9 +106,9 @@ export function useHomeownerSubscription(): SubscriptionStatus {
   // Check if user has an active paid subscription
   const hasActiveSubscription = subscriptionStatus === 'active' || subscriptionStatus === 'grandfathered';
   
-  // A user is a paid subscriber if they have an active subscription (not just trialing)
-  // Grandfathered users don't need a Stripe subscription ID - they get free access
-  const isPaidSubscriber = (hasActiveSubscription && !!data.stripeSubscriptionId) || subscriptionStatus === 'grandfathered';
+  // Active server status is the source of truth. Apple IAP users do not have
+  // a Stripe subscription id, so checking Stripe only would hide paid access.
+  const isPaidSubscriber = hasActiveSubscription;
 
   // User needs upgrade if:
   // 1. Trial expired and no active subscription

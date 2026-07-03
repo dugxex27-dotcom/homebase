@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Check, CreditCard, Home, Zap, Crown, Loader2, ShieldCheck } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { openPaymentUrl, openExternalUrl, onBrowserFinished, isNativePlatform } from "@/lib/nativeBrowser";
 import {
@@ -35,6 +35,7 @@ const PRICING_PLAN_INFO: Record<string, { name: string; price: string }> = {
 export default function HomeownerPricing() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
   const urlParams = new URLSearchParams(window.location.search);
   const isOnboarding = urlParams.get('onboarding') === 'true';
   const rawPlanParam = urlParams.get('plan') ?? '';
@@ -56,6 +57,7 @@ export default function HomeownerPricing() {
     return onBrowserFinished(() => {
       queryClient.invalidateQueries({ queryKey: ['/api/user'] });
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/my-subscription'] });
       setCheckoutPlan(null);
     });
   }, [queryClient]);
@@ -67,15 +69,47 @@ export default function HomeownerPricing() {
   }, []);
 
   useEffect(() => {
-    const unsubVerified = onNativePurchaseVerified(({ plan, productId }) => {
+    const unsubVerified = onNativePurchaseVerified(async ({ plan, productId }) => {
       console.log('[HomeownerPricing] Native purchase verified:', plan, productId);
-      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      queryClient.setQueryData(['/api/user'], (old: any) => old ? ({
+        ...old,
+        subscriptionStatus: 'active',
+        subscriptionSource: 'apple',
+        appleProductId: productId,
+      }) : old);
+      queryClient.setQueryData(['/api/auth/user'], (old: any) => old ? ({
+        ...old,
+        subscriptionStatus: 'active',
+        subscriptionSource: 'apple',
+        appleProductId: productId,
+      }) : old);
+      queryClient.setQueryData(['/api/my-subscription'], (old: any) => old ? ({
+        ...old,
+        currentPlan: plan === 'premium_plus' ? 'premium_plus' : plan,
+        subscriptionStatus: 'active',
+        needsUpgrade: false,
+        isFreeUser: false,
+      }) : old);
+      try {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['/api/user'] }),
+          queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] }),
+          queryClient.invalidateQueries({ queryKey: ['/api/my-subscription'] }),
+        ]);
+        await Promise.all([
+          queryClient.refetchQueries({ queryKey: ['/api/user'] }),
+          queryClient.refetchQueries({ queryKey: ['/api/auth/user'] }),
+          queryClient.refetchQueries({ queryKey: ['/api/my-subscription'] }),
+        ]);
+      } catch (error) {
+        console.warn('[HomeownerPricing] Failed to refresh subscription state after native purchase:', error);
+      }
       setCheckoutPlan(null);
       toast({
         title: "Subscription Activated",
         description: `Your ${PRICING_PLAN_INFO[plan]?.name || plan} subscription is now active.`,
       });
+      setLocation('/dashboard');
     });
     const unsubFailed = onNativePurchaseFailed(({ message }) => {
       console.error('[HomeownerPricing] Native purchase failed:', message);
@@ -90,7 +124,7 @@ export default function HomeownerPricing() {
       unsubVerified();
       unsubFailed();
     };
-  }, [queryClient, toast]);
+  }, [queryClient, toast, setLocation]);
 
   const checkoutMutation = useMutation({
     mutationFn: async (plan: string) => {

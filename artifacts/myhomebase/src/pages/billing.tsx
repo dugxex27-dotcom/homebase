@@ -71,13 +71,50 @@ export default function Billing() {
   }, []);
 
   useEffect(() => {
-    const unsubVerified = onNativePurchaseVerified(({ plan, productId }) => {
+    const unsubVerified = onNativePurchaseVerified(async ({ plan, productId }) => {
       console.log('[Billing] Native purchase verified:', plan, productId);
-      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/billing-history'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/my-subscription'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/contractor/subscription'] });
+      queryClient.setQueryData(['/api/user'], (old: any) => old ? ({
+        ...old,
+        subscriptionStatus: 'active',
+        subscriptionSource: 'apple',
+        appleProductId: productId,
+      }) : old);
+      queryClient.setQueryData(['/api/auth/user'], (old: any) => old ? ({
+        ...old,
+        subscriptionStatus: 'active',
+        subscriptionSource: 'apple',
+        appleProductId: productId,
+      }) : old);
+      queryClient.setQueryData(['/api/my-subscription'], (old: any) => old ? ({
+        ...old,
+        currentPlan: plan === 'premium_plus' ? 'premium_plus' : plan,
+        subscriptionStatus: 'active',
+        needsUpgrade: false,
+        isFreeUser: false,
+      }) : old);
+      queryClient.setQueryData(['/api/contractor/subscription'], (old: any) => old ? ({
+        ...old,
+        status: 'active',
+        plan: plan === 'contractor_basic' ? 'basic' : old.plan,
+      }) : old);
+      try {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['/api/user'] }),
+          queryClient.invalidateQueries({ queryKey: ['/api/billing-history'] }),
+          queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] }),
+          queryClient.invalidateQueries({ queryKey: ['/api/my-subscription'] }),
+          queryClient.invalidateQueries({ queryKey: ['/api/contractor/subscription'] }),
+        ]);
+        await Promise.all([
+          queryClient.refetchQueries({ queryKey: ['/api/user'] }),
+          queryClient.refetchQueries({ queryKey: ['/api/billing-history'] }),
+          queryClient.refetchQueries({ queryKey: ['/api/auth/user'] }),
+          queryClient.refetchQueries({ queryKey: ['/api/my-subscription'] }),
+          queryClient.refetchQueries({ queryKey: ['/api/contractor/subscription'] }),
+        ]);
+      } catch (error) {
+        console.warn('[Billing] Failed to refresh subscription state after native purchase:', error);
+      }
       toast({
         title: "Subscription Activated",
         description: "Your subscription is now active.",
@@ -105,12 +142,24 @@ export default function Billing() {
       }
       return restoreNativePurchases(userData.id);
     },
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       console.log('[Billing] Restore purchases result:', result);
-      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/my-subscription'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/contractor/subscription'] });
+      try {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['/api/user'] }),
+          queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] }),
+          queryClient.invalidateQueries({ queryKey: ['/api/my-subscription'] }),
+          queryClient.invalidateQueries({ queryKey: ['/api/contractor/subscription'] }),
+        ]);
+        await Promise.all([
+          queryClient.refetchQueries({ queryKey: ['/api/user'] }),
+          queryClient.refetchQueries({ queryKey: ['/api/auth/user'] }),
+          queryClient.refetchQueries({ queryKey: ['/api/my-subscription'] }),
+          queryClient.refetchQueries({ queryKey: ['/api/contractor/subscription'] }),
+        ]);
+      } catch (error) {
+        console.warn('[Billing] Failed to refresh subscription state after restore:', error);
+      }
       toast({
         title: result.restored ? "Purchases Restored" : "Nothing to Restore",
         description: result.restored
