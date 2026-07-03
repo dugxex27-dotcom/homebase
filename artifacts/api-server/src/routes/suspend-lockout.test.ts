@@ -1,0 +1,726 @@
+/**
+ * Route integration tests — boot real registerRoutes with mocked heavy deps.
+ *
+ * Verifies that the actual PATCH /suspend and DELETE /remove route handlers
+ * fire both side-effects that produce immediate lockout:
+ *   1. suspendedUserIds.add(userId)  — in-memory blocklist updated
+ *   2. invalidateUserSessions(...)   — session-destroy path called with correct userId
+ *
+ * Then verifies the blocked user's subsequent authenticated request returns 401.
+ *
+ * Unit-level tests for invalidateUserSessions and requireNotSuspended middleware
+ * live in suspend-lockout-unit.test.ts (no vi.mock of replitAuth).
+ */
+
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
+
+// ---------------------------------------------------------------------------
+// vi.hoisted() — shared state visible inside vi.mock() factory closures
+// ---------------------------------------------------------------------------
+
+const {
+  sharedSuspendedUserIds,
+  mockInvalidateUserSessions,
+  ADMIN_USER_ID,
+  TARGET_USER_ID,
+  COMPANY_ID,
+  mockDbSelect,
+  mockDbUpdate,
+} = vi.hoisted(() => {
+  const ADMIN_USER_ID = "admin-owner-001";
+  const TARGET_USER_ID = "tech-user-001";
+  const COMPANY_ID = "company-001";
+  const sharedSuspendedUserIds = new Set<string>();
+
+  const mockDbSelect = vi.fn();
+  const mockDbUpdate = vi.fn();
+
+  return {
+    sharedSuspendedUserIds,
+    mockInvalidateUserSessions: vi.fn(),
+    ADMIN_USER_ID,
+    TARGET_USER_ID,
+    COMPANY_ID,
+    mockDbSelect,
+    mockDbUpdate,
+  };
+});
+
+// Shared user fixtures referenced inside vi.mock() closures
+const ADMIN_SESSION = {
+  isAuthenticated: true,
+  user: {
+    id: "admin-owner-001",
+    email: "owner@company.test",
+    companyId: "company-001",
+    companyRole: "owner",
+    status: "active",
+    firstName: "Admin",
+    lastName: "Owner",
+  },
+};
+const TARGET_SESSION = {
+  isAuthenticated: true,
+  user: {
+    id: "tech-user-001",
+    email: "tech@company.test",
+    companyId: "company-001",
+    companyRole: "tech",
+    status: "active",
+    firstName: "Tech",
+    lastName: "User",
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Module mocks — hoisted before all imports by Vitest
+// ---------------------------------------------------------------------------
+
+// Partial mock: spread the real module so any future new replitAuth exports
+// don't silently break the test (e.g. if routes.ts starts using a new function
+// that we forgot to stub here).  We only override the functions that need to
+// behave differently inside the test environment.
+vi.mock("../replitAuth", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../replitAuth")>();
+  return {
+    ...actual,
+
+    setupAuth: vi.fn().mockResolvedValue(undefined),
+
+    // isAuthenticated: injects session from x-test-user header
+    //   "target" → suspended tech user session
+    //   anything else → admin/owner session
+    isAuthenticated: vi.fn((req: any, _res: any, next: any) => {
+      const who = req.headers?.["x-test-user"] ?? "admin";
+      req.session = who === "target" ? TARGET_SESSION : ADMIN_SESSION;
+      next();
+    }),
+
+    // requireNotSuspended: checks our sharedSuspendedUserIds Set so lockout
+    // tests work without needing a real DB or TTL cache.
+    requireNotSuspended: vi.fn(() => (req: any, res: any, next: any) => {
+      const user = req.session?.user;
+      if (!user) return res.status(401).json({ message: "Unauthorized" });
+      if (
+        ["suspended", "removed", "pending_invite"].includes(user.status) ||
+        sharedSuspendedUserIds.has(user.id)
+      ) {
+        return res
+          .status(401)
+          .json({ message: "Account suspended. Contact your company administrator." });
+      }
+      next();
+    }),
+
+    // requireActiveAccountFresh: no-op pass-through — not under test here.
+    requireActiveAccountFresh: vi.fn(() => (_req: any, _res: any, next: any) => next()),
+
+    requireRole: vi.fn(() => (_req: any, _res: any, next: any) => next()),
+    requirePropertyOwner: vi.fn((_req: any, _res: any, next: any) => next()),
+    requireCompanyRole: vi.fn(() => (_req: any, _res: any, next: any) => next()),
+    requireCompanyRoleAny: vi.fn(() => (_req: any, _res: any, next: any) => next()),
+    requireDivisionAccess: vi.fn((_req: any, _res: any, next: any) => next()),
+    requireBulkImport: vi.fn((_req: any, _res: any, next: any) => next()),
+    requireApiAccess: vi.fn((_req: any, _res: any, next: any) => next()),
+    requireSameCompany: vi.fn(() => (_req: any, _res: any, next: any) => next()),
+    requireResourceOwnership: vi.fn(() => (_req: any, _res: any, next: any) => next()),
+    validateHouseOwnership: vi.fn().mockResolvedValue(true),
+    validateMaintenanceLogOwnership: vi.fn().mockResolvedValue(true),
+    validateCustomMaintenanceTaskOwnership: vi.fn().mockResolvedValue(true),
+    validateHomeSystemOwnership: vi.fn().mockResolvedValue(true),
+
+    // The shared Set and spy — routes.ts imports and mutates these directly.
+    suspendedUserIds: sharedSuspendedUserIds,
+    invalidateUserSessions: mockInvalidateUserSessions,
+    evictStatusCache: vi.fn(),
+    refreshUserSessionRole: vi.fn(),
+    invalidateActiveStatusCache: vi.fn(),
+  };
+});
+
+vi.mock("../googleAuth", () => ({ setupGoogleAuth: vi.fn() }));
+
+vi.mock("ws", () => ({
+  WebSocketServer: class MockWss {
+    on() {}
+    clients = new Set();
+  },
+  WebSocket: { OPEN: 1 },
+}));
+
+vi.mock("../push-routes", () => ({ default: vi.fn() }));
+vi.mock("../push-service", () => ({
+  pushService: { sendToUser: vi.fn(), sendToMany: vi.fn() },
+}));
+vi.mock("../notification-orchestrator", () => ({
+  notificationOrchestrator: {
+    notify: vi.fn(),
+    sendMaintenanceReminder: vi.fn(),
+    sendWeatherAlert: vi.fn(),
+  },
+}));
+vi.mock("../email-service", () => ({
+  sendEmail: vi.fn().mockResolvedValue(undefined),
+  emailService: { send: vi.fn().mockResolvedValue(undefined) },
+}));
+vi.mock("../sms-service", () => ({
+  smsService: { send: vi.fn().mockResolvedValue(undefined) },
+}));
+vi.mock("../apple-iap", () => ({
+  verifyAndActivateAppleTransaction: vi.fn().mockResolvedValue(undefined),
+  handleAppleServerNotification: vi.fn().mockResolvedValue(undefined),
+  AppleIapError: class AppleIapError extends Error {},
+}));
+vi.mock("../objectStorage", () => ({
+  ObjectStorageService: class MockObjectStorageService {
+    upload = vi.fn();
+    download = vi.fn();
+    delete = vi.fn();
+    getSignedUrl = vi.fn();
+    getUploadUrl = vi.fn();
+    deleteObject = vi.fn();
+    getObject = vi.fn();
+    putObject = vi.fn();
+    listObjects = vi.fn();
+  },
+  ObjectNotFoundError: class ObjectNotFoundError extends Error {},
+}));
+vi.mock("../geocoding-service", () => ({
+  geocodeAddress: vi.fn().mockResolvedValue(null),
+  calculateDistance: vi.fn().mockReturnValue(0),
+}));
+vi.mock("../invoice-analysis-service", () => ({
+  extractInvoiceData: vi.fn().mockResolvedValue(null),
+  verifyDIYPhotos: vi.fn().mockResolvedValue(null),
+}));
+vi.mock("openai", () => ({
+  default: class MockOpenAI {
+    chat = { completions: { create: vi.fn() } };
+  },
+}));
+vi.mock("../security-audit", () => ({
+  AuditEventTypes: {},
+  AuditEventCategories: {},
+  AuditSeverity: {},
+  auditLogger: {
+    log: vi.fn().mockResolvedValue(undefined),
+    logAuth: vi.fn().mockResolvedValue(undefined),
+    logLogin: vi.fn().mockResolvedValue(undefined),
+    logLogout: vi.fn().mockResolvedValue(undefined),
+    logSecurity: vi.fn().mockResolvedValue(undefined),
+    logRequest: vi.fn().mockResolvedValue(undefined),
+    logPasswordChange: vi.fn().mockResolvedValue(undefined),
+    logAdminAction: vi.fn().mockResolvedValue(undefined),
+  },
+  sessionManager: {
+    createSession: vi.fn(),
+    validateSession: vi.fn(),
+    invalidateSession: vi.fn(),
+    trackRequest: vi.fn(),
+  },
+  userRateLimiter: { check: vi.fn().mockResolvedValue(true) },
+  getClientIP: vi.fn().mockReturnValue("127.0.0.1"),
+}));
+vi.mock("stripe", () => {
+  function MockStripe(this: any) {
+    this.webhooks = {
+      constructEvent: vi.fn().mockReturnValue({ id: "evt_stub", type: "test.stub" }),
+    };
+    this.subscriptionItems = {
+      createUsageRecord: vi.fn().mockResolvedValue(undefined),
+    };
+    this.subscriptions = {
+      retrieve: vi.fn().mockResolvedValue({ id: "sub_stub", items: { data: [] } }),
+    };
+    this.accounts = {
+      retrieve: vi.fn().mockResolvedValue({
+        id: "acct_test",
+        charges_enabled: true,
+        payouts_enabled: true,
+        country: "US",
+      }),
+    };
+  }
+  return { default: MockStripe };
+});
+vi.mock("../security-audit", () => ({
+  AuditEventTypes: { ADMIN_USER_MODIFY: "admin.user.modify", SECURITY_SCAN: "security.scan" },
+  AuditEventCategories: {},
+  AuditSeverity: {},
+  auditLogger: {
+    log: vi.fn().mockResolvedValue(undefined),
+    logAuth: vi.fn(),
+    logSecurity: vi.fn(),
+    logRequest: vi.fn(),
+  },
+  sessionManager: {
+    createSession: vi.fn(),
+    validateSession: vi.fn(),
+    invalidateSession: vi.fn(),
+    trackRequest: vi.fn(),
+  },
+  userRateLimiter: { check: vi.fn().mockResolvedValue(true) },
+  getClientIP: vi.fn().mockReturnValue("127.0.0.1"),
+}));
+vi.mock("../storage", () => ({
+  storage: {
+    getSubscriptionPlanByTier: vi.fn().mockResolvedValue(null),
+    getUserByStripeCustomerId: vi.fn().mockResolvedValue(null),
+    getAffiliateReferralByUserId: vi.fn().mockResolvedValue(null),
+    updateUserSubscriptionStatus: vi.fn().mockResolvedValue(undefined),
+    createSubscriptionCycleEvent: vi.fn().mockResolvedValue(null),
+    getContractorCompanyByStripeAccountId: vi.fn().mockResolvedValue(null),
+    updateCompanySubscriptionStatus: vi.fn().mockResolvedValue(undefined),
+    getCompanyById: vi.fn().mockResolvedValue(null),
+    updateCompanyStripeSubscription: vi.fn().mockResolvedValue(undefined),
+    upsertSubscriptionPlan: vi.fn().mockResolvedValue(undefined),
+    hasProcessedStripeEvent: vi.fn().mockResolvedValue(false),
+    recordProcessedStripeEvent: vi.fn().mockResolvedValue(undefined),
+    pruneOldStripeProcessedEvents: vi.fn().mockResolvedValue(undefined),
+    getRecentStripeProcessedEventIds: vi.fn().mockResolvedValue(new Map()),
+  },
+}));
+vi.mock("../db", () => ({
+  pool: { query: vi.fn(), end: vi.fn() },
+  db: {
+    insert: vi.fn().mockReturnValue({
+      values: vi.fn().mockReturnValue({
+        onConflictDoNothing: vi.fn().mockResolvedValue(undefined),
+        returning: vi.fn().mockResolvedValue([]),
+      }),
+    }),
+    select: mockDbSelect,
+    update: mockDbUpdate,
+    delete: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+  },
+}));
+
+// ---------------------------------------------------------------------------
+// Imports — placed AFTER vi.mock() blocks
+// ---------------------------------------------------------------------------
+
+import express from "express";
+import request from "supertest";
+import { registerRoutes } from "./routes";
+
+// ---------------------------------------------------------------------------
+// DB mock helpers — drizzle-style chained query builders
+// ---------------------------------------------------------------------------
+
+const DEFAULT_TARGET_USER = {
+  id: TARGET_USER_ID,
+  email: "tech@company.test",
+  companyId: COMPANY_ID,
+  companyRole: "tech",
+  status: "active",
+  firstName: "Tech",
+  lastName: "User",
+  inviteExpiresAt: null,
+  deletedAt: null,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+};
+
+/** Returns a drizzle-style select chain that resolves to `rows` on .limit() */
+function makeSelectChain(rows: any[]) {
+  return {
+    from: vi.fn().mockReturnValue({
+      where: vi.fn().mockReturnValue({
+        limit: vi.fn().mockResolvedValue(rows),
+        groupBy: vi.fn().mockReturnValue({
+          limit: vi.fn().mockReturnValue({
+            offset: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      }),
+    }),
+  };
+}
+
+/** Returns a drizzle-style update chain that resolves on .where() */
+function makeUpdateChain() {
+  return {
+    set: vi.fn().mockReturnValue({
+      where: vi.fn().mockResolvedValue(undefined),
+    }),
+  };
+}
+
+/**
+ * Configure DB mock for the suspend route (PATCH /api/contractor/team/:userId/suspend).
+ * The handler makes 3 sequential selects before the update:
+ *   1st select → actor status check (in route handler)          → active
+ *   2nd select → requestor role check (verifyRequestorRoleFromDb) → owner
+ *   3rd select → target user lookup (in route handler)           → tech user
+ *   update     → success
+ */
+function configureDbForSuspend(targetUser = DEFAULT_TARGET_USER) {
+  mockDbSelect
+    .mockReturnValueOnce(makeSelectChain([{ status: "active" }]))        // 1: actor status
+    .mockReturnValueOnce(makeSelectChain([{ companyRole: "owner" }]))    // 2: requestor role
+    .mockReturnValueOnce(makeSelectChain([targetUser]));                 // 3: target user
+  mockDbUpdate.mockReturnValue(makeUpdateChain());
+}
+
+/**
+ * Configure DB mock for the remove route (DELETE /api/contractor/team/:userId).
+ *
+ * The handler (post-refactor) makes exactly 2 sequential selects:
+ *   1st select → combined actor check (status + companyRole + companyId in one query)
+ *   2nd select → target user lookup inside executeRemoveMember
+ *   Tech target → no 3rd admin-count query (only fires for admin/owner targets)
+ *   update     → success (inside executeRemoveMember)
+ *
+ * The first row MUST include all three fields the handler reads from actorRow
+ * (status, companyRole, companyId).  Missing fields default to null which
+ * causes executeRemoveMember to return 'unauthorized' → 403.
+ */
+function configureDbForRemove(targetUser = DEFAULT_TARGET_USER) {
+  mockDbSelect
+    .mockReturnValueOnce(makeSelectChain([{          // 1: combined actor row
+      status: "active",
+      companyRole: "owner",
+      companyId: COMPANY_ID,
+    }]))
+    .mockReturnValueOnce(makeSelectChain([targetUser])); // 2: target user
+  mockDbUpdate.mockReturnValue(makeUpdateChain());
+}
+
+const DEFAULT_PENDING_INVITE_USER = {
+  ...DEFAULT_TARGET_USER,
+  status: "pending_invite",
+  inviteToken: "test-invite-token",
+  inviteExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+};
+
+/**
+ * Configure DB mock for the invite-cancel route
+ * (DELETE /api/contractor/team/:userId/invite).
+ *
+ * The handler makes 3 sequential selects before the update:
+ *   1st select → actor status check (in route handler)          → active
+ *   2nd select → requestor role check (verifyRequestorRoleFromDb) → owner
+ *   3rd select → pending-invite target user lookup (in route handler)
+ *   update     → success
+ */
+function configureDbForInviteCancel(targetUser = DEFAULT_PENDING_INVITE_USER) {
+  mockDbSelect
+    .mockReturnValueOnce(makeSelectChain([{ status: "active" }]))     // 1: actor status
+    .mockReturnValueOnce(makeSelectChain([{ companyRole: "owner" }])) // 2: requestor role
+    .mockReturnValueOnce(makeSelectChain([targetUser]));               // 3: pending invite target
+  mockDbUpdate.mockReturnValue(makeUpdateChain());
+}
+
+// ---------------------------------------------------------------------------
+// PATCH /api/contractor/team/:userId/suspend — route-level integration
+// ---------------------------------------------------------------------------
+
+describe("PATCH /api/contractor/team/:userId/suspend — route-level wiring", () => {
+  let app: express.Express;
+  let addSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(async () => {
+    sharedSuspendedUserIds.clear();
+    mockInvalidateUserSessions.mockClear();
+    mockDbSelect.mockReset();
+    mockDbUpdate.mockReset();
+
+    addSpy = vi.spyOn(sharedSuspendedUserIds, "add");
+
+    process.env.STRIPE_SECRET_KEY = "sk_test_suspend_placeholder";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_suspend_placeholder";
+
+    app = express();
+    await registerRoutes(app);
+  });
+
+  afterEach(() => {
+    sharedSuspendedUserIds.clear();
+    vi.clearAllMocks();
+  });
+
+  it("responds 200 and returns a suspension confirmation message", async () => {
+    configureDbForSuspend();
+
+    const res = await request(app)
+      .patch(`/api/contractor/team/${TARGET_USER_ID}/suspend`)
+      .set("x-test-user", "admin");
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("adds the target user to suspendedUserIds after a successful suspend", async () => {
+    configureDbForSuspend();
+
+    const res = await request(app)
+      .patch(`/api/contractor/team/${TARGET_USER_ID}/suspend`)
+      .set("x-test-user", "admin");
+
+    expect(res.status).toBe(200);
+    // Route must have called suspendedUserIds.add(TARGET_USER_ID)
+    expect(addSpy).toHaveBeenCalledWith(TARGET_USER_ID);
+    expect(sharedSuspendedUserIds.has(TARGET_USER_ID)).toBe(true);
+  });
+
+  it("calls invalidateUserSessions with the correct target userId after suspend", async () => {
+    configureDbForSuspend();
+
+    const res = await request(app)
+      .patch(`/api/contractor/team/${TARGET_USER_ID}/suspend`)
+      .set("x-test-user", "admin");
+
+    expect(res.status).toBe(200);
+    // invalidateUserSessions must be called once with the target user's ID as the second arg.
+    // sessionStore and req.log may be undefined in the test environment (no real session
+    // middleware); the critical assertion is that the correct userId was passed.
+    expect(mockInvalidateUserSessions).toHaveBeenCalledOnce();
+    const calledWithUserId = mockInvalidateUserSessions.mock.calls[0][1];
+    expect(calledWithUserId).toBe(TARGET_USER_ID);
+  });
+
+  it("both side-effects fire together: blocklist add AND session-destroy call", async () => {
+    configureDbForSuspend();
+
+    await request(app)
+      .patch(`/api/contractor/team/${TARGET_USER_ID}/suspend`)
+      .set("x-test-user", "admin");
+
+    // Both must fire — either alone leaves a security gap
+    expect(addSpy).toHaveBeenCalledWith(TARGET_USER_ID);
+    expect(mockInvalidateUserSessions).toHaveBeenCalledOnce();
+  });
+
+  it("blocks the suspended user's subsequent request with 401 immediately after suspend", async () => {
+    configureDbForSuspend();
+
+    // Admin suspends the target tech
+    const suspendRes = await request(app)
+      .patch(`/api/contractor/team/${TARGET_USER_ID}/suspend`)
+      .set("x-test-user", "admin");
+    expect(suspendRes.status).toBe(200);
+
+    // The target user's ID is now in sharedSuspendedUserIds.
+    // Any subsequent request carrying that user's session is immediately rejected
+    // by requireNotSuspended — no DB round-trip needed.
+    const lockedOutRes = await request(app)
+      .patch(`/api/contractor/team/${TARGET_USER_ID}/suspend`)
+      .set("x-test-user", "target");
+    expect(lockedOutRes.status).toBe(401);
+    expect(lockedOutRes.body.message).toMatch(/suspended/i);
+  });
+
+  it("does not add an unrelated user to the blocklist", async () => {
+    const OTHER_ID = "other-tech-999";
+    configureDbForSuspend();
+
+    await request(app)
+      .patch(`/api/contractor/team/${TARGET_USER_ID}/suspend`)
+      .set("x-test-user", "admin");
+
+    expect(sharedSuspendedUserIds.has(OTHER_ID)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DELETE /api/contractor/team/:userId — route-level integration
+// ---------------------------------------------------------------------------
+
+describe("DELETE /api/contractor/team/:userId — route-level wiring", () => {
+  let app: express.Express;
+  let addSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(async () => {
+    sharedSuspendedUserIds.clear();
+    mockInvalidateUserSessions.mockClear();
+    mockDbSelect.mockReset();
+    mockDbUpdate.mockReset();
+
+    addSpy = vi.spyOn(sharedSuspendedUserIds, "add");
+
+    process.env.STRIPE_SECRET_KEY = "sk_test_remove_placeholder";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_remove_placeholder";
+
+    app = express();
+    await registerRoutes(app);
+  });
+
+  afterEach(() => {
+    sharedSuspendedUserIds.clear();
+    vi.clearAllMocks();
+  });
+
+  it("responds 200 and returns a removal confirmation message", async () => {
+    configureDbForRemove();
+
+    const res = await request(app)
+      .delete(`/api/contractor/team/${TARGET_USER_ID}`)
+      .set("x-test-user", "admin");
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toMatch(/removed/i);
+  });
+
+  it("adds the removed user to suspendedUserIds after a successful remove", async () => {
+    configureDbForRemove();
+
+    const res = await request(app)
+      .delete(`/api/contractor/team/${TARGET_USER_ID}`)
+      .set("x-test-user", "admin");
+
+    expect(res.status).toBe(200);
+    expect(addSpy).toHaveBeenCalledWith(TARGET_USER_ID);
+    expect(sharedSuspendedUserIds.has(TARGET_USER_ID)).toBe(true);
+  });
+
+  it("calls invalidateUserSessions with the correct target userId after remove", async () => {
+    configureDbForRemove();
+
+    const res = await request(app)
+      .delete(`/api/contractor/team/${TARGET_USER_ID}`)
+      .set("x-test-user", "admin");
+
+    expect(res.status).toBe(200);
+    // invalidateUserSessions must be called once; second argument is the userId.
+    expect(mockInvalidateUserSessions).toHaveBeenCalledOnce();
+    const calledWithUserId = mockInvalidateUserSessions.mock.calls[0][1];
+    expect(calledWithUserId).toBe(TARGET_USER_ID);
+  });
+
+  it("both side-effects fire together: blocklist add AND session-destroy call", async () => {
+    configureDbForRemove();
+
+    await request(app)
+      .delete(`/api/contractor/team/${TARGET_USER_ID}`)
+      .set("x-test-user", "admin");
+
+    expect(addSpy).toHaveBeenCalledWith(TARGET_USER_ID);
+    expect(mockInvalidateUserSessions).toHaveBeenCalledOnce();
+  });
+
+  it("blocks the removed user's subsequent request with 401 immediately after removal", async () => {
+    configureDbForRemove();
+
+    const removeRes = await request(app)
+      .delete(`/api/contractor/team/${TARGET_USER_ID}`)
+      .set("x-test-user", "admin");
+    expect(removeRes.status).toBe(200);
+
+    // Removed user's next request is immediately rejected by requireNotSuspended
+    const lockedOutRes = await request(app)
+      .delete(`/api/contractor/team/${TARGET_USER_ID}`)
+      .set("x-test-user", "target");
+    expect(lockedOutRes.status).toBe(401);
+    expect(lockedOutRes.body.message).toMatch(/suspended/i);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DELETE /api/contractor/team/:userId/invite — route-level integration
+// ---------------------------------------------------------------------------
+
+describe("DELETE /api/contractor/team/:userId/invite — route-level wiring", () => {
+  let app: express.Express;
+  let addSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(async () => {
+    sharedSuspendedUserIds.clear();
+    mockInvalidateUserSessions.mockClear();
+    mockDbSelect.mockReset();
+    mockDbUpdate.mockReset();
+
+    addSpy = vi.spyOn(sharedSuspendedUserIds, "add");
+
+    process.env.STRIPE_SECRET_KEY = "sk_test_invite_cancel_placeholder";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_invite_cancel_placeholder";
+
+    app = express();
+    await registerRoutes(app);
+  });
+
+  afterEach(() => {
+    sharedSuspendedUserIds.clear();
+    vi.clearAllMocks();
+  });
+
+  it("responds 200 and returns an invite-cancelled confirmation message", async () => {
+    configureDbForInviteCancel();
+
+    const res = await request(app)
+      .delete(`/api/contractor/team/${TARGET_USER_ID}/invite`)
+      .set("x-test-user", "admin");
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toMatch(/cancel/i);
+  });
+
+  it("adds the invited user to suspendedUserIds after a successful cancel", async () => {
+    configureDbForInviteCancel();
+
+    const res = await request(app)
+      .delete(`/api/contractor/team/${TARGET_USER_ID}/invite`)
+      .set("x-test-user", "admin");
+
+    expect(res.status).toBe(200);
+    // Route must have called suspendedUserIds.add(TARGET_USER_ID)
+    expect(addSpy).toHaveBeenCalledWith(TARGET_USER_ID);
+    expect(sharedSuspendedUserIds.has(TARGET_USER_ID)).toBe(true);
+  });
+
+  it("calls invalidateUserSessions with the correct target userId after invite cancel", async () => {
+    configureDbForInviteCancel();
+
+    const res = await request(app)
+      .delete(`/api/contractor/team/${TARGET_USER_ID}/invite`)
+      .set("x-test-user", "admin");
+
+    expect(res.status).toBe(200);
+    expect(mockInvalidateUserSessions).toHaveBeenCalledOnce();
+    const calledWithUserId = mockInvalidateUserSessions.mock.calls[0][1];
+    expect(calledWithUserId).toBe(TARGET_USER_ID);
+  });
+
+  it("both side-effects fire together: blocklist add AND session-destroy call", async () => {
+    configureDbForInviteCancel();
+
+    await request(app)
+      .delete(`/api/contractor/team/${TARGET_USER_ID}/invite`)
+      .set("x-test-user", "admin");
+
+    // Both must fire — either alone leaves a security gap allowing the
+    // cancelled invitee to continue using an already-active session.
+    expect(addSpy).toHaveBeenCalledWith(TARGET_USER_ID);
+    expect(mockInvalidateUserSessions).toHaveBeenCalledOnce();
+  });
+
+  it("blocks the invitee's subsequent request with 401 immediately after the invite is cancelled", async () => {
+    configureDbForInviteCancel();
+
+    // Admin cancels the invitee's pending invite while the invitee has an
+    // active session (e.g. they logged in via a still-valid invite link).
+    const cancelRes = await request(app)
+      .delete(`/api/contractor/team/${TARGET_USER_ID}/invite`)
+      .set("x-test-user", "admin");
+    expect(cancelRes.status).toBe(200);
+
+    // The invitee's ID is now in sharedSuspendedUserIds. Any subsequent
+    // request carrying that user's session is immediately rejected by
+    // requireNotSuspended — no DB round-trip needed.
+    const lockedOutRes = await request(app)
+      .delete(`/api/contractor/team/${TARGET_USER_ID}/invite`)
+      .set("x-test-user", "target");
+    expect(lockedOutRes.status).toBe(401);
+    expect(lockedOutRes.body.message).toMatch(/suspended/i);
+  });
+
+  it("does not add an unrelated user to the blocklist", async () => {
+    const OTHER_ID = "other-tech-999";
+    configureDbForInviteCancel();
+
+    await request(app)
+      .delete(`/api/contractor/team/${TARGET_USER_ID}/invite`)
+      .set("x-test-user", "admin");
+
+    expect(sharedSuspendedUserIds.has(OTHER_ID)).toBe(false);
+  });
+});
