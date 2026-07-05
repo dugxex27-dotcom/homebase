@@ -1,6 +1,6 @@
 import { lazy, useEffect, useState } from "react";
 import { Router as WouterRouter, Switch, Route, useLocation } from "wouter";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,6 +11,107 @@ import UnauthenticatedLayout from "@/layouts/unauthenticated-layout";
 import BackToTop from "@/components/back-to-top";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { GuidedTour, ContractorGuidedTour, AgentGuidedTour } from "@/components/guided-tour";
+import { isNativePlatform } from "@/lib/nativeBrowser";
+import {
+  initNativePurchase,
+  onNativePurchaseVerified,
+  onNativePurchaseFailed,
+} from "@/lib/nativePurchase";
+import { useToast } from "@/hooks/use-toast";
+
+// Keeps native (StoreKit) purchase state in sync app-wide.
+//
+// `initNativePurchase()`'s `approved` handler is a module-level singleton, but
+// the actual query-cache invalidation used to live only inside billing.tsx /
+// homeowner-pricing.tsx effects. StoreKit's approve -> server-verify round
+// trip is asynchronous and can take several seconds; if the user navigates
+// away from those pages (e.g. to the Home tab) before it resolves, those
+// listeners unmount and the successful purchase never invalidates the
+// subscription queries — leaving Home/paywall UI stuck showing "Subscribe"
+// even though the purchase succeeded. Registering this once at the app root
+// (always mounted) guarantees the cache gets refreshed no matter what page
+// the user is on when the callback fires. This was the root cause of an
+// Apple Guideline 2.1(b) rejection: "home section still displayed the
+// subscriptions and the subscription status was not updated."
+function GlobalNativePurchaseSync() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (!isNativePlatform) return;
+    initNativePurchase();
+  }, []);
+
+  useEffect(() => {
+    if (!isNativePlatform) return;
+
+    const unsubVerified = onNativePurchaseVerified(async ({ plan, productId }) => {
+      console.log('[GlobalNativePurchaseSync] Native purchase verified:', plan, productId);
+      queryClient.setQueryData(['/api/user'], (old: any) => old ? ({
+        ...old,
+        subscriptionStatus: 'active',
+        subscriptionSource: 'apple',
+        appleProductId: productId,
+      }) : old);
+      queryClient.setQueryData(['/api/auth/user'], (old: any) => old ? ({
+        ...old,
+        subscriptionStatus: 'active',
+        subscriptionSource: 'apple',
+        appleProductId: productId,
+      }) : old);
+      queryClient.setQueryData(['/api/my-subscription'], (old: any) => old ? ({
+        ...old,
+        currentPlan: plan === 'premium_plus' ? 'premium_plus' : plan,
+        subscriptionStatus: 'active',
+        needsUpgrade: false,
+        isFreeUser: false,
+      }) : old);
+      queryClient.setQueryData(['/api/contractor/subscription'], (old: any) => old ? ({
+        ...old,
+        status: 'active',
+        plan: plan === 'contractor_basic' ? 'basic' : old.plan,
+      }) : old);
+      try {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['/api/user'] }),
+          queryClient.invalidateQueries({ queryKey: ['/api/billing-history'] }),
+          queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] }),
+          queryClient.invalidateQueries({ queryKey: ['/api/my-subscription'] }),
+          queryClient.invalidateQueries({ queryKey: ['/api/contractor/subscription'] }),
+        ]);
+        await Promise.all([
+          queryClient.refetchQueries({ queryKey: ['/api/user'] }),
+          queryClient.refetchQueries({ queryKey: ['/api/billing-history'] }),
+          queryClient.refetchQueries({ queryKey: ['/api/auth/user'] }),
+          queryClient.refetchQueries({ queryKey: ['/api/my-subscription'] }),
+          queryClient.refetchQueries({ queryKey: ['/api/contractor/subscription'] }),
+        ]);
+      } catch (error) {
+        console.warn('[GlobalNativePurchaseSync] Failed to refresh subscription state after native purchase:', error);
+      }
+      toast({
+        title: "Subscription Activated",
+        description: "Your subscription is now active.",
+      });
+    });
+
+    const unsubFailed = onNativePurchaseFailed(({ message }) => {
+      console.error('[GlobalNativePurchaseSync] Native purchase failed:', message);
+      toast({
+        title: "Purchase Failed",
+        description: message || "We couldn't complete your purchase. Please try again.",
+        variant: "destructive",
+      });
+    });
+
+    return () => {
+      unsubVerified();
+      unsubFailed();
+    };
+  }, [queryClient, toast]);
+
+  return null;
+}
 
 // SPA redirect — no full reload, works in Capacitor native
 function RedirectTo({ to }: { to: string }) {
@@ -386,6 +487,7 @@ function App() {
       <TooltipProvider>
         <Toaster />
         <PWAInstallPrompt />
+        <GlobalNativePurchaseSync />
         <WouterRouter base={base}>
           <Router />
         </WouterRouter>
