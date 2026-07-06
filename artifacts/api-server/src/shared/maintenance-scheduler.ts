@@ -39,6 +39,58 @@ function calculateAge(installedYear: number | null | undefined): number {
   return new Date().getFullYear() - installedYear;
 }
 
+// Typical replacement lifespans (years) for tracked mechanical features.
+const MECHANICAL_LIFESPANS: Record<"roof" | "hvac" | "waterHeater", [number, number]> = {
+  roof: [20, 25],
+  hvac: [15, 20],
+  waterHeater: [8, 12],
+};
+
+/**
+ * Documentation & age-awareness bonus for the Home Wellness Score.
+ * Rewards homeowners for recording *when* key mechanical features (roof, HVAC,
+ * water heater) were installed — the same age data insurers and buyers rely on —
+ * plus for keeping their tracked home-systems list up to date.
+ *
+ * This is additive and never punitive: missing data simply earns no bonus.
+ */
+export function calculateMechanicalDocumentationBonus(house: {
+  roofInstalledYear?: number | null;
+  hvacInstalledYear?: number | null;
+  waterHeaterInstalledYear?: number | null;
+  homeSystems?: string[] | null;
+}): number {
+  let bonus = 0;
+
+  const features: Array<["roof" | "hvac" | "waterHeater", number | null | undefined]> = [
+    ["roof", house.roofInstalledYear],
+    ["hvac", house.hvacInstalledYear],
+    ["waterHeater", house.waterHeaterInstalledYear],
+  ];
+
+  for (const [key, installedYear] of features) {
+    if (!installedYear) continue;
+    // Documentation credit: recording the install year at all is worth points.
+    bonus += 5;
+
+    const age = calculateAge(installedYear);
+    const [minLifespan, maxLifespan] = MECHANICAL_LIFESPANS[key];
+    if (age <= minLifespan * 0.5) {
+      bonus += 5; // like new
+    } else if (age <= minLifespan) {
+      bonus += 3; // good condition, well within expected life
+    } else if (age <= maxLifespan) {
+      bonus += 1; // aging but still within typical range
+    }
+    // Past typical lifespan: no extra bonus, but no penalty either — informational only.
+  }
+
+  // Reward keeping the tracked home-systems list current.
+  bonus += (Array.isArray(house.homeSystems) ? house.homeSystems.length : 0) * 2;
+
+  return bonus;
+}
+
 
 export function generateMaintenanceSchedule(house: House): AnnualMaintenanceSchedule {
   const tasks: ScheduledTask[] = [];

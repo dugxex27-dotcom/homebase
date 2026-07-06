@@ -11,6 +11,7 @@ import rateLimit from "express-rate-limit";
 import { eq, and, ne, inArray, sql as drizzleSql, isNotNull, isNull, desc } from "drizzle-orm";
 import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertTaskCompletionSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, customMaintenanceTasks, insertSupportTicketSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, securitySessions, referralCredits, referralFreeMonths, agentProfiles, users, siteContent, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, insertReviewFlagSchema, homeDocuments, quizResults, type House } from "@workspace/db";
 import { calculateDIYSavingsAmount } from "../shared/cost-helpers";
+import { calculateMechanicalDocumentationBonus } from "../shared/maintenance-scheduler";
 import { extractInvoiceData, verifyDIYPhotos, type InvoiceExtraction } from "../invoice-analysis-service";
 import { invoiceAnalyses, contractorBoosts, affiliateReferrals, subscriptionCycleEvents, contractorInvoiceUploads, companies, proposals, securityAuditLogs, companyDivisions, companyBulkImports, insertCompanyDivisionSchema, conversations, messages } from "@workspace/db";
 import pushRoutes from "../push-routes";
@@ -12115,9 +12116,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const completedCount = completedTasks.length;
 
-      // Score is simply +4 per completed task (cumulative, never resets)
-      // This rewards consistent home maintenance over time
-      const score = completedCount * 4;
+      // Score is +4 per completed task (cumulative, never resets), rewarding
+      // consistent home maintenance over time, plus a documentation/age-awareness
+      // bonus for recording when key mechanical features were installed.
+      const score = completedCount * 4 + calculateMechanicalDocumentationBonus(house);
 
       // Track missed tasks as 0 since we're using cumulative scoring
       const missedCount = 0;
@@ -12882,7 +12884,7 @@ ${JSON.stringify(questions.map(q => ({ id: q.id, text: q.text, type: q.type, ...
       ]);
 
       // Wellness score: canonical formula matching health-score endpoint
-      const wellnessScore = completedTaskRows.length * 4;
+      const wellnessScore = completedTaskRows.length * 4 + calculateMechanicalDocumentationBonus(house);
 
       // Completed task titles for THIS month — used to filter out already-done tasks
       const completedThisMonth = new Set(
@@ -13084,7 +13086,7 @@ Include up to 3 tasks (fewer if fewer than 3 are pending). Do not include null e
       ]);
 
       // Canonical wellness score — +4 per completed task (matches /api/houses/:id/health-score)
-      const wellnessScore = completedTaskRows.length * 4;
+      const wellnessScore = completedTaskRows.length * 4 + calculateMechanicalDocumentationBonus(house);
 
       // Maintenance logs from last 3 years
       const recentLogs = allMaintenanceLogs.filter(log => {

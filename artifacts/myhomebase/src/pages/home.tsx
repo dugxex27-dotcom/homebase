@@ -25,6 +25,27 @@ function getMonth() {
   return new Date().toLocaleString("default", { month: "long" });
 }
 
+const MECHANICAL_FEATURES: Array<{ key: "roofInstalledYear" | "hvacInstalledYear" | "waterHeaterInstalledYear"; label: string; icon: string; lifespan: [number, number] }> = [
+  { key: "roofInstalledYear", label: "Roof", icon: "🏠", lifespan: [20, 25] },
+  { key: "hvacInstalledYear", label: "HVAC", icon: "❄️", lifespan: [15, 20] },
+  { key: "waterHeaterInstalledYear", label: "Water Heater", icon: "🚿", lifespan: [8, 12] },
+];
+
+function getMechanicalAgeInfo(house: House) {
+  const currentYear = new Date().getFullYear();
+  return MECHANICAL_FEATURES.map(({ key, label, icon, lifespan }) => {
+    const installedYear = house[key] as number | null | undefined;
+    if (!installedYear) {
+      return { label, icon, tone: "unknown" as const, text: "Add install year to raise your score" };
+    }
+    const age = currentYear - installedYear;
+    const [min, max] = lifespan;
+    const tone = age <= min ? "good" as const : age <= max ? "warn" as const : "alert" as const;
+    const status = age <= min ? "Good condition" : age <= max ? "Aging — plan ahead" : "Past typical lifespan";
+    return { label, icon, tone, text: `${age} yr${age === 1 ? "" : "s"} old · installed ${installedYear} · ${status}` };
+  });
+}
+
 export default function Home() {
   const { user } = useAuth();
   const typedUser = user as UserType | undefined;
@@ -631,6 +652,7 @@ export default function Home() {
                 <p className="hdm-tiers-label">What raises your score</p>
                 {[
                   { icon: "🔧", text: "Systems logged and tracked" },
+                  { icon: "📅", text: "Install years recorded for roof, HVAC, water heater" },
                   { icon: "📋", text: "Maintenance tasks completed" },
                   { icon: "📄", text: "Inspection report on file" },
                   { icon: "🧾", text: "Contractor invoices saved" },
@@ -640,6 +662,30 @@ export default function Home() {
                     <p className="hdm-factor-text">{f.text}</p>
                   </div>
                 ))}
+              </div>
+              <div className="hdm-mech-ages">
+                <p className="hdm-tiers-label">Mechanical feature age</p>
+                {houses.map(house => (
+                  <div key={house.id} className="hdm-mech-house">
+                    {houses.length > 1 && (
+                      <p className="hdm-mech-house-name">{house.name || "Property"}</p>
+                    )}
+                    {getMechanicalAgeInfo(house).map(f => (
+                      <div key={f.label} className="hdm-mech-row">
+                        <span className="hdm-mech-icon">{f.icon}</span>
+                        <div className="hdm-mech-info">
+                          <p className="hdm-mech-label">{f.label}</p>
+                          <p className={`hdm-mech-status hdm-mech-status-${f.tone}`}>{f.text}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+                {houses[0]?.id && (
+                  <Link href={`/household-profile/${houses[0].id}`} onClick={() => setHwsModalOpen(false)} className="hdm-mech-edit-link">
+                    Update install years →
+                  </Link>
+                )}
               </div>
               <div className="hdm-cta-row">
                 <Link href="/maintenance" onClick={() => setHwsModalOpen(false)}>

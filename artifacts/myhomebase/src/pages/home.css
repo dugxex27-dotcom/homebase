@@ -932,6 +932,32 @@
   font-size: 13px; color: #9ca3af; text-align: center;
 }
 
+/* Mechanical feature age */
+.hdm-mech-ages { padding: 0 20px 16px; }
+.hdm-mech-house { margin-bottom: 10px; }
+.hdm-mech-house-name {
+  font-size: 12px; font-weight: 700; color: #1a0a3e;
+  margin: 0 0 6px;
+}
+.hdm-mech-row {
+  display: flex; gap: 12px; align-items: flex-start;
+  background: #f9fafb; border-radius: 10px;
+  padding: 10px 12px; margin-bottom: 6px;
+}
+.hdm-mech-icon { font-size: 18px; flex-shrink: 0; line-height: 1.2; }
+.hdm-mech-info { min-width: 0; }
+.hdm-mech-label { font-size: 12px; font-weight: 700; color: #1a0a3e; margin: 0 0 2px; }
+.hdm-mech-status { font-size: 12px; margin: 0; line-height: 1.4; }
+.hdm-mech-status-good { color: #4a9e2f; }
+.hdm-mech-status-warn { color: #EF9F27; }
+.hdm-mech-status-alert { color: #e03e3e; }
+.hdm-mech-status-unknown { color: #9ca3af; font-style: italic; }
+.hdm-mech-edit-link {
+  display: inline-block; font-size: 12px; font-weight: 700;
+  color: #6d28d9; margin-top: 2px; text-decoration: none;
+}
+.hdm-mech-edit-link:hover { text-decoration: underline; }
+
 
 /* CTA row */
 .hdm-cta-row {
