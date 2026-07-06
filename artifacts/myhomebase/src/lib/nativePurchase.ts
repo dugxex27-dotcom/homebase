@@ -140,26 +140,93 @@ export async function initNativePurchase(): Promise<boolean> {
   return initPromise;
 }
 
+/**
+ * Parses the "STATUS: body" error thrown by apiRequest()'s throwIfResNotOk
+ * into a numeric status code and a clean, user-facing message. Falls back to
+ * a generic message rather than ever surfacing raw JSON/HTML response text.
+ */
+function parseApiError(err: unknown): { status: number | null; message: string } {
+  const raw = err instanceof Error ? err.message : String(err);
+  const match = /^(\d{3}):\s*([\s\S]*)$/.exec(raw);
+  if (!match) {
+    return { status: null, message: 'Could not reach the server to verify your purchase.' };
+  }
+  const status = parseInt(match[1], 10);
+  let message = 'We could not verify your purchase. Please try again or contact support.';
+  try {
+    const parsed = JSON.parse(match[2]);
+    if (parsed && typeof parsed.message === 'string' && parsed.message.trim()) {
+      message = parsed.message;
+    }
+  } catch {
+    // Body wasn't JSON (e.g. an HTML error page) — keep the generic message
+    // rather than showing raw markup to the user.
+  }
+  return { status, message };
+}
+
+/**
+ * Verifies a signed transaction with the server and finishes it with
+ * StoreKit.
+ *
+ * IMPORTANT: `transaction.finish()` must be called for every outcome except
+ * a genuinely transient one (network failure or a 5xx from our own server).
+ * If we leave a transaction unfinished after a *permanent* rejection (bad
+ * product, role mismatch, appAccountToken mismatch, unparseable transaction),
+ * StoreKit will re-deliver that exact transaction as "approved" again on
+ * every future app launch — silently re-triggering this whole flow (and any
+ * error toast) forever. That repeat-forever bug, not just a one-time
+ * message, is what produced Apple's "app displayed an error message after
+ * purchase" Guideline 2.1(b) rejection: the error kept reappearing on
+ * relaunch, and the message itself was also raw unparsed JSON/text from the
+ * HTTP response body rather than a clean sentence.
+ */
 async function verifyAndFinishTransaction(transaction: CdvPurchase.Transaction): Promise<void> {
   const jwsRepresentation = (transaction as any).jwsRepresentation as string | undefined;
   const productId = transaction.products?.[0]?.id;
   const plan = productId ? PRODUCT_ID_TO_PLAN[productId] : undefined;
 
   if (!jwsRepresentation) {
-    logError('No jwsRepresentation on transaction — cannot verify with server. Transaction:', transaction.transactionId);
+    logError('No jwsRepresentation on transaction — cannot verify with server. Finishing to avoid an infinite replay loop. Transaction:', transaction.transactionId);
+    await transaction.finish();
+    failedListeners.forEach((listener) => listener({ message: 'This purchase could not be verified. Please contact support if you were charged.' }));
     return;
   }
 
   if (!plan) {
-    logError('Unrecognized productId on transaction, refusing to activate:', productId);
+    logError('Unrecognized productId on transaction, refusing to activate. Finishing to avoid an infinite replay loop:', productId);
+    await transaction.finish();
+    failedListeners.forEach((listener) => listener({ message: 'This purchase could not be recognized. Please contact support if you were charged.' }));
     return;
   }
 
   log('Sending signed transaction to server for verification. Plan:', plan, 'transactionId:', transaction.transactionId);
-  const res = await apiRequest('/api/apple/verify-purchase', 'POST', {
-    signedTransactionInfo: jwsRepresentation,
-  });
-  const body = await res.json();
+
+  let body: unknown;
+  try {
+    const res = await apiRequest('/api/apple/verify-purchase', 'POST', {
+      signedTransactionInfo: jwsRepresentation,
+    });
+    body = await res.json();
+  } catch (err) {
+    const { status, message } = parseApiError(err);
+    if (status !== null && status >= 400 && status < 500) {
+      // Permanent, well-defined rejection from our server (bad product, role
+      // mismatch, account-binding mismatch, etc). Retrying will never help —
+      // finish the transaction so StoreKit stops re-delivering it, and show
+      // a clean, single error instead of looping on every future launch.
+      logError('Server permanently rejected purchase verification (status', status, '):', message, 'transactionId:', transaction.transactionId);
+      await transaction.finish();
+      failedListeners.forEach((listener) => listener({ message }));
+      return;
+    }
+    // Transient failure (network error, or our own server 5xx). Leave the
+    // transaction unfinished so StoreKit retries delivering it (e.g. next
+    // launch or next network availability) instead of losing the purchase.
+    logError('Transient failure verifying purchase, will retry on next delivery:', message, 'transactionId:', transaction.transactionId);
+    throw new Error(message);
+  }
+
   log('Server verification response:', body);
 
   log('Finishing transaction with StoreKit:', transaction.transactionId);
