@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Eye, EyeOff } from "lucide-react";
 import logoWhite from '@assets/my-homebase-logo-tm-final-white_1777417516350.png';
+import { isNativePlatform } from '@/lib/nativeBrowser';
 
 const C = {
   header: '#2C0F5B',
@@ -192,14 +193,18 @@ export default function SignIn() {
               <button type="submit" disabled={loginMutation.isPending} data-testid="button-login" style={primaryBtn(loginMutation.isPending)}>
                 {loginMutation.isPending ? 'Signing in…' : 'Sign in'}
               </button>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                <div style={{ flex: 1, height: 1, background: C.border }} />
-                <span style={{ fontSize: 10, fontWeight: 700, color: C.inactive }}>or</span>
-                <div style={{ flex: 1, height: 1, background: C.border }} />
-              </div>
-              <button type="button" data-testid="button-google-signin" onClick={() => { window.location.href = '/auth/google'; }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', background: '#fff', border: '1.5px solid rgba(0,0,0,0.12)', borderRadius: 12, padding: '12px 0', fontSize: 13, fontWeight: 700, color: '#1a1a1a', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', fontFamily: 'inherit' }}>
-                <GoogleSVG />Continue with Google
-              </button>
+              {!isNativePlatform && (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                    <div style={{ flex: 1, height: 1, background: C.border }} />
+                    <span style={{ fontSize: 10, fontWeight: 700, color: C.inactive }}>or</span>
+                    <div style={{ flex: 1, height: 1, background: C.border }} />
+                  </div>
+                  <button type="button" data-testid="button-google-signin" onClick={() => { window.location.href = '/auth/google'; }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', background: '#fff', border: '1.5px solid rgba(0,0,0,0.12)', borderRadius: 12, padding: '12px 0', fontSize: 13, fontWeight: 700, color: '#1a1a1a', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', fontFamily: 'inherit' }}>
+                    <GoogleSVG />Continue with Google
+                  </button>
+                </>
+              )}
             </form>
           </Form>
         </div>
