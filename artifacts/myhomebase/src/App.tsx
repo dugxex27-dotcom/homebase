@@ -327,7 +327,7 @@ function Router() {
           <Route path="/signin/homeowner" component={SignInHomeowner} />
           <Route path="/signin/contractor" component={SignInContractor} />
           <Route path="/signin/agent" component={SignInAgent} />
-          <Route path="/signin" component={SignIn} />
+          <Route path="/signin"><RedirectTo to="/signin/homeowner" /></Route>
           <Route path="/test-upload" component={TestUpload} />
           <Route path="/complete-profile" component={CompleteProfile} />
           <Route path="/terms-of-service" component={TermsOfService} />
@@ -347,15 +347,15 @@ function Router() {
           {/* Marketing-only route: never render inside the native shell, even
               via a stray deep link — send native users straight to sign-in. */}
           <Route path="/landing">
-            {isNativePlatform ? <RedirectTo to="/signin" /> : <Landing />}
+            {isNativePlatform ? <RedirectTo to="/signin/homeowner" /> : <Landing />}
           </Route>
           {/* Native entry: skip the marketing role-picker (index-selector.html)
               and land directly on sign-in. Web/PWA keeps the marketing flow. */}
           <Route path="/">
-            {isNativePlatform ? <RedirectTo to="/signin" /> : <StaticPageRedirect to="/index-selector.html" />}
+            {isNativePlatform ? <RedirectTo to="/signin/homeowner" /> : <StaticPageRedirect to="/index-selector.html" />}
           </Route>
           <Route>
-            {isNativePlatform ? <RedirectTo to="/signin" /> : <StaticPageRedirect to="/index-selector.html" />}
+            {isNativePlatform ? <RedirectTo to="/signin/homeowner" /> : <StaticPageRedirect to="/index-selector.html" />}
           </Route>
         </Switch>
       </UnauthenticatedLayout>
@@ -370,7 +370,7 @@ function Router() {
 
   // Sign-in/register pages must render without the sidebar layout so authenticated
   // users (e.g. demo users) can register a new account without seeing the dashboard shell.
-  if (currentPath === "/signin") return <SignIn />;
+  if (currentPath === "/signin") return <SignInHomeowner />;
   if (currentPath === "/signin/homeowner") return <SignInHomeowner />;
   if (currentPath === "/signin/contractor") return <SignInContractor />;
   if (currentPath === "/signin/agent") return <SignInAgent />;
@@ -410,7 +410,7 @@ function Router() {
         <Route path="/terms-of-service" component={TermsOfService} />
         <Route path="/privacy-policy" component={PrivacyPolicy} />
         <Route path="/legal-disclaimer" component={LegalDisclaimer} />
-        <Route path="/signin" component={SignIn} />
+        <Route path="/signin"><RedirectTo to="/signin/homeowner" /></Route>
         {/* Allow authenticated users to reach sign-in pages so they can register a new account */}
         <Route path="/signin/homeowner" component={SignInHomeowner} />
         <Route path="/signin/contractor" component={SignInContractor} />
