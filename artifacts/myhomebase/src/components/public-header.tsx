@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from "react";
-import { Menu, Home, Wrench, Building2, HelpCircle, Mail, X } from "lucide-react";
+import { useState } from "react";
+import { Menu, LogIn, HelpCircle, Mail, X } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import logoWhite from '@assets/my-homebase-logo-tm-final-white_1777417516350.png';
 
@@ -8,18 +8,6 @@ const NAV_BORDER = 'rgba(255,255,255,0.08)';
 
 export default function PublicHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [flyoutOpen, setFlyoutOpen] = useState(false);
-  const flyoutRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function onMouseDown(e: MouseEvent) {
-      if (flyoutRef.current && !flyoutRef.current.contains(e.target as Node)) {
-        setFlyoutOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', onMouseDown);
-    return () => document.removeEventListener('mousedown', onMouseDown);
-  }, []);
 
   return (
     <header
@@ -44,49 +32,21 @@ export default function PublicHeader() {
               </SheetTrigger>
               <SheetContent side="left" className="w-[280px] sm:w-[320px]">
                 <SheetHeader>
-                  <SheetTitle className="text-left">Sign in as…</SheetTitle>
+                  <SheetTitle className="text-left">Menu</SheetTitle>
                 </SheetHeader>
                 <nav className="mt-6 space-y-1">
                   <a
-                    href="/signin/homeowner"
+                    href="/signin"
                     className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-[#EEEDFE] transition-colors"
                     onClick={() => setMobileMenuOpen(false)}
-                    data-testid="link-menu-homeowner"
+                    data-testid="link-menu-signin"
                   >
                     <div className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: 'var(--purple-tint)', color: '#3C258E' }}>
-                      <Home className="h-[18px] w-[18px]" />
+                      <LogIn className="h-[18px] w-[18px]" />
                     </div>
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-sm font-bold" style={{ color: '#2C0F5B' }}>Homeowner</span>
-                      <span className="text-[11px] font-medium text-gray-400">Track, protect &amp; document</span>
-                    </div>
-                  </a>
-                  <a
-                    href="/signin/contractor"
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-[#E6F1FB] transition-colors"
-                    onClick={() => setMobileMenuOpen(false)}
-                    data-testid="link-menu-contractor"
-                  >
-                    <div className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: 'var(--blue-tint)', color: 'var(--blue)' }}>
-                      <Wrench className="h-[18px] w-[18px]" />
-                    </div>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-sm font-bold" style={{ color: 'var(--blue)' }}>Contractor</span>
-                      <span className="text-[11px] font-medium text-gray-400">Grow your business</span>
-                    </div>
-                  </a>
-                  <a
-                    href="/signin/agent"
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-[#F0FAF4] transition-colors"
-                    onClick={() => setMobileMenuOpen(false)}
-                    data-testid="link-menu-agent"
-                  >
-                    <div className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ background: 'var(--green-tint)', color: 'var(--green-deep)' }}>
-                      <Building2 className="h-[18px] w-[18px]" />
-                    </div>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-sm font-bold" style={{ color: 'var(--green-deep)' }}>Real Estate Agent</span>
-                      <span className="text-[11px] font-medium text-gray-400">Refer and earn</span>
+                      <span className="text-sm font-bold" style={{ color: '#2C0F5B' }}>Sign in</span>
+                      <span className="text-[11px] font-medium text-gray-400">Access your account</span>
                     </div>
                   </a>
                   <div className="my-3 border-t border-gray-100" />
@@ -132,97 +92,17 @@ export default function PublicHeader() {
           </a>
         </nav>
 
-        {/* Right: sign-in flyout + Get Started */}
+        {/* Right: sign-in link + Get Started */}
         <div className="flex items-center gap-3">
-          {/* Sign in flyout trigger */}
-          <div className="relative" ref={flyoutRef}>
-            <button
-              onClick={() => setFlyoutOpen(o => !o)}
-              className="text-sm font-medium transition-colors cursor-pointer"
-              style={{
-                color: flyoutOpen ? '#fff' : 'rgba(255,255,255,0.7)',
-                background: 'none', border: 'none', fontFamily: 'inherit',
-              }}
-              aria-expanded={flyoutOpen}
-              aria-haspopup="true"
-            >
-              Sign in
-            </button>
-
-            {flyoutOpen && (
-              <div
-                style={{
-                  position: 'absolute', top: 'calc(100% + 10px)', right: 0,
-                  width: 280, background: '#fff', borderRadius: 18,
-                  boxShadow: '0 16px 60px rgba(0,0,0,0.28), 0 2px 8px rgba(44,15,91,0.12)',
-                  zIndex: 9100, overflow: 'hidden',
-                }}
-              >
-                {/* Header */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px 10px', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#9090b0', borderBottom: '1px solid #f0edf8' }}>
-                  <span>Sign in as…</span>
-                  <button
-                    onClick={() => setFlyoutOpen(false)}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.07)', color: '#666', cursor: 'pointer' }}
-                    aria-label="Close"
-                  >
-                    <X size={12} strokeWidth={2.5} />
-                  </button>
-                </div>
-
-                {/* Homeowner */}
-                <a
-                  href="/signin/homeowner"
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', textDecoration: 'none', borderBottom: '1px solid #f7f5fd', transition: 'background 0.15s' }}
-                  onMouseOver={e => (e.currentTarget.style.background = '#f5f1ff')}
-                  onMouseOut={e => (e.currentTarget.style.background = '')}
-                >
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--purple-tint)', color: '#3C258E', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Home size={18} />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1 }}>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: '#2C0F5B' }}>Homeowner</span>
-                    <span style={{ fontSize: 11.5, color: '#9090b0', fontWeight: 500 }}>Track, protect &amp; document</span>
-                  </div>
-                  <span style={{ fontSize: 15, color: 'var(--purple-light)' }}>→</span>
-                </a>
-
-                {/* Contractor */}
-                <a
-                  href="/signin/contractor"
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', textDecoration: 'none', borderBottom: '1px solid #f7f5fd', transition: 'background 0.15s' }}
-                  onMouseOver={e => (e.currentTarget.style.background = 'var(--blue-tint)')}
-                  onMouseOut={e => (e.currentTarget.style.background = '')}
-                >
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--blue-tint)', color: 'var(--blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Wrench size={18} />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1 }}>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--blue)' }}>Contractor</span>
-                    <span style={{ fontSize: 11.5, color: '#9090b0', fontWeight: 500 }}>Grow your business</span>
-                  </div>
-                  <span style={{ fontSize: 15, color: 'var(--purple-light)' }}>→</span>
-                </a>
-
-                {/* Agent */}
-                <a
-                  href="/signin/agent"
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', textDecoration: 'none', transition: 'background 0.15s' }}
-                  onMouseOver={e => (e.currentTarget.style.background = 'var(--green-tint)')}
-                  onMouseOut={e => (e.currentTarget.style.background = '')}
-                >
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--green-tint)', color: 'var(--green-deep)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Building2 size={18} />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1 }}>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--green-deep)' }}>Real Estate Agent</span>
-                    <span style={{ fontSize: 11.5, color: '#9090b0', fontWeight: 500 }}>Refer and earn</span>
-                  </div>
-                  <span style={{ fontSize: 15, color: 'var(--purple-light)' }}>→</span>
-                </a>
-              </div>
-            )}
-          </div>
+          <a
+            href="/signin"
+            className="text-sm font-medium transition-colors cursor-pointer"
+            style={{ color: 'rgba(255,255,255,0.7)', textDecoration: 'none' }}
+            onMouseOver={e => (e.currentTarget.style.color = '#fff')}
+            onMouseOut={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.7)')}
+          >
+            Sign in
+          </a>
 
           {/* Get Started — desktop only */}
           <a

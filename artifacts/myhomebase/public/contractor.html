@@ -436,48 +436,7 @@ html,body{font-family:var(--font);background:var(--off-white);color:var(--gray-9
     </div>
     <div class="nav-right">
       <div class="signin-wrap">
-        <button class="nav-signin-btn" id="signin-toggle" onclick="toggleSignin()" aria-expanded="false" aria-haspopup="true">Sign in</button>
-        <div class="signin-flyout" id="signin-flyout" role="menu">
-          <div class="signin-flyout-header">
-            <span>Sign in as…</span>
-            <button class="signin-flyout-close" onclick="toggleSignin()" aria-label="Close">
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-          </div>
-          <a href="/signin/homeowner" class="signin-flyout-role signin-flyout-hw" role="menuitem">
-            <div class="signin-flyout-icon">
-              <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 2L2 7v9h4v-5h6v5h4V7z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
-            </div>
-            <div class="signin-flyout-text">
-              <span class="signin-flyout-title">Homeowner</span>
-              <span class="signin-flyout-sub">Track, protect &amp; document</span>
-            </div>
-            <span class="signin-flyout-arr">→</span>
-          </a>
-          <a href="/signin/contractor" class="signin-flyout-role signin-flyout-ct" role="menuitem">
-            <div class="signin-flyout-icon">
-              <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 13l3-6 3 3 3-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="13" cy="5" r="2" stroke="currentColor" stroke-width="1.5"/></svg>
-            </div>
-            <div class="signin-flyout-text">
-              <span class="signin-flyout-title">Contractor</span>
-              <span class="signin-flyout-sub">Grow your business</span>
-            </div>
-            <span class="signin-flyout-arr">→</span>
-          </a>
-          <a href="/signin/agent" class="signin-flyout-role signin-flyout-ag" role="menuitem">
-            <div class="signin-flyout-icon">
-              <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="8" width="14" height="8" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M5 8V6a4 4 0 018 0v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-            </div>
-            <div class="signin-flyout-text">
-              <span class="signin-flyout-title">Real Estate Agent</span>
-              <span class="signin-flyout-sub">Refer and earn</span>
-            </div>
-            <span class="signin-flyout-arr">→</span>
-          </a>
-          <div class="signin-flyout-footer">
-            <button class="signin-flyout-how" onclick="toggleSignin(); document.getElementById('how-it-works').scrollIntoView({behavior:'smooth'})">See how it works ↓</button>
-          </div>
-        </div>
+        <a href="/signin" class="nav-signin-btn">Sign in</a>
       </div>
       <a href="/signin/contractor" class="nav-get-started">Get Started</a>
     </div>
@@ -721,21 +680,6 @@ html,body{font-family:var(--font);background:var(--off-white);color:var(--gray-9
     window.location.href = '/signin/contractor';
   }
 
-  function toggleSignin() {
-    const flyout = document.getElementById('signin-flyout');
-    const btn = document.getElementById('signin-toggle');
-    const isOpen = flyout.classList.toggle('open');
-    btn.classList.toggle('active', isOpen);
-    btn.setAttribute('aria-expanded', isOpen);
-  }
-
-  document.addEventListener('mousedown', e => {
-    const wrap = document.querySelector('.signin-wrap');
-    if (wrap && !wrap.contains(e.target)) {
-      document.getElementById('signin-flyout').classList.remove('open');
-      document.getElementById('signin-toggle').classList.remove('active');
-    }
-  });
 </script>
 
 <!-- ── Back to Top ── -->

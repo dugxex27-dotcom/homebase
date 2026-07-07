@@ -13,6 +13,7 @@ import { openPaymentUrl, openExternalUrl, onBrowserFinished, isNativePlatform } 
 import {
   purchaseNativePlan,
   initNativePurchase,
+  restoreNativePurchases,
   onNativePurchaseVerified,
   onNativePurchaseFailed,
   isNativePurchaseSupported,
@@ -125,6 +126,31 @@ export default function HomeownerPricing() {
       unsubFailed();
     };
   }, [queryClient, toast, setLocation]);
+
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  const handleRestore = async () => {
+    const userId = (user as { id?: string } | undefined)?.id;
+    if (!userId) return;
+    setIsRestoring(true);
+    try {
+      const result = await restoreNativePurchases(userId);
+      if (result.restored) {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['/api/user'] }),
+          queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] }),
+          queryClient.invalidateQueries({ queryKey: ['/api/my-subscription'] }),
+        ]);
+        toast({ title: "Purchases Restored", description: "Your subscription has been restored." });
+      } else {
+        toast({ title: "Nothing to Restore", description: "We couldn't find any previous purchases linked to your Apple ID." });
+      }
+    } catch (err) {
+      toast({ title: "Restore Failed", description: err instanceof Error ? err.message : "Failed to restore purchases. Please try again.", variant: "destructive" });
+    } finally {
+      setIsRestoring(false);
+    }
+  };
 
   const checkoutMutation = useMutation({
     mutationFn: async (plan: string) => {
@@ -311,6 +337,12 @@ export default function HomeownerPricing() {
                 <span className="text-5xl font-bold" style={{ color: 'var(--purple-deep)' }} data-testid="price-base-plan">$5</span>
                 <span className="text-gray-600">/month</span>
               </div>
+              {isNativePlatform && (
+                <div className="mt-2 space-y-0.5">
+                  <p className="text-sm font-semibold text-green-600">14-day free trial included</p>
+                  <p className="text-xs text-gray-500">$5.00/month after trial ends · Auto-renews</p>
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               <ul className="space-y-3 mb-6">
@@ -392,6 +424,12 @@ export default function HomeownerPricing() {
                 <span className="text-5xl font-bold" style={{ color: 'var(--purple-deep)' }} data-testid="price-premium-plan">$20</span>
                 <span className="text-gray-600">/month</span>
               </div>
+              {isNativePlatform && (
+                <div className="mt-2 space-y-0.5">
+                  <p className="text-sm font-semibold text-green-600">14-day free trial included</p>
+                  <p className="text-xs text-gray-500">$20.00/month after trial ends · Auto-renews</p>
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               <ul className="space-y-3 mb-6">
@@ -453,6 +491,12 @@ export default function HomeownerPricing() {
                 <span className="text-5xl font-bold" style={{ color: 'var(--purple-deep)' }} data-testid="price-premium-plus-plan">$40</span>
                 <span className="text-gray-600">/month</span>
               </div>
+              {isNativePlatform && (
+                <div className="mt-2 space-y-0.5">
+                  <p className="text-sm font-semibold text-green-600">14-day free trial included</p>
+                  <p className="text-xs text-gray-500">$40.00/month after trial ends · Auto-renews</p>
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               <ul className="space-y-3 mb-6">
@@ -522,30 +566,86 @@ export default function HomeownerPricing() {
                   <Link href="/billing">View Billing History</Link>
                 </Button>
               </div>
-              <p className="text-xs text-gray-500 max-w-xl mx-auto pt-2">
-                By subscribing, you agree to our{' '}
-                <button
-                  type="button"
-                  className="underline hover:text-gray-700"
-                  data-testid="link-privacy-policy"
-                  onClick={() => openExternalUrl(`${window.location.origin}/privacy-policy`)}
-                >
-                  Privacy Policy
-                </button>{' '}
-                and{' '}
-                <button
-                  type="button"
-                  className="underline hover:text-gray-700"
-                  data-testid="link-eula"
-                  onClick={() => openExternalUrl('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')}
-                >
-                  End User License Agreement (EULA)
-                </button>
-                {isNativePlatform && '. Payment will be charged to your Apple ID account and your subscription automatically renews unless cancelled at least 24 hours before the end of the current period.'}
-              </p>
+              {isNativePlatform && (
+                <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4 text-left space-y-2" data-testid="native-subscription-disclosure">
+                  <p className="text-sm font-semibold text-gray-800">Subscription Terms</p>
+                  <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
+                    <li>Free trial lasts <strong>14 days</strong>.</li>
+                    <li>After the trial, payment is charged to your Apple ID at the plan price shown above.</li>
+                    <li>Subscription renews automatically each month unless cancelled at least 24 hours before the renewal date.</li>
+                    <li>Manage or cancel anytime in <strong>Settings → Apple ID → Subscriptions</strong>.</li>
+                  </ul>
+                  <div className="flex flex-wrap gap-4 pt-1">
+                    <button
+                      type="button"
+                      className="text-sm font-medium underline text-[#3C258E] hover:text-[#2C0F5B]"
+                      data-testid="link-privacy-policy"
+                      onClick={() => openExternalUrl(`${window.location.origin}/privacy-policy`)}
+                    >
+                      Privacy Policy
+                    </button>
+                    <button
+                      type="button"
+                      className="text-sm font-medium underline text-[#3C258E] hover:text-[#2C0F5B]"
+                      data-testid="link-eula"
+                      onClick={() => openExternalUrl('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')}
+                    >
+                      Terms of Use (EULA)
+                    </button>
+                  </div>
+                </div>
+              )}
+              {!isNativePlatform && (
+                <p className="text-xs text-gray-500 max-w-xl mx-auto pt-2">
+                  By subscribing, you agree to our{' '}
+                  <button
+                    type="button"
+                    className="underline hover:text-gray-700"
+                    data-testid="link-privacy-policy"
+                    onClick={() => openExternalUrl(`${window.location.origin}/privacy-policy`)}
+                  >
+                    Privacy Policy
+                  </button>{' '}
+                  and{' '}
+                  <button
+                    type="button"
+                    className="underline hover:text-gray-700"
+                    data-testid="link-eula"
+                    onClick={() => openExternalUrl('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')}
+                  >
+                    Terms of Use (EULA)
+                  </button>.
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
+
+        {/* Restore Purchases — native only, required by Apple Guideline 3.1.1 */}
+        {isNativePlatform && (
+          <Card className="mt-6 border border-gray-200">
+            <CardContent className="py-5">
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                  <p className="font-semibold text-gray-800">Already subscribed?</p>
+                  <p className="text-sm text-gray-500">Reinstalled the app or switched devices? Restore your previous purchase.</p>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={handleRestore}
+                  disabled={isRestoring}
+                  data-testid="button-restore-purchases-pricing"
+                >
+                  {isRestoring ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Restoring…</>
+                  ) : (
+                    'Restore Purchases'
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* FAQ Section */}
         <div className="mt-12 max-w-3xl mx-auto">

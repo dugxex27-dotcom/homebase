@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Eye, EyeOff } from "lucide-react";
+import { SignInRoleTabs } from "@/components/signin-role-tabs";
 import logoHomeowner from '@assets/my-homebase-logo-tm-final-white_1777417516350.png';
 import { PLAN_LABELS } from '@/lib/planLabels';
 
@@ -67,7 +68,9 @@ const GoogleSVG = () => (
 
 export default function SignInHomeowner() {
   const isNative = document.body.classList.contains('native-shell');
-  const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
+  const [activeTab, setActiveTab] = useState<'login' | 'register'>(
+    new URLSearchParams(window.location.search).get('tab') === 'register' ? 'register' : 'login'
+  );
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -195,6 +198,8 @@ export default function SignInHomeowner() {
       {/* ── Scrollable body ── */}
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '28px 20px 24px', display: 'flex', flexDirection: 'column', maxWidth: 480, width: '100%', margin: '0 auto' }}>
+
+          <SignInRoleTabs activeRole="homeowner" activeTab={activeTab} />
 
           {/* Pill toggle */}
           <div style={{ display: 'flex', background: 'rgba(83,74,183,0.1)', borderRadius: 12, padding: 3, marginBottom: 18 }}>

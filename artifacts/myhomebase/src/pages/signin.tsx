@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { SignInRoleTabs } from "@/components/signin-role-tabs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -157,6 +158,8 @@ export default function SignIn() {
       {/* ── Body ── */}
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '28px 20px 24px', display: 'flex', flexDirection: 'column', maxWidth: 480, width: '100%', margin: '0 auto' }}>
+
+          <SignInRoleTabs />
 
           <Form {...loginForm}>
             <form onSubmit={loginForm.handleSubmit((d) => loginMutation.mutate(d))} data-testid="form-login">

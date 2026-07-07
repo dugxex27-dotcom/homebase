@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Eye, EyeOff } from "lucide-react";
+import { SignInRoleTabs } from "@/components/signin-role-tabs";
 import logoAgent from '@assets/my-homebase-logo-tm-final-white_1777417516350.png';
 
 const C = {
@@ -66,7 +67,9 @@ const GoogleSVG = () => (
 
 export default function SignInAgent() {
   const isNative = document.body.classList.contains('native-shell');
-  const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
+  const [activeTab, setActiveTab] = useState<'login' | 'register'>(
+    new URLSearchParams(window.location.search).get('tab') === 'register' ? 'register' : 'login'
+  );
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -185,6 +188,8 @@ export default function SignInAgent() {
       {/* ── Scrollable body ── */}
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
         <div style={{ padding: '28px 20px 24px', display: 'flex', flexDirection: 'column', maxWidth: 480, width: '100%', margin: '0 auto' }}>
+
+          <SignInRoleTabs activeRole="agent" activeTab={activeTab} />
 
           <div style={{ display: 'flex', background: 'rgba(59,109,17,0.1)', borderRadius: 12, padding: 3, marginBottom: 18 }}>
             <button type="button" onClick={() => setActiveTab('login')} style={toggleBtn(activeTab === 'login')} data-testid="tab-login-agent">Sign in</button>

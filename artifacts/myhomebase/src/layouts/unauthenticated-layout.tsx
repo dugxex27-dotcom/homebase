@@ -6,14 +6,20 @@ import Footer from '@/components/footer';
 import LoadingFallback from '@/components/loading-fallback';
 import ErrorBoundary from '@/components/error-boundary';
 import BackToTop from '@/components/back-to-top';
+import { isNativePlatform } from '@/lib/nativeBrowser';
 
 interface UnauthenticatedLayoutProps {
   children: ReactNode;
   hideHeader?: boolean;
 }
 
+// On native (Capacitor) builds, the marketing header/footer chrome is never
+// appropriate — the user already knows what app they installed and should
+// land directly in the sign-in flow with no nav links to marketing pages
+// like Pricing/FAQ/How It Works. Web/PWA keeps the marketing chrome as-is.
 export default function UnauthenticatedLayout({ children, hideHeader = false }: UnauthenticatedLayoutProps) {
   const [location] = useLocation();
+  const suppressChrome = hideHeader || isNativePlatform;
 
   return (
     <AnimatePresence mode="wait">
@@ -26,7 +32,7 @@ export default function UnauthenticatedLayout({ children, hideHeader = false }: 
         className="mhb-page-shell min-h-screen flex flex-col"
         style={{ minHeight: '100dvh' }}
       >
-        {!hideHeader && <PublicHeader />}
+        {!suppressChrome && <PublicHeader />}
         <ErrorBoundary>
           <Suspense fallback={<LoadingFallback variant="full" />}>
             <div className="flex-1">
@@ -34,7 +40,7 @@ export default function UnauthenticatedLayout({ children, hideHeader = false }: 
             </div>
           </Suspense>
         </ErrorBoundary>
-        <Footer />
+        {!isNativePlatform && <Footer />}
         <BackToTop bottom={24} />
       </motion.div>
     </AnimatePresence>
