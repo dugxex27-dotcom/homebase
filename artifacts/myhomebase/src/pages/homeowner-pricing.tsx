@@ -252,15 +252,19 @@ export default function HomeownerPricing() {
           {isOnboarding ? (
             <>
               <h1 className="text-4xl md:text-5xl font-bold text-gray-900">
-                Start Your Free 14-Day Trial
+                {isNativePlatform ? 'Choose Your Plan' : 'Start Your Free 14-Day Trial'}
               </h1>
               <p className="text-lg max-w-2xl mx-auto text-gray-600">
-                Choose a plan and enter your payment info to get started. You won't be charged until your 14-day trial ends — cancel anytime.
+                {isNativePlatform
+                  ? 'Select a plan to get started. Your first 14 days are free — cancel anytime before your trial ends.'
+                  : "Choose a plan and enter your payment info to get started. You won't be charged until your 14-day trial ends — cancel anytime."}
               </p>
-              <div className="flex items-center justify-center gap-2 text-[#09694A] font-medium">
-                <ShieldCheck className="w-5 h-5" />
-                <span>No charge today. Trial starts the moment you sign up.</span>
-              </div>
+              {!isNativePlatform && (
+                <div className="flex items-center justify-center gap-2 text-[#09694A] font-medium">
+                  <ShieldCheck className="w-5 h-5" />
+                  <span>No charge today. Trial starts the moment you sign up.</span>
+                </div>
+              )}
             </>
           ) : (
             <>
@@ -339,8 +343,8 @@ export default function HomeownerPricing() {
               </div>
               {isNativePlatform && (
                 <div className="mt-2 space-y-0.5">
-                  <p className="text-sm font-semibold text-green-600">14-day free trial included</p>
-                  <p className="text-xs text-gray-500">$5.00/month after trial ends · Auto-renews</p>
+                  <p className="text-sm font-semibold text-gray-900">$5.00/month · Auto-renews</p>
+                  <p className="text-xs text-gray-500">14-day free trial included</p>
                 </div>
               )}
             </CardHeader>
@@ -426,8 +430,8 @@ export default function HomeownerPricing() {
               </div>
               {isNativePlatform && (
                 <div className="mt-2 space-y-0.5">
-                  <p className="text-sm font-semibold text-green-600">14-day free trial included</p>
-                  <p className="text-xs text-gray-500">$20.00/month after trial ends · Auto-renews</p>
+                  <p className="text-sm font-semibold text-gray-900">$20.00/month · Auto-renews</p>
+                  <p className="text-xs text-gray-500">14-day free trial included</p>
                 </div>
               )}
             </CardHeader>
@@ -493,8 +497,8 @@ export default function HomeownerPricing() {
               </div>
               {isNativePlatform && (
                 <div className="mt-2 space-y-0.5">
-                  <p className="text-sm font-semibold text-green-600">14-day free trial included</p>
-                  <p className="text-xs text-gray-500">$40.00/month after trial ends · Auto-renews</p>
+                  <p className="text-sm font-semibold text-gray-900">$40.00/month · Auto-renews</p>
+                  <p className="text-xs text-gray-500">14-day free trial included</p>
                 </div>
               )}
             </CardHeader>
@@ -540,7 +544,11 @@ export default function HomeownerPricing() {
           <CardContent className="pt-6">
             <div className="text-center space-y-4">
               <h3 className="text-xl font-semibold" style={{ color: 'var(--purple-deep)' }}>
-                {isOnboarding ? '14-Day Free Trial — No Charge Today' : 'All Plans Include a 14-Day Free Trial'}
+                {isNativePlatform
+                  ? 'Subscription Terms'
+                  : isOnboarding
+                    ? '14-Day Free Trial — No Charge Today'
+                    : 'All Plans Include a 14-Day Free Trial'}
               </h3>
               <p className="text-gray-600 max-w-2xl mx-auto">
                 {isOnboarding
