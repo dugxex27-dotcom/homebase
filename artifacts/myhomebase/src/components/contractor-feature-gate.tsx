@@ -1,13 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useContractorSubscription } from "@/hooks/useContractorSubscription";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Lock, Sparkles, Check, Users, Calendar, FileText, CreditCard, Download, BarChart3, Clock, AlertTriangle, Mail } from "lucide-react";
+import { Lock, Sparkles, Check, Users, Calendar, FileText, CreditCard, Download, BarChart3, Clock, AlertTriangle, Mail, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
-import { isNativePlatform } from "@/lib/nativeBrowser";
+import { isNativePlatform, openExternalUrl } from "@/lib/nativeBrowser";
+import {
+  purchaseNativePlan,
+  initNativePurchase,
+  restoreNativePurchases,
+  onNativePurchaseVerified,
+  onNativePurchaseFailed,
+  isNativePurchaseSupported,
+} from "@/lib/nativePurchase";
 
 interface ContractorFeatureGateProps {
   children: React.ReactNode;
@@ -169,6 +180,76 @@ function ContractorUpgradePrompt({ feature }: ContractorUpgradePromptProps) {
 export function ContractorCRMUpgradePage() {
   const [, setLocation] = useLocation();
   const { currentPlan } = useContractorSubscription();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [isPurchasing, setIsPurchasing] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  useEffect(() => {
+    if (!isNativePlatform) return;
+    initNativePurchase();
+  }, []);
+
+  useEffect(() => {
+    const unsubVerified = onNativePurchaseVerified(async ({ plan, productId }) => {
+      queryClient.setQueryData(['/api/auth/user'], (old: any) => old ? ({
+        ...old,
+        subscriptionStatus: 'active',
+        subscriptionSource: 'apple',
+        appleProductId: productId,
+      }) : old);
+      try {
+        await queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+        await queryClient.invalidateQueries({ queryKey: ['/api/contractor/subscription'] });
+        await queryClient.refetchQueries({ queryKey: ['/api/auth/user'] });
+        await queryClient.refetchQueries({ queryKey: ['/api/contractor/subscription'] });
+      } catch {}
+      setIsPurchasing(false);
+      toast({ title: "Subscription Activated", description: `Your Contractor ${plan === 'contractor_basic' ? 'Basic' : plan} subscription is now active.` });
+      setLocation('/contractor-dashboard');
+    });
+    const unsubFailed = onNativePurchaseFailed(({ message }) => {
+      setIsPurchasing(false);
+      toast({ title: "Purchase Failed", description: message || "We couldn't complete your purchase. Please try again.", variant: "destructive" });
+    });
+    return () => { unsubVerified(); unsubFailed(); };
+  }, [queryClient, toast, setLocation]);
+
+  const handleNativeBasicPurchase = async () => {
+    const userId = (user as { id?: string } | undefined)?.id;
+    if (!userId) {
+      toast({ title: "Sign in required", description: "Please sign in to purchase a subscription.", variant: "destructive" });
+      return;
+    }
+    setIsPurchasing(true);
+    try {
+      await purchaseNativePlan('contractor_basic', userId);
+    } catch (err) {
+      setIsPurchasing(false);
+      toast({ title: "Purchase Failed", description: err instanceof Error ? err.message : "Could not start purchase. Please try again.", variant: "destructive" });
+    }
+  };
+
+  const handleRestore = async () => {
+    const userId = (user as { id?: string } | undefined)?.id;
+    if (!userId) return;
+    setIsRestoring(true);
+    try {
+      const result = await restoreNativePurchases(userId);
+      if (result.restored) {
+        await queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+        await queryClient.invalidateQueries({ queryKey: ['/api/contractor/subscription'] });
+        toast({ title: "Purchases Restored", description: "Your subscription has been restored." });
+      } else {
+        toast({ title: "Nothing to Restore", description: "We couldn't find any previous purchases linked to your Apple ID." });
+      }
+    } catch (err) {
+      toast({ title: "Restore Failed", description: err instanceof Error ? err.message : "Failed to restore purchases. Please try again.", variant: "destructive" });
+    } finally {
+      setIsRestoring(false);
+    }
+  };
 
   const proFeatures = [
     { icon: <Users className="h-5 w-5" />, title: 'Client Management', description: 'Full customer database with contact info, service history, and notes' },
@@ -223,6 +304,33 @@ export function ContractorCRMUpgradePage() {
                 Reviews and ratings profile
               </li>
             </ul>
+            {isNativePlatform && currentPlan !== 'basic' && currentPlan !== 'pro' && (
+              <div className="mt-3 space-y-1">
+                <p className="text-sm font-semibold text-gray-900 text-center">$20.00/month · Auto-renews</p>
+                <p className="text-xs text-muted-foreground text-center">14-day free trial included</p>
+              </div>
+            )}
+            {isNativePlatform && currentPlan !== 'basic' && currentPlan !== 'pro' && (
+              <Button
+                className="w-full mt-3"
+                style={{ background: 'linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)' }}
+                onClick={handleNativeBasicPurchase}
+                disabled={isPurchasing}
+                data-testid="button-subscribe-basic-native"
+              >
+                {isPurchasing ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Processing...</> : 'Subscribe to Basic'}
+              </Button>
+            )}
+            {!isNativePlatform && currentPlan !== 'basic' && currentPlan !== 'pro' && (
+              <Button
+                className="w-full mt-4"
+                variant="outline"
+                onClick={() => setLocation('/contractor/checkout?plan=basic')}
+                data-testid="button-subscribe-basic"
+              >
+                Subscribe to Basic
+              </Button>
+            )}
           </CardContent>
         </Card>
 
@@ -299,6 +407,49 @@ export function ContractorCRMUpgradePage() {
           </Card>
         ))}
       </div>
+
+      {isNativePlatform && (
+        <div className="mt-8 space-y-4">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-2" data-testid="contractor-native-subscription-disclosure">
+            <p className="text-sm font-semibold text-gray-800">Subscription Terms</p>
+            <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
+              <li>Contractor Basic is <strong>$20.00/month</strong>, billed monthly. Auto-renews unless cancelled.</li>
+              <li>Includes a <strong>14-day free trial</strong> for new subscribers.</li>
+              <li>After the trial, payment is charged to your Apple ID.</li>
+              <li>Cancel anytime in <strong>Settings → Apple ID → Subscriptions</strong>.</li>
+            </ul>
+            <div className="flex flex-wrap gap-4 pt-1">
+              <button
+                type="button"
+                className="text-sm font-medium underline"
+                style={{ color: 'var(--theme-accent)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                data-testid="link-contractor-privacy-policy"
+                onClick={() => openExternalUrl(`${window.location.origin}/privacy-policy`)}
+              >
+                Privacy Policy
+              </button>
+              <button
+                type="button"
+                className="text-sm font-medium underline"
+                style={{ color: 'var(--theme-accent)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+                data-testid="link-contractor-eula"
+                onClick={() => openExternalUrl('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')}
+              >
+                Terms of Use (EULA)
+              </button>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            className="w-full text-sm"
+            onClick={handleRestore}
+            disabled={isRestoring}
+            data-testid="button-restore-contractor-purchases"
+          >
+            {isRestoring ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Restoring...</> : 'Restore Purchases'}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

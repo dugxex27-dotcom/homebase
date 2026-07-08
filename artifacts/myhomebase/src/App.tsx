@@ -462,6 +462,7 @@ function Router() {
           <>
             <Route path="/contractor-onboarding" component={ContractorOnboarding} />
             <Route path="/contractor/upgrade" component={ContractorUpgrade} />
+        <Route path="/contractor/pricing" component={ContractorUpgrade} />
             <Route path="/crm/leads/:id" component={CrmLeadDetail} />
             <Route path="/crm" component={ContractorCRM} />
             <Route path="/contractor-profile" component={ContractorProfile} />
