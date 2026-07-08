@@ -12,7 +12,7 @@ export const APPLE_PRODUCT_IDS = {
   premium: 'com.gotohomebase.app.homeowner.premium.monthly',
   premium_plus: 'com.gotohomebase.app.homeowner.premiumplus.monthly',
   contractor_basic: 'com.gotohomebase.app.contractor.basic.monthly',
-  contractor_pro: 'com.gotohomebase.app.contractor.pro.monthly',
+  contractor_pro: 'com.gotohomebase.app.contractor.pro1.monthly',
 } as const;
 
 export type NativePlanKey = keyof typeof APPLE_PRODUCT_IDS;

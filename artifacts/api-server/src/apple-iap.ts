@@ -62,7 +62,7 @@ export const APPLE_PRODUCT_TO_PLAN: Record<
   "com.gotohomebase.app.homeowner.premium.monthly": { role: "homeowner", plan: "premium", maxHouses: 6 },
   "com.gotohomebase.app.homeowner.premiumplus.monthly": { role: "homeowner", plan: "premium_plus", maxHouses: 999 },
   "com.gotohomebase.app.contractor.basic.monthly": { role: "contractor", plan: "basic" },
-  "com.gotohomebase.app.contractor.pro.monthly": { role: "contractor", plan: "pro" },
+  "com.gotohomebase.app.contractor.pro1.monthly": { role: "contractor", plan: "pro" },
 };
 
 export const APPLE_PRODUCT_IDS = Object.keys(APPLE_PRODUCT_TO_PLAN);
