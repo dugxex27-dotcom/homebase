@@ -298,7 +298,7 @@ export default function Header() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => window.location.href = '/billing'}
+                onClick={() => window.location.href = typedUser?.role === 'contractor' ? '/contractor-pricing' : '/billing'}
                 className="text-xs h-7 px-2 sm:px-3 flex-shrink-0 font-bold"
                 style={{ background: 'rgba(255,255,255,0.15)', color: 'var(--theme-accent)', border: '1px solid var(--theme-border-hover)' }}
                 data-testid="button-trial-upgrade"
