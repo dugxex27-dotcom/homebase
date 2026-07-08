@@ -142,7 +142,9 @@ export default function SignInAgent() {
       if (response.ok) {
         const data = await response.json();
         queryClient.setQueryData(['/api/auth/user'], data.user);
+        await queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
         toast({ title: "Demo login successful", description: "Logged in as demo agent." });
+        setLocation('/agent-dashboard');
       } else {
         const err = await response.json();
         throw new Error(err.message || 'Demo login failed');

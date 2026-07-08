@@ -143,7 +143,9 @@ export default function SignInContractor() {
       if (response.ok) {
         const data = await response.json();
         queryClient.setQueryData(['/api/auth/user'], data.user);
+        await queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
         toast({ title: "Demo login successful" });
+        setLocation('/contractor-dashboard');
       }
     } catch (error: any) {
       toast({ title: "Demo login failed", description: error?.message, variant: "destructive" });
