@@ -53,9 +53,7 @@ function expectedAppAccountToken(userId: string): string {
 }
 
 // Maps Apple App Store product IDs to internal plan identifiers used by the
-// existing Stripe-based subscription system. Only these 4 products exist on
-// the App Store — contractor "pro" ($40) has no native product and must
-// NEVER be accepted here.
+// existing Stripe-based subscription system.
 export const APPLE_PRODUCT_TO_PLAN: Record<
   string,
   { role: "homeowner" | "contractor"; plan: string; maxHouses?: number }
@@ -64,6 +62,7 @@ export const APPLE_PRODUCT_TO_PLAN: Record<
   "com.gotohomebase.app.homeowner.premium.monthly": { role: "homeowner", plan: "premium", maxHouses: 6 },
   "com.gotohomebase.app.homeowner.premiumplus.monthly": { role: "homeowner", plan: "premium_plus", maxHouses: 999 },
   "com.gotohomebase.app.contractor.basic.monthly": { role: "contractor", plan: "basic" },
+  "com.gotohomebase.app.contractor.pro.monthly": { role: "contractor", plan: "pro" },
 };
 
 export const APPLE_PRODUCT_IDS = Object.keys(APPLE_PRODUCT_TO_PLAN);
@@ -150,14 +149,15 @@ export async function verifyAndActivateAppleTransaction(
   const isTrial = transaction.offerType === 1 || (transaction as any).offerDiscountType === "FREE_TRIAL";
 
   // Contractor plan tier is tracked via `subscriptionPlanId` (FK to subscription_plans),
-  // not a direct column on `users` — look up the matching plan row for the "basic" tier.
+  // not a direct column on `users` — look up the matching plan row for the purchased tier.
   let subscriptionPlanId: string | null = user.subscriptionPlanId ?? null;
   if (mapping.role === "contractor") {
-    const contractorPlan = await storage.getSubscriptionPlanByTier("contractor_basic");
+    const tierKey = mapping.plan === "pro" ? "contractor_pro" : "contractor_basic";
+    const contractorPlan = await storage.getSubscriptionPlanByTier(tierKey);
     if (contractorPlan) {
       subscriptionPlanId = contractorPlan.id;
     } else {
-      console.warn(`[APPLE-IAP] No "contractor_basic" subscription_plans row found; leaving subscriptionPlanId unchanged`);
+      console.warn(`[APPLE-IAP] No "${tierKey}" subscription_plans row found; leaving subscriptionPlanId unchanged`);
     }
   }
 

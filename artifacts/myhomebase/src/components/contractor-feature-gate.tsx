@@ -231,6 +231,21 @@ export function ContractorCRMUpgradePage() {
     }
   };
 
+  const handleNativeProPurchase = async () => {
+    const userId = (user as { id?: string } | undefined)?.id;
+    if (!userId) {
+      toast({ title: "Sign in required", description: "Please sign in to purchase a subscription.", variant: "destructive" });
+      return;
+    }
+    setIsPurchasing(true);
+    try {
+      await purchaseNativePlan('contractor_pro', userId);
+    } catch (err) {
+      setIsPurchasing(false);
+      toast({ title: "Purchase Failed", description: err instanceof Error ? err.message : "Could not start purchase. Please try again.", variant: "destructive" });
+    }
+  };
+
   const handleRestore = async () => {
     const userId = (user as { id?: string } | undefined)?.id;
     if (!userId) return;
@@ -381,9 +396,19 @@ export function ContractorCRMUpgradePage() {
               </Button>
             )}
             {currentPlan !== 'pro' && isNativePlatform && (
-              <p className="text-center text-xs text-muted-foreground mt-4" data-testid="text-pro-web-only">
-                Contractor Pro is available when you sign in at gotohomebase.com on the web.
-              </p>
+              <div className="mt-3 space-y-1">
+                <p className="text-sm font-semibold text-gray-900 text-center">$40.00/month · Auto-renews</p>
+                <p className="text-xs text-muted-foreground text-center">14-day free trial included</p>
+                <Button
+                  className="w-full mt-2"
+                  style={{ background: 'linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)' }}
+                  onClick={handleNativeProPurchase}
+                  disabled={isPurchasing}
+                  data-testid="button-subscribe-pro-native"
+                >
+                  {isPurchasing ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Processing...</> : 'Upgrade to Pro'}
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -414,7 +439,8 @@ export function ContractorCRMUpgradePage() {
             <p className="text-sm font-semibold text-gray-800">Subscription Terms</p>
             <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
               <li>Contractor Basic is <strong>$20.00/month</strong>, billed monthly. Auto-renews unless cancelled.</li>
-              <li>Includes a <strong>14-day free trial</strong> for new subscribers.</li>
+              <li>Contractor Pro is <strong>$40.00/month</strong>, billed monthly. Auto-renews unless cancelled.</li>
+              <li>Both plans include a <strong>14-day free trial</strong> for new subscribers.</li>
               <li>After the trial, payment is charged to your Apple ID.</li>
               <li>Cancel anytime in <strong>Settings → Apple ID → Subscriptions</strong>.</li>
             </ul>

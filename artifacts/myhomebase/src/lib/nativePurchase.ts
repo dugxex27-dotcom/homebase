@@ -5,15 +5,14 @@ import { apiRequest } from './queryClient';
 
 /**
  * Apple product identifiers, mapped to the internal plan keys used elsewhere
- * in the app. Contractor Pro ($40) is intentionally excluded — it is
- * Stripe-only per Apple Guideline 3.1.1 (physical/off-platform service),
- * and must never be registered as a StoreKit product.
+ * in the app. All contractor subscription tiers are purchasable via StoreKit.
  */
 export const APPLE_PRODUCT_IDS = {
   base: 'com.gotohomebase.app.homeowner.base.monthly',
   premium: 'com.gotohomebase.app.homeowner.premium.monthly',
   premium_plus: 'com.gotohomebase.app.homeowner.premiumplus.monthly',
   contractor_basic: 'com.gotohomebase.app.contractor.basic.monthly',
+  contractor_pro: 'com.gotohomebase.app.contractor.pro.monthly',
 } as const;
 
 export type NativePlanKey = keyof typeof APPLE_PRODUCT_IDS;
