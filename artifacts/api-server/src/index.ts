@@ -5,6 +5,9 @@ import { logger } from "./lib/logger";
 import { runMigrations } from "./migrate";
 import { seedRegionalData } from "./seed-regional-data";
 import { storage } from "./storage";
+import { db } from "./db";
+import { users } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import { trialReminderScheduler } from "./trial-reminder-scheduler";
 import { profileViewReportScheduler } from "./profile-view-report-scheduler";
 import { weeklyTaskReminderScheduler } from "./weekly-task-reminder-scheduler";
@@ -154,6 +157,21 @@ app.get("/info/*path", proxyToSquarespace);
     }
   } catch (err) {
     logger.warn({ err }, '[SubMigration] Startup flush failed — continuing without it');
+  }
+
+  // ONE-TIME: Delete old Apple review test accounts (replaced by homeowner1/contractor1).
+  // Remove this block after next successful deployment.
+  try {
+    const oldEmails = ['homeownertest@codestationai.com', 'contractortest@codestationai.com'];
+    for (const email of oldEmails) {
+      const u = await storage.getUserByEmail(email);
+      if (u) {
+        await db.delete(users).where(eq(users.id, u.id));
+        logger.info({ email }, '[TestCleanup] Deleted old review test account');
+      }
+    }
+  } catch (err) {
+    logger.warn({ err }, '[TestCleanup] Could not delete old test accounts — continuing');
   }
 
   const server = await registerRoutes(app);
