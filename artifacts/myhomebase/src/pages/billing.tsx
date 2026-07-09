@@ -94,8 +94,14 @@ export default function Billing() {
       }) : old);
       queryClient.setQueryData(['/api/contractor/subscription'], (old: any) => old ? ({
         ...old,
-        status: 'active',
-        plan: plan === 'contractor_basic' ? 'basic' : old.plan,
+        subscriptionStatus: 'active',
+        hasActiveSubscription: true,
+        hasCrmAccess: plan === 'contractor_pro' ? true : old.hasCrmAccess,
+        currentPlan: plan === 'contractor_pro'
+          ? 'pro'
+          : plan === 'contractor_basic'
+            ? 'basic'
+            : old.currentPlan,
       }) : old);
       try {
         await Promise.all([

@@ -24,6 +24,7 @@
     "@types/ws": "^8.18.1",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
+    "app-store-server-api": "1.0.0",
     "bcryptjs": "^3.0.3",
     "connect-pg-simple": "^10.0.0",
     "cookie-parser": "^1.4.7",
