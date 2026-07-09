@@ -1,4 +1,5 @@
-import { CdvPurchase as CdvPurchaseRuntime } from 'capacitor-plugin-cdv-purchase';
+/// <reference types="cordova-plugin-purchase/www/store" />
+import 'cordova-plugin-purchase';
 import { isNativePlatform } from './nativeBrowser';
 import { apiRequest } from './queryClient';
 
@@ -32,7 +33,7 @@ function logError(...args: unknown[]) {
 }
 
 function getCdvPurchase(): typeof CdvPurchase | undefined {
-  return CdvPurchaseRuntime ?? ((window as any).CdvPurchase as typeof CdvPurchase | undefined);
+  return (window as any).CdvPurchase as typeof CdvPurchase | undefined;
 }
 
 let initPromise: Promise<boolean> | null = null;
@@ -180,15 +181,7 @@ function parseApiError(err: unknown): { status: number | null; message: string }
  * HTTP response body rather than a clean sentence.
  */
 async function verifyAndFinishTransaction(transaction: CdvPurchase.Transaction): Promise<void> {
-  // StoreKit 1 exposes a synthetic application transaction that represents
-  // the app receipt, not a user purchase. It must never trigger purchase UI.
-  if (transaction.transactionId === 'appstore.application') {
-    log('Ignoring Apple application receipt transaction');
-    return;
-  }
-
-  const appleTransaction = transaction as CdvPurchase.AppleAppStore.SKTransaction;
-  const jwsRepresentation = appleTransaction.jwsRepresentation;
+  const jwsRepresentation = (transaction as any).jwsRepresentation as string | undefined;
   const productId = transaction.products?.[0]?.id;
   const plan = productId ? PRODUCT_ID_TO_PLAN[productId] : undefined;
 
@@ -223,10 +216,6 @@ async function verifyAndFinishTransaction(transaction: CdvPurchase.Transaction):
       // a clean, single error instead of looping on every future launch.
       logError('Server permanently rejected purchase verification (status', status, '):', message, 'transactionId:', transaction.transactionId);
       await transaction.finish();
-      if (status === 403 && message === 'This purchase is not associated with your account') {
-        log('Ignored a transaction associated with a different app account:', transaction.transactionId);
-        return;
-      }
       failedListeners.forEach((listener) => listener({ message }));
       return;
     }

@@ -5398,6 +5398,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // TEMPORARY: Delete old test accounts by email list. Protected by X-Cleanup-Secret header.
+  // Remove this endpoint after use.
+  app.delete('/api/internal/cleanup-test-accounts', async (req: any, res) => {
+    const secret = process.env.CLEANUP_TEST_SECRET;
+    if (!secret) return res.status(404).json({ message: "Not found" });
+    const provided = req.headers['x-cleanup-secret'];
+    if (!provided || provided !== secret) return res.status(403).json({ message: "Forbidden" });
+    const emails = ['homeownertest@codestationai.com', 'contractortest@codestationai.com'];
+    try {
+      const deleted: string[] = [];
+      for (const email of emails) {
+        const user = await storage.getUserByEmail(email);
+        if (user) {
+          await db.delete(users).where(eq(users.id, user.id));
+          deleted.push(email);
+        }
+      }
+      res.json({ success: true, deleted });
+    } catch (error: any) {
+      res.status(500).json({ message: "Failed to delete", error: error?.message });
+    }
+  });
+
   // Admin — reset any user's password by email (no token required)
   app.post('/api/admin/users/reset-password', requireAdmin, async (req: any, res) => {
     try {

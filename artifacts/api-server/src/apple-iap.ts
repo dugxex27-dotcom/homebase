@@ -157,8 +157,7 @@ export async function verifyAndActivateAppleTransaction(
     if (contractorPlan) {
       subscriptionPlanId = contractorPlan.id;
     } else {
-      console.error(`[APPLE-IAP] Missing required "${tierKey}" subscription_plans row`);
-      throw new AppleIapError("Subscription setup is temporarily unavailable. Please try again.", 500);
+      console.warn(`[APPLE-IAP] No "${tierKey}" subscription_plans row found; leaving subscriptionPlanId unchanged`);
     }
   }
 
