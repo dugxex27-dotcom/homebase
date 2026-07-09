@@ -223,6 +223,10 @@ async function verifyAndFinishTransaction(transaction: CdvPurchase.Transaction):
       // a clean, single error instead of looping on every future launch.
       logError('Server permanently rejected purchase verification (status', status, '):', message, 'transactionId:', transaction.transactionId);
       await transaction.finish();
+      if (status === 403 && message === 'This purchase is not associated with your account') {
+        log('Ignored a transaction associated with a different app account:', transaction.transactionId);
+        return;
+      }
       failedListeners.forEach((listener) => listener({ message }));
       return;
     }
