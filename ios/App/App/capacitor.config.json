@@ -38,8 +38,8 @@
 	},
 	"packageClassList": [
 		"CAPBrowserPlugin",
+		"PurchasePlugin",
 		"PushNotificationsPlugin",
-		"SplashScreenPlugin",
-		"CDVPlugin"
+		"SplashScreenPlugin"
 	]
 }
