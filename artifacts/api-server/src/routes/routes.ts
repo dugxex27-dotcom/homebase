@@ -2692,10 +2692,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Canonical demo house IDs - the only two houses that should exist for the demo user
+      // Canonical demo house IDs - the only house that should exist for the demo user
+      // NOTE: Lake House was removed from the demo homeowner account (no longer canonical);
+      // it is intentionally left out of canonicalHouseIds so the rogue-house cleanup below removes it.
       const mainHouseId = '8d44c1d0-af55-4f1c-bada-b70e54c823bc';
       const lakeHouseId = 'f5c8a9d2-3e1b-4f7c-a6b3-8d9e5f2c1a4b';
-      const canonicalHouseIds = new Set([mainHouseId, lakeHouseId]);
+      const canonicalHouseIds = new Set([mainHouseId]);
 
       // Check if demo houses already exist (seeded from database)
       const existingHouses = await storage.getHouses(demoId);
@@ -2956,95 +2958,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      if (lakeHouseMissing) {
-        try {
-          const house2 = await storage.createHouse({
-            id: lakeHouseId,
-            homeownerId: demoId,
-            name: 'Lake House',
-            address: '1523 Lakefront Road, Bellevue, WA 98004',
-            climateZone: 'pacific-northwest',
-            homeSystems: ['central-ac', 'gas-furnace', 'gas-water-heater', 'washer-dryer'],
-            isDefault: false,
-            countryId: 'USA',
-            regionId: 'WA',
-            postalCode: '98004',
-            latitude: 47.6101,
-            longitude: -122.2015,
-            yearBuilt: 1995,
-            squareFootage: 1800,
-            bedrooms: 3,
-            bathrooms: 2,
-            stories: 1,
-            garageSpaces: 1,
-            lotSize: 0.5,
-            propertyType: 'single-family',
-            roofType: 'asphalt-shingle',
-            roofAge: 15,
-            foundationType: 'crawl-space',
-            exteriorMaterial: 'wood-siding',
-            primaryHeatingFuel: 'natural-gas'
-          });
-
-          // Lake House service records
-          await storage.createMaintenanceLog({
-            homeownerId: demoId,
-            houseId: house2.id,
-            serviceDate: new Date(Date.now() - 100 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            serviceType: 'inspection',
-            homeArea: 'plumbing',
-            serviceDescription: 'Annual septic system inspection',
-            cost: '225.00',
-            contractorName: 'Northwest Septic Services',
-            contractorCompany: 'Clean Flow Septic',
-            notes: 'System in good condition. Recommended pumping in 2 years. All drains flowing properly.',
-            completionMethod: 'contractor'
-          });
-          await storage.createMaintenanceLog({
-            homeownerId: demoId,
-            houseId: house2.id,
-            serviceDate: new Date(Date.now() - 75 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            serviceType: 'maintenance',
-            homeArea: 'exterior',
-            serviceDescription: 'Dock repair and wood staining',
-            cost: '425.00',
-            contractorName: 'Lake Life Maintenance',
-            contractorCompany: 'Waterfront Property Services',
-            notes: 'Replaced damaged boards and restained entire dock. Looks great for summer rentals.',
-            completionMethod: 'contractor'
-          });
-          await storage.createMaintenanceLog({
-            homeownerId: demoId,
-            houseId: house2.id,
-            serviceDate: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            serviceType: 'maintenance',
-            homeArea: 'interior',
-            serviceDescription: 'Deep cleaning between rentals',
-            cost: '180.00',
-            contractorName: 'Crystal Clean Services',
-            contractorCompany: 'Vacation Rental Cleaning Co',
-            notes: 'Professional deep clean after summer guests. Carpets, windows, all appliances. Ready for fall bookings.',
-            completionMethod: 'contractor'
-          });
-          seedResults.lakeHouse = { ok: true, inserted: 3, expected: 3 };
-        } catch (houseError) {
-          const msg = houseError instanceof Error ? houseError.message : String(houseError);
-          req.log.error({ section: 'lakeHouse', error: msg }, '[DEMO] Error creating demo Lake House');
-          seedResults.lakeHouse = { ok: false, error: msg };
-        }
-      } else {
-        try {
-          const [{ count: lakeLogCount }] = await db
-            .select({ count: drizzleSql<number>`cast(count(*) as integer)` })
-            .from(maintenanceLogs)
-            .where(eq(maintenanceLogs.houseId, lakeHouseId));
-          seedResults.lakeHouse = { ok: true, healthCheck: { maintenanceLogs: lakeLogCount } };
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          req.log.error({ section: 'lakeHouse', error: msg }, '[DEMO] Health-check failed for existing Lake House');
-          seedResults.lakeHouse = { ok: false, error: msg };
-        }
-      }
+      // Lake House was removed from the demo homeowner account and is intentionally never recreated.
+      // lakeHouseMissing is expected to always be true now that lakeHouseId is not in canonicalHouseIds
+      // (any stray Lake House row is deleted by the rogue-house cleanup above).
+      void lakeHouseMissing;
+      seedResults.lakeHouse = { ok: true, inserted: 0, expected: 0 };
 
       // Add task completions for existing demo users if they don't already have any
       try {

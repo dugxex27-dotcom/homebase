@@ -2659,10 +2659,11 @@ export class MemStorage implements IStorage {
     ];
 
     try {
-      await Promise.all(demoHousesData.map(async (house) => {
+      const activeDemoHousesData = demoHousesData.filter((house) => house.id !== lakeHouseId);
+      await Promise.all(activeDemoHousesData.map(async (house) => {
         await db.insert(houses).values(house).onConflictDoNothing();
       }));
-      console.log('[DEMO DATA] Seeded 2 houses for demo homeowner (Main Residence + Lake House)');
+      console.log('[DEMO DATA] Seeded 1 house for demo homeowner (Main Residence)');
     } catch (error) {
       console.error('[DEMO DATA] Error inserting demo houses:', error);
     }
@@ -3198,10 +3199,11 @@ export class MemStorage implements IStorage {
 
     // Insert DIY maintenance logs into database with idempotent seeding
     try {
-      await Promise.all(diyMaintenanceLogsData.map(async (log) => {
+      const activeMaintenanceLogsData = diyMaintenanceLogsData.filter((log) => log.houseId !== lakeHouseId);
+      await Promise.all(activeMaintenanceLogsData.map(async (log) => {
         await db.insert(maintenanceLogs).values(log).onConflictDoNothing();
       }));
-      console.log('[DEMO DATA] Seeded 18 maintenance logs for Sarah Anderson (14 DIY + 4 contractor) (idempotent)');
+      console.log('[DEMO DATA] Seeded maintenance logs for Sarah Anderson (Main Residence only, idempotent)');
     } catch (error) {
       console.error('[DEMO DATA] Error inserting DIY maintenance logs:', error);
     }
