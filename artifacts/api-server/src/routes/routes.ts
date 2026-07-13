@@ -210,6 +210,553 @@ const aiChatLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// ============================================================================
+// Exported pure helpers and DB functions (tested in routes.test.ts)
+// ============================================================================
+
+// ---------------------------------------------------------------------------
+// Seat billing helpers
+// ---------------------------------------------------------------------------
+
+export function calcBilledSeats(totalSeats: number): number {
+  return Math.max(0, totalSeats - 2);
+}
+
+export async function countActiveCompanySeats(
+  companyId: string,
+  dbInstance: any,
+): Promise<number> {
+  const rows = await dbInstance
+    .select({ count: drizzleSql<number>`count(*)::int` })
+    .from(users)
+    .where(and(eq(users.companyId, companyId), ne(users.status as any, 'removed')));
+  return rows[0]?.count ?? 1;
+}
+
+export async function updateMeteredSeats(
+  companyId: string,
+  items: Array<{ id: string; price?: { recurring?: { usage_type?: string } } }>,
+  getActiveUserCount: (companyId: string) => Promise<number>,
+  createUsageRecord: (itemId: string, quantity: number) => Promise<void>,
+): Promise<void> {
+  const meteredItem = items.find(
+    item => item.price?.recurring?.usage_type === 'metered',
+  );
+  if (!meteredItem) return;
+
+  const totalSeats = await getActiveUserCount(companyId);
+  const billedSeats = calcBilledSeats(totalSeats);
+  await createUsageRecord(meteredItem.id, billedSeats);
+}
+
+// ---------------------------------------------------------------------------
+// Webhook idempotency cache
+// ---------------------------------------------------------------------------
+
+export const MAX_WEBHOOK_DEDUP_CACHE_SIZE = 10_000;
+export const processedWebhookEventIds = new Map<string, number>();
+export const inFlightWebhookEventIds = new Set<string>();
+
+export function enforceWebhookDedupCacheCap(
+  cache: Map<string, number> = processedWebhookEventIds,
+  cap: number = MAX_WEBHOOK_DEDUP_CACHE_SIZE,
+): void {
+  while (cache.size >= cap) {
+    const firstKey = cache.keys().next().value;
+    if (firstKey !== undefined) cache.delete(firstKey);
+    else break;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// resolveMeteredSeatCount — pure: billing stops on cancellation / past_due
+// ---------------------------------------------------------------------------
+
+export function resolveMeteredSeatCount(
+  status: string,
+  totalSeats: number,
+): number {
+  if (status === 'canceled' || status === 'past_due') return 0;
+  return calcBilledSeats(totalSeats);
+}
+
+// ---------------------------------------------------------------------------
+// DB advisory lock — cross-process seat-update serialization
+// ---------------------------------------------------------------------------
+
+export type PgPoolLike = {
+  connect: () => Promise<{
+    query: (sql: string, params?: unknown[]) => Promise<unknown>;
+    release: () => void;
+  }>;
+};
+
+/** FNV-1a 32-bit hash of companyId → non-negative 31-bit int for pg_advisory_lock */
+export function companyIdToAdvisoryLockKey(companyId: string): number {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < companyId.length; i++) {
+    hash ^= companyId.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash & 0x7fffffff;
+}
+
+export async function withDbAdvisoryLock<T>(
+  lockKey: number,
+  pgPool: PgPoolLike,
+  fn: () => Promise<T>,
+): Promise<T> {
+  const client = await pgPool.connect();
+  try {
+    await client.query('SELECT pg_advisory_lock($1)', [lockKey]);
+    try {
+      return await fn();
+    } finally {
+      await client.query('SELECT pg_advisory_unlock($1)', [lockKey]);
+    }
+  } finally {
+    client.release();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// In-process seat-update lock (fast path) + optional DB advisory lock
+// ---------------------------------------------------------------------------
+
+export const seatUpdateLocks = new Map<string, Promise<unknown>>();
+
+export async function withSeatUpdateLock<T>(
+  companyId: string,
+  fn: () => Promise<T>,
+  pgPool?: PgPoolLike,
+): Promise<T> {
+  const existing = seatUpdateLocks.get(companyId);
+  if (existing) await existing;
+
+  let resolveInner!: (v: unknown) => void;
+  const lockPromise = new Promise<unknown>(resolve => { resolveInner = resolve; });
+  seatUpdateLocks.set(companyId, lockPromise);
+
+  try {
+    if (pgPool) {
+      const lockKey = companyIdToAdvisoryLockKey(companyId);
+      return await withDbAdvisoryLock(lockKey, pgPool, fn);
+    }
+    return await fn();
+  } finally {
+    resolveInner(undefined);
+    seatUpdateLocks.delete(companyId);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// refreshSeatsForCompany — immediate seat correction on member removal
+// ---------------------------------------------------------------------------
+
+export async function refreshSeatsForCompany(
+  companyId: string,
+  stripeClient: any,
+  dbInstance: any,
+  getActiveUserCount: (companyId: string) => Promise<number>,
+  pgPool?: PgPoolLike,
+): Promise<void> {
+  if (!stripeClient) return;
+
+  return withSeatUpdateLock(companyId, async () => {
+    const ownerRows = await dbInstance
+      .select({ stripeSubscriptionId: users.stripeSubscriptionId })
+      .from(users)
+      .where(and(eq(users.companyId, companyId), eq(users.companyRole as any, 'owner')))
+      .limit(1);
+
+    const stripeSubscriptionId = ownerRows[0]?.stripeSubscriptionId;
+    if (!stripeSubscriptionId) return;
+
+    const subscription = await stripeClient.subscriptions.retrieve(stripeSubscriptionId);
+    if (subscription.status === 'canceled') return;
+
+    const items: Array<{ id: string; price?: { recurring?: { usage_type?: string } } }> =
+      subscription.items?.data ?? [];
+
+    await updateMeteredSeats(
+      companyId,
+      items,
+      getActiveUserCount,
+      async (itemId: string, quantity: number) => {
+        await stripeClient.subscriptionItems.createUsageRecord(itemId, {
+          quantity,
+          action: 'set',
+        });
+      },
+    );
+  }, pgPool);
+}
+
+// ---------------------------------------------------------------------------
+// updateMeteredSeatsForSubscription — webhook path
+// ---------------------------------------------------------------------------
+
+export async function updateMeteredSeatsForSubscription(
+  subscription: any,
+  companyId: string,
+  stripeClient: any,
+  dbInstance?: any,
+  isReactivation?: boolean,
+  eventId?: string,
+  pgPool?: PgPoolLike,
+): Promise<number | null> {
+  const items: Array<{ id: string; price?: { recurring?: { usage_type?: string } } }> =
+    subscription.items?.data ?? [];
+  const meteredItem = items.find(
+    item => item.price?.recurring?.usage_type === 'metered',
+  );
+  if (!meteredItem) return null;
+
+  if (isReactivation) return null;
+
+  const status: string = subscription.status;
+
+  let seatCount: number;
+  if (status === 'canceled' || status === 'past_due') {
+    seatCount = 0;
+  } else {
+    const dbInst = dbInstance ?? db;
+    const totalSeats = await countActiveCompanySeats(companyId, dbInst);
+    seatCount = calcBilledSeats(totalSeats);
+  }
+
+  if (eventId) {
+    await stripeClient.subscriptionItems.createUsageRecord(
+      meteredItem.id,
+      { quantity: seatCount, action: 'set' },
+      { idempotencyKey: `${eventId}-seats` },
+    );
+  } else {
+    await stripeClient.subscriptionItems.createUsageRecord(
+      meteredItem.id,
+      { quantity: seatCount, action: 'set' },
+    );
+  }
+
+  return seatCount;
+}
+
+// ---------------------------------------------------------------------------
+// Team-management guard helpers
+// ---------------------------------------------------------------------------
+
+export function checkRemoveTeamMemberGuard(
+  requestorId: string,
+  targetId: string,
+  targetRole: string | null | undefined,
+  activeAdminOwnerCount: number,
+): { status: number; message: string } | null {
+  if (requestorId === targetId) {
+    return {
+      status: 400,
+      message: 'You cannot remove yourself. Use the leave-company option instead.',
+    };
+  }
+  if (
+    (targetRole === 'admin' || targetRole === 'owner') &&
+    activeAdminOwnerCount <= 1
+  ) {
+    return {
+      status: 400,
+      message: 'Cannot remove the only admin or owner of the company.',
+    };
+  }
+  return null;
+}
+
+export function checkRoleChangeGuard(
+  currentRole: string | null | undefined,
+  newRole: string | null | undefined,
+  activeAdminOwnerCount: number,
+  targetId?: string,
+  requestorId?: string,
+): { status: number; message: string } | null {
+  // Guard 1: demoting last admin/owner to tech
+  if (
+    newRole === 'tech' &&
+    (currentRole === 'admin' || currentRole === 'owner') &&
+    activeAdminOwnerCount <= 1
+  ) {
+    return {
+      status: 400,
+      message: 'Cannot demote the last admin or owner to tech.',
+    };
+  }
+
+  // Guard 2: self-demotion of owner→admin when sole admin/owner
+  if (
+    targetId &&
+    requestorId &&
+    targetId === requestorId &&
+    (currentRole === 'owner' || currentRole === 'admin') &&
+    newRole !== currentRole &&
+    newRole !== 'tech' &&
+    activeAdminOwnerCount <= 1
+  ) {
+    return {
+      status: 400,
+      message: 'You cannot demote yourself when you are the only admin/owner.',
+    };
+  }
+
+  return null;
+}
+
+export async function verifyRequestorRoleFromDb(
+  requestorId: string,
+  companyId: string | null | undefined,
+  getRoleFromDb: (requestorId: string, companyId: string) => Promise<string | null>,
+): Promise<{ status: number; message: string } | null> {
+  const role = await getRoleFromDb(requestorId, companyId as string);
+  if (!role || (role !== 'admin' && role !== 'owner')) {
+    return {
+      status: 403,
+      message:
+        'Your role has been updated since you logged in. Please refresh the page.',
+    };
+  }
+  return null;
+}
+
+export function checkActorActiveGuard(
+  status: string | null | undefined,
+): { status: number; message: string } | null {
+  if (status === 'active') return null;
+  return {
+    status: 403,
+    message: 'Your account is suspended or inactive. Contact your company administrator.',
+  };
+}
+
+// ---------------------------------------------------------------------------
+// executeLeaveCompany — leave-company guard + DB mutation
+// ---------------------------------------------------------------------------
+
+type LeaveCompanyResult =
+  | { outcome: 'not_associated' }
+  | { outcome: 'sole_admin' }
+  | { outcome: 'left'; companyId: string };
+
+export async function executeLeaveCompany(
+  companyId: string | null | undefined,
+  userId: string,
+  role: string | null | undefined,
+  dbInstance: any,
+): Promise<LeaveCompanyResult> {
+  if (!companyId) return { outcome: 'not_associated' };
+
+  if (role === 'owner' || role === 'admin') {
+    const rows = await dbInstance
+      .select({ cnt: drizzleSql<number>`count(*)::int` })
+      .from(users)
+      .where(
+        and(
+          eq(users.companyId, companyId),
+          ne(users.id as any, userId),
+          inArray(users.companyRole as any, ['admin', 'owner']),
+          eq(users.status as any, 'active'),
+        ),
+      );
+    const otherAdminCount = rows[0]?.cnt ?? 0;
+    if (otherAdminCount === 0) return { outcome: 'sole_admin' };
+  }
+
+  await dbInstance
+    .update(users)
+    .set({ companyId: null, companyRole: null })
+    .where(eq(users.id as any, userId));
+
+  return { outcome: 'left', companyId };
+}
+
+// ---------------------------------------------------------------------------
+// checkLeaveCompanyEligibility — pure eligibility check (no DB write)
+// ---------------------------------------------------------------------------
+
+type LeaveCompanyEligibility =
+  | { outcome: 'not_associated' }
+  | { outcome: 'sole_admin' }
+  | { outcome: 'eligible'; companyId: string };
+
+export async function checkLeaveCompanyEligibility(
+  companyId: string | null | undefined,
+  userId: string,
+  role: string | null | undefined,
+  dbInstance: any,
+): Promise<LeaveCompanyEligibility> {
+  if (!companyId) return { outcome: 'not_associated' };
+
+  if (role === 'owner' || role === 'admin') {
+    const rows = await dbInstance
+      .select({ cnt: drizzleSql<number>`count(*)::int` })
+      .from(users)
+      .where(
+        and(
+          eq(users.companyId, companyId),
+          ne(users.id as any, userId),
+          inArray(users.companyRole as any, ['admin', 'owner']),
+          eq(users.status as any, 'active'),
+        ),
+      );
+    const otherAdminCount = rows[0]?.cnt ?? 0;
+    if (otherAdminCount === 0) return { outcome: 'sole_admin' };
+  }
+
+  return { outcome: 'eligible', companyId };
+}
+
+// ---------------------------------------------------------------------------
+// executeRemoveMember — remove-member route guard + DB update
+// ---------------------------------------------------------------------------
+
+type RemoveMemberResult =
+  | { outcome: 'unauthorized' }
+  | { outcome: 'not_found' }
+  | { outcome: 'guard_error'; status: number; message: string }
+  | { outcome: 'removed'; companyId: string; targetUser: any };
+
+export async function executeRemoveMember(
+  companyId: string,
+  requestorId: string,
+  requestorRole: string | null | undefined,
+  targetId: string,
+  dbInstance: any,
+): Promise<RemoveMemberResult> {
+  if (requestorRole !== 'admin' && requestorRole !== 'owner') {
+    return { outcome: 'unauthorized' };
+  }
+
+  // Admins may only remove tech members; owners may remove any member
+  const targetRows =
+    requestorRole === 'admin'
+      ? await dbInstance
+          .select()
+          .from(users)
+          .where(
+            and(
+              eq(users.companyId, companyId),
+              eq(users.id as any, targetId),
+              eq(users.companyRole as any, 'tech'),
+            ),
+          )
+          .limit(1)
+      : await dbInstance
+          .select()
+          .from(users)
+          .where(
+            and(
+              eq(users.companyId, companyId),
+              eq(users.id as any, targetId),
+            ),
+          )
+          .limit(1);
+
+  const targetUser = targetRows[0] ?? null;
+  if (!targetUser) return { outcome: 'not_found' };
+
+  // For admin/owner targets run the sole-admin guard + self-removal check
+  if (targetUser.companyRole === 'admin' || targetUser.companyRole === 'owner') {
+    const cntRows = await dbInstance
+      .select({ cnt: drizzleSql<number>`count(*)::int` })
+      .from(users)
+      .where(
+        and(
+          eq(users.companyId, companyId),
+          inArray(users.companyRole as any, ['admin', 'owner']),
+          eq(users.status as any, 'active'),
+        ),
+      );
+    const cnt = cntRows[0]?.cnt ?? 0;
+    const guardError = checkRemoveTeamMemberGuard(
+      requestorId,
+      targetId,
+      targetUser.companyRole,
+      cnt,
+    );
+    if (guardError) return { outcome: 'guard_error', ...guardError };
+  } else {
+    // Tech target — only check self-removal
+    const selfError = checkRemoveTeamMemberGuard(
+      requestorId,
+      targetId,
+      targetUser.companyRole,
+      0,
+    );
+    if (selfError) return { outcome: 'guard_error', ...selfError };
+  }
+
+  await dbInstance
+    .update(users)
+    .set({
+      status: 'removed',
+      companyId: null,
+      companyRole: null,
+      deletedAt: new Date(),
+    })
+    .where(eq(users.id as any, targetId));
+
+  return { outcome: 'removed', companyId, targetUser };
+}
+
+// ---------------------------------------------------------------------------
+// executeTransferOwnership — transfer-ownership route DB logic
+// ---------------------------------------------------------------------------
+
+type TransferOwnershipResult =
+  | { outcome: 'self' }
+  | { outcome: 'target_not_found' }
+  | { outcome: 'transferred'; targetUser: { id: string; firstName: string | null; lastName: string | null; email: string } };
+
+export async function executeTransferOwnership(
+  actorId: string,
+  companyId: string,
+  newOwnerId: string,
+  dbInstance: any,
+): Promise<TransferOwnershipResult> {
+  if (actorId === newOwnerId) return { outcome: 'self' };
+
+  const targetRows = await dbInstance
+    .select()
+    .from(users)
+    .where(
+      and(
+        eq(users.companyId, companyId),
+        eq(users.id as any, newOwnerId),
+        eq(users.status as any, 'active'),
+      ),
+    )
+    .limit(1);
+
+  if (!targetRows[0]) return { outcome: 'target_not_found' };
+
+  const target = targetRows[0];
+
+  await dbInstance.transaction(async (tx: any) => {
+    await tx.update(users).set({ companyRole: 'owner' }).where(eq(users.id as any, newOwnerId));
+    await tx.update(users).set({ companyRole: 'admin' }).where(eq(users.id as any, actorId));
+    await tx.update(companies).set({ ownerId: newOwnerId }).where(eq(companies.id as any, companyId));
+  });
+
+  return {
+    outcome: 'transferred',
+    targetUser: {
+      id: target.id,
+      firstName: target.firstName ?? null,
+      lastName: target.lastName ?? null,
+      email: target.email,
+    },
+  };
+}
+
+// ============================================================================
+// End of exported helpers
+// ============================================================================
+
 export async function registerRoutes(app: Express): Promise<Server> {
   console.error('========================================');
   console.error('REGISTER ROUTES CALLED - NEW CODE VERSION 2025-11-02-21:28');

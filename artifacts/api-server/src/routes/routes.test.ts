@@ -19,9 +19,24 @@ import {
   checkLeaveCompanyEligibility,
   executeRemoveMember,
   executeTransferOwnership,
-  verifyRequestorRoleFromDb
+  verifyRequestorRoleFromDb,
+  companyIdToAdvisoryLockKey,
+  withDbAdvisoryLock,
+  seatUpdateLocks,
+  withSeatUpdateLock,
 } from "./routes";
 import { refreshUserSessionRole } from "../replitAuth";
+
+// Prevent real DB / pool connections during unit tests.
+vi.mock("../db", () => ({
+  db: {},
+  pool: {
+    connect: vi.fn().mockResolvedValue({
+      query: vi.fn().mockResolvedValue({ rows: [] }),
+      release: vi.fn(),
+    }),
+  },
+}));
 
 // ---------------------------------------------------------------------------
 // calcBilledSeats — pure unit tests
@@ -3328,5 +3343,268 @@ describe("POST /api/contractor/transfer-ownership — new owner's session reflec
       .get("/api/owner-only-tool")
       .query({ sid: "sid-new-owner" })
       .expect(403);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// companyIdToAdvisoryLockKey — FNV-1a hash → non-negative 31-bit integer
+// ---------------------------------------------------------------------------
+
+describe("companyIdToAdvisoryLockKey", () => {
+  it("returns a non-negative integer for any company ID", () => {
+    expect(companyIdToAdvisoryLockKey("company-abc")).toBeGreaterThanOrEqual(0);
+    expect(companyIdToAdvisoryLockKey("company-xyz")).toBeGreaterThanOrEqual(0);
+    expect(companyIdToAdvisoryLockKey("")).toBeGreaterThanOrEqual(0);
+  });
+
+  it("returns the same key for the same company ID (deterministic)", () => {
+    const id = "company-stable-001";
+    expect(companyIdToAdvisoryLockKey(id)).toBe(companyIdToAdvisoryLockKey(id));
+  });
+
+  it("returns different keys for different company IDs (low-collision)", () => {
+    const a = companyIdToAdvisoryLockKey("company-alpha");
+    const b = companyIdToAdvisoryLockKey("company-beta");
+    expect(a).not.toBe(b);
+  });
+
+  it("returns a value that fits in a signed 32-bit integer (safe for pg_advisory_lock)", () => {
+    const key = companyIdToAdvisoryLockKey("company-large-team-99");
+    expect(key).toBeLessThanOrEqual(0x7fffffff);
+    expect(key).toBeGreaterThanOrEqual(0);
+  });
+
+  it("handles UUIDs without throwing", () => {
+    const uuid = "f47ac10b-58cc-4372-a567-0e02b2c3d479";
+    expect(() => companyIdToAdvisoryLockKey(uuid)).not.toThrow();
+    expect(companyIdToAdvisoryLockKey(uuid)).toBeGreaterThanOrEqual(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// withDbAdvisoryLock — acquires and releases pg advisory lock around fn
+// ---------------------------------------------------------------------------
+
+describe("withDbAdvisoryLock", () => {
+  function makeLockPool() {
+    const query = vi.fn().mockResolvedValue({ rows: [] });
+    const release = vi.fn();
+    const pool: import("./routes").PgPoolLike = {
+      connect: vi.fn().mockResolvedValue({ query, release }),
+    };
+    return { pool, query, release };
+  }
+
+  it("calls pg_advisory_lock before fn and pg_advisory_unlock after fn", async () => {
+    const { pool, query } = makeLockPool();
+    const fn = vi.fn().mockResolvedValue("result");
+
+    const result = await withDbAdvisoryLock(12345, pool, fn);
+
+    expect(result).toBe("result");
+    expect(fn).toHaveBeenCalledOnce();
+
+    const calls = query.mock.calls.map(([sql]: [string]) => sql);
+    const lockIdx = calls.findIndex(s => s.includes("pg_advisory_lock"));
+    const unlockIdx = calls.findIndex(s => s.includes("pg_advisory_unlock"));
+    expect(lockIdx).toBeGreaterThanOrEqual(0);
+    expect(unlockIdx).toBeGreaterThan(lockIdx);
+  });
+
+  it("releases the pool client even when fn throws", async () => {
+    const { pool, query, release } = makeLockPool();
+    const fn = vi.fn().mockRejectedValue(new Error("fn failed"));
+
+    await expect(withDbAdvisoryLock(42, pool, fn)).rejects.toThrow("fn failed");
+
+    expect(release).toHaveBeenCalledOnce();
+    const calls = query.mock.calls.map(([sql]: [string]) => sql);
+    expect(calls.some(s => s.includes("pg_advisory_unlock"))).toBe(true);
+  });
+
+  it("passes the lock key as a parameter to pg_advisory_lock", async () => {
+    const { pool, query } = makeLockPool();
+    const KEY = 99_999;
+    await withDbAdvisoryLock(KEY, pool, vi.fn().mockResolvedValue(undefined));
+
+    const lockCall = query.mock.calls.find(([sql]: [string]) =>
+      sql.includes("pg_advisory_lock"),
+    );
+    expect(lockCall).toBeDefined();
+    expect(lockCall![1]).toContain(KEY);
+  });
+
+  it("propagates the return value of fn through the lock wrapper", async () => {
+    const { pool } = makeLockPool();
+    const result = await withDbAdvisoryLock(1, pool, async () => ({ seats: 7 }));
+    expect(result).toEqual({ seats: 7 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Cross-process member-removal serialization
+//
+// Simulates two processes (A and B) racing to update seat billing for the
+// same company after a member removal.  The in-memory seatUpdateLocks Map
+// provides intra-process serialization; the DB advisory lock adds the
+// cross-process layer.
+//
+// Simulation technique (from cross-process-lock-simulation.md):
+//   After process A acquires the in-memory lock, clear seatUpdateLocks to
+//   mimic process B starting with its own fresh Map.  Both A and B then
+//   contend on the DB advisory lock, which serializes them.
+// ---------------------------------------------------------------------------
+
+describe("cross-process member-removal serialization via DB advisory lock", () => {
+  beforeEach(() => {
+    seatUpdateLocks.clear();
+  });
+
+  afterEach(() => {
+    seatUpdateLocks.clear();
+  });
+
+  /**
+   * Build a pool mock that uses a real JS mutex to serialize concurrent
+   * pg_advisory_lock / pg_advisory_unlock calls across async callers.
+   */
+  function makeSerializingPool() {
+    const order: string[] = [];
+    let lockHeld = false;
+    const waiters: Array<() => void> = [];
+
+    const makeClientQuery = (label: string) =>
+      vi.fn().mockImplementation(async (sql: string) => {
+        if (sql.includes("pg_advisory_lock")) {
+          if (lockHeld) {
+            await new Promise<void>(resolve => waiters.push(resolve));
+          }
+          lockHeld = true;
+          order.push(`${label}:lock`);
+        } else if (sql.includes("pg_advisory_unlock")) {
+          order.push(`${label}:unlock`);
+          lockHeld = false;
+          const next = waiters.shift();
+          if (next) next();
+        }
+        return { rows: [] };
+      });
+
+    function makePool(label: string): import("./routes").PgPoolLike {
+      const query = makeClientQuery(label);
+      return {
+        connect: vi.fn().mockResolvedValue({ query, release: vi.fn() }),
+      };
+    }
+
+    return { makePool, order };
+  }
+
+  it("process A finishes before process B starts when both call withDbAdvisoryLock for the same key", async () => {
+    const { makePool, order } = makeSerializingPool();
+    const KEY = companyIdToAdvisoryLockKey("company-race-001");
+
+    const poolA = makePool("A");
+    const poolB = makePool("B");
+
+    const aWork: string[] = [];
+    const bWork: string[] = [];
+
+    const runA = withDbAdvisoryLock(KEY, poolA, async () => {
+      aWork.push("A:work");
+      order.push("A:work");
+    });
+
+    const runB = withDbAdvisoryLock(KEY, poolB, async () => {
+      bWork.push("B:work");
+      order.push("B:work");
+    });
+
+    await Promise.all([runA, runB]);
+
+    expect(aWork).toHaveLength(1);
+    expect(bWork).toHaveLength(1);
+
+    const aLock   = order.indexOf("A:lock");
+    const aWork_  = order.indexOf("A:work");
+    const aUnlock = order.indexOf("A:unlock");
+    const bLock   = order.indexOf("B:lock");
+    const bWork_  = order.indexOf("B:work");
+    const bUnlock = order.indexOf("B:unlock");
+
+    if (aLock < bLock) {
+      // A ran first
+      expect(aWork_).toBeGreaterThan(aLock);
+      expect(aUnlock).toBeGreaterThan(aWork_);
+      expect(bLock).toBeGreaterThanOrEqual(aUnlock);
+      expect(bWork_).toBeGreaterThan(bLock);
+      expect(bUnlock).toBeGreaterThan(bWork_);
+    } else {
+      // B ran first
+      expect(bWork_).toBeGreaterThan(bLock);
+      expect(bUnlock).toBeGreaterThan(bWork_);
+      expect(aLock).toBeGreaterThanOrEqual(bUnlock);
+      expect(aWork_).toBeGreaterThan(aLock);
+      expect(aUnlock).toBeGreaterThan(aWork_);
+    }
+  });
+
+  it("withSeatUpdateLock uses in-memory lock intra-process and clears correctly", async () => {
+    const results: string[] = [];
+
+    const first = withSeatUpdateLock("company-inproc", async () => {
+      results.push("first:start");
+      await new Promise(r => setTimeout(r, 5));
+      results.push("first:end");
+    });
+
+    const second = withSeatUpdateLock("company-inproc", async () => {
+      results.push("second:start");
+      results.push("second:end");
+    });
+
+    await Promise.all([first, second]);
+
+    expect(results.indexOf("first:end")).toBeLessThan(results.indexOf("second:start"));
+    expect(seatUpdateLocks.size).toBe(0);
+  });
+
+  it("clearing seatUpdateLocks between calls simulates a second process bypassing the in-memory lock", async () => {
+    const { makePool, order } = makeSerializingPool();
+    const COMPANY = "company-cross-proc";
+    const KEY = companyIdToAdvisoryLockKey(COMPANY);
+
+    const poolA = makePool("A");
+
+    let resolveAWork!: () => void;
+    const aWorkStarted = new Promise<void>(resolve => { resolveAWork = resolve; });
+
+    const runA = withSeatUpdateLock(COMPANY, async () => {
+      resolveAWork();
+      await withDbAdvisoryLock(KEY, poolA, async () => {
+        order.push("A:work");
+        await new Promise<void>(r => setTimeout(r, 5));
+      });
+    });
+
+    await aWorkStarted;
+
+    // Simulate process B: its seatUpdateLocks is a fresh Map (clear the shared one)
+    seatUpdateLocks.clear();
+
+    const poolB = makePool("B");
+    const runB = withSeatUpdateLock(COMPANY, async () => {
+      await withDbAdvisoryLock(KEY, poolB, async () => {
+        order.push("B:work");
+      });
+    });
+
+    await Promise.all([runA, runB]);
+
+    const aIdx = order.indexOf("A:work");
+    const bIdx = order.indexOf("B:work");
+    expect(aIdx).toBeGreaterThanOrEqual(0);
+    expect(bIdx).toBeGreaterThanOrEqual(0);
+    expect(Math.abs(aIdx - bIdx)).toBeGreaterThan(0);
   });
 });
