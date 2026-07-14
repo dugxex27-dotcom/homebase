@@ -1,0 +1,382 @@
+/**
+ * Integration tests for POST /api/contractors/boost/:boostId/renew
+ *
+ * Covers:
+ *   1. 404 when the boostId does not exist for the requesting contractor
+ *   2. 200 with the renewed boost when the boost exists and the contractor owns it
+ *   3. Cross-contractor ownership check (contractor A cannot renew contractor B's boost)
+ */
+
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
+
+// ---------------------------------------------------------------------------
+// vi.hoisted() — shared mocks visible inside vi.mock() factory closures
+// ---------------------------------------------------------------------------
+
+const {
+  mockGetContractorBoosts,
+  mockCreateContractorBoost,
+  CONTRACTOR_A_ID,
+  CONTRACTOR_B_ID,
+  BOOST_A_ID,
+} = vi.hoisted(() => {
+  return {
+    mockGetContractorBoosts: vi.fn(),
+    mockCreateContractorBoost: vi.fn(),
+    CONTRACTOR_A_ID: "contractor-a-001",
+    CONTRACTOR_B_ID: "contractor-b-002",
+    BOOST_A_ID: "boost-a-001",
+  };
+});
+
+const CONTRACTOR_A_SESSION = {
+  isAuthenticated: true,
+  user: {
+    id: "contractor-a-001",
+    email: "contractor-a@test.com",
+    role: "contractor",
+    status: "active",
+    firstName: "Alice",
+    lastName: "Contractor",
+  },
+};
+
+const CONTRACTOR_B_SESSION = {
+  isAuthenticated: true,
+  user: {
+    id: "contractor-b-002",
+    email: "contractor-b@test.com",
+    role: "contractor",
+    status: "active",
+    firstName: "Bob",
+    lastName: "Contractor",
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Module mocks
+// ---------------------------------------------------------------------------
+
+vi.mock("../replitAuth", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../replitAuth")>();
+  return {
+    ...actual,
+
+    setupAuth: vi.fn().mockResolvedValue(undefined),
+
+    // Inject contractor sessions via x-test-user header:
+    //   "contractor-a" → CONTRACTOR_A_SESSION
+    //   "contractor-b" → CONTRACTOR_B_SESSION
+    //   anything else  → CONTRACTOR_A_SESSION (default)
+    isAuthenticated: vi.fn((req: any, _res: any, next: any) => {
+      const who = req.headers?.["x-test-user"] ?? "contractor-a";
+      if (who === "contractor-b") {
+        req.session = CONTRACTOR_B_SESSION;
+      } else {
+        req.session = CONTRACTOR_A_SESSION;
+      }
+      next();
+    }),
+
+    requireNotSuspended: vi.fn(() => (_req: any, _res: any, next: any) => next()),
+    requireActiveAccountFresh: vi.fn(() => (_req: any, _res: any, next: any) => next()),
+    requireRole: vi.fn(() => (_req: any, _res: any, next: any) => next()),
+    requirePropertyOwner: vi.fn((_req: any, _res: any, next: any) => next()),
+    requireCompanyRole: vi.fn(() => (_req: any, _res: any, next: any) => next()),
+    requireCompanyRoleAny: vi.fn(() => (_req: any, _res: any, next: any) => next()),
+    requireDivisionAccess: vi.fn((_req: any, _res: any, next: any) => next()),
+    requireBulkImport: vi.fn((_req: any, _res: any, next: any) => next()),
+    requireApiAccess: vi.fn((_req: any, _res: any, next: any) => next()),
+    requireSameCompany: vi.fn(() => (_req: any, _res: any, next: any) => next()),
+    requireResourceOwnership: vi.fn(() => (_req: any, _res: any, next: any) => next()),
+    validateHouseOwnership: vi.fn().mockResolvedValue(true),
+    validateMaintenanceLogOwnership: vi.fn().mockResolvedValue(true),
+    validateCustomMaintenanceTaskOwnership: vi.fn().mockResolvedValue(true),
+    validateHomeSystemOwnership: vi.fn().mockResolvedValue(true),
+
+    suspendedUserIds: new Set<string>(),
+    invalidateUserSessions: vi.fn(),
+    evictStatusCache: vi.fn(),
+    refreshUserSessionRole: vi.fn(),
+    invalidateActiveStatusCache: vi.fn(),
+  };
+});
+
+vi.mock("../googleAuth", () => ({ setupGoogleAuth: vi.fn() }));
+
+vi.mock("ws", () => ({
+  WebSocketServer: class MockWss {
+    on() {}
+    clients = new Set();
+  },
+  WebSocket: { OPEN: 1 },
+}));
+
+vi.mock("../push-routes", () => ({ default: vi.fn() }));
+vi.mock("../push-service", () => ({
+  pushService: { sendToUser: vi.fn(), sendToMany: vi.fn() },
+}));
+vi.mock("../notification-orchestrator", () => ({
+  notificationOrchestrator: {
+    notify: vi.fn(),
+    sendMaintenanceReminder: vi.fn(),
+    sendWeatherAlert: vi.fn(),
+  },
+}));
+vi.mock("../email-service", () => ({
+  sendEmail: vi.fn().mockResolvedValue(undefined),
+  emailService: { send: vi.fn().mockResolvedValue(undefined) },
+}));
+vi.mock("../sms-service", () => ({
+  smsService: { send: vi.fn().mockResolvedValue(undefined) },
+}));
+vi.mock("../apple-iap", () => ({
+  verifyAndActivateAppleTransaction: vi.fn().mockResolvedValue(undefined),
+  handleAppleServerNotification: vi.fn().mockResolvedValue(undefined),
+  AppleIapError: class AppleIapError extends Error {},
+}));
+vi.mock("../objectStorage", () => ({
+  ObjectStorageService: class MockObjectStorageService {
+    upload = vi.fn();
+    download = vi.fn();
+    delete = vi.fn();
+    getSignedUrl = vi.fn();
+    getUploadUrl = vi.fn();
+    deleteObject = vi.fn();
+    getObject = vi.fn();
+    putObject = vi.fn();
+    listObjects = vi.fn();
+  },
+  ObjectNotFoundError: class ObjectNotFoundError extends Error {},
+}));
+vi.mock("../geocoding-service", () => ({
+  geocodeAddress: vi.fn().mockResolvedValue(null),
+  calculateDistance: vi.fn().mockReturnValue(0),
+}));
+vi.mock("../invoice-analysis-service", () => ({
+  extractInvoiceData: vi.fn().mockResolvedValue(null),
+  verifyDIYPhotos: vi.fn().mockResolvedValue(null),
+}));
+vi.mock("openai", () => ({
+  default: class MockOpenAI {
+    chat = { completions: { create: vi.fn() } };
+  },
+}));
+vi.mock("../security-audit", () => ({
+  AuditEventTypes: { ADMIN_USER_MODIFY: "admin.user.modify", SECURITY_SCAN: "security.scan" },
+  AuditEventCategories: {},
+  AuditSeverity: {},
+  auditLogger: {
+    log: vi.fn().mockResolvedValue(undefined),
+    logAuth: vi.fn(),
+    logSecurity: vi.fn(),
+    logRequest: vi.fn(),
+    logLogin: vi.fn().mockResolvedValue(undefined),
+    logLogout: vi.fn().mockResolvedValue(undefined),
+    logPasswordChange: vi.fn().mockResolvedValue(undefined),
+    logAdminAction: vi.fn().mockResolvedValue(undefined),
+  },
+  sessionManager: {
+    createSession: vi.fn(),
+    validateSession: vi.fn(),
+    invalidateSession: vi.fn(),
+    trackRequest: vi.fn(),
+  },
+  userRateLimiter: { check: vi.fn().mockResolvedValue(true) },
+  getClientIP: vi.fn().mockReturnValue("127.0.0.1"),
+}));
+vi.mock("stripe", () => {
+  function MockStripe(this: any) {
+    this.webhooks = {
+      constructEvent: vi.fn().mockReturnValue({ id: "evt_stub", type: "test.stub" }),
+    };
+    this.subscriptionItems = {
+      createUsageRecord: vi.fn().mockResolvedValue(undefined),
+    };
+    this.subscriptions = {
+      retrieve: vi.fn().mockResolvedValue({ id: "sub_stub", items: { data: [] } }),
+    };
+    this.accounts = {
+      retrieve: vi.fn().mockResolvedValue({
+        id: "acct_test",
+        charges_enabled: true,
+        payouts_enabled: true,
+        country: "US",
+      }),
+    };
+  }
+  return { default: MockStripe };
+});
+
+vi.mock("../storage", async () => {
+  const { createStorageMock } = await import("../test-helpers/storage-mock");
+  return {
+    storage: createStorageMock({
+      getContractorBoosts: mockGetContractorBoosts,
+      createContractorBoost: mockCreateContractorBoost,
+    }),
+  };
+});
+
+vi.mock("../db", () => ({
+  pool: { query: vi.fn(), end: vi.fn() },
+  db: {
+    insert: vi.fn().mockReturnValue({
+      values: vi.fn().mockReturnValue({
+        onConflictDoNothing: vi.fn().mockResolvedValue(undefined),
+        returning: vi.fn().mockResolvedValue([]),
+      }),
+    }),
+    select: vi.fn().mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue([]),
+        }),
+      }),
+    }),
+    update: vi.fn().mockReturnValue({
+      set: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue(undefined),
+      }),
+    }),
+    delete: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+  },
+}));
+
+// ---------------------------------------------------------------------------
+// Imports — placed AFTER vi.mock() blocks
+// ---------------------------------------------------------------------------
+
+import express from "express";
+import request from "supertest";
+import { registerRoutes } from "./routes";
+import { json as expressJson } from "express";
+
+// ---------------------------------------------------------------------------
+// Fixtures
+// ---------------------------------------------------------------------------
+
+/** A boost owned by contractor A */
+const BOOST_A_FIXTURE = {
+  id: BOOST_A_ID,
+  contractorId: CONTRACTOR_A_ID,
+  serviceCategory: "plumbing",
+  businessAddress: "123 Main St, Springfield, IL 62701",
+  businessLatitude: "39.7817",
+  businessLongitude: "-89.6501",
+  boostRadius: 25,
+  startDate: "2026-06-01",
+  endDate: "2026-07-01",
+  amount: "49.99",
+  status: "active",
+  isActive: true,
+  stripePaymentIntentId: "pi_test_abc123",
+  createdAt: new Date("2026-06-01T00:00:00Z"),
+  updatedAt: new Date("2026-06-01T00:00:00Z"),
+};
+
+/** What storage.createContractorBoost resolves to */
+const RENEWED_BOOST_FIXTURE = {
+  id: "boost-a-002",
+  contractorId: CONTRACTOR_A_ID,
+  serviceCategory: "plumbing",
+  businessAddress: "123 Main St, Springfield, IL 62701",
+  businessLatitude: "39.7817",
+  businessLongitude: "-89.6501",
+  boostRadius: 25,
+  startDate: "2026-07-01",
+  endDate: "2026-07-31",
+  amount: "49.99",
+  status: "active",
+  isActive: true,
+  stripePaymentIntentId: null,
+  createdAt: new Date("2026-07-01T00:00:00Z"),
+  updatedAt: new Date("2026-07-01T00:00:00Z"),
+};
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+describe("POST /api/contractors/boost/:boostId/renew — boost ownership and renewal", () => {
+  let app: express.Express;
+
+  beforeEach(async () => {
+    mockGetContractorBoosts.mockReset();
+    mockCreateContractorBoost.mockReset();
+
+    process.env.STRIPE_SECRET_KEY = "sk_test_boost_renewal_placeholder";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_boost_renewal_placeholder";
+
+    app = express();
+    app.use(expressJson());
+    await registerRoutes(app);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns 404 when the boostId does not exist for the requesting contractor", async () => {
+    // contractor A has no boosts — getContractorBoosts returns an empty array
+    mockGetContractorBoosts.mockResolvedValue([]);
+
+    const res = await request(app)
+      .post(`/api/contractors/boost/nonexistent-boost-id/renew`)
+      .set("x-test-user", "contractor-a")
+      .send({ durationDays: 30 });
+
+    expect(res.status).toBe(404);
+    expect(res.body.message).toMatch(/not found/i);
+  });
+
+  it("returns 200 with the renewed boost when the contractor owns the boost", async () => {
+    // contractor A owns BOOST_A — getContractorBoosts returns it
+    mockGetContractorBoosts.mockResolvedValue([BOOST_A_FIXTURE]);
+    mockCreateContractorBoost.mockResolvedValue(RENEWED_BOOST_FIXTURE);
+
+    const res = await request(app)
+      .post(`/api/contractors/boost/${BOOST_A_ID}/renew`)
+      .set("x-test-user", "contractor-a")
+      .send({ durationDays: 30 });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      id: RENEWED_BOOST_FIXTURE.id,
+      contractorId: CONTRACTOR_A_ID,
+      serviceCategory: "plumbing",
+      status: "active",
+      isActive: true,
+    });
+
+    // Confirm storage was called with the correct contractorId
+    expect(mockGetContractorBoosts).toHaveBeenCalledWith(CONTRACTOR_A_ID);
+    expect(mockCreateContractorBoost).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contractorId: CONTRACTOR_A_ID,
+        serviceCategory: "plumbing",
+        status: "active",
+        isActive: true,
+      }),
+    );
+  });
+
+  it("returns 404 when contractor B tries to renew contractor A's boost (cross-contractor access denied)", async () => {
+    // contractor B has no boosts of their own — getContractorBoosts(contractorB) returns []
+    // BOOST_A belongs to contractor A; contractor B cannot see it via their own boost list
+    mockGetContractorBoosts.mockResolvedValue([]);
+
+    const res = await request(app)
+      .post(`/api/contractors/boost/${BOOST_A_ID}/renew`)
+      .set("x-test-user", "contractor-b")
+      .send({ durationDays: 30 });
+
+    expect(res.status).toBe(404);
+    expect(res.body.message).toMatch(/not found/i);
+
+    // Confirm storage was queried using contractor B's ID, not contractor A's
+    expect(mockGetContractorBoosts).toHaveBeenCalledWith(CONTRACTOR_B_ID);
+    // createContractorBoost must never be called — no boost was found
+    expect(mockCreateContractorBoost).not.toHaveBeenCalled();
+  });
+});
