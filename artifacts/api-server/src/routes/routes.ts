@@ -2311,7 +2311,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create payment link for invoice (contractor sends to homeowner)
-  app.post('/api/crm/invoices/:invoiceId/payment-link', isAuthenticated, requireRole('contractor'), async (req: any, res: any) => {
+  app.post('/api/crm/invoices/:invoiceId/payment-link', isAuthenticated, requireNotSuspended(), requireRole('contractor'), async (req: any, res: any) => {
     if (!stripe) {
       return res.status(500).json({ error: 'Stripe not configured' });
     }

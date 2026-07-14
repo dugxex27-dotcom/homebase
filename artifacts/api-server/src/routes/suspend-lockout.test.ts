@@ -1869,6 +1869,31 @@ describe("Suspend lockout — messaging routes (conversations, messages)", () =>
     }
   });
 
+  // ── POST /api/crm/invoices/:invoiceId/payment-link ────────────────────────
+
+  it("blocks a suspended contractor from generating a payment link", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .post("/api/crm/invoices/inv-001/payment-link")
+      .set("x-test-user", "target")
+      .send({});
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended contractor past the suspension gate on POST /api/crm/invoices/:invoiceId/payment-link", async () => {
+    const res = await request(app)
+      .post("/api/crm/invoices/inv-001/payment-link")
+      .set("x-test-user", "target")
+      .send({});
+
+    if (res.status === 401) {
+      expect(res.body.message).not.toMatch(/suspended/i);
+    }
+  });
+
   // ── GET /api/messages/unread-count ────────────────────────────────────────
 
   it("blocks a suspended user from reading the unread message count", async () => {
