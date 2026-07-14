@@ -2058,7 +2058,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         case 'payment_intent.succeeded': {
           const paymentIntent = event.data.object as Stripe.PaymentIntent;
-          
+
+          // Handle contractor boost payment — check suspension BEFORE activating
+          if (paymentIntent.metadata?.type === 'contractor_boost') {
+            const contractorId = paymentIntent.metadata.contractorId;
+            if (contractorId) {
+              const contractor = await storage.getUser(contractorId);
+              if (!contractor || (['suspended', 'removed'] as string[]).includes(contractor.status || '')) {
+                console.log(
+                  `[STRIPE WEBHOOK] Boost activation blocked — contractor ${contractorId} is suspended or not found` +
+                  ` (status: ${contractor?.status ?? 'not found'}, payment intent: ${paymentIntent.id})`
+                );
+                break;
+              }
+              // Find the boost associated with this payment intent and activate it
+              const boosts = await storage.getContractorBoosts(contractorId);
+              const boost = boosts.find(b => b.stripePaymentIntentId === paymentIntent.id);
+              if (boost && boost.status !== 'active') {
+                await storage.updateContractorBoost(boost.id, { status: 'active', isActive: true });
+                console.log(`[STRIPE WEBHOOK] Boost ${boost.id} activated for contractor ${contractorId} (payment intent: ${paymentIntent.id})`);
+              } else if (!boost) {
+                console.log(`[STRIPE WEBHOOK] No pending boost found for payment intent ${paymentIntent.id}, contractor ${contractorId}`);
+              }
+            }
+            break;
+          }
+
           // Check if this is a CRM invoice payment
           if (paymentIntent.metadata?.invoiceId) {
             const invoiceId = paymentIntent.metadata.invoiceId;

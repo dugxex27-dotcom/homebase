@@ -26,6 +26,7 @@ const {
   COMPANY_ID,
   mockDbSelect,
   mockDbUpdate,
+  mockStripeConstructEvent,
 } = vi.hoisted(() => {
   const ADMIN_USER_ID = "admin-owner-001";
   const TARGET_USER_ID = "tech-user-001";
@@ -34,6 +35,7 @@ const {
 
   const mockDbSelect = vi.fn();
   const mockDbUpdate = vi.fn();
+  const mockStripeConstructEvent = vi.fn().mockReturnValue({ id: "evt_stub", type: "test.stub" });
 
   return {
     sharedSuspendedUserIds,
@@ -43,6 +45,7 @@ const {
     COMPANY_ID,
     mockDbSelect,
     mockDbUpdate,
+    mockStripeConstructEvent,
   };
 });
 
@@ -224,7 +227,7 @@ vi.mock("../security-audit", () => ({
 vi.mock("stripe", () => {
   function MockStripe(this: any) {
     this.webhooks = {
-      constructEvent: vi.fn().mockReturnValue({ id: "evt_stub", type: "test.stub" }),
+      constructEvent: mockStripeConstructEvent,
     };
     this.subscriptionItems = {
       createUsageRecord: vi.fn().mockResolvedValue(undefined),
@@ -1196,6 +1199,137 @@ describe("Suspend lockout — boost check and previously-used contractor routes"
       .set("x-test-user", "target");
 
     expect(res.status).not.toBe(401);
+  });
+
+  // ── POST /api/webhooks/stripe — payment_intent.succeeded (contractor boost) ─
+
+  it("does not activate a boost when the contractor is suspended", async () => {
+    const CONTRACTOR_ID = "contractor-suspended-001";
+    const PAYMENT_INTENT_ID = "pi_boost_suspended_test";
+
+    mockStripeConstructEvent.mockReturnValueOnce({
+      id: "evt_boost_suspended",
+      type: "payment_intent.succeeded",
+      data: {
+        object: {
+          id: PAYMENT_INTENT_ID,
+          metadata: {
+            type: "contractor_boost",
+            contractorId: CONTRACTOR_ID,
+          },
+        },
+      },
+    });
+
+    vi.mocked(storage.getUser).mockResolvedValueOnce({
+      id: CONTRACTOR_ID,
+      status: "suspended",
+      role: "contractor",
+      email: "suspended@contractor.test",
+    } as any);
+
+    const res = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("stripe-signature", "sig_test")
+      .set("content-type", "application/json")
+      .send(Buffer.from(JSON.stringify({})));
+
+    expect(res.status).toBe(200);
+    expect(vi.mocked(storage.updateContractorBoost)).not.toHaveBeenCalled();
+  });
+
+  it("does not activate a boost when the contractor account is removed", async () => {
+    const CONTRACTOR_ID = "contractor-removed-001";
+    const PAYMENT_INTENT_ID = "pi_boost_removed_test";
+
+    mockStripeConstructEvent.mockReturnValueOnce({
+      id: "evt_boost_removed",
+      type: "payment_intent.succeeded",
+      data: {
+        object: {
+          id: PAYMENT_INTENT_ID,
+          metadata: {
+            type: "contractor_boost",
+            contractorId: CONTRACTOR_ID,
+          },
+        },
+      },
+    });
+
+    vi.mocked(storage.getUser).mockResolvedValueOnce({
+      id: CONTRACTOR_ID,
+      status: "removed",
+      role: "contractor",
+      email: "removed@contractor.test",
+    } as any);
+
+    const res = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("stripe-signature", "sig_test")
+      .set("content-type", "application/json")
+      .send(Buffer.from(JSON.stringify({})));
+
+    expect(res.status).toBe(200);
+    expect(vi.mocked(storage.updateContractorBoost)).not.toHaveBeenCalled();
+  });
+
+  it("activates a pending boost when the contractor is active", async () => {
+    const CONTRACTOR_ID = "contractor-active-001";
+    const PAYMENT_INTENT_ID = "pi_boost_active_test";
+    const BOOST_ID = "boost-pending-001";
+
+    mockStripeConstructEvent.mockReturnValueOnce({
+      id: "evt_boost_active",
+      type: "payment_intent.succeeded",
+      data: {
+        object: {
+          id: PAYMENT_INTENT_ID,
+          metadata: {
+            type: "contractor_boost",
+            contractorId: CONTRACTOR_ID,
+          },
+        },
+      },
+    });
+
+    vi.mocked(storage.getUser).mockResolvedValueOnce({
+      id: CONTRACTOR_ID,
+      status: "active",
+      role: "contractor",
+      email: "active@contractor.test",
+    } as any);
+
+    vi.mocked(storage.getContractorBoosts).mockResolvedValueOnce([
+      {
+        id: BOOST_ID,
+        contractorId: CONTRACTOR_ID,
+        stripePaymentIntentId: PAYMENT_INTENT_ID,
+        status: "pending",
+        isActive: false,
+        serviceCategory: "plumbing",
+        businessAddress: "123 Main St",
+        businessLatitude: "40.7128",
+        businessLongitude: "-74.0060",
+        boostRadius: 10,
+        startDate: "2026-07-14",
+        endDate: "2026-08-13",
+        amount: "25.00",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any,
+    ]);
+
+    const res = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("stripe-signature", "sig_test")
+      .set("content-type", "application/json")
+      .send(Buffer.from(JSON.stringify({})));
+
+    expect(res.status).toBe(200);
+    expect(vi.mocked(storage.updateContractorBoost)).toHaveBeenCalledWith(
+      BOOST_ID,
+      { status: "active", isActive: true },
+    );
   });
 });
 
