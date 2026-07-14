@@ -8511,7 +8511,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get contractors used at a specific house
-  app.get("/api/houses/:houseId/contractors-used", isAuthenticated, async (req: any, res: any) => {
+  app.get("/api/houses/:houseId/contractors-used", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -8644,7 +8644,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all contractors previously used by homeowner (across all properties)
-  app.get("/api/contractors/previously-used", isAuthenticated, async (req: any, res: any) => {
+  app.get("/api/contractors/previously-used", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -8879,7 +8879,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/contractors/boost/check", isAuthenticated, async (req: any, res: any) => {
+  app.get("/api/contractors/boost/check", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;

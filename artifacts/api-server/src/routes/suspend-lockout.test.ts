@@ -830,7 +830,6 @@ describe("Suspend lockout — contractor read routes (analytics, stripe-connect,
   });
 });
 
-// ---------------------------------------------------------------------------
 // Suspended-user lockout on CRM read routes
 // ---------------------------------------------------------------------------
 //
@@ -972,5 +971,102 @@ describe("Suspend lockout — CRM read routes (jobs, quotes, invoices, integrati
     if (res.status === 401) {
       expect(res.body.message).not.toMatch(/suspended/i);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Suspended-user lockout on boost-check and previously-used routes
+// ---------------------------------------------------------------------------
+//
+// These routes previously carried only isAuthenticated. A suspended contractor
+// could still read boost availability and previously-used contractor lists
+// until their session expired. requireNotSuspended() now closes that gap.
+// ---------------------------------------------------------------------------
+
+describe("Suspend lockout — boost check and previously-used contractor routes", () => {
+  let app: express.Express;
+
+  beforeEach(async () => {
+    sharedSuspendedUserIds.clear();
+    mockDbSelect.mockReset();
+    mockDbUpdate.mockReset();
+
+    process.env.STRIPE_SECRET_KEY = "sk_test_boost_lockout_placeholder";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_boost_lockout_placeholder";
+
+    app = express();
+    await registerRoutes(app);
+  });
+
+  afterEach(() => {
+    sharedSuspendedUserIds.clear();
+    vi.clearAllMocks();
+  });
+
+  // ── GET /api/contractors/boost/check ─────────────────────────────────────
+
+  it("blocks a suspended user from checking boost status", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .get("/api/contractors/boost/check?serviceCategory=plumbing&businessAddress=123+Main+St")
+      .set("x-test-user", "target");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on boost check", async () => {
+    // TARGET_USER_ID is NOT in sharedSuspendedUserIds; requireNotSuspended passes.
+    // The handler enforces its own role check (role must be 'contractor') —
+    // TARGET_SESSION has companyRole 'tech' and no .role field, so the inner
+    // 403 fires — but that confirms requireNotSuspended let the request through.
+    const res = await request(app)
+      .get("/api/contractors/boost/check?serviceCategory=plumbing&businessAddress=123+Main+St")
+      .set("x-test-user", "target");
+
+    expect(res.status).not.toBe(401);
+  });
+
+  // ── GET /api/contractors/previously-used ─────────────────────────────────
+
+  it("blocks a suspended user from reading previously-used contractors", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .get("/api/contractors/previously-used")
+      .set("x-test-user", "target");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on previously-used", async () => {
+    const res = await request(app)
+      .get("/api/contractors/previously-used")
+      .set("x-test-user", "target");
+
+    expect(res.status).not.toBe(401);
+  });
+
+  // ── GET /api/houses/:houseId/contractors-used ─────────────────────────────
+
+  it("blocks a suspended user from reading contractors used at a house", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .get("/api/houses/house-abc/contractors-used")
+      .set("x-test-user", "target");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on house contractors-used", async () => {
+    const res = await request(app)
+      .get("/api/houses/house-abc/contractors-used")
+      .set("x-test-user", "target");
+
+    expect(res.status).not.toBe(401);
   });
 });
