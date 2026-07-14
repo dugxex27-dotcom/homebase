@@ -254,3 +254,121 @@ describe("MemStorage.transferHouseOwnership", () => {
     ).rejects.toThrow("House not found or ownership mismatch");
   });
 });
+
+// ---------------------------------------------------------------------------
+// MemStorage.expireStaleBoosts
+// ---------------------------------------------------------------------------
+
+describe("MemStorage.expireStaleBoosts", () => {
+  let storage: MemStorage;
+
+  const CONTRACTOR_ID = "contractor-expiry-001";
+
+  beforeEach(() => {
+    storage = new MemStorage();
+  });
+
+  it("flips status and isActive only on the boost whose endDate has passed", async () => {
+    const pastDate = new Date();
+    pastDate.setDate(pastDate.getDate() - 10);
+    const pastDateStr = pastDate.toISOString().split("T")[0];
+
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 30);
+    const futureDateStr = futureDate.toISOString().split("T")[0];
+
+    const expiredBoost = await storage.createContractorBoost({
+      contractorId: CONTRACTOR_ID,
+      serviceCategory: "plumbing",
+      businessAddress: "123 Expired St",
+      businessLatitude: "39.7817",
+      businessLongitude: "-89.6501",
+      boostRadius: 25,
+      startDate: "2026-01-01",
+      endDate: pastDateStr,
+      amount: "49.99",
+      status: "active",
+      isActive: true,
+      stripePaymentIntentId: "pi_expired_test",
+    });
+
+    const activeBoost = await storage.createContractorBoost({
+      contractorId: CONTRACTOR_ID,
+      serviceCategory: "hvac",
+      businessAddress: "456 Active Ave",
+      businessLatitude: "39.7817",
+      businessLongitude: "-89.6501",
+      boostRadius: 25,
+      startDate: new Date().toISOString().split("T")[0],
+      endDate: futureDateStr,
+      amount: "49.99",
+      status: "active",
+      isActive: true,
+      stripePaymentIntentId: "pi_active_test",
+    });
+
+    const { expired } = await storage.expireStaleBoosts();
+
+    expect(expired).toBe(1);
+
+    const allBoosts = await storage.getContractorBoosts(CONTRACTOR_ID);
+    const flipped = allBoosts.find((b) => b.id === expiredBoost.id);
+    const untouched = allBoosts.find((b) => b.id === activeBoost.id);
+
+    expect(flipped?.status).toBe("expired");
+    expect(flipped?.isActive).toBe(false);
+
+    expect(untouched?.status).toBe("active");
+    expect(untouched?.isActive).toBe(true);
+  });
+
+  it("returns expired: 0 when no boosts have a past endDate", async () => {
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 30);
+    const futureDateStr = futureDate.toISOString().split("T")[0];
+
+    await storage.createContractorBoost({
+      contractorId: CONTRACTOR_ID,
+      serviceCategory: "plumbing",
+      businessAddress: "123 Future St",
+      businessLatitude: "39.7817",
+      businessLongitude: "-89.6501",
+      boostRadius: 25,
+      startDate: new Date().toISOString().split("T")[0],
+      endDate: futureDateStr,
+      amount: "49.99",
+      status: "active",
+      isActive: true,
+      stripePaymentIntentId: "pi_future_test",
+    });
+
+    const { expired } = await storage.expireStaleBoosts();
+
+    expect(expired).toBe(0);
+  });
+
+  it("does not re-expire a boost that is already status=expired", async () => {
+    const pastDate = new Date();
+    pastDate.setDate(pastDate.getDate() - 10);
+    const pastDateStr = pastDate.toISOString().split("T")[0];
+
+    await storage.createContractorBoost({
+      contractorId: CONTRACTOR_ID,
+      serviceCategory: "plumbing",
+      businessAddress: "123 Already Expired St",
+      businessLatitude: "39.7817",
+      businessLongitude: "-89.6501",
+      boostRadius: 25,
+      startDate: "2026-01-01",
+      endDate: pastDateStr,
+      amount: "49.99",
+      status: "expired",
+      isActive: false,
+      stripePaymentIntentId: "pi_already_expired_test",
+    });
+
+    const { expired } = await storage.expireStaleBoosts();
+
+    expect(expired).toBe(0);
+  });
+});

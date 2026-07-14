@@ -648,6 +648,29 @@ describe("GET /api/contractors/boost/check — expired boost is not treated as a
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ canBoost: true });
   });
+
+  it("returns canBoost: true after expiry cleanup flips status=expired and isActive=false on a stale boost", async () => {
+    // Simulate the state AFTER expireStaleBoosts() has run:
+    // the boost's status and isActive fields were flipped by the scheduler,
+    // so getContractorBoosts now returns the cleaned-up record.
+    const postCleanupBoost = {
+      ...EXPIRED_BOOST_FIXTURE,
+      status: "expired",
+      isActive: false,
+    };
+    mockGetContractorBoosts.mockResolvedValue([postCleanupBoost]);
+
+    const res = await request(app)
+      .get("/api/contractors/boost/check")
+      .set("x-test-user", "contractor-a")
+      .query({ serviceCategory: "plumbing", businessAddress: "123 Main St" });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ canBoost: true });
+
+    // The endpoint must have fetched the contractor's boosts
+    expect(mockGetContractorBoosts).toHaveBeenCalledWith(CONTRACTOR_A_ID);
+  });
 });
 
 // ---------------------------------------------------------------------------
