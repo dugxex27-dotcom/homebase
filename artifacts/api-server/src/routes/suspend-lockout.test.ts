@@ -829,3 +829,148 @@ describe("Suspend lockout — contractor read routes (analytics, stripe-connect,
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// Suspended-user lockout on CRM read routes
+// ---------------------------------------------------------------------------
+//
+// GET /api/crm/jobs, /api/crm/quotes, /api/crm/invoices,
+// /api/crm/integrations, /api/crm/webhooks/:id/logs previously relied solely
+// on the blanket app.use('/api/crm', ...) guard which has an edge case where
+// it calls next() unconditionally when neither session nor OAuth paths match.
+// Adding requireNotSuspended() directly to each route closes that gap.
+// ---------------------------------------------------------------------------
+
+describe("Suspend lockout — CRM read routes (jobs, quotes, invoices, integrations, webhook logs)", () => {
+  let app: express.Express;
+
+  beforeEach(async () => {
+    sharedSuspendedUserIds.clear();
+    mockDbSelect.mockReset();
+    mockDbUpdate.mockReset();
+
+    process.env.STRIPE_SECRET_KEY = "sk_test_crm_lockout_placeholder";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_crm_lockout_placeholder";
+
+    app = express();
+    await registerRoutes(app);
+  });
+
+  afterEach(() => {
+    sharedSuspendedUserIds.clear();
+    vi.clearAllMocks();
+  });
+
+  // ── GET /api/crm/jobs ────────────────────────────────────────────────────
+
+  it("blocks a suspended user from reading CRM jobs", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .get("/api/crm/jobs")
+      .set("x-test-user", "target");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on CRM jobs", async () => {
+    // TARGET_USER_ID is NOT in sharedSuspendedUserIds; requireNotSuspended passes.
+    // The handler's inner role check fires next; whatever it returns is not a
+    // suspension 401, confirming the suspension check let the request through.
+    const res = await request(app)
+      .get("/api/crm/jobs")
+      .set("x-test-user", "target");
+
+    expect(res.status).not.toBe(401);
+  });
+
+  // ── GET /api/crm/quotes ──────────────────────────────────────────────────
+
+  it("blocks a suspended user from reading CRM quotes", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .get("/api/crm/quotes")
+      .set("x-test-user", "target");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on CRM quotes", async () => {
+    const res = await request(app)
+      .get("/api/crm/quotes")
+      .set("x-test-user", "target");
+
+    expect(res.status).not.toBe(401);
+  });
+
+  // ── GET /api/crm/invoices ────────────────────────────────────────────────
+
+  it("blocks a suspended user from reading CRM invoices", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .get("/api/crm/invoices")
+      .set("x-test-user", "target");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on CRM invoices", async () => {
+    const res = await request(app)
+      .get("/api/crm/invoices")
+      .set("x-test-user", "target");
+
+    expect(res.status).not.toBe(401);
+  });
+
+  // ── GET /api/crm/integrations ────────────────────────────────────────────
+
+  it("blocks a suspended user from reading CRM integrations", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .get("/api/crm/integrations")
+      .set("x-test-user", "target");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on CRM integrations", async () => {
+    const res = await request(app)
+      .get("/api/crm/integrations")
+      .set("x-test-user", "target");
+
+    expect(res.status).not.toBe(401);
+  });
+
+  // ── GET /api/crm/webhooks/:integrationId/logs ────────────────────────────
+
+  it("blocks a suspended user from reading CRM webhook logs", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .get("/api/crm/webhooks/integration-001/logs")
+      .set("x-test-user", "target");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on CRM webhook logs", async () => {
+    // requireNotSuspended passes. The handler checks role then looks up the
+    // integration by ID; without a real DB it may 403 or 404, but not a
+    // suspension 401.
+    const res = await request(app)
+      .get("/api/crm/webhooks/integration-001/logs")
+      .set("x-test-user", "target");
+
+    if (res.status === 401) {
+      expect(res.body.message).not.toMatch(/suspended/i);
+    }
+  });
+});
