@@ -1119,7 +1119,6 @@ describe("Suspend lockout — boost check and previously-used contractor routes"
   });
 });
 
-// ---------------------------------------------------------------------------
 // Suspended-user lockout on CRM action routes
 // ---------------------------------------------------------------------------
 //
@@ -1523,6 +1522,202 @@ describe("Suspend lockout — CRM write routes (jobs, quotes, invoices, integrat
   it("allows a non-suspended user past the suspension gate on DELETE /api/crm/integrations/:id", async () => {
     const res = await request(app)
       .delete("/api/crm/integrations/integration-001")
+      .set("x-test-user", "target");
+
+    expect(res.status).not.toBe(401);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Suspended-user lockout on messaging routes
+// ---------------------------------------------------------------------------
+//
+// GET/POST /api/conversations, /api/conversations/:id,
+// /api/conversations/:id/messages, /api/conversations/bulk, and
+// /api/messages/unread-count previously carried only isAuthenticated.
+// A suspended contractor could continue reading and sending messages to
+// homeowners until their session expired. requireNotSuspended() now closes
+// that gap.
+// ---------------------------------------------------------------------------
+
+describe("Suspend lockout — messaging routes (conversations, messages)", () => {
+  let app: express.Express;
+
+  beforeEach(async () => {
+    sharedSuspendedUserIds.clear();
+    mockDbSelect.mockReset();
+    mockDbUpdate.mockReset();
+
+    process.env.STRIPE_SECRET_KEY = "sk_test_messaging_lockout_placeholder";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_messaging_lockout_placeholder";
+
+    app = express();
+    await registerRoutes(app);
+  });
+
+  afterEach(() => {
+    sharedSuspendedUserIds.clear();
+    vi.clearAllMocks();
+  });
+
+  // ── GET /api/conversations ────────────────────────────────────────────────
+
+  it("blocks a suspended user from listing conversations", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .get("/api/conversations")
+      .set("x-test-user", "target");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on GET /api/conversations", async () => {
+    const res = await request(app)
+      .get("/api/conversations")
+      .set("x-test-user", "target");
+
+    expect(res.status).not.toBe(401);
+  });
+
+  // ── GET /api/conversations/:id ────────────────────────────────────────────
+
+  it("blocks a suspended user from reading a single conversation", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .get("/api/conversations/conv-001")
+      .set("x-test-user", "target");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on GET /api/conversations/:id", async () => {
+    const res = await request(app)
+      .get("/api/conversations/conv-001")
+      .set("x-test-user", "target");
+
+    if (res.status === 401) {
+      expect(res.body.message).not.toMatch(/suspended/i);
+    }
+  });
+
+  // ── POST /api/conversations ───────────────────────────────────────────────
+
+  it("blocks a suspended user from creating a conversation", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .post("/api/conversations")
+      .set("x-test-user", "target")
+      .send({ contractorId: "contractor-abc", subject: "test" });
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on POST /api/conversations", async () => {
+    const res = await request(app)
+      .post("/api/conversations")
+      .set("x-test-user", "target")
+      .send({ contractorId: "contractor-abc", subject: "test" });
+
+    if (res.status === 401) {
+      expect(res.body.message).not.toMatch(/suspended/i);
+    }
+  });
+
+  // ── POST /api/conversations/bulk ──────────────────────────────────────────
+
+  it("blocks a suspended user from sending bulk messages", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .post("/api/conversations/bulk")
+      .set("x-test-user", "target")
+      .send({ subject: "test", message: "hello", contractorIds: ["contractor-abc"] });
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on POST /api/conversations/bulk", async () => {
+    const res = await request(app)
+      .post("/api/conversations/bulk")
+      .set("x-test-user", "target")
+      .send({ subject: "test", message: "hello", contractorIds: ["contractor-abc"] });
+
+    if (res.status === 401) {
+      expect(res.body.message).not.toMatch(/suspended/i);
+    }
+  });
+
+  // ── GET /api/conversations/:id/messages ───────────────────────────────────
+
+  it("blocks a suspended user from reading messages in a conversation", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .get("/api/conversations/conv-001/messages")
+      .set("x-test-user", "target");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on GET /api/conversations/:id/messages", async () => {
+    const res = await request(app)
+      .get("/api/conversations/conv-001/messages")
+      .set("x-test-user", "target");
+
+    if (res.status === 401) {
+      expect(res.body.message).not.toMatch(/suspended/i);
+    }
+  });
+
+  // ── POST /api/conversations/:id/messages ──────────────────────────────────
+
+  it("blocks a suspended user from sending a message", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .post("/api/conversations/conv-001/messages")
+      .set("x-test-user", "target")
+      .send({ content: "hello there" });
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on POST /api/conversations/:id/messages", async () => {
+    const res = await request(app)
+      .post("/api/conversations/conv-001/messages")
+      .set("x-test-user", "target")
+      .send({ content: "hello there" });
+
+    if (res.status === 401) {
+      expect(res.body.message).not.toMatch(/suspended/i);
+    }
+  });
+
+  // ── GET /api/messages/unread-count ────────────────────────────────────────
+
+  it("blocks a suspended user from reading the unread message count", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .get("/api/messages/unread-count")
+      .set("x-test-user", "target");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on GET /api/messages/unread-count", async () => {
+    const res = await request(app)
+      .get("/api/messages/unread-count")
       .set("x-test-user", "target");
 
     expect(res.status).not.toBe(401);

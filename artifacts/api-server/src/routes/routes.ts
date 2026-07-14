@@ -14346,7 +14346,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Messaging API endpoints
-  app.get('/api/conversations', isAuthenticated, async (req: any, res: any) => {
+  app.get('/api/conversations', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const userType = req.session.user.role;
@@ -14376,7 +14376,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.get('/api/conversations/:id', isAuthenticated, async (req: any, res: any) => {
+  app.get('/api/conversations/:id', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const conversation = await storage.getConversation(req.params.id);
       if (!conversation) {
@@ -14401,7 +14401,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.post('/api/conversations', isAuthenticated, async (req: any, res: any) => {
+  app.post('/api/conversations', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const userType = req.session.user.role;
@@ -14434,7 +14434,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Bulk message sending - create conversations with multiple contractors
-  app.post('/api/conversations/bulk', isAuthenticated, async (req: any, res: any) => {
+  app.post('/api/conversations/bulk', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const userType = req.session.user.role;
@@ -14493,7 +14493,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.get('/api/conversations/:id/messages', isAuthenticated, async (req: any, res: any) => {
+  app.get('/api/conversations/:id/messages', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const conversationId = req.params.id;
       const userId = req.session.user.id;
@@ -14524,7 +14524,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.post('/api/conversations/:id/messages', isAuthenticated, async (req: any, res: any) => {
+  app.post('/api/conversations/:id/messages', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const conversationId = req.params.id;
       const userId = req.session.user.id;
@@ -14625,7 +14625,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.get('/api/messages/unread-count', isAuthenticated, async (req: any, res: any) => {
+  app.get('/api/messages/unread-count', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const count = await storage.getUnreadMessageCount(userId);
