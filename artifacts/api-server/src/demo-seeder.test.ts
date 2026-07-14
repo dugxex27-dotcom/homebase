@@ -226,6 +226,15 @@ describe("homeowner demo seeder", () => {
     // with no healthCheck (inserted: 0, expected: 0 tombstone entry).
     expect(seedResults.lakeHouse, "lakeHouse missing from seedResults on repeat login").toBeDefined();
     expect(seedResults.lakeHouse.ok, `lakeHouse health-check failed: ${seedResults.lakeHouse?.error}`).toBe(true);
+
+    // Wildcard: every key the seeder emits must be ok: true so that newly-added
+    // sections can never fail silently.
+    for (const [section, result] of Object.entries(seedResults)) {
+      expect(
+        result.ok,
+        `Section "${section}" failed with: ${result.error ?? "unknown error"}`
+      ).toBe(true);
+    }
   }, 60_000);
 });
 
