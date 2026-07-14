@@ -256,7 +256,7 @@ import { json as expressJson } from "express";
 // Fixtures
 // ---------------------------------------------------------------------------
 
-/** A boost owned by contractor A */
+/** A boost owned by contractor A — endDate is in the past (expired) */
 const BOOST_A_FIXTURE = {
   id: BOOST_A_ID,
   contractorId: CONTRACTOR_A_ID,
@@ -273,6 +273,44 @@ const BOOST_A_FIXTURE = {
   stripePaymentIntentId: "pi_test_abc123",
   createdAt: new Date("2026-06-01T00:00:00Z"),
   updatedAt: new Date("2026-06-01T00:00:00Z"),
+};
+
+/** An expired boost: endDate well in the past */
+const EXPIRED_BOOST_FIXTURE = {
+  id: "boost-expired-001",
+  contractorId: CONTRACTOR_A_ID,
+  serviceCategory: "plumbing",
+  businessAddress: "123 Main St, Springfield, IL 62701",
+  businessLatitude: "39.7817",
+  businessLongitude: "-89.6501",
+  boostRadius: 25,
+  startDate: "2026-01-01",
+  endDate: "2026-01-31",
+  amount: "49.99",
+  status: "active",
+  isActive: true,
+  stripePaymentIntentId: "pi_test_expired",
+  createdAt: new Date("2026-01-01T00:00:00Z"),
+  updatedAt: new Date("2026-01-01T00:00:00Z"),
+};
+
+/** A still-active boost: endDate far in the future */
+const ACTIVE_BOOST_FIXTURE = {
+  id: "boost-active-001",
+  contractorId: CONTRACTOR_A_ID,
+  serviceCategory: "plumbing",
+  businessAddress: "123 Main St, Springfield, IL 62701",
+  businessLatitude: "39.7817",
+  businessLongitude: "-89.6501",
+  boostRadius: 25,
+  startDate: "2026-07-14",
+  endDate: "2027-01-01",
+  amount: "49.99",
+  status: "active",
+  isActive: true,
+  stripePaymentIntentId: "pi_test_active",
+  createdAt: new Date("2026-07-14T00:00:00Z"),
+  updatedAt: new Date("2026-07-14T00:00:00Z"),
 };
 
 /** What storage.createContractorBoost resolves to */
@@ -378,5 +416,120 @@ describe("POST /api/contractors/boost/:boostId/renew — boost ownership and ren
     expect(mockGetContractorBoosts).toHaveBeenCalledWith(CONTRACTOR_B_ID);
     // createContractorBoost must never be called — no boost was found
     expect(mockCreateContractorBoost).not.toHaveBeenCalled();
+  });
+
+  it("uses 'now' as renewal start when the existing boost is expired", async () => {
+    // EXPIRED_BOOST_FIXTURE has endDate "2026-01-31" — well in the past
+    mockGetContractorBoosts.mockResolvedValue([EXPIRED_BOOST_FIXTURE]);
+    mockCreateContractorBoost.mockResolvedValue({
+      ...EXPIRED_BOOST_FIXTURE,
+      id: "boost-renewed-from-expired",
+      startDate: new Date().toISOString().split("T")[0],
+      endDate: (() => {
+        const d = new Date();
+        d.setDate(d.getDate() + 30);
+        return d.toISOString().split("T")[0];
+      })(),
+    });
+
+    const before = new Date();
+
+    const res = await request(app)
+      .post(`/api/contractors/boost/${EXPIRED_BOOST_FIXTURE.id}/renew`)
+      .set("x-test-user", "contractor-a")
+      .send({ durationDays: 30 });
+
+    const after = new Date();
+
+    expect(res.status).toBe(200);
+
+    // Inspect the startDate that was passed to createContractorBoost
+    const callArg = mockCreateContractorBoost.mock.calls[0][0];
+    const renewalStart = new Date(callArg.startDate);
+
+    // The renewal start must be >= before (i.e. not the past endDate 2026-01-31)
+    expect(renewalStart.getTime()).toBeGreaterThanOrEqual(
+      new Date(before.toISOString().split("T")[0]).getTime(),
+    );
+
+    // The renewal start must be <= after (i.e. not some future date)
+    expect(renewalStart.getTime()).toBeLessThanOrEqual(
+      new Date(after.toISOString().split("T")[0]).getTime() + 86_400_000,
+    );
+
+    // Sanity: the expired endDate (2026-01-31) must NOT be used as start
+    expect(callArg.startDate).not.toBe(EXPIRED_BOOST_FIXTURE.endDate);
+
+    // The renewed end must be roughly durationDays after start
+    const renewalEnd = new Date(callArg.endDate);
+    const diffDays = Math.round(
+      (renewalEnd.getTime() - renewalStart.getTime()) / 86_400_000,
+    );
+    expect(diffDays).toBe(30);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/contractors/boost/check — expired-boost exclusion
+// ---------------------------------------------------------------------------
+
+describe("GET /api/contractors/boost/check — expired boost is not treated as active", () => {
+  let app: express.Express;
+
+  beforeEach(async () => {
+    mockGetContractorBoosts.mockReset();
+    mockCreateContractorBoost.mockReset();
+
+    process.env.STRIPE_SECRET_KEY = "sk_test_boost_check_placeholder";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_boost_check_placeholder";
+
+    app = express();
+    app.use(expressJson());
+    await registerRoutes(app);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns canBoost: true when the only existing boost for that category is expired", async () => {
+    // EXPIRED_BOOST_FIXTURE has endDate in the past; it must not block a new boost
+    mockGetContractorBoosts.mockResolvedValue([EXPIRED_BOOST_FIXTURE]);
+
+    const res = await request(app)
+      .get("/api/contractors/boost/check")
+      .set("x-test-user", "contractor-a")
+      .query({ serviceCategory: "plumbing", businessAddress: "123 Main St" });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ canBoost: true });
+  });
+
+  it("returns canBoost: false when there is an active (non-expired) boost for that category", async () => {
+    // ACTIVE_BOOST_FIXTURE has endDate far in the future — must block a new boost
+    mockGetContractorBoosts.mockResolvedValue([ACTIVE_BOOST_FIXTURE]);
+
+    const res = await request(app)
+      .get("/api/contractors/boost/check")
+      .set("x-test-user", "contractor-a")
+      .query({ serviceCategory: "plumbing", businessAddress: "123 Main St" });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ canBoost: false });
+  });
+
+  it("returns canBoost: true when there is an expired boost and a different-category active boost", async () => {
+    // Expired plumbing boost + active HVAC boost — should still allow a new plumbing boost
+    const expiredPlumbing = { ...EXPIRED_BOOST_FIXTURE };
+    const activeHvac = { ...ACTIVE_BOOST_FIXTURE, id: "boost-hvac-001", serviceCategory: "hvac" };
+    mockGetContractorBoosts.mockResolvedValue([expiredPlumbing, activeHvac]);
+
+    const res = await request(app)
+      .get("/api/contractors/boost/check")
+      .set("x-test-user", "contractor-a")
+      .query({ serviceCategory: "plumbing", businessAddress: "123 Main St" });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ canBoost: true });
   });
 });
