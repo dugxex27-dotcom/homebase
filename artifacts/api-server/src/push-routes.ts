@@ -16,7 +16,7 @@ router.get('/vapid-public-key', (_req, res) => {
 });
 
 // Subscribe to push notifications
-router.post('/subscribe', async (req, res) => {
+router.post('/subscribe', async (req: any, res: any) => {
   try {
     const { endpoint, keys, userAgent } = req.body;
     const userId = (req as any).session?.user?.id || 'demo-user';
@@ -55,7 +55,7 @@ router.post('/subscribe', async (req, res) => {
 });
 
 // Unsubscribe from push notifications
-router.post('/unsubscribe', async (req, res) => {
+router.post('/unsubscribe', async (req: any, res: any) => {
   try {
     const { endpoint } = req.body;
 
@@ -72,7 +72,7 @@ router.post('/unsubscribe', async (req, res) => {
 });
 
 // Verify subscription exists on server
-router.post('/verify', async (req, res) => {
+router.post('/verify', async (req: any, res: any) => {
   try {
     const { endpoint } = req.body;
     const userId = (req as any).session?.user?.id || 'demo-user';

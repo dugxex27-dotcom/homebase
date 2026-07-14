@@ -137,6 +137,59 @@ export async function runMigrations() {
     console.warn('[MIGRATE] maintenance_logs home_area column warning (non-fatal):', err?.message ?? err);
   }
 
+  // Ensure onboarding_progress table exists
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS "onboarding_progress" (
+        "id" varchar PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+        "user_id" varchar NOT NULL UNIQUE REFERENCES "users"("id") ON DELETE CASCADE,
+        "current_step" integer NOT NULL DEFAULT 2,
+        "completed_steps" integer[] NOT NULL DEFAULT ARRAY[]::integer[],
+        "skipped_steps" integer[] NOT NULL DEFAULT ARRAY[]::integer[],
+        "referral_code_applied" varchar,
+        "started_at" timestamp DEFAULT now(),
+        "completed_at" timestamp,
+        "created_at" timestamp DEFAULT now(),
+        "updated_at" timestamp DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS "IDX_onboarding_progress_user_id" ON "onboarding_progress"("user_id");
+    `);
+  } catch (err: any) {
+    console.warn('[MIGRATE] onboarding_progress table setup warning (non-fatal):', err?.message ?? err);
+  }
+
+  // Ensure pending_seat_syncs table exists (crash-safe seat-update checkpointing)
+  // One row per company; written before the Stripe API call and deleted on success.
+  // Any row present at startup means the previous process crashed mid-update.
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS "pending_seat_syncs" (
+        "company_id" varchar PRIMARY KEY,
+        "created_at" timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+  } catch (err: any) {
+    console.warn('[MIGRATE] pending_seat_syncs table setup warning (non-fatal):', err?.message ?? err);
+  }
+
+  // Ensure stripe_processed_events table exists (Stripe webhook idempotency dedup)
+  // Rows transition: pending → committed (success) or pending → failed (crash/cleanup).
+  // The daily scheduler prunes rows older than 96 h (Stripe's max retry window + buffer).
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS "stripe_processed_events" (
+        "stripe_event_id" varchar PRIMARY KEY,
+        "status" text NOT NULL DEFAULT 'pending',
+        "processed_at" timestamptz NOT NULL DEFAULT now(),
+        "updated_at" timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS "IDX_stripe_processed_events_status_at"
+        ON "stripe_processed_events" ("status", "processed_at");
+    `);
+  } catch (err: any) {
+    console.warn('[MIGRATE] stripe_processed_events table setup warning (non-fatal):', err?.message ?? err);
+  }
+
   await pool.end();
 }
 

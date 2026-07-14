@@ -3,15 +3,16 @@ import express from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage, type IStorage } from "../storage";
-import { setupAuth, isAuthenticated, requireRole, requirePropertyOwner, suspendedUserIds, requireCompanyRole, requireCompanyRoleAny, requireDivisionAccess, requireBulkImport, requireApiAccess, requireNotSuspended, requireSameCompany } from "../replitAuth";
+import { setupAuth, isAuthenticated, requireRole, requirePropertyOwner, suspendedUserIds, invalidateUserSessions, requireCompanyRole, requireCompanyRoleAny, requireDivisionAccess, requireBulkImport, requireApiAccess, requireNotSuspended, requireSameCompany } from "../replitAuth";
 import { setupGoogleAuth } from "../googleAuth";
 import { z } from "zod";
-import { randomUUID } from "crypto";
+import { randomUUID, randomBytes } from "crypto";
 import rateLimit from "express-rate-limit";
 import { eq, and, ne, inArray, sql as drizzleSql, isNotNull, isNull, desc } from "drizzle-orm";
-import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertTaskCompletionSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, customMaintenanceTasks, insertSupportTicketSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, subscriptionPlans, securitySessions, referralCredits, referralFreeMonths, agentProfiles, users, siteContent, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, insertReviewFlagSchema, homeDocuments, quizResults, type House } from "@workspace/db";
+import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertTaskCompletionSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, customMaintenanceTasks, insertSupportTicketSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, insertCrmLeadSchema, insertCrmNoteSchema, notificationPreferences, subscriptionPlans, securitySessions, referralCredits, referralFreeMonths, agentProfiles, users, siteContent, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, insertReviewFlagSchema, homeDocuments, quizResults, type House } from "@workspace/db";
 import { calculateDIYSavingsAmount } from "../shared/cost-helpers";
 import { calculateMechanicalDocumentationBonus } from "../shared/maintenance-scheduler";
+import { invoiceOrphanCleanupScheduler } from "../invoice-orphan-cleanup-scheduler";
 import { extractInvoiceData, verifyDIYPhotos, type InvoiceExtraction } from "../invoice-analysis-service";
 import { invoiceAnalyses, contractorBoosts, affiliateReferrals, subscriptionCycleEvents, contractorInvoiceUploads, companies, proposals, securityAuditLogs, companyDivisions, companyBulkImports, insertCompanyDivisionSchema, conversations, messages } from "@workspace/db";
 import pushRoutes from "../push-routes";
@@ -29,7 +30,7 @@ import { sendEmail, emailService } from "../email-service";
 import { verifyAndActivateAppleTransaction, handleAppleServerNotification, AppleIapError } from "../apple-iap";
 
 const stripe = process.env.STRIPE_SECRET_KEY 
-  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2025-08-27.basil" })
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2026-04-22.dahlia" })
   : null;
 
 // Configure multer for memory storage
@@ -210,6 +211,122 @@ const aiChatLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+/**
+ * Guard for the diy-verify serialization path.
+ *
+ * Returns an error descriptor if the analysis has already been verified
+ * (meaning the concurrent winner already committed), or null if the caller
+ * may proceed with the update.
+ *
+ * Accepts both camelCase (Drizzle typed result) and snake_case (raw SQL row)
+ * field names so it works both in tests and inside the SELECT FOR UPDATE path.
+ *
+ * Exported for unit tests only.
+ */
+export function checkDiyVerifyGuard(
+  analysis: { diy_verified?: boolean | null; diyVerified?: boolean | null },
+): { status: number; message: string; code: string } | null {
+  const verified = analysis.diy_verified ?? analysis.diyVerified ?? false;
+  if (verified) {
+    return {
+      status: 409,
+      message: "DIY work has already been verified. Photos cannot be changed after verification passes.",
+      code: "ALREADY_VERIFIED",
+    };
+  }
+  return null;
+}
+
+/**
+ * Guard for the photo-count requirement inside the diy-verify transaction.
+ *
+ * Called after SELECT … FOR UPDATE so the counts reflect the row's CURRENT
+ * state (locked), not the stale snapshot read before the transaction started.
+ *
+ * Returns an error descriptor when the merged photo set (existing persisted
+ * URLs from the locked row + URLs just uploaded for this request) is missing
+ * at least one before photo OR at least one after photo.  Returns null if the
+ * caller may proceed with the update.
+ *
+ * Exported for unit tests only.
+ */
+/** Maximum total photos (before + after + receipts) allowed on a single analysis row. */
+export const MAX_PHOTOS_PER_ANALYSIS = 30;
+
+export function checkPhotoCountGuard(
+  lockedBefore: string[],
+  lockedAfter: string[],
+  newBefore: string[],
+  newAfter: string[],
+  lockedReceipts: string[] = [],
+  newReceipts: string[] = [],
+): { status: number; message: string; code: string } | null {
+  const totalBefore = lockedBefore.length + newBefore.length;
+  const totalAfter = lockedAfter.length + newAfter.length;
+  if (totalBefore === 0 || totalAfter === 0) {
+    return {
+      status: 400,
+      message: "Please provide at least one before photo AND one after photo to verify your DIY work.",
+      code: "MISSING_PHOTOS",
+    };
+  }
+  const totalReceipts = lockedReceipts.length + newReceipts.length;
+  const grandTotal = totalBefore + totalAfter + totalReceipts;
+  if (grandTotal > MAX_PHOTOS_PER_ANALYSIS) {
+    return {
+      status: 400,
+      message: `This analysis has reached the maximum of ${MAX_PHOTOS_PER_ANALYSIS} photos. Remove existing photos before adding more.`,
+      code: "TOO_MANY_PHOTOS",
+    };
+  }
+  return null;
+}
+// Internal ref wired by registerRoutes so recoverIncompleteStripeEvents can re-run side effects.
+let _processStripeEventSideEffectsRef: ((event: Stripe.Event) => Promise<void>) | null = null;
+
+/**
+ * Background recovery: re-fetch events that were durably recorded as 'pending'
+ * (side effects started) but never marked 'committed' (e.g. process crashed mid-handler).
+ * Called by the scheduler; safe to call concurrently.
+ */
+export async function recoverIncompleteStripeEvents(olderThanMinutes: number): Promise<Array<{
+  eventId: string;
+  processedAt: Date;
+  outcome: "recovered" | "not_found_in_stripe" | "failed";
+  error?: string;
+}>> {
+  const currentStripe = stripe;
+  const incompleteEvents = await storage.getIncompleteStripeProcessedEvents(olderThanMinutes);
+  if (!incompleteEvents.length) return [];
+
+  const results: Array<{
+    eventId: string;
+    processedAt: Date;
+    outcome: "recovered" | "not_found_in_stripe" | "failed";
+    error?: string;
+  }> = [];
+
+  for (const { eventId, processedAt } of incompleteEvents) {
+    try {
+      if (!currentStripe) throw new Error("Stripe not configured");
+      const event = await currentStripe.events.retrieve(eventId);
+      if (_processStripeEventSideEffectsRef) {
+        await _processStripeEventSideEffectsRef(event);
+      }
+      await storage.markStripeEventCommitted(eventId);
+      results.push({ eventId, processedAt, outcome: "recovered" });
+    } catch (err: any) {
+      if (err.code === "resource_missing") {
+        results.push({ eventId, processedAt, outcome: "not_found_in_stripe", error: err.message });
+      } else {
+        results.push({ eventId, processedAt, outcome: "failed", error: err.message });
+      }
+    }
+  }
+
+  return results;
+}
+
 // ============================================================================
 // Exported pure helpers and DB functions (tested in routes.test.ts)
 // ============================================================================
@@ -353,11 +470,20 @@ export async function withSeatUpdateLock<T>(
 // refreshSeatsForCompany — immediate seat correction on member removal
 // ---------------------------------------------------------------------------
 
+/**
+ * Immediately update metered seat usage for a company after a member change.
+ * No-ops if Stripe is not configured or the company has no active subscription.
+ *
+ * If `storageInstance` is provided, a durable checkpoint is written to the DB
+ * before the Stripe API call and cleared on success.  This ensures a server
+ * restart mid-update can detect the un-confirmed sync and re-run it.
+ */
 export async function refreshSeatsForCompany(
   companyId: string,
   stripeClient: any,
   dbInstance: any,
   getActiveUserCount: (companyId: string) => Promise<number>,
+  storageInstance?: Pick<IStorage, "upsertPendingSeatSync" | "deletePendingSeatSync">,
   pgPool?: PgPoolLike,
 ): Promise<void> {
   if (!stripeClient) return;
@@ -370,10 +496,22 @@ export async function refreshSeatsForCompany(
       .limit(1);
 
     const stripeSubscriptionId = ownerRows[0]?.stripeSubscriptionId;
-    if (!stripeSubscriptionId) return;
+    if (!stripeSubscriptionId) {
+      // No active subscription — nothing to sync; clear any stale checkpoint.
+      await storageInstance?.deletePendingSeatSync(companyId);
+      return;
+    }
+
+    // Write checkpoint BEFORE the first Stripe interaction so any crash
+    // between now and the createUsageRecord call is visible at startup.
+    await storageInstance?.upsertPendingSeatSync(companyId);
 
     const subscription = await stripeClient.subscriptions.retrieve(stripeSubscriptionId);
-    if (subscription.status === 'canceled') return;
+    if (subscription.status !== 'active') {
+      // Subscription is not billable — nothing to sync; clear the checkpoint.
+      await storageInstance?.deletePendingSeatSync(companyId);
+      return;
+    }
 
     const items: Array<{ id: string; price?: { recurring?: { usage_type?: string } } }> =
       subscription.items?.data ?? [];
@@ -389,7 +527,67 @@ export async function refreshSeatsForCompany(
         });
       },
     );
+
+    // Stripe updated successfully — remove the checkpoint.
+    await storageInstance?.deletePendingSeatSync(companyId);
   }, pgPool);
+}
+
+/**
+ * Startup recovery: re-runs the seat sync for any company whose previous
+ * update was interrupted (checkpoint row left in `pending_seat_syncs`).
+ *
+ * Safe to call multiple times; each company is locked via `withSeatUpdateLock`
+ * so a concurrent in-flight call cannot interleave.
+ */
+export async function recoverPendingSeatSyncs(
+  storageInstance: Pick<IStorage, "getPendingSeatSyncs" | "upsertPendingSeatSync" | "deletePendingSeatSync"> = storage,
+  stripeClient: any = stripe,
+  dbInstance: any = db,
+): Promise<{ recovered: string[]; failed: Array<{ companyId: string; error: string }> }> {
+  const companyIds = await storageInstance.getPendingSeatSyncs();
+  if (companyIds.length === 0) return { recovered: [], failed: [] };
+
+  const errors = new Map<string, string>();
+
+  for (const companyId of companyIds) {
+    try {
+      await refreshSeatsForCompany(
+        companyId,
+        stripeClient,
+        dbInstance,
+        (cid) => countActiveCompanySeats(cid, dbInstance),
+        storageInstance,
+      );
+    } catch (err: any) {
+      errors.set(companyId, err?.message ?? String(err));
+    }
+  }
+
+  // Determine which rows were actually cleared by the sync attempt.
+  // A company is only truly recovered when its pending row is gone.
+  const remainingIds = new Set(await storageInstance.getPendingSeatSyncs());
+
+  const recovered: string[] = [];
+  const failed: Array<{ companyId: string; error: string }> = [];
+
+  for (const companyId of companyIds) {
+    const err = errors.get(companyId);
+    if (err) {
+      failed.push({ companyId, error: err });
+    } else if (remainingIds.has(companyId)) {
+      // No exception, but the row is still present — Stripe is not configured
+      // or the company has no active metered subscription to sync.
+      failed.push({
+        companyId,
+        error: "no active metered subscription or Stripe not configured",
+      });
+    } else {
+      recovered.push(companyId);
+    }
+  }
+
+  return { recovered, failed };
 }
 
 // ---------------------------------------------------------------------------
@@ -403,6 +601,7 @@ export async function updateMeteredSeatsForSubscription(
   dbInstance?: any,
   isReactivation?: boolean,
   eventId?: string,
+  storageInstance?: Pick<IStorage, "upsertPendingSeatSync" | "deletePendingSeatSync">,
   pgPool?: PgPoolLike,
 ): Promise<number | null> {
   const items: Array<{ id: string; price?: { recurring?: { usage_type?: string } } }> =
@@ -425,20 +624,28 @@ export async function updateMeteredSeatsForSubscription(
     seatCount = calcBilledSeats(totalSeats);
   }
 
-  if (eventId) {
-    await stripeClient.subscriptionItems.createUsageRecord(
-      meteredItem.id,
-      { quantity: seatCount, action: 'set' },
-      { idempotencyKey: `${eventId}-seats` },
-    );
-  } else {
-    await stripeClient.subscriptionItems.createUsageRecord(
-      meteredItem.id,
-      { quantity: seatCount, action: 'set' },
-    );
-  }
+  return withSeatUpdateLock(companyId, async () => {
+    // Write checkpoint before calling Stripe so a crash here is recoverable.
+    await storageInstance?.upsertPendingSeatSync(companyId);
 
-  return seatCount;
+    if (eventId) {
+      await stripeClient.subscriptionItems.createUsageRecord(
+        meteredItem.id,
+        { quantity: seatCount, action: 'set' },
+        { idempotencyKey: `${eventId}-seats-${companyId}` },
+      );
+    } else {
+      await stripeClient.subscriptionItems.createUsageRecord(
+        meteredItem.id,
+        { quantity: seatCount, action: 'set' },
+      );
+    }
+
+    // Stripe updated — clear the checkpoint.
+    await storageInstance?.deletePendingSeatSync(companyId);
+
+    return seatCount;
+  }, pgPool);
 }
 
 // ---------------------------------------------------------------------------
@@ -761,17 +968,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   console.error('========================================');
   console.error('REGISTER ROUTES CALLED - NEW CODE VERSION 2025-11-02-21:28');
   console.error('========================================');
-  
+
+  // Per-user rate limit for the AI-powered diy-verify endpoint.
+  // Configurable via DIY_VERIFY_RATE_LIMIT_PER_MINUTE (default: 5).
+  // Created inside registerRoutes so each app instance gets fresh in-memory state
+  // and tests can override the limit via the env var before calling buildApp().
+  const _diyVerifyRawMax = parseInt(process.env.DIY_VERIFY_RATE_LIMIT_PER_MINUTE ?? "5", 10);
+  const _diyVerifyMax = Number.isFinite(_diyVerifyRawMax) && _diyVerifyRawMax > 0 ? _diyVerifyRawMax : 5;
+  const diyVerifyLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: _diyVerifyMax,
+    // Key by authenticated user ID so the cap is per-user, not per-IP.
+    // isAuthenticated runs before this middleware, so req.session.user is always set.
+    keyGenerator: (req: any) => req.session?.user?.id ?? "anonymous",
+    message: { message: "Too many AI verification requests. Please wait a minute and try again." },
+    standardHeaders: true,
+    legacyHeaders: false,
+    // Suppress the IPv6-fallback validation warning: we intentionally key by user ID,
+    // not by IP, so there is no IPv6 bypass risk.
+    validate: { keyGeneratorIpFallback: false },
+  });
+
   // Health check endpoint for monitoring
   // Public address autocomplete — proxies Nominatim server-side (no auth required)
-  app.get('/api/address-suggest', async (req, res) => {
+  app.get('/api/address-suggest', async (req: any, res: any) => {
     const q = (req.query.q as string || '').trim();
     if (!q || q.length < 3) return res.json([]);
     try {
       const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&addressdetails=0&countrycodes=us`;
       const nominatimRes = await fetch(url, { headers: { 'User-Agent': 'MyHomeBase/1.0' } });
       if (!nominatimRes.ok) return res.json([]);
-      const data: any[] = await nominatimRes.json();
+      const data = await nominatimRes.json() as any[];
       // Return slim objects only — display_name, type, class
       const results = data.map(r => ({ display_name: r.display_name, type: r.type, class: r.class }));
       res.json(results);
@@ -779,7 +1006,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Public geocode endpoint — used by onboarding page (no auth required)
-  app.get('/api/geocode', async (req, res) => {
+  app.get('/api/geocode', async (req: any, res: any) => {
     const address = (req.query.address as string || '').trim();
     if (!address || address.length < 5) {
       return res.status(400).json({ error: 'Address is required' });
@@ -788,7 +1015,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&addressdetails=1&countrycodes=us`;
       const nominatimRes = await fetch(url, { headers: { 'User-Agent': 'MyHomeBase/1.0' } });
       if (!nominatimRes.ok) throw new Error('Geocoding service unavailable');
-      const data: any[] = await nominatimRes.json();
+      const data = await nominatimRes.json() as any[];
       if (!data || data.length === 0) return res.status(404).json({ error: 'Address not found' });
       const r = data[0];
       const addr = r.address || {};
@@ -1025,7 +1252,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Seed/sync subscription plans to database (admin only)
-  app.post('/api/admin/seed-plans', isAuthenticated, async (req: any, res) => {
+  app.post('/api/admin/seed-plans', isAuthenticated, async (req: any, res: any) => {
     try {
       const user = req.session.user;
       if (!user?.email || !['sarah@example.com', 'admin@homebase.com'].includes(user.email)) {
@@ -1144,7 +1371,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Secure logo upload endpoint with authentication (MUST be after setupAuth for session access)
   console.error('[STARTUP] Registering /api/upload-logo-raw endpoint');
-  app.post('/api/upload-logo-raw', uploadLimiter, async (req: any, res) => {
+  app.post('/api/upload-logo-raw', uploadLimiter, async (req: any, res: any) => {
     console.error('[LOGO-DEBUG] Session check:', {
       hasSession: !!req.session,
       isAuthenticated: req.session?.isAuthenticated,
@@ -1206,10 +1433,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const url = `/public/contractor-images/logos/${filename}`;
       
       // Update company using storage layer
-      await storage.updateCompany(companyId, { businessLogo: url });
+      await storage.updateCompany(user.companyId, { businessLogo: url });
       
-      console.error('[SECURE-UPLOAD] Logo uploaded successfully for company:', companyId);
-      res.json({ success: true, url, companyId });
+      console.error('[SECURE-UPLOAD] Logo uploaded successfully for company:', user.companyId);
+      res.json({ success: true, url, companyId: user.companyId });
     } catch (error: any) {
       console.error('[SECURE-UPLOAD ERROR]', error);
       res.status(500).json({ error: 'Failed to upload logo' });
@@ -1217,7 +1444,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get current user's subscription info (must be after setupAuth for session access)
-  app.get('/api/my-subscription', async (req: any, res) => {
+  app.get('/api/my-subscription', async (req: any, res: any) => {
     try {
       // Session auth check - matches /api/user pattern
       if (!req.session?.isAuthenticated || !req.session?.user) {
@@ -1324,7 +1551,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Test API connectivity by retrieving account info
-      const account = await stripe.accounts.retrieve();
+      const account = await (stripe! as any).accounts.retrieve();
       
       return res.json({
         status: 'ok',
@@ -1346,7 +1573,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Stripe webhook handler - registered at both paths (Stripe dashboard uses /api/stripe/webhook)
-  app.post(['/api/webhooks/stripe', '/api/stripe/webhook'], express.raw({ type: 'application/json' }), async (req: any, res) => {
+  app.post(['/api/webhooks/stripe', '/api/stripe/webhook'], express.raw({ type: 'application/json' }), async (req: any, res: any) => {
     if (!stripe) {
       return res.status(500).json({ error: 'Stripe not configured' });
     }
@@ -1362,7 +1589,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     let event: Stripe.Event;
 
     try {
-      event = stripe.webhooks.constructEvent(req.body, sig as string, webhookSecret);
+      event = stripe!.webhooks.constructEvent(req.body, sig as string, webhookSecret);
     } catch (err: any) {
       console.error('[STRIPE WEBHOOK] Signature verification failed:', err.message);
       return res.status(400).send(`Webhook Error: ${err.message}`);
@@ -1370,11 +1597,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     console.log('[STRIPE WEBHOOK] Event received:', event.type);
 
+    const eventId = event.id;
+
+    // ── Layer 1: in-memory processed cache (warm path, no DB) ──────────────
+    if (processedWebhookEventIds.has(eventId)) {
+      return res.json({ received: true, duplicate: true });
+    }
+
+    // ── Layer 2: in-flight concurrency guard ────────────────────────────────
+    // Must be claimed synchronously (before any await) so that two requests
+    // arriving in the same event-loop tick cannot both slip through. Node.js
+    // is single-threaded, so this check-then-add is atomic.
+    if (inFlightWebhookEventIds.has(eventId)) {
+      return res.json({ received: true, duplicate: true });
+    }
+    inFlightWebhookEventIds.add(eventId);
+
     try {
-      switch (event.type) {
-        case 'invoice.paid': {
+      // ── Layer 3: DB cold-start fallback ───────────────────────────────────
+      // Checked inside the try/finally so the in-flight slot is always released.
+      const alreadyProcessed = await storage.hasProcessedStripeEvent(eventId);
+      if (alreadyProcessed) {
+        enforceWebhookDedupCacheCap();
+        processedWebhookEventIds.set(eventId, Date.now());
+        return res.json({ received: true, duplicate: true });
+      }
+
+      // ── Two-phase write: persist BEFORE side effects so a crash leaves a
+      //    durable "pending" row that the recovery job can re-process. ───────
+      await storage.markStripeEventPending(eventId);
+
+      // ── Side effects (the event-type switch) ─────────────────────────────
+      if (_processStripeEventSideEffectsRef) {
+        await _processStripeEventSideEffectsRef(event);
+      }
+
+      // ── Commit: mark the row as fully processed ───────────────────────────
+      await storage.markStripeEventCommitted(eventId);
+
+      // Warm the in-memory cache so future retries skip the DB.
+      enforceWebhookDedupCacheCap();
+      processedWebhookEventIds.set(eventId, Date.now());
+
+      res.json({ received: true });
+    } catch (error: any) {
+      console.error('[STRIPE WEBHOOK] Error processing event:', error);
+      res.status(500).json({ error: error.message });
+    } finally {
+      inFlightWebhookEventIds.delete(eventId);
+    }
+  });
+
+  // ── Stripe event side-effects ─────────────────────────────────────────────
+  // Extracted so recoverIncompleteStripeEvents can re-run them and so tests
+  // can assert they fire exactly once per event ID.
+  async function processStripeEventSideEffects(event: Stripe.Event): Promise<void> {
+    switch (event.type) {
+      case 'invoice.paid': {
           const invoice = event.data.object as Stripe.Invoice;
-          const subscriptionId = invoice.subscription as string;
+          const subscriptionId = ((invoice as any).subscription ?? (invoice as any).subscriptionId) as string;
           const customerId = invoice.customer as string;
 
           const user = await storage.getUserByStripeCustomerId(customerId);
@@ -1628,7 +1909,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         case 'invoice.payment_failed': {
           const invoice = event.data.object as Stripe.Invoice;
-          const subscriptionId = invoice.subscription as string;
+          const subscriptionId = ((invoice as any).subscription ?? (invoice as any).subscriptionId) as string;
           const customerId = invoice.customer as string;
 
           const user = await storage.getUserByStripeCustomerId(customerId);
@@ -1743,8 +2024,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 await storage.upsertUser({
                   ...user,
                   subscriptionStatus: 'active',
-                  subscriptionTierName: plan === 'pro' ? 'contractor_pro' : 'contractor_basic',
-                });
+                  subscriptionTier: plan === 'pro' ? 'contractor_pro' : 'contractor_basic',
+                } as any);
               }
               
               console.log(`[STRIPE WEBHOOK] Subscription activated for user: ${user.email}, plan: ${plan}`);
@@ -1797,14 +2078,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         default:
           console.log('[STRIPE WEBHOOK] Unhandled event type:', event.type);
-      }
-
-      res.json({ received: true });
-    } catch (error: any) {
-      console.error('[STRIPE WEBHOOK] Error processing event:', error);
-      res.status(500).json({ error: error.message });
     }
-  });
+  }
+
+  // Wire the side-effects function so recoverIncompleteStripeEvents can invoke it.
+  _processStripeEventSideEffectsRef = processStripeEventSideEffects;
 
   // Block suspended contractor accounts from ALL authenticated /api/contractor/* routes.
   // Guard for all /api/contractor/* routes:
@@ -1854,7 +2132,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ========================================
 
   // Create Stripe Connect account for contractor
-  app.post('/api/contractor/stripe-connect/create', isAuthenticated, requireRole('contractor'), async (req: any, res) => {
+  app.post('/api/contractor/stripe-connect/create', isAuthenticated, requireRole('contractor'), async (req: any, res: any) => {
     if (!stripe) {
       return res.status(500).json({ error: 'Stripe not configured' });
     }
@@ -1876,10 +2154,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create Express account for contractor
-      const account = await stripe.accounts.create({
+      const account = await stripe!.accounts.create({
         type: 'express',
         country: 'US',
-        email: user.email,
+        email: user.email ?? undefined,
         capabilities: {
           card_payments: { requested: true },
           transfers: { requested: true },
@@ -1905,7 +2183,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create Stripe Connect onboarding link
-  app.post('/api/contractor/stripe-connect/onboarding-link', isAuthenticated, requireRole('contractor'), async (req: any, res) => {
+  app.post('/api/contractor/stripe-connect/onboarding-link', isAuthenticated, requireRole('contractor'), async (req: any, res: any) => {
     if (!stripe) {
       return res.status(500).json({ error: 'Stripe not configured' });
     }
@@ -1938,7 +2216,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get Stripe Connect account status
-  app.get('/api/contractor/stripe-connect/status', isAuthenticated, requireRole('contractor'), async (req: any, res) => {
+  app.get('/api/contractor/stripe-connect/status', isAuthenticated, requireRole('contractor'), async (req: any, res: any) => {
     if (!stripe) {
       return res.status(500).json({ error: 'Stripe not configured' });
     }
@@ -1964,7 +2242,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Fetch account from Stripe to get current status
-      const account = await stripe.accounts.retrieve(company.stripeConnectAccountId);
+      const account = await stripe!.accounts.retrieve(company.stripeConnectAccountId);
 
       // Update company with latest status
       await storage.updateCompany(company.id, {
@@ -1987,7 +2265,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create Stripe Connect dashboard link for contractor
-  app.post('/api/contractor/stripe-connect/dashboard-link', isAuthenticated, requireRole('contractor'), async (req: any, res) => {
+  app.post('/api/contractor/stripe-connect/dashboard-link', isAuthenticated, requireRole('contractor'), async (req: any, res: any) => {
     if (!stripe) {
       return res.status(500).json({ error: 'Stripe not configured' });
     }
@@ -2013,7 +2291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create payment link for invoice (contractor sends to homeowner)
-  app.post('/api/crm/invoices/:invoiceId/payment-link', isAuthenticated, requireRole('contractor'), async (req: any, res) => {
+  app.post('/api/crm/invoices/:invoiceId/payment-link', isAuthenticated, requireRole('contractor'), async (req: any, res: any) => {
     if (!stripe) {
       return res.status(500).json({ error: 'Stripe not configured' });
     }
@@ -2048,10 +2326,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const baseUrl = req.headers.origin || `https://${req.headers.host}`;
-      const amountInCents = Math.round(parseFloat(invoice.totalAmount as string) * 100);
+      const amountInCents = Math.round(parseFloat(invoice.total as string) * 100);
 
       // Create Checkout Session with connected account
-      const session = await stripe.checkout.sessions.create({
+      const session = await stripe!.checkout.sessions.create({
         mode: 'payment',
         line_items: [
           {
@@ -2104,7 +2382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Public payment page - get invoice details for payment
-  app.get('/api/pay/invoice/:invoiceId', async (req: any, res) => {
+  app.get('/api/pay/invoice/:invoiceId', async (req: any, res: any) => {
     try {
       const { invoiceId } = req.params;
 
@@ -2129,14 +2407,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         title: invoice.title,
         description: invoice.description,
         status: invoice.status,
-        totalAmount: invoice.totalAmount,
+        totalAmount: invoice.total,
         dueDate: invoice.dueDate,
         lineItems: invoice.lineItems,
-        clientName: client?.name || 'Customer',
+        clientName: client ? `${client.firstName || ''} ${client.lastName || ''}`.trim() || 'Customer' : 'Customer',
         contractorName: contractor?.firstName && contractor?.lastName 
           ? `${contractor.firstName} ${contractor.lastName}` 
           : contractor?.email,
-        companyName: company?.businessName,
+        companyName: company?.name,
         companyLogo: company?.businessLogo,
         canSaveToHistory,
         houseId: canSaveToHistory ? (invoice.houseId || null) : null,
@@ -2148,7 +2426,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Process payment for invoice (creates checkout session)
-  app.post('/api/pay/invoice/:invoiceId/checkout', async (req: any, res) => {
+  app.post('/api/pay/invoice/:invoiceId/checkout', async (req: any, res: any) => {
     if (!stripe) {
       return res.status(500).json({ error: 'Stripe not configured' });
     }
@@ -2173,9 +2451,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const client = await storage.getCrmClient(invoice.clientId);
       const baseUrl = req.headers.origin || `https://${req.headers.host}`;
-      const amountInCents = Math.round(parseFloat(invoice.totalAmount as string) * 100);
+      const amountInCents = Math.round(parseFloat(invoice.total as string) * 100);
 
-      const session = await stripe.checkout.sessions.create({
+      const session = await stripe!.checkout.sessions.create({
         mode: 'payment',
         line_items: [
           {
@@ -2231,7 +2509,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // Auth routes
-  app.get('/api/auth/user', async (req: any, res) => {
+  app.get('/api/auth/user', async (req: any, res: any) => {
     try {
       // Check for session-based authentication (email/password login)
       if (req.session?.isAuthenticated && req.session?.user) {
@@ -2278,7 +2556,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Demo logout
-  app.post('/api/auth/logout', async (req: any, res) => {
+  app.post('/api/auth/logout', async (req: any, res: any) => {
     const userId = req.session?.user?.id;
     const userEmail = req.session?.user?.email;
     const userRole = req.session?.user?.role;
@@ -2304,7 +2582,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Session management - Get user's active sessions
-  app.get('/api/auth/sessions', isAuthenticated, async (req: any, res) => {
+  app.get('/api/auth/sessions', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       if (!userId) {
@@ -2334,7 +2612,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Session management - Revoke a specific session
-  app.delete('/api/auth/sessions/:sessionId', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/auth/sessions/:sessionId', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const { sessionId } = req.params;
@@ -2378,7 +2656,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Session management - Revoke all other sessions
-  app.post('/api/auth/sessions/revoke-all', isAuthenticated, async (req: any, res) => {
+  app.post('/api/auth/sessions/revoke-all', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const currentSessionSid = req.sessionID;
@@ -2420,7 +2698,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Cancel account endpoint
-  app.delete('/api/account', async (req: any, res) => {
+  app.delete('/api/account', async (req: any, res: any) => {
     try {
       // Check authentication
       const userId = req.session?.user?.id || (req.user as any)?.id;
@@ -2456,7 +2734,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Refresh session data from database (fixes stale sessions)
-  app.post('/api/auth/refresh-session', async (req: any, res) => {
+  app.post('/api/auth/refresh-session', async (req: any, res: any) => {
     try {
       if (!req.session?.isAuthenticated || !req.session?.user?.id) {
         return res.status(401).json({ message: "Unauthorized" });
@@ -2472,7 +2750,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update session with fresh data from database
       req.session.user = freshUser;
       
-      req.session.save((err) => {
+      req.session.save((err: any) => {
         if (err) {
           console.error('Session save error:', err);
           return res.status(500).json({ message: "Failed to refresh session" });
@@ -2509,7 +2787,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // Get current user data
-  app.get('/api/user', async (req: any, res) => {
+  app.get('/api/user', async (req: any, res: any) => {
     try {
       if (!req.session?.isAuthenticated || !req.session?.user) {
         return res.status(401).json({ message: "Unauthorized" });
@@ -2530,7 +2808,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get user's billing history (subscription cycle events)
-  app.get('/api/billing-history', async (req: any, res) => {
+  app.get('/api/billing-history', async (req: any, res: any) => {
     try {
       if (!req.session?.isAuthenticated || !req.session?.user) {
         return res.status(401).json({ message: "Unauthorized" });
@@ -2552,7 +2830,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create Stripe Checkout Session for subscription
-  app.post('/api/create-subscription-checkout', isAuthenticated, async (req: any, res) => {
+  app.post('/api/create-subscription-checkout', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const userRole = req.session.user.role;
@@ -2592,8 +2870,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let stripeCustomerId = user.stripeCustomerId;
       if (!stripeCustomerId) {
         console.log(`[SUBSCRIPTION] Creating Stripe customer for user ${user.email}`);
-        const customer = await stripe.customers.create({
-          email: user.email,
+        const customer = await stripe!.customers.create({
+          email: user.email ?? undefined,
           name: `${user.firstName} ${user.lastName}`,
           metadata: { userId: user.id },
         });
@@ -2609,7 +2887,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const baseUrl = req.headers.origin || `https://${req.headers.host}`;
 
       // Create Stripe Checkout Session for subscription
-      const session = await stripe.checkout.sessions.create({
+      const session = await stripe!.checkout.sessions.create({
         customer: stripeCustomerId,
         mode: 'subscription',
         payment_method_types: ['card'],
@@ -2656,7 +2934,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Apple StoreKit In-App Purchase verification (Task #287) — client sends the
   // signed StoreKit 2 transaction (JWS) after a native purchase completes.
-  app.post('/api/apple/verify-purchase', isAuthenticated, async (req: any, res) => {
+  app.post('/api/apple/verify-purchase', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const { signedTransactionInfo } = req.body;
@@ -2685,7 +2963,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Apple StoreKit restore — client resends each restored transaction's JWS
   // through the same verification path used for a fresh purchase.
-  app.post('/api/apple/restore', isAuthenticated, async (req: any, res) => {
+  app.post('/api/apple/restore', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const { signedTransactionInfos } = req.body;
@@ -2723,7 +3001,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Apple Server-to-Server Notifications V2 webhook — no auth (Apple calls this directly).
   // Configured in App Store Connect. Signature is verified inside handleAppleServerNotification.
-  app.post('/api/apple/notifications', express.json(), async (req: any, res) => {
+  app.post('/api/apple/notifications', express.json(), async (req: any, res: any) => {
     try {
       const signedPayload = req.body?.signedPayload;
       console.log(`[APPLE-IAP] /api/apple/notifications received, has signedPayload=${!!signedPayload}`);
@@ -2744,7 +3022,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Sync subscription status from Stripe - called after successful checkout to ensure DB is updated
-  app.post('/api/sync-subscription', isAuthenticated, async (req: any, res) => {
+  app.post('/api/sync-subscription', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const user = await storage.getUser(userId);
@@ -2760,7 +3038,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get customer's subscriptions from Stripe
-      const subscriptions = await stripe.subscriptions.list({
+      const subscriptions = await stripe!.subscriptions.list({
         customer: user.stripeCustomerId,
         status: 'active',
         limit: 1,
@@ -2793,8 +3071,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.upsertUser({
             ...user,
             subscriptionStatus: 'active',
-            subscriptionTierName: priceAmount >= 4000 ? 'contractor_pro' : 'contractor_basic',
-          });
+            subscriptionTier: priceAmount >= 4000 ? 'contractor_pro' : 'contractor_basic',
+          } as any);
         }
         
         console.log(`[SYNC] Subscription synced for user ${user.email}, status: active`);
@@ -2802,7 +3080,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check for trialing subscriptions
-      const trialingSubscriptions = await stripe.subscriptions.list({
+      const trialingSubscriptions = await stripe!.subscriptions.list({
         customer: user.stripeCustomerId,
         status: 'trialing',
         limit: 1,
@@ -2826,7 +3104,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin: Manually sync a user's subscription by looking up their Stripe customer by email
-  app.post('/api/admin/sync-user-subscription', async (req: any, res) => {
+  app.post('/api/admin/sync-user-subscription', async (req: any, res: any) => {
     try {
       // Check admin access
       if (!req.session?.isAuthenticated || !req.session?.user) {
@@ -2851,7 +3129,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Search for Stripe customer by email
-      const customers = await stripe.customers.list({
+      const customers = await stripe!.customers.list({
         email: userEmail,
         limit: 1,
       });
@@ -2869,7 +3147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get customer's active subscriptions
-      const subscriptions = await stripe.subscriptions.list({
+      const subscriptions = await stripe!.subscriptions.list({
         customer: stripeCustomer.id,
         status: 'active',
         limit: 1,
@@ -2903,8 +3181,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ...user,
             stripeCustomerId: stripeCustomer.id,
             subscriptionStatus: 'active',
-            subscriptionTierName: priceAmount >= 4000 ? 'contractor_pro' : 'contractor_basic',
-          });
+            subscriptionTier: priceAmount >= 4000 ? 'contractor_pro' : 'contractor_basic',
+          } as any);
         }
         
         console.log(`[ADMIN-SYNC] Subscription synced for ${userEmail}, status: active, price: ${priceAmount}`);
@@ -2930,7 +3208,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get or create user's referral code
-  app.get('/api/user/referral-code', async (req: any, res) => {
+  app.get('/api/user/referral-code', async (req: any, res: any) => {
     try {
       if (!req.session?.isAuthenticated || !req.session?.user) {
         return res.status(401).json({ message: "Unauthorized" });
@@ -3078,7 +3356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get referral information by code (for invite page)
-  app.get('/api/referrals/:code', async (req: any, res) => {
+  app.get('/api/referrals/:code', async (req: any, res: any) => {
     try {
       const { code } = req.params;
       
@@ -3110,7 +3388,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const objectStorageService = new ObjectStorageService();
 
   // Get upload URL for proposal attachments
-  app.post("/api/objects/upload", isAuthenticated, async (req: any, res) => {
+  app.post("/api/objects/upload", isAuthenticated, async (req: any, res: any) => {
     try {
       const { fileType = "proposal" } = req.body;
       const uploadURL = await objectStorageService.getObjectEntityUploadURL(fileType);
@@ -3122,7 +3400,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Serve uploaded files
-  app.get("/objects/*objectPath", isAuthenticated, async (req: any, res) => {
+  app.get("/objects/*objectPath", isAuthenticated, async (req: any, res: any) => {
     try {
       const objectFile = await objectStorageService.getObjectEntityFile(req.path);
       objectStorageService.downloadObject(objectFile, res);
@@ -3136,7 +3414,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Message image upload endpoint
-  app.post('/api/upload/message-image', isAuthenticated, async (req: any, res) => {
+  app.post('/api/upload/message-image', isAuthenticated, async (req: any, res: any) => {
     try {
       const { imageData } = req.body;
       
@@ -3162,7 +3440,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Universal file upload endpoint for messages and proposals
-  app.post('/api/upload/files', isAuthenticated, async (req: any, res) => {
+  app.post('/api/upload/files', isAuthenticated, async (req: any, res: any) => {
     try {
       const { files } = req.body; // files is an array of { fileData: base64, fileName: string, fileType: string }
       
@@ -3211,7 +3489,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Simple homeowner demo login with realistic profile
-  app.post('/api/auth/homeowner-demo-login', authLimiter, async (req, res) => {
+  app.post('/api/auth/homeowner-demo-login', authLimiter, async (req: any, res: any) => {
     try {
       
       const demoEmail = 'sarah.anderson@homebase.com';
@@ -3279,7 +3557,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (mainHouseMissing) {
         try {
           const house1 = await storage.createHouse({
-            id: mainHouseId,
             homeownerId: demoId,
             name: 'Main Residence',
             address: '2847 Maple Drive, Seattle, WA 98101',
@@ -3289,8 +3566,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             countryId: 'USA',
             regionId: 'WA',
             postalCode: '98101',
-            latitude: 47.6062,
-            longitude: -122.3321,
+            latitude: String(47.6062),
+            longitude: String(-122.3321),
             yearBuilt: 2008,
             squareFootage: 2400,
             bedrooms: 4,
@@ -3299,12 +3576,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             garageSpaces: 2,
             lotSize: 0.25,
             propertyType: 'single-family',
-            roofType: 'asphalt-shingle',
+            roofType: 'asphalt_shingle',
             roofAge: 8,
             foundationType: 'slab',
             exteriorMaterial: 'vinyl-siding',
-            primaryHeatingFuel: 'natural-gas'
-          });
+            primaryHeatingFuel: 'natural_gas'
+          } as any);
 
           // Service records spanning 6 months for Main Residence
           await storage.createMaintenanceLog({
@@ -3497,7 +3774,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .select({ count: drizzleSql<number>`cast(count(*) as integer)` })
             .from(maintenanceLogs)
             .where(eq(maintenanceLogs.houseId, mainHouseId));
-          seedResults.mainHouse = { ok: true, healthCheck: { maintenanceLogs: mainLogCount } };
+          seedResults.mainHouse = { ok: true, ...({ healthCheck: { maintenanceLogs: mainLogCount } } as any) };
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           req.log.error({ section: 'mainHouse', error: msg }, '[DEMO] Health-check failed for existing Main Residence');
@@ -3639,7 +3916,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET version — browser navigation, sets session and redirects
-  app.get('/api/auth/homeowner-demo-login', authLimiter, async (req: any, res) => {
+  app.get('/api/auth/homeowner-demo-login', authLimiter, async (req: any, res: any) => {
     try {
       const demoEmail = 'sarah.anderson@homebase.com';
       const demoId = 'demo-homeowner-permanent-id';
@@ -3670,7 +3947,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Simple contractor demo login with realistic company profile
-  app.post('/api/auth/contractor-demo-login', authLimiter, async (req, res) => {
+  app.post('/api/auth/contractor-demo-login', authLimiter, async (req: any, res: any) => {
     try {
       
       const demoEmail = 'david.martinez@precisionhvac.com';
@@ -3712,7 +3989,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
           
           company = await storage.createCompany({
-          id: companyId,
           name: 'Precision HVAC & Plumbing',
           ownerId: user.id,
           location: 'Seattle, WA',
@@ -3720,8 +3996,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           countryId: null,
           regionId: null,
           postalCode: '98103',
-          latitude: 47.6597,
-          longitude: -122.3331,
+          latitude: String(47.6597),
+          longitude: String(-122.3331),
           website: 'https://precisionhvac.example.com',
           phone: '(206) 555-0142',
           email: demoEmail,
@@ -3750,7 +4026,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           insuranceInfo: 'Comprehensive general liability and workers compensation insurance. $2M coverage limit.',
           rating: '4.8',
           reviewCount: 127
-        });
+        } as any);
           seedResults.company = { ok: true, inserted: 1, expected: 1 };
         } else {
           try {
@@ -3758,7 +4034,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               .select({ count: drizzleSql<number>`cast(count(*) as integer)` })
               .from(users)
               .where(eq(users.companyId, companyId));
-            seedResults.company = { ok: true, healthCheck: { teamMembers: teamCount } };
+            seedResults.company = { ok: true, ...({ healthCheck: { teamMembers: teamCount } } as any) };
           } catch (hcErr) {
             const msg = hcErr instanceof Error ? hcErr.message : String(hcErr);
             req.log.error({ section: 'company', error: msg }, '[DEMO] Health-check failed for existing demo company');
@@ -3930,7 +4206,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             if (existingDemoConvs.length > 0) {
               req.log.info({ section: 'conversations' }, '[DEMO] Demo conversations already exist — skipping seeding');
-              seedResults.conversations = { ok: true, inserted: 0, expected: conversationExpected, skipped: true };
+              seedResults.conversations = { ok: true, inserted: 0, expected: conversationExpected, skipped: true } as any;
             } else {
               const conv1Id = 'demo-conversation-1';
               await db.insert(conversations).values({
@@ -4572,7 +4848,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET version — browser navigation, sets session and redirects
-  app.get('/api/auth/contractor-demo-login', authLimiter, async (req: any, res) => {
+  app.get('/api/auth/contractor-demo-login', authLimiter, async (req: any, res: any) => {
     try {
       const demoEmail = 'david.martinez@precisionhvac.com';
       let user = await storage.getUserByEmail(demoEmail);
@@ -4595,7 +4871,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Reset demo conversations — deletes and re-seeds the demo contractor's message threads
   // Only accessible to the demo contractor account; idempotent and safe to call repeatedly.
-  app.post('/api/auth/contractor-demo-reset-conversations', isAuthenticated, async (req: any, res) => {
+  app.post('/api/auth/contractor-demo-reset-conversations', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId: string = req.session.user.id;
       const DEMO_CONTRACTOR_ID = 'demo-contractor-permanent-id';
@@ -4709,7 +4985,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Simple agent demo login with realistic agent profile
-  app.post('/api/auth/agent-demo-login', authLimiter, async (req, res) => {
+  app.post('/api/auth/agent-demo-login', authLimiter, async (req: any, res: any) => {
     try {
       const demoEmail = 'jessica.roberts@ellisonrealty.com';
       const demoId = 'demo-agent-permanent-id';
@@ -5013,7 +5289,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET version — browser navigation, sets session and redirects
-  app.get('/api/auth/agent-demo-login', authLimiter, async (req: any, res) => {
+  app.get('/api/auth/agent-demo-login', authLimiter, async (req: any, res: any) => {
     try {
       const demoEmail = 'jessica.roberts@ellisonrealty.com';
       let user = await storage.getUserByEmail(demoEmail);
@@ -5035,7 +5311,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Email/password registration
-  app.post('/api/auth/register', authLimiter, async (req, res) => {
+  app.post('/api/auth/register', authLimiter, async (req: any, res: any) => {
     try {
       const { 
         email, password, firstName, lastName, role, zipCode, inviteCode, referralCode,
@@ -5082,6 +5358,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Supports agent referrals (affiliate payouts), user-to-user referrals (subscription credits),
       // and contractor company referral codes (shared via contractor referral page)
       let referringAgent = null;
+      let referringUser: any = null;
       if (referralCode && (role === 'homeowner' || role === 'contractor')) {
         const referrer = await storage.getUserByReferralCode(referralCode);
         if (referrer) {
@@ -5121,21 +5398,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           passwordHash,
           firstName,
           lastName,
-          role: 'agent',
+          role: 'agent' as any,
           zipCode,
-          referralCode: agentReferralCode,
           subscriptionStatus: 'inactive', // Agents don't subscribe
-          trialEndsAt: null,
-          maxHousesAllowed: null
+          trialEndsAt: undefined,
+          maxHousesAllowed: undefined
         });
         
         // Create agent profile
         await storage.createAgentProfile({
-          userId: user.id,
+          agentId: user.id,
           agentType: 'individual',
           commissionRate: '10.00', // Default 10% commission
           status: 'active'
-        });
+        } as any);
         
         // Send admin notification about new agent signup (non-blocking)
         emailService.sendAgentSignupNotification(
@@ -5159,7 +5435,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           trialEndsAt,
           maxHousesAllowed: isHomeowner ? 2 : undefined,
           subscriptionStatus: isHomeowner ? 'inactive' : 'trialing',
-          referredBy: referralCode || undefined,
         });
 
         // Handle contractor company setup - always create a new company
@@ -5194,6 +5469,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.createAffiliateReferral({
             agentId: referringAgent.id,
             referredUserId: user.id,
+            referredUserRole: role,
+            referralCode: referralCode || '',
             signupDate,
             trialEndDate,
             status: 'trial'
@@ -5234,7 +5511,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Email/password login
-  app.post('/api/auth/login', authLimiter, async (req: any, res) => {
+  app.post('/api/auth/login', authLimiter, async (req: any, res: any) => {
     try {
       const { email, password } = req.body;
       
@@ -5312,7 +5589,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Forgot password - Request reset code
-  app.post('/api/auth/forgot-password', authLimiter, async (req: any, res) => {
+  app.post('/api/auth/forgot-password', authLimiter, async (req: any, res: any) => {
     try {
       const { email } = req.body;
       
@@ -5386,7 +5663,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Reset password with code
-  app.post('/api/auth/reset-password', authLimiter, async (req: any, res) => {
+  app.post('/api/auth/reset-password', authLimiter, async (req: any, res: any) => {
     try {
       const { email, resetCode, newPassword } = req.body;
       
@@ -5464,7 +5741,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Complete profile for OAuth users
-  app.post('/api/auth/complete-profile', async (req: any, res) => {
+  app.post('/api/auth/complete-profile', async (req: any, res: any) => {
     try {
       if (!req.session?.isAuthenticated || !req.session?.user) {
         return res.status(401).json({ message: "Unauthorized" });
@@ -5507,7 +5784,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: companyName,
           bio: companyBio,
           phone: companyPhone,
-          email: currentUser.email,
+          email: currentUser.email ?? '',
           location: zipCode,
           ownerId: currentUser.id,
           services: [],
@@ -5549,7 +5826,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // Serve public object storage files
-  app.get('/public/*publicPath', async (req, res) => {
+  app.get('/public/*publicPath', async (req: any, res: any) => {
     try {
       const filePath = req.path.replace('/public/', ''); // Remove /public/ prefix
       const objectStorage = new ObjectStorageService();
@@ -5575,7 +5852,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Image upload endpoint for contractor profiles
-  app.post('/api/upload/image', isAuthenticated, async (req: any, res) => {
+  app.post('/api/upload/image', isAuthenticated, async (req: any, res: any) => {
     try {
       console.log('[IMAGE UPLOAD] Request received');
       console.log('[IMAGE UPLOAD] Body keys:', Object.keys(req.body));
@@ -5616,7 +5893,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/contractor/upload-logo', isAuthenticated, async (req: any, res) => {
+  app.post('/api/contractor/upload-logo', isAuthenticated, async (req: any, res: any) => {
     try {
       const { imageData } = req.body;
       
@@ -5661,7 +5938,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Search analytics tracking
-  app.post('/api/analytics/search', async (req: any, res) => {
+  app.post('/api/analytics/search', async (req: any, res: any) => {
     try {
       const { searchTerm, serviceType, searchContext } = req.body;
       
@@ -5696,7 +5973,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/admin/search-analytics', requireAdmin, async (req, res) => {
+  app.get('/api/admin/search-analytics', requireAdmin, async (req: any, res: any) => {
     try {
       const { zipCode, limit } = req.query;
       const analytics = await storage.getSearchAnalytics({
@@ -5721,7 +5998,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/admin/invite-codes', requireAdmin, async (req: any, res) => {
+  app.post('/api/admin/invite-codes', requireAdmin, async (req: any, res: any) => {
     try {
       const { code, maxUses } = req.body;
       
@@ -5752,7 +6029,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/admin/invite-codes/:code/deactivate', requireAdmin, async (req: any, res) => {
+  app.patch('/api/admin/invite-codes/:code/deactivate', requireAdmin, async (req: any, res: any) => {
     try {
       const { code } = req.params;
       const success = await storage.deactivateInviteCode(code);
@@ -5779,7 +6056,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin - Force logout a user (security action)
-  app.post('/api/admin/users/:userId/force-logout', requireAdmin, async (req: any, res) => {
+  app.post('/api/admin/users/:userId/force-logout', requireAdmin, async (req: any, res: any) => {
     try {
       const { userId } = req.params;
       const { reason } = req.body;
@@ -5815,7 +6092,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin - Get active sessions for a user
-  app.get('/api/admin/users/:userId/sessions', requireAdmin, async (req: any, res) => {
+  app.get('/api/admin/users/:userId/sessions', requireAdmin, async (req: any, res: any) => {
     try {
       const { userId } = req.params;
 
@@ -5844,7 +6121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Emergency password reset — protected by server-side secret env var (no browser session needed)
   // Usage: POST /api/admin/emergency-reset with header X-Reset-Secret matching EMERGENCY_RESET_SECRET env var
   // Delete EMERGENCY_RESET_SECRET from env after use to disable this endpoint permanently.
-  app.post('/api/admin/emergency-reset', async (req: any, res) => {
+  app.post('/api/admin/emergency-reset', async (req: any, res: any) => {
     const secret = process.env.EMERGENCY_RESET_SECRET;
     if (!secret) return res.status(404).json({ message: "Not found" });
     const provided = req.headers['x-reset-secret'];
@@ -5865,7 +6142,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // TEMPORARY: Delete old test accounts by email list. Protected by X-Cleanup-Secret header.
   // Remove this endpoint after use.
-  app.delete('/api/internal/cleanup-test-accounts', async (req: any, res) => {
+  app.delete('/api/internal/cleanup-test-accounts', async (req: any, res: any) => {
     const secret = process.env.CLEANUP_TEST_SECRET;
     if (!secret) return res.status(404).json({ message: "Not found" });
     const provided = req.headers['x-cleanup-secret'];
@@ -5887,7 +6164,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin — reset any user's password by email (no token required)
-  app.post('/api/admin/users/reset-password', requireAdmin, async (req: any, res) => {
+  app.post('/api/admin/users/reset-password', requireAdmin, async (req: any, res: any) => {
     try {
       const { email, newPassword } = req.body;
       if (!email || !newPassword) {
@@ -5917,7 +6194,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Advanced analytics endpoint
-  app.get('/api/admin/analytics', requireAdmin, async (req, res) => {
+  app.get('/api/admin/analytics', requireAdmin, async (req: any, res: any) => {
     try {
       const days = parseInt(req.query.days as string) || 30;
       
@@ -5992,7 +6269,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin email image upload endpoint
-  app.post('/api/admin/upload-email-image', requireAdmin, async (req: any, res) => {
+  app.post('/api/admin/upload-email-image', requireAdmin, async (req: any, res: any) => {
     try {
       const { imageData } = req.body;
       if (!imageData) {
@@ -6017,7 +6294,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Bulk email endpoint for admins
-  app.post('/api/admin/send-bulk-email', requireAdmin, async (req: any, res) => {
+  app.post('/api/admin/send-bulk-email', requireAdmin, async (req: any, res: any) => {
     try {
       const { replyToEmail, audience, subject, body, imageUrl } = req.body;
       console.log(`[ADMIN-EMAIL] Bulk email request received - audience: ${audience}, subject: "${subject}", from admin: ${req.session?.user?.email}`);
@@ -6075,10 +6352,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Log the action
       await auditLogger.log({
         eventType: 'admin.bulk_email_sent',
+        action: 'admin.bulk_email_sent',
         userId: req.user?.id || 'unknown',
         userEmail: req.user?.email || 'unknown',
         severity: 'info',
-        details: {
+        metadata: {
           totalUsers: allUsers.length,
           sent: result.sent,
           failed: result.failed
@@ -6099,7 +6377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Send bulk SMS to users
-  app.post('/api/admin/send-bulk-sms', requireAdmin, async (req: any, res) => {
+  app.post('/api/admin/send-bulk-sms', requireAdmin, async (req: any, res: any) => {
     try {
       const { audience, message } = req.body;
       
@@ -6175,10 +6453,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Log the action
       await auditLogger.log({
         eventType: 'admin.bulk_sms_sent',
+        action: 'admin.bulk_sms_sent',
         userId: req.user?.id || 'unknown',
         userEmail: req.user?.email || 'unknown',
         severity: 'info',
-        details: {
+        metadata: {
           totalUsers: allUsers.length,
           sent,
           failed,
@@ -6201,7 +6480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Security Dashboard - Admin endpoints for SOC 2 compliance
-  app.get('/api/admin/security/audit-logs', requireAdmin, async (req: any, res) => {
+  app.get('/api/admin/security/audit-logs', requireAdmin, async (req: any, res: any) => {
     try {
       const { 
         eventType, 
@@ -6230,7 +6509,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/admin/security/stats', requireAdmin, async (req: any, res) => {
+  app.get('/api/admin/security/stats', requireAdmin, async (req: any, res: any) => {
     try {
       const days = parseInt(req.query.days as string) || 7;
       const stats = await auditLogger.getSecurityStats(days);
@@ -6262,7 +6541,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/admin/security/failed-logins', requireAdmin, async (req: any, res) => {
+  app.get('/api/admin/security/failed-logins', requireAdmin, async (req: any, res: any) => {
     try {
       const hours = parseInt(req.query.hours as string) || 24;
       const startDate = new Date(Date.now() - hours * 60 * 60 * 1000);
@@ -6366,7 +6645,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     notes: z.string().max(1000).optional(),
   });
 
-  app.patch('/api/admin/agents/:agentId/verify', requireAdmin, async (req: any, res) => {
+  app.patch('/api/admin/agents/:agentId/verify', requireAdmin, async (req: any, res: any) => {
     try {
       const { agentId } = req.params;
       const adminId = req.session.user.id;
@@ -6374,7 +6653,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate request body
       const validationResult = agentVerifySchema.safeParse(req.body);
       if (!validationResult.success) {
-        return res.status(400).json({ message: "Invalid request", errors: validationResult.error.errors });
+        return res.status(400).json({ message: "Invalid request", errors: validationResult.error.issues });
       }
       const { action, notes } = validationResult.data;
 
@@ -6446,7 +6725,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin endpoint to send welcome emails to all users
-  app.post('/api/admin/send-welcome-emails', requireAdmin, async (req: any, res) => {
+  app.post('/api/admin/send-welcome-emails', requireAdmin, async (req: any, res: any) => {
     try {
       const { dryRun = true, roleFilter } = req.body;
       
@@ -6457,7 +6736,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstName: users.firstName,
         lastName: users.lastName,
         role: users.role,
-      }).from(users).where(sql`${users.email} IS NOT NULL`);
+      }).from(users).where(drizzleSql`${users.email} IS NOT NULL`);
       
       // Filter by role if specified
       let targetUsers = allUsers;
@@ -6517,7 +6796,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Public contact form endpoint (no authentication required)
-  app.post('/api/contact', async (req, res) => {
+  app.post('/api/contact', async (req: any, res: any) => {
     try {
       const contactSchema = z.object({
         name: z.string().min(2).max(100),
@@ -6548,12 +6827,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const adminUser = await storage.getUserByEmail(email);
         if (adminUser) {
           await storage.createNotification({
-            userId: adminUser.id,
+            homeownerId: adminUser.id,
             type: 'support_ticket',
             title: 'New Contact Form Submission',
             message: `${validatedData.name} (${validatedData.email}) submitted a contact form: "${validatedData.subject}"`,
             link: `/admin/support`,
-          });
+          } as any);
         }
       }
       
@@ -6561,14 +6840,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error processing contact form:", error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid form data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid form data", errors: error.issues });
       }
       res.status(500).json({ message: "Failed to submit contact form" });
     }
   });
 
   // AI support chat — requires authentication and rate limiting to prevent cost amplification
-  app.post('/api/support/ai-chat', isAuthenticated, aiChatLimiter, async (req: any, res) => {
+  app.post('/api/support/ai-chat', isAuthenticated, aiChatLimiter, async (req: any, res: any) => {
     try {
       const { question, role } = req.body;
       if (!question || typeof question !== 'string' || question.trim().length === 0) {
@@ -6596,7 +6875,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Support ticket routes - User endpoints
-  app.get('/api/support/tickets', isAuthenticated, async (req: any, res) => {
+  app.get('/api/support/tickets', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const tickets = await storage.getSupportTickets({ userId });
@@ -6607,7 +6886,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/support/tickets/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/support/tickets/:id', isAuthenticated, async (req: any, res: any) => {
     try {
       const { id } = req.params;
       const userId = req.session.user.id;
@@ -6632,13 +6911,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/support/tickets', isAuthenticated, async (req: any, res) => {
+  app.post('/api/support/tickets', isAuthenticated, async (req: any, res: any) => {
     try {
-      const createTicketSchema = insertSupportTicketSchema.omit({ userId: true }).extend({
+      const createTicketSchema = z.object({
         category: z.enum(['billing', 'technical', 'feature_request', 'account', 'contractor', 'general']),
         priority: z.enum(['low', 'medium', 'high', 'urgent']),
         subject: z.string().min(5).max(200),
         description: z.string().min(10).max(5000),
+        metadata: z.any().optional(),
       });
       
       const validatedData = createTicketSchema.parse(req.body);
@@ -6673,12 +6953,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const notifyUser = await storage.getUserByEmail(notifyEmail);
         if (notifyUser && notifyUser.id !== userId) {
           await storage.createNotification({
-            userId: notifyUser.id,
+            homeownerId: notifyUser.id,
             type: 'support_ticket',
             title: 'New Support Ticket',
             message: `${submitterName} submitted a ${validatedData.priority} priority ticket: "${validatedData.subject}"`,
             link: `/admin/support`,
-          });
+          } as any);
         }
       }
       
@@ -6686,13 +6966,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating support ticket:", error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid ticket data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid ticket data", errors: error.issues });
       }
       res.status(500).json({ message: "Failed to create support ticket" });
     }
   });
 
-  app.post('/api/support/tickets/:id/replies', isAuthenticated, async (req: any, res) => {
+  app.post('/api/support/tickets/:id/replies', isAuthenticated, async (req: any, res: any) => {
     try {
       const { id } = req.params;
       const userId = req.session.user.id;
@@ -6735,7 +7015,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Support ticket routes - Admin endpoints
-  app.get('/api/admin/support/tickets', requireAdmin, async (req, res) => {
+  app.get('/api/admin/support/tickets', requireAdmin, async (req: any, res: any) => {
     try {
       const { status, category, priority, assignedToAdminId } = req.query;
       
@@ -6753,7 +7033,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/admin/support/tickets/:id', requireAdmin, async (req: any, res) => {
+  app.patch('/api/admin/support/tickets/:id', requireAdmin, async (req: any, res: any) => {
     try {
       const { id } = req.params;
       const updateSchema = z.object({
@@ -6784,13 +7064,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating support ticket:", error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid update data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid update data", errors: error.issues });
       }
       res.status(500).json({ message: "Failed to update support ticket" });
     }
   });
 
-  app.post('/api/admin/support/tickets/:id/replies', requireAdmin, async (req: any, res) => {
+  app.post('/api/admin/support/tickets/:id/replies', requireAdmin, async (req: any, res: any) => {
     try {
       const { id } = req.params;
       const { content, isInternal } = req.body;
@@ -6825,6 +7105,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin endpoint to trigger invoice orphan file cleanup on demand
+  app.post('/api/admin/invoice-orphan-cleanup/run', requireAdmin, async (req: any, res: any) => {
+    try {
+      const result = await invoiceOrphanCleanupScheduler.runNow();
+      res.json(result);
+    } catch (error) {
+      req.log?.error({ err: error }, '[INVOICE-ORPHAN-CLEANUP] On-demand run failed');
+      res.status(500).json({ message: 'Invoice orphan cleanup failed' });
+    }
+  });
+
   // Automated reply helper function
   function getAutomatedReply(category: string): string | null {
     const replies: Record<string, string> = {
@@ -6842,7 +7133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // CRM Lead Management routes - PAID FEATURE for contractors
   
   // GET /api/crm/leads - List all leads for contractor with filters
-  app.get('/api/crm/leads', isAuthenticated, requireContractorSubscription, async (req: any, res) => {
+  app.get('/api/crm/leads', isAuthenticated, requireContractorSubscription, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -6865,7 +7156,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/crm/leads - Create new lead
-  app.post('/api/crm/leads', isAuthenticated, requireContractorSubscription, async (req: any, res) => {
+  app.post('/api/crm/leads', isAuthenticated, requireContractorSubscription, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -6882,7 +7173,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(lead);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(422).json({ message: "Validation error", errors: error.errors });
+        return res.status(422).json({ message: "Validation error", errors: error.issues });
       }
       console.error("Error creating CRM lead:", error);
       res.status(500).json({ message: "Failed to create lead" });
@@ -6890,7 +7181,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/crm/leads/:id - Get lead with notes
-  app.get('/api/crm/leads/:id', isAuthenticated, requireContractorSubscription, async (req: any, res) => {
+  app.get('/api/crm/leads/:id', isAuthenticated, requireContractorSubscription, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -6919,7 +7210,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PATCH /api/crm/leads/:id - Update lead
-  app.patch('/api/crm/leads/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/crm/leads/:id', isAuthenticated, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -6957,7 +7248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE /api/crm/leads/:id - Delete lead
-  app.delete('/api/crm/leads/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/crm/leads/:id', isAuthenticated, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -6989,7 +7280,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/crm/leads/:leadId/notes - Add note to lead
-  app.post('/api/crm/leads/:leadId/notes', isAuthenticated, async (req: any, res) => {
+  app.post('/api/crm/leads/:leadId/notes', isAuthenticated, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -7025,7 +7316,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(note);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(422).json({ message: "Validation error", errors: error.errors });
+        return res.status(422).json({ message: "Validation error", errors: error.issues });
       }
       console.error("Error creating CRM note:", error);
       res.status(500).json({ message: "Failed to create note" });
@@ -7033,7 +7324,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PATCH /api/crm/notes/:id - Update note
-  app.patch('/api/crm/notes/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/crm/notes/:id', isAuthenticated, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -7048,7 +7339,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get lead to check access
-      const lead = await storage.getCrmLead(note.leadId);
+      const lead = await storage.getCrmLead((note as any).leadId);
       if (!lead) {
         return res.status(404).json({ message: "Associated lead not found" });
       }
@@ -7073,7 +7364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE /api/crm/notes/:id - Delete note
-  app.delete('/api/crm/notes/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/crm/notes/:id', isAuthenticated, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -7088,7 +7379,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get lead to check access
-      const lead = await storage.getCrmLead(note.leadId);
+      const lead = await storage.getCrmLead((note as any).leadId);
       if (!lead) {
         return res.status(404).json({ message: "Associated lead not found" });
       }
@@ -7114,7 +7405,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // CRM Integration routes
   // GET /api/crm/integrations - Get all integrations for contractor
-  app.get('/api/crm/integrations', isAuthenticated, async (req: any, res) => {
+  app.get('/api/crm/integrations', isAuthenticated, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM integrations" });
@@ -7143,7 +7434,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/crm/integrations - Create new integration
-  app.post('/api/crm/integrations', isAuthenticated, async (req: any, res) => {
+  app.post('/api/crm/integrations', isAuthenticated, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can create integrations" });
@@ -7176,7 +7467,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(422).json({ message: "Validation error", errors: error.errors });
+        return res.status(422).json({ message: "Validation error", errors: error.issues });
       }
       console.error("Error creating CRM integration:", error);
       res.status(500).json({ message: "Failed to create integration" });
@@ -7184,7 +7475,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE /api/crm/integrations/:id - Delete integration
-  app.delete('/api/crm/integrations/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/crm/integrations/:id', isAuthenticated, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can delete integrations" });
@@ -7214,7 +7505,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/crm/webhooks/:integrationId - Webhook receiver endpoint (NOT authenticated)
-  app.post('/api/crm/webhooks/:integrationId', async (req, res) => {
+  app.post('/api/crm/webhooks/:integrationId', async (req: any, res: any) => {
     try {
       const integration = await storage.getCrmIntegration(req.params.integrationId);
       
@@ -7331,7 +7622,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/crm/webhooks/:integrationId/logs - Get webhook logs
-  app.get('/api/crm/webhooks/:integrationId/logs', isAuthenticated, async (req: any, res) => {
+  app.get('/api/crm/webhooks/:integrationId/logs', isAuthenticated, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can view webhook logs" });
@@ -7404,7 +7695,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // -------------------- CRM Clients Routes --------------------
 
   // GET /api/crm/clients - List all clients - PAID FEATURE
-  app.get('/api/crm/clients', isAuthenticated, requireContractorSubscription, async (req: any, res) => {
+  app.get('/api/crm/clients', isAuthenticated, requireContractorSubscription, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -7442,7 +7733,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/crm/clients - Create new client
-  app.post('/api/crm/clients', isAuthenticated, requireContractorSubscription, async (req: any, res) => {
+  app.post('/api/crm/clients', isAuthenticated, requireContractorSubscription, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -7465,7 +7756,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!validationResult.success) {
         return res.status(400).json({ 
           message: "Invalid client data", 
-          errors: validationResult.error.errors 
+          errors: validationResult.error.issues 
         });
       }
 
@@ -7479,7 +7770,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // GET /api/crm/clients/:id - Get single client
   // Phase 7: Added requireContractorSubscription for CRM security consistency
-  app.get('/api/crm/clients/:id', isAuthenticated, requireContractorSubscription, async (req: any, res) => {
+  app.get('/api/crm/clients/:id', isAuthenticated, requireContractorSubscription, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -7512,7 +7803,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // PATCH /api/crm/clients/:id - Update client
   // Phase 7: Added requireContractorSubscription for CRM security consistency
-  app.patch('/api/crm/clients/:id', isAuthenticated, requireContractorSubscription, async (req: any, res) => {
+  app.patch('/api/crm/clients/:id', isAuthenticated, requireContractorSubscription, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -7542,7 +7833,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!validationResult.success) {
         return res.status(400).json({ 
           message: "Invalid client data", 
-          errors: validationResult.error.errors 
+          errors: validationResult.error.issues 
         });
       }
 
@@ -7556,7 +7847,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // DELETE /api/crm/clients/:id - Soft delete client (set isActive = false)
   // Phase 7: Added requireContractorSubscription for CRM security consistency
-  app.delete('/api/crm/clients/:id', isAuthenticated, requireContractorSubscription, async (req: any, res) => {
+  app.delete('/api/crm/clients/:id', isAuthenticated, requireContractorSubscription, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -7592,7 +7883,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // -------------------- CRM Jobs Routes --------------------
 
   // GET /api/crm/jobs - List all jobs
-  app.get('/api/crm/jobs', isAuthenticated, async (req: any, res) => {
+  app.get('/api/crm/jobs', isAuthenticated, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -7636,7 +7927,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/crm/jobs - Create new job
-  app.post('/api/crm/jobs', isAuthenticated, async (req: any, res) => {
+  app.post('/api/crm/jobs', isAuthenticated, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -7659,7 +7950,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!validationResult.success) {
         return res.status(400).json({ 
           message: "Invalid job data", 
-          errors: validationResult.error.errors 
+          errors: validationResult.error.issues 
         });
       }
 
@@ -7672,7 +7963,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/crm/jobs/:id - Get single job
-  app.get('/api/crm/jobs/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/crm/jobs/:id', isAuthenticated, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -7704,7 +7995,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PATCH /api/crm/jobs/:id - Update job
-  app.patch('/api/crm/jobs/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/crm/jobs/:id', isAuthenticated, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -7734,7 +8025,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!validationResult.success) {
         return res.status(400).json({ 
           message: "Invalid job data", 
-          errors: validationResult.error.errors 
+          errors: validationResult.error.issues 
         });
       }
 
@@ -7747,7 +8038,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE /api/crm/jobs/:id - Delete job
-  app.delete('/api/crm/jobs/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/crm/jobs/:id', isAuthenticated, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -7780,7 +8071,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/crm/jobs/:id/notify - Send job notification via email and/or SMS
-  app.post('/api/crm/jobs/:id/notify', isAuthenticated, async (req: any, res) => {
+  app.post('/api/crm/jobs/:id/notify', isAuthenticated, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -7836,7 +8127,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         contractorName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'Your Contractor',
         contractorCompany: company?.name,
         contractorPhone: user?.phone || contractor?.phone,
-        contractorEmail: user?.email,
+        contractorEmail: user?.email ?? undefined,
         documentNumber: existingJob.id,
         documentTitle: existingJob.title,
         total: formatCurrency(existingJob.totalCost),
@@ -7891,7 +8182,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // -------------------- CRM Quotes Routes --------------------
 
   // GET /api/crm/quotes - List all quotes
-  app.get('/api/crm/quotes', isAuthenticated, async (req: any, res) => {
+  app.get('/api/crm/quotes', isAuthenticated, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -7922,7 +8213,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/crm/quotes - Create new quote
-  app.post('/api/crm/quotes', isAuthenticated, async (req: any, res) => {
+  app.post('/api/crm/quotes', isAuthenticated, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -7952,7 +8243,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!validationResult.success) {
         return res.status(400).json({ 
           message: "Invalid quote data", 
-          errors: validationResult.error.errors 
+          errors: validationResult.error.issues 
         });
       }
 
@@ -7965,7 +8256,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/crm/quotes/:id - Get single quote
-  app.get('/api/crm/quotes/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/crm/quotes/:id', isAuthenticated, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -7997,7 +8288,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PATCH /api/crm/quotes/:id - Update quote
-  app.patch('/api/crm/quotes/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/crm/quotes/:id', isAuthenticated, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -8027,7 +8318,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!validationResult.success) {
         return res.status(400).json({ 
           message: "Invalid quote data", 
-          errors: validationResult.error.errors 
+          errors: validationResult.error.issues 
         });
       }
 
@@ -8040,7 +8331,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/crm/quotes/:id/send - Send quote via email and/or SMS
-  app.post('/api/crm/quotes/:id/send', isAuthenticated, async (req: any, res) => {
+  app.post('/api/crm/quotes/:id/send', isAuthenticated, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -8103,7 +8394,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         contractorName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'Your Contractor',
         contractorCompany: company?.name,
         contractorPhone: user?.phone || contractor?.phone,
-        contractorEmail: user?.email,
+        contractorEmail: user?.email ?? undefined,
         documentNumber: existingQuote.quoteNumber,
         documentTitle: existingQuote.title,
         total: formatCurrency(existingQuote.total),
@@ -8160,7 +8451,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE /api/crm/quotes/:id - Delete quote
-  app.delete('/api/crm/quotes/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/crm/quotes/:id', isAuthenticated, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -8195,7 +8486,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // -------------------- CRM Invoices Routes --------------------
 
   // GET /api/crm/invoices - List all invoices
-  app.get('/api/crm/invoices', isAuthenticated, async (req: any, res) => {
+  app.get('/api/crm/invoices', isAuthenticated, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -8229,7 +8520,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/crm/invoices - Create new invoice
-  app.post('/api/crm/invoices', isAuthenticated, async (req: any, res) => {
+  app.post('/api/crm/invoices', isAuthenticated, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -8286,7 +8577,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!validationResult.success) {
         return res.status(400).json({ 
           message: "Invalid invoice data", 
-          errors: validationResult.error.errors 
+          errors: validationResult.error.issues 
         });
       }
 
@@ -8337,7 +8628,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/crm/invoices/:id - Get single invoice
-  app.get('/api/crm/invoices/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/crm/invoices/:id', isAuthenticated, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -8369,7 +8660,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PATCH /api/crm/invoices/:id - Update invoice
-  app.patch('/api/crm/invoices/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/crm/invoices/:id', isAuthenticated, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -8399,7 +8690,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!validationResult.success) {
         return res.status(400).json({ 
           message: "Invalid invoice data", 
-          errors: validationResult.error.errors 
+          errors: validationResult.error.issues 
         });
       }
 
@@ -8463,7 +8754,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/crm/invoices/:id/send - Send invoice via email and/or SMS
-  app.post('/api/crm/invoices/:id/send', isAuthenticated, async (req: any, res) => {
+  app.post('/api/crm/invoices/:id/send', isAuthenticated, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -8526,7 +8817,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         contractorName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'Your Contractor',
         contractorCompany: company?.name,
         contractorPhone: user?.phone || contractor?.phone,
-        contractorEmail: user?.email,
+        contractorEmail: user?.email ?? undefined,
         documentNumber: existingInvoice.invoiceNumber,
         documentTitle: existingInvoice.title,
         total: formatCurrency(existingInvoice.amountDue),
@@ -8584,7 +8875,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/crm/invoices/:id/payment - Record payment
-  app.post('/api/crm/invoices/:id/payment', isAuthenticated, async (req: any, res) => {
+  app.post('/api/crm/invoices/:id/payment', isAuthenticated, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -8619,7 +8910,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!validationResult.success) {
         return res.status(400).json({ 
           message: "Invalid payment data", 
-          errors: validationResult.error.errors 
+          errors: validationResult.error.issues 
         });
       }
 
@@ -8677,7 +8968,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE /api/crm/invoices/:id - Delete invoice
-  app.delete('/api/crm/invoices/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/crm/invoices/:id', isAuthenticated, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -8712,7 +9003,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // -------------------- CRM Dashboard Route --------------------
 
   // GET /api/crm/dashboard - Get dashboard stats
-  app.get('/api/crm/dashboard', isAuthenticated, requireContractorSubscription, async (req: any, res) => {
+  app.get('/api/crm/dashboard', isAuthenticated, requireContractorSubscription, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -8730,7 +9021,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Fetch all data for dashboard
       const [clients, jobs, quotes, invoices] = await Promise.all([
-        storage.getCrmClients(userId, { isActive: true }),
+        storage.getCrmClients(userId, {}),  // active clients only
         storage.getCrmJobs(userId, {}),
         storage.getCrmQuotes(userId, {}),
         storage.getCrmInvoices(userId, {}),
@@ -8812,7 +9103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // -------------------- CRM Import Route --------------------
 
   // POST /api/crm/import - Import data from another CRM (JSON format)
-  app.post('/api/crm/import', isAuthenticated, async (req: any, res) => {
+  app.post('/api/crm/import', isAuthenticated, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -8854,7 +9145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           if (!validationResult.success) {
             results.clients.failed++;
-            results.clients.errors.push(`Client "${clientData.firstName} ${clientData.lastName}": ${validationResult.error.errors[0]?.message}`);
+            results.clients.errors.push(`Client "${clientData.firstName} ${clientData.lastName}": ${validationResult.error.issues[0]?.message}`);
             continue;
           }
 
@@ -8914,7 +9205,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           if (!validationResult.success) {
             results.jobs.failed++;
-            results.jobs.errors.push(`Job "${jobData.title}": ${validationResult.error.errors[0]?.message}`);
+            results.jobs.errors.push(`Job "${jobData.title}": ${validationResult.error.issues[0]?.message}`);
             continue;
           }
 
@@ -8954,7 +9245,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           if (!validationResult.success) {
             results.quotes.failed++;
-            results.quotes.errors.push(`Quote "${quoteData.title}": ${validationResult.error.errors[0]?.message}`);
+            results.quotes.errors.push(`Quote "${quoteData.title}": ${validationResult.error.issues[0]?.message}`);
             continue;
           }
 
@@ -8996,7 +9287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           if (!validationResult.success) {
             results.invoices.failed++;
-            results.invoices.errors.push(`Invoice "${invoiceData.title}": ${validationResult.error.errors[0]?.message}`);
+            results.invoices.errors.push(`Invoice "${invoiceData.title}": ${validationResult.error.issues[0]?.message}`);
             continue;
           }
 
@@ -9023,7 +9314,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/crm/import/template - Get JSON template for import
-  app.get('/api/crm/import/template', isAuthenticated, async (req: any, res) => {
+  app.get('/api/crm/import/template', isAuthenticated, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -9112,7 +9403,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Error Tracking routes - For logging and monitoring errors
-  app.post('/api/errors', async (req: any, res) => {
+  app.post('/api/errors', async (req: any, res: any) => {
     try {
       const errorData = req.body;
       
@@ -9149,7 +9440,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/errors', async (req: any, res) => {
+  app.get('/api/errors', async (req: any, res: any) => {
     try {
       // Only allow admins to view errors
       if (!req.session?.isAuthenticated || req.session?.user?.role !== 'admin') {
@@ -9172,7 +9463,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/errors/:id', async (req: any, res) => {
+  app.get('/api/errors/:id', async (req: any, res: any) => {
     try {
       // Only allow admins to view errors
       if (!req.session?.isAuthenticated || req.session?.user?.role !== 'admin') {
@@ -9192,7 +9483,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/errors/:id', async (req: any, res) => {
+  app.patch('/api/errors/:id', async (req: any, res: any) => {
     try {
       // Only allow admins to update errors
       if (!req.session?.isAuthenticated || req.session?.user?.role !== 'admin') {
@@ -9227,7 +9518,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Homeowner profile routes
-  app.patch('/api/homeowner/profile', async (req: any, res) => {
+  app.patch('/api/homeowner/profile', async (req: any, res: any) => {
     try {
       if (!req.session?.isAuthenticated || req.session?.user?.role !== 'homeowner') {
         return res.status(401).json({ message: "Unauthorized" });
@@ -9258,7 +9549,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/homeowner/notifications/preferences', async (req: any, res) => {
+  app.get('/api/homeowner/notifications/preferences', async (req: any, res: any) => {
     try {
       if (!req.session?.isAuthenticated || req.session?.user?.role !== 'homeowner') {
         return res.status(401).json({ message: "Unauthorized" });
@@ -9300,7 +9591,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/homeowner/notifications/preferences', async (req: any, res) => {
+  app.patch('/api/homeowner/notifications/preferences', async (req: any, res: any) => {
     try {
       if (!req.session?.isAuthenticated || req.session?.user?.role !== 'homeowner') {
         return res.status(401).json({ message: "Unauthorized" });
@@ -9391,7 +9682,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Contractor notification preferences - GET
-  app.get('/api/contractor/notifications/preferences', async (req: any, res) => {
+  app.get('/api/contractor/notifications/preferences', async (req: any, res: any) => {
     try {
       if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
         return res.status(401).json({ message: "Unauthorized" });
@@ -9437,7 +9728,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Contractor notification preferences - PATCH
-  app.patch('/api/contractor/notifications/preferences', async (req: any, res) => {
+  app.patch('/api/contractor/notifications/preferences', async (req: any, res: any) => {
     try {
       if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
         return res.status(401).json({ message: "Unauthorized" });
@@ -9506,7 +9797,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Contractor routes
-  app.get("/api/contractors", async (req, res) => {
+  app.get("/api/contractors", async (req: any, res: any) => {
     try {
       const filters = {
         services: req.query.services ? (req.query.services as string).split(',') : undefined,
@@ -9603,7 +9894,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/contractors/search", async (req, res) => {
+  app.get("/api/contractors/search", async (req: any, res: any) => {
     try {
       const query = req.query.q as string || "";
       const location = req.query.location as string;
@@ -9660,7 +9951,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get contractors used at a specific house
-  app.get("/api/houses/:houseId/contractors-used", isAuthenticated, async (req: any, res) => {
+  app.get("/api/houses/:houseId/contractors-used", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -9793,7 +10084,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all contractors previously used by homeowner (across all properties)
-  app.get("/api/contractors/previously-used", isAuthenticated, async (req: any, res) => {
+  app.get("/api/contractors/previously-used", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -9885,7 +10176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/contractors/:id", async (req, res) => {
+  app.get("/api/contractors/:id", async (req: any, res: any) => {
     try {
       console.log('[DEBUG] GET /api/contractors/:id - Looking for contractor ID:', req.params.id);
       let contractor = await storage.getContractor(req.params.id);
@@ -9907,8 +10198,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Build a contractor-like object - use contractor record for contact info, company for business profile
             contractor = {
               id: user.id,
-              name: contractorRecord?.name || user.name || '',
-              company: company.name || user.name || '',
+              name: contractorRecord?.name || (user as any).name || '',
+              company: company.name || (user as any).name || '',
               email: contractorRecord?.email || user.email || '',
               phone: contractorRecord?.phone || company.phone || '',
               address: contractorRecord?.address || company.address || '',
@@ -10003,7 +10294,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Contractor boost routes
-  app.post("/api/contractors/boost", isAuthenticated, async (req: any, res) => {
+  app.post("/api/contractors/boost", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -10021,14 +10312,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(boost);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid boost data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid boost data", errors: error.issues });
       }
       console.error("Error creating boost:", error);
       res.status(500).json({ message: "Failed to create boost" });
     }
   });
 
-  app.get("/api/contractors/boost/check", isAuthenticated, async (req: any, res) => {
+  app.get("/api/contractors/boost/check", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -10060,7 +10351,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/contractors/boost/:boostId", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/contractors/boost/:boostId", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -10127,11 +10418,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   //   - Safe to run multiple times; already-present records are counted as
   //     "skipped" in the response, not inserted again.
   // ─────────────────────────────────────────────────────────────────────
-  app.post("/api/admin/contractor-boosts/recover", requireAdmin, async (req: any, res) => {
+  app.post("/api/admin/contractor-boosts/recover", requireAdmin, async (req: any, res: any) => {
     try {
       const boostArraySchema = z.array(insertContractorBoostSchema.extend({
         id: z.string().uuid().optional(),
-      }));
+      }) as unknown as z.ZodTypeAny);
 
       const parsed = boostArraySchema.safeParse(req.body);
       if (!parsed.success) {
@@ -10199,7 +10490,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Company routes
-  app.post("/api/companies", isAuthenticated, async (req: any, res) => {
+  app.post("/api/companies", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const userRole = req.session.user.role;
@@ -10245,14 +10536,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(company);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid company data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid company data", errors: error.issues });
       }
       console.error("Error creating company:", error);
       res.status(500).json({ message: "Failed to create company" });
     }
   });
 
-  app.get("/api/companies/:id", async (req, res) => {
+  app.get("/api/companies/:id", async (req: any, res: any) => {
     try {
       const company = await storage.getCompany(req.params.id);
       if (!company) {
@@ -10265,7 +10556,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/companies/:id", isAuthenticated, async (req: any, res) => {
+  app.put("/api/companies/:id", isAuthenticated, async (req: any, res: any) => {
     try {
       console.log('[Company Update] Request received for company:', req.params.id);
       console.log('[Company Update] Request body:', JSON.stringify(req.body, null, 2));
@@ -10314,7 +10605,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(updatedCompany);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        console.log('[Company Update] Validation error:', error.errors);
+        console.log('[Company Update] Validation error:', error.issues);
         return res.status(400).json({ message: "Invalid company data", errors: error.errors });
       }
       console.error("[Company Update] Error updating company:", error);
@@ -10322,7 +10613,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/companies/:id/employees", isAuthenticated, async (req: any, res) => {
+  app.get("/api/companies/:id/employees", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const company = await storage.getCompany(req.params.id);
@@ -10345,7 +10636,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/companies/:id/employees/:userId", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/companies/:id/employees/:userId", isAuthenticated, async (req: any, res: any) => {
     try {
       const ownerId = req.session.user.id;
       const company = await storage.getCompany(req.params.id);
@@ -10388,7 +10679,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/companies/:id/employees/:userId/permissions", isAuthenticated, async (req: any, res) => {
+  app.put("/api/companies/:id/employees/:userId/permissions", isAuthenticated, async (req: any, res: any) => {
     try {
       const ownerId = req.session.user.id;
       const company = await storage.getCompany(req.params.id);
@@ -10429,7 +10720,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/companies/:id/invite-codes", isAuthenticated, async (req: any, res) => {
+  app.post("/api/companies/:id/invite-codes", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const company = await storage.getCompany(req.params.id);
@@ -10453,14 +10744,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(invite);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid invite data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid invite data", errors: error.issues });
       }
       console.error("Error creating invite code:", error);
       res.status(500).json({ message: "Failed to create invite code" });
     }
   });
 
-  app.get("/api/companies/:id/invite-codes", isAuthenticated, async (req: any, res) => {
+  app.get("/api/companies/:id/invite-codes", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const company = await storage.getCompany(req.params.id);
@@ -10482,7 +10773,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/companies/invite-codes/:code", async (req, res) => {
+  app.get("/api/companies/invite-codes/:code", async (req: any, res: any) => {
     try {
       const invite = await storage.getCompanyInviteCodeByCode(req.params.code);
       
@@ -10512,7 +10803,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Agent-specific routes
-  app.get("/api/agent/profile", isAuthenticated, async (req: any, res) => {
+  app.get("/api/agent/profile", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -10539,7 +10830,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/agent/profile", isAuthenticated, async (req: any, res) => {
+  app.put("/api/agent/profile", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -10583,7 +10874,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/agent/referrals", isAuthenticated, async (req: any, res) => {
+  app.get("/api/agent/referrals", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -10618,7 +10909,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/agent/stats", isAuthenticated, async (req: any, res) => {
+  app.get("/api/agent/stats", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -10641,7 +10932,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Stripe Connect onboarding for agents
-  app.post("/api/agent/stripe-connect/create-account", isAuthenticated, async (req: any, res) => {
+  app.post("/api/agent/stripe-connect/create-account", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -10677,7 +10968,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create a new Stripe Connect Express account
-      const account = await stripe.accounts.create({
+      const account = await stripe!.accounts.create({
         type: 'express',
         country: 'US',
         email: user.email || undefined,
@@ -10714,7 +11005,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Check Stripe Connect account status
-  app.get("/api/agent/stripe-connect/status", isAuthenticated, async (req: any, res) => {
+  app.get("/api/agent/stripe-connect/status", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -10742,7 +11033,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get the Stripe account details
-      const account = await stripe.accounts.retrieve(agentProfile.stripeConnectAccountId);
+      const account = await stripe!.accounts.retrieve(agentProfile.stripeConnectAccountId);
       
       const onboardingComplete = account.details_submitted && account.payouts_enabled;
       
@@ -10768,7 +11059,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get agent payout history
-  app.get("/api/agent/payouts", isAuthenticated, async (req: any, res) => {
+  app.get("/api/agent/payouts", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -10796,7 +11087,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       // Sort by most recent first
-      payoutsWithDetails.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      payoutsWithDetails.sort((a, b) => new Date(b.createdAt as any).getTime() - new Date(a.createdAt as any).getTime());
 
       res.json(payoutsWithDetails);
     } catch (error) {
@@ -10806,7 +11097,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Agent verification routes
-  app.post("/api/agent/upload-state-id", isAuthenticated, uploadLimiter, upload.single('stateId'), async (req: any, res) => {
+  app.post("/api/agent/upload-state-id", isAuthenticated, uploadLimiter, upload.single('stateId'), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -10883,7 +11174,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/agent/verification-status", isAuthenticated, async (req: any, res) => {
+  app.get("/api/agent/verification-status", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -10904,7 +11195,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/agent/submit-verification", isAuthenticated, async (req: any, res) => {
+  app.post("/api/agent/submit-verification", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -10979,7 +11270,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Agent profile picture upload endpoint
-  app.post("/api/agent/profile-picture", isAuthenticated, uploadLimiter, upload.single('image'), async (req: any, res) => {
+  app.post("/api/agent/profile-picture", isAuthenticated, uploadLimiter, upload.single('image'), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -11035,7 +11326,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/referral/validate/:code", async (req, res) => {
+  app.get("/api/referral/validate/:code", async (req: any, res: any) => {
     try {
       const { code } = req.params;
       
@@ -11057,7 +11348,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Product routes
-  app.get("/api/products", async (req, res) => {
+  app.get("/api/products", async (req: any, res: any) => {
     try {
       const filters = {
         category: req.query.category as string,
@@ -11072,7 +11363,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/products/search", async (req, res) => {
+  app.get("/api/products/search", async (req: any, res: any) => {
     try {
       const query = req.query.q as string || "";
       
@@ -11083,7 +11374,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/products/:id", async (req, res) => {
+  app.get("/api/products/:id", async (req: any, res: any) => {
     try {
       const product = await storage.getProduct(req.params.id);
       if (!product) {
@@ -11115,7 +11406,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // the home appliance make, type, and name. Falls back gracefully (found: false)
   // on network errors, non-JSON responses, or when no appliance match is found.
   // No paid API key required.
-  app.get("/api/appliances/lookup", async (req, res) => {
+  app.get("/api/appliances/lookup", async (req: any, res: any) => {
     const modelNumber = (req.query.modelNumber as string || "").trim();
     if (!modelNumber || modelNumber.length < 3) {
       return res.status(400).json({ message: "modelNumber query param is required (min 3 chars)" });
@@ -11217,7 +11508,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Home Appliance routes
-  app.get("/api/appliances", async (req, res) => {
+  app.get("/api/appliances", async (req: any, res: any) => {
     try {
       const homeownerId = req.query.homeownerId as string;
       const houseId = req.query.houseId as string;
@@ -11228,7 +11519,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/appliances/:id", async (req, res) => {
+  app.get("/api/appliances/:id", async (req: any, res: any) => {
     try {
       const appliance = await storage.getHomeAppliance(req.params.id);
       if (!appliance) {
@@ -11240,20 +11531,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/appliances", async (req, res) => {
+  app.post("/api/appliances", async (req: any, res: any) => {
     try {
       const applianceData = insertHomeApplianceSchema.parse(req.body);
       const appliance = await storage.createHomeAppliance(applianceData);
       res.status(201).json(appliance);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid appliance data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid appliance data", errors: error.issues });
       }
       res.status(500).json({ message: "Failed to create appliance" });
     }
   });
 
-  app.patch("/api/appliances/:id", async (req, res) => {
+  app.patch("/api/appliances/:id", async (req: any, res: any) => {
     try {
       const partialData = insertHomeApplianceSchema.partial().parse(req.body);
       const appliance = await storage.updateHomeAppliance(req.params.id, partialData);
@@ -11263,13 +11554,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(appliance);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid appliance data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid appliance data", errors: error.issues });
       }
       res.status(500).json({ message: "Failed to update appliance" });
     }
   });
 
-  app.delete("/api/appliances/:id", async (req, res) => {
+  app.delete("/api/appliances/:id", async (req: any, res: any) => {
     try {
       const deleted = await storage.deleteHomeAppliance(req.params.id);
       if (!deleted) {
@@ -11282,7 +11573,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Home Appliance Manual routes
-  app.get("/api/appliances/:applianceId/manuals", async (req, res) => {
+  app.get("/api/appliances/:applianceId/manuals", async (req: any, res: any) => {
     try {
       const manuals = await storage.getHomeApplianceManuals(req.params.applianceId);
       res.json(manuals);
@@ -11291,7 +11582,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/appliance-manuals/:id", async (req, res) => {
+  app.get("/api/appliance-manuals/:id", async (req: any, res: any) => {
     try {
       const manual = await storage.getHomeApplianceManual(req.params.id);
       if (!manual) {
@@ -11303,7 +11594,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/appliances/:applianceId/manuals", async (req, res) => {
+  app.post("/api/appliances/:applianceId/manuals", async (req: any, res: any) => {
     try {
       const manualData = insertHomeApplianceManualSchema.parse({
         ...req.body,
@@ -11313,13 +11604,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(manual);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid manual data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid manual data", errors: error.issues });
       }
       res.status(500).json({ message: "Failed to create manual" });
     }
   });
 
-  app.patch("/api/appliance-manuals/:id", async (req, res) => {
+  app.patch("/api/appliance-manuals/:id", async (req: any, res: any) => {
     try {
       const partialData = insertHomeApplianceManualSchema.partial().parse(req.body);
       const manual = await storage.updateHomeApplianceManual(req.params.id, partialData);
@@ -11329,13 +11620,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(manual);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid manual data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid manual data", errors: error.issues });
       }
       res.status(500).json({ message: "Failed to update manual" });
     }
   });
 
-  app.delete("/api/appliance-manuals/:id", async (req, res) => {
+  app.delete("/api/appliance-manuals/:id", async (req: any, res: any) => {
     try {
       const deleted = await storage.deleteHomeApplianceManual(req.params.id);
       if (!deleted) {
@@ -11348,7 +11639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Maintenance Log routes - PAID FEATURE
-  app.get("/api/maintenance-logs", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res) => {
+  app.get("/api/maintenance-logs", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       // Always use authenticated user's ID, ignore query params to prevent IDOR
       const homeownerId = req.session.user.id;
@@ -11370,7 +11661,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/maintenance-logs/:id", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res) => {
+  app.get("/api/maintenance-logs/:id", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       const log = await storage.getMaintenanceLog(req.params.id);
       if (!log || log.homeownerId !== req.session.user.id) {
@@ -11382,7 +11673,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/maintenance-logs", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res) => {
+  app.post("/api/maintenance-logs", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       // Validate request body (excluding homeownerId which we set from session)
       const validatedData = insertMaintenanceLogSchema.omit({ homeownerId: true }).parse(req.body);
@@ -11397,14 +11688,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(log);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid maintenance log data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid maintenance log data", errors: error.issues });
       }
       res.status(500).json({ message: "Failed to create maintenance log" });
     }
   });
 
   // Complete a maintenance task with DIY or contractor method
-  app.post("/api/maintenance-logs/complete-task", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.post("/api/maintenance-logs/complete-task", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       // Validate request body with Zod schema
       const validatedData = completeTaskSchema.parse(req.body);
@@ -11419,7 +11710,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Calculate DIY savings using shared helper function
       let diySavingsAmount: string | null = null;
       if (completionMethod === 'diy' && costEstimate) {
-        const savingsNumber = calculateDIYSavingsAmount(costEstimate);
+        const savingsNumber = calculateDIYSavingsAmount(costEstimate as any);
         diySavingsAmount = savingsNumber > 0 ? savingsNumber.toString() : null;
       }
       
@@ -11451,7 +11742,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cost: contractorCostStr
       };
       
-      const log = await storage.createMaintenanceLog(logData);
+      const log = await storage.createMaintenanceLog(logData as any);
       
       // Also create task completion record for health score tracking
       const now = new Date();
@@ -11506,14 +11797,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid task completion data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid task completion data", errors: error.issues });
       }
       console.error("Error completing task:", error);
       res.status(500).json({ message: "Failed to complete task" });
     }
   });
 
-  app.patch("/api/maintenance-logs/:id", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res) => {
+  app.patch("/api/maintenance-logs/:id", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       // Verify the maintenance log belongs to the authenticated user
       const existingLog = await storage.getMaintenanceLog(req.params.id);
@@ -11531,13 +11822,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(log);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid maintenance log data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid maintenance log data", errors: error.issues });
       }
       res.status(500).json({ message: "Failed to update maintenance log" });
     }
   });
 
-  app.delete("/api/maintenance-logs/:id", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res) => {
+  app.delete("/api/maintenance-logs/:id", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       // Verify the maintenance log belongs to the authenticated user
       const existingLog = await storage.getMaintenanceLog(req.params.id);
@@ -11556,7 +11847,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Custom Maintenance Task routes
-  app.get("/api/custom-maintenance-tasks", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.get("/api/custom-maintenance-tasks", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       // Always use authenticated user's ID, ignore query params to prevent IDOR
       const homeownerId = req.session.user.id;
@@ -11578,7 +11869,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/custom-maintenance-tasks/:id", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.get("/api/custom-maintenance-tasks/:id", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       const task = await storage.getCustomMaintenanceTask(req.params.id);
       if (!task || task.homeownerId !== req.session.user.id) {
@@ -11590,7 +11881,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/custom-maintenance-tasks", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.post("/api/custom-maintenance-tasks", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       // Validate request body (excluding homeownerId which we set from session)
       const validatedData = insertCustomMaintenanceTaskSchema.omit({ homeownerId: true }).parse(req.body);
@@ -11613,13 +11904,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(task);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid custom maintenance task data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid custom maintenance task data", errors: error.issues });
       }
       res.status(500).json({ message: "Failed to create custom maintenance task" });
     }
   });
 
-  app.patch("/api/custom-maintenance-tasks/:id", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.patch("/api/custom-maintenance-tasks/:id", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       // Verify the custom maintenance task belongs to the authenticated user
       const existingTask = await storage.getCustomMaintenanceTask(req.params.id);
@@ -11645,13 +11936,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(task);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid custom maintenance task data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid custom maintenance task data", errors: error.issues });
       }
       res.status(500).json({ message: "Failed to update custom maintenance task" });
     }
   });
 
-  app.delete("/api/custom-maintenance-tasks/:id", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.delete("/api/custom-maintenance-tasks/:id", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       // Verify the custom maintenance task belongs to the authenticated user
       const existingTask = await storage.getCustomMaintenanceTask(req.params.id);
@@ -11670,7 +11961,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Task override routes for customizing default regional tasks
-  app.get("/api/houses/:houseId/task-overrides", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.get("/api/houses/:houseId/task-overrides", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       const homeownerId = req.session.user.id;
       const houseId = req.params.houseId;
@@ -11688,7 +11979,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/houses/:houseId/task-overrides", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.post("/api/houses/:houseId/task-overrides", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       const homeownerId = req.session.user.id;
       const houseId = req.params.houseId;
@@ -11712,13 +12003,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(override);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid task override data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid task override data", errors: error.issues });
       }
       res.status(500).json({ message: "Failed to create task override" });
     }
   });
 
-  app.delete("/api/houses/:houseId/task-overrides/:taskId", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.delete("/api/houses/:houseId/task-overrides/:taskId", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       const homeownerId = req.session.user.id;
       const houseId = req.params.houseId;
@@ -11741,7 +12032,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Proposal routes
-  app.get("/api/proposals", isAuthenticated, async (req: any, res) => {
+  app.get("/api/proposals", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const contractorId = req.query.contractorId as string | undefined;
@@ -11771,7 +12062,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/proposals/:id", isAuthenticated, async (req: any, res) => {
+  app.get("/api/proposals/:id", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const proposal = await storage.getProposal(req.params.id);
@@ -11787,7 +12078,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/proposals", isAuthenticated, async (req: any, res) => {
+  app.post("/api/proposals", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const proposalData = insertProposalSchema.parse({
@@ -11802,7 +12093,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const company = contractorUser?.companyId 
           ? await storage.getCompany(contractorUser.companyId)
           : null;
-        const contractorName = company?.name || contractorUser?.name || 'A contractor';
+        const contractorName = company?.name || (contractorUser ? `${contractorUser.firstName || ''} ${contractorUser.lastName || ''}`.trim() : '') || 'A contractor';
         
         await storage.createNotification({
           homeownerId: proposal.homeownerId,
@@ -11811,20 +12102,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: `${contractorName} sent you a proposal: ${proposal.title}`,
           link: '/messages',
           priority: 'high'
-        });
+        } as any);
       }
       
       res.status(201).json(proposal);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid proposal data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid proposal data", errors: error.issues });
       }
       console.error("Error creating proposal:", error);
       res.status(500).json({ message: "Failed to create proposal" });
     }
   });
 
-  app.patch("/api/proposals/:id", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/proposals/:id", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const partialData = insertProposalSchema.partial().parse(req.body);
@@ -11846,7 +12137,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const company = contractorUser?.companyId 
           ? await storage.getCompany(contractorUser.companyId)
           : null;
-        const contractorName = company?.name || contractorUser?.name || 'A contractor';
+        const contractorName = company?.name || (contractorUser ? `${contractorUser.firstName || ''} ${contractorUser.lastName || ''}`.trim() : '') || 'A contractor';
         
         await storage.createNotification({
           homeownerId: proposal.homeownerId,
@@ -11855,7 +12146,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: `${contractorName} sent you a proposal: ${proposal.title}`,
           link: '/messages',
           priority: 'high'
-        });
+        } as any);
       }
       
       if (oldProposal && oldProposal.status !== 'accepted' && proposal.status === 'accepted' && proposal.homeownerId) {
@@ -11873,7 +12164,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(proposal);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid proposal data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid proposal data", errors: error.issues });
       }
       console.error("Error updating proposal:", error);
       res.status(500).json({ message: "Failed to update proposal" });
@@ -11881,7 +12172,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // E-signature route for proposals
-  app.post("/api/proposals/:id/sign", isAuthenticated, async (req: any, res) => {
+  app.post("/api/proposals/:id/sign", isAuthenticated, async (req: any, res: any) => {
     try {
       const proposalId = req.params.id;
       const userId = req.session.user.id;
@@ -11928,7 +12219,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Upload contract file for proposal
-  app.post("/api/proposals/:id/contract", isAuthenticated, async (req: any, res) => {
+  app.post("/api/proposals/:id/contract", isAuthenticated, async (req: any, res: any) => {
     try {
       const proposalId = req.params.id;
       const userId = req.session.user.id;
@@ -11963,7 +12254,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/proposals/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/proposals/:id", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const proposal = await storage.getProposal(req.params.id);
@@ -11988,7 +12279,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Contractor Appointment routes
-  app.get("/api/appointments", async (req, res) => {
+  app.get("/api/appointments", async (req: any, res: any) => {
     try {
       const homeownerId = req.query.homeownerId as string;
       const appointments = await storage.getContractorAppointments(homeownerId);
@@ -11998,7 +12289,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/appointments/:id", async (req, res) => {
+  app.get("/api/appointments/:id", async (req: any, res: any) => {
     try {
       const appointment = await storage.getContractorAppointment(req.params.id);
       if (!appointment) {
@@ -12010,7 +12301,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/appointments", isAuthenticated, async (req: any, res) => {
+  app.post("/api/appointments", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const userRole = req.session.user.role;
@@ -12041,10 +12332,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? await storage.getCompany(contractor.companyId)
           : null;
         const contractorName = company?.name || 'Your contractor';
-        const appointmentDate = appointmentData.scheduledDate 
-          ? new Date(appointmentData.scheduledDate).toLocaleDateString()
+        const appointmentDate = appointmentData.scheduledDateTime 
+          ? new Date(appointmentData.scheduledDateTime).toLocaleDateString()
           : 'TBD';
-        const appointmentTime = appointmentData.scheduledTime || 'TBD';
+        const appointmentTime = appointmentData.scheduledDateTime
+          ? new Date(appointmentData.scheduledDateTime).toLocaleTimeString()
+          : 'TBD';
         
         smsService.sendAppointmentConfirmation(
           appointmentData.homeownerId,
@@ -12057,13 +12350,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(appointment);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid appointment data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid appointment data", errors: error.issues });
       }
       res.status(500).json({ message: "Failed to create appointment" });
     }
   });
 
-  app.patch("/api/appointments/:id", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/appointments/:id", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const userRole = req.session.user.role;
@@ -12087,13 +12380,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(appointment);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid appointment data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid appointment data", errors: error.issues });
       }
       res.status(500).json({ message: "Failed to update appointment" });
     }
   });
 
-  app.delete("/api/appointments/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/appointments/:id", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const userRole = req.session.user.role;
@@ -12123,7 +12416,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Notification routes
-  app.get("/api/notifications", isAuthenticated, async (req: any, res) => {
+  app.get("/api/notifications", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const userRole = req.session.user.role;
@@ -12143,7 +12436,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/notifications/unread", isAuthenticated, async (req: any, res) => {
+  app.get("/api/notifications/unread", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const userRole = req.session.user.role;
@@ -12163,7 +12456,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/notifications/:id/read", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/notifications/:id/read", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       
@@ -12187,7 +12480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/notifications/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/notifications/:id", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       
@@ -12212,7 +12505,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Generate maintenance notifications for current month
-  app.post("/api/notifications/maintenance", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.post("/api/notifications/maintenance", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       const { homeownerId, tasks } = req.body;
       if (!homeownerId || !Array.isArray(tasks)) {
@@ -12307,7 +12600,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // House management routes
-  app.get("/api/houses", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.get("/api/houses", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       // Always use authenticated user's ID, ignore query params
       const homeownerId = req.session.user.id;
@@ -12326,7 +12619,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/houses/:id", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.get("/api/houses/:id", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       const house = await storage.getHouse(req.params.id);
       if (!house || house.homeownerId !== req.session.user.id) {
@@ -12338,7 +12631,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/houses", isAuthenticated, requirePropertyOwner, async (req: any, res) => {  
+  app.post("/api/houses", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {  
     try {
       // Validate request body (excluding homeownerId which we set from session)
       const validatedData = insertHouseSchema.omit({ homeownerId: true }).parse(req.body);
@@ -12436,13 +12729,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(house);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid request data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid request data", errors: error.issues });
       }
       res.status(500).json({ message: "Failed to create house" });
     }
   });
 
-  app.delete("/api/houses/:id", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.delete("/api/houses/:id", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       // Verify the house belongs to the authenticated user
       const house = await storage.getHouse(req.params.id);
@@ -12460,7 +12753,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/houses/:id", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.put("/api/houses/:id", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       // Verify the house belongs to the authenticated user
       const existingHouse = await storage.getHouse(req.params.id);
@@ -12488,14 +12781,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(house);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid request data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid request data", errors: error.issues });
       }
       res.status(500).json({ message: "Failed to update house" });
     }
   });
 
   // Get maintenance tasks for a specific house
-  app.get("/api/houses/:id/maintenance-tasks", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.get("/api/houses/:id/maintenance-tasks", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       const house = await storage.getHouse(req.params.id);
       if (!house || house.homeownerId !== req.session.user.id) {
@@ -12534,7 +12827,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update household profile for a house
-  app.patch("/api/houses/:id/profile", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.patch("/api/houses/:id/profile", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       // Verify the house belongs to the authenticated user
       const existingHouse = await storage.getHouse(req.params.id);
@@ -12553,14 +12846,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(house);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid request data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid request data", errors: error.issues });
       }
       res.status(500).json({ message: "Failed to update household profile" });
     }
   });
 
   // Get generated maintenance schedule for a house - PAID FEATURE
-  app.get("/api/houses/:id/schedule", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res) => {
+  app.get("/api/houses/:id/schedule", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       const house = await storage.getHouse(req.params.id);
       if (!house || house.homeownerId !== req.session.user.id) {
@@ -12586,7 +12879,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get home health score for a house - PAID FEATURE
-  app.get("/api/houses/:id/health-score", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res) => {
+  app.get("/api/houses/:id/health-score", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       const houseId = req.params.id;
       const homeownerId = req.session.user.id;
@@ -12625,7 +12918,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get total DIY savings for a house - PAID FEATURE
-  app.get("/api/houses/:id/diy-savings", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res) => {
+  app.get("/api/houses/:id/diy-savings", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       const houseId = req.params.id;
       const homeownerId = req.session.user.id;
@@ -12662,7 +12955,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // House Transfer routes
-  app.post("/api/house-transfers", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.post("/api/house-transfers", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       const homeownerId = req.session.user.id;
       
@@ -12688,6 +12981,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Generate secure token and expiry server-side
+      const token = randomBytes(32).toString('hex');
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
       
       // Create transfer request with server-generated security fields
@@ -12701,13 +12995,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(transfer);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid request data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid request data", errors: error.issues });
       }
       res.status(500).json({ message: "Failed to create house transfer request" });
     }
   });
 
-  app.get("/api/house-transfers", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.get("/api/house-transfers", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       const homeownerId = req.session.user.id;
       const transfers = await storage.getHouseTransfersForUser(homeownerId);
@@ -12717,7 +13011,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/house-transfers/:id", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.get("/api/house-transfers/:id", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       const homeownerId = req.session.user.id;
       const transfer = await storage.getHouseTransfer(req.params.id);
@@ -12737,7 +13031,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/house-transfers/token/:token", async (req: any, res) => {
+  app.get("/api/house-transfers/token/:token", async (req: any, res: any) => {
     try {
       const transfer = await storage.getHouseTransferByToken(req.params.token);
       
@@ -12748,7 +13042,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if token is still valid
       const tokenExpiry = transfer.expiresAt ? 
         new Date(transfer.expiresAt) : 
-        new Date(new Date(transfer.createdAt).getTime() + 7*24*60*60*1000);
+        new Date(new Date(transfer.createdAt ?? Date.now()).getTime() + 7*24*60*60*1000);
       
       if (new Date() > tokenExpiry) {
         return res.status(410).json({ message: "Transfer token has expired" });
@@ -12760,7 +13054,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/house-transfers/:id/accept", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.post("/api/house-transfers/:id/accept", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       const homeownerId = req.session.user.id;
       const transfer = await storage.getHouseTransfer(req.params.id);
@@ -12853,7 +13147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/house-transfers/:id/confirm", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.post("/api/house-transfers/:id/confirm", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       const homeownerId = req.session.user.id;
       const transfer = await storage.getHouseTransfer(req.params.id);
@@ -12904,7 +13198,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Home Systems routes
-  app.get("/api/home-systems", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.get("/api/home-systems", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       // Always use authenticated user's ID, ignore query params to prevent IDOR
       const homeownerId = req.session.user.id;
@@ -12926,7 +13220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/home-systems/:id", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.get("/api/home-systems/:id", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       const system = await storage.getHomeSystem(req.params.id);
       if (!system) {
@@ -12950,7 +13244,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/home-systems", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.post("/api/home-systems", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       const systemData = insertHomeSystemSchema.parse(req.body);
       
@@ -12968,13 +13262,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(system);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid home system data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid home system data", errors: error.issues });
       }
       res.status(500).json({ message: "Failed to create home system" });
     }
   });
 
-  app.patch("/api/home-systems/:id", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.patch("/api/home-systems/:id", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       // Verify the home system belongs to a house owned by the authenticated user
       const existingSystem = await storage.getHomeSystem(req.params.id);
@@ -13008,13 +13302,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(system);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid home system data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid home system data", errors: error.issues });
       }
       res.status(500).json({ message: "Failed to update home system" });
     }
   });
 
-  app.delete("/api/home-systems/:id", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.delete("/api/home-systems/:id", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       // Verify the home system belongs to a house owned by the authenticated user
       const existingSystem = await storage.getHomeSystem(req.params.id);
@@ -13042,7 +13336,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/home-systems/extract-pdf — AI reads a PDF/image and extracts home system fields
-  app.post("/api/home-systems/extract-pdf", isAuthenticated, requirePropertyOwner, upload.single("file"), async (req: any, res) => {
+  app.post("/api/home-systems/extract-pdf", isAuthenticated, requirePropertyOwner, upload.single("file"), async (req: any, res: any) => {
     try {
       if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
@@ -13061,8 +13355,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else if (req.file.mimetype.startsWith("image/")) {
         // For images, use OpenAI vision
         const base64 = req.file.buffer.toString("base64");
-        const { openai } = await import("./openai");
-        const visionRes = await openai.chat.completions.create({
+        const openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || process.env.REPLIT_OPENAI_API_KEY });
+        const visionRes = await openaiClient.chat.completions.create({
           model: "gpt-4o-mini",
           messages: [{
             role: "user",
@@ -13101,7 +13395,7 @@ Return ONLY a JSON object with these fields (use null for any field you cannot f
       // Truncate to ~4000 tokens worth of text
       const truncated = documentText.slice(0, 12000);
 
-      const { openai } = await import("./openai");
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
       const completion = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
@@ -13139,7 +13433,7 @@ Return ONLY a JSON object with these fields (use null for any field you cannot c
   // Alias for the canonical /api/houses/:houseId/disclosure GET route below.
   // Kept for compatibility with My Home CTA query cache key (/api/houses/:id/disclosure).
   // Canonical routes are /api/houses/:houseId/disclosure (GET/PUT).
-  app.get("/api/disclosures/:houseId", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.get("/api/disclosures/:houseId", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       const { houseId } = req.params;
       const userId = req.session.user.id;
@@ -13190,7 +13484,7 @@ Return ONLY a JSON object with these fields (use null for any field you cannot c
   app.put("/api/disclosures/:houseId", isAuthenticated, requirePropertyOwner, handleDisclosurePut);
 
   // Canonical disclosure routes: /api/houses/:houseId/disclosure
-  app.get("/api/houses/:houseId/disclosure", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.get("/api/houses/:houseId/disclosure", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       const { houseId } = req.params;
       const userId = req.session.user.id;
@@ -13211,7 +13505,7 @@ Return ONLY a JSON object with these fields (use null for any field you cannot c
   // AI Disclosure Suggestion: POST /api/houses/:houseId/disclosure/ai-suggest
   // Accepts the current form's question list, fetches house/systems/logs, calls GPT-4o-mini,
   // and returns suggested answers keyed by question ID.
-  app.post("/api/houses/:houseId/disclosure/ai-suggest", isAuthenticated, requireHomeownerSubscription, async (req: any, res) => {
+  app.post("/api/houses/:houseId/disclosure/ai-suggest", isAuthenticated, requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       const { houseId } = req.params;
       const userId = req.session.user.id;
@@ -13345,7 +13639,7 @@ ${JSON.stringify(questions.map(q => ({ id: q.id, text: q.text, type: q.type, ...
   });
 
   // ===== AI MAINTENANCE PRIORITY COACH =====
-  app.post("/api/houses/:houseId/maintenance-coach", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res) => {
+  app.post("/api/houses/:houseId/maintenance-coach", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       const { houseId } = req.params;
       const homeownerId = req.session.user.id;
@@ -13546,7 +13840,7 @@ Include up to 3 tasks (fewer if fewer than 3 are pending). Do not include null e
   });
 
   // ===== AI HOME RESALE READINESS REPORT =====
-  app.post("/api/houses/:houseId/resale-readiness", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res) => {
+  app.post("/api/houses/:houseId/resale-readiness", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       const { houseId } = req.params;
       const homeownerId = req.session.user.id;
@@ -13763,7 +14057,7 @@ Respond ONLY with valid JSON (no markdown, no code fences):
   });
 
   // ===== AI INSURANCE PREP ASSISTANT =====
-  app.post("/api/houses/:houseId/insurance-prep", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res) => {
+  app.post("/api/houses/:houseId/insurance-prep", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       const { houseId } = req.params;
       const homeownerId = req.session.user.id;
@@ -14008,7 +14302,7 @@ Respond ONLY with valid JSON (no markdown, no code fences):
   });
 
   // ===== INSURANCE PREP — EMAIL TO ADJUSTER =====
-  app.post("/api/insurance-prep/send-email", isAuthenticated, requireHomeownerSubscription, async (req: any, res) => {
+  app.post("/api/insurance-prep/send-email", isAuthenticated, requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       const bodySchema = z.object({
         adjusterEmail: z.string().email(),
@@ -14158,7 +14452,7 @@ ${esc(claimMemo)}
   });
 
   // List past insurance claim packages for a house
-  app.get("/api/houses/:houseId/insurance-claim-packages", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.get("/api/houses/:houseId/insurance-claim-packages", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       const { houseId } = req.params;
       const homeownerId = req.session.user.id;
@@ -14175,7 +14469,7 @@ ${esc(claimMemo)}
   });
 
   // Fetch a specific past insurance claim package
-  app.get("/api/houses/:houseId/insurance-claim-packages/:packageId", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.get("/api/houses/:houseId/insurance-claim-packages/:packageId", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       const { packageId } = req.params;
       const homeownerId = req.session.user.id;
@@ -14192,7 +14486,7 @@ ${esc(claimMemo)}
     }
   });
 
-  app.get("/api/insurance-prep/email-logs", isAuthenticated, requireHomeownerSubscription, async (req: any, res) => {
+  app.get("/api/insurance-prep/email-logs", isAuthenticated, requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const logs = await storage.getInsuranceEmailLogs(userId);
@@ -14204,7 +14498,7 @@ ${esc(claimMemo)}
   });
 
   // ===== AI CONTRACTOR MESSAGE DRAFTING =====
-  app.post("/api/ai/draft-contractor-message", isAuthenticated, requireHomeownerSubscription, async (req: any, res) => {
+  app.post("/api/ai/draft-contractor-message", isAuthenticated, requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
 
@@ -14277,7 +14571,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Contractor subscription endpoint
-  app.get('/api/contractor/subscription', async (req: any, res) => {
+  app.get('/api/contractor/subscription', async (req: any, res: any) => {
     try {
       if (!req.session?.isAuthenticated || !req.session?.user) {
         return res.status(401).json({ message: 'Unauthorized' });
@@ -14440,7 +14734,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Phase 6 — Preview upgrade cost breakdown (Business tier per-seat pricing)
-  app.post('/api/contractor/subscription/preview-upgrade', isAuthenticated, async (req: any, res) => {
+  app.post('/api/contractor/subscription/preview-upgrade', isAuthenticated, async (req: any, res: any) => {
     try {
       if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
         return res.status(401).json({ message: 'Unauthorized' });
@@ -14489,7 +14783,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Phase 6 — Stripe Customer Portal (self-service billing management)
-  app.get('/api/contractor/billing/portal', isAuthenticated, async (req: any, res) => {
+  app.get('/api/contractor/billing/portal', isAuthenticated, async (req: any, res: any) => {
     try {
       if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
         return res.status(401).json({ message: 'Unauthorized' });
@@ -14515,7 +14809,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Contractor home management routes 
-  app.get('/api/contractor/my-home', async (req: any, res) => {
+  app.get('/api/contractor/my-home', async (req: any, res: any) => {
     try {
       if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
         return res.status(401).json({ message: "Unauthorized" });
@@ -14530,7 +14824,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.post('/api/contractor/my-home', async (req: any, res) => {
+  app.post('/api/contractor/my-home', async (req: any, res: any) => {
     try {
       if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
         return res.status(401).json({ message: "Unauthorized" });
@@ -14556,14 +14850,14 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       res.status(201).json(house);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid house data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid house data", errors: error.issues });
       }
       console.error("Error creating contractor house:", error);
       res.status(500).json({ message: "Failed to create house" });
     }
   });
 
-  app.patch('/api/contractor/my-home/:houseId', async (req: any, res) => {
+  app.patch('/api/contractor/my-home/:houseId', async (req: any, res: any) => {
     try {
       if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
         return res.status(401).json({ message: "Unauthorized" });
@@ -14585,14 +14879,14 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       res.json(house);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid house data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid house data", errors: error.issues });
       }
       console.error("Error updating contractor house:", error);
       res.status(500).json({ message: "Failed to update house" });
     }
   });
 
-  app.delete('/api/contractor/my-home/:houseId', async (req: any, res) => {
+  app.delete('/api/contractor/my-home/:houseId', async (req: any, res: any) => {
     try {
       if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
         return res.status(401).json({ message: "Unauthorized" });
@@ -14618,7 +14912,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.get('/api/contractor/my-home/tasks', async (req: any, res) => {
+  app.get('/api/contractor/my-home/tasks', async (req: any, res: any) => {
     try {
       if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
         return res.status(401).json({ message: "Unauthorized" });
@@ -14661,7 +14955,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Contractor profile routes
-  app.get('/api/contractor/profile', requireContractorSubscription, async (req: any, res) => {
+  app.get('/api/contractor/profile', requireContractorSubscription, async (req: any, res: any) => {
     try {
       if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
         return res.status(401).json({ message: "Unauthorized" });
@@ -14744,7 +15038,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.put('/api/contractor/profile', requireContractorSubscription, async (req: any, res) => {
+  app.put('/api/contractor/profile', requireContractorSubscription, async (req: any, res: any) => {
     try {
       console.log('[DEBUG] PUT /api/contractor/profile - Session:', {
         isAuthenticated: req.session?.isAuthenticated,
@@ -14840,7 +15134,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Contractor licenses routes
-  app.get('/api/contractor/licenses', async (req: any, res) => {
+  app.get('/api/contractor/licenses', async (req: any, res: any) => {
     try {
       if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
         return res.status(401).json({ message: "Unauthorized" });
@@ -14855,7 +15149,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.post('/api/contractor/licenses', async (req: any, res) => {
+  app.post('/api/contractor/licenses', async (req: any, res: any) => {
     try {
       if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
         return res.status(401).json({ message: "Unauthorized" });
@@ -14871,7 +15165,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.put('/api/contractor/licenses/:id', async (req: any, res) => {
+  app.put('/api/contractor/licenses/:id', async (req: any, res: any) => {
     try {
       if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
         return res.status(401).json({ message: "Unauthorized" });
@@ -14893,7 +15187,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.delete('/api/contractor/licenses/:id', async (req: any, res) => {
+  app.delete('/api/contractor/licenses/:id', async (req: any, res: any) => {
     try {
       if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
         return res.status(401).json({ message: "Unauthorized" });
@@ -14915,7 +15209,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Service records routes - PAID FEATURE
-  app.get('/api/service-records', isAuthenticated, requireHomeownerSubscription, async (req: any, res) => {
+  app.get('/api/service-records', isAuthenticated, requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const userRole = req.session.user.role;
@@ -14945,7 +15239,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.get('/api/service-records/:id', isAuthenticated, requireHomeownerSubscription, async (req: any, res) => {
+  app.get('/api/service-records/:id', isAuthenticated, requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       const { id } = req.params;
       const serviceRecord = await storage.getServiceRecord(id);
@@ -14959,7 +15253,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.post('/api/service-records', isAuthenticated, requireHomeownerSubscription, async (req: any, res) => {
+  app.post('/api/service-records', isAuthenticated, requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       const contractorId = req.session.user.id;
       const serviceRecordData = {
@@ -14986,7 +15280,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.put('/api/service-records/:id', isAuthenticated, async (req: any, res) => {
+  app.put('/api/service-records/:id', isAuthenticated, async (req: any, res: any) => {
     try {
       const { id } = req.params;
       const serviceRecord = await storage.updateServiceRecord(id, req.body);
@@ -15012,7 +15306,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.delete('/api/service-records/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/service-records/:id', isAuthenticated, async (req: any, res: any) => {
     try {
       const { id } = req.params;
       const deleted = await storage.deleteServiceRecord(id);
@@ -15027,7 +15321,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Homeowner service records endpoint
-  app.get('/api/homeowner-service-records', isAuthenticated, async (req: any, res) => {
+  app.get('/api/homeowner-service-records', isAuthenticated, async (req: any, res: any) => {
     try {
       const homeownerId = req.session.user.id;
       const serviceRecords = await storage.getHomeownerServiceRecords(homeownerId);
@@ -15054,7 +15348,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Customer service records routes
-  app.get('/api/customer-service-records', isAuthenticated, async (req: any, res) => {
+  app.get('/api/customer-service-records', isAuthenticated, async (req: any, res: any) => {
     try {
       const customerId = req.session.user.id;
       const customerEmail = req.session.user.email;
@@ -15069,7 +15363,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Permanent connection code routes (attached to user account)
-  app.get('/api/permanent-connection-code', isAuthenticated, async (req: any, res) => {
+  app.get('/api/permanent-connection-code', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const userRole = req.session.user.role;
@@ -15087,7 +15381,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.post('/api/permanent-connection-code/regenerate', isAuthenticated, async (req: any, res) => {
+  app.post('/api/permanent-connection-code/regenerate', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const userRole = req.session.user.role;
@@ -15105,7 +15399,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.post('/api/permanent-connection-code/validate', isAuthenticated, authLimiter, async (req: any, res) => {
+  app.post('/api/permanent-connection-code/validate', isAuthenticated, authLimiter, async (req: any, res: any) => {
     try {
       const userRole = req.session.user.role;
       
@@ -15132,14 +15426,14 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     } catch (error) {
       console.error("Error validating connection code:", error);
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid code format", errors: error.errors });
+        return res.status(400).json({ message: "Invalid code format", errors: error.issues });
       }
       res.status(500).json({ message: "Failed to validate connection code" });
     }
   });
 
   // Get count of unclaimed linked invoices (unreviewed by homeowner)
-  app.get('/api/homeowner/linked-invoices/unclaimed-count', isAuthenticated, async (req: any, res) => {
+  app.get('/api/homeowner/linked-invoices/unclaimed-count', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const userRole = req.session.user.role;
@@ -15165,7 +15459,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Mark all linked invoices as viewed for the homeowner (bulk)
-  app.post('/api/homeowner/linked-invoices/mark-all-viewed', isAuthenticated, async (req: any, res) => {
+  app.post('/api/homeowner/linked-invoices/mark-all-viewed', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const userRole = req.session.user.role;
@@ -15183,7 +15477,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Mark a linked invoice as viewed by the homeowner
-  app.patch('/api/homeowner/linked-invoices/:id/mark-viewed', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/homeowner/linked-invoices/:id/mark-viewed', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const userRole = req.session.user.role;
@@ -15206,7 +15500,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Get invoices linked to the authenticated homeowner via connection code
-  app.get('/api/homeowner/linked-invoices', isAuthenticated, async (req: any, res) => {
+  app.get('/api/homeowner/linked-invoices', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const userRole = req.session.user.role;
@@ -15234,7 +15528,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
           contractorName: contractor?.firstName && contractor?.lastName
             ? `${contractor.firstName} ${contractor.lastName}`
             : contractor?.email || 'Contractor',
-          companyName: company?.businessName || null,
+          companyName: company?.name || null,
         };
       }));
 
@@ -15246,7 +15540,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Claim a linked invoice into the homeowner's home history as a service record
-  app.post('/api/claim-invoice/:invoiceId', isAuthenticated, async (req: any, res) => {
+  app.post('/api/claim-invoice/:invoiceId', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const userRole = req.session.user.role;
@@ -15285,7 +15579,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
 
       const contractor = await storage.getUser(invoice.contractorUserId);
       const company = invoice.companyId ? await storage.getCompany(invoice.companyId) : null;
-      const contractorName = company?.businessName
+      const contractorName = company?.name
         || (contractor?.firstName && contractor?.lastName
           ? `${contractor.firstName} ${contractor.lastName}`
           : contractor?.email || 'Contractor');
@@ -15312,7 +15606,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
         homeArea: '',
         serviceDate: invoice.paidAt ? invoice.paidAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         duration: '',
-        cost: parseFloat(invoice.total) || 0,
+        cost: String(parseFloat(invoice.total) || 0),
         status: 'completed',
         notes: `Claimed from invoice ${invoice.invoiceNumber} (${contractorName})`,
         materialsUsed: [],
@@ -15328,7 +15622,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Get referring agent for homeowner
-  app.get('/api/referring-agent', isAuthenticated, async (req: any, res) => {
+  app.get('/api/referring-agent', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const userRole = req.session.user.role;
@@ -15352,7 +15646,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Messaging API endpoints
-  app.get('/api/conversations', isAuthenticated, async (req: any, res) => {
+  app.get('/api/conversations', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const userType = req.session.user.role;
@@ -15364,7 +15658,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.get('/api/contractors/:contractorId/contacted-homeowners', isAuthenticated, async (req: any, res) => {
+  app.get('/api/contractors/:contractorId/contacted-homeowners', isAuthenticated, async (req: any, res: any) => {
     try {
       const contractorId = req.params.contractorId;
       const userId = req.session.user.id;
@@ -15382,7 +15676,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.get('/api/conversations/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/conversations/:id', isAuthenticated, async (req: any, res: any) => {
     try {
       const conversation = await storage.getConversation(req.params.id);
       if (!conversation) {
@@ -15407,7 +15701,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.post('/api/conversations', isAuthenticated, async (req: any, res) => {
+  app.post('/api/conversations', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const userType = req.session.user.role;
@@ -15432,7 +15726,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       res.status(201).json(conversation);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid conversation data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid conversation data", errors: error.issues });
       }
       console.error("Error creating conversation:", error);
       res.status(500).json({ message: "Failed to create conversation" });
@@ -15440,7 +15734,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Bulk message sending - create conversations with multiple contractors
-  app.post('/api/conversations/bulk', isAuthenticated, async (req: any, res) => {
+  app.post('/api/conversations/bulk', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const userType = req.session.user.role;
@@ -15499,7 +15793,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.get('/api/conversations/:id/messages', isAuthenticated, async (req: any, res) => {
+  app.get('/api/conversations/:id/messages', isAuthenticated, async (req: any, res: any) => {
     try {
       const conversationId = req.params.id;
       const userId = req.session.user.id;
@@ -15530,7 +15824,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.post('/api/conversations/:id/messages', isAuthenticated, async (req: any, res) => {
+  app.post('/api/conversations/:id/messages', isAuthenticated, async (req: any, res: any) => {
     try {
       const conversationId = req.params.id;
       const userId = req.session.user.id;
@@ -15561,16 +15855,17 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       // Create notification for contractor when homeowner sends a message
       if (userType === 'homeowner') {
         const homeownerUser = await storage.getUser(userId);
-        const homeownerName = homeownerUser?.name || 'A homeowner';
+        const homeownerName = homeownerUser ? `${homeownerUser.firstName || ''} ${homeownerUser.lastName || ''}`.trim() || 'A homeowner' : 'A homeowner';
         
         await storage.createNotification({
-          contractorId: conversation.contractorId,
+          homeownerId: conversation.contractorId,
           type: 'message',
           title: 'New Message',
           message: `${homeownerName} sent you a message`,
-          link: '/messages',
+          category: 'messages',
+          scheduledFor: new Date().toISOString(),
           priority: 'medium'
-        });
+        } as any);
         
         // Send SMS to contractor
         smsService.sendNewMessageNotification(
@@ -15593,16 +15888,17 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
         const company = contractorUser?.companyId 
           ? await storage.getCompany(contractorUser.companyId)
           : null;
-        const contractorName = company?.name || contractorUser?.name || 'A contractor';
+        const contractorName = company?.name || (contractorUser ? `${contractorUser.firstName || ''} ${contractorUser.lastName || ''}`.trim() : '') || 'A contractor';
         
         await storage.createNotification({
           homeownerId: conversation.homeownerId,
           type: 'message',
           title: 'New Message',
           message: `${contractorName} sent you a message`,
-          link: '/messages',
+          category: 'messages',
+          scheduledFor: new Date().toISOString(),
           priority: 'medium'
-        });
+        } as any);
         
         // Send SMS to homeowner
         smsService.sendNewMessageNotification(
@@ -15622,14 +15918,14 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       res.status(201).json(message);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid message data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid message data", errors: error.issues });
       }
       console.error("Error creating message:", error);
       res.status(500).json({ message: "Failed to create message" });
     }
   });
 
-  app.get('/api/messages/unread-count', isAuthenticated, async (req: any, res) => {
+  app.get('/api/messages/unread-count', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const count = await storage.getUnreadMessageCount(userId);
@@ -15641,7 +15937,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Review API endpoints
-  app.get('/api/contractors/:id/reviews', async (req, res) => {
+  app.get('/api/contractors/:id/reviews', async (req: any, res: any) => {
     try {
       const reviews = await storage.getContractorReviews(req.params.id);
       
@@ -15661,7 +15957,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.get('/api/contractors/:id/rating', async (req, res) => {
+  app.get('/api/contractors/:id/rating', async (req: any, res: any) => {
     try {
       const rating = await storage.getContractorAverageRating(req.params.id);
 
@@ -15701,7 +15997,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     return Date.now() - new Date(anchor).getTime() >= FORTY_EIGHT_HOURS;
   }
 
-  app.get('/api/contractors/:id/can-review', isAuthenticated, async (req: any, res) => {
+  app.get('/api/contractors/:id/can-review', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const userType = req.session.user.role;
@@ -15772,7 +16068,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // GET eligible service records for review (subset of can-review logic, returns more detail)
-  app.get('/api/contractors/:id/eligible-service-records', isAuthenticated, async (req: any, res) => {
+  app.get('/api/contractors/:id/eligible-service-records', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       if (req.session.user.role !== 'homeowner') return res.status(403).json({ message: "Homeowner access only" });
@@ -15793,7 +16089,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.post('/api/contractors/:id/reviews', isAuthenticated, upload.single("photo"), async (req: any, res) => {
+  app.post('/api/contractors/:id/reviews', isAuthenticated, upload.single("photo"), async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const userType = req.session.user.role;
@@ -15859,8 +16155,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
           const ext = req.file.originalname.split(".").pop()?.toLowerCase() || "jpg";
           const storageKey = `review-photos/${randomUUID()}.${ext}`;
           await objectStorageService.uploadFile(storageKey, req.file.buffer, req.file.mimetype);
-          const { ObjectStorageService: OSSvc } = await import("./objectStorage");
-          reviewPhotoUrl = await new OSSvc().getSignedUrl(storageKey);
+          reviewPhotoUrl = storageKey;
         } catch (uploadErr) {
           console.warn("[REVIEW] Photo upload failed:", uploadErr);
         }
@@ -15900,14 +16195,14 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       res.status(201).json(review);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid review data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid review data", errors: error.issues });
       }
       console.error("Error creating review:", error);
       res.status(500).json({ message: "Failed to create review" });
     }
   });
 
-  app.get('/api/reviews/my-reviews', isAuthenticated, async (req: any, res) => {
+  app.get('/api/reviews/my-reviews', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const userType = req.session.user.role;
@@ -15925,7 +16220,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Reviews are immutable after submission — only admins can delete
-  app.put('/api/reviews/:id', isAuthenticated, async (req: any, res) => {
+  app.put('/api/reviews/:id', isAuthenticated, async (req: any, res: any) => {
     if (req.session.user.role !== 'admin') {
       return res.status(403).json({ message: "Reviews cannot be edited after submission. Contact support if there is an issue." });
     }
@@ -15935,13 +16230,13 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       if (!review) return res.status(404).json({ message: "Review not found" });
       res.json(review);
     } catch (error) {
-      if (error instanceof z.ZodError) return res.status(400).json({ message: "Invalid review data", errors: error.errors });
+      if (error instanceof z.ZodError) return res.status(400).json({ message: "Invalid review data", errors: error.issues });
       console.error("Error updating review:", error);
       res.status(500).json({ message: "Failed to update review" });
     }
   });
 
-  app.delete('/api/reviews/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/reviews/:id', isAuthenticated, async (req: any, res: any) => {
     if (req.session.user.role !== 'admin') {
       return res.status(403).json({ message: "Reviews can only be deleted by administrators." });
     }
@@ -15956,7 +16251,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Contractor one-time response to a review
-  app.post('/api/reviews/:id/response', isAuthenticated, async (req: any, res) => {
+  app.post('/api/reviews/:id/response', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       if (req.session.user.role !== 'contractor') {
@@ -15987,14 +16282,13 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       // Notify the homeowner
       try {
         await storage.createNotification({
-          userId: existing.homeownerId,
+          homeownerId: existing.homeownerId,
           title: "Contractor Responded to Your Review",
           message: "The contractor has responded to your review. Tap to view their response.",
           type: "review_response",
-          relatedEntityId: reviewId,
-          relatedEntityType: "contractor_review",
-          isRead: false,
-        });
+          category: "reviews",
+          scheduledFor: new Date().toISOString(),
+        } as any);
       } catch (notifyErr) {
         console.warn("[REVIEW] Notification failed:", notifyErr);
       }
@@ -16007,7 +16301,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Contractor requests a review from a homeowner
-  app.post('/api/contractors/:id/review-request', isAuthenticated, async (req: any, res) => {
+  app.post('/api/contractors/:id/review-request', isAuthenticated, async (req: any, res: any) => {
     try {
       const contractorId = req.session.user.id;
       if (req.session.user.role !== 'contractor') {
@@ -16050,14 +16344,14 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       try {
         const contractor = await storage.getUser(contractorId);
         await storage.createNotification({
-          userId: homeownerId,
+          homeownerId: homeownerId,
           title: "Review Request",
-          message: `${contractor?.fullName || "Your contractor"} is requesting a review of their services. Verified reviews help homeowners in your community.`,
+          message: `${contractor?.firstName + ' ' + '.lastName' || "Your contractor"} is requesting a review of their services. Verified reviews help homeowners in your community.`,
           type: "review_request",
           relatedEntityId: created.id,
           relatedEntityType: "review_request",
           isRead: false,
-        });
+        } as any);
       } catch (notifyErr) {
         console.warn("[REVIEW REQUEST] Notification failed:", notifyErr);
       }
@@ -16067,7 +16361,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
         const contractor = await storage.getUser(contractorId);
         await pushService.sendToUser(homeownerId, {
           title: "Review Request",
-          body: `${contractor?.fullName || "Your contractor"} is requesting a review. Share your experience!`,
+          body: `${contractor?.firstName + ' ' + '.lastName' || "Your contractor"} is requesting a review. Share your experience!`,
           data: { type: "review_request", reviewRequestId: created.id, contractorId },
         });
       } catch (pushErr) {
@@ -16076,14 +16370,14 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
 
       res.status(201).json(created);
     } catch (error) {
-      if (error instanceof z.ZodError) return res.status(400).json({ message: "Invalid request data", errors: error.errors });
+      if (error instanceof z.ZodError) return res.status(400).json({ message: "Invalid request data", errors: error.issues });
       console.error("Error creating review request:", error);
       res.status(500).json({ message: "Failed to create review request" });
     }
   });
 
   // Homeowner fetches pending review requests
-  app.get('/api/homeowner/review-requests', isAuthenticated, async (req: any, res) => {
+  app.get('/api/homeowner/review-requests', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       if (req.session.user.role !== 'homeowner') return res.status(403).json({ message: "Homeowner access only." });
@@ -16103,7 +16397,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Dismiss a review request
-  app.patch('/api/review-requests/:id/dismiss', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/review-requests/:id/dismiss', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const [request] = await db.select().from(reviewRequests).where(eq(reviewRequests.id, req.params.id));
@@ -16121,7 +16415,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Review flag API endpoints
-  app.post('/api/reviews/:id/flag', isAuthenticated, async (req: any, res) => {
+  app.post('/api/reviews/:id/flag', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const reviewId = req.params.id;
@@ -16149,14 +16443,14 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       res.status(201).json(flag);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid flag data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid flag data", errors: error.issues });
       }
       console.error("Error flagging review:", error);
       res.status(500).json({ message: "Failed to flag review" });
     }
   });
 
-  app.get('/api/admin/review-flags', requireAdmin, async (req: any, res) => {
+  app.get('/api/admin/review-flags', requireAdmin, async (req: any, res: any) => {
     try {
       const status = req.query.status as string | undefined;
       const flags = await storage.getReviewFlags(status);
@@ -16175,7 +16469,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
         
         if (review) {
           const contractor = await storage.getContractor(review.contractorId);
-          contractorName = contractor?.companyName || 'Unknown Contractor';
+          contractorName = (contractor as any)?.companyName || (contractor as any)?.name || 'Unknown Contractor';
           
           const homeowner = await storage.getUser(review.homeownerId);
           reviewerName = homeowner ? `${homeowner.firstName} ${homeowner.lastName}` : 'Unknown Reviewer';
@@ -16211,7 +16505,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.put('/api/admin/review-flags/:id', requireAdmin, async (req: any, res) => {
+  app.put('/api/admin/review-flags/:id', requireAdmin, async (req: any, res: any) => {
     try {
       // Verify the flag exists before attempting any update
       const existingFlag = await storage.getReviewFlag(req.params.id);
@@ -16244,7 +16538,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       res.json(flag);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid flag data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid flag data", errors: error.issues });
       }
       console.error("Error updating review flag:", error);
       res.status(500).json({ message: "Failed to update review flag" });
@@ -16252,7 +16546,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Email verification endpoints
-  app.post('/api/send-verification-email', isAuthenticated, async (req: any, res) => {
+  app.post('/api/send-verification-email', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const user = await storage.getUser(userId);
@@ -16282,7 +16576,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.post('/api/verify-email', async (req: any, res) => {
+  app.post('/api/verify-email', async (req: any, res: any) => {
     try {
       const { email, token } = req.body;
       
@@ -16318,7 +16612,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Analytics API endpoints
-  app.post('/api/analytics/track', async (req: any, res) => {
+  app.post('/api/analytics/track', async (req: any, res: any) => {
     try {
       // Remove homeownerId from client data and set from session if available
       const { homeownerId, ...clientData } = req.body;
@@ -16333,7 +16627,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       res.status(201).json({ success: true, id: analytics.id });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid analytics data", errors: error.errors });
+        return res.status(400).json({ message: "Invalid analytics data", errors: error.issues });
       }
       console.error("Error tracking analytics:", error);
       // Fail silently for analytics to not break user experience
@@ -16341,7 +16635,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.get('/api/analytics/contractor/:contractorId', isAuthenticated, async (req: any, res) => {
+  app.get('/api/analytics/contractor/:contractorId', isAuthenticated, async (req: any, res: any) => {
     try {
       const contractorId = req.params.contractorId;
       const { startDate, endDate } = req.query;
@@ -16369,7 +16663,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.get('/api/analytics/contractor/:contractorId/monthly/:year/:month', isAuthenticated, async (req: any, res) => {
+  app.get('/api/analytics/contractor/:contractorId/monthly/:year/:month', isAuthenticated, async (req: any, res: any) => {
     try {
       const contractorId = req.params.contractorId;
       const year = parseInt(req.params.year);
@@ -16406,7 +16700,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.get('/api/countries/:id', async (req: any, res) => {
+  app.get('/api/countries/:id', async (req: any, res: any) => {
     try {
       const country = await storage.getCountry(req.params.id);
       if (!country) {
@@ -16419,7 +16713,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.get('/api/countries/code/:code', async (req: any, res) => {
+  app.get('/api/countries/code/:code', async (req: any, res: any) => {
     try {
       const country = await storage.getCountryByCode(req.params.code);
       if (!country) {
@@ -16433,7 +16727,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Regions endpoints
-  app.get('/api/countries/:countryId/regions', async (req: any, res) => {
+  app.get('/api/countries/:countryId/regions', async (req: any, res: any) => {
     try {
       const regions = await storage.getRegionsByCountry(req.params.countryId);
       res.json(regions);
@@ -16443,7 +16737,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.get('/api/regions/:id', async (req: any, res) => {
+  app.get('/api/regions/:id', async (req: any, res: any) => {
     try {
       const region = await storage.getRegion(req.params.id);
       if (!region) {
@@ -16457,7 +16751,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Climate zones endpoints
-  app.get('/api/countries/:countryId/climate-zones', async (req: any, res) => {
+  app.get('/api/countries/:countryId/climate-zones', async (req: any, res: any) => {
     try {
       const climateZones = await storage.getClimateZonesByCountry(req.params.countryId);
       res.json(climateZones);
@@ -16467,7 +16761,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.get('/api/climate-zones/:id', async (req: any, res) => {
+  app.get('/api/climate-zones/:id', async (req: any, res: any) => {
     try {
       const climateZone = await storage.getClimateZone(req.params.id);
       if (!climateZone) {
@@ -16481,7 +16775,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Regulatory bodies endpoints
-  app.get('/api/regions/:regionId/regulatory-bodies', async (req: any, res) => {
+  app.get('/api/regions/:regionId/regulatory-bodies', async (req: any, res: any) => {
     try {
       const regulatoryBodies = await storage.getRegulatoryBodiesByRegion(req.params.regionId);
       res.json(regulatoryBodies);
@@ -16491,7 +16785,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.get('/api/countries/:countryId/regulatory-bodies', async (req: any, res) => {
+  app.get('/api/countries/:countryId/regulatory-bodies', async (req: any, res: any) => {
     try {
       const regulatoryBodies = await storage.getRegulatoryBodiesByCountry(req.params.countryId);
       res.json(regulatoryBodies);
@@ -16501,7 +16795,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.get('/api/regulatory-bodies/:id', async (req: any, res) => {
+  app.get('/api/regulatory-bodies/:id', async (req: any, res: any) => {
     try {
       const regulatoryBody = await storage.getRegulatoryBody(req.params.id);
       if (!regulatoryBody) {
@@ -16515,7 +16809,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Regional maintenance tasks endpoints
-  app.get('/api/maintenance-tasks/regional', async (req: any, res) => {
+  app.get('/api/maintenance-tasks/regional', async (req: any, res: any) => {
     try {
       const { countryId, climateZoneId, month } = req.query;
       
@@ -16535,7 +16829,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.get('/api/maintenance-tasks/regional/:id', async (req: any, res) => {
+  app.get('/api/maintenance-tasks/regional/:id', async (req: any, res: any) => {
     try {
       const task = await storage.getRegionalMaintenanceTask(req.params.id);
       if (!task) {
@@ -16549,7 +16843,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Task completion endpoints for achievements
-  app.get('/api/task-completions', async (req: any, res) => {
+  app.get('/api/task-completions', async (req: any, res: any) => {
     try {
       const homeownerId = req.session?.user?.id;
       if (!homeownerId) {
@@ -16564,7 +16858,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.post('/api/task-completions', async (req: any, res) => {
+  app.post('/api/task-completions', async (req: any, res: any) => {
     try {
       const homeownerId = req.session?.user?.id;
       if (!homeownerId) {
@@ -16600,7 +16894,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.get('/api/task-completions/streak', async (req: any, res) => {
+  app.get('/api/task-completions/streak', async (req: any, res: any) => {
     try {
       const homeownerId = req.session?.user?.id;
       if (!homeownerId) {
@@ -16617,7 +16911,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
 
   // Achievement endpoints (old - removed - using new system below)
   
-  app.post('/api/achievements/contractor-hired', async (req: any, res) => {
+  app.post('/api/achievements/contractor-hired', async (req: any, res: any) => {
     try {
       const homeownerId = req.session?.user?.id;
       if (!homeownerId) {
@@ -16653,7 +16947,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.post('/api/achievements/referral', async (req: any, res) => {
+  app.post('/api/achievements/referral', async (req: any, res: any) => {
     try {
       const homeownerId = req.session?.user?.id;
       if (!homeownerId) {
@@ -16680,7 +16974,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
 
   // New achievement system endpoints
   // GET /api/achievements - Returns all achievement definitions with user progress
-  app.get('/api/achievements', async (req: any, res) => {
+  app.get('/api/achievements', async (req: any, res: any) => {
     try {
       const homeownerId = req.session?.user?.id;
       const { category, houseId } = req.query;
@@ -16696,14 +16990,11 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       // If user is authenticated, calculate progress based on house filter
       if (homeownerId) {
         // Calculate achievements with house filtering
-        const achievementsWithProgress = await storage.calculateAchievementsProgress(
-          homeownerId,
-          houseId as string | undefined
-        );
+        const achievementsWithProgress = await storage.calculateAchievementsProgress(homeownerId);
         
         // Merge with definitions
         const result = definitions.map(def => {
-          const calculated = achievementsWithProgress.find(a => a.achievementKey === def.achievementKey);
+          const calculated = achievementsWithProgress.find((a: any) => a.achievementKey === def.achievementKey);
           const criteria = typeof def.criteria === 'string' ? JSON.parse(def.criteria) : def.criteria;
           
           return {
@@ -16747,7 +17038,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // GET /api/achievements/user - Returns only the user's earned/unlocked achievements
-  app.get('/api/achievements/user', async (req: any, res) => {
+  app.get('/api/achievements/user', async (req: any, res: any) => {
     try {
       const homeownerId = req.session?.user?.id;
       if (!homeownerId) {
@@ -16777,7 +17068,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.post('/api/achievements/check', async (req: any, res) => {
+  app.post('/api/achievements/check', async (req: any, res: any) => {
     try {
       const homeownerId = req.session?.user?.id;
       if (!homeownerId) {
@@ -16799,7 +17090,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.get('/api/achievements/progress/:achievementKey', async (req: any, res) => {
+  app.get('/api/achievements/progress/:achievementKey', async (req: any, res: any) => {
     try {
       const homeownerId = req.session?.user?.id;
       if (!homeownerId) {
@@ -16957,7 +17248,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     return { valid: true };
   };
 
-  app.post('/api/ai/contractor-recommendation', isAuthenticated, async (req: any, res) => {
+  app.post('/api/ai/contractor-recommendation', isAuthenticated, async (req: any, res: any) => {
     try {
       const { problem } = req.body;
 
@@ -17126,7 +17417,7 @@ Important: Only recommend service types from the available list. Match problems 
   });
 
   // AI Home Troubleshooter - conversational diagnostic chat
-  app.post('/api/ai/troubleshoot', isAuthenticated, async (req: any, res) => {
+  app.post('/api/ai/troubleshoot', isAuthenticated, async (req: any, res: any) => {
     try {
       const { messages } = req.body;
 
@@ -17214,7 +17505,7 @@ Important: Only recommend service types from the available list. Match problems 
   });
 
   // Push token registration endpoint for mobile apps (Firebase)
-  app.post('/api/push-token', isAuthenticated, async (req: any, res) => {
+  app.post('/api/push-token', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.user?.id;
       if (!userId) {
@@ -17259,7 +17550,7 @@ Important: Only recommend service types from the available list. Match problems 
     }
   });
 
-  app.delete('/api/push-token', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/push-token', isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.user?.id;
       if (!userId) {
@@ -17301,7 +17592,7 @@ Important: Only recommend service types from the available list. Match problems 
     }
   });
 
-  app.put("/api/site-content/:key", async (req, res) => {
+  app.put("/api/site-content/:key", async (req: any, res: any) => {
     const isDevMode = process.env.NODE_ENV === "development";
     if (!isDevMode) {
       if (!req.isAuthenticated() || !req.user) {
@@ -17437,7 +17728,7 @@ If the document contains no relevant home information, return the structure with
   }
 
   // List handoff packages for the authenticated agent
-  app.get("/api/agent/handoff-packages", isAuthenticated, async (req: any, res) => {
+  app.get("/api/agent/handoff-packages", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       if (req.session?.user?.role !== "agent") return res.status(403).json({ message: "Agent access only" });
@@ -17455,7 +17746,7 @@ If the document contains no relevant home information, return the structure with
   });
 
   // Create a new handoff package
-  app.post("/api/agent/handoff-packages", isAuthenticated, async (req: any, res) => {
+  app.post("/api/agent/handoff-packages", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       if (req.session?.user?.role !== "agent") return res.status(403).json({ message: "Agent access only" });
@@ -17486,7 +17777,7 @@ If the document contains no relevant home information, return the structure with
   });
 
   // Get a single handoff package with its documents
-  app.get("/api/agent/handoff-packages/:id", isAuthenticated, async (req: any, res) => {
+  app.get("/api/agent/handoff-packages/:id", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       if (req.session?.user?.role !== "agent") return res.status(403).json({ message: "Agent access only" });
@@ -17507,7 +17798,7 @@ If the document contains no relevant home information, return the structure with
   });
 
   // Upload a document to a handoff package and trigger AI extraction
-  app.post("/api/agent/handoff-packages/:id/documents", isAuthenticated, uploadLimiter, upload.single("document"), async (req: any, res) => {
+  app.post("/api/agent/handoff-packages/:id/documents", isAuthenticated, uploadLimiter, upload.single("document"), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       if (req.session?.user?.role !== "agent") return res.status(403).json({ message: "Agent access only" });
@@ -17601,7 +17892,7 @@ If the document contains no relevant home information, return the structure with
       }).returning();
 
       // Merge AI-extracted data into the package
-      const newExtractedData = mergeExtractedData(pkg.extractedData, aiData);
+      const newExtractedData = mergeExtractedData(pkg.extractedData as Record<string, unknown> | null | undefined, aiData as unknown as Record<string, unknown>);
       await db.update(homeHandoffPackages)
         .set({ extractedData: newExtractedData, updatedAt: new Date() })
         .where(eq(homeHandoffPackages.id, pkg.id));
@@ -17614,7 +17905,7 @@ If the document contains no relevant home information, return the structure with
   });
 
   // Update handoff package extracted data (agent edits the AI results)
-  app.patch("/api/agent/handoff-packages/:id", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/agent/handoff-packages/:id", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       if (req.session?.user?.role !== "agent") return res.status(403).json({ message: "Agent access only" });
@@ -17683,7 +17974,7 @@ If the document contains no relevant home information, return the structure with
   });
 
   // Send the handoff package to the buyer (generates magic link + sends email)
-  app.post("/api/agent/handoff-packages/:id/send", isAuthenticated, async (req: any, res) => {
+  app.post("/api/agent/handoff-packages/:id/send", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       if (req.session?.user?.role !== "agent") return res.status(403).json({ message: "Agent access only" });
@@ -17755,7 +18046,7 @@ If the document contains no relevant home information, return the structure with
   });
 
   // PUBLIC: Get handoff package preview by invite token (no auth required)
-  app.get("/api/handoff/:token", async (req, res) => {
+  app.get("/api/handoff/:token", async (req: any, res: any) => {
     try {
       const [pkg] = await db.select().from(homeHandoffPackages)
         .where(eq(homeHandoffPackages.inviteToken, req.params.token));
@@ -17788,7 +18079,7 @@ If the document contains no relevant home information, return the structure with
   });
 
   // AUTHENTICATED: Homeowner claims the handoff package, creates their home record
-  app.post("/api/handoff/:token/claim", isAuthenticated, async (req: any, res) => {
+  app.post("/api/handoff/:token/claim", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -17993,7 +18284,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   }
 
   // GET /api/homeowner/wizard-progress — get wizard state
-  app.get("/api/homeowner/wizard-progress", isAuthenticated, async (req: any, res) => {
+  app.get("/api/homeowner/wizard-progress", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       if (req.session?.user?.role !== "homeowner") return res.status(403).json({ message: "Homeowner access only" });
@@ -18015,7 +18306,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // PUT /api/homeowner/wizard-progress — save wizard step + data
-  app.put("/api/homeowner/wizard-progress", isAuthenticated, async (req: any, res) => {
+  app.put("/api/homeowner/wizard-progress", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       if (req.session?.user?.role !== "homeowner") return res.status(403).json({ message: "Homeowner access only" });
@@ -18036,7 +18327,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // GET /api/home-documents — list documents for homeowner
-  app.get("/api/home-documents", isAuthenticated, async (req: any, res) => {
+  app.get("/api/home-documents", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       if (req.session?.user?.role !== "homeowner") return res.status(403).json({ message: "Homeowner access only" });
@@ -18056,7 +18347,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // POST /api/home-documents/upload — upload any document to vault
-  app.post("/api/home-documents/upload", isAuthenticated, uploadLimiter, uploadDocument.single("document"), async (req: any, res) => {
+  app.post("/api/home-documents/upload", isAuthenticated, uploadLimiter, uploadDocument.single("document"), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       if (req.session?.user?.role !== "homeowner") return res.status(403).json({ message: "Homeowner access only" });
@@ -18118,7 +18409,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // POST /api/home-documents/upload-inspection — upload + AI extract inspection report
-  app.post("/api/home-documents/upload-inspection", isAuthenticated, uploadLimiter, uploadDocument.single("document"), async (req: any, res) => {
+  app.post("/api/home-documents/upload-inspection", isAuthenticated, uploadLimiter, uploadDocument.single("document"), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       if (req.session?.user?.role !== "homeowner") return res.status(403).json({ message: "Homeowner access only" });
@@ -18205,7 +18496,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // POST /api/home-documents/inspection/:id/confirm — confirm extracted data, populate profile + tasks
-  app.post("/api/home-documents/inspection/:id/confirm", isAuthenticated, async (req: any, res) => {
+  app.post("/api/home-documents/inspection/:id/confirm", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       if (req.session?.user?.role !== "homeowner") return res.status(403).json({ message: "Homeowner access only" });
@@ -18422,7 +18713,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // PUT /api/home-documents/:id — update document metadata
-  app.put("/api/home-documents/:id", isAuthenticated, async (req: any, res) => {
+  app.put("/api/home-documents/:id", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const [doc] = await db.select().from(homeDocuments)
@@ -18442,7 +18733,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // DELETE /api/home-documents/:id — delete a document
-  app.delete("/api/home-documents/:id", isAuthenticated, async (req: any, res) => {
+  app.delete("/api/home-documents/:id", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const [doc] = await db.select().from(homeDocuments)
@@ -18463,7 +18754,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // GET /api/home-documents/:id/download — proxy download
-  app.get("/api/home-documents/:id/download", isAuthenticated, async (req: any, res) => {
+  app.get("/api/home-documents/:id/download", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const [doc] = await db.select().from(homeDocuments)
@@ -18480,7 +18771,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // GET /api/homeowner/inspection-summary — latest confirmed inspection for dashboard
-  app.get("/api/homeowner/inspection-summary", isAuthenticated, async (req: any, res) => {
+  app.get("/api/homeowner/inspection-summary", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       if (req.session?.user?.role !== "homeowner") return res.status(403).json({ message: "Homeowner access only" });
@@ -18514,7 +18805,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
   // POST /api/invoice-analyses/analyze
   // Upload invoice/receipt images + optional before/after photos, run GPT-4o vision extraction
-  app.post("/api/invoice-analyses/analyze", isAuthenticated, requireHomeownerSubscription, async (req: any, res) => {
+  app.post("/api/invoice-analyses/analyze", isAuthenticated, requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       const {
         houseId,
@@ -18530,6 +18821,29 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       const totalFiles = invoiceFiles.length + receiptFiles.length;
       if (totalFiles > 10) {
         return res.status(400).json({ message: "Too many files. Please upload at most 10 files at once." });
+      }
+
+      // Enforce per-file and total size limits before any hashing, AI, or storage work.
+      // Use approximate decoded byte length (base64 length × 0.75) to avoid allocating
+      // full Buffers just for the size gate.
+      const MAX_FILE_BYTES = 20 * 1024 * 1024; // 20 MB per file
+      const MAX_TOTAL_BYTES = 50 * 1024 * 1024; // 50 MB across all files in the request
+      const allUploadedFiles = [...invoiceFiles, ...receiptFiles];
+      let cumulativeBytes = 0;
+      for (const f of allUploadedFiles) {
+        const base64Str = f.fileData.includes("base64,") ? f.fileData.split("base64,")[1] : f.fileData;
+        const approxBytes = Math.ceil(base64Str.length * 0.75);
+        if (approxBytes > MAX_FILE_BYTES) {
+          return void res.status(413).json({
+            message: `File "${f.fileName}" exceeds the 20 MB per-file size limit. Please reduce the file size and try again.`,
+          });
+        }
+        cumulativeBytes += approxBytes;
+      }
+      if (cumulativeBytes > MAX_TOTAL_BYTES) {
+        return void res.status(413).json({
+          message: "Total upload size exceeds the 50 MB limit. Please reduce the number or size of files.",
+        });
       }
 
       // Contractor work requires at least one invoice file; DIY receipt is fully optional
@@ -18580,7 +18894,17 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         const base64Data = primaryImageFile.fileData.includes("base64,")
           ? primaryImageFile.fileData.split("base64,")[1]
           : primaryImageFile.fileData;
-        const mimeType = primaryImageFile.fileType || "image/jpeg";
+        // Infer mimeType from fileType, falling back to extension-based inference
+        // (mirrors uploadFileSet logic so both storage and AI get consistent types).
+        let mimeType = primaryImageFile.fileType || "";
+        if (!mimeType) {
+          const ext = (primaryImageFile.fileName?.split(".").pop() ?? "").toLowerCase();
+          if (ext === "pdf") mimeType = "application/pdf";
+          else if (ext === "png") mimeType = "image/png";
+          else if (ext === "webp") mimeType = "image/webp";
+          else if (["jpg", "jpeg"].includes(ext)) mimeType = "image/jpeg";
+          else mimeType = "image/jpeg";
+        }
         try {
           extraction = await extractInvoiceData(base64Data, mimeType);
           // If the image is not a valid invoice/receipt, return 422 immediately (no files uploaded)
@@ -18633,6 +18957,12 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
       res.status(201).json(analysis);
     } catch (err: any) {
+      if (err?.code === "23505" && err?.constraint === "uq_invoice_analyses_house_hash") {
+        return void res.status(409).json({
+          code: "DUPLICATE_INVOICE",
+          message: "This invoice has already been scanned for this property.",
+        });
+      }
       console.error("[INVOICE ANALYSIS] analyze error:", err);
       res.status(500).json({ message: "Failed to analyze invoice" });
     }
@@ -18641,7 +18971,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   // POST /api/invoice-analyses/:id/diy-verify
   // Run AI verification of DIY before/after/receipt photos for an existing pending analysis.
   // Must be called before confirming a DIY analysis to update the diyVerified flag.
-  app.post("/api/invoice-analyses/:id/diy-verify", isAuthenticated, requireHomeownerSubscription, async (req: any, res) => {
+  app.post("/api/invoice-analyses/:id/diy-verify", isAuthenticated, requireHomeownerSubscription, diyVerifyLimiter, async (req: any, res: any) => {
     try {
       const { id } = req.params;
       const [analysis] = await db.select().from(invoiceAnalyses).where(eq(invoiceAnalyses.id, id));
@@ -18669,6 +18999,43 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         return res.status(400).json({ message: "Please provide at least one before photo AND one after photo to verify your DIY work." });
       }
 
+      // Pre-upload validation: reject unsupported MIME types and oversized files
+      // before any object-storage call so wasted-storage cost is zero on bad input.
+      const ALLOWED_PHOTO_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp"]);
+      const ALLOWED_RECEIPT_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "application/pdf"]);
+      for (const f of [...beforePhotoFiles, ...afterPhotoFiles]) {
+        if (!ALLOWED_PHOTO_TYPES.has((f.fileType || "").toLowerCase())) {
+          return void res.status(400).json({
+            message: `File "${f.fileName}" has an unsupported type. Before and after photos must be JPEG, PNG, or WebP images.`,
+          });
+        }
+      }
+      for (const f of receiptFiles) {
+        if (!ALLOWED_RECEIPT_TYPES.has((f.fileType || "").toLowerCase())) {
+          return void res.status(400).json({
+            message: `File "${f.fileName}" has an unsupported type. Receipt files must be JPEG, PNG, WebP, or PDF.`,
+          });
+        }
+      }
+      const DIY_MAX_FILE_BYTES = 20 * 1024 * 1024; // 20 MB per file
+      const DIY_MAX_TOTAL_BYTES = 50 * 1024 * 1024; // 50 MB total across all files in the request
+      let diyCumulativeBytes = 0;
+      for (const f of [...beforePhotoFiles, ...afterPhotoFiles, ...receiptFiles]) {
+        const base64Str = f.fileData?.includes("base64,") ? f.fileData.split("base64,")[1] : (f.fileData || "");
+        const approxBytes = Math.ceil(base64Str.length * 0.75);
+        if (approxBytes > DIY_MAX_FILE_BYTES) {
+          return void res.status(413).json({
+            message: `File "${f.fileName}" exceeds the 20 MB per-file size limit. Please reduce the file size and try again.`,
+          });
+        }
+        diyCumulativeBytes += approxBytes;
+      }
+      if (diyCumulativeBytes > DIY_MAX_TOTAL_BYTES) {
+        return void res.status(413).json({
+          message: "Total upload size exceeds the 50 MB limit. Please reduce the number or size of files.",
+        });
+      }
+
       // All newly uploaded files for AI verification
       const allPhotos = [...beforePhotoFiles, ...afterPhotoFiles, ...receiptFiles];
 
@@ -18694,6 +19061,45 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       const newAfterUrls = await uploadFileSet(afterPhotoFiles);
       const newReceiptUrls = await uploadFileSet(receiptFiles);
 
+      // Helper: delete a set of storage URLs uploaded during this request
+      const deleteUploadedFiles = async (urls: string[]): Promise<void> => {
+        await Promise.allSettled(
+          urls.map((url) => objectStorageService.deleteFile(url.startsWith("/") ? url.slice(1) : url)),
+        );
+      };
+
+      // Guard against orphaned files when the client disconnects after the
+      // upload step but before a response is sent (e.g. network drop between
+      // uploadFileSet and verifyDIYPhotos).  A shared flag prevents the
+      // close-handler and the in-band rejection/error paths from both
+      // attempting to delete the same files.
+      //
+      // clientDisconnected is also checked before the DB transaction so that
+      // if AI resolves verified:true after a disconnect, we do not persist
+      // already-deleted file URLs and create broken DB references.
+      let uploadCleanedUp = false;
+      let clientDisconnected = false;
+      const uploadedThisRequest = [...newBeforeUrls, ...newAfterUrls, ...newReceiptUrls];
+      const deleteOnce = async (urls: string[]): Promise<void> => {
+        if (uploadCleanedUp || urls.length === 0) return;
+        uploadCleanedUp = true;
+        await deleteUploadedFiles(urls);
+      };
+      if (uploadedThisRequest.length > 0) {
+        // Use the underlying socket (not req — IncomingMessage "close" fires
+        // on body-consumed, not on TCP disconnect).  Use once() to avoid
+        // accumulating listeners on keep-alive sockets across requests.
+        const trackingSocket = req.socket;
+        if (trackingSocket) {
+          trackingSocket.once("close", () => {
+            clientDisconnected = true;
+            if (!res.headersSent) {
+              deleteOnce(uploadedThisRequest).catch(() => {});
+            }
+          });
+        }
+      }
+
       // Run DIY verification using uploaded file data (if new files provided) or return based on existing
       let diyVerified = analysis.diyVerified;
       let verificationNotes = analysis.aiNotes;
@@ -18708,22 +19114,88 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
           diyVerified = verification.verified;
           verificationNotes = verification.notes;
         } catch (verifyErr) {
+          // Clean up newly uploaded files before returning the error
+          await deleteOnce(uploadedThisRequest);
           console.error("[INVOICE ANALYSIS] DIY verify error:", verifyErr);
           return res.status(500).json({ message: "AI verification failed. Please try again." });
         }
+
+        // AI rejected the photos — delete the newly uploaded files and do not persist them
+        if (!diyVerified) {
+          await deleteOnce(uploadedThisRequest);
+          return void res.status(422).json({
+            message: "AI could not verify the DIY work from the provided photos. Please try again with clearer images.",
+            verificationNotes,
+            diyVerified: false,
+          });
+        }
       }
 
-      // Update the analysis with new photos and verification result
-      const [updated] = await db.update(invoiceAnalyses)
-        .set({
-          diyVerified,
-          aiNotes: verificationNotes,
-          beforePhotoUrls: [...(analysis.beforePhotoUrls || []), ...newBeforeUrls],
-          afterPhotoUrls: [...(analysis.afterPhotoUrls || []), ...newAfterUrls],
-          receiptUrls: [...(analysis.receiptUrls || []), ...newReceiptUrls],
-        })
-        .where(eq(invoiceAnalyses.id, id))
-        .returning();
+      // If the client disconnected while we were waiting for AI verification,
+      // the socket close-handler already deleted the uploaded files.  Bail out
+      // without persisting their URLs to the DB — writing deleted object paths
+      // would create broken DB references.
+      if (clientDisconnected) return;
+
+      // Serialize the final write inside a transaction with SELECT … FOR UPDATE.
+      // Two concurrent diy-verify calls can both pass the pre-check above
+      // (both read diyVerified=false before either commits).  The transaction
+      // lock ensures only one writer proceeds: the second request blocks on the
+      // FOR UPDATE lock, re-reads diyVerified=true after the first commits, and
+      // is rejected by checkDiyVerifyGuard with 409 ALREADY_VERIFIED instead of
+      // overwriting the first call's photos.
+      let guardError: { status: number; message: string; code: string } | null = null;
+      let updated: typeof invoiceAnalyses.$inferSelect | undefined;
+
+      await db.transaction(async (tx) => {
+        // Lock the row for the duration of this transaction
+        const lockedRows = await tx.execute(
+          drizzleSql`SELECT * FROM invoice_analyses WHERE id = ${id} FOR UPDATE`,
+        );
+        const locked = lockedRows.rows[0] as Record<string, unknown> | undefined;
+
+        if (!locked) {
+          guardError = { status: 404, message: "Analysis not found", code: "NOT_FOUND" };
+          return;
+        }
+
+        const guard = checkDiyVerifyGuard(locked as { diy_verified?: boolean | null });
+        if (guard) {
+          guardError = guard;
+          return;
+        }
+
+        const existingBefore = (locked.before_photo_urls as string[] | null) ?? [];
+        const existingAfter = (locked.after_photo_urls as string[] | null) ?? [];
+        const existingReceipts = (locked.receipt_urls as string[] | null) ?? [];
+
+        // Re-validate photo counts using the LOCKED row's current arrays.
+        // The pre-check outside the transaction used the stale snapshot row; in
+        // a concurrent scenario that snapshot may be out of date by the time we
+        // hold the lock.  This authoritative check uses the most recent data.
+        const countGuard = checkPhotoCountGuard(existingBefore, existingAfter, newBeforeUrls, newAfterUrls, existingReceipts, newReceiptUrls);
+        if (countGuard) {
+          guardError = countGuard;
+          return;
+        }
+
+        const [result] = await tx.update(invoiceAnalyses)
+          .set({
+            diyVerified,
+            aiNotes: verificationNotes,
+            beforePhotoUrls: [...existingBefore, ...newBeforeUrls],
+            afterPhotoUrls: [...existingAfter, ...newAfterUrls],
+            receiptUrls: [...existingReceipts, ...newReceiptUrls],
+          })
+          .where(eq(invoiceAnalyses.id, id))
+          .returning();
+        updated = result;
+      });
+
+      if (guardError) {
+        const { status, message, code } = guardError as { status: number; message: string; code: string };
+        return void res.status(status).json({ message, code });
+      }
 
       res.json({ analysis: updated, diyVerified, verificationNotes });
     } catch (err: any) {
@@ -18734,7 +19206,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
   // PATCH /api/invoice-analyses/:id/confirm
   // Homeowner reviews & edits AI-extracted data, then confirms to create a maintenance log
-  app.patch("/api/invoice-analyses/:id/confirm", isAuthenticated, requireHomeownerSubscription, async (req: any, res) => {
+  app.patch("/api/invoice-analyses/:id/confirm", isAuthenticated, requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       const { id } = req.params;
       const [analysis] = await db.select().from(invoiceAnalyses).where(eq(invoiceAnalyses.id, id));
@@ -18784,7 +19256,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         cost: finalCost !== null ? finalCost.toFixed(2) : null,
         contractorName: finalContractorName,
         contractorCompany: finalContractorCompany,
-        completionMethod: analysis.completionMethod,
+        completionMethod: (analysis.completionMethod === 'diy' || analysis.completionMethod === 'contractor') ? analysis.completionMethod as 'contractor' | 'diy' : undefined,
         receiptUrls: [...(analysis.invoiceUrls || []), ...(analysis.receiptUrls || [])],
         beforePhotoUrls: analysis.beforePhotoUrls || [],
         afterPhotoUrls: analysis.afterPhotoUrls || [],
@@ -18828,7 +19300,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // PATCH /api/invoice-analyses/:id/reject
-  app.patch("/api/invoice-analyses/:id/reject", isAuthenticated, requireHomeownerSubscription, async (req: any, res) => {
+  app.patch("/api/invoice-analyses/:id/reject", isAuthenticated, requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       const { id } = req.params;
       const [analysis] = await db.select().from(invoiceAnalyses).where(eq(invoiceAnalyses.id, id));
@@ -18848,7 +19320,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // GET /api/invoice-analyses?houseId=...
-  app.get("/api/invoice-analyses", isAuthenticated, requirePropertyOwner, async (req: any, res) => {
+  app.get("/api/invoice-analyses", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       const houseId = req.query.houseId as string | undefined;
       const homeownerId = req.session.user.id;
@@ -18879,7 +19351,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   // ─── Enterprise Contractor Team & Invoice Routes ─────────────────────────────
 
   // Validate invite token (public — linked from invite email)
-  app.get('/api/contractor/validate-token', async (req: any, res) => {
+  app.get('/api/contractor/validate-token', async (req: any, res: any) => {
     try {
       const { token } = req.query;
       if (!token || typeof token !== 'string') {
@@ -18923,7 +19395,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // Accept invite (public — tech sets password and activates their account)
-  app.post('/api/contractor/accept-invite', async (req: any, res) => {
+  app.post('/api/contractor/accept-invite', async (req: any, res: any) => {
     try {
       const bodySchema = z.object({
         token: z.string().min(1),
@@ -18979,7 +19451,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // Invite a tech (admin/owner only)
-  app.post('/api/contractor/invite-tech', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), async (req: any, res) => {
+  app.post('/api/contractor/invite-tech', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), async (req: any, res: any) => {
     try {
       const adminUser = req.session.user;
       if (adminUser.role !== 'contractor' || !adminUser.companyId) {
@@ -19084,7 +19556,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // Resend invite email to a pending tech (admin/owner only)
-  app.post('/api/contractor/team/:userId/resend-invite', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), async (req: any, res) => {
+  app.post('/api/contractor/team/:userId/resend-invite', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), async (req: any, res: any) => {
     try {
       const adminUser = req.session.user;
       if (adminUser.role !== 'contractor' || !adminUser.companyId) {
@@ -19133,7 +19605,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // Get team members with seat usage (admin/owner only)
-  app.get('/api/contractor/team', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), async (req: any, res) => {
+  app.get('/api/contractor/team', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), async (req: any, res: any) => {
     try {
       const adminUser = req.session.user;
       if (!adminUser.companyId) {
@@ -19189,7 +19661,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // Suspend a tech or admin (owner can target either; admin can only target techs)
-  app.patch('/api/contractor/team/:userId/suspend', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), requireSameCompany(), async (req: any, res) => {
+  app.patch('/api/contractor/team/:userId/suspend', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), requireSameCompany(), async (req: any, res: any) => {
     try {
       const { userId } = req.params;
       const adminUser = req.session.user;
@@ -19206,21 +19678,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
       await db.update(users).set({ status: 'suspended', updatedAt: new Date() } as any).where(eq(users.id, userId));
       suspendedUserIds.add(userId);
-
-      // Phase 7: Best-effort session destruction for the suspended user.
-      // TODO: Long-term — index sessions by userId in the pg session store for efficient targeted invalidation.
-      // For now, the suspendedUserIds in-memory set causes the next request from this user to 401.
-      req.sessionStore?.all?.((err: any, sessions: Record<string, any> | null) => {
-        if (err || !sessions) return;
-        Object.entries(sessions).forEach(([sid, sess]) => {
-          if (sess?.user?.id === userId) {
-            req.sessionStore.destroy(sid, (destroyErr: any) => {
-              if (destroyErr) req.log?.warn({ destroyErr, sid }, '[SUSPEND] Failed to destroy session');
-              else req.log?.info({ sid }, '[SUSPEND] Session destroyed for suspended user');
-            });
-          }
-        });
-      });
+      invalidateUserSessions(req.sessionStore, userId, req.log);
 
       const actorName = [adminUser.firstName, adminUser.lastName].filter(Boolean).join(' ') || adminUser.email || adminUser.id;
       const actorRole = adminUser.companyRole ?? null;
@@ -19246,7 +19704,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // Reactivate a tech or admin (owner can target either; admin can only target techs)
-  app.patch('/api/contractor/team/:userId/reactivate', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), requireSameCompany(), async (req: any, res) => {
+  app.patch('/api/contractor/team/:userId/reactivate', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), requireSameCompany(), async (req: any, res: any) => {
     try {
       const { userId } = req.params;
       const adminUser = req.session.user;
@@ -19287,7 +19745,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // Cancel a pending invite (admin/owner only) — nulls the invite token so the link no longer works
-  app.delete('/api/contractor/team/:userId/invite', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), requireSameCompany(), async (req: any, res) => {
+  app.delete('/api/contractor/team/:userId/invite', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), requireSameCompany(), async (req: any, res: any) => {
     try {
       const { userId } = req.params;
       const adminUser = req.session.user;
@@ -19313,6 +19771,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         updatedAt: new Date(),
       } as any).where(eq(users.id, userId));
       suspendedUserIds.add(userId);
+      invalidateUserSessions(req.sessionStore, userId, req.log);
       res.json({ message: "Invite cancelled" });
     } catch (error) {
       req.log?.error({ error }, '[ENTERPRISE] Error cancelling invite');
@@ -19321,7 +19780,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // Update a team member's name or role (admin/owner only)
-  app.patch('/api/contractor/team/:userId', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), requireSameCompany(), async (req: any, res) => {
+  app.patch('/api/contractor/team/:userId', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), requireSameCompany(), async (req: any, res: any) => {
     try {
       const { userId } = req.params;
       const adminUser = req.session.user;
@@ -19372,7 +19831,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // Remove a team member — soft-delete, preserves invoice history (owner can remove tech or admin; admin can only remove techs)
-  app.delete('/api/contractor/team/:userId', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), requireSameCompany(), async (req: any, res) => {
+  app.delete('/api/contractor/team/:userId', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), requireSameCompany(), async (req: any, res: any) => {
     try {
       const { userId } = req.params;
       const adminUser = req.session.user;
@@ -19396,6 +19855,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       } as any).where(eq(users.id, userId));
       // Add to in-memory blocklist so any active session is immediately revoked
       suspendedUserIds.add(userId);
+      invalidateUserSessions(req.sessionStore, userId, req.log);
       const actorName = [adminUser.firstName, adminUser.lastName].filter(Boolean).join(' ') || adminUser.email || adminUser.id;
       const actorRole = adminUser.companyRole ?? null;
       const targetName = [(targetUser as any).firstName, (targetUser as any).lastName].filter(Boolean).join(' ') || (targetUser as any).email || userId;
@@ -19420,7 +19880,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // Fetch company-wide team audit log (owner only) — must be registered before /:userId/audit-log
-  app.get('/api/contractor/team/audit-log', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner'), async (req: any, res) => {
+  app.get('/api/contractor/team/audit-log', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner'), async (req: any, res: any) => {
     try {
       const sessionUser = req.session.user;
       if (!sessionUser.companyId) return res.status(400).json({ message: "You must belong to a company" });
@@ -19457,7 +19917,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // Fetch audit trail for a specific team member (owner/admin only, scoped to their company)
-  app.get('/api/contractor/team/:userId/audit-log', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), async (req: any, res) => {
+  app.get('/api/contractor/team/:userId/audit-log', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), async (req: any, res: any) => {
     try {
       const { userId } = req.params;
       const sessionUser = req.session.user;
@@ -19509,7 +19969,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   };
 
   // GET /api/contractor/divisions — list all divisions for this company
-  app.get('/api/contractor/divisions', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin', 'manager'), async (req: any, res) => {
+  app.get('/api/contractor/divisions', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin', 'manager'), async (req: any, res: any) => {
     try {
       if (!await requireDivisionTier(req, res)) return;
       const companyId = req.session.user.companyId;
@@ -19538,7 +19998,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // POST /api/contractor/divisions — create a division
-  app.post('/api/contractor/divisions', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin'), async (req: any, res) => {
+  app.post('/api/contractor/divisions', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin'), async (req: any, res: any) => {
     try {
       if (!await requireDivisionTier(req, res)) return;
       const companyId = req.session.user.companyId;
@@ -19560,7 +20020,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // GET /api/contractor/divisions/:id — single division detail
-  app.get('/api/contractor/divisions/:id', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin', 'manager'), async (req: any, res) => {
+  app.get('/api/contractor/divisions/:id', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin', 'manager'), async (req: any, res: any) => {
     try {
       if (!await requireDivisionTier(req, res)) return;
       const companyId = req.session.user.companyId;
@@ -19581,7 +20041,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // PATCH /api/contractor/divisions/:id — rename a division
-  app.patch('/api/contractor/divisions/:id', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin'), async (req: any, res) => {
+  app.patch('/api/contractor/divisions/:id', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin'), async (req: any, res: any) => {
     try {
       if (!await requireDivisionTier(req, res)) return;
       const companyId = req.session.user.companyId;
@@ -19607,7 +20067,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // DELETE /api/contractor/divisions/:id — delete a division (owner only; unassigns members first)
-  app.delete('/api/contractor/divisions/:id', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner'), async (req: any, res) => {
+  app.delete('/api/contractor/divisions/:id', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner'), async (req: any, res: any) => {
     try {
       if (!await requireDivisionTier(req, res)) return;
       const companyId = req.session.user.companyId;
@@ -19628,7 +20088,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // POST /api/contractor/divisions/:id/assign-manager — assign a manager to a division
-  app.post('/api/contractor/divisions/:id/assign-manager', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin'), async (req: any, res) => {
+  app.post('/api/contractor/divisions/:id/assign-manager', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin'), async (req: any, res: any) => {
     try {
       if (!await requireDivisionTier(req, res)) return;
       const companyId = req.session.user.companyId;
@@ -19662,7 +20122,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // GET /api/contractor/divisions/:id/members — list members in a division
-  app.get('/api/contractor/divisions/:id/members', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin', 'manager'), requireDivisionAccess, async (req: any, res) => {
+  app.get('/api/contractor/divisions/:id/members', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin', 'manager'), requireDivisionAccess, async (req: any, res: any) => {
     try {
       if (!await requireDivisionTier(req, res)) return;
       const companyId = req.session.user.companyId;
@@ -19702,7 +20162,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   };
 
   // POST /api/contractor/bulk-import — upload CSV of techs to invite
-  app.post('/api/contractor/bulk-import', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin'), requireBulkImport, upload.single('file'), async (req: any, res) => {
+  app.post('/api/contractor/bulk-import', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin'), requireBulkImport, upload.single('file'), async (req: any, res: any) => {
     try {
       const adminUser = req.session.user;
       if (!adminUser.companyId) return res.status(400).json({ message: 'You must belong to a company' });
@@ -19800,7 +20260,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // GET /api/contractor/bulk-import/history — list past import records
-  app.get('/api/contractor/bulk-import/history', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin'), requireBulkImport, async (req: any, res) => {
+  app.get('/api/contractor/bulk-import/history', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin'), requireBulkImport, async (req: any, res: any) => {
     try {
       const companyId = req.session.user.companyId;
       if (!companyId) return res.status(400).json({ message: 'You must belong to a company' });
@@ -19830,7 +20290,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   // ─── Phase 3.4 — Enterprise SSO Config (stubs) ───────────────────────────────
 
   // GET /api/contractor/sso — fetch SSO configuration for this company
-  app.get('/api/contractor/sso', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner'), requireApiAccess, async (req: any, res) => {
+  app.get('/api/contractor/sso', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner'), requireApiAccess, async (req: any, res: any) => {
     try {
       const companyId = req.session.user.companyId;
       if (!companyId) return res.status(403).json({ message: 'No company found' });
@@ -19857,7 +20317,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
   // PATCH /api/contractor/sso — update SSO config (Enterprise only; owner only)
   // Stub: real SAML/OIDC wiring is deferred to Phase 5. This endpoint records intent and notifies CS.
-  app.patch('/api/contractor/sso', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner'), requireApiAccess, async (req: any, res) => {
+  app.patch('/api/contractor/sso', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner'), requireApiAccess, async (req: any, res: any) => {
     try {
       const companyId = req.session.user.companyId;
       if (!companyId) return res.status(403).json({ message: 'No company found' });
@@ -19889,7 +20349,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
   // Upload invoice (admin or tech, not suspended); max 10 MB, PDF/JPG/PNG only
   // List homeowners who have proposals with this company (used by tech invoice upload selector)
-  app.get('/api/contractor/company-homeowners', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin', 'tech'), async (req: any, res) => {
+  app.get('/api/contractor/company-homeowners', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin', 'tech'), async (req: any, res: any) => {
     try {
       const sessionUser = req.session.user;
       if (!sessionUser.companyId) {
@@ -19914,7 +20374,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     }
   });
 
-  app.post('/api/contractor/invoices/upload', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin', 'tech'), upload.single('file'), async (req: any, res) => {
+  app.post('/api/contractor/invoices/upload', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin', 'tech'), upload.single('file'), async (req: any, res: any) => {
     try {
       const sessionUser = req.session.user;
       if (sessionUser.role !== 'contractor' || !sessionUser.companyId) {
@@ -19973,7 +20433,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
   // List invoices — admins see all company invoices; techs see only their own
   // Query params: techId, homeownerId, homeownerName, startDate, endDate
-  app.get('/api/contractor/invoices', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin', 'tech'), async (req: any, res) => {
+  app.get('/api/contractor/invoices', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin', 'tech'), async (req: any, res: any) => {
     try {
       const sessionUser = req.session.user;
       if (sessionUser.role !== 'contractor' || !sessionUser.companyId) {
@@ -20023,7 +20483,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // Get single invoice — tech can only access their own; admin can access any company invoice
-  app.get('/api/contractor/invoices/:id', isAuthenticated, requireNotSuspended(), async (req: any, res) => {
+  app.get('/api/contractor/invoices/:id', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const sessionUser = req.session.user;
       if (sessionUser.role !== 'contractor' || !sessionUser.companyId) {
@@ -20068,7 +20528,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   // Quiz Results — save Home Health Score to the database
   // Works for both anonymous visitors (no userId stored) and authenticated users.
 
-  app.post("/api/demo-lead", async (req: any, res) => {
+  app.post("/api/demo-lead", async (req: any, res: any) => {
     try {
       const bodySchema = z.object({
         name: z.string().min(1).max(200),
@@ -20089,7 +20549,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // Fetch the authenticated user's most recent quiz result
-  app.get("/api/quiz-result/me", async (req: any, res) => {
+  app.get("/api/quiz-result/me", async (req: any, res: any) => {
     try {
       const userId: string | null = req.session?.isAuthenticated && req.session?.user?.id
         ? req.session.user.id
@@ -20113,7 +20573,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     }
   });
 
-  app.post("/api/quiz-result", quizLimiter, async (req: any, res) => {
+  app.post("/api/quiz-result", quizLimiter, async (req: any, res: any) => {
     try {
       const bodySchema = z.object({
         score: z.number().int().min(0).max(100),
@@ -20156,7 +20616,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   // Claim an anonymous quiz result after the visitor signs up or logs in.
   // The client stores the resultId in localStorage immediately after the quiz
   // POST returns. On login, the frontend calls this endpoint to backfill userId.
-  app.post("/api/quiz-result/claim", async (req: any, res) => {
+  app.post("/api/quiz-result/claim", async (req: any, res: any) => {
     try {
       const userId: string | null = req.session?.isAuthenticated && req.session?.user?.id
         ? req.session.user.id
@@ -20244,7 +20704,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
   
   // POST /api/client-error — receive and log frontend JS errors (from ErrorBoundary)
-  app.post("/api/client-error", async (req: any, res) => {
+  app.post("/api/client-error", async (req: any, res: any) => {
     try {
       const { message, stack, componentStack, url } = req.body || {};
       const userId = req.session?.user?.id ?? "anonymous";

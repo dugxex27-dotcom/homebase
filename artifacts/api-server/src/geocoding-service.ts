@@ -55,7 +55,7 @@ export async function geocodeAddress(address: string): Promise<GeocodeResult | n
       return null;
     }
 
-    const data: NominatimResponse[] = await response.json();
+    const data: NominatimResponse[] = await response.json() as NominatimResponse[];
 
     if (!data || data.length === 0) {
       console.warn('[GEOCODING] No results found for address:', address);

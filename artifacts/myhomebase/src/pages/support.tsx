@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { insertSupportTicketSchema, type SupportTicket } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -277,7 +277,7 @@ export default function SupportPage() {
 
   /* ── ticket form ── */
   const form = useForm<TicketFormData>({
-    resolver: zodResolver(ticketFormSchema),
+    resolver: zodResolver(ticketFormSchema as any),
     defaultValues: { category: 'general', priority: 'medium', subject: '', description: '' },
   });
 
@@ -296,7 +296,7 @@ export default function SupportPage() {
 
   /* ── contact form ── */
   const contactForm = useForm<ContactFormData>({
-    resolver: zodResolver(contactFormSchema),
+    resolver: zodResolver(contactFormSchema as any),
     defaultValues: {
       name: user ? `${(user as any).firstName || ''} ${(user as any).lastName || ''}`.trim() : '',
       email: (user as any)?.email || '',

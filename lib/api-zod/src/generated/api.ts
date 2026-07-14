@@ -8,6 +8,22 @@
 import * as zod from "zod";
 
 /**
+ * Admin-only. Immediately runs the invoice orphan file cleanup sweep and returns counts of files scanned, deleted, skipped, and errors. Normally this sweep runs automatically every 6 hours; this endpoint lets operators run it on demand without restarting the server.
+
+ * @summary Trigger invoice orphan file cleanup
+ */
+export const RunInvoiceOrphanCleanupResponse = zod.object({
+  scanned: zod
+    .number()
+    .describe("Total number of files inspected in object storage"),
+  deleted: zod.number().describe("Number of orphaned files deleted"),
+  skipped: zod
+    .number()
+    .describe("Number of files skipped (referenced or within grace period)"),
+  errors: zod.number().describe("Number of files that failed to delete"),
+});
+
+/**
  * Returns server health status
  * @summary Health check
  */

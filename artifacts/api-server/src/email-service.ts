@@ -1669,6 +1669,39 @@ export async function sendDemoSeedingFailureAlert(
   });
 }
 
+export async function sendOnboardingNudgeEmail(userId: string, userName: string): Promise<boolean> {
+  const user = await storage.getUser(userId);
+  if (!user?.email) return false;
+
+  const html = wrapEmailContent(
+    getEmailHeader(),
+    `
+      <p>Hi ${userName || 'there'},</p>
+      <p>You're almost set up on HomeBase — just a few steps left to complete your home profile!</p>
+      <p>Once you're done, you'll unlock:</p>
+      <ul>
+        <li>Your personalized Home Wellness Score™</li>
+        <li>A seasonal maintenance schedule built for your home</li>
+        <li>Easy access to trusted local contractors</li>
+      </ul>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="https://gotohomebase.com" style="background: #6B46C1; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Finish Setup</a>
+      </div>
+      <p>Questions? Reply to this email or reach us at <a href="mailto:gotohomebase2025@gmail.com">gotohomebase2025@gmail.com</a>.</p>
+      <p>- The HomeBase Team</p>
+    `
+  );
+
+  const text = `Hi ${userName || 'there'}, you're almost set up on HomeBase! Complete your home profile to unlock your Home Wellness Score, a seasonal maintenance schedule, and access to trusted contractors. Visit gotohomebase.com to finish setup.`;
+
+  return sendEmail({
+    to: user.email,
+    subject: 'Finish setting up your HomeBase profile 🏠',
+    text,
+    html,
+  });
+}
+
 export const emailService = {
   sendEmail,
   sendWelcomeEmail,

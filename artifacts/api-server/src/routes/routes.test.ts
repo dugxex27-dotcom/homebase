@@ -6,6 +6,7 @@ import {
   countActiveCompanySeats,
   updateMeteredSeats,
   refreshSeatsForCompany,
+  recoverPendingSeatSyncs,
   processedWebhookEventIds,
   inFlightWebhookEventIds,
   enforceWebhookDedupCacheCap,
@@ -20,6 +21,9 @@ import {
   executeRemoveMember,
   executeTransferOwnership,
   verifyRequestorRoleFromDb,
+  checkDiyVerifyGuard,
+  checkPhotoCountGuard,
+  MAX_PHOTOS_PER_ANALYSIS,
   companyIdToAdvisoryLockKey,
   withDbAdvisoryLock,
   seatUpdateLocks,
@@ -3459,7 +3463,6 @@ describe("cross-process member-removal serialization via DB advisory lock", () =
   beforeEach(() => {
     seatUpdateLocks.clear();
   });
-
   afterEach(() => {
     seatUpdateLocks.clear();
   });
@@ -3606,5 +3609,595 @@ describe("cross-process member-removal serialization via DB advisory lock", () =
     expect(aIdx).toBeGreaterThanOrEqual(0);
     expect(bIdx).toBeGreaterThanOrEqual(0);
     expect(Math.abs(aIdx - bIdx)).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// recoverPendingSeatSyncs — startup recovery for interrupted seat updates
+//
+// These tests verify that on startup any company whose seat-sync checkpoint
+// row was not cleared (because the server crashed between the DB write and
+// the Stripe API call) gets its seat count re-reported to Stripe.
+// ---------------------------------------------------------------------------
+
+describe("recoverPendingSeatSyncs — startup recovery path", () => {
+  const COMPANY_A = "company-recover-a";
+  const COMPANY_B = "company-recover-b";
+  const SUB_ID_A = "sub_recover_001";
+  const SUB_ID_B = "sub_recover_002";
+
+  beforeEach(() => {
+    seatUpdateLocks.clear();
+  });
+
+  function makeOwnerDbAndCountDb(subId: string) {
+    let callIndex = 0;
+    const dbMock = {
+      select: vi.fn().mockImplementation(() => {
+        callIndex++;
+        if (callIndex % 2 === 1) {
+          // Odd calls: owner lookup (has .limit())
+          return {
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue([{ stripeSubscriptionId: subId }]),
+              }),
+            }),
+          };
+        }
+        // Even calls: seat count (no .limit())
+        return {
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([{ count: 3 }]),
+          }),
+        };
+      }),
+    };
+    return dbMock;
+  }
+
+  function makeActiveStripe(itemId = "si_recover_001") {
+    return {
+      subscriptions: {
+        retrieve: vi.fn().mockResolvedValue({
+          status: "active",
+          items: { data: [{ id: itemId, price: { recurring: { usage_type: "metered" } } }] },
+        }),
+      },
+      subscriptionItems: { createUsageRecord: vi.fn().mockResolvedValue({}) },
+    };
+  }
+
+  /**
+   * Returns a storage stub whose getPendingSeatSyncs returns `companyIds` on
+   * the first call (initial pending list) and `remainingIds` on all subsequent
+   * calls (post-sync check — rows cleared by deletePendingSeatSync are absent).
+   */
+  function makeStorageStub(companyIds: string[], remainingIds: string[] = []) {
+    let getPendingCallCount = 0;
+    return {
+      getPendingSeatSyncs: vi.fn().mockImplementation(() => {
+        getPendingCallCount++;
+        return Promise.resolve(getPendingCallCount === 1 ? companyIds : remainingIds);
+      }),
+      upsertPendingSeatSync: vi.fn().mockResolvedValue(undefined),
+      deletePendingSeatSync: vi.fn().mockResolvedValue(undefined),
+    };
+  }
+
+  it("returns empty results when there are no pending checkpoints", async () => {
+    const storageStub = makeStorageStub([]);
+
+    const result = await recoverPendingSeatSyncs(storageStub, null, {});
+
+    expect(result).toEqual({ recovered: [], failed: [] });
+    // Short-circuits before the post-sync check when the initial list is empty.
+    expect(storageStub.getPendingSeatSyncs).toHaveBeenCalledOnce();
+  });
+
+  it("re-reports seat count to Stripe for an interrupted company and clears the checkpoint", async () => {
+    const stripeMock = makeActiveStripe("si_recover_001");
+    const dbMock = makeOwnerDbAndCountDb(SUB_ID_A);
+    // Second getPendingSeatSyncs call returns [] — row was cleared by delete.
+    const storageStub = makeStorageStub([COMPANY_A], []);
+
+    const result = await recoverPendingSeatSyncs(storageStub, stripeMock, dbMock);
+
+    expect(result.recovered).toEqual([COMPANY_A]);
+    expect(result.failed).toEqual([]);
+    expect(stripeMock.subscriptionItems.createUsageRecord).toHaveBeenCalledWith(
+      "si_recover_001",
+      { quantity: 1, action: "set" }, // 3 seats − 2 included = 1 billed
+    );
+    // Checkpoint written BEFORE the Stripe retrieve call, cleared AFTER success.
+    expect(storageStub.upsertPendingSeatSync).toHaveBeenCalledWith(COMPANY_A);
+    expect(storageStub.deletePendingSeatSync).toHaveBeenCalledWith(COMPANY_A);
+    // Recovery verifies the row was actually cleared with a second DB read.
+    expect(storageStub.getPendingSeatSyncs).toHaveBeenCalledTimes(2);
+  });
+
+  it("processes multiple pending companies and reports each outcome", async () => {
+    // Second getPendingSeatSyncs call returns [] — both rows cleared.
+    const storageStub = makeStorageStub([COMPANY_A, COMPANY_B], []);
+
+    let retrieveCount = 0;
+    let selectCount = 0;
+    const stripeClient = {
+      subscriptions: {
+        retrieve: vi.fn().mockImplementation(() => {
+          retrieveCount++;
+          return Promise.resolve({
+            status: "active",
+            items: {
+              data: [
+                {
+                  id: retrieveCount === 1 ? "si_a" : "si_b",
+                  price: { recurring: { usage_type: "metered" } },
+                },
+              ],
+            },
+          });
+        }),
+      },
+      subscriptionItems: { createUsageRecord: vi.fn().mockResolvedValue({}) },
+    };
+
+    const dbMock = {
+      select: vi.fn().mockImplementation(() => {
+        selectCount++;
+        if (selectCount % 2 === 1) {
+          const subId = selectCount === 1 ? SUB_ID_A : SUB_ID_B;
+          return {
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue([{ stripeSubscriptionId: subId }]),
+              }),
+            }),
+          };
+        }
+        return {
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([{ count: 3 }]),
+          }),
+        };
+      }),
+    };
+
+    const result = await recoverPendingSeatSyncs(storageStub, stripeClient, dbMock);
+
+    expect(result.recovered).toHaveLength(2);
+    expect(result.recovered).toContain(COMPANY_A);
+    expect(result.recovered).toContain(COMPANY_B);
+    expect(result.failed).toEqual([]);
+  });
+
+  it("records a failed company without stopping recovery for subsequent companies", async () => {
+    // After the run: COMPANY_A's row is still present (Stripe threw before delete),
+    // COMPANY_B's row was cleared successfully.
+    const storageStub = makeStorageStub([COMPANY_A, COMPANY_B], [COMPANY_A]);
+
+    // Build a DB mock whose .where() result is both a Promise (for the seat-count
+    // query that awaits it directly) AND has a .limit() method (for the owner query).
+    // This dual-purpose object satisfies both query shapes with one mock factory.
+    function makeDualWhereChain(subId: string, count = 3) {
+      const whereResult = {
+        limit: vi.fn().mockResolvedValue([{ stripeSubscriptionId: subId }]),
+        then: (res: any, rej: any) => Promise.resolve([{ count }]).then(res, rej),
+        catch: (fn: any) => Promise.resolve([{ count }]).catch(fn),
+      };
+      return {
+        select: vi.fn().mockReturnValue({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue(whereResult),
+          }),
+        }),
+      };
+    }
+
+    let retrieveCount = 0;
+    const stripeClient = {
+      subscriptions: {
+        retrieve: vi.fn().mockImplementation(() => {
+          retrieveCount++;
+          if (retrieveCount === 1) return Promise.reject(new Error("Stripe timeout"));
+          return Promise.resolve({
+            status: "active",
+            items: { data: [{ id: "si_b", price: { recurring: { usage_type: "metered" } } }] },
+          });
+        }),
+      },
+      subscriptionItems: { createUsageRecord: vi.fn().mockResolvedValue({}) },
+    };
+
+    // Use a single dual-where DB mock; both companies share the same sub structure
+    const dbMock = makeDualWhereChain(SUB_ID_B);
+
+    const result = await recoverPendingSeatSyncs(storageStub, stripeClient, dbMock);
+
+    // COMPANY_A failed (Stripe threw on first retrieve); COMPANY_B still processed
+    expect(result.failed).toHaveLength(1);
+    expect(result.failed[0].companyId).toBe(COMPANY_A);
+    expect(result.failed[0].error).toMatch(/Stripe timeout/);
+    expect(result.recovered).toHaveLength(1);
+    expect(result.recovered[0]).toBe(COMPANY_B);
+  });
+
+  it("reports as failed when stripeClient is null — row stays, no checkpoint written", async () => {
+    // refreshSeatsForCompany returns early when stripeClient is null, so the
+    // checkpoint methods are never called and the pending row is never cleared.
+    // The post-sync getPendingSeatSyncs check will still find the row, so the
+    // company is classified as failed (not recovered).
+    const storageStub = makeStorageStub([COMPANY_A], [COMPANY_A]);
+
+    const result = await recoverPendingSeatSyncs(storageStub, null, {});
+
+    expect(result.recovered).toEqual([]);
+    expect(result.failed).toHaveLength(1);
+    expect(result.failed[0].companyId).toBe(COMPANY_A);
+    expect(result.failed[0].error).toMatch(/stripe not configured/i);
+    expect(storageStub.upsertPendingSeatSync).not.toHaveBeenCalled();
+    expect(storageStub.deletePendingSeatSync).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// checkDiyVerifyGuard — concurrent diy-verify race simulation
+// ---------------------------------------------------------------------------
+//
+// The POST /api/invoice-analyses/:id/diy-verify route uses a read-then-update
+// pattern.  Two concurrent calls can both read diyVerified=false before either
+// commits, both pass the fast pre-check, upload photos, run AI verification,
+// then both enter the db.transaction(SELECT … FOR UPDATE) block.  The second
+// request blocks on the row lock until the first commits.  After the lock is
+// released, checkDiyVerifyGuard re-reads diy_verified=true and returns 409
+// ALREADY_VERIFIED so the second writer never overwrites the first call's
+// photos.
+//
+// Race window (without the transaction lock):
+//
+//   Tab A reads diyVerified=false ──────────────────────────────────────────┐
+//   Tab B reads diyVerified=false ────────────────────────────────────────┐ │
+//   Tab A: guard(false) → null (allowed)                                  │ │
+//   Tab B: guard(false) → null (allowed) ←───────────────────────────────┘ │
+//   Tab A commits UPDATE (diyVerified → true, photos saved)                │
+//   Tab B commits UPDATE (diyVerified → true, photos OVERWRITTEN) ←────────┘
+//
+// Mitigation (SELECT … FOR UPDATE inside db.transaction):
+//   Tab B blocks on the lock.  After Tab A commits, Tab B re-reads
+//   diy_verified=true, checkDiyVerifyGuard returns 409 ALREADY_VERIFIED,
+//   and the update is never executed.
+// ---------------------------------------------------------------------------
+
+describe("checkDiyVerifyGuard — concurrent diy-verify race simulation", () => {
+  // (1) Demonstrate the race: both tabs see diyVerified=false and both pass.
+  //     Without the FOR UPDATE lock both would commit and the second would
+  //     overwrite the first call's photos.  This test documents why the
+  //     transaction lock is required.
+  it("demonstrates the race window: both concurrent calls see diyVerified=false and both pass the guard", () => {
+    const guardTabA = checkDiyVerifyGuard({ diy_verified: false });
+    const guardTabB = checkDiyVerifyGuard({ diy_verified: false });
+
+    expect(guardTabA).toBeNull(); // Tab A proceeds (will set diyVerified → true)
+    expect(guardTabB).toBeNull(); // Tab B also proceeds — without serialization it overwrites Tab A
+  });
+
+  // (2) Mitigation path: after Tab A commits, Tab B re-reads diy_verified=true
+  //     inside the locked transaction and is rejected with 409 ALREADY_VERIFIED.
+  it("blocks the second concurrent call when it re-reads diy_verified=true after the first commits", () => {
+    const guard = checkDiyVerifyGuard({ diy_verified: true });
+
+    expect(guard).not.toBeNull();
+    expect(guard!.status).toBe(409);
+    expect(guard!.code).toBe("ALREADY_VERIFIED");
+    expect(guard!.message).toMatch(/already been verified/i);
+  });
+
+  // (3) Also accepts camelCase field name (Drizzle typed result) — used in tests
+  //     and any path that passes a typed InvoiceAnalysis object instead of a raw row.
+  it("accepts camelCase diyVerified field and blocks when true", () => {
+    const guard = checkDiyVerifyGuard({ diyVerified: true });
+
+    expect(guard).not.toBeNull();
+    expect(guard!.status).toBe(409);
+    expect(guard!.code).toBe("ALREADY_VERIFIED");
+  });
+
+  it("accepts camelCase diyVerified field and allows when false", () => {
+    const guard = checkDiyVerifyGuard({ diyVerified: false });
+    expect(guard).toBeNull();
+  });
+
+  // (4) Null / undefined treated as not-verified — safe default.
+  it("treats null diy_verified as not verified and allows the update", () => {
+    const guard = checkDiyVerifyGuard({ diy_verified: null });
+    expect(guard).toBeNull();
+  });
+
+  it("treats undefined/missing fields as not verified and allows the update", () => {
+    const guard = checkDiyVerifyGuard({});
+    expect(guard).toBeNull();
+  });
+
+  // (5) End-to-end concurrent simulation:
+  //     Tab A acquires the lock and is mid-update.  Tab B, which already passed
+  //     the pre-check (diyVerified=false), now re-reads inside the locked
+  //     transaction.  The mock locked row returns diy_verified=true (Tab A just
+  //     committed).  Tab B must be rejected.
+  it("simulates the full race: Tab A commits then Tab B is rejected by the locked re-read", () => {
+    // Tab A just committed — the row now has diy_verified=true.
+    // Tab B enters its transaction, does SELECT … FOR UPDATE, gets this row.
+    const lockedRowAfterTabACommits = { diy_verified: true };
+
+    const guardTabB = checkDiyVerifyGuard(lockedRowAfterTabACommits);
+
+    expect(guardTabB).not.toBeNull();
+    expect(guardTabB!.status).toBe(409);
+    expect(guardTabB!.code).toBe("ALREADY_VERIFIED");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// checkPhotoCountGuard — photo-count validation using locked-row data
+// ---------------------------------------------------------------------------
+//
+// The POST /api/invoice-analyses/:id/diy-verify route performs a quick
+// totalBefore/totalAfter pre-check against the stale snapshot read before the
+// transaction, then re-validates the count INSIDE the transaction using the
+// row locked by SELECT … FOR UPDATE.  Two concurrent calls can both pass the
+// pre-check even though the locked row's state has already changed.
+//
+// The authoritative count guard uses:
+//   totalBefore = lockedRow.before_photo_urls.length + newBeforeUrls.length
+//   totalAfter  = lockedRow.after_photo_urls.length  + newAfterUrls.length
+//
+// Concurrent scenario where locked-row counts matter:
+//
+//   Row starts:  { before: [], after: [] }
+//
+//   Req A:  new before=[a1,a2], new after=[a3]      → pre-check passes (both ≥1)
+//   Req B:  new before=[b1],    new after=[b2]      → pre-check passes (both ≥1)
+//
+//   Req A acquires lock, locked row = { before:[], after:[] }
+//   countGuard([],[],[a1,a2],[a3]) → null (totalBefore=2, totalAfter=1) ✓
+//   Req A commits → row = { before:[a1,a2], after:[a3] }
+//
+//   Req B acquires lock, locked row = { before:[a1,a2], after:[a3] }
+//   countGuard([a1,a2],[a3],[b1],[b2]) → null (totalBefore=3, totalAfter=2) ✓
+//   Req B commits → row = { before:[a1,a2,b1], after:[a3,b2] }   ← both sets merged
+//
+// ---------------------------------------------------------------------------
+
+describe("checkPhotoCountGuard — photo count validation inside the diy-verify transaction", () => {
+  // --- Basic allow / block ---
+
+  it("allows when at least one before and one after URL are present (all new)", () => {
+    const guard = checkPhotoCountGuard([], [], ["before1.jpg"], ["after1.jpg"]);
+    expect(guard).toBeNull();
+  });
+
+  it("allows when existing locked-row photos supply the required counts (no new uploads)", () => {
+    const guard = checkPhotoCountGuard(["before1.jpg"], ["after1.jpg"], [], []);
+    expect(guard).toBeNull();
+  });
+
+  it("allows when existing and new photos together satisfy both counts", () => {
+    const guard = checkPhotoCountGuard(["before1.jpg"], [], [], ["after1.jpg"]);
+    expect(guard).toBeNull();
+  });
+
+  it("blocks when merged before count is zero", () => {
+    const guard = checkPhotoCountGuard([], ["after1.jpg"], [], []);
+    expect(guard).not.toBeNull();
+    expect(guard!.status).toBe(400);
+    expect(guard!.code).toBe("MISSING_PHOTOS");
+    expect(guard!.message).toMatch(/before photo.*after photo/i);
+  });
+
+  it("blocks when merged after count is zero", () => {
+    const guard = checkPhotoCountGuard(["before1.jpg"], [], [], []);
+    expect(guard).not.toBeNull();
+    expect(guard!.status).toBe(400);
+    expect(guard!.code).toBe("MISSING_PHOTOS");
+  });
+
+  it("blocks when both merged counts are zero (empty row, no new files)", () => {
+    const guard = checkPhotoCountGuard([], [], [], []);
+    expect(guard).not.toBeNull();
+    expect(guard!.status).toBe(400);
+    expect(guard!.code).toBe("MISSING_PHOTOS");
+  });
+
+  it("allows when multiple photos exist on both sides across existing and new", () => {
+    const guard = checkPhotoCountGuard(
+      ["b1.jpg", "b2.jpg"],
+      ["a1.jpg"],
+      ["b3.jpg"],
+      ["a2.jpg", "a3.jpg"],
+    );
+    expect(guard).toBeNull();
+  });
+
+  // --- Locked-row stale-data scenarios ---
+
+  it("uses locked-row before count to allow a request that only uploads after photos", () => {
+    // Stale pre-check saw before_photo_urls=[] (before Req A committed).
+    // Inside the transaction the locked row has before=[a1] from Req A's commit.
+    // Req B uploads only after photos — should pass because locked row has before.
+    const lockedBefore = ["a1.jpg"];     // Req A already committed a before photo
+    const lockedAfter: string[] = [];
+    const newBefore: string[] = [];      // Req B adds no more before photos
+    const newAfter = ["b1.jpg"];         // Req B adds one after photo
+
+    const guard = checkPhotoCountGuard(lockedBefore, lockedAfter, newBefore, newAfter);
+    expect(guard).toBeNull(); // should succeed — locked before + new after = both covered
+  });
+
+  it("blocks a request when the locked row has no before photos and the request adds none", () => {
+    // Both Req A and Req B saw before=[] in the stale read.
+    // Req A adds only after photos and commits first.
+    // Req B enters the transaction; locked row still has no before photos.
+    // Even though Req B might have thought before photos existed (stale read), the locked
+    // row says otherwise — count guard must reject.
+    const lockedBefore: string[] = [];  // locked row has no before photos
+    const lockedAfter = ["a1.jpg"];     // Req A's after photo is already persisted
+    const newBefore: string[] = [];     // Req B adds no before photos either
+    const newAfter = ["b1.jpg"];
+
+    const guard = checkPhotoCountGuard(lockedBefore, lockedAfter, newBefore, newAfter);
+    expect(guard).not.toBeNull();
+    expect(guard!.code).toBe("MISSING_PHOTOS");
+  });
+
+  // --- Full concurrent merge simulation ---
+  //
+  // This test walks through the full two-request interleaving, validating that:
+  //   1. Both requests independently pass the count guard (using their respective locked rows)
+  //   2. The second request's locked row reflects the first request's committed photos
+  //   3. The final merged photo set contains both request A's and request B's uploads
+  //
+  it("simulates two concurrent requests: both succeed and final row contains all photos", () => {
+    // Initial row state (seen by both pre-checks — stale, before either commits)
+    const initialBefore: string[] = [];
+    const initialAfter: string[] = [];
+
+    // Req A: uploads 2 before and 1 after
+    const reqANewBefore = ["a-before-1.jpg", "a-before-2.jpg"];
+    const reqANewAfter = ["a-after-1.jpg"];
+
+    // Req B: uploads 1 before and 2 after
+    const reqBNewBefore = ["b-before-1.jpg"];
+    const reqBNewAfter = ["b-after-1.jpg", "b-after-2.jpg"];
+
+    // === Req A acquires lock first ===
+    // Locked row = initial state (nothing committed yet)
+    const guardA = checkPhotoCountGuard(initialBefore, initialAfter, reqANewBefore, reqANewAfter);
+    expect(guardA).toBeNull(); // Req A proceeds
+
+    // Req A commits — simulate the merged row state
+    const rowAfterReqA = {
+      before: [...initialBefore, ...reqANewBefore],  // ["a-before-1.jpg", "a-before-2.jpg"]
+      after:  [...initialAfter,  ...reqANewAfter],   // ["a-after-1.jpg"]
+    };
+
+    // === Req B acquires lock after Req A commits ===
+    // Locked row = rowAfterReqA (Req B sees Req A's committed photos)
+    const guardB = checkPhotoCountGuard(rowAfterReqA.before, rowAfterReqA.after, reqBNewBefore, reqBNewAfter);
+    expect(guardB).toBeNull(); // Req B also proceeds
+
+    // Req B commits — simulate the final merged row state
+    const finalRow = {
+      before: [...rowAfterReqA.before, ...reqBNewBefore],
+      after:  [...rowAfterReqA.after,  ...reqBNewAfter],
+    };
+
+    // Both requests' photos are present in the final row
+    expect(finalRow.before).toContain("a-before-1.jpg");
+    expect(finalRow.before).toContain("a-before-2.jpg");
+    expect(finalRow.before).toContain("b-before-1.jpg");
+    expect(finalRow.after).toContain("a-after-1.jpg");
+    expect(finalRow.after).toContain("b-after-1.jpg");
+    expect(finalRow.after).toContain("b-after-2.jpg");
+
+    // Correct totals
+    expect(finalRow.before).toHaveLength(3);
+    expect(finalRow.after).toHaveLength(3);
+  });
+
+  it("simulates concurrent requests where Req A adds only before and Req B adds only after — Req B uses locked row to validate", () => {
+    // Both requests' individual photo sets would fail the pre-check
+    // (Req A has no after, Req B has no before) — but the pre-check can be
+    // skipped/passed independently if either request also includes photos of
+    // the other type.  The key property being verified here is that INSIDE the
+    // transaction the locked-row counts are used:
+    //
+    // After Req A commits { before:[a1], after:[] }, Req B's locked row check
+    // sees totalBefore = 1 (from locked) + 0 (new) = 1, totalAfter = 0 + 1 = 1.
+    // Both ≥ 1 → guard returns null → Req B can proceed.
+
+    const reqANewBefore = ["a-before-1.jpg"];
+    const reqANewAfter: string[] = [];
+
+    // Req A enters tx with empty locked row — but it has no after photos,
+    // so checkPhotoCountGuard DOES block it.  This is the expected behaviour:
+    // a request that only adds before photos and has no existing after photos
+    // must be rejected, because the row still lacks after evidence.
+    const guardAAlone = checkPhotoCountGuard([], [], reqANewBefore, reqANewAfter);
+    expect(guardAAlone).not.toBeNull();
+    expect(guardAAlone!.code).toBe("MISSING_PHOTOS");
+
+    // Now model the case where Req A had both types (passed both checks) and
+    // committed, leaving the row with before photos.  Req B (only after) can
+    // then succeed because the locked row supplies the required before count.
+    const rowAfterReqAWithBoth = {
+      before: ["a-before-1.jpg"],
+      after: ["a-after-1.jpg"],
+    };
+
+    const reqBNewBefore: string[] = [];
+    const reqBNewAfter = ["b-after-1.jpg"];
+
+    const guardB = checkPhotoCountGuard(
+      rowAfterReqAWithBoth.before,
+      rowAfterReqAWithBoth.after,
+      reqBNewBefore,
+      reqBNewAfter,
+    );
+    expect(guardB).toBeNull(); // Req B succeeds — locked row provides the before count
+  });
+
+  // --- Total-photos-per-analysis cap ---
+
+  it("allows exactly at the cap (MAX_PHOTOS_PER_ANALYSIS total)", () => {
+    // 5 locked before + 5 new before + 5 locked after + 5 new after + 5 locked receipts + 5 new receipts = 30
+    const b5 = Array.from({ length: 5 }, (_, i) => `b${i}.jpg`);
+    const a5 = Array.from({ length: 5 }, (_, i) => `a${i}.jpg`);
+    const r5 = Array.from({ length: 5 }, (_, i) => `r${i}.jpg`);
+    const guard = checkPhotoCountGuard(b5, a5, b5, a5, r5, r5);
+    expect(guard).toBeNull(); // exactly at cap → allowed
+  });
+
+  it("blocks when new uploads would push total over MAX_PHOTOS_PER_ANALYSIS", () => {
+    // 10 locked before + 10 locked after + 9 locked receipts = 29 already persisted
+    const lockedBefore = Array.from({ length: 10 }, (_, i) => `b${i}.jpg`);
+    const lockedAfter = Array.from({ length: 10 }, (_, i) => `a${i}.jpg`);
+    const lockedReceipts = Array.from({ length: 9 }, (_, i) => `r${i}.jpg`);
+    // Adding 2 more new receipts would push total to 31 > 30
+    const newReceipts = ["r9.jpg", "r10.jpg"];
+    const guard = checkPhotoCountGuard(lockedBefore, lockedAfter, [], [], lockedReceipts, newReceipts);
+    // MISSING_PHOTOS is checked first — but before+after are non-zero, so we reach the cap check
+    expect(guard).not.toBeNull();
+    expect(guard!.status).toBe(400);
+    expect(guard!.code).toBe("TOO_MANY_PHOTOS");
+    expect(guard!.message).toContain(String(MAX_PHOTOS_PER_ANALYSIS));
+  });
+
+  it("blocks when accumulated before/after photos alone exceed the cap", () => {
+    // 15 locked before + 15 locked after = 30, adding even 1 new pushes to 31
+    const locked15 = Array.from({ length: 15 }, (_, i) => `p${i}.jpg`);
+    const guard = checkPhotoCountGuard(locked15, locked15, ["extra.jpg"], [], [], []);
+    expect(guard).not.toBeNull();
+    expect(guard!.code).toBe("TOO_MANY_PHOTOS");
+  });
+
+  it("does not trigger the cap when receipts are omitted (backward-compatible call with 4 args)", () => {
+    // Old call sites that pass only 4 args should not break — receipts default to []
+    const guard = checkPhotoCountGuard(["b1.jpg"], ["a1.jpg"], [], []);
+    expect(guard).toBeNull();
+  });
+
+  it("cap check uses locked-row receipt count too (cross-call accumulation)", () => {
+    // Simulate 3 prior calls that each added 9 photos (before+after+receipt),
+    // totalling 27 photos on the locked row.  A 4th call adding 4 more should be blocked.
+    const lockedBefore = Array.from({ length: 9 }, (_, i) => `b${i}.jpg`);
+    const lockedAfter = Array.from({ length: 9 }, (_, i) => `a${i}.jpg`);
+    const lockedReceipts = Array.from({ length: 9 }, (_, i) => `r${i}.jpg`);
+    // 27 existing + 4 new = 31 > 30
+    const guard = checkPhotoCountGuard(
+      lockedBefore, lockedAfter,
+      ["new-b1.jpg", "new-b2.jpg"], ["new-a1.jpg", "new-a2.jpg"],
+      lockedReceipts, [],
+    );
+    expect(guard).not.toBeNull();
+    expect(guard!.code).toBe("TOO_MANY_PHOTOS");
   });
 });

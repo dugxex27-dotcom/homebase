@@ -29,11 +29,10 @@ describe("MemStorage.transferHouseOwnership", () => {
   it("transfers task completions from homeowner A to homeowner B", async () => {
     const house = await storage.createHouse({
       homeownerId: ownerA,
+      name: "Test House",
+      climateZone: "mixed",
+      homeSystems: [],
       address: "123 Main St",
-      city: "Testville",
-      state: "TX",
-      zipCode: "78701",
-      country: "US",
       isDefault: true,
     });
 
@@ -75,11 +74,10 @@ describe("MemStorage.transferHouseOwnership", () => {
   it("transfers task overrides from homeowner A to homeowner B", async () => {
     const house = await storage.createHouse({
       homeownerId: ownerA,
+      name: "Test House",
+      climateZone: "mixed",
+      homeSystems: [],
       address: "456 Oak Ave",
-      city: "Testville",
-      state: "TX",
-      zipCode: "78701",
-      country: "US",
       isDefault: false,
     });
 
@@ -116,11 +114,10 @@ describe("MemStorage.transferHouseOwnership", () => {
   it("transfers both task completions and task overrides in a single call", async () => {
     const house = await storage.createHouse({
       homeownerId: ownerA,
+      name: "Test House",
+      climateZone: "mixed",
+      homeSystems: [],
       address: "789 Pine Rd",
-      city: "Testville",
-      state: "TX",
-      zipCode: "78701",
-      country: "US",
       isDefault: false,
     });
 
@@ -159,21 +156,19 @@ describe("MemStorage.transferHouseOwnership", () => {
   it("only transfers records belonging to the specified house", async () => {
     const houseToTransfer = await storage.createHouse({
       homeownerId: ownerA,
+      name: "Test House",
+      climateZone: "mixed",
+      homeSystems: [],
       address: "10 Transfer St",
-      city: "Testville",
-      state: "TX",
-      zipCode: "78701",
-      country: "US",
       isDefault: false,
     });
 
     const otherHouse = await storage.createHouse({
       homeownerId: ownerA,
+      name: "Test House",
+      climateZone: "mixed",
+      homeSystems: [],
       address: "20 Other St",
-      city: "Testville",
-      state: "TX",
-      zipCode: "78701",
-      country: "US",
       isDefault: false,
     });
 
@@ -231,11 +226,10 @@ describe("MemStorage.transferHouseOwnership", () => {
   it("returns zero counts when there are no task completions or overrides", async () => {
     const house = await storage.createHouse({
       homeownerId: ownerA,
+      name: "Test House",
+      climateZone: "mixed",
+      homeSystems: [],
       address: "Empty House Lane",
-      city: "Testville",
-      state: "TX",
-      zipCode: "78701",
-      country: "US",
       isDefault: false,
     });
 
@@ -248,11 +242,10 @@ describe("MemStorage.transferHouseOwnership", () => {
   it("throws when the house does not belong to homeowner A", async () => {
     const house = await storage.createHouse({
       homeownerId: ownerA,
+      name: "Test House",
+      climateZone: "mixed",
+      homeSystems: [],
       address: "Wrong Owner St",
-      city: "Testville",
-      state: "TX",
-      zipCode: "78701",
-      country: "US",
       isDefault: false,
     });
 

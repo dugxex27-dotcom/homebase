@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import HomeHealthScore from "@/components/home-health-score";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { insertMaintenanceLogSchema, insertCustomMaintenanceTaskSchema, insertHomeSystemSchema, insertTaskOverrideSchema, insertHomeApplianceSchema, insertHomeApplianceManualSchema } from "@shared/schema";
 import type { MaintenanceLog, House, CustomMaintenanceTask, HomeSystem, TaskOverride, HomeAppliance, HomeApplianceManual, InvoiceAnalysis } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -1197,7 +1198,7 @@ function TaskDetailDialog({
                 >
                   Find a Contractor
                 </a>
-                {!isContractor && (
+                {(
                   <a
                     href={`/messages?taskTitle=${encodeURIComponent(task.title)}&taskDescription=${encodeURIComponent(task.description || '')}&houseId=${encodeURIComponent(selectedHouseId || '')}`}
                     className="flex items-center justify-center gap-2 w-full text-center py-3 px-4 bg-[#EEEDFE] text-[#3C258E] font-medium rounded-lg hover:bg-[#E6E3FC] transition-colors"
@@ -1532,6 +1533,7 @@ function TaskCard({
 }
 
 export default function Maintenance() {
+  const [, setLocation] = useLocation();
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   const [selectedZone, setSelectedZone] = useState<string>("pacific-northwest");
   const [selectedHouseId, setSelectedHouseId] = useState<string>("");
@@ -1583,7 +1585,8 @@ export default function Maintenance() {
 
   // AI Invoice Scan dialog state
   const [aiInvoiceOpen, setAiInvoiceOpen] = useState(false);
-  const [aiStep, setAiStep] = useState<"upload" | "diy-verify" | "review" | "done">("upload");
+  const [aiStep, setAiStep] = useState<"upload" | "diy-verify" | "review" | "done" | "duplicate">("upload");
+  const [aiDuplicateAnalysisId, setAiDuplicateAnalysisId] = useState<string | null>(null);
   const [aiCompletionMethod, setAiCompletionMethod] = useState<"contractor" | "diy">("contractor");
   const [aiInvoiceFiles, setAiInvoiceFiles] = useState<File[]>([]);
   const [aiReceiptFiles, setAiReceiptFiles] = useState<File[]>([]);
@@ -1833,7 +1836,7 @@ export default function Maintenance() {
 
   // Maintenance log form handling
   const maintenanceLogForm = useForm<MaintenanceLogFormData>({
-    resolver: zodResolver(maintenanceLogFormSchema),
+    resolver: zodResolver(maintenanceLogFormSchema as any),
     defaultValues: {
       homeownerId,
       houseId: selectedHouseId || "",
@@ -2011,7 +2014,7 @@ export default function Maintenance() {
 
   // House form handling
   const houseForm = useForm<HouseFormData>({
-    resolver: zodResolver(houseFormSchema),
+    resolver: zodResolver(houseFormSchema as any),
     defaultValues: {
       homeownerId,
       name: "",
@@ -2129,7 +2132,7 @@ type ApplianceFormData = z.infer<typeof applianceFormSchema>;
 type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
   const homeSystemForm = useForm<HomeSystemFormData>({
-    resolver: zodResolver(homeSystemFormSchema),
+    resolver: zodResolver(homeSystemFormSchema as any),
     defaultValues: {
       homeownerId,
       houseId: selectedHouseId,
@@ -2145,7 +2148,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
   // Appliance forms
   const applianceForm = useForm<ApplianceFormData>({
-    resolver: zodResolver(applianceFormSchema),
+    resolver: zodResolver(applianceFormSchema as any),
     defaultValues: {
       homeownerId,
       houseId: selectedHouseId,
@@ -2164,7 +2167,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
   });
 
   const applianceManualForm = useForm<ApplianceManualFormData>({
-    resolver: zodResolver(applianceManualFormSchema),
+    resolver: zodResolver(applianceManualFormSchema as any),
     defaultValues: {
       applianceId: "",
       title: "",
@@ -2765,6 +2768,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     setAiInvoiceFiles([]);
     setAiReceiptFiles([]);
     setAiAnalysis(null);
+    setAiDuplicateAnalysisId(null);
     setAiDiyVerifyFiles({ before: [], after: [], receipt: [] });
     setAiDiyVerifyResult(null);
     setAiInvoiceOpen(true);
@@ -2830,6 +2834,12 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       });
       const responseData = await res.json();
       if (!res.ok) {
+        if (res.status === 409 && responseData?.code === "DUPLICATE_INVOICE") {
+          setAiDuplicateAnalysisId(responseData.analysisId ?? null);
+          setAiStep("duplicate");
+          setAiAnalyzing(false);
+          return;
+        }
         const reason = responseData?.message || "Could not analyze your invoice. Please try again.";
         toast({ title: "Upload not recognized", description: reason, variant: "destructive" });
         setAiAnalyzing(false);
@@ -4369,7 +4379,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2" style={{ color: 'var(--purple-deep)' }}>
                 <Scan className="w-5 h-5" style={{ color: 'var(--purple)' }} />
-                {aiStep === "diy-verify" ? "Verify DIY Work" : "AI Scan Invoice"}
+                {aiStep === "diy-verify" ? "Verify DIY Work" : aiStep === "duplicate" ? "Already Scanned" : "AI Scan Invoice"}
               </DialogTitle>
             </DialogHeader>
 
@@ -4563,6 +4573,42 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     data-testid="button-confirm-ai-analysis-maintenance"
                   >
                     {aiConfirming ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</> : "Confirm & Add Record"}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {aiStep === "duplicate" && (
+              <div className="py-8 text-center space-y-4">
+                <AlertCircle className="w-16 h-16 mx-auto" style={{ color: '#f59e0b' }} />
+                <h3 className="text-lg font-semibold" style={{ color: 'var(--purple-deep)' }}>You already scanned this invoice</h3>
+                <p className="text-sm text-muted-foreground">
+                  This file has already been analyzed and saved to your service records. No need to scan it again.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2 justify-center pt-2">
+                  {aiDuplicateAnalysisId && (
+                    <Button
+                      onClick={() => {
+                        const id = aiDuplicateAnalysisId;
+                        setAiInvoiceOpen(false);
+                        setAiDuplicateAnalysisId(null);
+                        setLocation(`/service-records?highlightAnalysis=${id}`);
+                      }}
+                      style={{ backgroundColor: 'var(--purple)', color: '#fff' }}
+                    >
+                      View existing record
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setAiStep("upload");
+                      setAiInvoiceFiles([]);
+                      setAiReceiptFiles([]);
+                      setAiDuplicateAnalysisId(null);
+                    }}
+                  >
+                    Scan a different invoice
                   </Button>
                 </div>
               </div>

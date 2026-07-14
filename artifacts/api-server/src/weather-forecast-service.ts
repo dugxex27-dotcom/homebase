@@ -89,7 +89,7 @@ export async function getWeatherForecast(latitude: number, longitude: number): P
       return [];
     }
 
-    const pointData: NWSPoint = await pointRes.json();
+    const pointData = await pointRes.json() as NWSPoint;
     const forecastUrl = pointData.properties?.forecast;
     if (!forecastUrl) {
       console.warn(`[FORECAST] No forecast URL returned for ${latitude},${longitude}`);
@@ -111,7 +111,7 @@ export async function getWeatherForecast(latitude: number, longitude: number): P
       return [];
     }
 
-    const forecastData: NWSForecast = await forecastRes.json();
+    const forecastData = await forecastRes.json() as NWSForecast;
     return forecastData.properties?.periods || [];
   } catch (error) {
     console.error(`[FORECAST] Error fetching forecast for ${latitude},${longitude}:`, error);

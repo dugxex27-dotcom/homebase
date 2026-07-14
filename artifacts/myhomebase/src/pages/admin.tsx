@@ -535,7 +535,7 @@ The MyHomeBase™ Team`);
                   subject: bulkEmailSubject,
                   body: bulkEmailBody,
                   imageUrl: bulkEmailImageUrl || undefined
-                })}
+                } as any)}
                 disabled={bulkEmailMutation.isPending || !bulkEmailReplyTo || !bulkEmailSubject.trim() || !bulkEmailBody.trim()}
                 data-testid="button-send-bulk-email"
               >

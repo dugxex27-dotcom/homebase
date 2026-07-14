@@ -54,7 +54,7 @@ async function formatPhoneNumber(phone: string): Promise<string | null> {
   return null;
 }
 
-async function canSendSMS(userId: string, notificationType: 'maintenance' | 'appointment' | 'messages'): Promise<boolean> {
+async function canSendSMS(userId: string, notificationType: 'maintenance' | 'appointment' | 'messages' | 'marketing'): Promise<boolean> {
   try {
     const user = await storage.getUser(userId);
     if (!user || !user.phone) {
@@ -139,7 +139,7 @@ export async function sendAppointmentConfirmation(
 
   return sendSMS({
     to: user.phone,
-    body: `HomeBase: Your appointment with ${contractorName} is confirmed for ${appointmentDate} at ${appointmentTime}.`,
+    body: `HomeBase: Your appointment with ${contractorName} is confirmed for ${_appointmentDate} at ${appointmentTime}.`,
   });
 }
 

@@ -56,7 +56,7 @@ export function MaintenanceScheduleDisplay({ houseId }: MaintenanceScheduleDispl
     );
   }
 
-  if (!data || !('schedule' in data)) {
+  if (!data || !('schedule' in (data as Record<string, unknown>))) {
     return (
       <Card>
         <CardHeader>

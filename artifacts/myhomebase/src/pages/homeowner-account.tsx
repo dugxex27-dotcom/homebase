@@ -229,13 +229,13 @@ export default function HomeownerAccount() {
   });
 
   // Fetch full user data for subscription details
-  const { data: userData } = useQuery({
+  const { data: userData } = useQuery<any>({
     queryKey: ['/api/user'],
     enabled: !!user,
   });
 
   // Referral data query
-  const { data: referralData, isLoading: isLoadingReferral } = useQuery({
+  const { data: referralData, isLoading: isLoadingReferral } = useQuery<any>({
     queryKey: ['/api/user/referral-code'],
     enabled: !!user,
   });
@@ -369,12 +369,12 @@ export default function HomeownerAccount() {
   };
 
   // House transfer queries and mutations
-  const { data: houses } = useQuery({
+  const { data: houses } = useQuery<any>({
     queryKey: ['/api/houses'],
     queryFn: () => apiRequest('/api/houses', 'GET'),
   });
 
-  const { data: transfers, refetch: refetchTransfers } = useQuery({
+  const { data: transfers, refetch: refetchTransfers } = useQuery<any>({
     queryKey: ['/api/house-transfers'],
     queryFn: () => apiRequest('/api/house-transfers', 'GET'),
   });
@@ -451,7 +451,7 @@ export default function HomeownerAccount() {
   return (
     <div className="min-h-screen" style={{ background: '#ffffff' }}>
 
-      {/* ── PAGE HEADER ────────────────────────────── */}
+
       <div className="dash-header">
         <span className="dash-eyebrow">Homeowner</span>
         <div className="dash-title">Account Settings</div>
@@ -474,10 +474,10 @@ export default function HomeownerAccount() {
         </div>
       </div>
 
-      {/* ── PAGE BODY ──────────────────────────────── */}
+
       <div className="dash-body">
         <div className="space-y-4 max-w-2xl mx-auto">
-          {/* Home Health Score Quiz Result */}
+
           {quizResult && (
             <>
               <p className="dash-section-label">Home Health Score</p>
@@ -527,7 +527,7 @@ export default function HomeownerAccount() {
             </>
           )}
 
-          {/* Basic Profile */}
+
           <p className="dash-section-label">Profile</p>
           <Card style={{ backgroundColor: '#ffffff' }}>
               <CardHeader>
@@ -625,7 +625,7 @@ export default function HomeownerAccount() {
             </Card>
 
             <p className="dash-section-label">Security</p>
-            {/* Account Security */}
+
             <Card style={{ backgroundColor: '#ffffff' }}>
               <CardHeader>
                 <CardTitle>Account Security</CardTitle>
@@ -678,7 +678,7 @@ export default function HomeownerAccount() {
             </Card>
 
           <p className="dash-section-label">Subscription</p>
-          {/* Subscription & Billing */}
+
           <Card style={{ backgroundColor: '#ffffff' }}>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -690,7 +690,7 @@ export default function HomeownerAccount() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Current Plan Status */}
+
               <div className="p-4 rounded-lg border" style={{ backgroundColor: 'white' }}>
                 <div className="flex items-center justify-between mb-3">
                   <div>
@@ -721,7 +721,7 @@ export default function HomeownerAccount() {
                   )}
                 </div>
 
-                {/* What you have access to */}
+
                 {isPaidSubscriber && (
                   <div className="text-sm text-gray-600">
                     <p className="flex items-center gap-2">
@@ -739,7 +739,7 @@ export default function HomeownerAccount() {
                   </div>
                 )}
 
-                {/* Free user message */}
+
                 {isFreeUser && (
                   <div className="mt-3 p-3 rounded-lg border" style={{ background: 'var(--purple-tint)', borderColor: 'var(--purple-border)' }}>
                     <p className="text-sm" style={{ color: 'var(--hw-primary)' }}>
@@ -748,7 +748,7 @@ export default function HomeownerAccount() {
                   </div>
                 )}
 
-                {/* Trial user message */}
+
                 {isInTrial && (
                   <div className="mt-3 p-3 rounded-lg bg-blue-50 border border-blue-200">
                     <p className="text-sm text-blue-800">
@@ -758,7 +758,7 @@ export default function HomeownerAccount() {
                 )}
               </div>
 
-              {/* Subscribe/Upgrade Button */}
+
               {(isFreeUser || isInTrial) && (
                 <Link href="/homeowner-pricing">
                   <Button 
@@ -773,7 +773,7 @@ export default function HomeownerAccount() {
                 </Link>
               )}
 
-              {/* Manage Subscription for paid users */}
+
               {isPaidSubscriber && (
                 <div className="space-y-3">
                   <Separator />
@@ -794,7 +794,7 @@ export default function HomeownerAccount() {
           </Card>
 
           <p className="dash-section-label">Notifications</p>
-          {/* Notification Preferences */}
+
           <Card style={{ backgroundColor: '#ffffff' }}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -934,7 +934,7 @@ export default function HomeownerAccount() {
               </CardContent>
             </Card>
 
-            {/* Push Notifications */}
+
             {user && (
               <div>
                 <PushNotificationManager userId={(user as any).id} />
@@ -942,7 +942,7 @@ export default function HomeownerAccount() {
             )}
 
             <p className="dash-section-label">Referral Rewards</p>
-            {/* Referral Sharing */}
+
             <Card style={{ backgroundColor: '#ffffff' }}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -954,7 +954,7 @@ export default function HomeownerAccount() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Referral Stats */}
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="text-center p-3 bg-white rounded-lg">
                     <div className="text-2xl font-bold" style={{ color: '#2c0f5b' }}>
@@ -970,7 +970,7 @@ export default function HomeownerAccount() {
                   </div>
                 </div>
 
-                {/* Progress to Free Subscription */}
+
                 <div className="p-4 bg-white rounded-lg">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium" style={{ color: '#2c0f5b' }}>
@@ -992,7 +992,7 @@ export default function HomeownerAccount() {
                   </p>
                 </div>
 
-                {/* Referral Code */}
+
                 <div>
                   <Label style={{ color: '#2c0f5b' }}>Your Referral Code</Label>
                   <div className="flex gap-2 mt-2">
@@ -1015,7 +1015,7 @@ export default function HomeownerAccount() {
                   </div>
                 </div>
 
-                {/* Share Options */}
+
                 <div>
                   <Label style={{ color: '#2c0f5b' }}>Share with Friends</Label>
                   <div className="grid grid-cols-2 gap-2 mt-2">
@@ -1066,7 +1066,7 @@ export default function HomeownerAccount() {
                   </div>
                 </div>
 
-                {/* Copy Link */}
+
                 <div>
                   <Label style={{ color: '#2c0f5b' }}>Referral Link</Label>
                   <div className="flex gap-2 mt-2">
@@ -1094,7 +1094,7 @@ export default function HomeownerAccount() {
               </CardContent>
             </Card>
 
-            {/* Shareable Graphics */}
+
             <p className="dash-section-label">Shareable Graphics</p>
             <Card style={{ backgroundColor: '#ffffff' }}>
               <CardHeader>
@@ -1112,7 +1112,7 @@ export default function HomeownerAccount() {
                 </p>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Instagram Post */}
+
                   <div className="bg-white rounded-lg p-3 space-y-2">
                     <div className="aspect-square rounded overflow-hidden border-2 border-gray-200">
                       <img src={instagramPostImg} alt="Instagram Post Template" className="w-full h-full object-cover" />
@@ -1133,7 +1133,7 @@ export default function HomeownerAccount() {
                     </div>
                   </div>
 
-                  {/* Instagram Story */}
+
                   <div className="bg-white rounded-lg p-3 space-y-2">
                     <div className="aspect-[9/16] rounded overflow-hidden border-2 border-gray-200 max-h-64">
                       <img src={instagramStoryImg} alt="Instagram Story Template" className="w-full h-full object-cover" />
@@ -1154,7 +1154,7 @@ export default function HomeownerAccount() {
                     </div>
                   </div>
 
-                  {/* Facebook/Twitter */}
+
                   <div className="bg-white rounded-lg p-3 space-y-2">
                     <div className="aspect-[16/9] rounded overflow-hidden border-2 border-gray-200">
                       <img src={facebookTwitterImg} alt="Facebook/Twitter Template" className="w-full h-full object-cover" />
@@ -1185,7 +1185,7 @@ export default function HomeownerAccount() {
             </Card>
 
             <p className="dash-section-label">House Transfers</p>
-            {/* House Transfers */}
+
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -1195,7 +1195,7 @@ export default function HomeownerAccount() {
                 <CardDescription>Transfer house ownership to another homeowner. Transfer all maintenance records and tasks to new homeowner. New homeowner must have a Homebase account</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Create Transfer Button */}
+
                 <Dialog open={transferModalOpen} onOpenChange={setTransferModalOpen}>
                   <DialogTrigger asChild>
                     <Button className="w-full" data-testid="button-create-transfer">
@@ -1272,7 +1272,7 @@ export default function HomeownerAccount() {
                   </DialogContent>
                 </Dialog>
 
-                {/* Incoming Transfers (pending acceptance) */}
+
                 {Array.isArray(transfers) && (transfers as any).filter((t: any) => t.status === 'pending' && t.toHomeownerEmail === (user as any)?.email).length > 0 && (
                   <div>
                     <h4 className="font-medium mb-3" style={{ color: 'var(--theme-accent)' }}>Incoming House Transfers</h4>
@@ -1323,7 +1323,7 @@ export default function HomeownerAccount() {
                   </div>
                 )}
 
-                {/* Transfers Awaiting Confirmation */}
+
                 {Array.isArray(transfers) && (transfers as any).filter((t: any) => t.status === 'accepted').length > 0 && (
                   <div>
                     <h4 className="font-medium mb-3" style={{ color: 'var(--theme-accent)' }}>Transfers Awaiting Your Confirmation</h4>
@@ -1358,7 +1358,7 @@ export default function HomeownerAccount() {
                   </div>
                 )}
 
-                {/* Existing Transfers List */}
+
                 {Array.isArray(transfers) && transfers.length > 0 && (
                   <div>
                     <h4 className="font-medium mb-3">Recent Transfers</h4>
@@ -1401,7 +1401,7 @@ export default function HomeownerAccount() {
               </CardContent>
             </Card>
 
-            {/* Account Overview */}
+
             <Card>
               <CardHeader>
                 <CardTitle>Account Overview</CardTitle>
@@ -1424,7 +1424,7 @@ export default function HomeownerAccount() {
               </CardContent>
             </Card>
 
-            {/* Cancel Account */}
+
             <Card className="border-red-200">
               <CardHeader>
                 <CardTitle className="text-red-600">Cancel Account</CardTitle>
@@ -1500,7 +1500,7 @@ export default function HomeownerAccount() {
               </CardContent>
             </Card>
 
-            {/* Contact Us Button */}
+
             <div className="mt-8 flex justify-center">
               <Button 
                 variant="outline" 

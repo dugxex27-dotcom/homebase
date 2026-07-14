@@ -38,15 +38,10 @@ vi.mock("stripe", () => {
   return { default: MockStripe };
 });
 
-vi.mock("../storage", () => ({
-  storage: {
-    getRecentStripeProcessedEventIds: vi.fn().mockResolvedValue(new Map()),
-    hasProcessedStripeEvent: vi.fn().mockResolvedValue(false),
-    recordProcessedStripeEvent: vi.fn().mockResolvedValue(undefined),
-    pruneOldStripeProcessedEvents: vi.fn().mockResolvedValue(undefined),
-    getCompanyLeads: vi.fn().mockResolvedValue([]),
-  },
-}));
+vi.mock("../storage", async () => {
+  const { createStorageMock } = await import("../test-helpers/storage-mock");
+  return { storage: createStorageMock({ getCompanyLeads: vi.fn().mockResolvedValue([]) }) };
+});
 
 vi.mock("../replitAuth", () => ({
   setupAuth: vi.fn().mockResolvedValue(undefined),

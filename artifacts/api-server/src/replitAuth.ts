@@ -241,7 +241,7 @@ export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
 
 // Role-based authorization middleware
 export const requireRole = (role: 'homeowner' | 'contractor'): RequestHandler => {
-  return async (req: any, res, next) => {
+  return async (req: any, res: any, next: any) => {
     // Check if user is authenticated via session
     if (!req.session?.isAuthenticated || !req.session?.user) {
       return res.status(401).json({ message: "Unauthorized" });
@@ -259,14 +259,313 @@ export const requireRole = (role: 'homeowner' | 'contractor'): RequestHandler =>
 
 // ─── Enterprise contractor role helpers ───────────────────────────────────────
 
-// In-memory blocklist: IDs added when admin suspends a tech, removed on reactivate.
-// Checked on every authenticated contractor request for instant revocation.
-export const suspendedUserIds = new Set<string>();
+// ─── LRU cache implementation ─────────────────────────────────────────────────
+
+const SUSPENSION_RECHECK_TTL_MS = 5 * 60 * 1000;
+const ACTIVE_STATUS_TTL_MS = 2 * 60 * 1000;
+
+// Bounded blocklist: combines TTL expiry with an LRU size cap so the structure
+// cannot grow without bound on long-running servers.
+//
+// - Size cap: when the map reaches maxSize the oldest (LRU) entry is evicted,
+//   mirroring the 5000-entry cap on `userStatusCache`.
+// - TTL: entries expire after ttlMs ms; .has() evicts them lazily.  If the
+//   user is still suspended the downstream DB check re-adds them; if they have
+//   been reactivated they pass through.
+// - Explicit .delete() on reactivation still provides instant removal, same
+//   as the old Set-based approach.
+class TtlSet {
+  private readonly _map = new Map<string, number>(); // key → expiresAt (ms)
+  private readonly _ttlMs: number;
+  private readonly _maxSize: number;
+
+  constructor(ttlMs: number, maxSize: number = 5000) {
+    this._ttlMs = ttlMs;
+    this._maxSize = maxSize;
+  }
+
+  get size(): number {
+    return this._map.size;
+  }
+
+  has(key: string): boolean {
+    const expiresAt = this._map.get(key);
+    if (expiresAt === undefined) return false;
+    if (Date.now() > expiresAt) {
+      this._map.delete(key);
+      return false;
+    }
+    return true;
+  }
+
+  add(key: string): this {
+    if (this._map.has(key)) {
+      // Refresh TTL: remove first so the re-insertion moves it to the end
+      // (Map iteration is insertion-ordered, so oldest = first key).
+      this._map.delete(key);
+    } else if (this._map.size >= this._maxSize) {
+      // Evict the oldest (LRU) entry to stay within the size cap.
+      const oldest = this._map.keys().next().value;
+      if (oldest !== undefined) this._map.delete(oldest);
+    }
+    this._map.set(key, Date.now() + this._ttlMs);
+    return this;
+  }
+
+  delete(key: string): boolean {
+    return this._map.delete(key);
+  }
+
+  clear(): void {
+    this._map.clear();
+  }
+}
+
+export const suspendedUserIds = new TtlSet(SUSPENSION_RECHECK_TTL_MS, 5000);
+
+// ─── LRU cache ────────────────────────────────────────────────────────────────
+
+class LruCache<K, V> {
+  map: Map<K, V>;
+  private maxSize: number;
+
+  constructor(maxSize: number) {
+    this.maxSize = maxSize;
+    this.map = new Map();
+  }
+
+  set(key: K, value: V): void {
+    if (this.map.has(key)) {
+      this.map.delete(key);
+    } else if (this.map.size >= this.maxSize) {
+      this.map.delete(this.map.keys().next().value!);
+    }
+    this.map.set(key, value);
+  }
+
+  get(key: K): V | undefined {
+    if (!this.map.has(key)) return undefined;
+    const value = this.map.get(key)!;
+    this.map.delete(key);
+    this.map.set(key, value);
+    return value;
+  }
+
+  delete(key: K): void {
+    this.map.delete(key);
+  }
+
+  clear(): void {
+    this.map.clear();
+  }
+}
+
+interface StatusCacheEntry {
+  status: string;
+  expiresAt: number;
+}
+
+const USER_STATUS_TTL_MS = 30_000;
+const ACTIVE_ACCOUNT_FRESH_TTL_MS = 30_000;
+
+export const userStatusCache = new LruCache<string, StatusCacheEntry>(5000);
+export const activeStatusCache = new Map<string, StatusCacheEntry>();
+const suspensionRecheckCache = new Map<string, number>();
+const _revocationCache = new Map<string, StatusCacheEntry>();
+
+export function evictStatusCache(userId: string): void {
+  userStatusCache.delete(userId);
+}
+
+export function invalidateActiveStatusCache(userId?: string): void {
+  if (userId !== undefined) {
+    activeStatusCache.delete(userId);
+  } else {
+    activeStatusCache.clear();
+  }
+}
+
+export function __resetSuspensionRecheckCacheForTests(): void {
+  suspensionRecheckCache.clear();
+  userStatusCache.clear();
+  _revocationCache.clear();
+}
+
+export async function seedSuspendedUserIds(
+  log?: { info: (...args: any[]) => void; warn: (...args: any[]) => void },
+): Promise<void> {
+  try {
+    const { db } = await import('./db');
+    const { users } = await import('@workspace/db');
+    const { inArray } = await import('drizzle-orm');
+    const rows = await db
+      .select({ id: (users as any).id })
+      .from(users)
+      .where(inArray((users as any).status, ['suspended', 'removed']));
+    for (const row of (rows as any[])) {
+      suspendedUserIds.add(row.id);
+    }
+    if (log) {
+      log.info({ count: rows.length }, `Pre-populated suspendedUserIds with ${rows.length} suspended/removed users`);
+    }
+  } catch (err) {
+    if (log) log.warn({ err }, 'seedSuspendedUserIds: DB query failed');
+  }
+}
+
+/**
+ * Check whether a user (identified by id, usually an OAuth sub claim) is
+ * suspended or removed. Consults the in-memory blocklist first, then falls
+ * back to a TTL-bound DB re-check via userStatusCache.
+ */
+export async function isOAuthUserSuspended(userId: string): Promise<boolean> {
+  if (suspendedUserIds.has(userId)) return true;
+
+  const now = Date.now();
+  const cached = userStatusCache.get(userId);
+  if (cached && cached.expiresAt > now) {
+    return ['suspended', 'removed'].includes(cached.status);
+  }
+
+  try {
+    const { db: dbInst } = await import('./db');
+    const { users: usersTable } = await import('@workspace/db');
+    const { eq: eqFn } = await import('drizzle-orm');
+    const rows = await dbInst
+      .select({ status: usersTable.status })
+      .from(usersTable)
+      .where(eqFn(usersTable.id, userId))
+      .limit(1);
+    const status = rows[0]?.status ?? 'active';
+    userStatusCache.set(userId, { status, expiresAt: now + SUSPENSION_RECHECK_TTL_MS });
+    const isSuspended = ['suspended', 'removed'].includes(status);
+    if (isSuspended) suspendedUserIds.add(userId);
+    return isSuspended;
+  } catch {
+    return false; // fail open
+  }
+}
+
+async function getUserStatusCached(userId: string): Promise<string | null> {
+  const cached = userStatusCache.get(userId);
+  if (cached && cached.expiresAt > Date.now()) return cached.status;
+  try {
+    const { db } = await import('./db');
+    const { users } = await import('@workspace/db');
+    const { eq } = await import('drizzle-orm');
+    const rows = await db
+      .select({ status: (users as any).status })
+      .from(users)
+      .where(eq((users as any).id, userId))
+      .limit(1);
+    const status = (rows[0] as any)?.status ?? 'removed';
+    userStatusCache.set(userId, { status, expiresAt: Date.now() + USER_STATUS_TTL_MS });
+    return status;
+  } catch {
+    return null;
+  }
+}
+
+async function recheckSuspensionFromDb(userId: string): Promise<boolean> {
+  const expiresAt = suspensionRecheckCache.get(userId);
+  if (expiresAt !== undefined && expiresAt > Date.now()) return false;
+  try {
+    const { db } = await import('./db');
+    const { users } = await import('@workspace/db');
+    const { eq } = await import('drizzle-orm');
+    const rows = await db
+      .select({ status: (users as any).status })
+      .from(users)
+      .where(eq((users as any).id, userId))
+      .limit(1);
+    const status = (rows[0] as any)?.status ?? 'active';
+    const blocked = ['suspended', 'removed', 'pending_invite'].includes(status);
+    if (blocked) {
+      suspendedUserIds.add(userId);
+      return true;
+    }
+    suspensionRecheckCache.set(userId, Date.now() + SUSPENSION_RECHECK_TTL_MS);
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+export function invalidateUserSessions(
+  sessionStore: any,
+  userId: string,
+  log?: { warn: (...args: any[]) => void; info?: (...args: any[]) => void },
+): void {
+  if (!sessionStore || typeof sessionStore.all !== 'function') return;
+  sessionStore.all((err: any, sessions: Record<string, any> | null) => {
+    if (err || !sessions) return;
+    for (const [sid, sess] of Object.entries(sessions)) {
+      if (sess?.user?.id !== userId) continue;
+      sessionStore.destroy(sid, (destroyErr: any) => {
+        if (destroyErr) {
+          if (log) log.warn(`Failed to destroy session ${sid} for user ${userId}`, destroyErr);
+        } else {
+          if (log?.info) log.info(`Destroyed session ${sid} for user ${userId}`);
+        }
+      });
+    }
+  });
+}
+
+/**
+ * Middleware factory: performs a short-TTL DB status re-check on every request
+ * to close the stale-session window (suspended/removed/pending_invite users
+ * whose session cookie still says "active").
+ */
+export const requireActiveAccountFresh = (): RequestHandler => {
+  return async (req: any, res, next): Promise<void> => {
+    if (!req.session?.isAuthenticated || !req.session?.user) {
+      return void res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const userId: string = req.session.user.id;
+    const now = Date.now();
+
+    // Check activeStatusCache first (short-TTL)
+    const cached = activeStatusCache.get(userId);
+    if (cached && cached.expiresAt > now) {
+      if (['suspended', 'removed', 'pending_invite'].includes(cached.status)) {
+        return void res.status(403).json({ message: "Account suspended. Contact your company administrator." });
+      }
+      return next();
+    }
+
+    // Fresh DB check
+    try {
+      const { db: dbInst } = await import('./db');
+      const { users: usersTable } = await import('@workspace/db');
+      const { eq: eqFn } = await import('drizzle-orm');
+      const rows = await dbInst
+        .select({ status: usersTable.status })
+        .from(usersTable)
+        .where(eqFn(usersTable.id, userId))
+        .limit(1);
+      const status = rows[0]?.status ?? 'removed';
+      activeStatusCache.set(userId, { status, expiresAt: now + ACTIVE_STATUS_TTL_MS });
+
+      if (['suspended', 'removed', 'pending_invite'].includes(status)) {
+        suspendedUserIds.add(userId);
+        try { req.session.destroy?.(); } catch {}
+        return void res.status(403).json({ message: "Account suspended. Contact your company administrator." });
+      }
+
+      next();
+    } catch {
+      // Fail open — the existing session guard still applies
+      next();
+    }
+  };
+};
 
 // Check that the session user's companyRole is one of the allowed roles.
 // Accepts any role value including the Phase 2 additions: 'manager' | 'dispatcher'.
 export const requireCompanyRole = (...roles: string[]): RequestHandler => {
-  return (req: any, res, next) => {
+  return (req: any, res: any, next: any) => {
     if (!req.session?.isAuthenticated || !req.session?.user) {
       return res.status(401).json({ message: "Unauthorized" });
     }
@@ -345,7 +644,7 @@ export const requireApiAccess = async (req: any, res: any, next: any) => {
 
 // Block suspended users from all authenticated contractor routes
 export const requireNotSuspended = (): RequestHandler => {
-  return (req: any, res, next) => {
+  return (req: any, res: any, next: any) => {
     if (!req.session?.isAuthenticated || !req.session?.user) {
       return res.status(401).json({ message: "Unauthorized" });
     }
@@ -425,7 +724,7 @@ export const validateHomeSystemOwnership = async (systemId: string, userId: stri
 };
 
 // Middleware that allows both homeowners and contractors access to maintenance features
-export const requirePropertyOwner: RequestHandler = async (req: any, res, next) => {
+export const requirePropertyOwner: RequestHandler = async (req: any, res: any, next: any) => {
   // Check if user is authenticated via session
   if (!req.session?.isAuthenticated || !req.session?.user) {
     return res.status(401).json({ message: "Unauthorized" });
@@ -507,8 +806,4 @@ export function refreshUserSessionRole(
       });
     }
   });
-}
-
-declare global {
-  var pendingUserRole: string | undefined;
 }

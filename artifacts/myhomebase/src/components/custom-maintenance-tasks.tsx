@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { insertCustomMaintenanceTaskSchema } from "@shared/schema";
 import type { CustomMaintenanceTask } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -102,7 +102,7 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
 
   // Form handling
   const form = useForm<CustomTaskFormData>({
-    resolver: zodResolver(customTaskFormSchema),
+    resolver: zodResolver(customTaskFormSchema as any),
     defaultValues: {
       homeownerId,
       houseId: houseId || null,
@@ -273,7 +273,7 @@ export function CustomMaintenanceTasks({ homeownerId, houseId }: CustomMaintenan
                     <FormItem>
                       <FormLabel>Description</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="Detailed description of the task..." {...field} />
+                        <Textarea placeholder="Detailed description of the task..." {...field} value={field.value ?? undefined} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

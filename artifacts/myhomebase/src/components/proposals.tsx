@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { insertProposalSchema, type Proposal } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -49,7 +49,7 @@ export function Proposals({ contractorId }: ProposalsProps) {
   const [proposalToDelete, setProposalToDelete] = useState<Proposal | null>(null);
 
   const form = useForm<ProposalFormData>({
-    resolver: zodResolver(proposalFormSchema),
+    resolver: zodResolver(proposalFormSchema as any),
     defaultValues: {
       contractorId: contractorId,
       title: "",

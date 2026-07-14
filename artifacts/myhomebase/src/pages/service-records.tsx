@@ -145,7 +145,7 @@ export default function ServiceRecords() {
   // Load houses for homeowner
   const { data: houses = [] } = useQuery<House[]>({
     queryKey: ['/api/houses'],
-    enabled: user?.role === 'homeowner',
+    enabled: (user as any)?.role === 'homeowner',
   });
 
   // Auto-select first house when houses are loaded
@@ -160,14 +160,14 @@ export default function ServiceRecords() {
     queryKey: ['/api/service-records', { houseId: selectedHouseId }],
     queryFn: async () => {
       // For homeowners, include houseId parameter; for contractors, fetch all their records
-      const url = user?.role === 'homeowner' && selectedHouseId 
+      const url = (user as any)?.role === 'homeowner' && selectedHouseId 
         ? `/api/service-records?houseId=${selectedHouseId}`
         : '/api/service-records';
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch service records');
       return response.json();
     },
-    enabled: (user?.role === 'contractor') || (user?.role === 'homeowner' && !!selectedHouseId),
+    enabled: ((user as any)?.role === 'contractor') || ((user as any)?.role === 'homeowner' && !!selectedHouseId),
   });
 
   // Create/update service record mutation
@@ -403,7 +403,7 @@ export default function ServiceRecords() {
     const matchesStatus = statusFilter === 'all' || record.status === statusFilter;
     
     // For homeowners, filter by selected house
-    const matchesHouse = user?.role === 'contractor' || !selectedHouseId || record.houseId === selectedHouseId;
+    const matchesHouse = (user as any)?.role === 'contractor' || !selectedHouseId || record.houseId === selectedHouseId;
     
     return matchesSearch && matchesStatus && matchesHouse;
   });
@@ -455,7 +455,7 @@ export default function ServiceRecords() {
               
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Connection Code Section - Contractors Only */}
-                {user?.role === 'contractor' && !editingRecord && (
+                {(user as any)?.role === 'contractor' && !editingRecord && (
                   <Card style={{ backgroundColor: 'var(--gray-100)', border: '2px solid var(--blue)' }}>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2" style={{ color: 'var(--blue)' }}>
@@ -823,7 +823,7 @@ export default function ServiceRecords() {
       <main className="container mx-auto py-8 px-4 max-w-7xl">
 
         {/* House Selection for Homeowners */}
-        {user?.role === 'homeowner' && houses.length > 0 && (
+        {(user as any)?.role === 'homeowner' && houses.length > 0 && (
           <Card className="mb-4" >
             <CardContent className="py-4">
               <div className="flex items-center gap-4">

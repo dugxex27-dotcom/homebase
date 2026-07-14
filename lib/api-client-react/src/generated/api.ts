@@ -5,15 +5,18 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type { HealthStatus, InvoiceOrphanCleanupResult } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
 import type { ErrorType } from "../custom-fetch";
@@ -23,6 +26,92 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+/**
+ * Admin-only. Immediately runs the invoice orphan file cleanup sweep and returns counts of files scanned, deleted, skipped, and errors. Normally this sweep runs automatically every 6 hours; this endpoint lets operators run it on demand without restarting the server.
+
+ * @summary Trigger invoice orphan file cleanup
+ */
+export const getRunInvoiceOrphanCleanupUrl = () => {
+  return `/api/admin/invoice-orphan-cleanup/run`;
+};
+
+export const runInvoiceOrphanCleanup = async (
+  options?: RequestInit,
+): Promise<InvoiceOrphanCleanupResult> => {
+  return customFetch<InvoiceOrphanCleanupResult>(
+    getRunInvoiceOrphanCleanupUrl(),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getRunInvoiceOrphanCleanupMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof runInvoiceOrphanCleanup>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof runInvoiceOrphanCleanup>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["runInvoiceOrphanCleanup"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof runInvoiceOrphanCleanup>>,
+    void
+  > = () => {
+    return runInvoiceOrphanCleanup(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RunInvoiceOrphanCleanupMutationResult = NonNullable<
+  Awaited<ReturnType<typeof runInvoiceOrphanCleanup>>
+>;
+
+export type RunInvoiceOrphanCleanupMutationError = ErrorType<void>;
+
+/**
+ * @summary Trigger invoice orphan file cleanup
+ */
+export const useRunInvoiceOrphanCleanup = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof runInvoiceOrphanCleanup>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof runInvoiceOrphanCleanup>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getRunInvoiceOrphanCleanupMutationOptions(options));
+};
 
 /**
  * Returns server health status

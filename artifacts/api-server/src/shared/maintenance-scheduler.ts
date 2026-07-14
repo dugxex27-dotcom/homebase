@@ -1,4 +1,4 @@
-import { type House } from './schema';
+import { type House } from '@workspace/db';
 
 export interface MaintenanceTask {
   id: string;

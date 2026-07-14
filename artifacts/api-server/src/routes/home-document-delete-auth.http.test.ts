@@ -152,24 +152,10 @@ vi.mock("../security-audit", () => ({
   userRateLimiter: { check: vi.fn().mockResolvedValue(true) },
   getClientIP: vi.fn().mockReturnValue("127.0.0.1"),
 }));
-vi.mock("../storage", () => ({
-  storage: {
-    getSubscriptionPlanByTier: vi.fn().mockResolvedValue(null),
-    getUserByStripeCustomerId: vi.fn().mockResolvedValue(null),
-    getAffiliateReferralByUserId: vi.fn().mockResolvedValue(null),
-    updateUserSubscriptionStatus: vi.fn().mockResolvedValue(undefined),
-    createSubscriptionCycleEvent: vi.fn().mockResolvedValue(null),
-    getContractorCompanyByStripeAccountId: vi.fn().mockResolvedValue(null),
-    updateCompanySubscriptionStatus: vi.fn().mockResolvedValue(undefined),
-    getCompanyById: vi.fn().mockResolvedValue(null),
-    updateCompanyStripeSubscription: vi.fn().mockResolvedValue(undefined),
-    upsertSubscriptionPlan: vi.fn().mockResolvedValue(undefined),
-    hasProcessedStripeEvent: vi.fn().mockResolvedValue(false),
-    recordProcessedStripeEvent: vi.fn().mockResolvedValue(undefined),
-    pruneOldStripeProcessedEvents: vi.fn().mockResolvedValue(undefined),
-    getRecentStripeProcessedEventIds: vi.fn().mockResolvedValue(new Map()),
-  },
-}));
+vi.mock("../storage", async () => {
+  const { createStorageMock } = await import("../test-helpers/storage-mock");
+  return { storage: createStorageMock() };
+});
 vi.mock("../db", () => ({
   pool: { query: vi.fn(), end: vi.fn() },
   db: {

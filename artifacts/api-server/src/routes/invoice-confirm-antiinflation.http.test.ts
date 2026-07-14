@@ -11,7 +11,8 @@
  * excludes them.
  */
 
-import { vi, describe, it, expect, afterEach } from "vitest";
+import { vi, describe, it, expect, afterEach, beforeEach } from "vitest";
+import { createHash } from "crypto";
 
 // ---------------------------------------------------------------------------
 // vi.hoisted() — shared fixtures visible inside vi.mock() factory closures
@@ -30,6 +31,7 @@ const {
   mockDbSelect,
   mockDbInsert,
   mockDbUpdate,
+  mockDbExecute,
 } = vi.hoisted(() => ({
   OWNER_ID: "demo-homeowner-owner-001",
   HOUSE_ID: "house-001",
@@ -43,6 +45,7 @@ const {
   mockDbSelect: vi.fn(),
   mockDbInsert: vi.fn(),
   mockDbUpdate: vi.fn(),
+  mockDbExecute: vi.fn().mockResolvedValue({ rows: [] }),
 }));
 
 const OWNER_SESSION = {
@@ -122,6 +125,7 @@ vi.mock("../apple-iap", () => ({
 vi.mock("../objectStorage", () => ({
   ObjectStorageService: class MockObjectStorageService {
     upload = vi.fn();
+    uploadFile = vi.fn().mockResolvedValue(undefined);
     download = vi.fn();
     delete = vi.fn();
     getSignedUrl = vi.fn();
@@ -197,30 +201,19 @@ const { mockGetMaintenanceLog, mockUpdateMaintenanceLog } = vi.hoisted(() => ({
   mockUpdateMaintenanceLog: vi.fn(),
 }));
 
-vi.mock("../storage", () => ({
-  storage: {
-    getUser: mockGetUser,
-    getHouse: mockGetHouse,
-    getMaintenanceLog: mockGetMaintenanceLog,
-    updateMaintenanceLog: mockUpdateMaintenanceLog,
-    createMaintenanceLog: mockCreateMaintenanceLog,
-    checkAndAwardAchievements: mockCheckAchievements,
-    getSubscriptionPlanByTier: vi.fn().mockResolvedValue(null),
-    getUserByStripeCustomerId: vi.fn().mockResolvedValue(null),
-    getAffiliateReferralByUserId: vi.fn().mockResolvedValue(null),
-    updateUserSubscriptionStatus: vi.fn().mockResolvedValue(undefined),
-    createSubscriptionCycleEvent: vi.fn().mockResolvedValue(null),
-    getContractorCompanyByStripeAccountId: vi.fn().mockResolvedValue(null),
-    updateCompanySubscriptionStatus: vi.fn().mockResolvedValue(undefined),
-    getCompanyById: vi.fn().mockResolvedValue(null),
-    updateCompanyStripeSubscription: vi.fn().mockResolvedValue(undefined),
-    upsertSubscriptionPlan: vi.fn().mockResolvedValue(undefined),
-    hasProcessedStripeEvent: vi.fn().mockResolvedValue(false),
-    recordProcessedStripeEvent: vi.fn().mockResolvedValue(undefined),
-    pruneOldStripeProcessedEvents: vi.fn().mockResolvedValue(undefined),
-    getRecentStripeProcessedEventIds: vi.fn().mockResolvedValue(new Map()),
-  },
-}));
+vi.mock("../storage", async () => {
+  const { createStorageMock } = await import("../test-helpers/storage-mock");
+  return {
+    storage: createStorageMock({
+      getUser: mockGetUser,
+      getHouse: mockGetHouse,
+      getMaintenanceLog: mockGetMaintenanceLog,
+      updateMaintenanceLog: mockUpdateMaintenanceLog,
+      createMaintenanceLog: mockCreateMaintenanceLog,
+      checkAndAwardAchievements: mockCheckAchievements,
+    }),
+  };
+});
 
 vi.mock("../db", () => ({
   pool: { query: vi.fn(), end: vi.fn() },
@@ -228,7 +221,17 @@ vi.mock("../db", () => ({
     insert: mockDbInsert,
     select: mockDbSelect,
     update: mockDbUpdate,
+    execute: mockDbExecute,
     delete: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+    transaction: vi.fn().mockImplementation(async (cb: (tx: any) => Promise<any>) =>
+      cb({
+        execute: mockDbExecute,
+        update: mockDbUpdate,
+        select: mockDbSelect,
+        insert: mockDbInsert,
+        delete: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+      })
+    ),
   },
 }));
 
@@ -239,6 +242,7 @@ vi.mock("../db", () => ({
 import express from "express";
 import request from "supertest";
 import { registerRoutes } from "./routes";
+import * as invoiceAnalysisService from "../invoice-analysis-service";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -705,10 +709,22 @@ describe("POST /api/invoice-analyses/:id/diy-verify — serviceDate injection pr
       aiNotes: null,
     };
 
-    // db.select: fetch analysis
+    // db.select: fetch analysis (pre-check)
     mockDbSelect.mockReturnValueOnce({
       from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([pendingDiy]) }),
     });
+
+    // tx.execute: SELECT … FOR UPDATE returns the locked row (snake_case columns)
+    mockDbExecute.mockResolvedValueOnce({
+      rows: [{
+        id: pendingDiy.id,
+        diy_verified: false,
+        before_photo_urls: pendingDiy.beforePhotoUrls,
+        after_photo_urls: pendingDiy.afterPhotoUrls,
+        receipt_urls: pendingDiy.receiptUrls,
+      }],
+    });
+
 
     // Capture what set() is called with so we can assert on it
     const mockUpdateSet = vi.fn().mockReturnValue({
@@ -1523,5 +1539,576 @@ describe("POST /api/invoice-analyses/analyze — duplicate content-hash detectio
       });
 
     expect(res.status).not.toBe(409);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/invoice-analyses/analyze — race-condition constraint violation
+//
+// Two concurrent uploads can both pass the pre-insert SELECT check before
+// either inserts. The second insert then hits uq_invoice_analyses_house_hash
+// at the DB level. The route must return 409 DUPLICATE_INVOICE (not 500).
+// ---------------------------------------------------------------------------
+
+describe("POST /api/invoice-analyses/analyze — race-condition constraint violation", () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns 409 DUPLICATE_INVOICE when db.insert throws 23505 on uq_invoice_analyses_house_hash", async () => {
+    const constraintError = Object.assign(
+      new Error("duplicate key value violates unique constraint"),
+      { code: "23505", constraint: "uq_invoice_analyses_house_hash" },
+    );
+
+    // Startup plan-seeding uses onConflictDoNothing; only the analyze insert
+    // uses returning(), so making returning() reject only affects that call.
+    const mockInsertValues = vi.fn().mockReturnValue({
+      onConflictDoNothing: vi.fn().mockResolvedValue(undefined),
+      returning: vi.fn().mockRejectedValue(constraintError),
+    });
+    mockDbInsert.mockReturnValue({ values: mockInsertValues });
+
+    const app = await buildApp();
+
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+    mockGetHouse.mockResolvedValue(HOUSE_FIXTURE);
+
+    // DIY with no files: skips hash-check SELECT, AI call, and file uploads,
+    // going straight to db.insert — which simulates the race-condition 23505.
+    const res = await request(app)
+      .post("/api/invoice-analyses/analyze")
+      .set("x-test-user", "owner")
+      .send({
+        houseId: HOUSE_ID,
+        completionMethod: "diy",
+        invoiceFiles: [],
+        receiptFiles: [],
+      });
+
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe("DUPLICATE_INVOICE");
+    expect(res.body.message).toMatch(/already been scanned/i);
+  });
+
+  it("returns 500 for other (non-duplicate) db.insert errors on the analyze route", async () => {
+    const otherError = Object.assign(new Error("connection reset"), { code: "08006" });
+
+    const mockInsertValues = vi.fn().mockReturnValue({
+      onConflictDoNothing: vi.fn().mockResolvedValue(undefined),
+      returning: vi.fn().mockRejectedValue(otherError),
+    });
+    mockDbInsert.mockReturnValue({ values: mockInsertValues });
+
+    const app = await buildApp();
+
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+    mockGetHouse.mockResolvedValue(HOUSE_FIXTURE);
+
+    const res = await request(app)
+      .post("/api/invoice-analyses/analyze")
+      .set("x-test-user", "owner")
+      .send({
+        houseId: HOUSE_ID,
+        completionMethod: "diy",
+        invoiceFiles: [],
+        receiptFiles: [],
+      });
+
+    expect(res.status).toBe(500);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/invoice-analyses/analyze — PDF duplicate detection
+//
+// PDFs carry the same SHA-256 hash path as images. Uploading the same PDF
+// twice must return 409 DUPLICATE_INVOICE before any AI call or storage write.
+// ---------------------------------------------------------------------------
+
+describe("POST /api/invoice-analyses/analyze — PDF duplicate detection", () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const FAKE_PDF_FILE = {
+    fileData: "data:application/pdf;base64,JVBERi0xLjQKJeLjz9MKMSAwIG9iago=",
+    fileName: "invoice.pdf",
+    fileType: "application/pdf",
+  };
+
+  it("returns 409 DUPLICATE_INVOICE when the same PDF content hash already exists for the house", async () => {
+    buildInsertMock();
+    const app = await buildApp();
+
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+    mockGetHouse.mockResolvedValue(HOUSE_FIXTURE);
+
+    // db.select: hash lookup finds an existing analysis recorded from the first upload
+    mockDbSelect.mockReturnValueOnce({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([{ id: ANALYSIS_ID, homeownerId: OWNER_ID, houseId: HOUSE_ID, status: "confirmed" }]),
+      }),
+    });
+
+    const res = await request(app)
+      .post("/api/invoice-analyses/analyze")
+      .set("x-test-user", "owner")
+      .send({
+        houseId: HOUSE_ID,
+        completionMethod: "contractor",
+        invoiceFiles: [FAKE_PDF_FILE],
+        receiptFiles: [],
+      });
+
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe("DUPLICATE_INVOICE");
+    expect(res.body.analysisId).toBe(ANALYSIS_ID);
+  });
+
+  it("returns 409 with the expected message when a PDF is uploaded twice", async () => {
+    buildInsertMock();
+    const app = await buildApp();
+
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+    mockGetHouse.mockResolvedValue(HOUSE_FIXTURE);
+
+    mockDbSelect.mockReturnValueOnce({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([{ id: "dup-pdf-analysis", homeownerId: OWNER_ID, houseId: HOUSE_ID, status: "pending" }]),
+      }),
+    });
+
+    const res = await request(app)
+      .post("/api/invoice-analyses/analyze")
+      .set("x-test-user", "owner")
+      .send({
+        houseId: HOUSE_ID,
+        completionMethod: "contractor",
+        invoiceFiles: [FAKE_PDF_FILE],
+        receiptFiles: [],
+      });
+
+    expect(res.status).toBe(409);
+    expect(res.body.message).toMatch(/already been scanned/i);
+  });
+
+  it("returns 409 DUPLICATE_INVOICE when db.insert throws 23505 for a PDF upload (race-condition path)", async () => {
+    const constraintError = Object.assign(
+      new Error("duplicate key value violates unique constraint"),
+      { code: "23505", constraint: "uq_invoice_analyses_house_hash" },
+    );
+
+    const mockInsertValues = vi.fn().mockReturnValue({
+      onConflictDoNothing: vi.fn().mockResolvedValue(undefined),
+      returning: vi.fn().mockRejectedValue(constraintError),
+    });
+    mockDbInsert.mockReturnValue({ values: mockInsertValues });
+
+    const app = await buildApp();
+
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+    mockGetHouse.mockResolvedValue(HOUSE_FIXTURE);
+
+    // Hash-check SELECT returns empty (no prior record), so the route proceeds
+    // to db.insert which then hits the unique constraint — simulating two concurrent
+    // PDF uploads where both passed the SELECT before either inserted.
+    mockDbSelect.mockReturnValueOnce({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([]),
+      }),
+    });
+
+    // extractInvoiceData is globally mocked to return null; override it once so the
+    // route can pass AI extraction and reach db.insert (where the 23505 is thrown).
+    vi.mocked(invoiceAnalysisService.extractInvoiceData).mockResolvedValueOnce({
+      isValidInvoice: true,
+      invalidReason: null,
+      serviceDescription: "HVAC service",
+      serviceDate: "2026-06-01",
+      totalAmount: 250,
+      contractorName: "Bob",
+      contractorCompany: "Bob HVAC",
+      homeArea: "HVAC",
+      serviceType: "repair",
+      aiConfidence: "high",
+      aiNotes: null,
+    });
+
+    const res = await request(app)
+      .post("/api/invoice-analyses/analyze")
+      .set("x-test-user", "owner")
+      .send({
+        houseId: HOUSE_ID,
+        completionMethod: "contractor",
+        invoiceFiles: [FAKE_PDF_FILE],
+        receiptFiles: [],
+      });
+
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe("DUPLICATE_INVOICE");
+    expect(res.body.message).toMatch(/already been scanned/i);
+  });
+
+  it("computes the same SHA-256 hash for a PDF uploaded twice and returns 409 on the second upload", async () => {
+    // Pre-compute the expected hash the same way the route does:
+    //   strip the data-URI prefix, decode base64 → binary → SHA-256
+    const pdfBase64 = FAKE_PDF_FILE.fileData.split("base64,")[1];
+    const expectedHash = createHash("sha256").update(Buffer.from(pdfBase64, "base64")).digest("hex");
+
+    // ── First upload ──────────────────────────────────────────────────────────
+    // SELECT finds no prior row; INSERT proceeds normally.
+    const { mockInsertValues } = buildInsertMock();
+    const app = await buildApp();
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+    mockGetHouse.mockResolvedValue(HOUSE_FIXTURE);
+
+    mockDbSelect.mockReturnValueOnce({
+      from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([]) }),
+    });
+
+    // extractInvoiceData is globally mocked to return null; override once so the
+    // route proceeds past AI to db.insert.
+    vi.mocked(invoiceAnalysisService.extractInvoiceData).mockResolvedValueOnce({
+      isValidInvoice: true, invalidReason: null,
+      serviceDescription: "Roof inspection", serviceDate: "2026-05-15",
+      totalAmount: 150, contractorName: "Alice", contractorCompany: "Acme Roofing",
+      homeArea: "Roof", serviceType: "inspection", aiConfidence: "high", aiNotes: null,
+    });
+
+    const firstRes = await request(app)
+      .post("/api/invoice-analyses/analyze")
+      .set("x-test-user", "owner")
+      .send({ houseId: HOUSE_ID, completionMethod: "contractor", invoiceFiles: [FAKE_PDF_FILE], receiptFiles: [] });
+
+    expect(firstRes.status).toBe(201);
+
+    // Verify that the route computed the correct SHA-256 hash from the PDF bytes
+    // by inspecting the payload passed to db.insert().values().
+    // Plan-seeding inserts use onConflictDoNothing and don't carry invoiceHash;
+    // the analyze insert carries invoiceHash (and houseId) so we can identify it.
+    const analyzeInsertCall = mockInsertValues.mock.calls.find(
+      ([vals]: [Record<string, unknown>]) =>
+        vals !== null && typeof vals === "object" && "invoiceHash" in vals,
+    );
+    expect(analyzeInsertCall).toBeDefined();
+    expect((analyzeInsertCall![0] as Record<string, unknown>).invoiceHash).toBe(expectedHash);
+
+    // ── Second upload (same PDF file, same house) ─────────────────────────────
+    // SELECT now returns the row keyed by the same hash → route must 409.
+    mockGetHouse.mockResolvedValue(HOUSE_FIXTURE);
+    mockDbSelect.mockReturnValueOnce({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([{
+          id: ANALYSIS_ID, homeownerId: OWNER_ID, houseId: HOUSE_ID,
+          status: "pending", invoiceHash: expectedHash,
+        }]),
+      }),
+    });
+
+    const secondRes = await request(app)
+      .post("/api/invoice-analyses/analyze")
+      .set("x-test-user", "owner")
+      .send({ houseId: HOUSE_ID, completionMethod: "contractor", invoiceFiles: [FAKE_PDF_FILE], receiptFiles: [] });
+
+    expect(secondRes.status).toBe(409);
+    expect(secondRes.body.code).toBe("DUPLICATE_INVOICE");
+    expect(secondRes.body.analysisId).toBe(ANALYSIS_ID);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/invoice-analyses/analyze — file size limits
+//
+// A per-file cap (20 MB) and a total cap (50 MB) are enforced before any
+// hash computation, AI call, or storage write.  Oversized payloads must
+// return 413 immediately so attackers cannot trigger expensive AI processing
+// or exhaust server memory with large base64 uploads.
+// ---------------------------------------------------------------------------
+
+describe("POST /api/invoice-analyses/analyze — file size limits", () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /**
+   * Build an express app with a 100 MB JSON body limit, matching the
+   * production configuration in app.ts, so large base64 payloads reach the
+   * route handler instead of being rejected by the JSON parser.
+   */
+  async function buildLargePayloadApp() {
+    const app = express();
+    app.use(express.json({ limit: "100mb" }));
+    await registerRoutes(app);
+    return app;
+  }
+
+  /**
+   * Generate a base64 string whose approximate decoded byte size exceeds the
+   * 20 MB per-file limit.
+   *
+   * The route computes approxBytes = Math.ceil(base64Str.length * 0.75).
+   * To exceed 20 MB (20,971,520 bytes), the base64 string must be at least
+   * ceil(20,971,520 / 0.75) = 27,962,027 characters long.
+   */
+  function oversizedBase64(bytesMB = 21): string {
+    const neededChars = Math.ceil((bytesMB * 1024 * 1024) / 0.75) + 1;
+    return "A".repeat(neededChars);
+  }
+
+  it("returns 413 before any AI call when a single invoice file exceeds 20 MB", async () => {
+    buildInsertMock();
+    const app = await buildLargePayloadApp();
+
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+    mockGetHouse.mockResolvedValue(HOUSE_FIXTURE);
+
+    const extractSpy = vi.mocked(invoiceAnalysisService.extractInvoiceData);
+    extractSpy.mockClear();
+
+    const res = await request(app)
+      .post("/api/invoice-analyses/analyze")
+      .set("x-test-user", "owner")
+      .send({
+        houseId: HOUSE_ID,
+        completionMethod: "contractor",
+        invoiceFiles: [
+          {
+            fileData: `data:application/pdf;base64,${oversizedBase64(21)}`,
+            fileName: "large-invoice.pdf",
+            fileType: "application/pdf",
+          },
+        ],
+        receiptFiles: [],
+      });
+
+    expect(res.status).toBe(413);
+    expect(res.body.message).toMatch(/20 MB/i);
+    expect(extractSpy).not.toHaveBeenCalled();
+  }, 30_000);
+
+  it("returns 413 with the filename in the error message for an oversized file", async () => {
+    buildInsertMock();
+    const app = await buildLargePayloadApp();
+
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+    mockGetHouse.mockResolvedValue(HOUSE_FIXTURE);
+
+    const res = await request(app)
+      .post("/api/invoice-analyses/analyze")
+      .set("x-test-user", "owner")
+      .send({
+        houseId: HOUSE_ID,
+        completionMethod: "contractor",
+        invoiceFiles: [
+          {
+            fileData: oversizedBase64(21),
+            fileName: "big-receipt.pdf",
+            fileType: "application/pdf",
+          },
+        ],
+        receiptFiles: [],
+      });
+
+    expect(res.status).toBe(413);
+    expect(res.body.message).toContain("big-receipt.pdf");
+    expect(vi.mocked(invoiceAnalysisService.extractInvoiceData)).not.toHaveBeenCalled();
+  }, 30_000);
+
+  it("accepts a file that is just under the 20 MB per-file limit", async () => {
+    buildInsertMock();
+    const app = await buildLargePayloadApp();
+
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+    mockGetHouse.mockResolvedValue(HOUSE_FIXTURE);
+
+    // Hash-check SELECT returns empty so the route proceeds past deduplication
+    mockDbSelect.mockReturnValueOnce({
+      from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([]) }),
+    });
+
+    // 19 MB file — should pass the size gate and continue to AI extraction
+    const nearLimitChars = Math.ceil((19 * 1024 * 1024) / 0.75);
+    vi.mocked(invoiceAnalysisService.extractInvoiceData).mockResolvedValueOnce({
+      isValidInvoice: true,
+      invalidReason: null,
+      serviceDescription: "Plumbing repair",
+      serviceDate: "2026-07-01",
+      totalAmount: 320,
+      contractorName: "Mike",
+      contractorCompany: "Mike Plumbing",
+      homeArea: "Plumbing",
+      serviceType: "repair",
+      aiConfidence: "high",
+      aiNotes: null,
+    });
+
+    const res = await request(app)
+      .post("/api/invoice-analyses/analyze")
+      .set("x-test-user", "owner")
+      .send({
+        houseId: HOUSE_ID,
+        completionMethod: "contractor",
+        invoiceFiles: [
+          {
+            fileData: `data:application/pdf;base64,${"A".repeat(nearLimitChars)}`,
+            fileName: "acceptable-invoice.pdf",
+            fileType: "application/pdf",
+          },
+        ],
+        receiptFiles: [],
+      });
+
+    expect(res.status).toBe(201);
+  }, 30_000);
+
+  it("returns 413 before any AI call when the total upload size across multiple files exceeds 50 MB", async () => {
+    // Use 3 invoice files each at ~17 MB decoded so that each file passes
+    // the 20 MB per-file check individually (17 < 20) but the combined total
+    // (3 × 17 = 51 MB) exceeds the 50 MB cumulative cap.
+    //
+    // base64 string length to represent 17 MB decoded:
+    //   ceil(17 × 1024 × 1024 / 0.75) = 23,864,321 chars per file
+    buildInsertMock();
+    const app = await buildLargePayloadApp();
+
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+    mockGetHouse.mockResolvedValue(HOUSE_FIXTURE);
+
+    const extractSpy = vi.mocked(invoiceAnalysisService.extractInvoiceData);
+    extractSpy.mockClear();
+
+    const FILE_MB = 17;
+    const fileBase64CharsCount = Math.ceil((FILE_MB * 1024 * 1024) / 0.75) + 1;
+    const underLimitFileData = "A".repeat(fileBase64CharsCount);
+
+    const res = await request(app)
+      .post("/api/invoice-analyses/analyze")
+      .set("x-test-user", "owner")
+      .send({
+        houseId: HOUSE_ID,
+        completionMethod: "contractor",
+        invoiceFiles: [
+          { fileData: underLimitFileData, fileName: "inv1.pdf", fileType: "application/pdf" },
+          { fileData: underLimitFileData, fileName: "inv2.pdf", fileType: "application/pdf" },
+          { fileData: underLimitFileData, fileName: "inv3.pdf", fileType: "application/pdf" },
+        ],
+        receiptFiles: [],
+      });
+
+    expect(res.status).toBe(413);
+    expect(res.body.message).toMatch(/50 MB/i);
+    expect(extractSpy).not.toHaveBeenCalled();
+  }, 60_000);
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/invoice-analyses/:id/diy-verify — per-user AI rate limiting
+// ---------------------------------------------------------------------------
+
+describe("POST /api/invoice-analyses/:id/diy-verify — per-user rate limit", () => {
+  const originalEnv = process.env.DIY_VERIFY_RATE_LIMIT_PER_MINUTE;
+
+  beforeEach(() => {
+    // Drop the limit to 1 per minute so the second request hits 429.
+    // The limiter is created inside registerRoutes(), which buildApp() calls,
+    // so setting the env var here (before buildApp()) is sufficient.
+    process.env.DIY_VERIFY_RATE_LIMIT_PER_MINUTE = "1";
+  });
+
+  afterEach(() => {
+    if (originalEnv === undefined) {
+      delete process.env.DIY_VERIFY_RATE_LIMIT_PER_MINUTE;
+    } else {
+      process.env.DIY_VERIFY_RATE_LIMIT_PER_MINUTE = originalEnv;
+    }
+    vi.clearAllMocks();
+  });
+
+  it("returns 429 with Retry-After header when the per-user limit is exceeded", async () => {
+    buildInsertMock();
+    const app = await buildApp();
+
+    // requireHomeownerSubscription calls storage.getUser — ensure it succeeds.
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+
+    // First request: reaches isAuthenticated + requireHomeownerSubscription + diyVerifyLimiter.
+    // The diyVerifyLimiter increments the per-user counter (counter = 1 = max).
+    // The handler may return any non-429 status (e.g. 400/404 from missing mocks);
+    // what matters is that the rate-limit counter is incremented for this user.
+    const first = await request(app)
+      .post(`/api/invoice-analyses/${ANALYSIS_ID}/diy-verify`)
+      .set("x-test-user", "owner")
+      .send({ beforePhotoFiles: [], afterPhotoFiles: [], receiptFiles: [] });
+
+    expect(first.status).not.toBe(429);
+
+    // Second request by the same user — must be blocked (counter would be 2 > max=1).
+    const second = await request(app)
+      .post(`/api/invoice-analyses/${ANALYSIS_ID}/diy-verify`)
+      .set("x-test-user", "owner")
+      .send({ beforePhotoFiles: [], afterPhotoFiles: [], receiptFiles: [] });
+
+    expect(second.status).toBe(429);
+    // express-rate-limit emits Retry-After via RateLimit-Reset (standardHeaders: true).
+    // The header name is lower-cased by Node's HTTP layer.
+    const retryAfter =
+      second.headers["retry-after"] ?? second.headers["Retry-After"];
+    expect(retryAfter).toBeDefined();
+  });
+
+  it("counts requests independently per user — a different user is not blocked", async () => {
+    // Build a second session for a different user ID so the rate-limiter key differs.
+    const OTHER_ID = "demo-homeowner-other-002";
+    const OTHER_SESSION = {
+      isAuthenticated: true,
+      user: { id: OTHER_ID, email: "other@homebase.com", role: "homeowner", status: "active" },
+    };
+
+    // Re-mock isAuthenticated so it recognises both "owner" and "other" test headers.
+    const { isAuthenticated: mockIsAuth } = await import("../replitAuth");
+    (mockIsAuth as ReturnType<typeof vi.fn>).mockImplementation(
+      (req: any, _res: any, next: any) => {
+        const who = req.headers?.["x-test-user"];
+        if (who === "owner") { req.session = OWNER_SESSION; return next(); }
+        if (who === "other") { req.session = OTHER_SESSION; return next(); }
+        return _res.status(401).json({ message: "Unauthorized" });
+      },
+    );
+
+    buildInsertMock();
+    const app = await buildApp();
+
+    // Both users need to pass requireHomeownerSubscription.
+    // mockResolvedValue is the permanent default; mockResolvedValueOnce for the
+    // second user call overrides it for that one invocation.
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+
+    // ── Owner exhauts their bucket ──────────────────────────────────────────
+    // First request: rate-limit counter for OWNER_ID = 0 → 1 (passes).
+    const ownerFirst = await request(app)
+      .post(`/api/invoice-analyses/${ANALYSIS_ID}/diy-verify`)
+      .set("x-test-user", "owner")
+      .send({ beforePhotoFiles: [], afterPhotoFiles: [], receiptFiles: [] });
+    expect(ownerFirst.status).not.toBe(429);
+
+    // Second request: counter for OWNER_ID = 1 → 2 > max=1 → blocked.
+    const ownerSecond = await request(app)
+      .post(`/api/invoice-analyses/${ANALYSIS_ID}/diy-verify`)
+      .set("x-test-user", "owner")
+      .send({ beforePhotoFiles: [], afterPhotoFiles: [], receiptFiles: [] });
+    expect(ownerSecond.status).toBe(429);
+
+    // ── Other user's bucket is independent ─────────────────────────────────
+    // getUser must return a user whose id starts with "demo-homeowner" so that
+    // requireHomeownerSubscription passes for the other session.
+    mockGetUser.mockResolvedValueOnce({ ...USER_FIXTURE, id: OTHER_ID });
+
+    // First request for OTHER_ID: counter for OTHER_ID = 0 → 1 (passes).
+    const otherFirst = await request(app)
+      .post(`/api/invoice-analyses/${ANALYSIS_ID}/diy-verify`)
+      .set("x-test-user", "other")
+      .send({ beforePhotoFiles: [], afterPhotoFiles: [], receiptFiles: [] });
+    expect(otherFirst.status).not.toBe(429);
   });
 });

@@ -77,34 +77,27 @@ vi.mock("stripe", () => {
 });
 
 // Storage: expose named mock fns so tests can assert call counts easily.
-vi.mock("../storage", () => ({
-  storage: {
-    getRecentStripeProcessedEventIds: mockGetRecentStripeProcessedEventIds,
-    hasProcessedStripeEvent: mockHasProcessedStripeEvent,
-    markStripeEventPending: mockMarkStripeEventPending,
-    markStripeEventCommitted: mockMarkStripeEventCommitted,
-    deleteStripeEventPending: mockDeleteStripeEventPending,
-    recordProcessedStripeEvent: mockRecordProcessedStripeEvent,
-    markStripeEventSideEffectsComplete: mockMarkStripeEventSideEffectsComplete,
-    getIncompleteStripeProcessedEvents: mockGetIncompleteStripeProcessedEvents,
-    pruneOldStripeProcessedEvents: mockPruneOldStripeProcessedEvents,
-    // Stubs for storage methods called during registerRoutes startup:
-    getSubscriptionPlanByTier: vi.fn().mockResolvedValue(null),
-    getUserByStripeCustomerId: mockGetUserByStripeCustomerId2,
-    getAffiliateReferralByUserId: vi.fn().mockResolvedValue(null),
-    updateUserSubscriptionStatus: mockUpdateUserSubscriptionStatus2,
-    createSubscriptionCycleEvent: vi.fn().mockResolvedValue(null),
-    getContractorCompanyByStripeAccountId: vi.fn().mockResolvedValue(null),
-    updateCompanySubscriptionStatus: vi.fn().mockResolvedValue(undefined),
-    getCompanyById: vi.fn().mockResolvedValue(null),
-    updateCompanyStripeSubscription: vi.fn().mockResolvedValue(undefined),
-    upsertSubscriptionPlan: vi.fn().mockResolvedValue(undefined),
-    // Side-effect methods exercised by specific event-type tests:
-    getUser: mockGetUser,
-    updateUserStripeSubscription: mockUpdateUserStripeSubscription,
-    upsertUser: mockUpsertUser,
-  },
-}));
+vi.mock("../storage", async () => {
+  const { createStorageMock } = await import("../test-helpers/storage-mock");
+  return {
+    storage: createStorageMock({
+      getRecentStripeProcessedEventIds: mockGetRecentStripeProcessedEventIds,
+      hasProcessedStripeEvent: mockHasProcessedStripeEvent,
+      markStripeEventPending: mockMarkStripeEventPending,
+      markStripeEventCommitted: mockMarkStripeEventCommitted,
+      deleteStripeEventPending: mockDeleteStripeEventPending,
+      recordProcessedStripeEvent: mockRecordProcessedStripeEvent,
+      markStripeEventSideEffectsComplete: mockMarkStripeEventSideEffectsComplete,
+      getIncompleteStripeProcessedEvents: mockGetIncompleteStripeProcessedEvents,
+      pruneOldStripeProcessedEvents: mockPruneOldStripeProcessedEvents,
+      getUserByStripeCustomerId: mockGetUserByStripeCustomerId2,
+      updateUserSubscriptionStatus: mockUpdateUserSubscriptionStatus2,
+      getUser: mockGetUser,
+      updateUserStripeSubscription: mockUpdateUserStripeSubscription,
+      upsertUser: mockUpsertUser,
+    }),
+  };
+});
 
 // Auth modules: no-op so Express boots without real session / OIDC setup.
 vi.mock("../replitAuth", () => ({
@@ -567,7 +560,7 @@ describe("recoverIncompleteStripeEvents — incomplete side-effect recovery", ()
     const results = await recoverIncompleteStripeEvents(15);
 
     expect(mockEventsRetrieve).toHaveBeenCalledWith(eventId);
-    expect(mockMarkStripeEventSideEffectsComplete).toHaveBeenCalledWith(eventId);
+    expect(mockMarkStripeEventCommitted).toHaveBeenCalledWith(eventId);
     expect(results).toEqual([{ eventId, processedAt, outcome: "recovered" }]);
   });
 
@@ -624,8 +617,8 @@ describe("recoverIncompleteStripeEvents — incomplete side-effect recovery", ()
       { eventId: recoveredId, processedAt, outcome: "recovered" },
       { eventId: failedId, processedAt, outcome: "failed", error: "boom" },
     ]);
-    expect(mockMarkStripeEventSideEffectsComplete).toHaveBeenCalledOnce();
-    expect(mockMarkStripeEventSideEffectsComplete).toHaveBeenCalledWith(recoveredId);
+    expect(mockMarkStripeEventCommitted).toHaveBeenCalledOnce();
+    expect(mockMarkStripeEventCommitted).toHaveBeenCalledWith(recoveredId);
   });
 });
 

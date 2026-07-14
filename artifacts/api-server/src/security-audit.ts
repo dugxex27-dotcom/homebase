@@ -460,6 +460,7 @@ export class SecurityAuditLogger {
 // Session Manager for enhanced session security
 export class SecuritySessionManager {
   private static instance: SecuritySessionManager;
+  private auditLogger!: SecurityAuditLogger;
   
   private constructor() {
     this.auditLogger = SecurityAuditLogger.getInstance();
@@ -572,6 +573,7 @@ export class SecuritySessionManager {
 // User-Level Rate Limiter for SOC 2 compliance
 export class UserRateLimiter {
   private static instance: UserRateLimiter;
+  private auditLogger!: SecurityAuditLogger;
   
   // Default limits per endpoint category (requests per window)
   private readonly limits: Record<string, { maxRequests: number; windowMs: number }> = {
@@ -765,7 +767,7 @@ export class UserRateLimiter {
   createMiddleware(options?: { skipAdmin?: boolean }) {
     return async (req: any, res: any, next: any) => {
       const userId = req.session?.user?.id;
-      const ipAddress = getClientIP(req);
+      const ipAddress = getClientIP(req) || '';
       const endpoint = req.path;
       const method = req.method;
       

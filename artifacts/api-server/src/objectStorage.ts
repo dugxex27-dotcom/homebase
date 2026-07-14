@@ -116,6 +116,24 @@ export class ObjectStorageService {
     }
   }
 
+  // List files under a given prefix in the primary public bucket.
+  // Returns an array of object names (relative to the bucket root, e.g.
+  // "public/invoices/abc123.jpg") along with their creation timestamps.
+  async listFiles(prefix: string): Promise<Array<{ name: string; timeCreated: Date }>> {
+    const searchPaths = this.getPublicObjectSearchPaths();
+    if (searchPaths.length === 0) return [];
+
+    const fullBasePath = `${searchPaths[0]}/`;
+    const { bucketName } = parseObjectPath(`${fullBasePath}placeholder`);
+    const bucket = objectStorageClient.bucket(bucketName);
+
+    const [files] = await bucket.getFiles({ prefix });
+    return files.map((f) => ({
+      name: f.name,
+      timeCreated: new Date(f.metadata.timeCreated as string),
+    }));
+  }
+
   // Delete a file from object storage by path key
   async deleteFile(path: string): Promise<void> {
     try {
@@ -295,6 +313,6 @@ async function signObjectURL({
     );
   }
 
-  const { signed_url: signedURL } = await response.json();
+  const { signed_url: signedURL } = await response.json() as any;
   return signedURL;
 }

@@ -68,29 +68,17 @@ vi.mock("../db", () => ({
   },
 }));
 
-vi.mock("../storage", () => ({
-  storage: {
-    getUser: mockStorageGetUser,
-    getHouse: mockStorageGetHouse,
-    createMaintenanceLog: mockStorageCreateLog,
-    checkAndAwardAchievements: mockStorageCheckAchievements,
-    // Stripe / referral / subscription stubs — required by webhook + billing routes
-    getSubscriptionPlanByTier: vi.fn().mockResolvedValue(null),
-    getUserByStripeCustomerId: vi.fn().mockResolvedValue(null),
-    getAffiliateReferralByUserId: vi.fn().mockResolvedValue(null),
-    updateUserSubscriptionStatus: vi.fn().mockResolvedValue(undefined),
-    createSubscriptionCycleEvent: vi.fn().mockResolvedValue(null),
-    getContractorCompanyByStripeAccountId: vi.fn().mockResolvedValue(null),
-    updateCompanySubscriptionStatus: vi.fn().mockResolvedValue(undefined),
-    getCompanyById: vi.fn().mockResolvedValue(null),
-    updateCompanyStripeSubscription: vi.fn().mockResolvedValue(undefined),
-    upsertSubscriptionPlan: vi.fn().mockResolvedValue(undefined),
-    hasProcessedStripeEvent: vi.fn().mockResolvedValue(false),
-    recordProcessedStripeEvent: vi.fn().mockResolvedValue(undefined),
-    pruneOldStripeProcessedEvents: vi.fn().mockResolvedValue(undefined),
-    getRecentStripeProcessedEventIds: vi.fn().mockResolvedValue(new Map()),
-  },
-}));
+vi.mock("../storage", async () => {
+  const { createStorageMock } = await import("../test-helpers/storage-mock");
+  return {
+    storage: createStorageMock({
+      getUser: mockStorageGetUser,
+      getHouse: mockStorageGetHouse,
+      createMaintenanceLog: mockStorageCreateLog,
+      checkAndAwardAchievements: mockStorageCheckAchievements,
+    }),
+  };
+});
 
 vi.mock("../replitAuth", () => ({
   setupAuth: vi.fn().mockResolvedValue(undefined),

@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateHouseholdProfileSchema } from "@shared/schema";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -51,7 +51,7 @@ export function HouseholdProfileEditor({
   const queryClient = useQueryClient();
 
   const form = useForm<HouseholdProfileFormData>({
-    resolver: zodResolver(updateHouseholdProfileSchema),
+    resolver: zodResolver(updateHouseholdProfileSchema as any),
     defaultValues: currentProfile || {},
   });
 

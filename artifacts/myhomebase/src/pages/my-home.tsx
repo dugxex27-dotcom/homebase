@@ -13,7 +13,7 @@ import AddressAutocomplete from "@/components/address-autocomplete";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { insertHouseSchema } from "@shared/schema";
 import type { House } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -254,7 +254,7 @@ export default function MyHome() {
   };
 
   const form = useForm<HouseFormData>({
-    resolver: zodResolver(houseFormSchema),
+    resolver: zodResolver(houseFormSchema as any),
     defaultValues: {
       name: "",
       address: "",

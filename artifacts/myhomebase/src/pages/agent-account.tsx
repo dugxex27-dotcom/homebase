@@ -67,11 +67,11 @@ export default function AgentAccount() {
   const [uploadPreviewUrl, setUploadPreviewUrl] = useState<string | null>(null);
   const [isUploadingProfilePicture, setIsUploadingProfilePicture] = useState(false);
 
-  const { data: verificationStatus, isLoading } = useQuery({
+  const { data: verificationStatus, isLoading } = useQuery<any>({
     queryKey: ["/api/agent/verification-status"],
   });
 
-  const { data: agentProfile, isLoading: isLoadingProfile } = useQuery({
+  const { data: agentProfile, isLoading: isLoadingProfile } = useQuery<any>({
     queryKey: ["/api/agent/profile"],
   });
 

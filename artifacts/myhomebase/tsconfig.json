@@ -1,7 +1,7 @@
 {
   "extends": "../../tsconfig.base.json",
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
+  "exclude": ["node_modules", "build", "dist", "**/*.test.ts", "**/*.test.tsx"],
   "compilerOptions": {
     "noEmit": true,
     "jsx": "preserve",
@@ -11,7 +11,12 @@
     "moduleResolution": "bundler",
     "types": ["node", "vite/client"],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@shared/schema": ["../../lib/db/src/schema/schema.ts"],
+      "@shared/distance-utils": ["../../artifacts/api-server/src/shared/distance-utils.ts"],
+      "@shared/cost-baselines": ["../../.migration-backup/shared/cost-baselines.ts"],
+      "@shared/cost-helpers": ["../../.migration-backup/shared/cost-helpers.ts"],
+      "@shared/location-maintenance-data": ["../../.migration-backup/shared/location-maintenance-data.ts"]
     }
   },
   "references": [

@@ -222,6 +222,7 @@ export default function Messages() {
       joinConversation(selectedConversationId);
       return () => leaveConversation(selectedConversationId);
     }
+    return undefined;
   }, [selectedConversationId, wsConnected, joinConversation, leaveConversation]);
 
   // Mark messages as read when viewing conversation

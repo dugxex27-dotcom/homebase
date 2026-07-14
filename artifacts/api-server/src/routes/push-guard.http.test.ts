@@ -88,15 +88,18 @@ vi.mock("../push-service", () => ({
   },
 }));
 
-vi.mock("../storage", () => ({
-  storage: {
-    getPushSubscriptions: vi.fn().mockResolvedValue([]),
-    createPushSubscription: vi.fn().mockResolvedValue({ id: "sub-1" }),
-    updatePushSubscription: vi.fn().mockResolvedValue({ id: "sub-1" }),
-    deletePushSubscriptionByEndpoint: vi.fn().mockResolvedValue(true),
-    getUnreadNotifications: vi.fn().mockResolvedValue([]),
-  },
-}));
+vi.mock("../storage", async () => {
+  const { createStorageMock } = await import("../test-helpers/storage-mock");
+  return {
+    storage: createStorageMock({
+      getPushSubscriptions: vi.fn().mockResolvedValue([]),
+      createPushSubscription: vi.fn().mockResolvedValue({ id: "sub-1" }),
+      updatePushSubscription: vi.fn().mockResolvedValue({ id: "sub-1" }),
+      deletePushSubscriptionByEndpoint: vi.fn().mockResolvedValue(true),
+      getUnreadNotifications: vi.fn().mockResolvedValue([]),
+    }),
+  };
+});
 
 import { db } from "../db";
 import { storage } from "../storage";

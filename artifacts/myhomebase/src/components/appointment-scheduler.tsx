@@ -23,7 +23,7 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { insertContractorAppointmentSchema } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 
@@ -90,7 +90,7 @@ export function AppointmentScheduler({
   const queryClient = useQueryClient();
 
   const form = useForm<AppointmentFormData>({
-    resolver: zodResolver(appointmentFormSchema),
+    resolver: zodResolver(appointmentFormSchema as any),
     defaultValues: {
       homeownerId,
       contractorName: "",

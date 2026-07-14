@@ -58,7 +58,7 @@ export default function ContractorCard({ contractor }: ContractorCardProps) {
         <div className="relative">
           {(contractor.businessLogo || contractor.profileImage) ? (
             <img
-              src={contractor.businessLogo || contractor.profileImage}
+              src={contractor.businessLogo || contractor.profileImage || undefined}
               alt={`${contractor.company} logo`}
               className="w-20 h-20 rounded-lg object-contain border-2 border-primary/10 bg-white p-2"
               data-testid="contractor-logo"

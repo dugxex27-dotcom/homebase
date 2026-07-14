@@ -84,10 +84,10 @@ export class PushNotificationService {
       const promises = subscriptions.map(async (subscription: PushSubscription) => {
         try {
           await webpush.sendNotification({
-            endpoint: subscription.endpoint,
+            endpoint: subscription.endpoint!,
             keys: {
-              p256dh: subscription.p256dhKey,
-              auth: subscription.authKey,
+              p256dh: subscription.p256dhKey!,
+              auth: subscription.authKey!,
             }
           }, notificationPayload);
           

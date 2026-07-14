@@ -111,7 +111,7 @@ export async function getOrCreateHIN(
         longitude: options?.longitude != null ? options.longitude.toString() : null,
         sourceHomeId: options?.sourceHomeId ?? null,
         metadata: options?.metadata ?? {},
-      })
+      } as any)
       .onConflictDoNothing({ target: homeIdentificationNumbers.normalizedAddress })
       .returning();
 

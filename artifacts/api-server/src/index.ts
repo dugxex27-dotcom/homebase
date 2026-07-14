@@ -1,6 +1,7 @@
 import { type Request, type Response } from "express";
 import app from "./app";
-import { registerRoutes } from "./routes/routes";
+import { registerRoutes, recoverPendingSeatSyncs } from "./routes/routes";
+import { registerOnboardingRoutes } from "./routes/onboardingRoutes";
 import { logger } from "./lib/logger";
 import { runMigrations } from "./migrate";
 import { seedRegionalData } from "./seed-regional-data";
@@ -15,6 +16,9 @@ import { expiredTrialReengagementScheduler } from "./expired-trial-reengagement-
 import { referralReminderScheduler } from "./referral-reminder-scheduler";
 import { weatherAlertScheduler } from "./weather-alert-scheduler";
 import { weatherForecastReminderScheduler } from "./weather-forecast-reminder-scheduler";
+import { onboardingNudgeScheduler } from "./onboarding-nudge-scheduler";
+import { invoiceOrphanCleanupScheduler } from "./invoice-orphan-cleanup-scheduler";
+import { storageOrphanCleanupScheduler } from "./storage-orphan-cleanup-scheduler";
 
 const rawPort = process.env["PORT"];
 
@@ -159,6 +163,23 @@ app.get("/info/*path", proxyToSquarespace);
     logger.warn({ err }, '[SubMigration] Startup flush failed — continuing without it');
   }
 
+  // Startup recovery: re-run any seat sync that was interrupted by a crash.
+  // A row in pending_seat_syncs means the previous process wrote the DB
+  // update but didn't complete the Stripe API call before it died.
+  try {
+    const seatRecovery = await recoverPendingSeatSyncs();
+    if (seatRecovery.recovered.length > 0 || seatRecovery.failed.length > 0) {
+      logger.warn(seatRecovery, '[SeatRecovery] Recovered interrupted seat syncs on startup');
+    }
+    if (seatRecovery.failed.length > 0) {
+      logger.error(
+        { failed: seatRecovery.failed },
+        '[SeatRecovery] Some seat syncs could not be recovered — Stripe seat counts may be stale',
+      );
+    }
+  } catch (err) {
+    logger.warn({ err }, '[SeatRecovery] Startup seat-sync recovery failed — continuing');
+  }
   // ONE-TIME: Delete old Apple review test accounts (replaced by homeowner1/contractor1).
   // Remove this block after next successful deployment.
   try {
@@ -174,6 +195,11 @@ app.get("/info/*path", proxyToSquarespace);
     logger.warn({ err }, '[TestCleanup] Could not delete old test accounts — continuing');
   }
 
+  app.get("/api/healthz", (_req, res) => {
+    res.json({ status: "ok" });
+  });
+
+  registerOnboardingRoutes(app);
   const server = await registerRoutes(app);
 
   // Graceful shutdown — flush any in-memory boosts to the database before
@@ -240,6 +266,9 @@ app.get("/info/*path", proxyToSquarespace);
     referralReminderScheduler.start();
     weatherAlertScheduler.start();
     weatherForecastReminderScheduler.start();
+    onboardingNudgeScheduler.start();
+    invoiceOrphanCleanupScheduler.start();
+    storageOrphanCleanupScheduler.start();
   });
 
   server.on("error", (err) => {

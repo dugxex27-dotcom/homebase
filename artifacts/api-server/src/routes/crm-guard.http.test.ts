@@ -50,12 +50,10 @@ vi.mock("connect-pg-simple", () => ({
   default: () => class MockStore {},
 }));
 
-vi.mock("../storage", () => ({
-  storage: {
-    getUser: vi.fn(),
-    upsertUser: vi.fn(),
-  },
-}));
+vi.mock("../storage", async () => {
+  const { createStorageMock } = await import("../test-helpers/storage-mock");
+  return { storage: createStorageMock() };
+});
 
 vi.mock("../db", () => ({
   db: { select: vi.fn() },

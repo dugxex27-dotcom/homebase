@@ -32,7 +32,7 @@ export default function HouseTransferAccept() {
   // Fetch transfer details by token
   const { data: transfer, isLoading, error, refetch } = useQuery<HouseTransfer>({
     queryKey: ['/api/house-transfers/token', token],
-    queryFn: () => apiRequest('GET', `/api/house-transfers/token/${token}`),
+    queryFn: async () => apiRequest('GET', `/api/house-transfers/token/${token}`) as unknown as HouseTransfer,
     enabled: !!token,
   });
 
@@ -138,7 +138,7 @@ export default function HouseTransferAccept() {
 
   // Check if user is the intended recipient (by email match or ID match)
   const emailMatch = (user as any)?.email?.toLowerCase() === transfer?.toHomeownerEmail?.toLowerCase();
-  const idMatch = !!transfer?.toHomeownerId && user?.id === transfer?.toHomeownerId;
+  const idMatch = !!transfer?.toHomeownerId && (user as any)?.id === transfer?.toHomeownerId;
   const isIntendedRecipient = isAuthenticated && (idMatch || emailMatch);
   const canAccept = isPending && isIntendedRecipient;
 
@@ -189,13 +189,13 @@ export default function HouseTransferAccept() {
                   <div>
                     <span className="text-muted-foreground">Address:</span>
                     <p className="font-medium" data-testid="house-address">
-                      {transfer?.houseAddress || "Address not available"}
+                      {(transfer as any)?.houseAddress || "Address not available"}
                     </p>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Transfer Note:</span>
                     <p className="font-medium" data-testid="transfer-note">
-                      {transfer?.transferNote || "No note provided"}
+                      {(transfer as any)?.transferNote || "No note provided"}
                     </p>
                   </div>
                 </div>

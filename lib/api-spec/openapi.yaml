@@ -10,7 +10,30 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: admin
+    description: Admin-only operations
 paths:
+  /admin/invoice-orphan-cleanup/run:
+    post:
+      operationId: runInvoiceOrphanCleanup
+      tags: [admin]
+      summary: Trigger invoice orphan file cleanup
+      description: >
+        Admin-only. Immediately runs the invoice orphan file cleanup sweep and
+        returns counts of files scanned, deleted, skipped, and errors. Normally
+        this sweep runs automatically every 6 hours; this endpoint lets operators
+        run it on demand without restarting the server.
+      responses:
+        "200":
+          description: Cleanup completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceOrphanCleanupResult"
+        "403":
+          description: Forbidden — admin role required
+        "500":
+          description: Cleanup run failed
   /healthz:
     get:
       operationId: healthCheck
@@ -33,4 +56,24 @@ components:
           type: string
       required:
         - status
+    InvoiceOrphanCleanupResult:
+      type: object
+      properties:
+        scanned:
+          type: integer
+          description: Total number of files inspected in object storage
+        deleted:
+          type: integer
+          description: Number of orphaned files deleted
+        skipped:
+          type: integer
+          description: Number of files skipped (referenced or within grace period)
+        errors:
+          type: integer
+          description: Number of files that failed to delete
+      required:
+        - scanned
+        - deleted
+        - skipped
+        - errors
 

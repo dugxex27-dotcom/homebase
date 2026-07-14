@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { insertMaintenanceLogSchema } from "@shared/schema";
 import type { MaintenanceLog, House, InvoiceAnalysis } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -92,7 +92,7 @@ export default function HomeownerServiceRecords() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const homeownerId = user?.id || "";
+  const homeownerId = (user as any)?.id || "";
   
   const { isFreeUser, isLoading: subscriptionLoading } = useHomeownerSubscription();
 
@@ -114,7 +114,8 @@ export default function HomeownerServiceRecords() {
 
   // AI Invoice Analysis state
   const [aiInvoiceOpen, setAiInvoiceOpen] = useState(false);
-  const [aiStep, setAiStep] = useState<"upload" | "diy-verify" | "review" | "done">("upload");
+  const [aiStep, setAiStep] = useState<"upload" | "diy-verify" | "review" | "done" | "duplicate">("upload");
+  const [aiDuplicateAnalysisId, setAiDuplicateAnalysisId] = useState<string | null>(null);
   const [aiDiyVerifyFiles, setAiDiyVerifyFiles] = useState<{ before: File[]; after: File[]; receipt: File[] }>({ before: [], after: [], receipt: [] });
   const [aiDiyVerifying, setAiDiyVerifying] = useState(false);
   const [aiDiyVerifyResult, setAiDiyVerifyResult] = useState<{ diyVerified: boolean; verificationNotes: string | null } | null>(null);
@@ -133,6 +134,8 @@ export default function HomeownerServiceRecords() {
   const [aiEditHomeArea, setAiEditHomeArea] = useState("");
   const [aiEditServiceType, setAiEditServiceType] = useState("");
   const [aiSelectedHouseId, setAiSelectedHouseId] = useState("");
+  const [highlightedLogId, setHighlightedLogId] = useState<string | null>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 
   // Load houses
@@ -155,6 +158,19 @@ export default function HomeownerServiceRecords() {
       .map((a) => a.maintenanceLogId!)
   );
 
+  // Read highlightAnalysis query param set by the Maintenance page "View existing record" button.
+  // Resolves the analysisId → maintenanceLogId and triggers the scroll/highlight effect.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const analysisId = params.get("highlightAnalysis");
+    if (!analysisId) return;
+    window.history.replaceState(null, "", window.location.pathname);
+    const match = confirmedAnalyses.find((a) => a.id === analysisId);
+    if (match?.maintenanceLogId) {
+      setHighlightedLogId(match.maintenanceLogId);
+    }
+  }, [confirmedAnalyses]);
+
   // Load maintenance logs (service records)
   const { data: maintenanceLogs, isLoading: maintenanceLogsLoading } = useQuery<MaintenanceLog[]>({
     queryKey: ['/api/maintenance-logs', { homeownerId, houseId: serviceRecordsHouseFilter === 'all' ? undefined : serviceRecordsHouseFilter }],
@@ -170,7 +186,7 @@ export default function HomeownerServiceRecords() {
 
   // Maintenance log form
   const maintenanceLogForm = useForm<MaintenanceLogFormData>({
-    resolver: zodResolver(maintenanceLogFormSchema),
+    resolver: zodResolver(maintenanceLogFormSchema as any),
     defaultValues: {
       homeownerId,
       houseId: "",
@@ -294,12 +310,46 @@ export default function HomeownerServiceRecords() {
       reader.onerror = reject;
     });
 
+  useEffect(() => {
+    if (!highlightedLogId) return;
+
+    let attempts = 0;
+    const MAX_ATTEMPTS = 25;
+    const RETRY_MS = 200;
+
+    const tryHighlight = () => {
+      const el = document.querySelector<HTMLElement>(`[data-log-id="${highlightedLogId}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.add("service-record-highlight");
+        highlightTimerRef.current = setTimeout(() => {
+          el.classList.remove("service-record-highlight");
+          setHighlightedLogId(null);
+        }, 3000);
+        return;
+      }
+      attempts++;
+      if (attempts < MAX_ATTEMPTS) {
+        highlightTimerRef.current = setTimeout(tryHighlight, RETRY_MS);
+      } else {
+        setHighlightedLogId(null);
+      }
+    };
+
+    tryHighlight();
+
+    return () => {
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+    };
+  }, [highlightedLogId]);
+
   const openAiInvoiceDialog = () => {
     setAiStep("upload");
     setAiCompletionMethod("contractor");
     setAiInvoiceFiles([]);
     setAiReceiptFiles([]);
     setAiAnalysis(null);
+    setAiDuplicateAnalysisId(null);
     setAiDiyVerifyFiles({ before: [], after: [], receipt: [] });
     setAiDiyVerifyResult(null);
     setAiSelectedHouseId(houses[0]?.id || "");
@@ -373,6 +423,12 @@ export default function HomeownerServiceRecords() {
       });
       const responseData = await res.json();
       if (!res.ok) {
+        if (res.status === 409 && responseData?.code === "DUPLICATE_INVOICE") {
+          setAiDuplicateAnalysisId(responseData.analysisId ?? null);
+          setAiStep("duplicate");
+          setAiAnalyzing(false);
+          return;
+        }
         const reason = responseData?.message || "Could not analyze the uploaded files. Please try again.";
         toast({ title: "Upload not recognized", description: reason, variant: "destructive" });
         setAiAnalyzing(false);
@@ -699,7 +755,7 @@ export default function HomeownerServiceRecords() {
         ) : filteredLogs.length > 0 ? (
           (() => {
             const renderServiceCard = (log: MaintenanceLog) => (
-              <div key={log.id} className="property-card hover:shadow-md transition-shadow" style={{ cursor: 'default' }}>
+              <div key={log.id} data-log-id={log.id} className="property-card hover:shadow-md transition-shadow" style={{ cursor: 'default' }}>
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-start gap-3">
                       <div style={{ background: '#EEEDFE', padding: 8, borderRadius: 10, flexShrink: 0 }}>
@@ -791,7 +847,7 @@ export default function HomeownerServiceRecords() {
                   )}
                   
                   {/* Attachments Display */}
-                  {(log.receiptUrls?.length > 0 || log.beforePhotoUrls?.length > 0 || log.afterPhotoUrls?.length > 0) && (
+                  {((log.receiptUrls?.length ?? 0) > 0 || (log.beforePhotoUrls?.length ?? 0) > 0 || (log.afterPhotoUrls?.length ?? 0) > 0) && (
                     <div className="mt-4 space-y-3">
                       {log.receiptUrls && log.receiptUrls.length > 0 && (
                         <div>
@@ -921,6 +977,7 @@ export default function HomeownerServiceRecords() {
                 {aiStep === "diy-verify" && "Verify DIY Work"}
                 {aiStep === "review" && "Review Extracted Details"}
                 {aiStep === "done" && "Record Created!"}
+                {aiStep === "duplicate" && "Already Scanned"}
               </DialogTitle>
             </DialogHeader>
 
@@ -1213,6 +1270,45 @@ export default function HomeownerServiceRecords() {
                 <CheckCircle2 className="w-14 h-14 mx-auto text-green-500" />
                 <p className="text-lg font-semibold text-green-700">Service record created!</p>
                 <p className="text-sm text-muted-foreground">Your home health score has been updated.</p>
+              </div>
+            )}
+
+            {aiStep === "duplicate" && (
+              <div className="py-8 text-center space-y-4">
+                <AlertCircle className="w-14 h-14 mx-auto" style={{ color: '#f59e0b' }} />
+                <p className="text-lg font-semibold">You already scanned this invoice</p>
+                <p className="text-sm text-muted-foreground">
+                  This file has already been analyzed and saved to your service records. No need to scan it again.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2 justify-center pt-2">
+                  {aiDuplicateAnalysisId && (
+                    <Button
+                      onClick={() => {
+                        const match = confirmedAnalyses.find((a) => a.id === aiDuplicateAnalysisId);
+                        const logId = match?.maintenanceLogId ?? null;
+                        setAiInvoiceOpen(false);
+                        setAiDuplicateAnalysisId(null);
+                        if (logId) {
+                          setHighlightedLogId(logId);
+                        }
+                      }}
+                      style={{ backgroundColor: 'var(--purple)', color: '#fff' }}
+                    >
+                      View existing record
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setAiStep("upload");
+                      setAiInvoiceFiles([]);
+                      setAiReceiptFiles([]);
+                      setAiDuplicateAnalysisId(null);
+                    }}
+                  >
+                    Scan a different invoice
+                  </Button>
+                </div>
               </div>
             )}
           </DialogContent>

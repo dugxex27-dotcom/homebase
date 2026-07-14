@@ -69,24 +69,14 @@ vi.mock("stripe", () => {
   return { default: MockStripe };
 });
 
-vi.mock("../storage", () => ({
-  storage: {
-    getRecentStripeProcessedEventIds: mockGetRecentStripeProcessedEventIds,
-    hasProcessedStripeEvent: vi.fn().mockResolvedValue(false),
-    recordProcessedStripeEvent: vi.fn().mockResolvedValue(undefined),
-    pruneOldStripeProcessedEvents: vi.fn().mockResolvedValue(undefined),
-    getSubscriptionPlanByTier: vi.fn().mockResolvedValue(null),
-    getUserByStripeCustomerId: vi.fn().mockResolvedValue(null),
-    getAffiliateReferralByUserId: vi.fn().mockResolvedValue(null),
-    updateUserSubscriptionStatus: vi.fn().mockResolvedValue(undefined),
-    createSubscriptionCycleEvent: vi.fn().mockResolvedValue(null),
-    getContractorCompanyByStripeAccountId: vi.fn().mockResolvedValue(null),
-    updateCompanySubscriptionStatus: vi.fn().mockResolvedValue(undefined),
-    getCompanyById: vi.fn().mockResolvedValue(null),
-    updateCompanyStripeSubscription: vi.fn().mockResolvedValue(undefined),
-    upsertSubscriptionPlan: vi.fn().mockResolvedValue(undefined),
-  },
-}));
+vi.mock("../storage", async () => {
+  const { createStorageMock } = await import("../test-helpers/storage-mock");
+  return {
+    storage: createStorageMock({
+      getRecentStripeProcessedEventIds: mockGetRecentStripeProcessedEventIds,
+    }),
+  };
+});
 
 vi.mock("../replitAuth", () => ({
   setupAuth: vi.fn().mockResolvedValue(undefined),

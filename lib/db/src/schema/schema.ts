@@ -439,6 +439,7 @@ export const maintenanceLogs = pgTable("maintenance_logs", {
   afterPhotoUrls: text("after_photo_urls").array().default(sql`'{}'::text[]`), // after photos
   completionMethod: text("completion_method"), // 'diy' or 'contractor' - how the task was completed (nullable for backward compatibility)
   diySavingsAmount: decimal("diy_savings_amount", { precision: 10, scale: 2 }), // Amount saved by doing DIY (pro cost - diy cost), null for contractor completions
+  taskCompletionId: text("task_completion_id"), // references taskCompletions.id — kept in sync with serviceDate year/month
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("IDX_maintenance_logs_completion_method").on(table.completionMethod),
@@ -467,12 +468,16 @@ export const invoiceAnalyses = pgTable("invoice_analyses", {
   aiNotes: text("ai_notes"), // Any caveats or issues the AI noticed
   rawExtraction: jsonb("raw_extraction"), // Full JSON blob from GPT-4o-mini
   diyVerified: boolean("diy_verified").notNull().default(false), // true if AI verified DIY photos
+  // Idempotency: SHA-256 hash of the primary uploaded file bytes (nullable for legacy rows)
+  invoiceHash: text("invoice_hash"),
   // Links to created records on confirmation
   maintenanceLogId: text("maintenance_log_id"),
   taskCompletionId: text("task_completion_id"),
   createdAt: timestamp("created_at").defaultNow(),
   confirmedAt: timestamp("confirmed_at"),
-});
+}, (table) => [
+  uniqueIndex("uq_invoice_analyses_house_hash").on(table.houseId, table.invoiceHash),
+]);
 
 export const insertInvoiceAnalysisSchema = createInsertSchema(invoiceAnalyses).omit({
   id: true,
@@ -531,6 +536,23 @@ export const houses = pgTable("houses", {
   garageType: text("garage_type"), // "none", "attached", "detached", "carport"
   numberOfStories: integer("number_of_stories"), // 1, 2, 3, etc.
   primaryHeatingFuel: text("primary_heating_fuel"), // "natural_gas", "electric", "oil", "propane", "wood", "other"
+  hin: text("hin"), // Home Identification Number (assigned by HIN service)
+  hinAssignedAt: timestamp("hin_assigned_at"), // When the HIN was assigned
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const homeIdentificationNumbers = pgTable("home_identification_numbers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  hin: text("hin").notNull().unique(), // The Home Identification Number
+  normalizedAddress: text("normalized_address").notNull(), // Normalized form of the address
+  city: text("city"),
+  state: text("state"),
+  zip: text("zip"),
+  propertyType: integer("property_type"), // Numeric property type code
+  latitude: decimal("latitude", { precision: 10, scale: 8 }),
+  longitude: decimal("longitude", { precision: 11, scale: 8 }),
+  sourceHomeId: text("source_home_id"), // The house.id that first triggered this HIN
+  metadata: jsonb("metadata"), // Additional metadata
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -1042,6 +1064,7 @@ export const updateHouseholdProfileSchema = z.object({
   garageType: z.enum(['none', 'attached', 'detached', 'carport']).optional(),
   numberOfStories: z.number().int().positive().max(10).optional(),
   primaryHeatingFuel: z.enum(['natural_gas', 'electric', 'oil', 'propane', 'wood', 'other']).optional(),
+  homeSystems: z.array(z.string()).optional(),
 });
 
 export const insertTaskOverrideSchema = createInsertSchema(taskOverrides).omit({
@@ -2434,3 +2457,54 @@ export const companyBulkImports = pgTable("company_bulk_imports", {
 export const insertCompanyBulkImportSchema = createInsertSchema(companyBulkImports).omit({ id: true, createdAt: true });
 export type InsertCompanyBulkImport = z.infer<typeof insertCompanyBulkImportSchema>;
 export type CompanyBulkImport = typeof companyBulkImports.$inferSelect;
+
+// ─── Homeowner Onboarding Progress ───────────────────────────────────────────
+// Tracks the native-app onboarding flow (referral → address → spotlight tour).
+// One row per user; created on first authenticated open.
+export const onboardingProgress = pgTable("onboarding_progress", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }).unique(),
+  currentStep: integer("current_step").notNull().default(2),
+  completedSteps: integer("completed_steps").array().notNull().default(sql`ARRAY[]::integer[]`),
+  skippedSteps: integer("skipped_steps").array().notNull().default(sql`ARRAY[]::integer[]`),
+  referralCodeApplied: varchar("referral_code_applied"),
+  startedAt: timestamp("started_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_onboarding_progress_user_id").on(table.userId),
+]);
+
+export const insertOnboardingProgressSchema = createInsertSchema(onboardingProgress).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertOnboardingProgress = z.infer<typeof insertOnboardingProgressSchema>;
+export type OnboardingProgress = typeof onboardingProgress.$inferSelect;
+
+// ─── Stripe Webhook Dedup ─────────────────────────────────────────────────────
+// Persists Stripe event processing state so the webhook handler survives
+// server restarts without re-processing the same event.  Rows transition:
+//   pending → committed  (happy path)
+//   pending → failed     (crash recovery or explicit cleanup)
+// The scheduler prunes rows after 96 h (Stripe's max retry window + buffer).
+export const stripeProcessedEvents = pgTable("stripe_processed_events", {
+  stripeEventId: varchar("stripe_event_id").primaryKey(), // e.g. evt_1a2b3c...
+  status: text("status").notNull().default("pending"),    // 'pending' | 'committed' | 'failed'
+  processedAt: timestamp("processed_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("IDX_stripe_processed_events_status_at").on(table.status, table.processedAt),
+]);
+
+export type StripeProcessedEvent = typeof stripeProcessedEvents.$inferSelect;
+
+// Tracks in-flight seat updates so a server restart can recover and re-sync
+// the seat count to Stripe.  One row per company; inserted before the Stripe
+// API call, deleted on success.  Any row still present at startup means the
+// previous run crashed mid-update and the company's seat count must be
+// re-reported.
+export const pendingSeatSyncs = pgTable("pending_seat_syncs", {
+  companyId: varchar("company_id").primaryKey(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type PendingSeatSync = typeof pendingSeatSyncs.$inferSelect;

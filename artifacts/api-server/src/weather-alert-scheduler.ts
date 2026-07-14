@@ -77,7 +77,7 @@ async function getActiveAlerts(latitude: number, longitude: number): Promise<NWS
       return [];
     }
 
-    const data: NWSAlertsResponse = await response.json();
+    const data = await response.json() as NWSAlertsResponse;
     return (data.features || []).filter(f =>
       f.properties.status === 'Actual' &&
       f.properties.messageType !== 'Cancel' &&
