@@ -6816,7 +6816,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/crm/quotes/:id - Get single quote
-  app.get('/api/crm/quotes/:id', isAuthenticated, async (req: any, res: any) => {
+  app.get('/api/crm/quotes/:id', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -7188,7 +7188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/crm/invoices/:id - Get single invoice
-  app.get('/api/crm/invoices/:id', isAuthenticated, async (req: any, res: any) => {
+  app.get('/api/crm/invoices/:id', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });

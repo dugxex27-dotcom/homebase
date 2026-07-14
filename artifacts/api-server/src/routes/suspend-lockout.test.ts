@@ -1889,4 +1889,50 @@ describe("Suspend lockout — messaging routes (conversations, messages)", () =>
 
     expect(res.status).not.toBe(401);
   });
+
+  // ── GET /api/crm/quotes/:id ────────────────────────────────────────────────
+
+  it("blocks a suspended user from reading a quote", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .get("/api/crm/quotes/quote-001")
+      .set("x-test-user", "target");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on GET /api/crm/quotes/:id", async () => {
+    const res = await request(app)
+      .get("/api/crm/quotes/quote-001")
+      .set("x-test-user", "target");
+
+    if (res.status === 401) {
+      expect(res.body.message).not.toMatch(/suspended/i);
+    }
+  });
+
+  // ── GET /api/crm/invoices/:id ──────────────────────────────────────────────
+
+  it("blocks a suspended user from reading an invoice", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .get("/api/crm/invoices/invoice-001")
+      .set("x-test-user", "target");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on GET /api/crm/invoices/:id", async () => {
+    const res = await request(app)
+      .get("/api/crm/invoices/invoice-001")
+      .set("x-test-user", "target");
+
+    if (res.status === 401) {
+      expect(res.body.message).not.toMatch(/suspended/i);
+    }
+  });
 });
