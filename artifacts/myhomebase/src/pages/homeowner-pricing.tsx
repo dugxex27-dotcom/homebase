@@ -344,7 +344,7 @@ export default function HomeownerPricing() {
               {isNativePlatform && (
                 <div className="mt-2 space-y-0.5">
                   <p className="text-sm font-semibold text-gray-900">$5.00/month · Auto-renews</p>
-                  <p className="text-xs text-gray-500">14-day free trial included</p>
+                  <p className="text-xs text-gray-500">Try free for 14 days · card required at signup</p>
                 </div>
               )}
             </CardHeader>
@@ -396,7 +396,7 @@ export default function HomeownerPricing() {
                       Processing...
                     </>
                   ) : isOnboarding ? (
-                    'Start Free Trial — Base'
+                    'Try Free for 14 Days — Base'
                   ) : !hasActiveSubscription ? 'Select Base Plan' : 'Downgrade to Base'}
                 </Button>
               )}
@@ -431,7 +431,7 @@ export default function HomeownerPricing() {
               {isNativePlatform && (
                 <div className="mt-2 space-y-0.5">
                   <p className="text-sm font-semibold text-gray-900">$20.00/month · Auto-renews</p>
-                  <p className="text-xs text-gray-500">14-day free trial included</p>
+                  <p className="text-xs text-gray-500">Try free for 14 days · card required at signup</p>
                 </div>
               )}
             </CardHeader>
@@ -463,7 +463,7 @@ export default function HomeownerPricing() {
                       Processing...
                     </>
                   ) : isOnboarding ? (
-                    'Start Free Trial — Premium'
+                    'Try Free for 14 Days — Premium'
                   ) : !hasActiveSubscription ? 'Select Premium Plan' : actualPlan === 'base' ? 'Upgrade to Premium' : 'Downgrade to Premium'}
                 </Button>
               )}
@@ -498,7 +498,7 @@ export default function HomeownerPricing() {
               {isNativePlatform && (
                 <div className="mt-2 space-y-0.5">
                   <p className="text-sm font-semibold text-gray-900">$40.00/month · Auto-renews</p>
-                  <p className="text-xs text-gray-500">14-day free trial included</p>
+                  <p className="text-xs text-gray-500">Try free for 14 days · card required at signup</p>
                 </div>
               )}
             </CardHeader>
@@ -530,7 +530,7 @@ export default function HomeownerPricing() {
                       Processing...
                     </>
                   ) : isOnboarding ? (
-                    'Start Free Trial — Premium Plus'
+                    'Try Free for 14 Days — Premium Plus'
                   ) : !hasActiveSubscription ? 'Select Premium Plus' : 'Upgrade to Premium Plus'}
                 </Button>
               )}
