@@ -322,7 +322,7 @@ export function ContractorCRMUpgradePage() {
             {isNativePlatform && currentPlan !== 'basic' && currentPlan !== 'pro' && (
               <div className="mt-3 space-y-1">
                 <p className="text-sm font-semibold text-gray-900 text-center">$20.00/month · Auto-renews</p>
-                <p className="text-xs text-muted-foreground text-center">14-day free trial included</p>
+                <p className="text-xs text-muted-foreground text-center">Try free for 14 days · card required at signup</p>
               </div>
             )}
             {isNativePlatform && currentPlan !== 'basic' && currentPlan !== 'pro' && (
@@ -398,7 +398,7 @@ export function ContractorCRMUpgradePage() {
             {currentPlan !== 'pro' && isNativePlatform && (
               <div className="mt-3 space-y-1">
                 <p className="text-sm font-semibold text-gray-900 text-center">$40.00/month · Auto-renews</p>
-                <p className="text-xs text-muted-foreground text-center">14-day free trial included</p>
+                <p className="text-xs text-muted-foreground text-center">Try free for 14 days · card required at signup</p>
                 <Button
                   className="w-full mt-2"
                   style={{ background: 'linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)' }}

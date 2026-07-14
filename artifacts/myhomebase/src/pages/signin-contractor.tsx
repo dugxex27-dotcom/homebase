@@ -106,10 +106,16 @@ export default function SignInContractor() {
 
   const loginMutation = useMutation({
     mutationFn: async (data: LoginFormData) => (await apiRequest("/api/auth/login", "POST", data)).json(),
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
-      toast({ title: "Welcome back!" });
-      setLocation(resolvePostAuthRedirect('/contractor-dashboard'));
+      const status = result?.user?.subscriptionStatus;
+      if (status === 'inactive' || status === undefined) {
+        toast({ title: "Welcome back!", description: "Choose a plan to activate your account." });
+        setLocation(resolvePostAuthRedirect('/contractor-pricing?trial=true'));
+      } else {
+        toast({ title: "Welcome back!" });
+        setLocation(resolvePostAuthRedirect('/contractor-dashboard'));
+      }
     },
     onError: (e: Error) => toast({ title: "Login failed", description: e.message || "Invalid credentials.", variant: "destructive" }),
   });
