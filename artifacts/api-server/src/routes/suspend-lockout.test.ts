@@ -1077,6 +1077,46 @@ describe("Suspend lockout — boost check and previously-used contractor routes"
     expect(res.status).not.toBe(401);
   });
 
+  // ── PATCH /api/contractors/boost/:boostId ────────────────────────────────
+
+  it("blocks a suspended user from updating a boost", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .patch("/api/contractors/boost/boost-001")
+      .set("x-test-user", "target")
+      .send({ isActive: false });
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on boost update", async () => {
+    // TARGET_USER_ID is NOT in sharedSuspendedUserIds; requireNotSuspended passes.
+    // The handler enforces its own role check (role must be 'contractor') —
+    // TARGET_SESSION has companyRole 'tech' and no .role field, so the inner
+    // 403 fires — but that confirms requireNotSuspended let the request through.
+    const res = await request(app)
+      .patch("/api/contractors/boost/boost-001")
+      .set("x-test-user", "target")
+      .send({ isActive: false });
+
+    expect(res.status).not.toBe(401);
+  });
+
+  it("rejects a boost update that attempts to modify immutable fields", async () => {
+    // Sensitive/economic fields (amount, status, dates, Stripe IDs, contractorId,
+    // location) must not be writeable by contractors — the schema only permits
+    // isActive. Any other field combination should return 400, not succeed.
+    const res = await request(app)
+      .patch("/api/contractors/boost/boost-001")
+      .set("x-test-user", "target")
+      .send({ amount: "0.00", status: "active", stripePaymentIntentId: "pi_fake" });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/isActive/i);
+  });
+
   // ── GET /api/contractors/previously-used ─────────────────────────────────
 
   it("blocks a suspended user from reading previously-used contractors", async () => {

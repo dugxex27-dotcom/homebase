@@ -8935,6 +8935,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/contractors/boost/:boostId", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
+    try {
+      // Validate input shape before any role/ownership checks. Only isActive
+      // may be changed — all other fields (amount, dates, Stripe IDs, location,
+      // status lifecycle, contractorId) are immutable once a boost is paid for.
+      const patchSchema = z.object({ isActive: z.boolean() });
+      const parsed = patchSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Only isActive may be updated on a boost", errors: parsed.error.issues });
+      }
+
+      const userId = req.session?.user?.id;
+      const userRole = req.session?.user?.role;
+
+      if (userRole !== 'contractor') {
+        return res.status(403).json({ message: "Only contractors can update boosts" });
+      }
+
+      const userBoosts = await storage.getContractorBoosts(userId as string);
+      const boost = userBoosts.find(b => b.id === req.params.boostId);
+
+      if (!boost) {
+        return res.status(404).json({ message: "Boost not found or access denied" });
+      }
+
+      const updated = await storage.updateContractorBoost(req.params.boostId, parsed.data);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating boost:", error);
+      res.status(500).json({ message: "Failed to update boost" });
+    }
+  });
+
   // ─────────────────────────────────────────────────────────────────────
   // Admin endpoint: re-import lost contractor boosts
   //
