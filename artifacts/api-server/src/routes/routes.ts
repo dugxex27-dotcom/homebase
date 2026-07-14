@@ -2235,7 +2235,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get Stripe Connect account status
-  app.get('/api/contractor/stripe-connect/status', isAuthenticated, requireRole('contractor'), async (req: any, res: any) => {
+  app.get('/api/contractor/stripe-connect/status', isAuthenticated, requireNotSuspended(), requireRole('contractor'), async (req: any, res: any) => {
     if (!stripe) {
       return res.status(500).json({ error: 'Stripe not configured' });
     }
@@ -15192,7 +15192,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Phase 6 — Stripe Customer Portal (self-service billing management)
-  app.get('/api/contractor/billing/portal', isAuthenticated, async (req: any, res: any) => {
+  app.get('/api/contractor/billing/portal', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
         return res.status(401).json({ message: 'Unauthorized' });
@@ -17044,7 +17044,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.get('/api/analytics/contractor/:contractorId', isAuthenticated, async (req: any, res: any) => {
+  app.get('/api/analytics/contractor/:contractorId', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const contractorId = req.params.contractorId;
       const { startDate, endDate } = req.query;
@@ -17072,7 +17072,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.get('/api/analytics/contractor/:contractorId/monthly/:year/:month', isAuthenticated, async (req: any, res: any) => {
+  app.get('/api/analytics/contractor/:contractorId/monthly/:year/:month', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const contractorId = req.params.contractorId;
       const year = parseInt(req.params.year);

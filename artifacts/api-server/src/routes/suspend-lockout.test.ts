@@ -710,3 +710,122 @@ describe("DELETE /api/contractor/team/:userId/invite — route-level wiring", ()
     expect(sharedSuspendedUserIds.has(OTHER_ID)).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Suspended-user lockout on previously-unguarded read routes
+// ---------------------------------------------------------------------------
+//
+// These routes previously lacked requireNotSuspended(). A suspended contractor
+// could continue reading business data (analytics, stripe-connect status,
+// billing portal) until their session expired. The tests below confirm that
+// adding requireNotSuspended() closes that gap: a user whose ID is in the
+// sharedSuspendedUserIds set is immediately rejected with 401.
+// ---------------------------------------------------------------------------
+
+describe("Suspend lockout — contractor read routes (analytics, stripe-connect, billing)", () => {
+  let app: express.Express;
+
+  beforeEach(async () => {
+    sharedSuspendedUserIds.clear();
+    mockDbSelect.mockReset();
+    mockDbUpdate.mockReset();
+
+    process.env.STRIPE_SECRET_KEY = "sk_test_read_lockout_placeholder";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_read_lockout_placeholder";
+
+    app = express();
+    await registerRoutes(app);
+  });
+
+  afterEach(() => {
+    sharedSuspendedUserIds.clear();
+    vi.clearAllMocks();
+  });
+
+  // ── GET /api/analytics/contractor/:contractorId ──────────────────────────
+
+  it("blocks a suspended user from reading contractor analytics", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .get(`/api/analytics/contractor/${TARGET_USER_ID}`)
+      .set("x-test-user", "target");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("blocks a suspended user from reading monthly contractor analytics", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .get(`/api/analytics/contractor/${TARGET_USER_ID}/monthly/2026/7`)
+      .set("x-test-user", "target");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on contractor analytics", async () => {
+    // TARGET_USER_ID is NOT in sharedSuspendedUserIds; requireNotSuspended passes.
+    // The handler then enforces its own role check (role must be 'contractor').
+    // TARGET_SESSION.user has companyRole 'tech', so the inner 403 fires — but
+    // that means requireNotSuspended correctly let the request through.
+    const res = await request(app)
+      .get(`/api/analytics/contractor/${TARGET_USER_ID}`)
+      .set("x-test-user", "target");
+
+    expect(res.status).not.toBe(401);
+  });
+
+  // ── GET /api/contractor/stripe-connect/status ────────────────────────────
+
+  it("blocks a suspended user from reading Stripe Connect status", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .get("/api/contractor/stripe-connect/status")
+      .set("x-test-user", "target");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on Stripe Connect status", async () => {
+    // Not suspended — requireNotSuspended passes. requireRole('contractor')
+    // passes (mocked as no-op). The handler may 500 without a real Stripe key
+    // but that's after the auth gates, confirming the suspension check ran.
+    const res = await request(app)
+      .get("/api/contractor/stripe-connect/status")
+      .set("x-test-user", "target");
+
+    expect(res.status).not.toBe(401);
+  });
+
+  // ── GET /api/contractor/billing/portal ──────────────────────────────────
+
+  it("blocks a suspended user from accessing the billing portal", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .get("/api/contractor/billing/portal")
+      .set("x-test-user", "target");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on the billing portal", async () => {
+    // Not suspended — requireNotSuspended passes. The handler's inner role check
+    // (req.session.user.role !== 'contractor') may return 401 with "Unauthorized"
+    // but the suspension check was not the blocker — the message won't say "suspended".
+    const res = await request(app)
+      .get("/api/contractor/billing/portal")
+      .set("x-test-user", "target");
+
+    // Whatever status, the response must NOT be the suspension 401
+    if (res.status === 401) {
+      expect(res.body.message).not.toMatch(/suspended/i);
+    }
+  });
+});
