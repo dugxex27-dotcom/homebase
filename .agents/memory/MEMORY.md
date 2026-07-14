@@ -1,0 +1,18 @@
+- [Pre-existing typecheck errors](preexisting-errors.md) — do not fix these across api-server and myhomebase; they were present before Scale-Up work
+- [Contractor Scale-Up Plan phases](contractor-scaleup.md) — 7-phase expansion; Phases 1-4 complete + pricing simplification done; Phase 5+ pending
+- [drizzle-kit push workaround](db-migrations.md) — use executeSql for migrations instead of drizzle-kit push (interactive prompt blocks CI)
+- [Apple StoreKit direct IAP](apple-storekit-iap.md) — cordova-plugin-purchase used directly (no RevenueCat) so Contractor Pro can stay Stripe-only
+- [GitHub sync workflow (push/token)](github-sync-workflow.md) — sync scripts gone; bash env has stale token; use Shell tab + REST API for GitHub pushes
+- [Stale session after server-side role change](stale-session-role-sync.md) — patch the *other* user's session in the store too, not just the acting user's, or they get 403s until re-login
+- [Stale-session revocation pattern](stale-session-revocation.md) — in-memory suspendedUserIds Set is process-local; use requireActiveAccountFresh's DB re-check + short TTL cache for cross-instance revocation
+- [Playwright testing in Replit NixOS](playwright-nixos-testing.md) — Chromium cannot run (missing libglib); use request fixture + REPLIT_DEV_DOMAIN baseURL instead
+- [Blanket route-prefix guards must check both auth paths](blanket-guard-oauth-path.md) — session-only checks in `app.use('/api/prefix', ...)` middlewares silently skip OAuth-authenticated requests
+- [replitAuth vi.mock is exhaustive](replitauth-vimock-exhaustive.md) — vi.mock("../replitAuth") in HTTP route tests has no auto-passthrough; any newly-called export (e.g. evictStatusCache) must be added to every mock factory or the route 500s
+- [Shared fallback identity anti-pattern](shared-fallback-identity-antipattern.md) — some route files fall back to a shared id like 'demo-user' with no auth guard at all; check mounts + handlers together
+- [Homeowner demo login for e2e testing](homeowner-demo-login-testing.md) — use the hidden "Demo login" link on /signin/homeowner, not OIDC bypass, since homeowner sign-in uses real Google OAuth
+- [HouseMap compact vs full mode UI location](house-map-add-undo.md) — detail modal/remove/add rows only open from the full-mode "Systems" list (Maintenance page), not the compact dashboard zone grid
+- [Native app hides marketing chrome/routes](native-marketing-chrome-gating.md) — gate marketing header/footer, index-selector, /landing behind isNativePlatform, not per-page
+- [Demo-login canonical-house enforcement](demo-login-canonical-houses.md) — demo homeowner login route self-heals a fixed set of "canonical" house IDs on every login, recreating any that's missing; removing a demo house requires editing the canonical set, not just the seed data
+- [isAuthenticated DB status check](stale-session-isauth-db-check.md) — isAuthenticated now calls getUserStatusCached for session users; required for cold-cache suspended-user lockout
+- [replitAuth.ts duplicate export pattern](replitauth-duplicate-exports.md) — large function blocks appended mid-file can re-declare already-exported symbols; esbuild catches this as "Multiple exports with the same name" and blocks ALL test files that import replitAuth
+- [Cross-process lock simulation in tests](cross-process-lock-simulation.md) — seatUpdateLocks.clear() after process A acquires the lock simulates process B having its own fresh Map; A's chain keeps running, B starts unblocked
