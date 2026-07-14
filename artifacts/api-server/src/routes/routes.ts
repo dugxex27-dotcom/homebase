@@ -26,7 +26,7 @@ import { geocodeAddress, calculateDistance } from "../geocoding-service";
 import { auditLogger, sessionManager, AuditEventTypes } from "../security-audit";
 import { smsService } from "../sms-service";
 import { notificationOrchestrator } from "../notification-orchestrator";
-import { sendEmail, emailService } from "../email-service";
+import { sendEmail, emailService, sendCheckoutFailureEmail } from "../email-service";
 import { verifyAndActivateAppleTransaction, handleAppleServerNotification, AppleIapError } from "../apple-iap";
 
 const stripe = process.env.STRIPE_SECRET_KEY 
@@ -14918,6 +14918,29 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     } catch (error) {
       console.error('Error fetching contractor subscription:', error);
       res.status(500).json({ message: 'Failed to fetch subscription' });
+    }
+  });
+
+  // Send checkout failure recovery email so contractors can retry from their inbox
+  app.post('/api/contractor/resend-checkout-email', isAuthenticated, async (req: any, res: any) => {
+    try {
+      const userId = req.session.user.id;
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ message: 'User not found' });
+
+      const plan = (req.body.plan as string) ?? 'basic';
+      const baseUrl = (req.headers.origin as string) || `https://${req.headers.host}`;
+      const checkoutUrl = `${baseUrl}/contractor/checkout?plan=${plan}&onboarding=true`;
+      const userName = `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.email || 'there';
+
+      sendCheckoutFailureEmail(userId, userName, plan, checkoutUrl).catch((err) => {
+        req.log.warn({ err }, 'checkout-failure email send failed (non-fatal)');
+      });
+
+      return res.json({ sent: true });
+    } catch (error: any) {
+      req.log.error({ err: error }, 'Failed to dispatch checkout failure email');
+      return res.status(500).json({ message: 'Failed to send email' });
     }
   });
 

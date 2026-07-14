@@ -1,19 +1,18 @@
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { openPaymentUrl } from "@/lib/nativeBrowser";
-import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function ContractorCheckout() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
-  const { toast } = useToast();
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const urlParams = new URLSearchParams(window.location.search);
   const plan = urlParams.get("plan") ?? "basic";
-  // trialMode = true for new users (inactive, never subscribed) or when explicitly flagged
   const typedUser = user as { subscriptionStatus?: string; stripeCustomerId?: string } | undefined;
   const trialMode =
     urlParams.get("trial") === "true" ||
@@ -22,6 +21,7 @@ export default function ContractorCheckout() {
 
   const checkoutMutation = useMutation({
     mutationFn: async () => {
+      setCheckoutError(null);
       const res = await apiRequest("/api/create-subscription-checkout", "POST", { plan, trialMode });
       return res.json();
     },
@@ -33,12 +33,8 @@ export default function ContractorCheckout() {
       }
     },
     onError: (error: Error) => {
-      toast({
-        title: "Checkout Error",
-        description: error.message || "Failed to start checkout. Please try again.",
-        variant: "destructive",
-      });
-      setLocation("/contractor-pricing");
+      setCheckoutError(error.message || "Failed to start checkout. Please try again.");
+      apiRequest("/api/contractor/resend-checkout-email", "POST", { plan }).catch(() => {});
     },
   });
 
@@ -47,6 +43,43 @@ export default function ContractorCheckout() {
       checkoutMutation.mutate();
     }
   }, [user]);
+
+  if (checkoutError) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-6 px-4 text-center">
+        <div className="p-4 rounded-full bg-red-100">
+          <AlertTriangle className="h-10 w-10 text-red-500" />
+        </div>
+        <div className="space-y-2 max-w-sm">
+          <h1 className="text-xl font-bold text-gray-900">Checkout didn't load</h1>
+          <p className="text-gray-600 text-sm">
+            We couldn't start your checkout session. This is usually a temporary issue — please try again.
+            If the problem continues, check your connection or try a different browser.
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Button
+            onClick={() => checkoutMutation.mutate()}
+            disabled={checkoutMutation.isPending}
+            style={{ background: "linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)" }}
+            data-testid="button-retry-checkout"
+          >
+            {checkoutMutation.isPending ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Retrying…</>
+            ) : (
+              <><RefreshCw className="h-4 w-4 mr-2" />Try again</>
+            )}
+          </Button>
+          <Button variant="outline" onClick={() => setLocation("/contractor-pricing")}>
+            View pricing plans
+          </Button>
+        </div>
+        <p className="text-xs text-gray-400">
+          We've sent you an email with a link to complete your setup when you're ready.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-4">

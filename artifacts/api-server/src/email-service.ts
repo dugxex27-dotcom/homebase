@@ -1702,6 +1702,44 @@ export async function sendOnboardingNudgeEmail(userId: string, userName: string)
   });
 }
 
+export async function sendCheckoutFailureEmail(
+  userId: string,
+  userName: string,
+  plan: string,
+  checkoutUrl: string
+): Promise<boolean> {
+  const user = await storage.getUser(userId);
+  if (!user?.email) return false;
+
+  const planDisplay =
+    plan === 'pro'
+      ? 'Contractor Pro ($40/month)'
+      : 'Contractor Basic ($20/month)';
+
+  const html = wrapEmailContent(
+    getEmailHeader('Complete Your Setup'),
+    `
+      <p>Hi ${userName || 'there'},</p>
+      <p>It looks like your checkout session didn't complete. No worries — your account is ready and waiting. You can pick up right where you left off.</p>
+      <p>You were signing up for <strong>${planDisplay}</strong> with a 14-day free trial. Your card won't be charged for 14 days — cancel anytime before then and you owe nothing.</p>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${checkoutUrl}" style="background: #6B46C1; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Complete Your Setup →</a>
+      </div>
+      <p>Questions? Email us at <a href="mailto:gotohomebase2025@gmail.com">gotohomebase2025@gmail.com</a> and we'll get you sorted.</p>
+      <p>- The HomeBase Team</p>
+    `
+  );
+
+  const text = `Hi ${userName || 'there'}, your checkout didn't complete. Visit ${checkoutUrl} to finish setting up your ${planDisplay} subscription with a 14-day free trial. Questions? Email gotohomebase2025@gmail.com.`;
+
+  return sendEmail({
+    to: user.email,
+    subject: 'Complete your HomeBase contractor setup',
+    text,
+    html,
+  });
+}
+
 export const emailService = {
   sendEmail,
   sendWelcomeEmail,

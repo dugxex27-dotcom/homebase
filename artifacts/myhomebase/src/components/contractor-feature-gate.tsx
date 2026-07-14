@@ -181,6 +181,7 @@ export function ContractorCRMUpgradePage() {
   const [, setLocation] = useLocation();
   const { currentPlan } = useContractorSubscription();
   const { user } = useAuth();
+  const typedUser = user as { subscriptionStatus?: string; stripeCustomerId?: string } | undefined;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isPurchasing, setIsPurchasing] = useState(false);
@@ -276,7 +277,40 @@ export function ContractorCRMUpgradePage() {
     { icon: <BarChart3 className="h-5 w-5" />, title: 'Analytics Dashboard', description: 'Track revenue, jobs, and business growth' },
   ];
 
+  const needsCheckout =
+    typedUser?.subscriptionStatus === 'inactive' &&
+    !typedUser?.stripeCustomerId;
+
   return (
+    <div>
+      {needsCheckout && (
+        <div
+          className="sticky top-0 z-50 w-full px-4 py-3"
+          style={{ background: 'linear-gradient(135deg, #0C3460 0%, #1560A2 100%)' }}
+          data-testid="banner-complete-setup"
+        >
+          <div className="max-w-4xl mx-auto flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-3 text-white">
+              <div className="p-1.5 rounded-full bg-white/10 flex-shrink-0">
+                <Rocket className="h-4 w-4" />
+              </div>
+              <div>
+                <span className="font-semibold text-sm sm:text-base">Your account is ready — complete your setup to get started</span>
+                <span className="hidden sm:inline ml-2 text-sm opacity-80">· 14-day free trial, no charge today</span>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              className="bg-white font-semibold hover:bg-gray-100 flex-shrink-0"
+              style={{ color: '#0C3460' }}
+              onClick={() => setLocation('/contractor/checkout?plan=basic&onboarding=true')}
+              data-testid="button-complete-setup"
+            >
+              Complete Setup →
+            </Button>
+          </div>
+        </div>
+      )}
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="text-center mb-8">
         <Badge className="mb-4" style={{ background: 'var(--theme-fill)', color: 'var(--theme-accent)' }}>
@@ -476,6 +510,7 @@ export function ContractorCRMUpgradePage() {
           </Button>
         </div>
       )}
+    </div>
     </div>
   );
 }
