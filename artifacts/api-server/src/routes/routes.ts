@@ -8968,6 +8968,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/contractors/boost/:boostId/renew", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
+    try {
+      const renewSchema = z.object({
+        durationDays: z.number().int().min(1).max(365).default(30),
+      });
+      const parsed = renewSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Invalid renewal data", errors: parsed.error.issues });
+      }
+
+      const userId = req.session?.user?.id;
+      const userRole = req.session?.user?.role;
+
+      if (userRole !== 'contractor') {
+        return res.status(403).json({ message: "Only contractors can renew boosts" });
+      }
+
+      const userBoosts = await storage.getContractorBoosts(userId as string);
+      const boost = userBoosts.find(b => b.id === req.params.boostId);
+
+      if (!boost) {
+        return res.status(404).json({ message: "Boost not found or access denied" });
+      }
+
+      const now = new Date();
+      const currentEnd = new Date(boost.endDate);
+      const renewalStart = currentEnd > now ? currentEnd : now;
+      const renewalEnd = new Date(renewalStart);
+      renewalEnd.setDate(renewalEnd.getDate() + parsed.data.durationDays);
+
+      const renewedBoost = await storage.createContractorBoost({
+        contractorId: userId as string,
+        serviceCategory: boost.serviceCategory,
+        businessAddress: boost.businessAddress,
+        businessLatitude: boost.businessLatitude,
+        businessLongitude: boost.businessLongitude,
+        boostRadius: boost.boostRadius,
+        startDate: renewalStart.toISOString().split("T")[0],
+        endDate: renewalEnd.toISOString().split("T")[0],
+        amount: boost.amount,
+        status: "active",
+        isActive: true,
+      });
+
+      res.json(renewedBoost);
+    } catch (error) {
+      console.error("Error renewing boost:", error);
+      res.status(500).json({ message: "Failed to renew boost" });
+    }
+  });
+
   // ─────────────────────────────────────────────────────────────────────
   // Admin endpoint: re-import lost contractor boosts
   //

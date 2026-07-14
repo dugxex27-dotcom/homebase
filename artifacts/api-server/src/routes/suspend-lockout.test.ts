@@ -1117,6 +1117,45 @@ describe("Suspend lockout — boost check and previously-used contractor routes"
     expect(res.body.message).toMatch(/isActive/i);
   });
 
+  // ── POST /api/contractors/boost/:boostId/renew ───────────────────────────
+
+  it("blocks a suspended user from renewing a boost", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .post("/api/contractors/boost/boost-001/renew")
+      .set("x-test-user", "target")
+      .send({});
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on boost renewal", async () => {
+    // TARGET_USER_ID is NOT in sharedSuspendedUserIds; requireNotSuspended passes.
+    // The handler enforces its own role check (role must be 'contractor') —
+    // TARGET_SESSION has companyRole 'tech' and no .role field, so the inner
+    // 403 fires — but that confirms requireNotSuspended let the request through.
+    const res = await request(app)
+      .post("/api/contractors/boost/boost-001/renew")
+      .set("x-test-user", "target")
+      .send({});
+
+    expect(res.status).not.toBe(401);
+  });
+
+  it("rejects a boost renewal with an out-of-range durationDays", async () => {
+    // durationDays must be between 1 and 365; anything outside that range
+    // should return 400 before any ownership or DB work begins.
+    const res = await request(app)
+      .post("/api/contractors/boost/boost-001/renew")
+      .set("x-test-user", "target")
+      .send({ durationDays: 0 });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/invalid renewal/i);
+  });
+
   // ── GET /api/contractors/previously-used ─────────────────────────────────
 
   it("blocks a suspended user from reading previously-used contractors", async () => {
