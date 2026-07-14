@@ -1226,3 +1226,280 @@ describe("Suspend lockout — CRM action routes (notify, send, payment)", () => 
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// Suspended-user lockout on CRM write routes
+// ---------------------------------------------------------------------------
+//
+// POST, PATCH, DELETE for jobs, quotes, invoices, and integrations previously
+// only relied on the blanket app.use('/api/crm', ...) guard which has an edge
+// case where it calls next() unconditionally when neither session nor OAuth
+// paths match. Adding requireNotSuspended() directly to each write route
+// closes that gap.
+// ---------------------------------------------------------------------------
+
+describe("Suspend lockout — CRM write routes (jobs, quotes, invoices, integrations)", () => {
+  let app: express.Express;
+
+  beforeEach(async () => {
+    sharedSuspendedUserIds.clear();
+    mockDbSelect.mockReset();
+    mockDbUpdate.mockReset();
+
+    process.env.STRIPE_SECRET_KEY = "sk_test_crm_write_lockout_placeholder";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_crm_write_lockout_placeholder";
+
+    app = express();
+    await registerRoutes(app);
+  });
+
+  afterEach(() => {
+    sharedSuspendedUserIds.clear();
+    vi.clearAllMocks();
+  });
+
+  // ── POST /api/crm/jobs ───────────────────────────────────────────────────
+
+  it("blocks a suspended user from creating a CRM job", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .post("/api/crm/jobs")
+      .set("x-test-user", "target")
+      .send({ title: "Test Job" });
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on POST /api/crm/jobs", async () => {
+    const res = await request(app)
+      .post("/api/crm/jobs")
+      .set("x-test-user", "target")
+      .send({ title: "Test Job" });
+
+    expect(res.status).not.toBe(401);
+  });
+
+  // ── PATCH /api/crm/jobs/:id ──────────────────────────────────────────────
+
+  it("blocks a suspended user from updating a CRM job", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .patch("/api/crm/jobs/job-001")
+      .set("x-test-user", "target")
+      .send({ status: "completed" });
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on PATCH /api/crm/jobs/:id", async () => {
+    const res = await request(app)
+      .patch("/api/crm/jobs/job-001")
+      .set("x-test-user", "target")
+      .send({ status: "completed" });
+
+    expect(res.status).not.toBe(401);
+  });
+
+  // ── DELETE /api/crm/jobs/:id ─────────────────────────────────────────────
+
+  it("blocks a suspended user from deleting a CRM job", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .delete("/api/crm/jobs/job-001")
+      .set("x-test-user", "target");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on DELETE /api/crm/jobs/:id", async () => {
+    const res = await request(app)
+      .delete("/api/crm/jobs/job-001")
+      .set("x-test-user", "target");
+
+    expect(res.status).not.toBe(401);
+  });
+
+  // ── POST /api/crm/quotes ─────────────────────────────────────────────────
+
+  it("blocks a suspended user from creating a CRM quote", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .post("/api/crm/quotes")
+      .set("x-test-user", "target")
+      .send({ title: "Test Quote" });
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on POST /api/crm/quotes", async () => {
+    const res = await request(app)
+      .post("/api/crm/quotes")
+      .set("x-test-user", "target")
+      .send({ title: "Test Quote" });
+
+    expect(res.status).not.toBe(401);
+  });
+
+  // ── PATCH /api/crm/quotes/:id ────────────────────────────────────────────
+
+  it("blocks a suspended user from updating a CRM quote", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .patch("/api/crm/quotes/quote-001")
+      .set("x-test-user", "target")
+      .send({ status: "sent" });
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on PATCH /api/crm/quotes/:id", async () => {
+    const res = await request(app)
+      .patch("/api/crm/quotes/quote-001")
+      .set("x-test-user", "target")
+      .send({ status: "sent" });
+
+    expect(res.status).not.toBe(401);
+  });
+
+  // ── DELETE /api/crm/quotes/:id ───────────────────────────────────────────
+
+  it("blocks a suspended user from deleting a CRM quote", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .delete("/api/crm/quotes/quote-001")
+      .set("x-test-user", "target");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on DELETE /api/crm/quotes/:id", async () => {
+    const res = await request(app)
+      .delete("/api/crm/quotes/quote-001")
+      .set("x-test-user", "target");
+
+    expect(res.status).not.toBe(401);
+  });
+
+  // ── POST /api/crm/invoices ───────────────────────────────────────────────
+
+  it("blocks a suspended user from creating a CRM invoice", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .post("/api/crm/invoices")
+      .set("x-test-user", "target")
+      .send({ title: "Test Invoice" });
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on POST /api/crm/invoices", async () => {
+    const res = await request(app)
+      .post("/api/crm/invoices")
+      .set("x-test-user", "target")
+      .send({ title: "Test Invoice" });
+
+    expect(res.status).not.toBe(401);
+  });
+
+  // ── PATCH /api/crm/invoices/:id ──────────────────────────────────────────
+
+  it("blocks a suspended user from updating a CRM invoice", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .patch("/api/crm/invoices/invoice-001")
+      .set("x-test-user", "target")
+      .send({ status: "paid" });
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on PATCH /api/crm/invoices/:id", async () => {
+    const res = await request(app)
+      .patch("/api/crm/invoices/invoice-001")
+      .set("x-test-user", "target")
+      .send({ status: "paid" });
+
+    expect(res.status).not.toBe(401);
+  });
+
+  // ── DELETE /api/crm/invoices/:id ─────────────────────────────────────────
+
+  it("blocks a suspended user from deleting a CRM invoice", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .delete("/api/crm/invoices/invoice-001")
+      .set("x-test-user", "target");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on DELETE /api/crm/invoices/:id", async () => {
+    const res = await request(app)
+      .delete("/api/crm/invoices/invoice-001")
+      .set("x-test-user", "target");
+
+    expect(res.status).not.toBe(401);
+  });
+
+  // ── POST /api/crm/integrations ───────────────────────────────────────────
+
+  it("blocks a suspended user from creating a CRM integration", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .post("/api/crm/integrations")
+      .set("x-test-user", "target")
+      .send({ platform: "webhook", name: "Test Integration" });
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on POST /api/crm/integrations", async () => {
+    const res = await request(app)
+      .post("/api/crm/integrations")
+      .set("x-test-user", "target")
+      .send({ platform: "webhook", name: "Test Integration" });
+
+    expect(res.status).not.toBe(401);
+  });
+
+  // ── DELETE /api/crm/integrations/:id ────────────────────────────────────
+
+  it("blocks a suspended user from deleting a CRM integration", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .delete("/api/crm/integrations/integration-001")
+      .set("x-test-user", "target");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on DELETE /api/crm/integrations/:id", async () => {
+    const res = await request(app)
+      .delete("/api/crm/integrations/integration-001")
+      .set("x-test-user", "target");
+
+    expect(res.status).not.toBe(401);
+  });
+});
