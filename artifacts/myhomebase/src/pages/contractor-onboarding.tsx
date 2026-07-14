@@ -93,10 +93,17 @@ export default function ContractorOnboarding() {
   useEffect(() => {
     fetch('/api/auth/user', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
-      .then((user: { zipCode?: string } | null) => {
-        if (user?.zipCode) {
-          setForm(prev => prev.zipCode ? prev : { ...prev, zipCode: user.zipCode! });
-        }
+      .then((user: { zipCode?: string; firstName?: string; lastName?: string; phone?: string } | null) => {
+        if (!user) return;
+        setForm(prev => {
+          const updates: Partial<FormState> = {};
+          if (!prev.zipCode && user.zipCode) updates.zipCode = user.zipCode;
+          if (!prev.name && (user.firstName || user.lastName)) {
+            updates.name = [user.firstName, user.lastName].filter(Boolean).join(' ');
+          }
+          if (!prev.phone && user.phone) updates.phone = user.phone;
+          return Object.keys(updates).length ? { ...prev, ...updates } : prev;
+        });
       })
       .catch(() => {});
   }, []);
