@@ -5716,7 +5716,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/crm/leads - Create new lead
-  app.post('/api/crm/leads', isAuthenticated, requireContractorSubscription, async (req: any, res: any) => {
+  app.post('/api/crm/leads', isAuthenticated, requireNotSuspended(), requireContractorSubscription, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -5770,7 +5770,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PATCH /api/crm/leads/:id - Update lead
-  app.patch('/api/crm/leads/:id', isAuthenticated, async (req: any, res: any) => {
+  app.patch('/api/crm/leads/:id', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -5808,7 +5808,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE /api/crm/leads/:id - Delete lead
-  app.delete('/api/crm/leads/:id', isAuthenticated, async (req: any, res: any) => {
+  app.delete('/api/crm/leads/:id', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -5840,7 +5840,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/crm/leads/:leadId/notes - Add note to lead
-  app.post('/api/crm/leads/:leadId/notes', isAuthenticated, async (req: any, res: any) => {
+  app.post('/api/crm/leads/:leadId/notes', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -5884,7 +5884,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PATCH /api/crm/notes/:id - Update note
-  app.patch('/api/crm/notes/:id', isAuthenticated, async (req: any, res: any) => {
+  app.patch('/api/crm/notes/:id', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -5924,7 +5924,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // DELETE /api/crm/notes/:id - Delete note
-  app.delete('/api/crm/notes/:id', isAuthenticated, async (req: any, res: any) => {
+  app.delete('/api/crm/notes/:id', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -7663,7 +7663,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // -------------------- CRM Import Route --------------------
 
   // POST /api/crm/import - Import data from another CRM (JSON format)
-  app.post('/api/crm/import', isAuthenticated, async (req: any, res: any) => {
+  app.post('/api/crm/import', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
