@@ -8496,10 +8496,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('[CONTRACTOR SEARCH] All query params:', req.query);
       
       const contractors = await storage.searchContractors(query, location, services, maxDistance);
+
+      // Apply boost ranking — getActiveBoosts already excludes expired boosts (endDate < now),
+      // so contractors with only expired boosts receive no boost-ranking benefit.
+      let rankedContractors: typeof contractors;
+      if (services && services.length > 0) {
+        const contractorsWithBoosts = await Promise.all(
+          contractors.map(async (contractor) => {
+            let isBoosted = false;
+            for (const service of services) {
+              const activeBoosts = await storage.getActiveBoosts(service);
+              if (activeBoosts.some((b: any) => b.contractorId === contractor.id)) {
+                isBoosted = true;
+                break;
+              }
+            }
+            return { ...contractor, isBoosted };
+          })
+        );
+        contractorsWithBoosts.sort((a, b) => {
+          if (a.isBoosted && !b.isBoosted) return -1;
+          if (!a.isBoosted && b.isBoosted) return 1;
+          return parseFloat(b.rating) - parseFloat(a.rating);
+        });
+        rankedContractors = contractorsWithBoosts;
+      } else {
+        rankedContractors = contractors;
+      }
       
       // Enrich contractors with company logos and createdAt
       const enrichedContractors = await Promise.all(
-        contractors.map(async (contractor) => {
+        rankedContractors.map(async (contractor) => {
           if ((contractor as any).companyId) {
             const company = await storage.getCompany((contractor as any).companyId);
             if (company) {

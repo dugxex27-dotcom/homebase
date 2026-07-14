@@ -21,6 +21,8 @@ const {
   mockGetContractorBoosts,
   mockCreateContractorBoost,
   mockPaymentIntentsRetrieve,
+  mockSearchContractors,
+  mockGetActiveBoosts,
   CONTRACTOR_A_ID,
   CONTRACTOR_B_ID,
   BOOST_A_ID,
@@ -30,6 +32,8 @@ const {
     mockGetContractorBoosts: vi.fn(),
     mockCreateContractorBoost: vi.fn(),
     mockPaymentIntentsRetrieve: vi.fn(),
+    mockSearchContractors: vi.fn(),
+    mockGetActiveBoosts: vi.fn(),
     CONTRACTOR_A_ID: "contractor-a-001",
     CONTRACTOR_B_ID: "contractor-b-002",
     BOOST_A_ID: "boost-a-001",
@@ -225,6 +229,8 @@ vi.mock("../storage", async () => {
     storage: createStorageMock({
       getContractorBoosts: mockGetContractorBoosts,
       createContractorBoost: mockCreateContractorBoost,
+      searchContractors: mockSearchContractors,
+      getActiveBoosts: mockGetActiveBoosts,
     }),
   };
 });
@@ -529,6 +535,7 @@ describe("POST /api/contractors/boost/:boostId/renew — payment gate + ownershi
 
   it("uses 'now' as renewal start when the existing boost is expired", async () => {
     // EXPIRED_BOOST_FIXTURE has endDate "2026-01-31" — well in the past
+    mockPaymentIntentsRetrieve.mockResolvedValue(SUCCEEDED_PI);
     mockGetContractorBoosts.mockResolvedValue([EXPIRED_BOOST_FIXTURE]);
     mockCreateContractorBoost.mockResolvedValue({
       ...EXPIRED_BOOST_FIXTURE,
@@ -546,7 +553,7 @@ describe("POST /api/contractors/boost/:boostId/renew — payment gate + ownershi
     const res = await request(app)
       .post(`/api/contractors/boost/${EXPIRED_BOOST_FIXTURE.id}/renew`)
       .set("x-test-user", "contractor-a")
-      .send({ durationDays: 30 });
+      .send({ durationDays: 30, stripePaymentIntentId: VALID_PI_ID });
 
     const after = new Date();
 
@@ -640,5 +647,124 @@ describe("GET /api/contractors/boost/check — expired boost is not treated as a
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ canBoost: true });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET /api/contractors/search — boost ranking excludes expired boosts
+// ---------------------------------------------------------------------------
+
+/** Minimal contractor shape returned by storage.searchContractors */
+const makeContractor = (id: string, rating: string) => ({
+  id,
+  name: `Contractor ${id}`,
+  company: `Company ${id}`,
+  bio: "",
+  services: ["plumbing"],
+  location: "62701",
+  postalCode: "62701",
+  serviceRadius: 50,
+  rating,
+  reviewCount: 0,
+  yearsExperience: 0,
+  licenseNumber: "",
+  insuranceExpiry: null,
+  hasEmergencyServices: false,
+  businessHours: {},
+  email: `${id}@test.com`,
+  phone: "",
+  businessLogo: "",
+  projectPhotos: [],
+  distance: undefined,
+  companyId: undefined,
+  latitude: undefined,
+  longitude: undefined,
+});
+
+describe("GET /api/contractors/search — expired boost does NOT grant search ranking priority", () => {
+  let app: express.Express;
+
+  beforeEach(async () => {
+    mockGetContractorBoosts.mockReset();
+    mockCreateContractorBoost.mockReset();
+    mockSearchContractors.mockReset();
+    mockGetActiveBoosts.mockReset();
+
+    process.env.STRIPE_SECRET_KEY = "sk_test_search_boost_placeholder";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_search_boost_placeholder";
+
+    app = express();
+    app.use(expressJson());
+    await registerRoutes(app);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("does NOT rank a contractor first when their only boost is expired", async () => {
+    // contractorA has a lower rating but an expired boost; contractorB has a higher rating
+    const contractorA = makeContractor(CONTRACTOR_A_ID, "3.5");
+    const contractorB = makeContractor(CONTRACTOR_B_ID, "4.8");
+
+    // searchContractors returns [A, B] (unranked from storage)
+    mockSearchContractors.mockResolvedValue([contractorA, contractorB]);
+    // getActiveBoosts returns [] — expired boost is not active
+    mockGetActiveBoosts.mockResolvedValue([]);
+
+    const res = await request(app)
+      .get("/api/contractors/search")
+      .query({ services: "plumbing" });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(2);
+
+    // Without any active boost, ranking falls back to rating: B (4.8) before A (3.5)
+    expect(res.body[0].id).toBe(CONTRACTOR_B_ID);
+    expect(res.body[1].id).toBe(CONTRACTOR_A_ID);
+  });
+
+  it("ranks a contractor first when they have an active (non-expired) boost", async () => {
+    // contractorA has a lower rating but an active boost; contractorB has a higher rating
+    const contractorA = makeContractor(CONTRACTOR_A_ID, "3.5");
+    const contractorB = makeContractor(CONTRACTOR_B_ID, "4.8");
+
+    // searchContractors returns [A, B] (unranked)
+    mockSearchContractors.mockResolvedValue([contractorA, contractorB]);
+    // getActiveBoosts returns an active boost for contractorA
+    mockGetActiveBoosts.mockResolvedValue([
+      { ...ACTIVE_BOOST_FIXTURE, contractorId: CONTRACTOR_A_ID },
+    ]);
+
+    const res = await request(app)
+      .get("/api/contractors/search")
+      .query({ services: "plumbing" });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(2);
+
+    // contractorA has an active boost → must appear first despite lower rating
+    expect(res.body[0].id).toBe(CONTRACTOR_A_ID);
+    expect(res.body[1].id).toBe(CONTRACTOR_B_ID);
+  });
+
+  it("ranks by rating when no contractor has an active boost (all boosts expired)", async () => {
+    const contractorA = makeContractor(CONTRACTOR_A_ID, "4.9");
+    const contractorB = makeContractor(CONTRACTOR_B_ID, "3.1");
+
+    mockSearchContractors.mockResolvedValue([contractorB, contractorA]);
+    // getActiveBoosts returns [] — no active boosts
+    mockGetActiveBoosts.mockResolvedValue([]);
+
+    const res = await request(app)
+      .get("/api/contractors/search")
+      .query({ services: "plumbing" });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(2);
+
+    // No boosts → sorted by rating descending: A (4.9) before B (3.1)
+    expect(res.body[0].id).toBe(CONTRACTOR_A_ID);
+    expect(res.body[1].id).toBe(CONTRACTOR_B_ID);
   });
 });
