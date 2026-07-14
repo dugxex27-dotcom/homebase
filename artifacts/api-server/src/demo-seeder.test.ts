@@ -348,6 +348,76 @@ describe("agent demo seeder", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Score and history: verify task completions count and health score are
+// non-zero immediately after a fresh homeowner demo login.
+//
+// This catches a class of regression where the async top-up or the initial
+// seed silently inserts zero rows (e.g. schema field-name mismatch) and the
+// score endpoint returns 0 — a state that looks seeded but contains no data.
+// ---------------------------------------------------------------------------
+
+describe("homeowner score and history after fresh login", () => {
+  const MAIN_HOUSE_ID = "8d44c1d0-af55-4f1c-bada-b70e54c823bc";
+
+  it(
+    "GET /api/task-completions returns ≥ 15 records and GET /api/houses/:id/health-score returns a non-zero score",
+    async () => {
+      // Use a persistent agent so the session cookie from demo-login is
+      // automatically carried into the subsequent GET requests.
+      const agent = supertest.agent(app);
+
+      // Step 1: POST demo login — seeds all homeowner data synchronously.
+      const loginRes = await agent
+        .post("/api/auth/homeowner-demo-login")
+        .set("Content-Type", "application/json")
+        .timeout(30_000);
+
+      expect(
+        loginRes.status,
+        `Demo login failed with ${loginRes.status}: ${JSON.stringify(loginRes.body)}`
+      ).toBe(200);
+      expect(loginRes.body.success).toBe(true);
+
+      // Step 2: GET /api/task-completions — fresh seed inserts 15 completions
+      // into the main house.  Any schema mismatch that prevented inserts would
+      // show up here as a count of 0.
+      const completionsRes = await agent
+        .get("/api/task-completions")
+        .timeout(30_000);
+
+      expect(
+        completionsRes.status,
+        `GET /api/task-completions failed with ${completionsRes.status}: ${JSON.stringify(completionsRes.body)}`
+      ).toBe(200);
+
+      const completions = completionsRes.body as Array<unknown>;
+      expect(
+        completions.length,
+        `Expected ≥ 15 task completions after fresh seed, got ${completions.length}`
+      ).toBeGreaterThanOrEqual(15);
+
+      // Step 3: GET /api/houses/:id/health-score — the seeded tasks include
+      // entries in the current calendar year, so they fall inside the 12-month
+      // rolling scoring window.  The score must be > 0.
+      const scoreRes = await agent
+        .get(`/api/houses/${MAIN_HOUSE_ID}/health-score`)
+        .timeout(30_000);
+
+      expect(
+        scoreRes.status,
+        `GET health-score failed with ${scoreRes.status}: ${JSON.stringify(scoreRes.body)}`
+      ).toBe(200);
+
+      expect(
+        scoreRes.body.score,
+        `Expected non-zero health score after seeding, got ${scoreRes.body.score}`
+      ).toBeGreaterThan(0);
+    },
+    60_000
+  );
+});
+
+// ---------------------------------------------------------------------------
 // Quiz endpoints
 // These do not go through a demo-login flow; they are public endpoints that
 // write directly to the quiz_results table (anonymous path) or log a lead.
