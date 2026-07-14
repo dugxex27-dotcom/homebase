@@ -207,6 +207,14 @@ export async function setupAuth(app: Express) {
 export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
   // Check session-based authentication (email/password login)
   if (req.session?.isAuthenticated && req.session?.user) {
+    // Detect suspension after a server restart (cold cache). getUserStatusCached
+    // falls through to the DB when the in-memory cache has been evicted, so a
+    // suspended user is blocked on the very next request even with a valid session.
+    const userId: string = req.session.user.id;
+    const status = await getUserStatusCached(userId);
+    if (status !== null && ['suspended', 'removed', 'pending_invite'].includes(status)) {
+      return res.status(401).json({ message: "Account suspended. Contact your company administrator." });
+    }
     return next();
   }
 
@@ -215,6 +223,12 @@ export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
   const isOAuthAuthenticated = typeof req.isAuthenticated === 'function' && req.isAuthenticated();
   if (!isOAuthAuthenticated || !user?.expires_at) {
     return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  // Block suspended OAuth users before any token refresh is attempted.
+  const oauthUserId: string | undefined = user?.claims?.sub;
+  if (oauthUserId && suspendedUserIds.has(oauthUserId)) {
+    return res.status(401).json({ message: "Account suspended. Contact your company administrator." });
   }
 
   // Check if token is expired
@@ -644,14 +658,40 @@ export const requireApiAccess = async (req: any, res: any, next: any) => {
 
 // Block suspended users from all authenticated contractor routes
 export const requireNotSuspended = (): RequestHandler => {
-  return (req: any, res: any, next: any) => {
-    if (!req.session?.isAuthenticated || !req.session?.user) {
-      return res.status(401).json({ message: "Unauthorized" });
+  return async (req: any, res: any, next: any): Promise<void> => {
+    // Resolve the userId from either the session path or the OAuth path.
+    let userId: string | undefined;
+
+    if (req.session?.isAuthenticated && req.session?.user) {
+      userId = req.session.user.id;
+    } else if (
+      typeof req.isAuthenticated === 'function' &&
+      req.isAuthenticated() &&
+      req.user?.claims?.sub
+    ) {
+      userId = req.user.claims.sub;
+    } else {
+      return void res.status(401).json({ message: "Unauthorized" });
     }
-    const user = req.session.user;
-    if (['suspended', 'removed', 'pending_invite'].includes(user.status) || suspendedUserIds.has(user.id)) {
-      return res.status(401).json({ message: "Account suspended. Contact your company administrator." });
+
+    // Fast path: in-memory blocklist.
+    if (suspendedUserIds.has(userId)) {
+      return void res.status(401).json({ message: "Account suspended. Contact your company administrator." });
     }
+
+    // Short-TTL DB-backed status check (catches suspensions made on this instance).
+    const status = await getUserStatusCached(userId);
+    if (status !== null && ['suspended', 'removed', 'pending_invite'].includes(status)) {
+      suspendedUserIds.add(userId);
+      return void res.status(401).json({ message: "Account suspended. Contact your company administrator." });
+    }
+
+    // Cross-process staleness check: catches suspensions applied on another instance.
+    const isSuspended = await recheckSuspensionFromDb(userId);
+    if (isSuspended) {
+      return void res.status(401).json({ message: "Account suspended. Contact your company administrator." });
+    }
+
     next();
   };
 };

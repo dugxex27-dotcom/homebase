@@ -4,6 +4,25 @@ import { storage } from './storage';
 
 const router = express.Router();
 
+/**
+ * Resolve the authenticated user's id from the request.
+ * Supports both session auth (email/password) and OAuth (Replit OIDC/passport).
+ * Returns null if no authenticated user is present (caller should reject with 401).
+ */
+function resolveUserId(req: any): string | null {
+  // Session path (email/password login)
+  const sessionId = req.session?.user?.id;
+  if (sessionId) return sessionId;
+
+  // OAuth path (Replit OIDC / passport)
+  const oauthId = req.user?.claims?.sub;
+  if (oauthId && typeof req.isAuthenticated === 'function' && req.isAuthenticated()) {
+    return oauthId;
+  }
+
+  return null;
+}
+
 // Get VAPID public key for client subscription
 router.get('/vapid-public-key', (_req, res) => {
   try {
@@ -19,7 +38,8 @@ router.get('/vapid-public-key', (_req, res) => {
 router.post('/subscribe', async (req: any, res: any) => {
   try {
     const { endpoint, keys, userAgent } = req.body;
-    const userId = (req as any).session?.user?.id || 'demo-user';
+    const userId = resolveUserId(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     if (!endpoint || !keys || !keys.p256dh || !keys.auth) {
       return res.status(400).json({ error: 'Invalid subscription data' });
@@ -75,7 +95,8 @@ router.post('/unsubscribe', async (req: any, res: any) => {
 router.post('/verify', async (req: any, res: any) => {
   try {
     const { endpoint } = req.body;
-    const userId = (req as any).session?.user?.id || 'demo-user';
+    const userId = resolveUserId(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     if (!endpoint) {
       return res.status(400).json({ error: 'Endpoint required' });
@@ -96,9 +117,10 @@ router.post('/verify', async (req: any, res: any) => {
 });
 
 // Send test push notification
-router.post('/test', async (req, res) => {
+router.post('/test', async (req: any, res: any) => {
   try {
-    const userId = (req as any).session?.user?.id || 'demo-user';
+    const userId = resolveUserId(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     await pushService.sendToUser(userId, {
       title: 'Test Notification',
@@ -125,9 +147,11 @@ router.post('/test', async (req, res) => {
 });
 
 // Get user's push subscriptions (for debugging/admin)
-router.get('/subscriptions', async (req, res) => {
+router.get('/subscriptions', async (req: any, res: any) => {
   try {
-    const userId = (req as any).session?.user?.id || 'demo-user';
+    const userId = resolveUserId(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
     const subscriptions = await storage.getPushSubscriptions(userId);
     
     // Don't send sensitive keys to client
@@ -148,9 +172,10 @@ router.get('/subscriptions', async (req, res) => {
 });
 
 // Sync notifications for background sync
-router.post('/sync', async (req, res) => {
+router.post('/sync', async (req: any, res: any) => {
   try {
-    const userId = (req as any).session?.user?.id || 'demo-user';
+    const userId = resolveUserId(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
     
     // Get unread notifications for the user
     const notifications = await storage.getUnreadNotifications(userId);

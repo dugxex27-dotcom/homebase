@@ -197,9 +197,10 @@ describe("homeowner demo seeder", () => {
   }, 60_000);
 
   it("repeated login: existing-house path runs health-check and reports ok", async () => {
-    // Second login — both canonical houses already exist in the DB from the
-    // first test, so the seeder must take the "else" branch and emit a
-    // health-check entry instead of silently returning { ok: true }.
+    // Second login — main house already exists in DB from the first test, so
+    // the seeder must take the "else" branch and emit a health-check entry.
+    // The Lake House was intentionally removed from the demo and is never
+    // recreated, so it only reports { ok: true } with no healthCheck field.
     const res = await request
       .post("/api/auth/homeowner-demo-login")
       .set("Content-Type", "application/json")
@@ -213,22 +214,18 @@ describe("homeowner demo seeder", () => {
       failedSections: string[];
     };
 
-    // mainHouse and lakeHouse must both be present with ok: true
+    // mainHouse must be present with ok: true and a real health-check
     expect(seedResults.mainHouse, "mainHouse missing from seedResults on repeat login").toBeDefined();
     expect(seedResults.mainHouse.ok, `mainHouse health-check failed: ${seedResults.mainHouse?.error}`).toBe(true);
-
-    expect(seedResults.lakeHouse, "lakeHouse missing from seedResults on repeat login").toBeDefined();
-    expect(seedResults.lakeHouse.ok, `lakeHouse health-check failed: ${seedResults.lakeHouse?.error}`).toBe(true);
-
-    // Both health-check results must carry the maintenanceLogs count
     expect(
       typeof seedResults.mainHouse.healthCheck?.maintenanceLogs,
       "mainHouse healthCheck.maintenanceLogs should be a number"
     ).toBe("number");
-    expect(
-      typeof seedResults.lakeHouse.healthCheck?.maintenanceLogs,
-      "lakeHouse healthCheck.maintenanceLogs should be a number"
-    ).toBe("number");
+
+    // lakeHouse is intentionally removed from the demo; it reports ok: true
+    // with no healthCheck (inserted: 0, expected: 0 tombstone entry).
+    expect(seedResults.lakeHouse, "lakeHouse missing from seedResults on repeat login").toBeDefined();
+    expect(seedResults.lakeHouse.ok, `lakeHouse health-check failed: ${seedResults.lakeHouse?.error}`).toBe(true);
   }, 60_000);
 });
 
@@ -242,9 +239,10 @@ describe("homeowner demo seeder", () => {
 // ---------------------------------------------------------------------------
 
 describe("homeowner read-path", () => {
-  it("GET /api/houses returns both canonical demo houses after seeding", async () => {
+  it("GET /api/houses returns the canonical demo main house after seeding", async () => {
     const mainHouseId = "8d44c1d0-af55-4f1c-bada-b70e54c823bc";
-    const lakeHouseId = "f5c8a9d2-3e1b-4f7c-a6b3-8d9e5f2c1a4b";
+    // Lake House (f5c8a9d2-…) was intentionally removed from the demo and is
+    // never recreated, so we only verify the Main Residence here.
 
     // Agent preserves Set-Cookie across requests within the same test.
     const agent = supertest.agent(app);
@@ -275,11 +273,6 @@ describe("homeowner read-path", () => {
     expect(
       houseIds.has(mainHouseId),
       `Main Residence (${mainHouseId}) not found in GET /api/houses — schema mismatch or insert failed`
-    ).toBe(true);
-
-    expect(
-      houseIds.has(lakeHouseId),
-      `Lake House (${lakeHouseId}) not found in GET /api/houses — schema mismatch or insert failed`
     ).toBe(true);
   }, 60_000);
 });

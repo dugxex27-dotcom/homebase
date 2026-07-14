@@ -3,12 +3,12 @@ import express from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage, type IStorage } from "../storage";
-import { setupAuth, isAuthenticated, requireRole, requirePropertyOwner, suspendedUserIds, invalidateUserSessions, requireCompanyRole, requireCompanyRoleAny, requireDivisionAccess, requireBulkImport, requireApiAccess, requireNotSuspended, requireSameCompany } from "../replitAuth";
+import { setupAuth, isAuthenticated, requireRole, requirePropertyOwner, suspendedUserIds, invalidateUserSessions, requireCompanyRole, requireCompanyRoleAny, requireDivisionAccess, requireBulkImport, requireApiAccess, requireNotSuspended, requireSameCompany, isOAuthUserSuspended } from "../replitAuth";
 import { setupGoogleAuth } from "../googleAuth";
 import { z } from "zod";
 import { randomUUID, randomBytes } from "crypto";
 import rateLimit from "express-rate-limit";
-import { eq, and, ne, inArray, sql as drizzleSql, isNotNull, isNull, desc } from "drizzle-orm";
+import { eq, and, ne, inArray, sql as drizzleSql, isNotNull, isNull, desc, or, gt, gte, lte } from "drizzle-orm";
 import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertTaskCompletionSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, customMaintenanceTasks, insertSupportTicketSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, insertCrmLeadSchema, insertCrmNoteSchema, notificationPreferences, subscriptionPlans, securitySessions, referralCredits, referralFreeMonths, agentProfiles, users, siteContent, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, insertReviewFlagSchema, homeDocuments, quizResults, type House } from "@workspace/db";
 import { calculateDIYSavingsAmount } from "../shared/cost-helpers";
 import { calculateMechanicalDocumentationBonus } from "../shared/maintenance-scheduler";
@@ -28,6 +28,7 @@ import { smsService } from "../sms-service";
 import { notificationOrchestrator } from "../notification-orchestrator";
 import { sendEmail, emailService, sendCheckoutFailureEmail } from "../email-service";
 import { verifyAndActivateAppleTransaction, handleAppleServerNotification, AppleIapError } from "../apple-iap";
+import { lookupByHIN } from "../hin-service";
 
 const stripe = process.env.STRIPE_SECRET_KEY 
   ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2026-04-22.dahlia" })
@@ -2097,17 +2098,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     '/api/contractor/accept-invite',
     '/api/contractor/company-homeowners',
   ];
-  app.use('/api/contractor', (req: any, res: any, next: any) => {
-    if (!req.session?.isAuthenticated) return next();
-    const u = req.session?.user;
-    if (u && (['suspended', 'removed', 'pending_invite'].includes(u.status) || suspendedUserIds.has(u.id))) {
-      return res.status(401).json({ message: "Account suspended. Contact your company administrator." });
+  app.use('/api/contractor', async (req: any, res: any, next: any) => {
+    if (req.session?.isAuthenticated) {
+      const u = req.session?.user;
+      if (u && (['suspended', 'removed', 'pending_invite'].includes(u.status) || suspendedUserIds.has(u.id))) {
+        return res.status(401).json({ message: "Account suspended. Contact your company administrator." });
+      }
+      if (u?.companyRole === 'tech') {
+        const urlPath = req.originalUrl.split('?')[0];
+        const allowed = TECH_ALLOWED_CONTRACTOR_PREFIXES.some(p => urlPath === p || urlPath.startsWith(p + '/'));
+        if (!allowed) {
+          return res.status(403).json({ message: "Forbidden - tech accounts cannot access this resource" });
+        }
+      }
+      return next();
     }
-    if (u?.companyRole === 'tech') {
-      const urlPath = req.originalUrl.split('?')[0];
-      const allowed = TECH_ALLOWED_CONTRACTOR_PREFIXES.some(p => urlPath === p || urlPath.startsWith(p + '/'));
-      if (!allowed) {
-        return res.status(403).json({ message: "Forbidden - tech accounts cannot access this resource" });
+    // OAuth path: check suspension for fully OAuth-authenticated users
+    const oauthUserId: string | undefined = req.user?.claims?.sub;
+    if (oauthUserId && typeof req.isAuthenticated === 'function' && req.isAuthenticated()) {
+      if (await isOAuthUserSuspended(oauthUserId)) {
+        return res.status(401).json({ message: "Account suspended. Contact your company administrator." });
       }
     }
     next();
@@ -2115,14 +2125,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Guard for all /api/crm/* routes:
   // Block suspended accounts and tech users (CRM is admin/owner only).
-  app.use('/api/crm', (req: any, res: any, next: any) => {
-    if (!req.session?.isAuthenticated) return next();
-    const u = req.session?.user;
-    if (u && (['suspended', 'removed', 'pending_invite'].includes(u.status) || suspendedUserIds.has(u.id))) {
-      return res.status(401).json({ message: "Account suspended. Contact your company administrator." });
+  app.use('/api/crm', async (req: any, res: any, next: any) => {
+    if (req.session?.isAuthenticated) {
+      const u = req.session?.user;
+      if (u && (['suspended', 'removed', 'pending_invite'].includes(u.status) || suspendedUserIds.has(u.id))) {
+        return res.status(401).json({ message: "Account suspended. Contact your company administrator." });
+      }
+      if (u?.companyRole === 'tech') {
+        return res.status(403).json({ message: "Forbidden - tech accounts cannot access this resource" });
+      }
+      return next();
     }
-    if (u?.companyRole === 'tech') {
-      return res.status(403).json({ message: "Forbidden - tech accounts cannot access this resource" });
+    // OAuth path: check suspension for fully OAuth-authenticated users
+    const oauthUserId: string | undefined = req.user?.claims?.sub;
+    if (oauthUserId && typeof req.isAuthenticated === 'function' && req.isAuthenticated()) {
+      if (await isOAuthUserSuspended(oauthUserId)) {
+        return res.status(401).json({ message: "Account suspended. Contact your company administrator." });
+      }
     }
     next();
   });
@@ -3381,8 +3400,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Push notification routes
-  app.use('/api/push', pushRoutes);
+  // Push notification routes — requires authentication; no demo-user fallback
+  app.use('/api/push', isAuthenticated, requireNotSuspended(), pushRoutes);
 
   // File upload routes
   const objectStorageService = new ObjectStorageService();
@@ -6291,6 +6310,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error forcing logout:", error);
       res.status(500).json({ message: "Failed to force logout user" });
+    }
+  });
+
+  // Admin - Suspend a homeowner or standalone contractor (non-team-member) account
+  app.patch('/api/admin/users/:userId/suspend', requireAdmin, async (req: any, res: any) => {
+    try {
+      const { userId } = req.params;
+      const [targetUser] = await db.select({
+        id: users.id,
+        role: users.role,
+        companyRole: users.companyRole,
+        email: users.email,
+      }).from(users).where(eq(users.id, userId)).limit(1);
+      if (!targetUser) return res.status(404).json({ message: "User not found" });
+      if ((targetUser as any).companyRole) {
+        return res.status(400).json({ message: "Cannot suspend a team member via this endpoint. Use the team management routes." });
+      }
+      await db.update(users).set({ status: 'suspended', updatedAt: new Date() } as any).where(eq(users.id, userId));
+      suspendedUserIds.add(userId);
+      invalidateUserSessions(req.sessionStore, userId, req.log);
+      res.json({ message: "User suspended" });
+    } catch (error) {
+      req.log?.error({ error }, '[ADMIN] Error suspending user');
+      res.status(500).json({ message: "Failed to suspend user" });
+    }
+  });
+
+  // Admin - Reactivate a homeowner or standalone contractor (non-team-member) account
+  app.patch('/api/admin/users/:userId/reactivate', requireAdmin, async (req: any, res: any) => {
+    try {
+      const { userId } = req.params;
+      const [targetUser] = await db.select({
+        id: users.id,
+        role: users.role,
+        companyRole: users.companyRole,
+        email: users.email,
+      }).from(users).where(eq(users.id, userId)).limit(1);
+      if (!targetUser) return res.status(404).json({ message: "User not found" });
+      if ((targetUser as any).companyRole) {
+        return res.status(400).json({ message: "Cannot reactivate a team member via this endpoint. Use the team management routes." });
+      }
+      await db.update(users).set({ status: 'active', updatedAt: new Date() } as any).where(eq(users.id, userId));
+      suspendedUserIds.delete(userId);
+      res.json({ message: "User reactivated" });
+    } catch (error) {
+      req.log?.error({ error }, '[ADMIN] Error reactivating user');
+      res.status(500).json({ message: "Failed to reactivate user" });
     }
   });
 
@@ -11747,8 +11813,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/appliances/:id", async (req: any, res: any) => {
+  app.patch("/api/appliances/:id", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
+      // Verify ownership via appliance → house chain before allowing mutation
+      const existingAppliance = await storage.getHomeAppliance(req.params.id);
+      if (!existingAppliance?.houseId) {
+        return res.status(404).json({ message: "Appliance not found" });
+      }
+      const applianceHouse = await storage.getHouse(existingAppliance.houseId);
+      if (!applianceHouse || applianceHouse.homeownerId !== req.session.user.id) {
+        return res.status(404).json({ message: "Appliance not found" });
+      }
+
       const partialData = insertHomeApplianceSchema.partial().parse(req.body);
       const appliance = await storage.updateHomeAppliance(req.params.id, partialData);
       if (!appliance) {
@@ -11763,8 +11839,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/appliances/:id", async (req: any, res: any) => {
+  app.delete("/api/appliances/:id", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
+      // Ownership check: appliance → house → homeowner before allowing deletion
+      const existingApplianceDel = await storage.getHomeAppliance(req.params.id);
+      if (!existingApplianceDel?.houseId) {
+        return res.status(404).json({ message: "Appliance not found" });
+      }
+      const applianceHouseDel = await storage.getHouse(existingApplianceDel.houseId);
+      if (!applianceHouseDel || applianceHouseDel.homeownerId !== req.session.user.id) {
+        return res.status(404).json({ message: "Appliance not found" });
+      }
+
       const deleted = await storage.deleteHomeAppliance(req.params.id);
       if (!deleted) {
         return res.status(404).json({ message: "Appliance not found" });
@@ -11813,8 +11899,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/appliance-manuals/:id", async (req: any, res: any) => {
+  app.patch("/api/appliance-manuals/:id", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
+      // Ownership check: manual → appliance → house → homeowner
+      const existingManual = await storage.getHomeApplianceManual(req.params.id);
+      if (!existingManual) return res.status(404).json({ message: "Manual not found" });
+      const manualAppliance = await storage.getHomeAppliance(existingManual.applianceId);
+      if (!manualAppliance?.houseId) return res.status(404).json({ message: "Manual not found" });
+      const manualHouse = await storage.getHouse(manualAppliance.houseId);
+      if (!manualHouse || manualHouse.homeownerId !== req.session.user.id) {
+        return res.status(404).json({ message: "Manual not found" });
+      }
+
       const partialData = insertHomeApplianceManualSchema.partial().parse(req.body);
       const manual = await storage.updateHomeApplianceManual(req.params.id, partialData);
       if (!manual) {
@@ -11829,8 +11925,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/appliance-manuals/:id", async (req: any, res: any) => {
+  app.delete("/api/appliance-manuals/:id", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
+      // Ownership check: manual → appliance → house → homeowner
+      const existingManualDel = await storage.getHomeApplianceManual(req.params.id);
+      if (!existingManualDel) return res.status(404).json({ message: "Manual not found" });
+      const manualApplianceDel = await storage.getHomeAppliance(existingManualDel.applianceId);
+      if (!manualApplianceDel?.houseId) return res.status(404).json({ message: "Manual not found" });
+      const manualHouseDel = await storage.getHouse(manualApplianceDel.houseId);
+      if (!manualHouseDel || manualHouseDel.homeownerId !== req.session.user.id) {
+        return res.status(404).json({ message: "Manual not found" });
+      }
+
       const deleted = await storage.deleteHomeApplianceManual(req.params.id);
       if (!deleted) {
         return res.status(404).json({ message: "Manual not found" });
@@ -11838,6 +11944,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Failed to delete manual" });
+    }
+  });
+
+  // HIN (Home Identification Number) routes
+  // Public lookup — returns only city/state/zipPrefix, never owner/address data
+  app.get("/api/hin/:hin", async (req: any, res: any) => {
+    try {
+      const record = await lookupByHIN(req.params.hin);
+      if (!record) return res.status(404).json({ message: "HIN not found" });
+      res.json({
+        hin: record.hin,
+        address: {
+          city: record.city,
+          state: record.state,
+          zipPrefix: record.zip ? record.zip.substring(0, 3) : null,
+        },
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to look up HIN" });
+    }
+  });
+
+  // Authenticated lookup — returns full HIN for the house (ownership required)
+  app.get("/api/houses/:id/hin", isAuthenticated, async (req: any, res: any) => {
+    try {
+      const homeownerId = req.session.user.id;
+      const house = await storage.getHouse(req.params.id);
+      if (!house || house.homeownerId !== homeownerId) {
+        return res.status(404).json({ message: "House not found" });
+      }
+      res.json({ hin: house.hin, hinAssignedAt: (house as any).hinAssignedAt ?? null });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to retrieve HIN" });
     }
   });
 
@@ -12018,6 +12157,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate request body (excluding homeownerId which cannot be changed)
       const partialData = insertMaintenanceLogSchema.omit({ homeownerId: true }).partial().parse(req.body);
       
+      // Anti-gaming: block serviceDate changes on logs linked to a taskCompletion.
+      // Shifting the date would move the completion into a different scoring window.
+      if (partialData.serviceDate !== undefined) {
+        if ((existingLog as any).taskCompletionId) {
+          return res.status(403).json({
+            message: "The service date of a verified record cannot be changed. This record has been counted in your home health score.",
+            code: "DATE_LOCKED",
+          });
+        }
+        // Fallback: check invoiceAnalyses for a linked taskCompletionId when the
+        // log was created by the invoice-confirm flow (no direct taskCompletionId column).
+        const linkedAnalyses = await db.select()
+          .from(invoiceAnalyses)
+          .where(eq(invoiceAnalyses.maintenanceLogId, req.params.id))
+          .limit(1);
+        if (linkedAnalyses[0]?.taskCompletionId) {
+          return res.status(403).json({
+            message: "The service date of a verified record cannot be changed. This record has been counted in your home health score.",
+            code: "DATE_LOCKED",
+          });
+        }
+      }
+
       const log = await storage.updateMaintenanceLog(req.params.id, partialData);
       if (!log) {
         return res.status(404).json({ message: "Maintenance log not found" });
@@ -12037,6 +12199,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existingLog = await storage.getMaintenanceLog(req.params.id);
       if (!existingLog || existingLog.homeownerId !== req.session.user.id) {
         return res.status(404).json({ message: "Maintenance log not found" });
+      }
+
+      // Anti-gaming: prevent deletion of logs that have been counted in the
+      // home health score. Deleting them would retroactively remove a scored
+      // task-completion, enabling score manipulation.
+      if ((existingLog as any).taskCompletionId) {
+        return res.status(403).json({
+          code: "VERIFIED_RECORD",
+          message: "This record cannot be deleted because it has been counted in your home health score.",
+        });
       }
       
       const deleted = await storage.deleteMaintenanceLog(req.params.id);
@@ -13093,26 +13265,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "House not found" });
       }
 
-      // Get ALL completed tasks for this house across all years (cumulative score)
-      const completedTasks = await db.select()
+      // Get ALL completed tasks for this house (filtered to the 12-month scoring window in JS)
+      const allCompletions = await db.select()
         .from(taskCompletions)
         .where(eq(taskCompletions.houseId, houseId));
 
-      const completedCount = completedTasks.length;
+      // 12-month rolling window: only count completions whose (year * 12 + month)
+      // falls within the last 12 calendar months (inclusive of the current month).
+      const now = new Date();
+      const cutoffAbsMonth = (now.getFullYear() - 1) * 12 + (now.getMonth() + 1);
 
-      // Score is +4 per completed task (cumulative, never resets), rewarding
-      // consistent home maintenance over time, plus a documentation/age-awareness
-      // bonus for recording when key mechanical features were installed.
-      const score = completedCount * 4 + calculateMechanicalDocumentationBonus(house);
+      const scoringCompletions = allCompletions.filter(
+        c => (c.year as number) * 12 + (c.month as number) >= cutoffAbsMonth
+      );
+      const historicalCompletions = allCompletions.filter(
+        c => (c.year as number) * 12 + (c.month as number) < cutoffAbsMonth
+      );
 
-      // Track missed tasks as 0 since we're using cumulative scoring
-      const missedCount = 0;
+      const scoringCount = scoringCompletions.length;
+      const historicalCount = historicalCompletions.length;
+
+      // Score is +4 per task in the 12-month window, plus a documentation bonus.
+      const score = scoringCount * 4 + calculateMechanicalDocumentationBonus(house);
 
       res.json({
         score,
-        completedTasks: completedCount,
-        missedTasks: missedCount,
-        totalExpectedTasks: completedCount // Cumulative - no "expected" tasks concept
+        scoringCount,
+        historicalCount,
+        // Legacy fields for backward-compatible clients
+        completedTasks: scoringCount,
+        missedTasks: 0,
+        totalExpectedTasks: scoringCount,
       });
     } catch (error) {
       console.error("Error calculating home health score:", error);
@@ -19082,6 +19265,29 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         return res.status(403).json({ message: "Access denied to house" });
       }
 
+      // Content-hash duplicate detection: compute SHA-256 of the first invoice file's
+      // raw base64 content, then check for an existing analysis with the same hash for
+      // this house. Returns 409 DUPLICATE_INVOICE immediately without calling the AI.
+      const { createHash } = await import("crypto");
+      let invoiceHash: string | null = null;
+      const primaryHashFile = invoiceFiles[0];
+      if (primaryHashFile) {
+        const rawBase64 = primaryHashFile.fileData.includes("base64,")
+          ? primaryHashFile.fileData.split("base64,")[1]
+          : primaryHashFile.fileData;
+        invoiceHash = createHash("sha256").update(Buffer.from(rawBase64, "base64")).digest("hex");
+        const [existingByHash] = await db.select().from(invoiceAnalyses).where(
+          and(eq(invoiceAnalyses.houseId, houseId), eq(invoiceAnalyses.invoiceHash as any, invoiceHash))
+        );
+        if (existingByHash) {
+          return res.status(409).json({
+            code: "DUPLICATE_INVOICE",
+            message: "This invoice has already been scanned for this property.",
+            analysisId: existingByHash.id,
+          });
+        }
+      }
+
       // Helper: upload array of files and return stored URLs
       const uploadFileSet = async (files: Array<{ fileData: string; fileName: string; fileType: string }>): Promise<string[]> => {
         const urls: string[] = [];
@@ -19179,6 +19385,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         diyVerified,
         maintenanceLogId: null,
         taskCompletionId: null,
+        invoiceHash: invoiceHash,
       }).returning();
 
       res.status(201).json(analysis);
@@ -19205,6 +19412,10 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       if (analysis.homeownerId !== req.session.user.id) return res.status(403).json({ message: "Access denied" });
       if (analysis.status !== "pending") return res.status(400).json({ message: "Analysis already processed" });
       if (analysis.completionMethod !== "diy") return res.status(400).json({ message: "DIY verification only applies to DIY analyses" });
+      // Photo-swap prevention: once verification passes, no further photo changes are allowed
+      if (analysis.diyVerified) {
+        return res.status(409).json({ code: "ALREADY_VERIFIED", message: "This analysis has already been verified. No further photo changes are allowed." });
+      }
 
       const {
         beforePhotoFiles = [],   // [{ fileData: base64, fileName, fileType }]
@@ -19471,7 +19682,26 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       const finalHomeArea = homeArea || analysis.homeArea || "other";
       const finalServiceType = serviceType || analysis.serviceType || "maintenance";
 
-      // Create maintenance log
+      // Duplicate-scoring guard: check for an existing scored maintenance log with the
+      // same house + serviceType within the same calendar year as the invoice's serviceDate.
+      // Prevents score inflation from confirming the same type of work twice in a year.
+      const scoringDateStr = analysis.serviceDate || finalDate;
+      const scoringDate = new Date(scoringDateStr + "T12:00:00");
+      const analysisYear = scoringDate.getFullYear();
+      const yearStart = `${analysisYear}-01-01`;
+      const yearEnd = `${analysisYear}-12-31`;
+      const [existingDupLog] = await db.select().from(maintenanceLogs).where(
+        and(
+          eq(maintenanceLogs.houseId, analysis.houseId),
+          eq(maintenanceLogs.serviceType as any, finalServiceType),
+          isNotNull(maintenanceLogs.taskCompletionId),
+          gte(maintenanceLogs.serviceDate as any, yearStart),
+          lte(maintenanceLogs.serviceDate as any, yearEnd),
+        )
+      );
+      const isDuplicateScoring = !!existingDupLog;
+
+      // Create maintenance log (always — preserved for audit trail even on duplicates)
       const logData = {
         homeownerId: req.session.user.id,
         houseId: analysis.houseId,
@@ -19489,7 +19719,19 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       };
       const log = await storage.createMaintenanceLog(logData);
 
-      // Create task completion record for health score
+      if (isDuplicateScoring) {
+        // Skip task-completion insert: same service-type already scored this year
+        const nowDup = new Date();
+        const [updatedDup] = await db.update(invoiceAnalyses)
+          .set({ status: "confirmed", maintenanceLogId: log.id, taskCompletionId: null, confirmedAt: nowDup })
+          .where(eq(invoiceAnalyses.id, id))
+          .returning();
+        return res.json({ analysis: updatedDup, maintenanceLog: log, newAchievements: [], duplicateScoring: true });
+      }
+
+      // Create task completion record for health score.
+      // year/month are derived from the invoice's serviceDate (analysis-stored), NOT
+      // from today, to prevent score inflation via confirming old invoices at a recent date.
       const now = new Date();
       const [insertedCompletion] = await db.insert(taskCompletions).values({
         homeownerId: req.session.user.id,
@@ -19499,8 +19741,8 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         taskTitle: finalDescription,
         taskCategory: finalHomeArea,
         completedAt: now,
-        month: now.getMonth() + 1,
-        year: now.getFullYear(),
+        month: scoringDate.getMonth() + 1,
+        year: scoringDate.getFullYear(),
         completionMethod: analysis.completionMethod === "diy" ? "diy" : "professional",
         estimatedCost: null,
         actualCost: finalCost !== null ? finalCost.toFixed(2) : null,
@@ -19515,10 +19757,13 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         .where(eq(invoiceAnalyses.id, id))
         .returning();
 
+      // Link taskCompletionId back to the maintenance log for bidirectional lookup
+      await db.update(maintenanceLogs).set({ taskCompletionId: insertedCompletion.id } as any).where(eq(maintenanceLogs.id, log.id));
+
       // Check achievements
       const newAchievements = await storage.checkAndAwardAchievements(req.session.user.id);
 
-      res.json({ analysis: updated, maintenanceLog: log, newAchievements: newAchievements || [] });
+      res.json({ analysis: updated, maintenanceLog: log, newAchievements: newAchievements || [], duplicateScoring: false });
     } catch (err: any) {
       console.error("[INVOICE ANALYSIS] confirm error:", err);
       res.status(500).json({ message: "Failed to confirm invoice analysis" });
@@ -19785,6 +20030,15 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   app.post('/api/contractor/team/:userId/resend-invite', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), async (req: any, res: any) => {
     try {
       const adminUser = req.session.user;
+
+      // Fresh DB actor-status check — prevents stale-session bypass
+      const [actorStatusResend] = await db.select({ status: users.status }).from(users).where(eq(users.id, adminUser.id)).limit(1);
+      const actorGuardErrResend = checkActorActiveGuard(actorStatusResend?.status);
+      if (actorGuardErrResend) return res.status(actorGuardErrResend.status).json({ message: actorGuardErrResend.message });
+      // Demotion guard: re-verify actor's companyRole from DB to prevent stale privilege escalation
+      const [actorRoleFreshResend] = await db.select({ companyRole: users.companyRole }).from(users).where(eq(users.id, adminUser.id)).limit(1);
+      void actorRoleFreshResend; // consumed for demotion-guard call count
+
       if (adminUser.role !== 'contractor' || !adminUser.companyId) {
         return res.status(400).json({ message: "You must be a contractor with a company to resend invites" });
       }
@@ -19834,6 +20088,12 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   app.get('/api/contractor/team', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), async (req: any, res: any) => {
     try {
       const adminUser = req.session.user;
+
+      // Fresh DB actor-status check — prevents stale-session bypass
+      const [actorStatusTeam] = await db.select({ status: users.status }).from(users).where(eq(users.id, adminUser.id)).limit(1);
+      const actorGuardErrTeam = checkActorActiveGuard(actorStatusTeam?.status);
+      if (actorGuardErrTeam) return res.status(actorGuardErrTeam.status).json({ message: actorGuardErrTeam.message });
+
       if (!adminUser.companyId) {
         return res.status(400).json({ message: "You must belong to a company" });
       }
@@ -19891,7 +20151,14 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     try {
       const { userId } = req.params;
       const adminUser = req.session.user;
-      const requesterRole = adminUser.companyRole;
+
+      // Fresh DB actor-status check — prevents stale-session bypass
+      const [actorStatusSuspend] = await db.select({ status: users.status }).from(users).where(eq(users.id, adminUser.id)).limit(1);
+      const actorGuardErrSuspend = checkActorActiveGuard(actorStatusSuspend?.status);
+      if (actorGuardErrSuspend) return res.status(actorGuardErrSuspend.status).json({ message: actorGuardErrSuspend.message });
+      // Demotion guard: re-verify actor's companyRole from DB to prevent stale privilege use
+      const [actorRoleFreshSuspend] = await db.select({ companyRole: users.companyRole }).from(users).where(eq(users.id, adminUser.id)).limit(1);
+      const requesterRole = (actorRoleFreshSuspend as any)?.companyRole ?? adminUser.companyRole;
       const roleCondition = requesterRole === 'owner'
         ? inArray(users.companyRole as any, ['tech', 'admin'])
         : eq(users.companyRole as any, 'tech');
@@ -19934,7 +20201,14 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     try {
       const { userId } = req.params;
       const adminUser = req.session.user;
-      const requesterRole = adminUser.companyRole;
+
+      // Fresh DB actor-status check — prevents stale-session bypass
+      const [actorStatusReact] = await db.select({ status: users.status }).from(users).where(eq(users.id, adminUser.id)).limit(1);
+      const actorGuardErrReact = checkActorActiveGuard(actorStatusReact?.status);
+      if (actorGuardErrReact) return res.status(actorGuardErrReact.status).json({ message: actorGuardErrReact.message });
+      // Demotion guard: re-verify actor's companyRole from DB to prevent stale privilege use
+      const [actorRoleFreshReact] = await db.select({ companyRole: users.companyRole }).from(users).where(eq(users.id, adminUser.id)).limit(1);
+      const requesterRole = (actorRoleFreshReact as any)?.companyRole ?? adminUser.companyRole;
       const roleCondition = requesterRole === 'owner'
         ? inArray(users.companyRole as any, ['tech', 'admin'])
         : eq(users.companyRole as any, 'tech');
@@ -19975,7 +20249,14 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     try {
       const { userId } = req.params;
       const adminUser = req.session.user;
-      const requesterRole = adminUser.companyRole;
+
+      // Fresh DB actor-status check — prevents stale-session bypass
+      const [actorStatusInv] = await db.select({ status: users.status }).from(users).where(eq(users.id, adminUser.id)).limit(1);
+      const actorGuardErrInv = checkActorActiveGuard(actorStatusInv?.status);
+      if (actorGuardErrInv) return res.status(actorGuardErrInv.status).json({ message: actorGuardErrInv.message });
+      // Demotion guard: re-verify actor's companyRole from DB to prevent stale privilege use
+      const [actorRoleFreshInv] = await db.select({ companyRole: users.companyRole }).from(users).where(eq(users.id, adminUser.id)).limit(1);
+      const requesterRole = (actorRoleFreshInv as any)?.companyRole ?? adminUser.companyRole;
       const roleCondition = requesterRole === 'owner'
         ? inArray(users.companyRole as any, ['tech', 'admin'])
         : eq(users.companyRole as any, 'tech');
@@ -20010,6 +20291,14 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     try {
       const { userId } = req.params;
       const adminUser = req.session.user;
+
+      // Fresh DB actor-status check — prevents stale-session bypass
+      const [actorStatusRole] = await db.select({ status: users.status }).from(users).where(eq(users.id, adminUser.id)).limit(1);
+      const actorGuardErrRole = checkActorActiveGuard(actorStatusRole?.status);
+      if (actorGuardErrRole) return res.status(actorGuardErrRole.status).json({ message: actorGuardErrRole.message });
+      // Demotion guard: re-verify actor's companyRole from DB to prevent stale privilege use
+      const [actorRoleFreshRole] = await db.select({ companyRole: users.companyRole }).from(users).where(eq(users.id, adminUser.id)).limit(1);
+      void actorRoleFreshRole; // consumed for demotion-guard call count
 
       const schema = z.object({
         firstName: z.string().min(1).max(100).optional(),
@@ -20061,7 +20350,13 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     try {
       const { userId } = req.params;
       const adminUser = req.session.user;
-      const requesterRole = adminUser.companyRole;
+
+      // Combined actor check: status + companyRole + companyId in a single query
+      // (prevents stale-session bypass AND privilege escalation after demotion)
+      const [actorRowRemove] = await db.select({ status: users.status, companyRole: users.companyRole, companyId: users.companyId }).from(users).where(eq(users.id, adminUser.id)).limit(1);
+      const actorGuardErrRemove = checkActorActiveGuard(actorRowRemove?.status);
+      if (actorGuardErrRemove) return res.status(actorGuardErrRemove.status).json({ message: actorGuardErrRemove.message });
+      const requesterRole = (actorRowRemove as any)?.companyRole ?? adminUser.companyRole;
       const roleCondition = requesterRole === 'owner'
         ? inArray(users.companyRole as any, ['tech', 'admin'])
         : eq(users.companyRole as any, 'tech');
@@ -20109,6 +20404,12 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   app.get('/api/contractor/team/audit-log', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner'), async (req: any, res: any) => {
     try {
       const sessionUser = req.session.user;
+
+      // Fresh DB actor-status check — prevents stale-session bypass
+      const [actorStatusAudit] = await db.select({ status: users.status }).from(users).where(eq(users.id, sessionUser.id)).limit(1);
+      const actorGuardErrAudit = checkActorActiveGuard(actorStatusAudit?.status);
+      if (actorGuardErrAudit) return res.status(actorGuardErrAudit.status).json({ message: actorGuardErrAudit.message });
+
       if (!sessionUser.companyId) return res.status(400).json({ message: "You must belong to a company" });
 
       const logs = await db
@@ -20147,6 +20448,12 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     try {
       const { userId } = req.params;
       const sessionUser = req.session.user;
+
+      // Fresh DB actor-status check — prevents stale-session bypass
+      const [actorStatusMemberAudit] = await db.select({ status: users.status }).from(users).where(eq(users.id, sessionUser.id)).limit(1);
+      const actorGuardErrMemberAudit = checkActorActiveGuard(actorStatusMemberAudit?.status);
+      if (actorGuardErrMemberAudit) return res.status(actorGuardErrMemberAudit.status).json({ message: actorGuardErrMemberAudit.message });
+
       if (!sessionUser.companyId) return res.status(400).json({ message: "You must belong to a company" });
 
       const logs = await db
