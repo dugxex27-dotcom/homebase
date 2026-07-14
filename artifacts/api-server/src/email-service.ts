@@ -140,7 +140,7 @@ export async function sendWelcomeEmail(userId: string, userName: string, userRol
       <p>Hi ${userName || 'there'},</p>
       <p>Thanks for joining HomeBase - your home's new best friend!</p>
       ${roleSpecificContent}
-      <p>You have a <strong>14-day free trial</strong> to explore all our premium features.</p>
+      <p>Your <strong>14-day free trial</strong> has started. Your card is on file but won't be charged until the trial ends — cancel anytime before then and you owe nothing.</p>
       <div style="text-align: center; margin: 30px 0;">
         <a href="https://gotohomebase.com" style="background: #6B46C1; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Get Started</a>
       </div>
@@ -149,7 +149,7 @@ export async function sendWelcomeEmail(userId: string, userName: string, userRol
     `
   );
 
-  const text = `Welcome to HomeBase, ${userName || 'there'}! Thanks for joining - think of us as CARFAX for your home. You have a 14-day free trial to explore all our premium features. Visit gotohomebase.com to get started. Questions? Email us at gotohomebase2025@gmail.com.`;
+  const text = `Welcome to HomeBase, ${userName || 'there'}! Thanks for joining - think of us as CARFAX for your home. Your 14-day free trial has started — your card is on file but won't be charged until the trial ends. Visit gotohomebase.com to get started. Questions? Email us at gotohomebase2025@gmail.com.`;
 
   return sendEmail({
     to: user.email,

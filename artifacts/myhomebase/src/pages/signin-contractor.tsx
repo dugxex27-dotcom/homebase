@@ -118,8 +118,8 @@ export default function SignInContractor() {
     mutationFn: async (data: RegisterFormData) => (await apiRequest("/api/auth/register", "POST", { ...data, role: 'contractor' })).json(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
-      toast({ title: "Account created!", description: "Welcome to MyHomeBase™." });
-      setLocation('/contractor-onboarding');
+      toast({ title: "Account created!", description: "Almost done — choose your plan to start your free trial." });
+      setLocation('/contractor-pricing?trial=true&onboarding=true');
     },
     onError: (e: Error) => toast({ title: "Registration failed", description: e.message, variant: "destructive" }),
   });

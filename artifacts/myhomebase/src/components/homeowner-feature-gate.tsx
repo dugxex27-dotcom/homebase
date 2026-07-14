@@ -152,7 +152,7 @@ export function HomeownerBenefitsDialog({ open, onOpenChange, trialDaysRemaining
             </div>
             <div className="text-right">
               <div className="text-2xl font-bold" style={{ color: '#2c0f5b' }}>$5<span className="text-sm font-normal text-muted-foreground">/mo</span></div>
-              <p className="text-xs text-muted-foreground">14-day free trial included</p>
+              <p className="text-xs text-muted-foreground">Try free for 14 days · card required at signup</p>
             </div>
           </div>
         </div>
@@ -479,7 +479,7 @@ export function FreeUserUpgradePrompt() {
           </div>
 
           <p className="text-xs text-muted-foreground mt-4">
-            All paid plans include a 14-day free trial. Cancel anytime.
+            All paid plans include a 14-day free trial. Card required at signup — not charged for 14 days. Cancel anytime.
           </p>
         </CardContent>
       </Card>

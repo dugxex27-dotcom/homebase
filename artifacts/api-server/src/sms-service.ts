@@ -188,7 +188,7 @@ export async function sendWelcomeSMS(userId: string, userName: string): Promise<
 
   return sendSMS({
     to: user.phone,
-    body: `Welcome to HomeBase, ${userName || 'friend'}! 🏠 Your 14-day free trial starts now. Track maintenance, find contractors, and keep your home healthy. Visit gotohomebase.com to get started!`,
+    body: `Welcome to HomeBase, ${userName || 'friend'}! 🏠 Your 14-day free trial has started — your card is on file but won't be charged until it ends. Track maintenance, find contractors, and keep your home healthy. Visit gotohomebase.com to get started!`,
   });
 }
 

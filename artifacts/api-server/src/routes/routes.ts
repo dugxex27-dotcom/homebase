@@ -5609,10 +5609,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           user.id
         ).catch(err => console.error('[EMAIL] Failed to send agent signup notification:', err));
       } else {
-        // Contractors get an automatic 14-day trial
-        // Homeowners must provide payment info first — trial starts via Stripe with trial_period_days
+        // Both homeowners and contractors must provide payment info first —
+        // trial starts via Stripe with trial_period_days (card required, not charged for 14 days)
         const isHomeowner = role === 'homeowner';
-        const trialEndsAt = isHomeowner ? undefined : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
 
         user = await storage.createUserWithPassword({
           email,
@@ -5621,9 +5620,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastName,
           role: role as 'homeowner' | 'contractor',
           zipCode,
-          trialEndsAt,
+          trialEndsAt: undefined,
           maxHousesAllowed: isHomeowner ? 2 : undefined,
-          subscriptionStatus: isHomeowner ? 'inactive' : 'trialing',
+          subscriptionStatus: 'inactive',
         });
 
         // Handle contractor company setup - always create a new company
@@ -5692,7 +5691,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       notificationOrchestrator.sendWelcomeNotifications(user.id, userName || 'there', role)
         .catch(err => console.error('[REGISTRATION] Error sending welcome notifications:', err));
 
-      res.json({ success: true, user, requiresPaymentSetup: role === 'homeowner' });
+      res.json({ success: true, user, requiresPaymentSetup: role === 'homeowner' || role === 'contractor' });
     } catch (error) {
       console.error("Error registering user:", error);
       res.status(500).json({ message: "Failed to create account" });

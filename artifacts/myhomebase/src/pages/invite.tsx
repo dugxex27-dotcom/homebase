@@ -44,7 +44,7 @@ export default function Invite() {
   const hostUrl = window.location.origin;
   const shareUrl = `${hostUrl}/invite/${referralCode}`;
   const shareTitle = `${firstName} invited you to MyHomeBase™!`;
-  const shareDescription = "Join MyHomeBase™ to manage your home maintenance, connect with contractors, and save money on DIY projects. Get a 14-day free trial!";
+  const shareDescription = "Join MyHomeBase™ to manage your home maintenance, connect with contractors, and save money on DIY projects. Try free for 14 days!";
 
   if (isLoading) {
     return (
@@ -224,7 +224,7 @@ export default function Invite() {
                 Ready to Get Started?
               </h2>
               <p className="text-gray-600 mb-6">
-                Join MyHomeBase™ today and get 14 days free. No credit card required.
+                Join MyHomeBase™ today and try free for 14 days. Card required at signup — not charged until your trial ends.
               </p>
               <Link href={`/signup?ref=${referralCode}`}>
                 <Button 

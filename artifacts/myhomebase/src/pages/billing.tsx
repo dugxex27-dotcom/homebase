@@ -764,7 +764,7 @@ export default function Billing() {
             <div>
               <h3 className="font-semibold mb-1" style={{ color: 'var(--purple-deep)' }}>14-Day Free Trial</h3>
               <p className="text-gray-600">
-                All new accounts start with a 14-day free trial. No credit card required to start.
+                Try free for 14 days. Your card is saved securely at signup but not charged until your trial ends. Cancel before then and you owe nothing.
               </p>
             </div>
             <div>

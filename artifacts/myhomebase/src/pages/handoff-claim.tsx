@@ -290,7 +290,7 @@ export default function HandoffClaim() {
                     </Button>
                   </Link>
                 </div>
-                <p className="text-xs text-gray-400 mt-4">Free to use · No credit card required</p>
+                <p className="text-xs text-gray-400 mt-4">Try free for 14 days · Card required, not charged until trial ends</p>
               </div>
             )}
           </CardContent>

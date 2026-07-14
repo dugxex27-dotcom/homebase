@@ -611,7 +611,7 @@ export default function Landing() {
                 <button className="mhb-role-modal-cta-primary" onClick={() => { setHomeownerModalOpen(false); handleRoleSelection('homeowner'); }}>Create my account →</button>
                 <button className="mhb-role-modal-cta-ghost" onClick={() => { setHomeownerModalOpen(false); setQuizOpen(true); }}>Take the quiz first</button>
               </div>
-              <p className="mhb-role-modal-trial">14-day free trial · No credit card required</p>
+              <p className="mhb-role-modal-trial">Try free for 14 days · Card required, not charged for 14 days</p>
             </div>
           </div>
         </div>
@@ -645,7 +645,7 @@ export default function Landing() {
               <div className="mhb-role-modal-cta-row">
                 <button className="mhb-role-modal-cta-primary mhb-role-modal-cta-blue" onClick={() => { setContractorModalOpen(false); handleRoleSelection('contractor'); }}>Create my account →</button>
               </div>
-              <p className="mhb-role-modal-trial">14-day free trial · No credit card required</p>
+              <p className="mhb-role-modal-trial">Try free for 14 days · Card required, not charged for 14 days</p>
             </div>
           </div>
         </div>
@@ -679,7 +679,7 @@ export default function Landing() {
               <div className="mhb-role-modal-cta-row">
                 <button className="mhb-role-modal-cta-primary mhb-role-modal-cta-green" onClick={() => { setAgentModalOpen(false); handleRoleSelection('agent'); }}>Create my account →</button>
               </div>
-              <p className="mhb-role-modal-trial">14-day free trial · No credit card required</p>
+              <p className="mhb-role-modal-trial">Free to join · No subscription required</p>
             </div>
           </div>
         </div>

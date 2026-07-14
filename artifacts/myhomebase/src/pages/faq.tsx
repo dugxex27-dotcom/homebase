@@ -61,7 +61,7 @@ export default function FAQ() {
                         <li><strong>Premium:</strong> $20/month - Manage 3-6 homes with all Base features plus priority contractor matching and advanced maintenance insights. Earn up to $20/month in referral credits.</li>
                         <li><strong>Premium Plus:</strong> $40/month - Unlimited homes with all Premium features plus dedicated support and bulk maintenance scheduling. Earn up to $40/month in referral credits.</li>
                       </ul>
-                      <p>New users start with a 14-day free trial with full access to all features.</p>
+                      <p>New users start with a 14-day free trial with full access to all features. A card is required at signup but not charged until the trial ends.</p>
                     </AccordionContent>
                   </AccordionItem>
 
@@ -78,7 +78,7 @@ export default function FAQ() {
                         <li><strong>Basic:</strong> $20/month - Get found by homeowners, messaging, send proposals, reviews and ratings profile. Earn up to $20/month in referral credits.</li>
                         <li><strong>Pro:</strong> $40/month - Everything in Basic plus full CRM with client management, job scheduling & tracking, quotes & invoices, accept payments via Stripe Connect, team management, import from Jobber/ServiceTitan, and business analytics dashboard. Earn up to $40/month in referral credits.</li>
                       </ul>
-                      <p>New contractors start with a 14-day free trial. After the trial expires, an active subscription is required to continue using the platform.</p>
+                      <p>New contractors start with a 14-day free trial. A card is required at signup but not charged until the trial ends. After the trial expires, an active subscription is required to continue using the platform.</p>
                     </AccordionContent>
                   </AccordionItem>
 
@@ -96,7 +96,7 @@ export default function FAQ() {
                       </ul>
                       <p className="mt-2 text-sm">Note: Home management features (maintenance tracking, home health score, service records) require a paid subscription starting at $5/month.</p>
                       <p className="mt-3"><strong>Contractors:</strong></p>
-                      <p>Contractors receive a 14-day free trial with full access. After the trial expires, an active subscription ($20/month Basic or $40/month Pro) is required to continue using the platform.</p>
+                      <p>Contractors receive a 14-day free trial with full access. A card is required at signup but not charged until the trial ends. After the trial expires, an active subscription ($20/month Basic or $40/month Pro) is required to continue using the platform.</p>
                     </AccordionContent>
                   </AccordionItem>
 
