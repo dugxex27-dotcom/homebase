@@ -260,6 +260,7 @@ export interface IStorage {
   updateContractorBoost(id: string, boost: Partial<InsertContractorBoost>): Promise<ContractorBoost | undefined>;
   deleteContractorBoost(id: string): Promise<boolean>;
   checkBoostConflict(serviceCategory: string, latitude: number, longitude: number, radius: number): Promise<ContractorBoost | null>;
+  expireStaleBoosts(): Promise<{ expired: number }>;
 
   // House transfer operations
   createHouseTransfer(transfer: InsertHouseTransfer): Promise<HouseTransfer>;
@@ -3722,6 +3723,20 @@ export class MemStorage implements IStorage {
     return this.contractorBoosts.delete(id);
   }
 
+  async expireStaleBoosts(): Promise<{ expired: number }> {
+    // MemStorage is not the primary store; expiry is handled by DbStorage.
+    // Update in-memory mirrors so any in-flight reads see consistent data.
+    const now = new Date();
+    let expired = 0;
+    for (const boost of this.contractorBoosts.values()) {
+      if (boost.status === 'active' && new Date(boost.endDate) < now) {
+        this.contractorBoosts.set(boost.id, { ...boost, status: 'expired', isActive: false, updatedAt: now });
+        expired++;
+      }
+    }
+    return { expired };
+  }
+
   /** Returns all boost records currently held in memory (regardless of status). */
   getAllContractorBoostsFromMemory(): ContractorBoost[] {
     return Array.from(this.contractorBoosts.values());
@@ -7059,6 +7074,28 @@ class DbStorage implements IStorage {
     const result = await db.delete(contractorBoosts).where(eq(contractorBoosts.id, id)).returning();
     this.memStorage.deleteContractorBoostFromMemory(id);
     return result.length > 0;
+  }
+
+  async expireStaleBoosts(): Promise<{ expired: number }> {
+    const now = new Date();
+    const result = await db
+      .update(contractorBoosts)
+      .set({ status: 'expired', isActive: false, updatedAt: now })
+      .where(and(
+        eq(contractorBoosts.status, 'active'),
+        lt(contractorBoosts.endDate, now),
+      ))
+      .returning({ id: contractorBoosts.id });
+
+    // Mirror the expiry into the in-memory store so dual-write reads are consistent.
+    for (const { id } of result) {
+      const mem = this.memStorage.getAllContractorBoostsFromMemory().find(b => b.id === id);
+      if (mem) {
+        this.memStorage.setContractorBoostInMemory({ ...mem, status: 'expired', isActive: false, updatedAt: now });
+      }
+    }
+
+    return { expired: result.length };
   }
 
   async checkBoostConflict(serviceCategory: string, latitude: number, longitude: number, radius: number): Promise<ContractorBoost | null> {

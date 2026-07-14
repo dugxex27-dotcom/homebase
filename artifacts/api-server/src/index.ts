@@ -19,6 +19,7 @@ import { weatherForecastReminderScheduler } from "./weather-forecast-reminder-sc
 import { onboardingNudgeScheduler } from "./onboarding-nudge-scheduler";
 import { invoiceOrphanCleanupScheduler } from "./invoice-orphan-cleanup-scheduler";
 import { storageOrphanCleanupScheduler } from "./storage-orphan-cleanup-scheduler";
+import { boostExpiryScheduler } from "./boost-expiry-scheduler";
 
 const rawPort = process.env["PORT"];
 
@@ -269,6 +270,7 @@ app.get("/info/*path", proxyToSquarespace);
     onboardingNudgeScheduler.start();
     invoiceOrphanCleanupScheduler.start();
     storageOrphanCleanupScheduler.start();
+    boostExpiryScheduler.start();
   });
 
   server.on("error", (err) => {
