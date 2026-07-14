@@ -241,7 +241,7 @@ export default function SignInContractor() {
                   <span style={{ fontSize: 10, fontWeight: 700, color: C.inactive }}>or</span>
                   <div style={{ flex: 1, height: 1, background: C.border }} />
                 </div>
-                <a href="/auth/google" data-testid="button-google-signin-contractor" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', background: '#fff', border: '1.5px solid rgba(0,0,0,0.12)', borderRadius: 12, padding: '12px 0', fontSize: 13, fontWeight: 700, color: '#1a1a1a', textDecoration: 'none', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+                <a href="/auth/google?intent=contractor" data-testid="button-google-signin-contractor" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', background: '#fff', border: '1.5px solid rgba(0,0,0,0.12)', borderRadius: 12, padding: '12px 0', fontSize: 13, fontWeight: 700, color: '#1a1a1a', textDecoration: 'none', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
                   <GoogleSVG />Continue with Google
                 </a>
                 </>)}
@@ -332,7 +332,7 @@ export default function SignInContractor() {
                   <span style={{ fontSize: 10, fontWeight: 700, color: C.inactive }}>or</span>
                   <div style={{ flex: 1, height: 1, background: C.border }} />
                 </div>
-                <a href="/auth/google" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', background: '#fff', border: '1.5px solid rgba(0,0,0,0.12)', borderRadius: 12, padding: '12px 0', fontSize: 13, fontWeight: 700, color: '#1a1a1a', textDecoration: 'none', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+                <a href="/auth/google?intent=contractor" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', background: '#fff', border: '1.5px solid rgba(0,0,0,0.12)', borderRadius: 12, padding: '12px 0', fontSize: 13, fontWeight: 700, color: '#1a1a1a', textDecoration: 'none', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
                   <GoogleSVG />Continue with Google
                 </a>
                 </>)}

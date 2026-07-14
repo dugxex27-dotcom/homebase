@@ -77,6 +77,11 @@ export default function ContractorOnboarding() {
   const { toast } = useToast();
   const [enterpriseOpen, setEnterpriseOpen] = useState(false);
 
+  // When arriving from the Google OAuth contractor flow, send the user to
+  // pricing after onboarding so they can complete checkout.
+  const fromOAuth =
+    new URLSearchParams(window.location.search).get('fromOAuth') === 'true';
+
   const [form, setForm] = useState<FormState>({
     company: '', name: '', phone: '', zipCode: '', yearsExperience: '',
     teamSizeSelection: '',
@@ -630,7 +635,11 @@ export default function ContractorOnboarding() {
           </div>
         ) : (
           <button
-            onClick={() => setLocation('/contractor-dashboard')}
+            onClick={() => setLocation(
+              fromOAuth
+                ? '/contractor-pricing?trial=true&onboarding=true'
+                : '/contractor-dashboard'
+            )}
             style={{
               width: '100%', padding: '15px 0', borderRadius: 14, marginTop: 16,
               background: `linear-gradient(135deg, ${C.deep}, ${C.primary})`,
@@ -638,7 +647,7 @@ export default function ContractorOnboarding() {
               cursor: 'pointer', fontFamily: 'inherit',
             }}
           >
-            Go to my dashboard →
+            {fromOAuth ? 'Choose a plan →' : 'Go to my dashboard →'}
           </button>
         )}
 

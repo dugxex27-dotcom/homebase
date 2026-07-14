@@ -43,11 +43,15 @@ export default function CompleteProfile() {
     ? { slug: pendingPlanSlug, ...PLAN_LABELS[pendingPlanSlug] }
     : null;
 
+  // Pre-select contractor role when arriving from the contractor Google OAuth flow.
+  const intentContractor =
+    new URLSearchParams(window.location.search).get('intent') === 'contractor';
+
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
       zipCode: "",
-      role: "homeowner",
+      role: intentContractor ? "contractor" : "homeowner",
       companyName: "",
       companyBio: "",
       companyPhone: "",
@@ -69,7 +73,9 @@ export default function CompleteProfile() {
       // Redirect to appropriate dashboard
       let redirectPath: string;
       if (data.role === 'contractor') {
-        redirectPath = '/contractor-dashboard';
+        // Send new Google OAuth contractors through the pricing/checkout flow
+        // so they choose a plan before landing on the dashboard.
+        redirectPath = '/contractor-pricing?trial=true&onboarding=true';
       } else {
         const pendingPlan = sessionStorage.getItem('pendingPlan');
         if (pendingPlan) {
