@@ -8911,7 +8911,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/contractors/boost/:boostId", isAuthenticated, async (req: any, res: any) => {
+  app.delete("/api/contractors/boost/:boostId", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;

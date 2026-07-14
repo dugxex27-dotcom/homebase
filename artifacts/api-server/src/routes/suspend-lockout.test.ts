@@ -1051,6 +1051,31 @@ describe("Suspend lockout — boost check and previously-used contractor routes"
     expect(res.status).not.toBe(401);
   });
 
+  // ── DELETE /api/contractors/boost/:boostId ───────────────────────────────
+
+  it("blocks a suspended user from deleting a boost", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .delete("/api/contractors/boost/boost-001")
+      .set("x-test-user", "target");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on boost deletion", async () => {
+    // TARGET_USER_ID is NOT in sharedSuspendedUserIds; requireNotSuspended passes.
+    // The handler enforces its own role check (role must be 'contractor') —
+    // TARGET_SESSION has companyRole 'tech' and no .role field, so the inner
+    // 403 fires — but that confirms requireNotSuspended let the request through.
+    const res = await request(app)
+      .delete("/api/contractors/boost/boost-001")
+      .set("x-test-user", "target");
+
+    expect(res.status).not.toBe(401);
+  });
+
   // ── GET /api/contractors/previously-used ─────────────────────────────────
 
   it("blocks a suspended user from reading previously-used contractors", async () => {
