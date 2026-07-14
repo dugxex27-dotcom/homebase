@@ -2053,6 +2053,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             }
           }
+
+          // Handle boost renewal via checkout
+          if (session.metadata?.type === 'boost_renewal') {
+            const { boostId, contractorId } = session.metadata;
+            if (boostId && contractorId) {
+              const contractor = await storage.getUser(contractorId);
+              if (!contractor || (['suspended', 'removed'] as string[]).includes(contractor.status || '')) {
+                console.log(`[STRIPE WEBHOOK] Boost renewal blocked — contractor ${contractorId} is suspended or not found`);
+                break;
+              }
+              const boosts = await storage.getContractorBoosts(contractorId);
+              const boost = boosts.find(b => b.id === boostId);
+              if (boost) {
+                const paymentIntentId = typeof session.payment_intent === 'string'
+                  ? session.payment_intent
+                  : (session.payment_intent as any)?.id ?? null;
+                const now = new Date();
+                const currentEnd = new Date(boost.endDate);
+                const renewalStart = currentEnd > now ? currentEnd : now;
+                const renewalEnd = new Date(renewalStart);
+                renewalEnd.setDate(renewalEnd.getDate() + 30);
+                await storage.createContractorBoost({
+                  contractorId,
+                  serviceCategory: boost.serviceCategory,
+                  businessAddress: boost.businessAddress,
+                  businessLatitude: boost.businessLatitude,
+                  businessLongitude: boost.businessLongitude,
+                  boostRadius: boost.boostRadius,
+                  startDate: renewalStart as any,
+                  endDate: renewalEnd as any,
+                  amount: boost.amount,
+                  status: 'active',
+                  isActive: true,
+                  stripePaymentIntentId: paymentIntentId,
+                });
+                console.log(`[STRIPE WEBHOOK] Boost renewed: ${boostId} for contractor ${contractorId}`);
+              } else {
+                console.log(`[STRIPE WEBHOOK] Boost renewal: boost ${boostId} not found for contractor ${contractorId}`);
+              }
+            }
+          }
           break;
         }
 
@@ -8906,6 +8947,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Contractor boost routes
+
+  // List the authenticated contractor's own boosts (all statuses)
+  app.get("/api/contractors/boost", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
+    try {
+      const userId = req.session?.user?.id;
+      const userRole = req.session?.user?.role;
+
+      if (userRole !== 'contractor') {
+        return res.status(403).json({ message: "Only contractors can view their boosts" });
+      }
+
+      const boosts = await storage.getContractorBoosts(userId as string);
+      // Sort: active first, then expired, then cancelled; most recent first within each group
+      const statusOrder: Record<string, number> = { active: 0, expired: 1, cancelled: 2 };
+      const sorted = [...boosts].sort((a, b) => {
+        const aOrder = statusOrder[a.status] ?? 3;
+        const bOrder = statusOrder[b.status] ?? 3;
+        if (aOrder !== bOrder) return aOrder - bOrder;
+        return new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime();
+      });
+      res.json(sorted);
+    } catch (error) {
+      req.log?.error({ error }, "Error fetching contractor boosts");
+      res.status(500).json({ message: "Failed to fetch boosts" });
+    }
+  });
+
   app.post("/api/contractors/boost", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
@@ -9093,6 +9161,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       req.log?.error({ error }, "Error renewing boost");
       res.status(500).json({ message: "Failed to renew boost" });
+    }
+  });
+
+  // Create a Stripe Checkout session so a contractor can renew an expired boost
+  app.post("/api/contractors/boost/:boostId/create-renewal-checkout", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
+    try {
+      const userId = req.session?.user?.id;
+      const userRole = req.session?.user?.role;
+
+      if (userRole !== 'contractor') {
+        return res.status(403).json({ message: "Only contractors can renew boosts" });
+      }
+
+      if (!stripe) {
+        return res.status(503).json({ message: "Payment service unavailable" });
+      }
+
+      const userBoosts = await storage.getContractorBoosts(userId as string);
+      const boost = userBoosts.find(b => b.id === req.params.boostId);
+
+      if (!boost) {
+        return res.status(404).json({ message: "Boost not found or access denied" });
+      }
+
+      if (boost.status === 'active' && new Date(boost.endDate) > new Date()) {
+        return res.status(400).json({ message: "Boost is still active and does not need renewal yet" });
+      }
+
+      const amountInCents = Math.round(parseFloat(boost.amount as string) * 100);
+      if (amountInCents <= 0) {
+        return res.status(400).json({ message: "Invalid boost amount" });
+      }
+
+      const baseUrl = req.headers.origin || `https://${req.headers.host}`;
+
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        line_items: [
+          {
+            price_data: {
+              currency: 'usd',
+              product_data: {
+                name: `Boost Renewal — ${boost.serviceCategory}`,
+                description: `30-day visibility boost renewal for ${boost.serviceCategory}`,
+              },
+              unit_amount: amountInCents,
+            },
+            quantity: 1,
+          },
+        ],
+        payment_intent_data: {
+          metadata: {
+            type: 'boost_renewal',
+            boostId: boost.id,
+            contractorId: userId as string,
+          },
+        },
+        success_url: `${baseUrl}/contractor-dashboard?boost_renewed=1`,
+        cancel_url: `${baseUrl}/contractor-dashboard`,
+        metadata: {
+          type: 'boost_renewal',
+          boostId: boost.id,
+          contractorId: userId as string,
+        },
+      });
+
+      res.json({ url: session.url });
+    } catch (error) {
+      req.log?.error({ error }, "Error creating boost renewal checkout");
+      res.status(500).json({ message: "Failed to create renewal checkout" });
     }
   });
 

@@ -50,6 +50,8 @@ import {
   Upload,
   Loader2,
   Building2,
+  Zap,
+  RefreshCw,
 } from "lucide-react";
 import type { User as UserType, Proposal, ContractorAppointment } from "@shared/schema";
 import { Link, useLocation, useSearch } from "wouter";
@@ -87,6 +89,18 @@ interface Division {
   managerId: string | null;
   memberCount: number;
   createdAt: string;
+}
+
+interface ContractorBoostItem {
+  id: string;
+  serviceCategory: string;
+  businessAddress: string;
+  startDate: string;
+  endDate: string;
+  amount: string;
+  status: string;
+  isActive: boolean;
+  createdAt: string | null;
 }
 
 interface BulkImportError {
@@ -619,6 +633,36 @@ export default function ContractorDashboard() {
       return res.json();
     },
     enabled: isAdminRole && !!typedUser,
+  });
+
+  const { data: myBoosts = [], isLoading: isLoadingBoosts } = useQuery<ContractorBoostItem[]>({
+    queryKey: ['/api/contractors/boost'],
+    queryFn: async () => {
+      const res = await fetch('/api/contractors/boost', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch boosts');
+      return res.json();
+    },
+    enabled: !!typedUser,
+  });
+
+  const renewBoostMutation = useMutation({
+    mutationFn: async (boostId: string) => {
+      const res = await fetch(`/api/contractors/boost/${boostId}/create-renewal-checkout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to start renewal');
+      return data as { url: string };
+    },
+    onSuccess: (data) => {
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    },
+    onError: (err: Error) => {
+      toast({ title: "Renewal error", description: err.message, variant: "destructive" });
+    },
   });
 
   const inviteMutation = useMutation({
@@ -2042,6 +2086,85 @@ export default function ContractorDashboard() {
         <div className="dash-light-card" data-tour-id="contractor-connection">
           <ContractorCodeEntry />
         </div>
+
+        {/* Visibility Boosts */}
+        {(myBoosts.length > 0 || isLoadingBoosts) && (
+          <>
+            <span className="dash-section-label" style={{ marginTop: 8 }}>Visibility Boosts</span>
+            <div className="dash-light-card" style={{ marginBottom: 10 }}>
+              {isLoadingBoosts ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#94a3b8', fontSize: 13 }}>
+                  <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Loading boosts…
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {myBoosts.map((boost, idx) => {
+                    const isExpired = boost.status === 'expired' || boost.status === 'cancelled' || !boost.isActive || new Date(boost.endDate) < new Date();
+                    const endDateObj = new Date(boost.endDate);
+                    const endLabel = format(endDateObj, 'MMM d, yyyy');
+                    const isRenewing = renewBoostMutation.isPending && renewBoostMutation.variables === boost.id;
+                    return (
+                      <div
+                        key={boost.id}
+                        data-testid={`boost-item-${boost.status}`}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 10,
+                          padding: idx > 0 ? '10px 0 0' : '0',
+                          borderTop: idx > 0 ? '1px solid #f1f5f9' : 'none',
+                        }}
+                      >
+                        <div style={{
+                          width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: isExpired ? '#f1f5f9' : '#FFF7E6',
+                          color: isExpired ? '#94a3b8' : '#D97706',
+                        }}>
+                          <Zap size={16} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {boost.serviceCategory}
+                          </div>
+                          <div style={{ fontSize: 11, color: isExpired ? '#dc2626' : '#64748b', marginTop: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            {isExpired
+                              ? <><AlertCircle size={10} /> Expired {endLabel}</>
+                              : <><Clock size={10} /> Active until {endLabel}</>
+                            }
+                          </div>
+                        </div>
+                        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          {isExpired ? (
+                            <button
+                              data-testid={`button-renew-boost-${boost.id}`}
+                              onClick={() => renewBoostMutation.mutate(boost.id)}
+                              disabled={isRenewing}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 4,
+                                padding: '5px 12px', borderRadius: 6, border: 'none',
+                                background: '#1560A2', color: '#fff',
+                                fontSize: 12, fontWeight: 600, cursor: isRenewing ? 'not-allowed' : 'pointer',
+                                opacity: isRenewing ? 0.7 : 1,
+                              }}
+                            >
+                              {isRenewing ? <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={11} />}
+                              Renew
+                            </button>
+                          ) : (
+                            <span style={{
+                              fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em',
+                              padding: '3px 8px', borderRadius: 5,
+                              background: '#FFF7E6', color: '#D97706',
+                            }}>Active</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </>
+        )}
 
         {/* Referral Program */}
         <span className="dash-section-label" style={{ marginTop: 4 }}>Referral Program</span>
