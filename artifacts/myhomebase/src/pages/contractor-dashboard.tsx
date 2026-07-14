@@ -20,7 +20,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useContractorSubscription } from "@/hooks/useContractorSubscription";
 
-import { ContractorTrialExpiredPaywall, ContractorTrialBanner } from "@/components/contractor-feature-gate";
+import { ContractorTrialExpiredPaywall, ContractorTrialBanner, ContractorNoPlanBanner } from "@/components/contractor-feature-gate";
 import { TechDashboard } from "./tech-dashboard";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
@@ -809,7 +809,7 @@ export default function ContractorDashboard() {
   };
 
 
-  const { needsSubscription, isInTrial, isLoading: subscriptionLoading, hasDivisions, hasBulkImport, seatInfo } = useContractorSubscription();
+  const { needsSubscription, isInTrial, isLoading: subscriptionLoading, hasDivisions, hasBulkImport, seatInfo, subscriptionStatus, trialExpired } = useContractorSubscription();
   
   const form = useForm<ProposalFormData>({
     resolver: zodResolver(proposalFormSchema),
@@ -942,7 +942,10 @@ export default function ContractorDashboard() {
   };
 
   // Check subscription status AFTER all hooks are called (React hooks rule)
-  if (needsSubscription && !subscriptionLoading) {
+  // Contractors who registered but never chose a plan (inactive + never trialed) see the
+  // dashboard with a dismissible banner instead of the full-screen paywall.
+  const isNeverStarted = !subscriptionLoading && subscriptionStatus === 'inactive' && !trialExpired;
+  if (needsSubscription && !subscriptionLoading && !isNeverStarted) {
     return <ContractorTrialExpiredPaywall />;
   }
 
@@ -1069,6 +1072,7 @@ export default function ContractorDashboard() {
       </div>
 
       {isInTrial && <ContractorTrialBanner />}
+      <ContractorNoPlanBanner />
 
       {/* ── Enterprise admin tab navigation ── */}
       {isAdminRole && (

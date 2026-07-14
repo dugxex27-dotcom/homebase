@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Lock, Sparkles, Check, Users, Calendar, FileText, CreditCard, Download, BarChart3, Clock, AlertTriangle, Mail, Loader2 } from "lucide-react";
+import { Lock, Sparkles, Check, Users, Calendar, FileText, CreditCard, Download, BarChart3, Clock, AlertTriangle, Mail, Loader2, X, Rocket } from "lucide-react";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
 import { isNativePlatform, openExternalUrl } from "@/lib/nativeBrowser";
@@ -476,6 +476,70 @@ export function ContractorCRMUpgradePage() {
           </Button>
         </div>
       )}
+    </div>
+  );
+}
+
+const NO_PLAN_BANNER_KEY = 'contractor_no_plan_banner_dismissed';
+
+export function ContractorNoPlanBanner() {
+  const { subscriptionStatus, trialExpired, isLoading } = useContractorSubscription();
+  const [, setLocation] = useLocation();
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(NO_PLAN_BANNER_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const isNoPlan = !isLoading && subscriptionStatus === 'inactive' && !trialExpired;
+
+  if (!isNoPlan || dismissed) return null;
+
+  const handleDismiss = () => {
+    try {
+      localStorage.setItem(NO_PLAN_BANNER_KEY, 'true');
+    } catch {}
+    setDismissed(true);
+  };
+
+  return (
+    <div className="w-full py-4 px-4" style={{ background: 'linear-gradient(135deg, #0C3460 0%, #1560A2 100%)' }}>
+      <div className="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center gap-3 text-white">
+          <div className="p-2 rounded-full bg-white/10 flex-shrink-0">
+            <Rocket className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="font-semibold text-sm sm:text-base">
+              You haven&apos;t chosen a plan yet
+            </div>
+            <div className="text-sm opacity-80 hidden sm:block">
+              Start your free 14-day trial — no charge today. Cancel anytime.
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={() => setLocation('/contractor-pricing?trial=true')}
+            size="sm"
+            className="bg-white font-semibold hover:bg-gray-100"
+            style={{ color: '#0C3460' }}
+            data-testid="button-no-plan-choose-plan"
+          >
+            Start Free Trial →
+          </Button>
+          <button
+            onClick={handleDismiss}
+            className="text-white/70 hover:text-white transition-colors p-1"
+            aria-label="Dismiss"
+            data-testid="button-no-plan-banner-dismiss"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
