@@ -186,9 +186,14 @@ async function verifyAndFinishTransaction(transaction: CdvPurchase.Transaction):
   const plan = productId ? PRODUCT_ID_TO_PLAN[productId] : undefined;
 
   if (!jwsRepresentation) {
-    logError('No jwsRepresentation on transaction — cannot verify with server. Finishing to avoid an infinite replay loop. Transaction:', transaction.transactionId);
+    // SK1 transactions (iOS < 15) and some re-delivered legacy receipts don't
+    // carry a JWS token. We can't verify these with the server. Finish the
+    // transaction so StoreKit stops re-delivering it on every launch, but do
+    // NOT surface an error to the user — no charge was processed for this path
+    // and showing a "contact support" alert (e.g. on the sign-in screen) is
+    // confusing and incorrect.
+    logError('No jwsRepresentation on transaction — finishing silently to clear replay loop. Transaction:', transaction.transactionId);
     await transaction.finish();
-    failedListeners.forEach((listener) => listener({ message: 'This purchase could not be verified. Please contact support if you were charged.' }));
     return;
   }
 
@@ -209,6 +214,14 @@ async function verifyAndFinishTransaction(transaction: CdvPurchase.Transaction):
     body = await res.json();
   } catch (err) {
     const { status, message } = parseApiError(err);
+    if (status === 401) {
+      // The user is not currently authenticated (e.g. StoreKit delivered a
+      // pending transaction before the user has signed in). Leave the
+      // transaction unfinished so StoreKit re-delivers it after login, and
+      // don't show any error — the purchase is fine, it just needs a session.
+      logError('Server returned 401 for purchase verification — user not yet authenticated. Leaving transaction pending for retry. transactionId:', transaction.transactionId);
+      throw new Error(message);
+    }
     if (status !== null && status >= 400 && status < 500) {
       // Permanent, well-defined rejection from our server (bad product, role
       // mismatch, account-binding mismatch, etc). Retrying will never help —
