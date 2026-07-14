@@ -3788,56 +3788,125 @@ export async function registerRoutes(app: Express): Promise<Server> {
       void lakeHouseMissing;
       seedResults.lakeHouse = { ok: true, inserted: 0, expected: 0 };
 
-      // Add task completions for existing demo users if they don't already have any
+      // Top-up task completions for demo user to reach target score.
+      // Uses a count-based guard so repeated deploys never go below the target.
+      const DEMO_TASK_TARGET = 195;
       try {
-        const existingCompletions = await db.select()
+        const [{ existingCount }] = await db
+          .select({ existingCount: drizzleSql<number>`cast(count(*) as integer)` })
           .from(taskCompletions)
-          .where(eq(taskCompletions.homeownerId, demoId))
-          .limit(1);
+          .where(eq(taskCompletions.homeownerId, demoId));
 
-        if (existingCompletions.length === 0) {
-          // Get the demo user's main house
+        if (existingCount < DEMO_TASK_TARGET) {
           const houses = await storage.getHouses(demoId);
           const mainHouse = houses.find((h: any) => h.name === 'Main Residence') || houses[0];
 
           if (mainHouse) {
-            const currentDate = new Date();
-            const currentYear = currentDate.getFullYear();
-            
-            // Task completions spanning the past 6 months (May through November 2025)
-            const taskCompletionsData = [
-              // May 2025 tasks
-              { taskTitle: 'Inspect and clean air conditioner', taskCategory: 'HVAC', month: 5, completionMethod: 'diy', daysAgo: 180, costSavings: 150 },
-              { taskTitle: 'Check smoke and CO detectors', taskCategory: 'Safety', month: 5, completionMethod: 'diy', daysAgo: 175, costSavings: 0 },
-              
-              // June 2025 tasks
-              { taskTitle: 'Clean gutters and downspouts', taskCategory: 'Exterior', month: 6, completionMethod: 'diy', daysAgo: 150, costSavings: 200 },
-              { taskTitle: 'Inspect roof for damage', taskCategory: 'Exterior', month: 6, completionMethod: 'diy', daysAgo: 145, costSavings: 0 },
-              { taskTitle: 'Service lawn equipment', taskCategory: 'Outdoor', month: 6, completionMethod: 'diy', daysAgo: 140, costSavings: 80 },
-              
-              // July 2025 tasks
-              { taskTitle: 'Check and replace weather stripping', taskCategory: 'Doors & Windows', month: 7, completionMethod: 'diy', daysAgo: 120, costSavings: 120 },
-              { taskTitle: 'Test garage door safety features', taskCategory: 'Safety', month: 7, completionMethod: 'diy', daysAgo: 115, costSavings: 0 },
-              
-              // August 2025 tasks
-              { taskTitle: 'Drain water heater sediment', taskCategory: 'Plumbing', month: 8, completionMethod: 'diy', daysAgo: 90, costSavings: 100 },
-              { taskTitle: 'Clean range hood filters', taskCategory: 'Kitchen', month: 8, completionMethod: 'diy', daysAgo: 85, costSavings: 0 },
-              
-              // September 2025 tasks
-              { taskTitle: 'Inspect and seal driveway cracks', taskCategory: 'Exterior', month: 9, completionMethod: 'diy', daysAgo: 60, costSavings: 250 },
-              { taskTitle: 'Change HVAC filters', taskCategory: 'HVAC', month: 9, completionMethod: 'diy', daysAgo: 55, costSavings: 0 },
-              
-              // October 2025 tasks
-              { taskTitle: 'Inspect furnace before winter', taskCategory: 'HVAC', month: 10, completionMethod: 'professional', daysAgo: 30, costSavings: 0 },
-              { taskTitle: 'Clean and store outdoor furniture', taskCategory: 'Outdoor', month: 10, completionMethod: 'diy', daysAgo: 25, costSavings: 0 },
-              
-              // November 2025 tasks (current month)
-              { taskTitle: 'Check attic insulation', taskCategory: 'Insulation', month: 11, completionMethod: 'diy', daysAgo: 10, costSavings: 0 },
-              { taskTitle: 'Test sump pump operation', taskCategory: 'Plumbing', month: 11, completionMethod: 'diy', daysAgo: 5, costSavings: 0 }
+            const currentYear = new Date().getFullYear();
+            // 3 years of realistic maintenance history — tasks ordered oldest→newest.
+            // Each task has a unique (year, month, title) so they read as real history.
+            const allDemoTasks = [
+              // ── Year -4 ──────────────────────────────────────────────────
+              { taskTitle: 'Annual furnace tune-up', taskCategory: 'HVAC', month: 1, year: currentYear - 4, daysAgo: 4 * 365 + 180, completionMethod: 'professional', costSavings: 0 },
+              { taskTitle: 'Check and replace smoke detector batteries', taskCategory: 'Safety', month: 1, year: currentYear - 4, daysAgo: 4 * 365 + 175, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Flush water heater', taskCategory: 'Plumbing', month: 2, year: currentYear - 4, daysAgo: 4 * 365 + 150, completionMethod: 'diy', costSavings: 120 },
+              { taskTitle: 'Inspect and clean dryer vent', taskCategory: 'Laundry', month: 2, year: currentYear - 4, daysAgo: 4 * 365 + 145, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Test GFCI outlets', taskCategory: 'Electrical', month: 3, year: currentYear - 4, daysAgo: 4 * 365 + 120, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Clean refrigerator coils', taskCategory: 'Kitchen', month: 3, year: currentYear - 4, daysAgo: 4 * 365 + 115, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Inspect window caulking', taskCategory: 'Doors & Windows', month: 4, year: currentYear - 4, daysAgo: 4 * 365 + 90, completionMethod: 'diy', costSavings: 80 },
+              { taskTitle: 'Service air conditioner', taskCategory: 'HVAC', month: 5, year: currentYear - 4, daysAgo: 4 * 365 + 60, completionMethod: 'professional', costSavings: 0 },
+              { taskTitle: 'Check attic ventilation', taskCategory: 'Insulation', month: 5, year: currentYear - 4, daysAgo: 4 * 365 + 55, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Clean gutters', taskCategory: 'Exterior', month: 6, year: currentYear - 4, daysAgo: 4 * 365 + 30, completionMethod: 'diy', costSavings: 200 },
+              { taskTitle: 'Inspect deck for rot or damage', taskCategory: 'Exterior', month: 6, year: currentYear - 4, daysAgo: 4 * 365 + 25, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Seal driveway cracks', taskCategory: 'Exterior', month: 7, year: currentYear - 4, daysAgo: 4 * 365 + 5, completionMethod: 'diy', costSavings: 250 },
+              { taskTitle: 'Test sump pump', taskCategory: 'Plumbing', month: 8, year: currentYear - 4, daysAgo: 4 * 365, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Replace HVAC filter', taskCategory: 'HVAC', month: 9, year: currentYear - 4, daysAgo: 4 * 365 - 30, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Winterize outdoor faucets', taskCategory: 'Plumbing', month: 10, year: currentYear - 4, daysAgo: 4 * 365 - 60, completionMethod: 'diy', costSavings: 150 },
+              { taskTitle: 'Check weather stripping on exterior doors', taskCategory: 'Doors & Windows', month: 10, year: currentYear - 4, daysAgo: 4 * 365 - 65, completionMethod: 'diy', costSavings: 120 },
+              { taskTitle: 'Inspect fireplace and chimney', taskCategory: 'Fireplace', month: 11, year: currentYear - 4, daysAgo: 4 * 365 - 90, completionMethod: 'professional', costSavings: 0 },
+              { taskTitle: 'Check attic insulation', taskCategory: 'Insulation', month: 12, year: currentYear - 4, daysAgo: 4 * 365 - 120, completionMethod: 'diy', costSavings: 0 },
+
+              // ── Year -3 ──────────────────────────────────────────────────
+              { taskTitle: 'Furnace inspection and tune-up', taskCategory: 'HVAC', month: 1, year: currentYear - 3, daysAgo: 3 * 365 + 180, completionMethod: 'professional', costSavings: 0 },
+              { taskTitle: 'Test carbon monoxide detectors', taskCategory: 'Safety', month: 1, year: currentYear - 3, daysAgo: 3 * 365 + 175, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Clean bathroom exhaust fans', taskCategory: 'Ventilation', month: 2, year: currentYear - 3, daysAgo: 3 * 365 + 150, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Inspect plumbing for leaks', taskCategory: 'Plumbing', month: 2, year: currentYear - 3, daysAgo: 3 * 365 + 145, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Lubricate garage door hardware', taskCategory: 'Garage', month: 3, year: currentYear - 3, daysAgo: 3 * 365 + 120, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Check electrical panel for issues', taskCategory: 'Electrical', month: 3, year: currentYear - 3, daysAgo: 3 * 365 + 115, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Deep clean kitchen appliances', taskCategory: 'Kitchen', month: 4, year: currentYear - 3, daysAgo: 3 * 365 + 90, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Inspect roof shingles for damage', taskCategory: 'Exterior', month: 4, year: currentYear - 3, daysAgo: 3 * 365 + 85, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Service central A/C unit', taskCategory: 'HVAC', month: 5, year: currentYear - 3, daysAgo: 3 * 365 + 60, completionMethod: 'professional', costSavings: 0 },
+              { taskTitle: 'Paint exterior trim', taskCategory: 'Exterior', month: 5, year: currentYear - 3, daysAgo: 3 * 365 + 55, completionMethod: 'diy', costSavings: 400 },
+              { taskTitle: 'Clean and inspect deck boards', taskCategory: 'Exterior', month: 6, year: currentYear - 3, daysAgo: 3 * 365 + 30, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Clear gutters and downspouts', taskCategory: 'Exterior', month: 6, year: currentYear - 3, daysAgo: 3 * 365 + 25, completionMethod: 'diy', costSavings: 200 },
+              { taskTitle: 'Inspect and caulk windows', taskCategory: 'Doors & Windows', month: 7, year: currentYear - 3, daysAgo: 3 * 365 + 5, completionMethod: 'diy', costSavings: 100 },
+              { taskTitle: 'Service lawn irrigation system', taskCategory: 'Outdoor', month: 7, year: currentYear - 3, daysAgo: 3 * 365, completionMethod: 'diy', costSavings: 180 },
+              { taskTitle: 'Replace HVAC filters', taskCategory: 'HVAC', month: 8, year: currentYear - 3, daysAgo: 3 * 365 - 30, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Check crawl space for moisture', taskCategory: 'Foundation', month: 8, year: currentYear - 3, daysAgo: 3 * 365 - 35, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Aerate and overseed lawn', taskCategory: 'Outdoor', month: 9, year: currentYear - 3, daysAgo: 3 * 365 - 60, completionMethod: 'diy', costSavings: 300 },
+              { taskTitle: 'Inspect attic for pests', taskCategory: 'Insulation', month: 9, year: currentYear - 3, daysAgo: 3 * 365 - 65, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Drain irrigation and shut off outdoor water', taskCategory: 'Plumbing', month: 10, year: currentYear - 3, daysAgo: 3 * 365 - 90, completionMethod: 'diy', costSavings: 150 },
+              { taskTitle: 'Clean fireplace flue', taskCategory: 'Fireplace', month: 11, year: currentYear - 3, daysAgo: 3 * 365 - 120, completionMethod: 'professional', costSavings: 0 },
+              { taskTitle: 'Inspect and re-caulk bathtubs', taskCategory: 'Plumbing', month: 11, year: currentYear - 3, daysAgo: 3 * 365 - 125, completionMethod: 'diy', costSavings: 200 },
+              { taskTitle: 'Replace worn door hardware', taskCategory: 'Doors & Windows', month: 12, year: currentYear - 3, daysAgo: 3 * 365 - 150, completionMethod: 'diy', costSavings: 0 },
+
+              // ── Year -2 ──────────────────────────────────────────────────
+              { taskTitle: 'Annual HVAC service contract renewal', taskCategory: 'HVAC', month: 1, year: currentYear - 2, daysAgo: 2 * 365 + 180, completionMethod: 'professional', costSavings: 0 },
+              { taskTitle: 'Replace smoke detector batteries', taskCategory: 'Safety', month: 1, year: currentYear - 2, daysAgo: 2 * 365 + 175, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Flush water heater sediment', taskCategory: 'Plumbing', month: 2, year: currentYear - 2, daysAgo: 2 * 365 + 150, completionMethod: 'diy', costSavings: 120 },
+              { taskTitle: 'Inspect dryer vent for lint buildup', taskCategory: 'Laundry', month: 2, year: currentYear - 2, daysAgo: 2 * 365 + 145, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Check whole-home water pressure', taskCategory: 'Plumbing', month: 3, year: currentYear - 2, daysAgo: 2 * 365 + 120, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Replace furnace filter', taskCategory: 'HVAC', month: 3, year: currentYear - 2, daysAgo: 2 * 365 + 115, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Check exterior drainage and grading', taskCategory: 'Exterior', month: 4, year: currentYear - 2, daysAgo: 2 * 365 + 90, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Clean windows inside and out', taskCategory: 'Doors & Windows', month: 4, year: currentYear - 2, daysAgo: 2 * 365 + 85, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'A/C pre-season service', taskCategory: 'HVAC', month: 5, year: currentYear - 2, daysAgo: 2 * 365 + 60, completionMethod: 'professional', costSavings: 0 },
+              { taskTitle: 'Stain and seal deck', taskCategory: 'Exterior', month: 5, year: currentYear - 2, daysAgo: 2 * 365 + 55, completionMethod: 'diy', costSavings: 600 },
+              { taskTitle: 'Inspect and clean gutters', taskCategory: 'Exterior', month: 6, year: currentYear - 2, daysAgo: 2 * 365 + 30, completionMethod: 'diy', costSavings: 200 },
+              { taskTitle: 'Test garage door auto-reverse', taskCategory: 'Garage', month: 6, year: currentYear - 2, daysAgo: 2 * 365 + 25, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Re-caulk kitchen backsplash', taskCategory: 'Kitchen', month: 7, year: currentYear - 2, daysAgo: 2 * 365 + 5, completionMethod: 'diy', costSavings: 300 },
+              { taskTitle: 'Clean HVAC air vents', taskCategory: 'HVAC', month: 7, year: currentYear - 2, daysAgo: 2 * 365, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Inspect roof after summer storms', taskCategory: 'Exterior', month: 8, year: currentYear - 2, daysAgo: 2 * 365 - 30, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Change HVAC filters (quarterly)', taskCategory: 'HVAC', month: 9, year: currentYear - 2, daysAgo: 2 * 365 - 60, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Seal foundation cracks', taskCategory: 'Foundation', month: 9, year: currentYear - 2, daysAgo: 2 * 365 - 65, completionMethod: 'professional', costSavings: 0 },
+              { taskTitle: 'Winterize lawn irrigation', taskCategory: 'Outdoor', month: 10, year: currentYear - 2, daysAgo: 2 * 365 - 90, completionMethod: 'diy', costSavings: 150 },
+              { taskTitle: 'Inspect weatherproofing on garage door', taskCategory: 'Garage', month: 10, year: currentYear - 2, daysAgo: 2 * 365 - 95, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Pre-winter furnace inspection', taskCategory: 'HVAC', month: 11, year: currentYear - 2, daysAgo: 2 * 365 - 120, completionMethod: 'professional', costSavings: 0 },
+              { taskTitle: 'Check crawl space insulation', taskCategory: 'Insulation', month: 11, year: currentYear - 2, daysAgo: 2 * 365 - 125, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Deep clean oven and range', taskCategory: 'Kitchen', month: 12, year: currentYear - 2, daysAgo: 2 * 365 - 150, completionMethod: 'diy', costSavings: 0 },
+
+              // ── Year -1 ──────────────────────────────────────────────────
+              { taskTitle: 'HVAC preventive maintenance visit', taskCategory: 'HVAC', month: 1, year: currentYear - 1, daysAgo: 365 + 180, completionMethod: 'professional', costSavings: 0 },
+              { taskTitle: 'Check all door locks and deadbolts', taskCategory: 'Safety', month: 1, year: currentYear - 1, daysAgo: 365 + 175, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Drain sediment from water heater', taskCategory: 'Plumbing', month: 2, year: currentYear - 1, daysAgo: 365 + 150, completionMethod: 'diy', costSavings: 120 },
+              { taskTitle: 'Clean range hood filter', taskCategory: 'Kitchen', month: 2, year: currentYear - 1, daysAgo: 365 + 145, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Test whole-house smoke alarm system', taskCategory: 'Safety', month: 3, year: currentYear - 1, daysAgo: 365 + 120, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Inspect attic for air leaks', taskCategory: 'Insulation', month: 3, year: currentYear - 1, daysAgo: 365 + 115, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Patch and paint interior walls', taskCategory: 'Interior', month: 4, year: currentYear - 1, daysAgo: 365 + 90, completionMethod: 'diy', costSavings: 500 },
+              { taskTitle: 'Check outdoor lighting and fixtures', taskCategory: 'Electrical', month: 4, year: currentYear - 1, daysAgo: 365 + 85, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Inspect and clean air conditioner', taskCategory: 'HVAC', month: 5, year: currentYear - 1, daysAgo: 365 + 60, completionMethod: 'diy', costSavings: 150 },
+              { taskTitle: 'Check smoke and CO detectors', taskCategory: 'Safety', month: 5, year: currentYear - 1, daysAgo: 365 + 55, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Clean gutters and downspouts', taskCategory: 'Exterior', month: 6, year: currentYear - 1, daysAgo: 365 + 30, completionMethod: 'diy', costSavings: 200 },
+              { taskTitle: 'Inspect roof for damage', taskCategory: 'Exterior', month: 6, year: currentYear - 1, daysAgo: 365 + 25, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Service lawn equipment', taskCategory: 'Outdoor', month: 6, year: currentYear - 1, daysAgo: 365 + 20, completionMethod: 'diy', costSavings: 80 },
+              { taskTitle: 'Check and replace weather stripping', taskCategory: 'Doors & Windows', month: 7, year: currentYear - 1, daysAgo: 365 + 5, completionMethod: 'diy', costSavings: 120 },
+              { taskTitle: 'Test garage door safety features', taskCategory: 'Safety', month: 7, year: currentYear - 1, daysAgo: 365, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Drain water heater sediment', taskCategory: 'Plumbing', month: 8, year: currentYear - 1, daysAgo: 365 - 30, completionMethod: 'diy', costSavings: 100 },
+              { taskTitle: 'Clean range hood filters', taskCategory: 'Kitchen', month: 8, year: currentYear - 1, daysAgo: 365 - 35, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Inspect and seal driveway cracks', taskCategory: 'Exterior', month: 9, year: currentYear - 1, daysAgo: 365 - 60, completionMethod: 'diy', costSavings: 250 },
+              { taskTitle: 'Change HVAC filters', taskCategory: 'HVAC', month: 9, year: currentYear - 1, daysAgo: 365 - 65, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Inspect furnace before winter', taskCategory: 'HVAC', month: 10, year: currentYear - 1, daysAgo: 365 - 90, completionMethod: 'professional', costSavings: 0 },
+              { taskTitle: 'Clean and store outdoor furniture', taskCategory: 'Outdoor', month: 10, year: currentYear - 1, daysAgo: 365 - 95, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Check attic insulation', taskCategory: 'Insulation', month: 11, year: currentYear - 1, daysAgo: 365 - 120, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Test sump pump operation', taskCategory: 'Plumbing', month: 11, year: currentYear - 1, daysAgo: 365 - 125, completionMethod: 'diy', costSavings: 0 },
+              { taskTitle: 'Clean and inspect chimney', taskCategory: 'Fireplace', month: 12, year: currentYear - 1, daysAgo: 365 - 150, completionMethod: 'professional', costSavings: 0 },
+              { taskTitle: 'Inspect weatherstripping on windows', taskCategory: 'Doors & Windows', month: 12, year: currentYear - 1, daysAgo: 365 - 155, completionMethod: 'diy', costSavings: 80 },
             ];
 
-            // Insert task completions into database
-            await Promise.all(taskCompletionsData.map(async (task) => {
+            // Only insert what's needed to reach the target — prevents score inflation on repeated runs
+            const needed = DEMO_TASK_TARGET - existingCount;
+            const tasksToInsert = allDemoTasks.slice(0, needed);
+
+            await Promise.all(tasksToInsert.map(async (task) => {
               const completedDate = new Date(Date.now() - task.daysAgo * 24 * 60 * 60 * 1000);
               await db.insert(taskCompletions).values({
                 id: randomUUID(),
@@ -3849,7 +3918,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 taskCategory: task.taskCategory,
                 completedAt: completedDate,
                 month: task.month,
-                year: currentYear,
+                year: task.year,
                 completionMethod: task.completionMethod,
                 estimatedCost: task.costSavings > 0 ? task.costSavings.toString() : null,
                 actualCost: task.completionMethod === 'professional' ? '150.00' : '0.00',
@@ -3858,14 +3927,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               });
             }));
 
-            const tcExpected = 15;
-            if (taskCompletionsData.length !== tcExpected) {
-              req.log.warn({ section: 'taskCompletions', inserted: taskCompletionsData.length, expected: tcExpected }, '[DEMO] Task completion count mismatch');
-            }
-            req.log.info({ section: 'taskCompletions', inserted: taskCompletionsData.length }, '[DEMO DATA] Task completions inserted for Sarah Anderson (existing user)');
-            seedResults.taskCompletions = { ok: true, inserted: taskCompletionsData.length, expected: tcExpected };
+            req.log.info({ section: 'taskCompletions', inserted: tasksToInsert.length, existingCount, target: DEMO_TASK_TARGET }, '[DEMO DATA] Task completions topped up for Sarah Anderson');
+            seedResults.taskCompletions = { ok: true, inserted: tasksToInsert.length, expected: needed };
           }
         } else {
+          req.log.info({ section: 'taskCompletions', existingCount, target: DEMO_TASK_TARGET }, '[DEMO DATA] Task completions already at target — skipping');
           seedResults.taskCompletions = { ok: true };
         }
       } catch (taskError) {
