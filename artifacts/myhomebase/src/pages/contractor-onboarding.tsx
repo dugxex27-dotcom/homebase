@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -89,6 +89,17 @@ export default function ContractorOnboarding() {
     licenseNumber: '', licenseState: '', insuranceCarrier: '',
     skipCredentials: false,
   });
+
+  useEffect(() => {
+    fetch('/api/auth/user', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then((user: { zipCode?: string } | null) => {
+        if (user?.zipCode) {
+          setForm(prev => prev.zipCode ? prev : { ...prev, zipCode: user.zipCode! });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const set = (k: keyof FormState, v: string | string[] | boolean) =>
     setForm(prev => ({ ...prev, [k]: v }));
