@@ -8997,6 +8997,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const renewSchema = z.object({
         durationDays: z.number().int().min(1).max(365).default(30),
+        stripePaymentIntentId: z.string().min(1),
       });
       const parsed = renewSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -9009,6 +9010,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (userRole !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can renew boosts" });
       }
+
+      // ── Payment gate ──────────────────────────────────────────────────────
+      // Verify that the supplied payment intent has succeeded AND belongs to
+      // this contractor before creating any boost record.
+      if (!stripe) {
+        return res.status(503).json({ message: "Payment service unavailable" });
+      }
+
+      let paymentIntent: Stripe.PaymentIntent;
+      try {
+        paymentIntent = await stripe.paymentIntents.retrieve(parsed.data.stripePaymentIntentId);
+      } catch (stripeErr: any) {
+        return res.status(402).json({ message: "Payment required: payment intent not found or invalid" });
+      }
+
+      if (paymentIntent.status !== "succeeded") {
+        return res.status(402).json({ message: "Payment required: payment intent has not been collected" });
+      }
+
+      if (paymentIntent.metadata?.contractorId !== userId) {
+        return res.status(402).json({ message: "Payment required: payment intent does not belong to this contractor" });
+      }
+      // ─────────────────────────────────────────────────────────────────────
 
       const userBoosts = await storage.getContractorBoosts(userId as string);
       const boost = userBoosts.find(b => b.id === req.params.boostId);
@@ -9035,11 +9059,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         amount: boost.amount,
         status: "active",
         isActive: true,
+        stripePaymentIntentId: parsed.data.stripePaymentIntentId,
       });
 
       res.json(renewedBoost);
     } catch (error) {
-      console.error("Error renewing boost:", error);
+      req.log?.error({ error }, "Error renewing boost");
       res.status(500).json({ message: "Failed to renew boost" });
     }
   });

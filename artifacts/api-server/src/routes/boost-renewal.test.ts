@@ -3,8 +3,12 @@
  *
  * Covers:
  *   1. 404 when the boostId does not exist for the requesting contractor
- *   2. 200 with the renewed boost when the boost exists and the contractor owns it
- *   3. Cross-contractor ownership check (contractor A cannot renew contractor B's boost)
+ *   2. 400 when stripePaymentIntentId is missing from the request body
+ *   3. 402 when the payment intent has not yet succeeded
+ *   4. 402 when the payment intent belongs to a different contractor
+ *   5. 402 when Stripe cannot find the payment intent
+ *   6. 200 with the renewed boost when payment is confirmed and the contractor owns the boost
+ *   7. Cross-contractor ownership check (contractor A cannot renew contractor B's boost)
  */
 
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
@@ -16,16 +20,20 @@ import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 const {
   mockGetContractorBoosts,
   mockCreateContractorBoost,
+  mockPaymentIntentsRetrieve,
   CONTRACTOR_A_ID,
   CONTRACTOR_B_ID,
   BOOST_A_ID,
+  VALID_PI_ID,
 } = vi.hoisted(() => {
   return {
     mockGetContractorBoosts: vi.fn(),
     mockCreateContractorBoost: vi.fn(),
+    mockPaymentIntentsRetrieve: vi.fn(),
     CONTRACTOR_A_ID: "contractor-a-001",
     CONTRACTOR_B_ID: "contractor-b-002",
     BOOST_A_ID: "boost-a-001",
+    VALID_PI_ID: "pi_test_renewal_abc123",
   };
 });
 
@@ -204,6 +212,9 @@ vi.mock("stripe", () => {
         country: "US",
       }),
     };
+    this.paymentIntents = {
+      retrieve: mockPaymentIntentsRetrieve,
+    };
   }
   return { default: MockStripe };
 });
@@ -313,6 +324,13 @@ const ACTIVE_BOOST_FIXTURE = {
   updatedAt: new Date("2026-07-14T00:00:00Z"),
 };
 
+/** A succeeded payment intent owned by contractor A */
+const SUCCEEDED_PI = {
+  id: VALID_PI_ID,
+  status: "succeeded",
+  metadata: { contractorId: CONTRACTOR_A_ID, type: "contractor_boost" },
+};
+
 /** What storage.createContractorBoost resolves to */
 const RENEWED_BOOST_FIXTURE = {
   id: "boost-a-002",
@@ -327,7 +345,7 @@ const RENEWED_BOOST_FIXTURE = {
   amount: "49.99",
   status: "active",
   isActive: true,
-  stripePaymentIntentId: null,
+  stripePaymentIntentId: VALID_PI_ID,
   createdAt: new Date("2026-07-01T00:00:00Z"),
   updatedAt: new Date("2026-07-01T00:00:00Z"),
 };
@@ -336,12 +354,13 @@ const RENEWED_BOOST_FIXTURE = {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe("POST /api/contractors/boost/:boostId/renew — boost ownership and renewal", () => {
+describe("POST /api/contractors/boost/:boostId/renew — payment gate + ownership", () => {
   let app: express.Express;
 
   beforeEach(async () => {
     mockGetContractorBoosts.mockReset();
     mockCreateContractorBoost.mockReset();
+    mockPaymentIntentsRetrieve.mockReset();
 
     process.env.STRIPE_SECRET_KEY = "sk_test_boost_renewal_placeholder";
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_boost_renewal_placeholder";
@@ -355,28 +374,109 @@ describe("POST /api/contractors/boost/:boostId/renew — boost ownership and ren
     vi.clearAllMocks();
   });
 
+  // ── Payment gate tests ───────────────────────────────────────────────────
+
+  it("returns 400 when stripePaymentIntentId is missing from the request body", async () => {
+    const res = await request(app)
+      .post(`/api/contractors/boost/${BOOST_A_ID}/renew`)
+      .set("x-test-user", "contractor-a")
+      .send({ durationDays: 30 });
+
+    expect(res.status).toBe(400);
+    expect(mockPaymentIntentsRetrieve).not.toHaveBeenCalled();
+    expect(mockCreateContractorBoost).not.toHaveBeenCalled();
+  });
+
+  it("returns 402 when the payment intent has not yet succeeded (status: requires_payment_method)", async () => {
+    mockPaymentIntentsRetrieve.mockResolvedValue({
+      id: VALID_PI_ID,
+      status: "requires_payment_method",
+      metadata: { contractorId: CONTRACTOR_A_ID, type: "contractor_boost" },
+    });
+
+    const res = await request(app)
+      .post(`/api/contractors/boost/${BOOST_A_ID}/renew`)
+      .set("x-test-user", "contractor-a")
+      .send({ durationDays: 30, stripePaymentIntentId: VALID_PI_ID });
+
+    expect(res.status).toBe(402);
+    expect(res.body.message).toMatch(/payment required/i);
+    expect(mockCreateContractorBoost).not.toHaveBeenCalled();
+  });
+
+  it("returns 402 when the payment intent has not yet succeeded (status: processing)", async () => {
+    mockPaymentIntentsRetrieve.mockResolvedValue({
+      id: VALID_PI_ID,
+      status: "processing",
+      metadata: { contractorId: CONTRACTOR_A_ID, type: "contractor_boost" },
+    });
+
+    const res = await request(app)
+      .post(`/api/contractors/boost/${BOOST_A_ID}/renew`)
+      .set("x-test-user", "contractor-a")
+      .send({ durationDays: 30, stripePaymentIntentId: VALID_PI_ID });
+
+    expect(res.status).toBe(402);
+    expect(res.body.message).toMatch(/payment required/i);
+    expect(mockCreateContractorBoost).not.toHaveBeenCalled();
+  });
+
+  it("returns 402 when the payment intent belongs to a different contractor", async () => {
+    mockPaymentIntentsRetrieve.mockResolvedValue({
+      id: VALID_PI_ID,
+      status: "succeeded",
+      metadata: { contractorId: CONTRACTOR_B_ID, type: "contractor_boost" },
+    });
+
+    const res = await request(app)
+      .post(`/api/contractors/boost/${BOOST_A_ID}/renew`)
+      .set("x-test-user", "contractor-a")
+      .send({ durationDays: 30, stripePaymentIntentId: VALID_PI_ID });
+
+    expect(res.status).toBe(402);
+    expect(res.body.message).toMatch(/payment required/i);
+    expect(mockCreateContractorBoost).not.toHaveBeenCalled();
+  });
+
+  it("returns 402 when Stripe throws (payment intent not found or invalid)", async () => {
+    mockPaymentIntentsRetrieve.mockRejectedValue(new Error("No such payment_intent: 'pi_bad'"));
+
+    const res = await request(app)
+      .post(`/api/contractors/boost/${BOOST_A_ID}/renew`)
+      .set("x-test-user", "contractor-a")
+      .send({ durationDays: 30, stripePaymentIntentId: "pi_bad_id" });
+
+    expect(res.status).toBe(402);
+    expect(res.body.message).toMatch(/payment required/i);
+    expect(mockCreateContractorBoost).not.toHaveBeenCalled();
+  });
+
+  // ── Ownership tests (payment present) ────────────────────────────────────
+
   it("returns 404 when the boostId does not exist for the requesting contractor", async () => {
-    // contractor A has no boosts — getContractorBoosts returns an empty array
+    // Payment intent is valid — but contractor A has no boosts
+    mockPaymentIntentsRetrieve.mockResolvedValue(SUCCEEDED_PI);
     mockGetContractorBoosts.mockResolvedValue([]);
 
     const res = await request(app)
       .post(`/api/contractors/boost/nonexistent-boost-id/renew`)
       .set("x-test-user", "contractor-a")
-      .send({ durationDays: 30 });
+      .send({ durationDays: 30, stripePaymentIntentId: VALID_PI_ID });
 
     expect(res.status).toBe(404);
     expect(res.body.message).toMatch(/not found/i);
+    expect(mockCreateContractorBoost).not.toHaveBeenCalled();
   });
 
-  it("returns 200 with the renewed boost when the contractor owns the boost", async () => {
-    // contractor A owns BOOST_A — getContractorBoosts returns it
+  it("returns 200 with the renewed boost when payment is confirmed and the contractor owns the boost", async () => {
+    mockPaymentIntentsRetrieve.mockResolvedValue(SUCCEEDED_PI);
     mockGetContractorBoosts.mockResolvedValue([BOOST_A_FIXTURE]);
     mockCreateContractorBoost.mockResolvedValue(RENEWED_BOOST_FIXTURE);
 
     const res = await request(app)
       .post(`/api/contractors/boost/${BOOST_A_ID}/renew`)
       .set("x-test-user", "contractor-a")
-      .send({ durationDays: 30 });
+      .send({ durationDays: 30, stripePaymentIntentId: VALID_PI_ID });
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
@@ -387,7 +487,10 @@ describe("POST /api/contractors/boost/:boostId/renew — boost ownership and ren
       isActive: true,
     });
 
-    // Confirm storage was called with the correct contractorId
+    // Confirm payment intent was verified
+    expect(mockPaymentIntentsRetrieve).toHaveBeenCalledWith(VALID_PI_ID);
+
+    // Confirm storage was called with the correct contractorId and stripePaymentIntentId
     expect(mockGetContractorBoosts).toHaveBeenCalledWith(CONTRACTOR_A_ID);
     expect(mockCreateContractorBoost).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -395,19 +498,25 @@ describe("POST /api/contractors/boost/:boostId/renew — boost ownership and ren
         serviceCategory: "plumbing",
         status: "active",
         isActive: true,
+        stripePaymentIntentId: VALID_PI_ID,
       }),
     );
   });
 
   it("returns 404 when contractor B tries to renew contractor A's boost (cross-contractor access denied)", async () => {
-    // contractor B has no boosts of their own — getContractorBoosts(contractorB) returns []
-    // BOOST_A belongs to contractor A; contractor B cannot see it via their own boost list
+    // contractor B provides a valid payment intent for themselves
+    mockPaymentIntentsRetrieve.mockResolvedValue({
+      id: VALID_PI_ID,
+      status: "succeeded",
+      metadata: { contractorId: CONTRACTOR_B_ID, type: "contractor_boost" },
+    });
+    // contractor B has no boosts of their own
     mockGetContractorBoosts.mockResolvedValue([]);
 
     const res = await request(app)
       .post(`/api/contractors/boost/${BOOST_A_ID}/renew`)
       .set("x-test-user", "contractor-b")
-      .send({ durationDays: 30 });
+      .send({ durationDays: 30, stripePaymentIntentId: VALID_PI_ID });
 
     expect(res.status).toBe(404);
     expect(res.body.message).toMatch(/not found/i);
