@@ -6631,7 +6631,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/crm/jobs/:id/notify - Send job notification via email and/or SMS
-  app.post('/api/crm/jobs/:id/notify', isAuthenticated, async (req: any, res: any) => {
+  app.post('/api/crm/jobs/:id/notify', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -6891,7 +6891,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/crm/quotes/:id/send - Send quote via email and/or SMS
-  app.post('/api/crm/quotes/:id/send', isAuthenticated, async (req: any, res: any) => {
+  app.post('/api/crm/quotes/:id/send', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -7314,7 +7314,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/crm/invoices/:id/send - Send invoice via email and/or SMS
-  app.post('/api/crm/invoices/:id/send', isAuthenticated, async (req: any, res: any) => {
+  app.post('/api/crm/invoices/:id/send', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -7435,7 +7435,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/crm/invoices/:id/payment - Record payment
-  app.post('/api/crm/invoices/:id/payment', isAuthenticated, async (req: any, res: any) => {
+  app.post('/api/crm/invoices/:id/payment', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });

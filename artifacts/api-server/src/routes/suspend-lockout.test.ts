@@ -1070,3 +1070,136 @@ describe("Suspend lockout — boost check and previously-used contractor routes"
     expect(res.status).not.toBe(401);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Suspended-user lockout on CRM action routes
+// ---------------------------------------------------------------------------
+//
+// POST /api/crm/jobs/:id/notify, POST /api/crm/quotes/:id/send,
+// POST /api/crm/invoices/:id/send, and POST /api/crm/invoices/:id/payment
+// can trigger outbound messages or initiate payment flows. A suspended
+// contractor must be blocked before any of that work happens.
+// ---------------------------------------------------------------------------
+
+describe("Suspend lockout — CRM action routes (notify, send, payment)", () => {
+  let app: express.Express;
+
+  beforeEach(async () => {
+    sharedSuspendedUserIds.clear();
+    mockDbSelect.mockReset();
+    mockDbUpdate.mockReset();
+
+    process.env.STRIPE_SECRET_KEY = "sk_test_crm_action_lockout_placeholder";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_crm_action_lockout_placeholder";
+
+    app = express();
+    await registerRoutes(app);
+  });
+
+  afterEach(() => {
+    sharedSuspendedUserIds.clear();
+    vi.clearAllMocks();
+  });
+
+  // ── POST /api/crm/jobs/:id/notify ────────────────────────────────────────
+
+  it("blocks a suspended user from sending a job notification", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .post("/api/crm/jobs/job-001/notify")
+      .set("x-test-user", "target")
+      .send({ method: "email" });
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on job notify", async () => {
+    // Not suspended — requireNotSuspended passes. The handler's own role check
+    // or DB lookup fires next; whatever it returns is not a suspension 401.
+    const res = await request(app)
+      .post("/api/crm/jobs/job-001/notify")
+      .set("x-test-user", "target")
+      .send({ method: "email" });
+
+    if (res.status === 401) {
+      expect(res.body.message).not.toMatch(/suspended/i);
+    }
+  });
+
+  // ── POST /api/crm/quotes/:id/send ────────────────────────────────────────
+
+  it("blocks a suspended user from sending a quote", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .post("/api/crm/quotes/quote-001/send")
+      .set("x-test-user", "target")
+      .send({ method: "email" });
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on quote send", async () => {
+    const res = await request(app)
+      .post("/api/crm/quotes/quote-001/send")
+      .set("x-test-user", "target")
+      .send({ method: "email" });
+
+    if (res.status === 401) {
+      expect(res.body.message).not.toMatch(/suspended/i);
+    }
+  });
+
+  // ── POST /api/crm/invoices/:id/send ──────────────────────────────────────
+
+  it("blocks a suspended user from sending an invoice", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .post("/api/crm/invoices/invoice-001/send")
+      .set("x-test-user", "target")
+      .send({ method: "email" });
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on invoice send", async () => {
+    const res = await request(app)
+      .post("/api/crm/invoices/invoice-001/send")
+      .set("x-test-user", "target")
+      .send({ method: "email" });
+
+    if (res.status === 401) {
+      expect(res.body.message).not.toMatch(/suspended/i);
+    }
+  });
+
+  // ── POST /api/crm/invoices/:id/payment ───────────────────────────────────
+
+  it("blocks a suspended user from recording an invoice payment", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .post("/api/crm/invoices/invoice-001/payment")
+      .set("x-test-user", "target")
+      .send({ amount: 500, method: "cash" });
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on invoice payment", async () => {
+    const res = await request(app)
+      .post("/api/crm/invoices/invoice-001/payment")
+      .set("x-test-user", "target")
+      .send({ amount: 500, method: "cash" });
+
+    if (res.status === 401) {
+      expect(res.body.message).not.toMatch(/suspended/i);
+    }
+  });
+});
