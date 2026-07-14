@@ -5996,7 +5996,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update session
       req.session.user = currentUser;
 
-      res.json({ success: true, role: currentUser.role });
+      // Determine redirect destination based on role so the client has an
+      // explicit navigation contract rather than re-deriving it from role alone.
+      let redirectTo: string;
+      if (currentUser.role === 'contractor') {
+        redirectTo = '/contractor-pricing?trial=true&onboarding=true';
+      } else if (currentUser.role === 'agent') {
+        redirectTo = '/agent-dashboard';
+      } else {
+        redirectTo = '/dashboard';
+      }
+
+      res.json({ success: true, role: currentUser.role, redirectTo });
     } catch (error) {
       console.error("Error completing profile:", error);
       res.status(500).json({ message: "Failed to complete profile" });
