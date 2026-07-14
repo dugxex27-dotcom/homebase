@@ -16,7 +16,7 @@ import { PLAN_LABELS } from '@/lib/planLabels';
 
 const profileSchema = z.object({
   zipCode: z.string().min(5, "Zip code must be at least 5 characters"),
-  role: z.enum(["homeowner", "contractor"], {
+  role: z.enum(["homeowner", "contractor", "agent"], {
     required_error: "Please select your role",
   }),
   companyName: z.string().optional(),
@@ -43,15 +43,16 @@ export default function CompleteProfile() {
     ? { slug: pendingPlanSlug, ...PLAN_LABELS[pendingPlanSlug] }
     : null;
 
-  // Pre-select contractor role when arriving from the contractor Google OAuth flow.
-  const intentContractor =
-    new URLSearchParams(window.location.search).get('intent') === 'contractor';
+  // Pre-select role when arriving from a role-specific Google OAuth flow.
+  const urlIntent = new URLSearchParams(window.location.search).get('intent');
+  const intentContractor = urlIntent === 'contractor';
+  const intentAgent = urlIntent === 'agent';
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
       zipCode: "",
-      role: intentContractor ? "contractor" : "homeowner",
+      role: intentContractor ? "contractor" : intentAgent ? "agent" : "homeowner",
       companyName: "",
       companyBio: "",
       companyPhone: "",
@@ -76,6 +77,8 @@ export default function CompleteProfile() {
         // Send new Google OAuth contractors through the pricing/checkout flow
         // so they choose a plan before landing on the dashboard.
         redirectPath = '/contractor-pricing?trial=true&onboarding=true';
+      } else if (data.role === 'agent') {
+        redirectPath = '/agent-dashboard';
       } else {
         const pendingPlan = sessionStorage.getItem('pendingPlan');
         if (pendingPlan) {
@@ -172,6 +175,11 @@ export default function CompleteProfile() {
                   )}
                 />
 
+                {intentAgent ? (
+                  <div className="text-sm text-muted-foreground" data-testid="role-label-agent">
+                    Signing up as a <strong>Real Estate Agent</strong>
+                  </div>
+                ) : (
                 <FormField
                   control={form.control}
                   name="role"
@@ -210,6 +218,7 @@ export default function CompleteProfile() {
                     </FormItem>
                   )}
                 />
+                )}
 
                 {/* Company fields for contractors */}
                 {selectedRole === 'contractor' && (

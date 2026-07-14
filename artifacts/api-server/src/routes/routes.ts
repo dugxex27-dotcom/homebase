@@ -5944,6 +5944,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Missing required fields" });
       }
 
+      if (!['homeowner', 'contractor', 'agent'].includes(role)) {
+        return res.status(400).json({ message: "Invalid role" });
+      }
+
       // Validate contractor company requirements - must create a company
       if (role === 'contractor') {
         if (!companyName || !companyBio || !companyPhone) {
@@ -5962,7 +5966,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       currentUser = await storage.upsertUser({
         ...currentUser,
         zipCode,
-        role: role as 'homeowner' | 'contractor'
+        role: role as 'homeowner' | 'contractor' | 'agent'
       });
 
       // Handle contractor company setup - always create a new company

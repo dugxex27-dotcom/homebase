@@ -162,6 +162,28 @@ export async function setupGoogleAuth(app: Express) {
             return res.redirect('/contractor-dashboard');
           }
 
+          // ── Agent intent ─────────────────────────────────────────────────
+          if (oauthIntent === 'agent') {
+            // User needs a zip code first — send to complete-profile with the
+            // agent intent pre-selected so they don't have to pick a role.
+            if (!user.zipCode) {
+              return res.redirect('/complete-profile?intent=agent');
+            }
+
+            // User has a zip code but is not yet an agent — upgrade role and
+            // send to the agent dashboard.
+            if (user.role !== 'agent') {
+              try {
+                user = await storage.upsertUser({ ...user, role: 'agent' });
+                req.session.user = user;
+              } catch (err) {
+                console.error('Failed to update user role to agent:', err);
+              }
+            }
+
+            return res.redirect('/agent-dashboard');
+          }
+
           // ── Default routing ──────────────────────────────────────────────
           // Check if user needs to complete profile (add zip code or role)
           if (!user.zipCode) {
