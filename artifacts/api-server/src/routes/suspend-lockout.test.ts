@@ -1003,6 +1003,29 @@ describe("Suspend lockout — boost check and previously-used contractor routes"
     vi.clearAllMocks();
   });
 
+  // ── POST /api/contractors/boost ──────────────────────────────────────────
+
+  it("blocks a suspended user from creating a boost", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .post("/api/contractors/boost")
+      .set("x-test-user", "target")
+      .send({ serviceCategory: "plumbing", businessAddress: "123 Main St" });
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended user past the suspension gate on boost creation", async () => {
+    const res = await request(app)
+      .post("/api/contractors/boost")
+      .set("x-test-user", "target")
+      .send({ serviceCategory: "plumbing", businessAddress: "123 Main St" });
+
+    expect(res.status).not.toBe(401);
+  });
+
   // ── GET /api/contractors/boost/check ─────────────────────────────────────
 
   it("blocks a suspended user from checking boost status", async () => {

@@ -8854,7 +8854,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Contractor boost routes
-  app.post("/api/contractors/boost", isAuthenticated, async (req: any, res: any) => {
+  app.post("/api/contractors/boost", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
