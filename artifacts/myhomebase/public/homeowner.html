@@ -55,71 +55,12 @@
       font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.7);
       background: none; border: none;
       padding: 4px 0; transition: color .15s;
-      cursor: pointer; font-family: inherit;
+      cursor: pointer; font-family: inherit; text-decoration: none;
     }
-    .nav-signin-btn:hover, .nav-signin-btn.active { color: #fff; }
-    .signin-flyout {
-      display: none; position: absolute; top: calc(100% + 10px); right: 0;
-      width: 280px; background: #fff; border-radius: 18px;
-      box-shadow: 0 16px 60px rgba(0,0,0,0.28), 0 2px 8px rgba(44,15,91,0.12);
-      z-index: 9100; overflow: hidden;
-      animation: flyout-in .18s ease;
-    }
-    .signin-flyout.open { display: block; }
-    @keyframes flyout-in {
-      from { opacity:0; transform: translateY(-6px) scale(.97); }
-      to   { opacity:1; transform: translateY(0) scale(1); }
-    }
-    .signin-flyout-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 14px 16px 10px; font-size: 11px; font-weight: 700;
-      letter-spacing: .06em; text-transform: uppercase; color: #9090b0;
-      border-bottom: 1px solid #f0edf8;
-    }
-    .signin-flyout-close {
-      display: flex; align-items: center; justify-content: center;
-      width: 24px; height: 24px; border-radius: 50%; border: none;
-      background: rgba(0,0,0,.07); color: #666; cursor: pointer; transition: background .15s;
-    }
-    .signin-flyout-close:hover { background: rgba(0,0,0,.14); }
-    .signin-flyout-role {
-      display: flex; align-items: center; gap: 12px;
-      padding: 13px 16px; text-decoration: none; transition: background .15s;
-      border-bottom: 1px solid #f7f5fd;
-    }
-    .signin-flyout-role:last-of-type { border-bottom: none; }
-    .signin-flyout-hw:hover { background: #f5f1ff; }
-    .signin-flyout-ct:hover { background: #eff6ff; }
-    .signin-flyout-ag:hover { background: #f0fdf4; }
-    .signin-flyout-icon {
-      width: 36px; height: 36px; border-radius: 10px;
-      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    }
-    .signin-flyout-hw .signin-flyout-icon { background: #ede9fe; color: #3C258E; }
-    .signin-flyout-ct .signin-flyout-icon { background: #dbeafe; color: #1560a2; }
-    .signin-flyout-ag .signin-flyout-icon { background: #dcfce7; color: #166534; }
-    .signin-flyout-icon svg { width: 18px; height: 18px; }
-    .signin-flyout-text { display: flex; flex-direction: column; gap: 1px; flex: 1; }
-    .signin-flyout-title { font-size: 14px; font-weight: 700; }
-    .signin-flyout-hw .signin-flyout-title { color: #2C0F5B; }
-    .signin-flyout-ct .signin-flyout-title { color: #1560a2; }
-    .signin-flyout-ag .signin-flyout-title { color: #166534; }
-    .signin-flyout-sub { font-size: 11.5px; color: #9090b0; font-weight: 500; }
-    .signin-flyout-arr { font-size: 15px; color: #c0b8d8; flex-shrink: 0; transition: transform .15s, color .15s; }
-    .signin-flyout-hw:hover .signin-flyout-arr { color: #3C258E; transform: translateX(2px); }
-    .signin-flyout-ct:hover .signin-flyout-arr { color: #1560a2; transform: translateX(2px); }
-    .signin-flyout-ag:hover .signin-flyout-arr { color: #166534; transform: translateX(2px); }
-    .signin-flyout-footer { padding: 10px 16px 12px; border-top: 1px solid #f0edf8; text-align: center; }
-    .signin-flyout-how {
-      background: none; border: none; cursor: pointer; font-size: 12px;
-      font-weight: 600; color: #9090b0; transition: color .15s; padding: 0;
-      font-family: inherit;
-    }
-    .signin-flyout-how:hover { color: #3C258E; }
+    .nav-signin-btn:hover { color: #fff; }
 
     @media (max-width: 767px) {
       .nav-links { display: none; }
-      .signin-flyout { right: -8px; width: 260px; }
     }
 
     /* ══ DEMO UNDERBAR ══ */
@@ -949,7 +890,7 @@
     </div>
     <div class="nav-right">
       <div class="signin-wrap">
-        <a href="/signin" class="nav-signin-btn">Sign in</a>
+        <a href="/signin/homeowner" class="nav-signin-btn">Sign in</a>
       </div>
       <a href="/signin/homeowner" class="nav-get-started">Get Started</a>
     </div>

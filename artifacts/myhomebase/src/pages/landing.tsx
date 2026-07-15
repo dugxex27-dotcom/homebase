@@ -705,7 +705,7 @@ export default function Landing() {
               {demoLoading === 'homeowner' ? 'Loading…' : 'Homeowner Demo'}
             </button>
             <a href="/signin/homeowner" className="mhb-nav-get-started-btn">Get Started</a>
-            <a href="/signin" className="mhb-nav-signin-btn">Sign In</a>
+            <a href="/signin/homeowner" className="mhb-nav-signin-btn">Sign In</a>
           </div>
         </div>
       </nav>

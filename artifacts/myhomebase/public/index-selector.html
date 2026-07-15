@@ -331,80 +331,17 @@ html,body{
   color:var(--gray-400);
 }
 
-/* ── SIGN-IN FLYOUT ── */
+/* ── SIGN-IN BUTTON ── */
 .signin-wrap { position: absolute; top: calc(18px + var(--safe-top)); right: 24px; z-index: 100; flex-shrink: 0; }
 .nav-signin-btn {
   font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.7);
   background: none; border: none;
   padding: 4px 0; transition: color .15s;
-  cursor: pointer; font-family: inherit;
+  cursor: pointer; font-family: inherit; text-decoration: none;
 }
-.nav-signin-btn:hover, .nav-signin-btn.active { color: #fff; }
-.signin-flyout {
-  display: none; position: absolute; top: calc(100% + 10px); right: 0;
-  width: 280px; background: #fff; border-radius: 18px;
-  box-shadow: 0 16px 60px rgba(0,0,0,0.28), 0 2px 8px rgba(44,15,91,0.12);
-  z-index: 9100; overflow: hidden;
-  animation: flyout-in .18s ease;
-}
-.signin-flyout.open { display: block; }
-@keyframes flyout-in {
-  from { opacity:0; transform: translateY(-6px) scale(.97); }
-  to   { opacity:1; transform: translateY(0) scale(1); }
-}
-.signin-flyout-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 16px 10px; font-size: 11px; font-weight: 700;
-  letter-spacing: .06em; text-transform: uppercase; color: #9090b0;
-  border-bottom: 1px solid #f0edf8;
-}
-.signin-flyout-close {
-  display: flex; align-items: center; justify-content: center;
-  width: 24px; height: 24px; border-radius: 50%; border: none;
-  background: rgba(0,0,0,.07); color: #666; cursor: pointer; transition: background .15s;
-}
-.signin-flyout-close:hover { background: rgba(0,0,0,.14); }
-.signin-flyout-role {
-  border-bottom: 1px solid #f7f5fd;
-}
-.signin-flyout-role:last-child { border-bottom: none; }
-.signin-flyout-role-link {
-  display: flex; align-items: center; gap: 12px;
-  padding: 13px 16px 4px; text-decoration: none; transition: background .15s;
-}
-.signin-flyout-hw .signin-flyout-role-link:hover { background: #f5f1ff; }
-.signin-flyout-ct .signin-flyout-role-link:hover { background: #eff6ff; }
-.signin-flyout-ag .signin-flyout-role-link:hover { background: #f0fdf4; }
-.signin-flyout-hiw {
-  display: block; padding: 2px 16px 10px 64px;
-  font-size: 11px; font-weight: 600; text-decoration: none;
-  transition: opacity .15s;
-}
-.signin-flyout-hiw:hover { opacity: .65; }
-.signin-flyout-hw .signin-flyout-hiw { color: #7C3AED; }
-.signin-flyout-ct .signin-flyout-hiw { color: #1560a2; }
-.signin-flyout-ag .signin-flyout-hiw { color: #166534; }
-.signin-flyout-icon {
-  width: 36px; height: 36px; border-radius: 10px;
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-}
-.signin-flyout-hw .signin-flyout-icon { background: #ede9fe; color: #3C258E; }
-.signin-flyout-ct .signin-flyout-icon { background: #dbeafe; color: #1560a2; }
-.signin-flyout-ag .signin-flyout-icon { background: #dcfce7; color: #166534; }
-.signin-flyout-icon svg { width: 18px; height: 18px; }
-.signin-flyout-text { display: flex; flex-direction: column; gap: 1px; flex: 1; }
-.signin-flyout-title { font-size: 14px; font-weight: 700; }
-.signin-flyout-hw .signin-flyout-title { color: #2C0F5B; }
-.signin-flyout-ct .signin-flyout-title { color: #1560a2; }
-.signin-flyout-ag .signin-flyout-title { color: #166534; }
-.signin-flyout-sub { font-size: 11.5px; color: #9090b0; font-weight: 500; }
-.signin-flyout-arr { font-size: 15px; color: #c0b8d8; flex-shrink: 0; transition: transform .15s, color .15s; }
-.signin-flyout-hw .signin-flyout-role-link:hover .signin-flyout-arr { color: #3C258E; transform: translateX(2px); }
-.signin-flyout-ct .signin-flyout-role-link:hover .signin-flyout-arr { color: #1560a2; transform: translateX(2px); }
-.signin-flyout-ag .signin-flyout-role-link:hover .signin-flyout-arr { color: #166534; transform: translateX(2px); }
+.nav-signin-btn:hover { color: #fff; }
 @media (max-width: 767px) {
   .signin-wrap { right: 16px; }
-  .signin-flyout { right: -8px; width: 260px; }
 }
 </style>
 </head>
@@ -412,7 +349,7 @@ html,body{
 
 <div class="hero">
   <div class="signin-wrap">
-    <a href="/signin" class="nav-signin-btn">Sign in</a>
+    <a href="/signin/homeowner" class="nav-signin-btn">Sign in</a>
   </div>
   <div class="hero-logo">
     <a href="/"><img src="/my-homebase-logo-tm-final-white.png" alt="MyHomeBase™"></a>
