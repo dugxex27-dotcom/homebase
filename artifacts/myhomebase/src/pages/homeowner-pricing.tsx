@@ -45,7 +45,8 @@ export default function HomeownerPricing() {
   const planRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const { 
     hasActiveSubscription, 
-    isInTrial, 
+    isInTrial,
+    trialExpired,
     currentPlan: actualPlan,
     maxHouses: subscriptionMaxHouses,
     isLoading: subscriptionLoading 
@@ -305,7 +306,7 @@ export default function HomeownerPricing() {
         )}
         
         {/* Trial or Expired Trial Message */}
-        {!hasActiveSubscription && !isOnboarding && (
+        {!hasActiveSubscription && !isOnboarding && (isInTrial || trialExpired) && (
           <div className="flex justify-center">
             <Badge variant="secondary" className={`px-4 py-2 text-sm ${isInTrial ? 'bg-[#E6F1FB] text-[#1560A2]' : 'bg-amber-100 text-amber-800'}`}>
               {isInTrial 

@@ -58,6 +58,9 @@ export async function setupGoogleAuth(app: Express) {
               profileImageUrl,
               role: 'homeowner' as const,
               zipCode: null,
+              // Start a 14-day trial for every new homeowner, mirroring replitAuth.ts
+              subscriptionStatus: 'trialing' as const,
+              trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
             };
             
             user = await storage.upsertUser(newUserData);
