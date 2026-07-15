@@ -2995,6 +2995,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             quantity: 1,
           },
         ],
+        custom_text: {
+          submit: {
+            message: trialMode
+              ? 'Your 14-day free trial starts today — no charge until the trial ends. Cancel anytime from your account settings.'
+              : 'You\'ll be charged today. Cancel anytime from your MyHomeBase™ account settings.',
+          },
+        },
         metadata: {
           userId: user.id,
           plan: plan,
