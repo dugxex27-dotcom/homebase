@@ -45,42 +45,8 @@ onlyBuiltDependencies:
   - unrs-resolver
 
 overrides:
-  websocket-driver: 0.7.5
-  '@esbuild-kit/esm-loader': npm:tsx@^4.21.0
-  '@protobufjs/utf8': 1.1.1
-  '@tootallnate/once': 3.0.1
-  '@xmldom/xmldom': 0.9.10
-  axios: 1.16.1
-  'brace-expansion@^2': 2.1.0
-  'brace-expansion@^5': 5.0.6
-  fast-uri: 3.1.2
-  fast-xml-builder: 1.2.0
-  fast-xml-parser: 5.8.0
-  ip-address: 10.2.0
-  lodash: 4.18.1
-  path-to-regexp: 8.4.2
-  picomatch: 4.0.4
-  postcss: 8.5.15
-  protobufjs: 7.6.3
-  tar: 7.5.16
-  uuid: 11.1.1
-  ws: 8.21.0
-  yaml: 2.9.0
   '@babel/core': 7.29.6
-  '@grpc/grpc-js': 1.14.4
-  'form-data@^2': 2.5.6
-  'form-data@^4': 4.0.6
-  http-proxy-middleware: 3.0.7
-  js-yaml: 4.2.0
-  markdown-it: 14.2.0
-  multer: 2.2.0
-  vite: 7.3.6
-  qs: 6.15.2
-  shell-quote: 1.8.4
-  tmp: 0.2.6
-  'uuid@^7': 11.1.1
-  'uuid@^8': 11.1.1
-  'uuid@^9': 11.1.1
+  '@esbuild-kit/esm-loader': npm:tsx@^4.21.0
   '@expo/ngrok-bin>@expo/ngrok-bin-darwin-arm64': '-'
   '@expo/ngrok-bin>@expo/ngrok-bin-darwin-x64': '-'
   '@expo/ngrok-bin>@expo/ngrok-bin-freebsd-ia32': '-'
@@ -91,6 +57,8 @@ overrides:
   '@expo/ngrok-bin>@expo/ngrok-bin-sunos-x64': '-'
   '@expo/ngrok-bin>@expo/ngrok-bin-win32-ia32': '-'
   '@expo/ngrok-bin>@expo/ngrok-bin-win32-x64': '-'
+  '@grpc/grpc-js': 1.14.4
+  '@protobufjs/utf8': 1.1.1
   '@tailwindcss/oxide>@tailwindcss/oxide-android-arm64': '-'
   '@tailwindcss/oxide>@tailwindcss/oxide-darwin-arm64': '-'
   '@tailwindcss/oxide>@tailwindcss/oxide-darwin-x64': '-'
@@ -101,6 +69,11 @@ overrides:
   '@tailwindcss/oxide>@tailwindcss/oxide-linux-x64-musl': '-'
   '@tailwindcss/oxide>@tailwindcss/oxide-win32-arm64-msvc': '-'
   '@tailwindcss/oxide>@tailwindcss/oxide-win32-x64-msvc': '-'
+  '@tootallnate/once': 3.0.1
+  '@xmldom/xmldom': 0.9.10
+  axios: 1.16.1
+  brace-expansion@^2: 2.1.0
+  brace-expansion@^5: 5.0.6
   esbuild: 0.27.3
   esbuild>@esbuild/aix-ppc64: '-'
   esbuild>@esbuild/android-arm: '-'
@@ -127,6 +100,14 @@ overrides:
   esbuild>@esbuild/win32-arm64: '-'
   esbuild>@esbuild/win32-ia32: '-'
   esbuild>@esbuild/win32-x64: '-'
+  fast-uri: 3.1.2
+  fast-xml-builder: 1.2.0
+  fast-xml-parser: 5.8.0
+  form-data@^2: 2.5.6
+  form-data@^4: 4.0.6
+  http-proxy-middleware: 3.0.7
+  ip-address: 10.2.0
+  js-yaml: 4.2.0
   lightningcss>lightningcss-android-arm64: '-'
   lightningcss>lightningcss-darwin-arm64: '-'
   lightningcss>lightningcss-darwin-x64: '-'
@@ -137,6 +118,14 @@ overrides:
   lightningcss>lightningcss-linux-x64-musl: '-'
   lightningcss>lightningcss-win32-arm64-msvc: '-'
   lightningcss>lightningcss-win32-x64-msvc: '-'
+  lodash: 4.18.1
+  markdown-it: 14.2.0
+  multer: 2.2.0
+  path-to-regexp: 8.4.2
+  picomatch: 4.0.4
+  postcss: 8.5.15
+  protobufjs: 7.6.3
+  qs: 6.15.2
   rollup>@rollup/rollup-android-arm-eabi: '-'
   rollup>@rollup/rollup-android-arm64: '-'
   rollup>@rollup/rollup-darwin-arm64: '-'
@@ -161,3 +150,17 @@ overrides:
   rollup>@rollup/rollup-win32-ia32-msvc: '-'
   rollup>@rollup/rollup-win32-x64-gnu: '-'
   rollup>@rollup/rollup-win32-x64-msvc: '-'
+  shell-quote: 1.8.4
+  tar: 7.5.16
+  tmp: 0.2.6
+  uuid: 11.1.1
+  uuid@^7: 11.1.1
+  uuid@^8: 11.1.1
+  uuid@^9: 11.1.1
+  vite: 7.3.6
+  websocket-driver: 0.7.5
+  ws: 8.21.0
+  yaml: 2.9.0
+
+patchedDependencies:
+  faye-websocket@0.11.4: patches/faye-websocket@0.11.4.patch
