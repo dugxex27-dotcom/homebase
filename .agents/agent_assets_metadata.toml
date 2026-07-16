@@ -96,3 +96,9 @@ id = "eF-LBsYnMTsqhFxFdQSSc"
 uri = "file://replit-patches.zip"
 type = "unspecified"
 title = "Replit Patches (3 commits)"
+
+[[outputs]]
+id = "1rTusQGVczCbf5jEdxPNC"
+uri = "file://artifacts/myhomebase/public/icon-512x512.png"
+type = "image"
+title = "HomeBase logo (for Stripe upload)"
