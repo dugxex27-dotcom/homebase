@@ -3,3 +3,8 @@
 
 # No need to store the pnpm store twice.
 .local
+
+# All artifacts are pre-built (api-server → dist/index.mjs, myhomebase/quiz → dist/public/).
+# node_modules are not needed at runtime — excluding them shrinks the image and
+# prevents stale transitive packages from being flagged by the security scanner.
+node_modules
