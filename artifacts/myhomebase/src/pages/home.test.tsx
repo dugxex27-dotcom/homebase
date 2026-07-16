@@ -693,6 +693,35 @@ describe("Install-year nudge — HVAC field expand and save", () => {
       screen.getByTestId("button-nudge-hvacInstalledYear"),
     ).toBeDefined();
   });
+
+  it("a 500 from the server shows the error message inline and keeps the HVAC form open", async () => {
+    const user = userEvent.setup();
+    const { rerender } = renderHome();
+
+    await user.click(screen.getByTestId("button-nudge-hvacInstalledYear"));
+    await user.type(
+      screen.getByTestId("input-install-year-hvacInstalledYear"),
+      "2012",
+    );
+
+    const saveBtn = screen.getByTestId(
+      "button-save-install-year-hvacInstalledYear",
+    );
+    expect(saveBtn).not.toBeDisabled();
+
+    await user.click(saveBtn);
+    expect(flags.mutateSpy).toHaveBeenCalledOnce();
+
+    flags.isError = true;
+    act(() => {
+      rerender(<Home />);
+    });
+
+    expect(screen.getByText(/couldn't save/i)).toBeDefined();
+    expect(
+      screen.getByTestId("input-install-year-hvacInstalledYear"),
+    ).toBeDefined();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -786,6 +815,37 @@ describe("Install-year nudge — water heater field expand and save", () => {
     ).toBeNull();
     expect(
       screen.getByTestId("button-nudge-waterHeaterInstalledYear"),
+    ).toBeDefined();
+  });
+
+  it("a 500 from the server shows the error message inline and keeps the water heater form open", async () => {
+    const user = userEvent.setup();
+    const { rerender } = renderHome();
+
+    await user.click(
+      screen.getByTestId("button-nudge-waterHeaterInstalledYear"),
+    );
+    await user.type(
+      screen.getByTestId("input-install-year-waterHeaterInstalledYear"),
+      "2019",
+    );
+
+    const saveBtn = screen.getByTestId(
+      "button-save-install-year-waterHeaterInstalledYear",
+    );
+    expect(saveBtn).not.toBeDisabled();
+
+    await user.click(saveBtn);
+    expect(flags.mutateSpy).toHaveBeenCalledOnce();
+
+    flags.isError = true;
+    act(() => {
+      rerender(<Home />);
+    });
+
+    expect(screen.getByText(/couldn't save/i)).toBeDefined();
+    expect(
+      screen.getByTestId("input-install-year-waterHeaterInstalledYear"),
     ).toBeDefined();
   });
 });
