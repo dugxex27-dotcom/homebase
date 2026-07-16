@@ -24,6 +24,10 @@ args = "myhomebase-test"
 task = "workflow.run"
 args = "checkout-test-only"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "api-server-typecheck"
+
 [[workflows.workflow]]
 name = "myhomebase-test"
 author = "agent"
@@ -42,6 +46,17 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "pnpm --filter @workspace/myhomebase exec vitest run --config vitest.config.ts src/pages/contractor-checkout.test.tsx --reporter=verbose"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "api-server-typecheck"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/api-server run typecheck"
 
 [workflows.workflow.metadata]
 isValidation = true
