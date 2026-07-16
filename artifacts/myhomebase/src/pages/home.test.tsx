@@ -933,3 +933,45 @@ describe("Install-year nudge — only one field open at a time", () => {
     expect(flags.mutateSpy).not.toHaveBeenCalled();
   });
 });
+
+// ---------------------------------------------------------------------------
+
+describe("Install-year nudge — Save button disabled while mutation is pending (double-click guard)", () => {
+  const fields = [
+    { key: "roofInstalledYear", label: "Roof" },
+    { key: "hvacInstalledYear", label: "HVAC" },
+    { key: "waterHeaterInstalledYear", label: "Water Heater" },
+  ] as const;
+
+  for (const { key, label } of fields) {
+    it(`${label}: Save button is disabled when isPending is true`, async () => {
+      flags.isPending = true;
+      const user = userEvent.setup();
+      renderHome();
+
+      await user.click(screen.getByTestId(`button-nudge-${key}`));
+      await user.type(screen.getByTestId(`input-install-year-${key}`), "2010");
+
+      const saveBtn = screen.getByTestId(`button-save-install-year-${key}`);
+      expect(saveBtn).toBeDisabled();
+    });
+
+    it(`${label}: clicking a disabled Save while isPending does not call mutate`, async () => {
+      flags.isPending = true;
+      const user = userEvent.setup();
+      renderHome();
+
+      await user.click(screen.getByTestId(`button-nudge-${key}`));
+      await user.type(screen.getByTestId(`input-install-year-${key}`), "2010");
+
+      const saveBtn = screen.getByTestId(`button-save-install-year-${key}`);
+      expect(saveBtn).toBeDisabled();
+
+      // userEvent respects the disabled attribute and will not fire a click
+      // on a disabled button, matching real browser behavior.
+      await user.click(saveBtn);
+
+      expect(flags.mutateSpy).not.toHaveBeenCalled();
+    });
+  }
+});
