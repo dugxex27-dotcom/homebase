@@ -616,7 +616,7 @@
 
   <script src="./quiz-logic.js"></script>
   <script>
-    const { QUESTIONS, MAX_SCORE, getTier } = MhbQuiz;
+    const { QUESTIONS, MAX_SCORE, getTier, getResultDisplay, applyResultsToDOM } = MhbQuiz;
 
     (function() {
       var inIframe = window.self !== window.top;
@@ -702,38 +702,23 @@
     }
 
     function showResults() {
-      quizWrap.style.display    = 'none';
-      resultsCard.style.display = 'block';
+      const pct = Math.round((totalScore / MAX_SCORE) * 100);
 
-      const pct  = Math.round((totalScore / MAX_SCORE) * 100);
-      const good = pct >= 60;
-
-      scoreNumber.textContent = pct;
-      const circ = 301.6;
-      setTimeout(function() {
-        ringFill.style.strokeDashoffset = circ - (circ * pct / 100);
-        ringFill.style.stroke = good ? '#2E7D5A' : '#C05C1A';
-        scoreBarFill.style.width = pct + '%';
-        scoreBarFill.className = 'score-bar-fill ' + (good ? 'good' : 'improve');
-      }, 100);
-
-      var tier = getTier(pct);
-      var TIER_DISPLAY = {
-        'Home Pro':         { emoji: '🏠', badge: 'result-badge good', headline: "You know your home — now keep it that way.", msg: "You're ahead of most homeowners. MyHomeBase helps you stay on top of maintenance, track your home's health over time, and connect with trusted pros when you need them." },
-        'Solid Foundation': { emoji: '👍', badge: 'result-badge good', headline: "Good start — a few gaps to close.", msg: "You're doing well, but there are a few blind spots that could cost you. MyHomeBase helps you fill them in with personalised maintenance reminders and a full picture of your home's health." },
-        'Needs Attention':  { emoji: '⚠️', badge: 'result-badge improve', headline: "Your home may need more attention than it's getting.", msg: "Several key maintenance tasks are being missed. MyHomeBase gives you a personalised checklist, seasonal reminders, and a record of everything you've done — so nothing falls through the cracks." },
-        'High Risk':        { emoji: '🔴', badge: 'result-badge improve', headline: "Your home may be at risk right now.", msg: "Several critical maintenance areas haven't been addressed. MyHomeBase will help you prioritise what matters most and take control of your home's health before a small problem becomes a big one." },
-      };
-      var display = TIER_DISPLAY[tier];
-      resultBadge.textContent    = display.emoji + ' ' + tier;
-      resultBadge.className      = display.badge;
-      resultHeadline.textContent = display.headline;
-      resultMsg.textContent      = display.msg;
+      applyResultsToDOM(pct, {
+        scoreNumber:    scoreNumber,
+        ringFill:       ringFill,
+        scoreBarFill:   scoreBarFill,
+        resultBadge:    resultBadge,
+        resultHeadline: resultHeadline,
+        resultMsg:      resultMsg,
+        quizWrap:       quizWrap,
+        resultsCard:    resultsCard,
+      });
 
       window.parent.postMessage({
         type: 'mhb_quiz_result',
         score: pct,
-        tier: tier,
+        tier: getTier(pct),
         completedAt: new Date().toISOString()
       }, '*');
     }

@@ -142,3 +142,59 @@ export function calculateResult(answerScores: number[]): QuizResult {
   const score = calculateScore(answerScores);
   return { score, tier: getTier(score) };
 }
+
+export interface TierDisplay {
+  emoji: string;
+  badgeClass: string;
+  headline: string;
+  msg: string;
+}
+
+export const TIER_DISPLAY: Record<Tier, TierDisplay> = {
+  "Home Pro": {
+    emoji: "🏠",
+    badgeClass: "result-badge good",
+    headline: "You know your home — now keep it that way.",
+    msg: "You're ahead of most homeowners. MyHomeBase helps you stay on top of maintenance, track your home's health over time, and connect with trusted pros when you need them.",
+  },
+  "Solid Foundation": {
+    emoji: "👍",
+    badgeClass: "result-badge good",
+    headline: "Good start — a few gaps to close.",
+    msg: "You're doing well, but there are a few blind spots that could cost you. MyHomeBase helps you fill them in with personalised maintenance reminders and a full picture of your home's health.",
+  },
+  "Needs Attention": {
+    emoji: "⚠️",
+    badgeClass: "result-badge improve",
+    headline: "Your home may need more attention than it's getting.",
+    msg: "Several key maintenance tasks are being missed. MyHomeBase gives you a personalised checklist, seasonal reminders, and a record of everything you've done — so nothing falls through the cracks.",
+  },
+  "High Risk": {
+    emoji: "🔴",
+    badgeClass: "result-badge improve",
+    headline: "Your home may be at risk right now.",
+    msg: "Several critical maintenance areas haven't been addressed. MyHomeBase will help you prioritise what matters most and take control of your home's health before a small problem becomes a big one.",
+  },
+};
+
+export interface ResultDisplay {
+  scoreText: string;
+  badgeText: string;
+  badgeClass: string;
+  headline: string;
+  msg: string;
+  colorClass: "good" | "improve";
+}
+
+export function getResultDisplay(pct: number): ResultDisplay {
+  const tier = getTier(pct);
+  const display = TIER_DISPLAY[tier];
+  return {
+    scoreText: String(pct),
+    badgeText: display.emoji + " " + tier,
+    badgeClass: display.badgeClass,
+    headline: display.headline,
+    msg: display.msg,
+    colorClass: pct >= 60 ? "good" : "improve",
+  };
+}

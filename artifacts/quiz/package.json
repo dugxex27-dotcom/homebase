@@ -9,7 +9,7 @@
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build:logic": "vite build --config vite.logic.config.ts",
-    "test": "vitest run --config vitest.config.ts"
+    "test": "./node_modules/.bin/vitest run --config vitest.config.ts"
   },
   "devDependencies": {
     "vitest": "^4.1.5",
