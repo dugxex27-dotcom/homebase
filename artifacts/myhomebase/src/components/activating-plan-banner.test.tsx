@@ -768,3 +768,151 @@ describe("ActivatingPlanBanner — polling continues after the banner is dismiss
     expect(cachedAuthUser?.subscriptionStatus).toBe("active");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Retry: "Try again" opens a fresh 60-second polling window
+//
+// handleRetry increments pollEpoch, which re-triggers the useEffect that
+// resets fastPollExpired and restarts the MAX_FAST_POLL_MS timer.  Tests
+// verify that:
+//   1. The banner switches back to the standard activating state immediately.
+//   2. Call counts increase after retry (polling has resumed).
+//   3. The second window also expires if the status never becomes active.
+// ---------------------------------------------------------------------------
+
+describe("ActivatingPlanBanner — 'Try again' opens a fresh 60-second polling window", () => {
+  it("clicking 'Try again' reverts the banner to the standard activating state", async () => {
+    vi.useFakeTimers();
+    const client = makeTestClient();
+    seedInactiveHomeowner(client);
+
+    renderBanner(client);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+
+    // Expire the first 60-second window
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(MAX_FAST_POLL_MS);
+    });
+
+    // Banner shows the expired warning and the "Try again" button
+    expect(screen.getByText(/taking longer than expected/i)).toBeDefined();
+    const retryBtn = screen.getByRole("button", { name: /try again/i });
+    expect(retryBtn).toBeDefined();
+
+    // Click "Try again"
+    await act(async () => {
+      fireEvent.click(retryBtn);
+    });
+
+    // Banner must revert to standard activating state
+    expect(screen.getByText(/your subscription is activating/i)).toBeDefined();
+    expect(screen.queryByText(/taking longer than expected/i)).toBeNull();
+    expect(screen.queryByRole("button", { name: /try again/i })).toBeNull();
+  });
+
+  it("clicking 'Try again' resumes polling — call counts increase after the click", async () => {
+    vi.useFakeTimers();
+    const client = makeTestClient();
+    seedInactiveHomeowner(client);
+
+    renderBanner(client);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+
+    // Expire the first poll window
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(MAX_FAST_POLL_MS);
+    });
+
+    // Confirm polling stopped — one more interval must not add new calls
+    const callsAtExpiry = network.callCounts["/api/user"];
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FAST_POLL_INTERVAL_MS);
+    });
+    expect(network.callCounts["/api/user"]).toBe(callsAtExpiry);
+
+    // Click "Try again" to open the second window
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /try again/i }));
+    });
+
+    const callsAfterRetry = network.callCounts["/api/user"];
+
+    // Advance one poll interval — the resumed refetchInterval must fire
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FAST_POLL_INTERVAL_MS);
+    });
+
+    expect(network.callCounts["/api/user"]).toBeGreaterThan(callsAfterRetry);
+  });
+
+  it("polling for /api/auth/user also resumes after 'Try again'", async () => {
+    vi.useFakeTimers();
+    const client = makeTestClient();
+    seedInactiveHomeowner(client);
+
+    renderBanner(client);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(MAX_FAST_POLL_MS);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /try again/i }));
+    });
+
+    const callsAfterRetry = network.callCounts["/api/auth/user"];
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FAST_POLL_INTERVAL_MS);
+    });
+
+    expect(network.callCounts["/api/auth/user"]).toBeGreaterThan(callsAfterRetry);
+  });
+
+  it("the second 60-second window also expires if the status never becomes active", async () => {
+    vi.useFakeTimers();
+    const client = makeTestClient();
+    seedInactiveHomeowner(client);
+
+    renderBanner(client);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+
+    // Expire the first window
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(MAX_FAST_POLL_MS);
+    });
+
+    expect(screen.getByText(/taking longer than expected/i)).toBeDefined();
+
+    // Open the second window via "Try again"
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /try again/i }));
+    });
+
+    // Standard activating state shown immediately after retry
+    expect(screen.getByText(/your subscription is activating/i)).toBeDefined();
+    expect(screen.queryByText(/taking longer than expected/i)).toBeNull();
+
+    // Expire the second window (status still inactive)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(MAX_FAST_POLL_MS);
+    });
+
+    // Banner must revert to the expired warning again
+    expect(screen.getByText(/taking longer than expected/i)).toBeDefined();
+    expect(screen.getByRole("button", { name: /try again/i })).toBeDefined();
+  });
+});
