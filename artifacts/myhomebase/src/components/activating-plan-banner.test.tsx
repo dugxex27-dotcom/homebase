@@ -879,6 +879,44 @@ describe("ActivatingPlanBanner — 'Try again' opens a fresh 60-second polling w
     expect(network.callCounts["/api/auth/user"]).toBeGreaterThan(callsAfterRetry);
   });
 
+  it("polling for /api/contractor/subscription also resumes after 'Try again'", async () => {
+    vi.useFakeTimers();
+    const client = makeTestClient();
+    seedInactiveContractor(client);
+
+    renderBanner(client);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+
+    // Expire the first 60-second poll window
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(MAX_FAST_POLL_MS);
+    });
+
+    // Confirm polling stopped — one extra interval must not add new calls
+    const callsAtExpiry = network.callCounts["/api/contractor/subscription"];
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FAST_POLL_INTERVAL_MS);
+    });
+    expect(network.callCounts["/api/contractor/subscription"]).toBe(callsAtExpiry);
+
+    // Click "Try again" to open the second window
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /try again/i }));
+    });
+
+    const callsAfterRetry = network.callCounts["/api/contractor/subscription"];
+
+    // Advance one poll interval — the resumed refetchInterval must fire
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FAST_POLL_INTERVAL_MS);
+    });
+
+    expect(network.callCounts["/api/contractor/subscription"]).toBeGreaterThan(callsAfterRetry);
+  });
+
   it("the second 60-second window also expires if the status never becomes active", async () => {
     vi.useFakeTimers();
     const client = makeTestClient();
