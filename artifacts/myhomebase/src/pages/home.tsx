@@ -171,7 +171,7 @@ export default function Home() {
   const [nudgeYear, setNudgeYear] = useState("");
   const patchInstallYearMutation = useMutation({
     mutationFn: async ({ houseId, field, year }: { houseId: string; field: string; year: number }) => {
-      const res = await fetch(`/api/houses/${houseId}`, {
+      const res = await fetch(`/api/houses/${houseId}/profile`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ [field]: year }),
