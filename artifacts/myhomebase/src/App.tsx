@@ -199,6 +199,7 @@ const HomeownerAccount = lazy(() => import("./pages/homeowner-account"));
 const HomeownerReferral = lazy(() => import("./pages/homeowner-referral"));
 const HomeownerPricing = lazy(() => import("./pages/homeowner-pricing"));
 const Achievements = lazy(() => import("./pages/achievements"));
+const MhbInfo = lazy(() => import("./pages/mhb-info"));
 const AIContractorHelp = lazy(() => import("./pages/ai-contractor-help"));
 const Billing = lazy(() => import("./pages/billing"));
 const Documents = lazy(() => import("./pages/documents"));
@@ -444,6 +445,7 @@ function Router() {
             <Route path="/homeowner-referral" component={HomeownerReferral} />
             <Route path="/homeowner-pricing" component={HomeownerPricing} />
             <Route path="/achievements" component={Achievements} />
+            <Route path="/info" component={MhbInfo} />
             <Route path="/ai-help" component={AIContractorHelp} />
             <Route path="/billing" component={Billing} />
             <Route path="/documents" component={Documents} />

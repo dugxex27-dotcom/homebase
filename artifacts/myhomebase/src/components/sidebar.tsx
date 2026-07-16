@@ -196,7 +196,7 @@ export default function Sidebar() {
             <NavItem href="/documents" paths={['/documents', '/disclosures']} icon={FolderOpen} label="Documents / Disclosures" testId="nav-documents" />
             <NavItem href="/account" icon={UserIcon} label="Account" testId="nav-account" />
             <NavItem href="/support" icon={HelpCircle} label="Support" testId="nav-support" />
-            <NavItem href="https://gotohomebase.com/info" icon={Info} label="MHB Info" testId="nav-myhomebase-info" external />
+            <NavItem href="/info" icon={Info} label="MHB Info" testId="nav-myhomebase-info" />
             {isInstallable && (
               <button
                 onClick={handleInstall}
