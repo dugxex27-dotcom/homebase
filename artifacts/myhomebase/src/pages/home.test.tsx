@@ -535,6 +535,52 @@ describe("Install-year nudge — keyboard shortcuts", () => {
     ).toBeDefined();
   });
 
+  it("pressing Escape on the HVAC form closes it without calling mutate", async () => {
+    const user = userEvent.setup();
+    renderHome();
+
+    await user.click(screen.getByTestId("button-nudge-hvacInstalledYear"));
+    await user.type(
+      screen.getByTestId("input-install-year-hvacInstalledYear"),
+      "2018",
+    );
+
+    await user.keyboard("{Escape}");
+
+    expect(flags.mutateSpy).not.toHaveBeenCalled();
+
+    expect(
+      screen.queryByTestId("input-install-year-hvacInstalledYear"),
+    ).toBeNull();
+    expect(
+      screen.getByTestId("button-nudge-hvacInstalledYear"),
+    ).toBeDefined();
+  });
+
+  it("pressing Escape on the water heater form closes it without calling mutate", async () => {
+    const user = userEvent.setup();
+    renderHome();
+
+    await user.click(
+      screen.getByTestId("button-nudge-waterHeaterInstalledYear"),
+    );
+    await user.type(
+      screen.getByTestId("input-install-year-waterHeaterInstalledYear"),
+      "2020",
+    );
+
+    await user.keyboard("{Escape}");
+
+    expect(flags.mutateSpy).not.toHaveBeenCalled();
+
+    expect(
+      screen.queryByTestId("input-install-year-waterHeaterInstalledYear"),
+    ).toBeNull();
+    expect(
+      screen.getByTestId("button-nudge-waterHeaterInstalledYear"),
+    ).toBeDefined();
+  });
+
   it("pressing Enter with an invalid year does nothing (form stays open, mutate not called)", async () => {
     const user = userEvent.setup();
     renderHome();
