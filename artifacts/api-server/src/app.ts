@@ -4,6 +4,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import pinoHttp from "pino-http";
 import { logger } from "./lib/logger";
+import { PgRateLimitStore } from "./lib/pg-rate-limit-store";
 
 const app: Express = express();
 
@@ -105,6 +106,7 @@ const generalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: () => process.env.NODE_ENV !== 'production',
+  store: new PgRateLimitStore('general'),
 });
 
 app.use('/api/', generalLimiter);
@@ -115,7 +117,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   if (STRIPE_WEBHOOK_PATHS.includes(req.path)) {
     next();
   } else {
-    express.json({ limit: '100mb' })(req, res, next);
+    express.json({ limit: '10mb' })(req, res, next);
   }
 });
 
@@ -123,7 +125,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   if (STRIPE_WEBHOOK_PATHS.includes(req.path)) {
     next();
   } else {
-    express.urlencoded({ extended: false, limit: '100mb' })(req, res, next);
+    express.urlencoded({ extended: false, limit: '10mb' })(req, res, next);
   }
 });
 

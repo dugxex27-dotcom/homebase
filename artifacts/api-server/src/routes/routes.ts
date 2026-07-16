@@ -8,6 +8,7 @@ import { setupGoogleAuth } from "../googleAuth";
 import { z } from "zod";
 import { randomUUID, randomBytes } from "crypto";
 import rateLimit from "express-rate-limit";
+import { PgRateLimitStore } from "../lib/pg-rate-limit-store";
 import { eq, and, ne, inArray, sql as drizzleSql, isNotNull, isNull, desc, or, gt, gte, lte } from "drizzle-orm";
 import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertTaskCompletionSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, customMaintenanceTasks, insertSupportTicketSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, insertCrmLeadSchema, insertCrmNoteSchema, notificationPreferences, subscriptionPlans, securitySessions, referralCredits, referralFreeMonths, agentProfiles, users, siteContent, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, insertReviewFlagSchema, homeDocuments, quizResults, type House } from "@workspace/db";
 import { calculateDIYSavingsAmount } from "../shared/cost-helpers";
@@ -65,6 +66,7 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true, // Don't count successful logins
+  store: new PgRateLimitStore('auth'),
 });
 
 // Rate limiting for the public quiz-result endpoint
@@ -74,6 +76,7 @@ const quizLimiter = rateLimit({
   message: 'Too many quiz submissions, please try again later',
   standardHeaders: true,
   legacyHeaders: false,
+  store: new PgRateLimitStore('quiz'),
 });
 
 // Grandfathered emails that get free unlimited access forever
@@ -202,6 +205,7 @@ const uploadLimiter = rateLimit({
   message: 'Too many upload attempts, please try again later',
   standardHeaders: true,
   legacyHeaders: false,
+  store: new PgRateLimitStore('upload'),
 });
 
 // Rate limiting for AI support chat to prevent cost amplification
@@ -211,6 +215,7 @@ const aiChatLimiter = rateLimit({
   message: 'Too many AI chat requests, please try again later',
   standardHeaders: true,
   legacyHeaders: false,
+  store: new PgRateLimitStore('ai-chat'),
 });
 
 /**
