@@ -13,6 +13,7 @@ export default function ContractorCheckout() {
   const [, setLocation] = useLocation();
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [authTimedOut, setAuthTimedOut] = useState(false);
   const urlParams = new URLSearchParams(window.location.search);
   const plan = urlParams.get("plan") ?? "basic";
   const typedUser = user as { subscriptionStatus?: string; stripeCustomerId?: string } | undefined;
@@ -41,6 +42,12 @@ export default function ContractorCheckout() {
   });
 
   useEffect(() => {
+    if (user) return;
+    const timer = setTimeout(() => setAuthTimedOut(true), 10_000);
+    return () => clearTimeout(timer);
+  }, [user]);
+
+  useEffect(() => {
     if (!user) return;
     if (isNativePlatform) {
       checkoutMutation.mutate();
@@ -48,6 +55,35 @@ export default function ContractorCheckout() {
       setShowModal(true);
     }
   }, [user]);
+
+  if (authTimedOut && !user) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-6 px-4 text-center">
+        <div className="p-4 rounded-full bg-red-100">
+          <AlertTriangle className="h-10 w-10 text-red-500" />
+        </div>
+        <div className="space-y-2 max-w-sm">
+          <h1 className="text-xl font-bold text-gray-900">Taking too long to load</h1>
+          <p className="text-gray-600 text-sm">
+            We couldn't verify your account in time. This is usually a temporary issue — please try again.
+            If the problem continues, check your connection or try signing in again.
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Button
+            onClick={() => window.location.reload()}
+            style={{ background: "linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)" }}
+            data-testid="button-retry-auth"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />Try again
+          </Button>
+          <Button variant="outline" onClick={() => setLocation("/signin/contractor")}>
+            Sign in
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (checkoutError) {
     return (
