@@ -27,7 +27,7 @@
 
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import React from "react";
-import { render, screen, cleanup, act } from "@testing-library/react";
+import { render, screen, cleanup, act, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // ---------------------------------------------------------------------------
@@ -653,5 +653,118 @@ describe("ActivatingPlanBanner — poll expiry after MAX_FAST_POLL_MS (60 s)", (
     });
 
     expect(network.callCounts["/api/contractor/subscription"]).toBe(callsAfterExpiry);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Dismissed banner: polling continues in the background so features unlock
+//
+// When the user clicks the X button the banner DOM is removed, but the
+// fast-poll queries remain enabled because fastPollActive is derived from
+// isActivating (the real status), not from banner visibility.  These tests
+// confirm that contract: dismiss → banner gone, polling still fires, cache
+// still updates when the server eventually returns active status.
+// ---------------------------------------------------------------------------
+
+describe("ActivatingPlanBanner — polling continues after the banner is dismissed", () => {
+  it("hides the banner immediately when the dismiss button is clicked", async () => {
+    vi.useFakeTimers();
+    const client = makeTestClient();
+    seedInactiveHomeowner(client);
+
+    renderBanner(client);
+
+    // Let the initial background refetch settle so the banner is visible
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+
+    expect(screen.getByRole("status")).toBeDefined();
+    expect(screen.getByText(/your subscription is activating/i)).toBeDefined();
+
+    // Click the X dismiss button
+    const dismissButton = screen.getByRole("button", { name: /dismiss/i });
+    await act(async () => {
+      fireEvent.click(dismissButton);
+    });
+
+    // Banner is gone — dismissed=true causes the component to return null
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.queryByText(/your subscription is activating/i)).toBeNull();
+  });
+
+  it("keeps firing fast-poll refetches after the banner is dismissed", async () => {
+    vi.useFakeTimers();
+    const client = makeTestClient();
+    seedInactiveHomeowner(client);
+
+    renderBanner(client);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+
+    // Dismiss the banner
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /dismiss/i }));
+    });
+
+    // Banner is hidden
+    expect(screen.queryByRole("status")).toBeNull();
+
+    // Record call counts right after dismiss (underlying status is still inactive)
+    const callsAfterDismiss = {
+      authUser: network.callCounts["/api/auth/user"],
+      user: network.callCounts["/api/user"],
+    };
+
+    // Advance one full poll interval — the fast-poll observers are still mounted
+    // inside the component (it returns null for the visible DOM but the hooks
+    // remain active), so their refetchInterval timer must fire
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FAST_POLL_INTERVAL_MS);
+    });
+
+    // Call counts must have grown, proving polling is still active
+    expect(network.callCounts["/api/auth/user"]).toBeGreaterThan(callsAfterDismiss.authUser);
+    expect(network.callCounts["/api/user"]).toBeGreaterThan(callsAfterDismiss.user);
+  });
+
+  it("updates the query cache with active status when the poll resolves after dismiss", async () => {
+    vi.useFakeTimers();
+    const client = makeTestClient();
+    seedInactiveHomeowner(client);
+
+    renderBanner(client);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+
+    // Verify the cache holds inactive status before any transition
+    expect((client.getQueryData(["/api/user"]) as any)?.subscriptionStatus).toBe("inactive");
+
+    // Dismiss the banner — it disappears but polling keeps running
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /dismiss/i }));
+    });
+
+    expect(screen.queryByRole("status")).toBeNull();
+
+    // Switch the network mock so the next poll returns active status
+    seedActiveHomeowner();
+
+    // Advance one poll interval — the background poll fires and writes active
+    // data into the shared query cache, exactly as it would in production
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FAST_POLL_INTERVAL_MS);
+    });
+
+    // The cache now holds the active status that the background poll returned
+    const cachedUser = client.getQueryData(["/api/user"]) as any;
+    expect(cachedUser?.subscriptionStatus).toBe("active");
+
+    const cachedAuthUser = client.getQueryData(["/api/auth/user"]) as any;
+    expect(cachedAuthUser?.subscriptionStatus).toBe("active");
   });
 });
