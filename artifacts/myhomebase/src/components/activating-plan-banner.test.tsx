@@ -953,4 +953,43 @@ describe("ActivatingPlanBanner — 'Try again' opens a fresh 60-second polling w
     expect(screen.getByText(/taking longer than expected/i)).toBeDefined();
     expect(screen.getByRole("button", { name: /try again/i })).toBeDefined();
   });
+
+  it("the second 60-second window also expires for contractors if the status never becomes active", async () => {
+    vi.useFakeTimers();
+    const client = makeTestClient();
+    seedInactiveContractor(client);
+
+    renderBanner(client);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+
+    // Expire the first 60-second window (status stays inactive)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(MAX_FAST_POLL_MS);
+    });
+
+    expect(screen.getByText(/taking longer than expected/i)).toBeDefined();
+    expect(screen.getByRole("button", { name: /try again/i })).toBeDefined();
+
+    // Open the second window via "Try again"
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /try again/i }));
+    });
+
+    // Banner reverts to standard activating state immediately
+    expect(screen.getByText(/your subscription is activating/i)).toBeDefined();
+    expect(screen.queryByText(/taking longer than expected/i)).toBeNull();
+    expect(screen.queryByRole("button", { name: /try again/i })).toBeNull();
+
+    // Advance through the second 60-second window (status still inactive)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(MAX_FAST_POLL_MS);
+    });
+
+    // Banner must revert to the expired warning again — second window has expired
+    expect(screen.getByText(/taking longer than expected/i)).toBeDefined();
+    expect(screen.getByRole("button", { name: /try again/i })).toBeDefined();
+  });
 });
