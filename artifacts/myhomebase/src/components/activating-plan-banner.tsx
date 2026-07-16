@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Loader2, RefreshCw, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -56,15 +56,50 @@ export function ActivatingPlanBanner() {
   // which is how the retry button opens a fresh 60-second window.
   const [pollEpoch, setPollEpoch] = useState(0);
 
+  // Tracks which epoch committed the "expired" state. Once the timer fires
+  // in epoch N, same-epoch isActivating bounces are handled with a debounce
+  // to distinguish genuine resolutions from stale background-refetch noise.
+  const expiredEpochRef = useRef<number | null>(null);
+
+  // DEBOUNCE_MS to confirm a genuine inactive→active transition after expiry.
+  // Stale cache bounces (false→true) happen in milliseconds; real activations
+  // keep isActivating=false until the user re-subscribes (seconds to minutes).
+  const RESOLVED_DEBOUNCE_MS = 1_500;
+
   useEffect(() => {
+    if (expiredEpochRef.current === pollEpoch) {
+      // The poll window already expired in this epoch.
+      if (!isActivating) {
+        // isActivating went false after expiry. Debounce to confirm the
+        // subscription is genuinely active, not a stale-cache bounce.
+        // If isActivating flips back to true within RESOLVED_DEBOUNCE_MS
+        // (the stale-refetch race), the effect cleanup cancels this timer
+        // and nothing happens — fastPollExpired stays true.
+        const debounceTimer = setTimeout(() => {
+          // Persisted false long enough — it's a real active state. Clear the
+          // epoch lock so a subsequent true→false→true cycle opens a fresh window.
+          expiredEpochRef.current = null;
+          setFastPollExpired(false);
+        }, RESOLVED_DEBOUNCE_MS);
+        return () => clearTimeout(debounceTimer);
+      }
+      // isActivating still true after expiry — stay in expired state.
+      return;
+    }
+
     if (!isActivating) {
-      // Status resolved — reset so a future activation cycle gets a fresh window.
+      // Status genuinely resolved — reset so a future activation cycle gets a fresh window.
       setFastPollExpired(false);
       return;
     }
+
     // Start (or restart) the expiry timer each time the window opens or retries.
     setFastPollExpired(false);
-    const timer = setTimeout(() => setFastPollExpired(true), MAX_FAST_POLL_MS);
+    const timer = setTimeout(() => {
+      setFastPollExpired(true);
+      // Commit this epoch as expired so we enter the debounced post-expiry path.
+      expiredEpochRef.current = pollEpoch;
+    }, MAX_FAST_POLL_MS);
     return () => clearTimeout(timer);
   }, [isActivating, pollEpoch]);
 
