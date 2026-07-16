@@ -20,6 +20,21 @@ import { onboardingNudgeScheduler } from "./onboarding-nudge-scheduler";
 import { invoiceOrphanCleanupScheduler } from "./invoice-orphan-cleanup-scheduler";
 import { storageOrphanCleanupScheduler } from "./storage-orphan-cleanup-scheduler";
 import { boostExpiryScheduler } from "./boost-expiry-scheduler";
+import { initLeaderLease, releaseLeaderLease } from "./lib/scheduler-leader";
+
+const allSchedulers = [
+  trialReminderScheduler,
+  profileViewReportScheduler,
+  weeklyTaskReminderScheduler,
+  expiredTrialReengagementScheduler,
+  referralReminderScheduler,
+  weatherAlertScheduler,
+  weatherForecastReminderScheduler,
+  onboardingNudgeScheduler,
+  invoiceOrphanCleanupScheduler,
+  storageOrphanCleanupScheduler,
+  boostExpiryScheduler,
+];
 
 const rawPort = process.env["PORT"];
 
@@ -254,23 +269,18 @@ app.get("/info/*path", proxyToSquarespace);
     setTimeout(() => process.exit(1), 10_000).unref();
   };
 
-  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+  process.on('SIGTERM', () => void releaseLeaderLease().finally(() => gracefulShutdown('SIGTERM')));
+  process.on('SIGINT', () => void releaseLeaderLease().finally(() => gracefulShutdown('SIGINT')));
 
   server.listen(port, () => {
     logger.info({ port }, "Server listening");
 
-    trialReminderScheduler.start();
-    profileViewReportScheduler.start();
-    weeklyTaskReminderScheduler.start();
-    expiredTrialReengagementScheduler.start();
-    referralReminderScheduler.start();
-    weatherAlertScheduler.start();
-    weatherForecastReminderScheduler.start();
-    onboardingNudgeScheduler.start();
-    invoiceOrphanCleanupScheduler.start();
-    storageOrphanCleanupScheduler.start();
-    boostExpiryScheduler.start();
+    initLeaderLease(
+      () => { for (const s of allSchedulers) s.start(); },
+      () => { for (const s of allSchedulers) s.stop(); },
+    ).catch((err) => {
+      logger.warn({ err }, '[SchedulerLeader] Leader lease init failed — schedulers will not run');
+    });
   });
 
   server.on("error", (err) => {
