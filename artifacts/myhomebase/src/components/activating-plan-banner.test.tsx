@@ -92,6 +92,7 @@ import { ActivatingPlanBanner } from "./activating-plan-banner";
 // ---------------------------------------------------------------------------
 
 const FAST_POLL_INTERVAL_MS = 5_000;
+const MAX_FAST_POLL_MS = 60_000;
 
 // ---------------------------------------------------------------------------
 // Test QueryClient factory
@@ -543,5 +544,114 @@ describe("ActivatingPlanBanner — fast-poll stops after activation resolves", (
 
     // No additional refetches — fast-poll was never enabled
     expect(network.callCounts["/api/user"]).toBe(callsAtSettled);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Expiry: polling stops after MAX_FAST_POLL_MS even if status stays inactive
+//
+// The component sets fastPollExpired=true after 60 000 ms, which flips
+// fastPollActive to false and disables all three polling queries.  The banner
+// must stay visible (switching to the "Taking longer than expected" warning
+// state) rather than dismissing itself.
+// ---------------------------------------------------------------------------
+
+describe("ActivatingPlanBanner — poll expiry after MAX_FAST_POLL_MS (60 s)", () => {
+  it("keeps the banner visible after the 60-second poll window expires", async () => {
+    vi.useFakeTimers();
+    const client = makeTestClient();
+    seedInactiveHomeowner(client);
+
+    renderBanner(client);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+
+    expect(screen.getByRole("status")).toBeDefined();
+    expect(screen.getByText(/your subscription is activating/i)).toBeDefined();
+
+    // Advance past the 60-second expiry — status never changes to active
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(MAX_FAST_POLL_MS);
+    });
+
+    // Banner must still be in the DOM (expiry shows the warning variant, not null)
+    expect(screen.getByRole("status")).toBeDefined();
+    expect(screen.getByText(/taking longer than expected/i)).toBeDefined();
+  });
+
+  it("stops fast-polling /api/auth/user once the 60-second window expires", async () => {
+    vi.useFakeTimers();
+    const client = makeTestClient();
+    seedInactiveHomeowner(client);
+
+    renderBanner(client);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+
+    // Let the poll window expire
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(MAX_FAST_POLL_MS);
+    });
+
+    const callsAfterExpiry = network.callCounts["/api/auth/user"];
+
+    // Advance another full poll interval — enabled=false means no new fetches
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FAST_POLL_INTERVAL_MS);
+    });
+
+    expect(network.callCounts["/api/auth/user"]).toBe(callsAfterExpiry);
+  });
+
+  it("stops fast-polling /api/user once the 60-second window expires", async () => {
+    vi.useFakeTimers();
+    const client = makeTestClient();
+    seedInactiveHomeowner(client);
+
+    renderBanner(client);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(MAX_FAST_POLL_MS);
+    });
+
+    const callsAfterExpiry = network.callCounts["/api/user"];
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FAST_POLL_INTERVAL_MS);
+    });
+
+    expect(network.callCounts["/api/user"]).toBe(callsAfterExpiry);
+  });
+
+  it("stops fast-polling /api/contractor/subscription once the 60-second window expires", async () => {
+    vi.useFakeTimers();
+    const client = makeTestClient();
+    seedInactiveContractor(client);
+
+    renderBanner(client);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(MAX_FAST_POLL_MS);
+    });
+
+    const callsAfterExpiry = network.callCounts["/api/contractor/subscription"];
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FAST_POLL_INTERVAL_MS);
+    });
+
+    expect(network.callCounts["/api/contractor/subscription"]).toBe(callsAfterExpiry);
   });
 });
