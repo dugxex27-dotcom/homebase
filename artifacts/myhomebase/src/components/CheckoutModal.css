@@ -80,3 +80,34 @@
     padding: 12px;
   }
 }
+
+@media (max-width: 360px) {
+  .checkout-sheet {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .checkout-header {
+    padding: 12px 12px 8px;
+  }
+
+  .checkout-title {
+    font-size: 14px;
+  }
+
+  .checkout-body {
+    padding: 8px;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+
+  .checkout-body iframe,
+  .checkout-body > * {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+}
