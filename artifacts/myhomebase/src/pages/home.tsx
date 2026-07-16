@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Users, Calendar, Search, Star, TrendingUp, Gift, Sparkles, FileText, AlertTriangle, ClipboardList, Bell, ChevronRight, ChevronDown, ChevronUp, Phone, Mail, Globe, MapPin, X as XIcon, Wrench, DollarSign, Info } from "lucide-react";
 import HouseMap from "@/components/house-map";
@@ -169,6 +169,9 @@ export default function Home() {
   // Install-year inline nudge — must be the last useMutation call in this component
   const [activeNudge, setActiveNudge] = useState<string | null>(null);
   const [nudgeYear, setNudgeYear] = useState("");
+  // Ref-based guard: prevents double-firing mutate on rapid double-clicks before
+  // the component can re-render and apply the isPending-based disabled state.
+  const nudgeSavingRef = useRef(false);
   const patchInstallYearMutation = useMutation({
     mutationFn: async ({ houseId, field, year }: { houseId: string; field: string; year: number }) => {
       const res = await fetch(`/api/houses/${houseId}/profile`, {
@@ -180,9 +183,13 @@ export default function Home() {
       return res.json();
     },
     onSuccess: () => {
+      nudgeSavingRef.current = false;
       setActiveNudge(null);
       setNudgeYear("");
       queryClient.invalidateQueries({ queryKey: ["/api/houses"] });
+    },
+    onError: () => {
+      nudgeSavingRef.current = false;
     },
   });
 
@@ -240,7 +247,8 @@ export default function Home() {
   const nudgeYearValid = nudgeYear !== "" && !isNaN(nudgeYearNum) && nudgeYearNum >= 1900 && nudgeYearNum <= new Date().getFullYear();
 
   const handleNudgeSave = (field: string) => {
-    if (!nudgeYearValid || !primaryHouse || patchInstallYearMutation.isPending) return;
+    if (!nudgeYearValid || !primaryHouse || patchInstallYearMutation.isPending || nudgeSavingRef.current) return;
+    nudgeSavingRef.current = true;
     patchInstallYearMutation.mutate({ houseId: primaryHouse.id, field, year: nudgeYearNum });
   };
 
@@ -416,7 +424,7 @@ export default function Home() {
                             </button>
                             <button
                               data-testid={`button-cancel-install-year-${f.key}`}
-                              onClick={() => { setActiveNudge(null); setNudgeYear(""); }}
+                              onClick={() => { nudgeSavingRef.current = false; setActiveNudge(null); setNudgeYear(""); }}
                               style={{
                                 padding: '4px 8px', fontSize: 12, fontWeight: 600,
                                 background: 'none', border: '1px solid var(--purple-border)',

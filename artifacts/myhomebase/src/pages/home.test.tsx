@@ -16,6 +16,7 @@ import {
   screen,
   cleanup,
   act,
+  fireEvent,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -699,6 +700,85 @@ describe("Install-year nudge — server error shown inline", () => {
     expect(
       screen.getByTestId("input-install-year-roofInstalledYear"),
     ).toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("Install-year nudge — rapid double-click fires mutate only once", () => {
+  it("two rapid clicks on Save for roof only call mutate once", async () => {
+    const user = userEvent.setup();
+    renderHome();
+
+    await user.click(screen.getByTestId("button-nudge-roofInstalledYear"));
+    await user.type(
+      screen.getByTestId("input-install-year-roofInstalledYear"),
+      "2010",
+    );
+
+    const saveBtn = screen.getByTestId(
+      "button-save-install-year-roofInstalledYear",
+    );
+    expect(saveBtn).not.toBeDisabled();
+
+    // Fire two clicks synchronously before React can re-render and apply the
+    // isPending-based disabled state. The ref guard in handleNudgeSave must
+    // block the second call even when the disabled attribute has not yet been
+    // applied to the DOM.
+    act(() => {
+      fireEvent.click(saveBtn);
+      fireEvent.click(saveBtn);
+    });
+
+    expect(flags.mutateSpy).toHaveBeenCalledOnce();
+  });
+
+  it("two rapid clicks on Save for HVAC only call mutate once", async () => {
+    const user = userEvent.setup();
+    renderHome();
+
+    await user.click(screen.getByTestId("button-nudge-hvacInstalledYear"));
+    await user.type(
+      screen.getByTestId("input-install-year-hvacInstalledYear"),
+      "2018",
+    );
+
+    const saveBtn = screen.getByTestId(
+      "button-save-install-year-hvacInstalledYear",
+    );
+    expect(saveBtn).not.toBeDisabled();
+
+    act(() => {
+      fireEvent.click(saveBtn);
+      fireEvent.click(saveBtn);
+    });
+
+    expect(flags.mutateSpy).toHaveBeenCalledOnce();
+  });
+
+  it("two rapid clicks on Save for water heater only call mutate once", async () => {
+    const user = userEvent.setup();
+    renderHome();
+
+    await user.click(
+      screen.getByTestId("button-nudge-waterHeaterInstalledYear"),
+    );
+    await user.type(
+      screen.getByTestId("input-install-year-waterHeaterInstalledYear"),
+      "2020",
+    );
+
+    const saveBtn = screen.getByTestId(
+      "button-save-install-year-waterHeaterInstalledYear",
+    );
+    expect(saveBtn).not.toBeDisabled();
+
+    act(() => {
+      fireEvent.click(saveBtn);
+      fireEvent.click(saveBtn);
+    });
+
+    expect(flags.mutateSpy).toHaveBeenCalledOnce();
   });
 });
 
