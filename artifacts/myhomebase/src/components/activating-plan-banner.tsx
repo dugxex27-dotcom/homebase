@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, RefreshCw, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { getQueryFn } from "@/lib/queryClient";
+
+const FAST_POLL_INTERVAL_MS = 5_000;
+const MAX_FAST_POLL_MS = 60_000;
 
 function useActivatingPlanStatus(): boolean {
   const { user } = useAuth();
@@ -42,6 +45,60 @@ export function ActivatingPlanBanner() {
   const isActivating = useActivatingPlanStatus();
   const [dismissed, setDismissed] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Fast-poll window is independent of whether the banner is dismissed.
+  // The window opens when activation is first detected and closes either
+  // when the status transitions to active (isActivating → false) or after
+  // MAX_FAST_POLL_MS, whichever comes first.
+  const [fastPollExpired, setFastPollExpired] = useState(false);
+
+  useEffect(() => {
+    if (!isActivating) {
+      // Status resolved — reset so a future activation cycle gets a fresh window.
+      setFastPollExpired(false);
+      return;
+    }
+    // Start (or restart) the expiry timer each time the window opens.
+    setFastPollExpired(false);
+    const timer = setTimeout(() => setFastPollExpired(true), MAX_FAST_POLL_MS);
+    return () => clearTimeout(timer);
+  }, [isActivating]);
+
+  // Fast-polling is tied to the activation state, NOT to banner visibility.
+  // This means polling continues even if the user dismisses the banner,
+  // so features still unlock automatically in the background.
+  const fastPollActive = isActivating && !fastPollExpired;
+
+  // Speed up /api/auth/user during the activation window.
+  // React Query uses the shortest refetchInterval across all active observers,
+  // so this subscriber speeds up the shared query without changing useAuth.ts.
+  useQuery<any>({
+    queryKey: ["/api/auth/user"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+    enabled: fastPollActive,
+    refetchInterval: FAST_POLL_INTERVAL_MS,
+    staleTime: 0,
+  });
+
+  // Speed up /api/user (homeowner subscription status).
+  useQuery<any>({
+    queryKey: ["/api/user"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+    enabled: fastPollActive,
+    refetchInterval: FAST_POLL_INTERVAL_MS,
+    staleTime: 0,
+  });
+
+  // Speed up /api/contractor/subscription so contractor status transitions
+  // to active in sync with /api/auth/user — prevents stale cached inactive
+  // data from blocking auto-dismiss on the contractor path.
+  useQuery<any>({
+    queryKey: ["/api/contractor/subscription"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+    enabled: fastPollActive,
+    refetchInterval: FAST_POLL_INTERVAL_MS,
+    staleTime: 0,
+  });
 
   if (!isActivating || dismissed) return null;
 
