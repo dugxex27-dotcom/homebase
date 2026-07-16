@@ -606,6 +606,62 @@ describe("Install-year nudge — keyboard shortcuts", () => {
 
     expect(flags.mutateSpy).not.toHaveBeenCalled();
   });
+
+  it("pressing Enter on HVAC then getting a server error shows the error and keeps the form open", async () => {
+    const user = userEvent.setup();
+    const { rerender } = renderHome();
+
+    await user.click(screen.getByTestId("button-nudge-hvacInstalledYear"));
+    await user.type(
+      screen.getByTestId("input-install-year-hvacInstalledYear"),
+      "2014",
+    );
+
+    await act(async () => {
+      await user.keyboard("{Enter}");
+    });
+
+    expect(flags.mutateSpy).toHaveBeenCalledOnce();
+
+    flags.isError = true;
+    act(() => {
+      rerender(<Home />);
+    });
+
+    expect(screen.getByText(/couldn't save/i)).toBeDefined();
+    expect(
+      screen.getByTestId("input-install-year-hvacInstalledYear"),
+    ).toBeDefined();
+  });
+
+  it("pressing Enter on water heater then getting a server error shows the error and keeps the form open", async () => {
+    const user = userEvent.setup();
+    const { rerender } = renderHome();
+
+    await user.click(
+      screen.getByTestId("button-nudge-waterHeaterInstalledYear"),
+    );
+    await user.type(
+      screen.getByTestId("input-install-year-waterHeaterInstalledYear"),
+      "2017",
+    );
+
+    await act(async () => {
+      await user.keyboard("{Enter}");
+    });
+
+    expect(flags.mutateSpy).toHaveBeenCalledOnce();
+
+    flags.isError = true;
+    act(() => {
+      rerender(<Home />);
+    });
+
+    expect(screen.getByText(/couldn't save/i)).toBeDefined();
+    expect(
+      screen.getByTestId("input-install-year-waterHeaterInstalledYear"),
+    ).toBeDefined();
+  });
 });
 
 // ---------------------------------------------------------------------------
