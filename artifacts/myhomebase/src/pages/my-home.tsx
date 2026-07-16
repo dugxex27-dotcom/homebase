@@ -20,6 +20,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Calendar, Clock, Wrench, Home, MapPin, Edit, Trash2, Plus, Building, Thermometer, AlertTriangle, ChevronRight, Crown, BarChart3, Copy, Settings, ClipboardList } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { HomeownerFeatureGate, HomeownerTrialBanner, FreeUserUpgradePrompt } from "@/components/homeowner-feature-gate";
+import { ActivatingPlanBanner } from "@/components/activating-plan-banner";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
 import { PageHero } from "@/components/page-hero";
 
@@ -462,6 +463,7 @@ export default function MyHome() {
       />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Trial Banner */}
+        <ActivatingPlanBanner />
         <HomeownerTrialBanner />
 
         <HomeownerFeatureGate featureName="My Home">

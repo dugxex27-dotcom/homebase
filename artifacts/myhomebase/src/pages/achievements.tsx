@@ -27,6 +27,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { HomeownerFeatureGate, HomeownerTrialBanner, FreeUserUpgradePrompt } from "@/components/homeowner-feature-gate";
+import { ActivatingPlanBanner } from "@/components/activating-plan-banner";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
 import "./home.css";
 
@@ -291,6 +292,7 @@ export default function Achievements() {
 
         <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-8">
           {/* Trial Banner */}
+          <ActivatingPlanBanner />
           <HomeownerTrialBanner />
 
           <HomeownerFeatureGate featureName="Achievements">

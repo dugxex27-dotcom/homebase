@@ -17,6 +17,7 @@ import type { MaintenanceLog, House, InvoiceAnalysis } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { FreeUserUpgradePrompt, HomeownerTrialBanner } from "@/components/homeowner-feature-gate";
+import { ActivatingPlanBanner } from "@/components/activating-plan-banner";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
 import logoHomeowner from "@assets/my-homebase-logo-tm-final-white_1777417516350.png";
 import "./home.css";
@@ -668,6 +669,7 @@ export default function HomeownerServiceRecords() {
 
       {/* ── PAGE BODY ──────────────────────────────── */}
       <div className="dash-body">
+        <ActivatingPlanBanner />
         <HomeownerTrialBanner />
 
         {/* Filters and Download Options */}
