@@ -547,10 +547,15 @@ export async function seedHomeownerDemo(log: DemoLog): Promise<SeedOutcome> {
 export async function topUpHomeownerTaskCompletions(): Promise<void> {
   const demoId = "demo-homeowner-permanent-id";
   const DEMO_TC_TARGET = 195;
-  const currentYear = new Date().getFullYear();
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+  // Matches the health-score endpoint's 12-month rolling window
+  const cutoffAbsMonth = (currentYear - 1) * 12 + currentMonth;
 
+  // Count only in-window completions — out-of-window rows don't contribute to score
   const [{ cnt }] = await db
-    .select({ cnt: drizzleSql<number>`cast(count(*) as integer)` })
+    .select({ cnt: drizzleSql<number>`cast(coalesce(sum(case when year * 12 + month >= ${cutoffAbsMonth} then 1 else 0 end), 0) as integer)` })
     .from(taskCompletions)
     .where(eq(taskCompletions.homeownerId, demoId));
 
@@ -652,6 +657,9 @@ export async function topUpHomeownerTaskCompletions(): Promise<void> {
   await Promise.all(
     toInsert.map(async (task) => {
       const completedDate = new Date(Date.now() - task.daysAgo * 24 * 60 * 60 * 1000);
+      // Place each task in the 12-month scoring window:
+      // months >= currentMonth land in last year; earlier months land in current year.
+      const taskYear = task.month >= currentMonth ? currentYear - 1 : currentYear;
       await db.insert(taskCompletions).values({
         id: randomUUID(),
         homeownerId: demoId,
@@ -662,7 +670,7 @@ export async function topUpHomeownerTaskCompletions(): Promise<void> {
         taskCategory: task.taskCategory,
         completedAt: completedDate,
         month: task.month,
-        year: task.year,
+        year: taskYear,
         completionMethod: task.completionMethod,
         estimatedCost: task.costSavings > 0 ? task.costSavings.toString() : null,
         actualCost: task.completionMethod === "professional" ? "150.00" : "0.00",
