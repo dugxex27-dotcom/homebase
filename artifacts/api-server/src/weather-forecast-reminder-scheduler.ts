@@ -226,23 +226,48 @@ function getMillisecondsUntil8AM(): number {
 }
 
 export const weatherForecastReminderScheduler = {
+  _initialTimeout: null as NodeJS.Timeout | null,
+  _checkInterval: null as NodeJS.Timeout | null,
+  _cleanupInterval: null as NodeJS.Timeout | null,
+  _stopped: false,
+
   start() {
+    this._stopped = false;
     console.log('[FORECAST] Weather forecast reminder scheduler started (daily at 8 AM)');
 
     const msUntil8AM = getMillisecondsUntil8AM();
     console.log(`[FORECAST] First run in ${Math.round(msUntil8AM / 1000 / 60)} minutes`);
 
-    setTimeout(async () => {
+    this._initialTimeout = setTimeout(async () => {
+      this._initialTimeout = null;
       await checkForecastRemindersForAllHomes();
 
-      setInterval(async () => {
-        await checkForecastRemindersForAllHomes();
-      }, 24 * 60 * 60 * 1000);
+      if (!this._stopped) {
+        this._checkInterval = setInterval(async () => {
+          await checkForecastRemindersForAllHomes();
+        }, 24 * 60 * 60 * 1000);
+      }
     }, msUntil8AM);
 
-    setInterval(async () => {
+    this._cleanupInterval = setInterval(async () => {
       await cleanupOldReminders();
     }, 24 * 60 * 60 * 1000);
   },
-  stop() {},
+
+  stop() {
+    this._stopped = true;
+    if (this._initialTimeout !== null) {
+      clearTimeout(this._initialTimeout);
+      this._initialTimeout = null;
+    }
+    if (this._checkInterval !== null) {
+      clearInterval(this._checkInterval);
+      this._checkInterval = null;
+    }
+    if (this._cleanupInterval !== null) {
+      clearInterval(this._cleanupInterval);
+      this._cleanupInterval = null;
+    }
+    console.log('[FORECAST] Weather forecast reminder scheduler stopped');
+  },
 };

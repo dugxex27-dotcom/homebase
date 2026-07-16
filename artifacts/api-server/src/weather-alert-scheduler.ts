@@ -302,20 +302,40 @@ async function cleanupOldAlerts(): Promise<void> {
 const CHECK_INTERVAL_MS = 2 * 60 * 60 * 1000;
 
 export const weatherAlertScheduler = {
+  _initialTimeout: null as NodeJS.Timeout | null,
+  _checkInterval: null as NodeJS.Timeout | null,
+  _cleanupInterval: null as NodeJS.Timeout | null,
+
   start() {
     console.log('[WEATHER] Weather alert scheduler started (2-hour interval)');
 
-    setTimeout(async () => {
+    this._initialTimeout = setTimeout(async () => {
+      this._initialTimeout = null;
       await checkWeatherAlertsForAllHomes();
     }, 30 * 1000);
 
-    setInterval(async () => {
+    this._checkInterval = setInterval(async () => {
       await checkWeatherAlertsForAllHomes();
     }, CHECK_INTERVAL_MS);
 
-    setInterval(async () => {
+    this._cleanupInterval = setInterval(async () => {
       await cleanupOldAlerts();
     }, 24 * 60 * 60 * 1000);
   },
-  stop() {},
+
+  stop() {
+    if (this._initialTimeout !== null) {
+      clearTimeout(this._initialTimeout);
+      this._initialTimeout = null;
+    }
+    if (this._checkInterval !== null) {
+      clearInterval(this._checkInterval);
+      this._checkInterval = null;
+    }
+    if (this._cleanupInterval !== null) {
+      clearInterval(this._cleanupInterval);
+      this._cleanupInterval = null;
+    }
+    console.log('[WEATHER] Weather alert scheduler stopped');
+  },
 };
