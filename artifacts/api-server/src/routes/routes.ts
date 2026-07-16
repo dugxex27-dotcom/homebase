@@ -1957,6 +1957,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (subscription.status === 'canceled') status = 'cancelled';
           else if (subscription.status === 'past_due') status = 'past_due';
           else if (subscription.status === 'trialing') status = 'trialing';
+          else if (subscription.status === 'incomplete_expired') status = 'cancelled';
           
           await storage.updateUserSubscriptionStatus(user.id, status);
 

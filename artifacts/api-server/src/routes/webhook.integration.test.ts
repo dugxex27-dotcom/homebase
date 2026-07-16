@@ -194,8 +194,10 @@ vi.mock("../objectStorage", () => ({
 }));
 
 // Database connection — stub so no real PG connection is attempted.
+// pool.query must return a Promise (not undefined) because pg-rate-limit-store.ts
+// calls pool.query(INIT_SQL).catch(...) at module init time.
 vi.mock("../db", () => ({
-  pool: { query: vi.fn(), end: vi.fn() },
+  pool: { query: vi.fn().mockResolvedValue({ rows: [] }), end: vi.fn() },
   db: {
     insert: vi.fn().mockReturnValue({ values: vi.fn().mockReturnValue({ onConflictDoNothing: vi.fn().mockResolvedValue(undefined) }) }),
     select: vi.fn().mockReturnValue({ from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([]) }) }),
@@ -983,5 +985,305 @@ describe("Stripe webhook idempotency — crash mid-write then restart (checkout.
     expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledOnce();
     expect(mockMarkStripeEventPending).toHaveBeenCalledOnce();
     expect(mockMarkStripeEventCommitted).toHaveBeenCalledOnce();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 3DS / incomplete subscription lifecycle tests
+//
+// Stripe 3DS flow: when a card requires 3D Secure authentication the
+// subscription begins in 'incomplete' status.  Two outcomes are possible:
+//
+//   SUCCESS: The customer completes 3DS → Stripe fires
+//     `customer.subscription.updated` with status 'active'.  The user must be
+//     upgraded (updateUserSubscriptionStatus called with 'active').
+//
+//   REJECTION: The customer abandons 3DS or the card is declined → Stripe
+//     fires `customer.subscription.updated` with status 'incomplete_expired'
+//     (or `customer.subscription.deleted`).  The user must NOT receive an
+//     'active' entitlement — status must be set to 'cancelled'.
+//
+// These tests confirm both legs of that state machine at the webhook layer,
+// complementing the sync-subscription tests that cover the checkout-time
+// 'incomplete' → 'active' mapping.
+// ---------------------------------------------------------------------------
+
+function makeSubscriptionUpdatedEventWithStatus(
+  eventId: string,
+  status: string,
+): Stripe.Event {
+  return {
+    id: eventId,
+    object: "event",
+    type: "customer.subscription.updated",
+    data: {
+      object: {
+        id: "sub_test_3ds_01",
+        object: "subscription",
+        customer: "cus_test_3ds_01",
+        status,
+        items: {
+          data: [
+            {
+              price: {
+                id: "price_test_monthly_3ds",
+                recurring: { usage_type: "licensed" },
+              },
+            },
+          ],
+        },
+      },
+      previous_attributes: { status: "incomplete" },
+    },
+    livemode: false,
+    pending_webhooks: 0,
+    request: null,
+    created: Math.floor(Date.now() / 1000),
+    api_version: "2025-08-27.basil",
+  } as unknown as Stripe.Event;
+}
+
+function makeSubscriptionDeletedEvent(eventId: string): Stripe.Event {
+  return {
+    id: eventId,
+    object: "event",
+    type: "customer.subscription.deleted",
+    data: {
+      object: {
+        id: "sub_test_3ds_deleted",
+        object: "subscription",
+        customer: "cus_test_3ds_01",
+        status: "canceled",
+        items: { data: [] },
+      },
+    },
+    livemode: false,
+    pending_webhooks: 0,
+    request: null,
+    created: Math.floor(Date.now() / 1000),
+    api_version: "2025-08-27.basil",
+  } as unknown as Stripe.Event;
+}
+
+function makeInvoicePaymentFailedEvent(eventId: string): Stripe.Event {
+  return {
+    id: eventId,
+    object: "event",
+    type: "invoice.payment_failed",
+    data: {
+      object: {
+        id: "in_test_failed_01",
+        object: "invoice",
+        customer: "cus_test_3ds_01",
+        subscription: "sub_test_3ds_01",
+        amount_due: 500,
+        period_start: Math.floor(Date.now() / 1000) - 3600,
+        period_end: Math.floor(Date.now() / 1000),
+      },
+    },
+    livemode: false,
+    pending_webhooks: 0,
+    request: null,
+    created: Math.floor(Date.now() / 1000),
+    api_version: "2025-08-27.basil",
+  } as unknown as Stripe.Event;
+}
+
+describe("Stripe webhook — incomplete subscription 3DS lifecycle (upgrade and rejection paths)", () => {
+  const FAKE_USER = {
+    id: "user_test_3ds_01",
+    role: "homeowner",
+    companyId: null,
+    email: "homeowner-3ds@test.com",
+    stripeCustomerId: "cus_test_3ds_01",
+    stripeSubscriptionId: null,
+    subscriptionStatus: "incomplete",
+  };
+
+  let app: express.Express;
+
+  beforeEach(async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test_integration_placeholder";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_integration_placeholder";
+
+    processedWebhookEventIds.clear();
+    inFlightWebhookEventIds.clear();
+
+    mockGetRecentStripeProcessedEventIds.mockReset().mockResolvedValue(new Map());
+    mockHasProcessedStripeEvent.mockReset().mockResolvedValue(false);
+    mockMarkStripeEventPending.mockReset().mockResolvedValue(undefined);
+    mockMarkStripeEventCommitted.mockReset().mockResolvedValue(undefined);
+    mockDeleteStripeEventPending.mockReset().mockResolvedValue(undefined);
+    mockPruneOldStripeProcessedEvents.mockReset().mockResolvedValue(undefined);
+    mockGetUser.mockReset().mockResolvedValue(null);
+    mockUpdateUserStripeSubscription.mockReset().mockResolvedValue(undefined);
+    mockUpdateUserSubscriptionStatus2.mockReset().mockResolvedValue(undefined);
+    mockUpsertUser.mockReset().mockResolvedValue(undefined);
+    mockGetUserByStripeCustomerId2.mockReset().mockResolvedValue(FAKE_USER);
+
+    app = express();
+    await registerRoutes(app);
+  });
+
+  afterEach(() => {
+    processedWebhookEventIds.clear();
+    inFlightWebhookEventIds.clear();
+    vi.clearAllMocks();
+  });
+
+  // ── SUCCESS PATH ──────────────────────────────────────────────────────────
+
+  it("incomplete→active: customer.subscription.updated with status='active' upgrades the user to 'active'", async () => {
+    const EVENT_ID = "evt_3ds_success_incomplete_to_active_001";
+    const event = makeSubscriptionUpdatedEventWithStatus(EVENT_ID, "active");
+    mockConstructEvent.mockReset().mockReturnValue(event);
+
+    const res = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(makeWebhookBody(event));
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ received: true });
+    expect(res.body.duplicate).toBeUndefined();
+
+    // The user must be looked up by Stripe customer ID
+    expect(mockGetUserByStripeCustomerId2).toHaveBeenCalledWith("cus_test_3ds_01");
+
+    // The subscription record must be written
+    expect(mockUpdateUserStripeSubscription).toHaveBeenCalledWith(
+      FAKE_USER.id,
+      "sub_test_3ds_01",
+      "price_test_monthly_3ds",
+    );
+
+    // The user must be upgraded to 'active' — not left in 'incomplete'
+    expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledOnce();
+    expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledWith(
+      FAKE_USER.id,
+      "active",
+    );
+  });
+
+  it("incomplete→active: the upgrade is idempotent — a second delivery of the same event does not double-write", async () => {
+    const EVENT_ID = "evt_3ds_success_idempotent_002";
+    const event = makeSubscriptionUpdatedEventWithStatus(EVENT_ID, "active");
+    mockConstructEvent.mockReset().mockReturnValue(event);
+
+    const body = makeWebhookBody(event);
+
+    const first = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(body);
+    expect(first.status).toBe(200);
+    expect(first.body.duplicate).toBeUndefined();
+
+    const second = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(body);
+    expect(second.status).toBe(200);
+    expect(second.body).toMatchObject({ received: true, duplicate: true });
+
+    // Storage writes must have happened exactly once despite two deliveries
+    expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledOnce();
+    expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledWith(
+      FAKE_USER.id,
+      "active",
+    );
+  });
+
+  // ── REJECTION PATHS ───────────────────────────────────────────────────────
+
+  it("incomplete_expired: customer.subscription.updated with status='incomplete_expired' does NOT grant active entitlement", async () => {
+    const EVENT_ID = "evt_3ds_rejected_incomplete_expired_001";
+    const event = makeSubscriptionUpdatedEventWithStatus(
+      EVENT_ID,
+      "incomplete_expired",
+    );
+    mockConstructEvent.mockReset().mockReturnValue(event);
+
+    const res = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(makeWebhookBody(event));
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ received: true });
+
+    expect(mockGetUserByStripeCustomerId2).toHaveBeenCalledWith("cus_test_3ds_01");
+
+    // Status must be 'cancelled', not 'active' — the incomplete sub was rejected
+    expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledOnce();
+    expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledWith(
+      FAKE_USER.id,
+      "cancelled",
+    );
+    expect(mockUpdateUserSubscriptionStatus2).not.toHaveBeenCalledWith(
+      FAKE_USER.id,
+      "active",
+    );
+  });
+
+  it("subscription deleted: customer.subscription.deleted sets status to 'cancelled', not 'active'", async () => {
+    const EVENT_ID = "evt_3ds_rejected_sub_deleted_001";
+    const event = makeSubscriptionDeletedEvent(EVENT_ID);
+    // The deleted handler looks up by customerId too
+    mockGetUserByStripeCustomerId2.mockResolvedValue(FAKE_USER);
+    mockConstructEvent.mockReset().mockReturnValue(event);
+
+    const res = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(makeWebhookBody(event));
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ received: true });
+
+    // User must be marked cancelled — never upgraded to active
+    expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledOnce();
+    expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledWith(
+      FAKE_USER.id,
+      "cancelled",
+    );
+    expect(mockUpdateUserSubscriptionStatus2).not.toHaveBeenCalledWith(
+      FAKE_USER.id,
+      "active",
+    );
+  });
+
+  it("invoice.payment_failed: rejected payment on an incomplete sub sets status to 'past_due', not 'active'", async () => {
+    const EVENT_ID = "evt_3ds_invoice_payment_failed_001";
+    const event = makeInvoicePaymentFailedEvent(EVENT_ID);
+    // payment_failed handler uses getUserByStripeCustomerId, same mock
+    mockGetUserByStripeCustomerId2.mockResolvedValue(FAKE_USER);
+    mockConstructEvent.mockReset().mockReturnValue(event);
+
+    // createSubscriptionCycleEvent is called by the payment_failed handler;
+    // stub it via storage mock (it falls through to the default no-op)
+    const res = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(makeWebhookBody(event));
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ received: true });
+
+    // payment_failed must mark user 'past_due' — never 'active'
+    expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledWith(
+      FAKE_USER.id,
+      "past_due",
+    );
+    expect(mockUpdateUserSubscriptionStatus2).not.toHaveBeenCalledWith(
+      FAKE_USER.id,
+      "active",
+    );
   });
 });
