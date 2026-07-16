@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useEffect } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateHouseholdProfileSchema } from "@shared/schema";
@@ -39,6 +39,8 @@ interface HouseholdProfileEditorProps {
   onOpenChange: (open: boolean) => void;
   houseId: string;
   currentProfile?: Partial<HouseholdProfileFormData>;
+  focusField?: string | null;
+  onFieldChange?: (values: Record<string, unknown>) => void;
 }
 
 export function HouseholdProfileEditor({
@@ -46,6 +48,8 @@ export function HouseholdProfileEditor({
   onOpenChange,
   houseId,
   currentProfile,
+  focusField,
+  onFieldChange,
 }: HouseholdProfileEditorProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -54,6 +58,24 @@ export function HouseholdProfileEditor({
     resolver: zodResolver(updateHouseholdProfileSchema as any),
     defaultValues: currentProfile || {},
   });
+
+  // Notify parent of live value changes before save
+  const watchedValues = useWatch({ control: form.control });
+  useEffect(() => {
+    if (onFieldChange && open) {
+      onFieldChange(watchedValues as Record<string, unknown>);
+    }
+  }, [watchedValues, onFieldChange, open]);
+
+  // Focus the specified field element when the dialog opens
+  useEffect(() => {
+    if (!open || !focusField) return;
+    const timer = setTimeout(() => {
+      const el = document.querySelector<HTMLElement>(`[data-testid="${focusField}"]`);
+      el?.focus();
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [open, focusField]);
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: HouseholdProfileFormData) => {
