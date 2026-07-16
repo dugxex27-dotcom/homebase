@@ -30,6 +30,8 @@ const flags = vi.hoisted(() => ({
   // Updated by the mutate mock when triggerOnSuccess is true.
   // useQuery reads this to simulate the refetched house after a successful save.
   savedRoofYear: null as number | null,
+  savedHvacYear: null as number | null,
+  savedWaterHeaterYear: null as number | null,
   // Captured from the last useMutation({ onSuccess }) call in each render.
   // patchInstallYearMutation is always the last useMutation registered per render.
   patchOnSuccess: null as (() => void) | null,
@@ -147,8 +149,8 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
                 // After a successful save, flags.savedRoofYear is set so the
                 // next render sees the item as "done" and removes it from the list.
                 roofInstalledYear: flags.savedRoofYear,
-                hvacInstalledYear: null,
-                waterHeaterInstalledYear: null,
+                hvacInstalledYear: flags.savedHvacYear,
+                waterHeaterInstalledYear: flags.savedWaterHeaterYear,
               };
           return {
             data: [{ ...baseHouse, ...installYears }],
@@ -182,10 +184,16 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
             flags.mutateSpy(args);
             if (flags.triggerOnSuccess && flags.patchOnSuccess) {
               // Simulate a successful save: update the house data so the
-              // refetched query will mark roofInstalledYear as set.
+              // refetched query will mark the saved field as done.
               const typed = args as { field?: string; year?: number } | undefined;
               if (typed?.field === "roofInstalledYear" && typed?.year != null) {
                 flags.savedRoofYear = typed.year;
+              }
+              if (typed?.field === "hvacInstalledYear" && typed?.year != null) {
+                flags.savedHvacYear = typed.year;
+              }
+              if (typed?.field === "waterHeaterInstalledYear" && typed?.year != null) {
+                flags.savedWaterHeaterYear = typed.year;
               }
               flags.patchOnSuccess();
             }
@@ -234,6 +242,8 @@ afterEach(() => {
   flags.isError = false;
   flags.triggerOnSuccess = false;
   flags.savedRoofYear = null;
+  flags.savedHvacYear = null;
+  flags.savedWaterHeaterYear = null;
   flags.patchOnSuccess = null;
   flags.allInstallYearsDone = false;
   flags.mutateSpy.mockClear();
@@ -595,5 +605,271 @@ describe("Profile nudge card — visibility based on completion", () => {
     renderHome();
 
     expect(screen.getByTestId("profile-nudge-card")).toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("Install-year nudge — HVAC field expand and save", () => {
+  it("clicking the HVAC nudge shows the year input in-place and does not navigate", async () => {
+    const user = userEvent.setup();
+    renderHome();
+
+    const nudgeBtn = screen.getByTestId("button-nudge-hvacInstalledYear");
+    expect(nudgeBtn).toBeDefined();
+
+    await user.click(nudgeBtn);
+
+    expect(
+      screen.getByTestId("input-install-year-hvacInstalledYear"),
+    ).toBeDefined();
+
+    // Trigger button replaced by inline form
+    expect(
+      screen.queryByTestId("button-nudge-hvacInstalledYear"),
+    ).toBeNull();
+
+    // No router navigation triggered
+    expect(flags.setLocationSpy).not.toHaveBeenCalled();
+  });
+
+  it("pressing Save on HVAC calls PATCH with the correct field and removes the item on success", async () => {
+    flags.triggerOnSuccess = true;
+
+    const user = userEvent.setup();
+    renderHome();
+
+    await user.click(screen.getByTestId("button-nudge-hvacInstalledYear"));
+    await user.type(
+      screen.getByTestId("input-install-year-hvacInstalledYear"),
+      "2012",
+    );
+
+    const saveBtn = screen.getByTestId(
+      "button-save-install-year-hvacInstalledYear",
+    );
+    expect(saveBtn).not.toBeDisabled();
+
+    await act(async () => {
+      await user.click(saveBtn);
+    });
+
+    expect(flags.mutateSpy).toHaveBeenCalledOnce();
+    expect(flags.mutateSpy).toHaveBeenCalledWith({
+      houseId: "house-1",
+      field: "hvacInstalledYear",
+      year: 2012,
+    });
+
+    // onSuccess fired: form closed and item removed from the checklist
+    expect(
+      screen.queryByTestId("input-install-year-hvacInstalledYear"),
+    ).toBeNull();
+    expect(
+      screen.queryByTestId("button-nudge-hvacInstalledYear"),
+    ).toBeNull();
+  });
+
+  it("pressing Cancel on HVAC closes the form without calling mutate", async () => {
+    const user = userEvent.setup();
+    renderHome();
+
+    await user.click(screen.getByTestId("button-nudge-hvacInstalledYear"));
+    await user.type(
+      screen.getByTestId("input-install-year-hvacInstalledYear"),
+      "2012",
+    );
+
+    await user.click(
+      screen.getByTestId("button-cancel-install-year-hvacInstalledYear"),
+    );
+
+    expect(flags.mutateSpy).not.toHaveBeenCalled();
+
+    expect(
+      screen.queryByTestId("input-install-year-hvacInstalledYear"),
+    ).toBeNull();
+    expect(
+      screen.getByTestId("button-nudge-hvacInstalledYear"),
+    ).toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("Install-year nudge — water heater field expand and save", () => {
+  it("clicking the water heater nudge shows the year input in-place and does not navigate", async () => {
+    const user = userEvent.setup();
+    renderHome();
+
+    const nudgeBtn = screen.getByTestId(
+      "button-nudge-waterHeaterInstalledYear",
+    );
+    expect(nudgeBtn).toBeDefined();
+
+    await user.click(nudgeBtn);
+
+    expect(
+      screen.getByTestId("input-install-year-waterHeaterInstalledYear"),
+    ).toBeDefined();
+
+    // Trigger button replaced by inline form
+    expect(
+      screen.queryByTestId("button-nudge-waterHeaterInstalledYear"),
+    ).toBeNull();
+
+    // No router navigation triggered
+    expect(flags.setLocationSpy).not.toHaveBeenCalled();
+  });
+
+  it("pressing Save on water heater calls PATCH with the correct field and removes the item on success", async () => {
+    flags.triggerOnSuccess = true;
+
+    const user = userEvent.setup();
+    renderHome();
+
+    await user.click(
+      screen.getByTestId("button-nudge-waterHeaterInstalledYear"),
+    );
+    await user.type(
+      screen.getByTestId("input-install-year-waterHeaterInstalledYear"),
+      "2019",
+    );
+
+    const saveBtn = screen.getByTestId(
+      "button-save-install-year-waterHeaterInstalledYear",
+    );
+    expect(saveBtn).not.toBeDisabled();
+
+    await act(async () => {
+      await user.click(saveBtn);
+    });
+
+    expect(flags.mutateSpy).toHaveBeenCalledOnce();
+    expect(flags.mutateSpy).toHaveBeenCalledWith({
+      houseId: "house-1",
+      field: "waterHeaterInstalledYear",
+      year: 2019,
+    });
+
+    // onSuccess fired: form closed and item removed from the checklist
+    expect(
+      screen.queryByTestId("input-install-year-waterHeaterInstalledYear"),
+    ).toBeNull();
+    expect(
+      screen.queryByTestId("button-nudge-waterHeaterInstalledYear"),
+    ).toBeNull();
+  });
+
+  it("pressing Cancel on water heater closes the form without calling mutate", async () => {
+    const user = userEvent.setup();
+    renderHome();
+
+    await user.click(
+      screen.getByTestId("button-nudge-waterHeaterInstalledYear"),
+    );
+    await user.type(
+      screen.getByTestId("input-install-year-waterHeaterInstalledYear"),
+      "2019",
+    );
+
+    await user.click(
+      screen.getByTestId(
+        "button-cancel-install-year-waterHeaterInstalledYear",
+      ),
+    );
+
+    expect(flags.mutateSpy).not.toHaveBeenCalled();
+
+    expect(
+      screen.queryByTestId("input-install-year-waterHeaterInstalledYear"),
+    ).toBeNull();
+    expect(
+      screen.getByTestId("button-nudge-waterHeaterInstalledYear"),
+    ).toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("Install-year nudge — only one field open at a time", () => {
+  it("opening roof then switching to HVAC collapses the roof form", async () => {
+    const user = userEvent.setup();
+    renderHome();
+
+    // Open roof
+    await user.click(screen.getByTestId("button-nudge-roofInstalledYear"));
+    expect(
+      screen.getByTestId("input-install-year-roofInstalledYear"),
+    ).toBeDefined();
+
+    // Open HVAC — should collapse roof
+    await user.click(screen.getByTestId("button-nudge-hvacInstalledYear"));
+    expect(
+      screen.queryByTestId("input-install-year-roofInstalledYear"),
+    ).toBeNull();
+    expect(
+      screen.getByTestId("button-nudge-roofInstalledYear"),
+    ).toBeDefined();
+    expect(
+      screen.getByTestId("input-install-year-hvacInstalledYear"),
+    ).toBeDefined();
+
+    // mutate was never called (no save happened)
+    expect(flags.mutateSpy).not.toHaveBeenCalled();
+  });
+
+  it("opening HVAC then switching to water heater collapses the HVAC form", async () => {
+    const user = userEvent.setup();
+    renderHome();
+
+    // Open HVAC
+    await user.click(screen.getByTestId("button-nudge-hvacInstalledYear"));
+    expect(
+      screen.getByTestId("input-install-year-hvacInstalledYear"),
+    ).toBeDefined();
+
+    // Open water heater — should collapse HVAC
+    await user.click(
+      screen.getByTestId("button-nudge-waterHeaterInstalledYear"),
+    );
+    expect(
+      screen.queryByTestId("input-install-year-hvacInstalledYear"),
+    ).toBeNull();
+    expect(
+      screen.getByTestId("button-nudge-hvacInstalledYear"),
+    ).toBeDefined();
+    expect(
+      screen.getByTestId("input-install-year-waterHeaterInstalledYear"),
+    ).toBeDefined();
+
+    expect(flags.mutateSpy).not.toHaveBeenCalled();
+  });
+
+  it("opening water heater then switching to roof collapses the water heater form", async () => {
+    const user = userEvent.setup();
+    renderHome();
+
+    // Open water heater
+    await user.click(
+      screen.getByTestId("button-nudge-waterHeaterInstalledYear"),
+    );
+    expect(
+      screen.getByTestId("input-install-year-waterHeaterInstalledYear"),
+    ).toBeDefined();
+
+    // Open roof — should collapse water heater
+    await user.click(screen.getByTestId("button-nudge-roofInstalledYear"));
+    expect(
+      screen.queryByTestId("input-install-year-waterHeaterInstalledYear"),
+    ).toBeNull();
+    expect(
+      screen.getByTestId("button-nudge-waterHeaterInstalledYear"),
+    ).toBeDefined();
+    expect(
+      screen.getByTestId("input-install-year-roofInstalledYear"),
+    ).toBeDefined();
+
+    expect(flags.mutateSpy).not.toHaveBeenCalled();
   });
 });
