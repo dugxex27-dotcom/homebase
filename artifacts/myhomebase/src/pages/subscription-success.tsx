@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -7,11 +7,14 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle2, Home, Wrench, PartyPopper, ShieldCheck } from "lucide-react";
 import { Helmet } from "react-helmet";
 
+const COUNTDOWN_SECONDS = 5;
+
 export default function SubscriptionSuccess() {
   const [, setLocation] = useLocation();
-  const [countdown, setCountdown] = useState(5);
+  const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
   const [syncing, setSyncing] = useState(true);
   const queryClient = useQueryClient();
+  const mountTimeRef = useRef(Date.now());
   
   const urlParams = new URLSearchParams(window.location.search);
   const role = urlParams.get('role') || 'homeowner';
@@ -31,7 +34,6 @@ export default function SubscriptionSuccess() {
           if ((result as any)?.synced === true) {
             break;
           }
-          // Not yet synced — wait before retrying (unless last attempt)
           if (attempt < MAX_ATTEMPTS) {
             await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
           }
@@ -43,15 +45,28 @@ export default function SubscriptionSuccess() {
         }
       }
 
-      setSyncing(false);
       queryClient.invalidateQueries({ queryKey: ['/api/user'] });
       queryClient.invalidateQueries({ queryKey: ['/api/my-subscription'] });
       queryClient.invalidateQueries({ queryKey: ['/api/contractor/subscription'] });
+
+      const elapsedMs = Date.now() - mountTimeRef.current;
+      const remainingMs = COUNTDOWN_SECONDS * 1000 - elapsedMs;
+
+      if (remainingMs <= 0) {
+        setLocation(dashboardPath);
+        return;
+      }
+
+      setCountdown(Math.ceil(remainingMs / 1000));
+      setSyncing(false);
     };
     syncSubscription();
-  }, [queryClient]);
+  }, [queryClient, dashboardPath, setLocation]);
 
+  // Countdown only runs after sync completes
   useEffect(() => {
+    if (syncing) return;
+
     const timer = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
@@ -64,7 +79,7 @@ export default function SubscriptionSuccess() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [setLocation, dashboardPath]);
+  }, [syncing, setLocation, dashboardPath]);
 
   return (
     <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--page-background)' }}>
@@ -121,7 +136,9 @@ export default function SubscriptionSuccess() {
           </div>
           
           <p className="text-sm text-muted-foreground mb-4">
-            Redirecting to your dashboard in {countdown} seconds...
+            {syncing
+              ? 'Activating your subscription\u2026'
+              : `Redirecting to your dashboard in ${countdown} second${countdown === 1 ? '' : 's'}\u2026`}
           </p>
           
           <Button 
