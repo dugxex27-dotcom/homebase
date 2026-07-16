@@ -240,7 +240,7 @@ export default function Home() {
   const nudgeYearValid = nudgeYear !== "" && !isNaN(nudgeYearNum) && nudgeYearNum >= 1900 && nudgeYearNum <= new Date().getFullYear();
 
   const handleNudgeSave = (field: string) => {
-    if (!nudgeYearValid || !primaryHouse) return;
+    if (!nudgeYearValid || !primaryHouse || patchInstallYearMutation.isPending) return;
     patchInstallYearMutation.mutate({ houseId: primaryHouse.id, field, year: nudgeYearNum });
   };
 

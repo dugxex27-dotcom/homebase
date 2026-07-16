@@ -549,6 +549,63 @@ describe("Install-year nudge — keyboard shortcuts", () => {
       screen.getByTestId("input-install-year-roofInstalledYear"),
     ).toBeDefined();
   });
+
+  it("pressing Enter while isPending is true does not call mutate — roof", async () => {
+    flags.isPending = true;
+
+    const user = userEvent.setup();
+    renderHome();
+
+    await user.click(screen.getByTestId("button-nudge-roofInstalledYear"));
+    await user.type(
+      screen.getByTestId("input-install-year-roofInstalledYear"),
+      "2015",
+    );
+
+    await act(async () => {
+      await user.keyboard("{Enter}");
+    });
+
+    expect(flags.mutateSpy).not.toHaveBeenCalled();
+  });
+
+  it("pressing Enter while isPending is true does not call mutate — HVAC", async () => {
+    flags.isPending = true;
+
+    const user = userEvent.setup();
+    renderHome();
+
+    await user.click(screen.getByTestId("button-nudge-hvacInstalledYear"));
+    await user.type(
+      screen.getByTestId("input-install-year-hvacInstalledYear"),
+      "2018",
+    );
+
+    await act(async () => {
+      await user.keyboard("{Enter}");
+    });
+
+    expect(flags.mutateSpy).not.toHaveBeenCalled();
+  });
+
+  it("pressing Enter while isPending is true does not call mutate — water heater", async () => {
+    flags.isPending = true;
+
+    const user = userEvent.setup();
+    renderHome();
+
+    await user.click(screen.getByTestId("button-nudge-waterHeaterInstalledYear"));
+    await user.type(
+      screen.getByTestId("input-install-year-waterHeaterInstalledYear"),
+      "2020",
+    );
+
+    await act(async () => {
+      await user.keyboard("{Enter}");
+    });
+
+    expect(flags.mutateSpy).not.toHaveBeenCalled();
+  });
 });
 
 // ---------------------------------------------------------------------------
