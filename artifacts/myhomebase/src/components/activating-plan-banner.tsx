@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, RefreshCw, X } from "lucide-react";
+import { AlertTriangle, Loader2, RefreshCw, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { getQueryFn } from "@/lib/queryClient";
 
@@ -52,17 +52,21 @@ export function ActivatingPlanBanner() {
   // MAX_FAST_POLL_MS, whichever comes first.
   const [fastPollExpired, setFastPollExpired] = useState(false);
 
+  // Incrementing pollEpoch re-triggers the useEffect to restart the timer,
+  // which is how the retry button opens a fresh 60-second window.
+  const [pollEpoch, setPollEpoch] = useState(0);
+
   useEffect(() => {
     if (!isActivating) {
       // Status resolved — reset so a future activation cycle gets a fresh window.
       setFastPollExpired(false);
       return;
     }
-    // Start (or restart) the expiry timer each time the window opens.
+    // Start (or restart) the expiry timer each time the window opens or retries.
     setFastPollExpired(false);
     const timer = setTimeout(() => setFastPollExpired(true), MAX_FAST_POLL_MS);
     return () => clearTimeout(timer);
-  }, [isActivating]);
+  }, [isActivating, pollEpoch]);
 
   // Fast-polling is tied to the activation state, NOT to banner visibility.
   // This means polling continues even if the user dismisses the banner,
@@ -117,6 +121,84 @@ export function ActivatingPlanBanner() {
     } finally {
       setIsRefreshing(false);
     }
+  }
+
+  function handleRetry() {
+    setDismissed(false);
+    setPollEpoch((e) => e + 1);
+  }
+
+  if (fastPollExpired) {
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          background: "#fff7ed",
+          border: "1px solid #fb923c",
+          borderRadius: 8,
+          padding: "10px 14px",
+          margin: "0 0 12px 0",
+          fontSize: 14,
+          color: "#9a3412",
+          flexWrap: "wrap",
+        }}
+      >
+        <AlertTriangle
+          style={{ width: 16, height: 16, flexShrink: 0 }}
+        />
+        <span style={{ flex: 1, minWidth: 200 }}>
+          <strong>Taking longer than expected</strong> — your plan may still be activating.{" "}
+          <a
+            href="mailto:support@myhomebase.app"
+            style={{ color: "#9a3412", textDecoration: "underline", fontWeight: 600 }}
+          >
+            Contact support
+          </a>{" "}
+          if this persists.
+        </span>
+        <button
+          onClick={handleRetry}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+            background: "#ffedd5",
+            border: "1px solid #fb923c",
+            borderRadius: 6,
+            padding: "4px 10px",
+            fontSize: 13,
+            fontWeight: 600,
+            color: "#9a3412",
+            cursor: "pointer",
+            flexShrink: 0,
+          }}
+        >
+          <RefreshCw style={{ width: 13, height: 13 }} />
+          Try again
+        </button>
+        <button
+          onClick={() => setDismissed(true)}
+          aria-label="Dismiss"
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            color: "#9a3412",
+            padding: 2,
+            display: "flex",
+            alignItems: "center",
+            flexShrink: 0,
+            opacity: 0.7,
+          }}
+        >
+          <X style={{ width: 15, height: 15 }} />
+        </button>
+      </div>
+    );
   }
 
   return (
