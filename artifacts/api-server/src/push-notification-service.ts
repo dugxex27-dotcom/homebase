@@ -1,4 +1,4 @@
-import { getFirebaseMessaging } from './firebase-admin';
+import { sendFcmMulticast, isFcmConfigured } from './firebase-admin';
 import { storage } from './storage';
 import type { PushToken } from '@workspace/db';
 
@@ -11,7 +11,7 @@ interface PushPayload {
 
 class PushNotificationService {
   private isConfigured(): boolean {
-    return !!process.env.FIREBASE_SERVICE_ACCOUNT;
+    return isFcmConfigured();
   }
 
   async sendToUser(userId: string, payload: PushPayload): Promise<boolean> {
@@ -22,43 +22,35 @@ class PushNotificationService {
 
     try {
       const tokens = await storage.getPushTokensForUser(userId);
-      
+
       if (!tokens || tokens.length === 0) {
         console.log(`[PUSH] No active push tokens for user ${userId}`);
         return false;
       }
 
-      const messaging = getFirebaseMessaging();
-      if (!messaging) {
-        console.log('[PUSH] Firebase messaging not available');
-        return false;
-      }
-
       const activeTokens = tokens.filter((t: PushToken) => t.isActive).map((t: PushToken) => t.token);
-      
+
       if (activeTokens.length === 0) {
         console.log(`[PUSH] No active tokens for user ${userId}`);
         return false;
       }
 
-      const message: any = {
+      const response = await sendFcmMulticast(activeTokens, {
         notification: {
           title: payload.title,
           body: payload.body,
+          ...(payload.imageUrl ? { imageUrl: payload.imageUrl } : {}),
         },
-        data: payload.data || {},
-        tokens: activeTokens,
-      };
+        data: payload.data ?? {},
+      });
 
-      if (payload.imageUrl) {
-        message.notification.imageUrl = payload.imageUrl;
+      if (!response) {
+        console.log('[PUSH] Firebase messaging not available');
+        return false;
       }
 
-      const response = await messaging.sendEachForMulticast(message);
-      
       console.log(`[PUSH] Sent to user ${userId}: ${response.successCount} success, ${response.failureCount} failures`);
 
-      // Deactivate failed tokens
       if (response.failureCount > 0) {
         response.responses.forEach(async (resp, idx) => {
           if (!resp.success) {
@@ -83,10 +75,7 @@ class PushNotificationService {
     return this.sendToUser(userId, {
       title: 'Welcome to HomeBase!',
       body: `Hi ${userName}, your home management journey starts now.`,
-      data: {
-        type: 'welcome',
-        screen: 'home'
-      }
+      data: { type: 'welcome', screen: 'home' },
     });
   }
 
@@ -94,10 +83,7 @@ class PushNotificationService {
     return this.sendToUser(userId, {
       title: 'Maintenance Reminder',
       body: `${taskName} is due on ${dueDate}`,
-      data: {
-        type: 'maintenance_reminder',
-        screen: 'maintenance'
-      }
+      data: { type: 'maintenance_reminder', screen: 'maintenance' },
     });
   }
 
@@ -105,10 +91,7 @@ class PushNotificationService {
     return this.sendToUser(userId, {
       title: 'Trial Ending Soon',
       body: `Your free trial ends in ${daysRemaining} day${daysRemaining > 1 ? 's' : ''}. Subscribe to keep your home organized!`,
-      data: {
-        type: 'trial_expiring',
-        screen: 'subscription'
-      }
+      data: { type: 'trial_expiring', screen: 'subscription' },
     });
   }
 
@@ -116,10 +99,7 @@ class PushNotificationService {
     return this.sendToUser(userId, {
       title: 'New Message',
       body: `You have a new message from ${senderName}`,
-      data: {
-        type: 'new_message',
-        screen: 'messages'
-      }
+      data: { type: 'new_message', screen: 'messages' },
     });
   }
 
@@ -127,10 +107,7 @@ class PushNotificationService {
     return this.sendToUser(userId, {
       title: 'New Proposal',
       body: `${contractorName} sent you a proposal`,
-      data: {
-        type: 'proposal_received',
-        screen: 'proposals'
-      }
+      data: { type: 'proposal_received', screen: 'proposals' },
     });
   }
 
@@ -138,10 +115,7 @@ class PushNotificationService {
     return this.sendToUser(userId, {
       title: 'Appointment Reminder',
       body: `Your ${serviceName} appointment is scheduled for ${appointmentDate}`,
-      data: {
-        type: 'appointment_reminder',
-        screen: 'appointments'
-      }
+      data: { type: 'appointment_reminder', screen: 'appointments' },
     });
   }
 }
