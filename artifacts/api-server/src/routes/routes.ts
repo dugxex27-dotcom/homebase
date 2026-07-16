@@ -3142,6 +3142,120 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
+
+      // Persist a subscription that came from the customer-list fallback path.
+      // Only writes entitlement for 'active' or 'trialing'; returns null for anything else.
+      const persistListSubscription = async (subscription: any): Promise<string | null> => {
+        const subStatus: string = subscription.status;
+        if (subStatus !== 'active' && subStatus !== 'trialing') {
+          console.log(`[SYNC] Subscription ${subscription.id} has non-entitling status: ${subStatus} — not persisting`);
+          return null;
+        }
+        await storage.updateUserStripeSubscription(userId, subscription.id, subscription.items.data[0]?.price.id || '');
+        await storage.updateUserSubscriptionStatus(userId, subStatus);
+
+        const priceAmount = subscription.items.data[0]?.price.unit_amount || 0;
+        let maxHouses = 2;
+        if (priceAmount >= 4000) maxHouses = 999;
+        else if (priceAmount >= 2000) maxHouses = 6;
+
+        if (user.role === 'homeowner') {
+          await storage.upsertUser({
+            ...user,
+            subscriptionStatus: subStatus,
+            maxHousesAllowed: maxHouses === 999 ? null : maxHouses,
+          });
+        } else if (user.role === 'contractor') {
+          await storage.upsertUser({
+            ...user,
+            subscriptionStatus: subStatus,
+            subscriptionTier: priceAmount >= 4000 ? 'contractor_pro' : 'contractor_basic',
+          } as any);
+        }
+
+        return subStatus;
+      };
+
+      // Persist a subscription that came directly from a verified checkout session.
+      // Accepts 'active', 'trialing', and 'incomplete' (payment processing right after checkout).
+      // 'incomplete' is safe here because ownership was already verified via session ownership.
+      const persistSessionSubscription = async (subscription: any, overrideCustomerId?: string): Promise<string | null> => {
+        const subStatus: string = subscription.status;
+        const entitlingStatuses = ['active', 'trialing', 'incomplete'];
+        if (!entitlingStatuses.includes(subStatus)) {
+          console.log(`[SYNC] Session subscription ${subscription.id} has status: ${subStatus} — not persisting`);
+          return null;
+        }
+        // Map 'incomplete' → 'active' in our DB: user legitimately started checkout,
+        // payment is processing. Stripe will send a webhook to update if it fails.
+        const dbStatus = subStatus === 'incomplete' ? 'active' : subStatus;
+        await storage.updateUserStripeSubscription(userId, subscription.id, subscription.items.data[0]?.price.id || '');
+        await storage.updateUserSubscriptionStatus(userId, dbStatus);
+
+        const priceAmount = subscription.items.data[0]?.price.unit_amount || 0;
+        let maxHouses = 2;
+        if (priceAmount >= 4000) maxHouses = 999;
+        else if (priceAmount >= 2000) maxHouses = 6;
+
+        const userToUpdate = overrideCustomerId ? { ...user, stripeCustomerId: overrideCustomerId } : user;
+        if (user.role === 'homeowner') {
+          await storage.upsertUser({
+            ...userToUpdate,
+            subscriptionStatus: dbStatus,
+            maxHousesAllowed: maxHouses === 999 ? null : maxHouses,
+          });
+        } else if (user.role === 'contractor') {
+          await storage.upsertUser({
+            ...userToUpdate,
+            subscriptionStatus: dbStatus,
+            subscriptionTier: priceAmount >= 4000 ? 'contractor_pro' : 'contractor_basic',
+          } as any);
+        }
+
+        return dbStatus;
+      };
+
+      // Fast path: if caller supplies the checkout session ID, retrieve the subscription
+      // directly from Stripe so we don't miss it during the brief window between checkout
+      // completion and Stripe marking the subscription active/trialing.
+      const { sessionId } = req.body as { sessionId?: string };
+      if (sessionId && typeof sessionId === 'string' && sessionId.startsWith('cs_')) {
+        try {
+          const session = await stripe!.checkout.sessions.retrieve(sessionId, {
+            expand: ['subscription'],
+          });
+
+          // Ownership guard: verify the session belongs to this user via two checks:
+          //   1. Primary: session.customer matches user's saved stripeCustomerId.
+          //   2. Fallback (new-user race): session metadata.userId matches our userId — used
+          //      when stripeCustomerId was just created and hasn't been read back from DB yet.
+          // This prevents any authenticated user from passing a foreign session ID.
+          const sessionCustomerId = typeof session.customer === 'string' ? session.customer : (session.customer as any)?.id;
+          const ownedByCustomer = user.stripeCustomerId && sessionCustomerId === user.stripeCustomerId;
+          const ownedByMetadata = session.metadata?.userId === userId;
+          const isOwned = ownedByCustomer || ownedByMetadata;
+
+          if (!isOwned) {
+            console.warn(`[SYNC] Session ${sessionId} not owned by user ${user.email} — rejecting`);
+            return res.status(403).json({ message: "Session does not belong to this account" });
+          }
+
+          const subscription = session.subscription as any;
+          if (subscription && subscription.id) {
+            // If user's stripeCustomerId was missing, persist it now (new-user race recovery)
+            const resolvedCustomerId = user.stripeCustomerId || sessionCustomerId || undefined;
+            const syncedStatus = await persistSessionSubscription(subscription, resolvedCustomerId);
+            if (syncedStatus) {
+              console.log(`[SYNC] Subscription synced via session ${sessionId} for user ${user.email}, status: ${syncedStatus}`);
+              return res.json({ synced: true, status: syncedStatus });
+            }
+            // Subscription has a non-entitling status — fall through to list approach
+          }
+        } catch (sessionErr: any) {
+          // Log but fall through to customer-list approach
+          console.warn(`[SYNC] Could not retrieve session ${sessionId}: ${sessionErr?.message}`);
+        }
+      }
       
       // If no Stripe customer ID, nothing to sync
       if (!user.stripeCustomerId) {
@@ -3149,7 +3263,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ synced: false, message: "No Stripe customer found" });
       }
       
-      // Get customer's subscriptions from Stripe
+      // Fallback: list active subscriptions by customer
       const subscriptions = await stripe!.subscriptions.list({
         customer: user.stripeCustomerId,
         status: 'active',
@@ -3157,38 +3271,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       if (subscriptions.data.length > 0) {
-        const subscription = subscriptions.data[0];
-        
-        // Update user's subscription status
-        await storage.updateUserStripeSubscription(userId, subscription.id, subscription.items.data[0]?.price.id || '');
-        await storage.updateUserSubscriptionStatus(userId, 'active');
-        
-        // Update max houses based on subscription metadata or price
-        const priceAmount = subscription.items.data[0]?.price.unit_amount || 0;
-        let maxHouses = 2; // Base plan default
-        
-        if (priceAmount >= 4000) {
-          maxHouses = 999; // Premium Plus - unlimited
-        } else if (priceAmount >= 2000) {
-          maxHouses = 6; // Premium
+        const syncedStatus = await persistListSubscription(subscriptions.data[0]);
+        if (syncedStatus) {
+          console.log(`[SYNC] Subscription synced for user ${user.email}, status: ${syncedStatus}`);
+          return res.json({ synced: true, status: syncedStatus });
         }
-        
-        if (user.role === 'homeowner') {
-          await storage.upsertUser({
-            ...user,
-            subscriptionStatus: 'active',
-            maxHousesAllowed: maxHouses === 999 ? null : maxHouses,
-          });
-        } else if (user.role === 'contractor') {
-          await storage.upsertUser({
-            ...user,
-            subscriptionStatus: 'active',
-            subscriptionTier: priceAmount >= 4000 ? 'contractor_pro' : 'contractor_basic',
-          } as any);
-        }
-        
-        console.log(`[SYNC] Subscription synced for user ${user.email}, status: active`);
-        return res.json({ synced: true, status: 'active' });
       }
       
       // Check for trialing subscriptions
@@ -3199,12 +3286,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       if (trialingSubscriptions.data.length > 0) {
-        const subscription = trialingSubscriptions.data[0];
-        await storage.updateUserStripeSubscription(userId, subscription.id, subscription.items.data[0]?.price.id || '');
-        await storage.updateUserSubscriptionStatus(userId, 'trialing');
-        
-        console.log(`[SYNC] Subscription synced for user ${user.email}, status: trialing`);
-        return res.json({ synced: true, status: 'trialing' });
+        const syncedStatus = await persistListSubscription(trialingSubscriptions.data[0]);
+        if (syncedStatus) {
+          console.log(`[SYNC] Subscription synced for user ${user.email}, status: ${syncedStatus}`);
+          return res.json({ synced: true, status: syncedStatus });
+        }
       }
       
       console.log(`[SYNC] No active subscription found for user ${user.email}`);

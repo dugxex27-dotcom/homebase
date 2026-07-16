@@ -22,16 +22,31 @@ export default function SubscriptionSuccess() {
 
   useEffect(() => {
     const syncSubscription = async () => {
-      try {
-        await apiRequest('/api/sync-subscription', 'POST', sessionId ? { sessionId } : undefined);
-      } catch (error) {
-        console.error('Failed to sync subscription:', error);
-      } finally {
-        setSyncing(false);
-        queryClient.invalidateQueries({ queryKey: ['/api/user'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/my-subscription'] });
-        queryClient.invalidateQueries({ queryKey: ['/api/contractor/subscription'] });
+      const MAX_ATTEMPTS = 3;
+      const RETRY_DELAY_MS = 2000;
+
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        try {
+          const result = await apiRequest('/api/sync-subscription', 'POST', sessionId ? { sessionId } : undefined);
+          if ((result as any)?.synced === true) {
+            break;
+          }
+          // Not yet synced — wait before retrying (unless last attempt)
+          if (attempt < MAX_ATTEMPTS) {
+            await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+          }
+        } catch (error) {
+          console.error(`Failed to sync subscription (attempt ${attempt}/${MAX_ATTEMPTS}):`, error);
+          if (attempt < MAX_ATTEMPTS) {
+            await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+          }
+        }
       }
+
+      setSyncing(false);
+      queryClient.invalidateQueries({ queryKey: ['/api/user'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/my-subscription'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/contractor/subscription'] });
     };
     syncSubscription();
   }, [queryClient]);
