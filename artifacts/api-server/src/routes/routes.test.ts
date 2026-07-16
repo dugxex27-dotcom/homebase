@@ -112,12 +112,12 @@ describe("updateMeteredSeats", () => {
     price: { recurring: { usage_type: "licensed" } },
   };
 
-  let getActiveUserCount: ReturnType<typeof vi.fn>;
-  let createUsageRecord: ReturnType<typeof vi.fn>;
+  let getActiveUserCount: ReturnType<typeof vi.fn<(companyId: string) => Promise<number>>>;
+  let createUsageRecord: ReturnType<typeof vi.fn<(itemId: string, quantity: number) => Promise<void>>>;
 
   beforeEach(() => {
-    getActiveUserCount = vi.fn();
-    createUsageRecord = vi.fn().mockResolvedValue(undefined);
+    getActiveUserCount = vi.fn<(companyId: string) => Promise<number>>();
+    createUsageRecord = vi.fn<(itemId: string, quantity: number) => Promise<void>>().mockResolvedValue(undefined);
   });
 
   it("calls createUsageRecord with 0 billed seats for a 2-person company", async () => {
@@ -773,10 +773,10 @@ describe("Stripe webhook DB-backed deduplication — post-restart guard", () => 
 
   function makeStorage(alreadyInDb: boolean) {
     return {
-      hasProcessedStripeEvent: vi.fn<[string], Promise<boolean>>().mockResolvedValue(alreadyInDb),
-      markStripeEventPending: vi.fn<[string], Promise<void>>().mockResolvedValue(undefined),
-      markStripeEventCommitted: vi.fn<[string], Promise<void>>().mockResolvedValue(undefined),
-      deleteStripeEventPending: vi.fn<[string], Promise<void>>().mockResolvedValue(undefined),
+      hasProcessedStripeEvent: vi.fn<(id: string) => Promise<boolean>>().mockResolvedValue(alreadyInDb),
+      markStripeEventPending: vi.fn<(id: string) => Promise<void>>().mockResolvedValue(undefined),
+      markStripeEventCommitted: vi.fn<(id: string) => Promise<void>>().mockResolvedValue(undefined),
+      deleteStripeEventPending: vi.fn<(id: string) => Promise<void>>().mockResolvedValue(undefined),
     };
   }
 
@@ -936,12 +936,12 @@ describe("Stripe webhook DB-backed deduplication — post-restart guard", () => 
 
   it("bubbles the error when markStripeEventCommitted throws — processAction already ran once", async () => {
     const storage = {
-      hasProcessedStripeEvent: vi.fn<[string], Promise<boolean>>().mockResolvedValue(false),
-      markStripeEventPending: vi.fn<[string], Promise<void>>().mockResolvedValue(undefined),
+      hasProcessedStripeEvent: vi.fn<(id: string) => Promise<boolean>>().mockResolvedValue(false),
+      markStripeEventPending: vi.fn<(id: string) => Promise<void>>().mockResolvedValue(undefined),
       markStripeEventCommitted: vi
-        .fn<[string], Promise<void>>()
+        .fn<(id: string) => Promise<void>>()
         .mockRejectedValue(new Error("DB commit failed")),
-      deleteStripeEventPending: vi.fn<[string], Promise<void>>().mockResolvedValue(undefined),
+      deleteStripeEventPending: vi.fn<(id: string) => Promise<void>>().mockResolvedValue(undefined),
     };
     const processAction = vi.fn().mockResolvedValue(undefined);
 

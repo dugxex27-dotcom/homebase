@@ -307,7 +307,10 @@ describe("POST /api/invoice-analyses/:id/diy-verify — AI rejection cleanup", (
     // AI says no
     vi.mocked(invoiceAnalysisService.verifyDIYPhotos).mockResolvedValueOnce({
       verified: false,
+      confidence: "low",
       notes: "Photos are too blurry to confirm the work was completed.",
+      workDescribed: null,
+      materialsIdentified: [],
     });
 
     const res = await request(app)
@@ -345,7 +348,10 @@ describe("POST /api/invoice-analyses/:id/diy-verify — AI rejection cleanup", (
 
     vi.mocked(invoiceAnalysisService.verifyDIYPhotos).mockResolvedValueOnce({
       verified: false,
+      confidence: "low",
       notes: "Cannot verify completion from provided images.",
+      workDescribed: null,
+      materialsIdentified: [],
     });
 
     const res = await request(app)
@@ -525,7 +531,10 @@ describe("POST /api/invoice-analyses/:id/diy-verify — pre-upload size and type
     // AI approves
     vi.mocked(invoiceAnalysisService.verifyDIYPhotos).mockResolvedValueOnce({
       verified: true,
+      confidence: "high",
       notes: "Work verified.",
+      workDescribed: "DIY repair completed",
+      materialsIdentified: [],
     });
 
     // tx SELECT … FOR UPDATE
@@ -590,7 +599,10 @@ describe("POST /api/invoice-analyses/:id/diy-verify — AI approval (happy path)
     // AI approves the photos
     vi.mocked(invoiceAnalysisService.verifyDIYPhotos).mockResolvedValueOnce({
       verified: true,
+      confidence: "high",
       notes: "Before and after photos clearly show the completed repair.",
+      workDescribed: "Repair completed",
+      materialsIdentified: [],
     });
 
     // tx.execute: SELECT … FOR UPDATE returns the locked row (snake_case)
@@ -676,9 +688,10 @@ describe("POST /api/invoice-analyses/:id/diy-verify — disconnect-after-upload 
 
     // AI hangs indefinitely — this is the window in which the disconnect occurs.
     // releaseAI is called in cleanup so the route handler can eventually settle.
-    let releaseAI!: (value: { verified: boolean; notes: string }) => void;
+    type DIYResult = Awaited<ReturnType<typeof invoiceAnalysisService.verifyDIYPhotos>>;
+    let releaseAI!: (value: DIYResult) => void;
     vi.mocked(invoiceAnalysisService.verifyDIYPhotos).mockReturnValueOnce(
-      new Promise<{ verified: boolean; notes: string }>((resolve) => {
+      new Promise<DIYResult>((resolve) => {
         releaseAI = resolve;
       }),
     );
@@ -732,7 +745,7 @@ describe("POST /api/invoice-analyses/:id/diy-verify — disconnect-after-upload 
     expect(mockDeleteFile).toHaveBeenCalledTimes(2);
 
     // Settle the pending AI promise and close the server
-    releaseAI({ verified: false, notes: "" });
+    releaseAI({ verified: false, confidence: "low", notes: "", workDescribed: null, materialsIdentified: [] });
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });
 
@@ -749,9 +762,10 @@ describe("POST /api/invoice-analyses/:id/diy-verify — disconnect-after-upload 
     });
 
     // AI hangs — will be released with verified:true AFTER the disconnect
-    let releaseAI!: (value: { verified: boolean; notes: string }) => void;
+    type DIYResult = Awaited<ReturnType<typeof invoiceAnalysisService.verifyDIYPhotos>>;
+    let releaseAI!: (value: DIYResult) => void;
     vi.mocked(invoiceAnalysisService.verifyDIYPhotos).mockReturnValueOnce(
-      new Promise<{ verified: boolean; notes: string }>((resolve) => {
+      new Promise<DIYResult>((resolve) => {
         releaseAI = resolve;
       }),
     );
@@ -795,7 +809,7 @@ describe("POST /api/invoice-analyses/:id/diy-verify — disconnect-after-upload 
     expect(mockDeleteFile).toHaveBeenCalledTimes(2);
 
     // Now AI resolves approved — the route should bail out before the DB write
-    releaseAI({ verified: true, notes: "Looks good" });
+    releaseAI({ verified: true, confidence: "high", notes: "Looks good", workDescribed: "Repair completed", materialsIdentified: [] });
 
     // Give the route enough time to reach (and skip) the transaction block
     await new Promise((r) => setTimeout(r, 150));

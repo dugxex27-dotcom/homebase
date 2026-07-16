@@ -317,4 +317,5 @@ export const weatherAlertScheduler = {
       await cleanupOldAlerts();
     }, 24 * 60 * 60 * 1000);
   },
+  stop() {},
 };

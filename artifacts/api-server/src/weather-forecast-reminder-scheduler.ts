@@ -244,4 +244,5 @@ export const weatherForecastReminderScheduler = {
       await cleanupOldReminders();
     }, 24 * 60 * 60 * 1000);
   },
+  stop() {},
 };

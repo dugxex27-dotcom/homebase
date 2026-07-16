@@ -3074,7 +3074,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Embedded Checkout — returns clientSecret for use with @stripe/react-stripe-js
         const session = await stripe!.checkout.sessions.create({
           customer: stripeCustomerId,
-          ui_mode: 'embedded',
+          ui_mode: 'embedded' as 'elements' | 'embedded_page' | 'form' | 'hosted_page',
           mode: 'subscription',
           line_items: lineItems,
           metadata: sessionMetadata,
@@ -9329,8 +9329,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         businessLatitude: boost.businessLatitude,
         businessLongitude: boost.businessLongitude,
         boostRadius: boost.boostRadius,
-        startDate: renewalStart.toISOString().split("T")[0],
-        endDate: renewalEnd.toISOString().split("T")[0],
+        startDate: renewalStart,
+        endDate: renewalEnd,
         amount: boost.amount,
         status: "active",
         isActive: true,
@@ -18308,7 +18308,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       }
 
       // Run DIY verification using uploaded file data (if new files provided) or return based on existing
-      let diyVerified = analysis.diyVerified;
+      let diyVerified: boolean = analysis.diyVerified ?? false;
       let verificationNotes = analysis.aiNotes;
 
       if (allPhotos.length > 0) {

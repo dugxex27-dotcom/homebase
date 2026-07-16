@@ -674,6 +674,10 @@ export const requireNotSuspended = (): RequestHandler => {
       return void res.status(401).json({ message: "Unauthorized" });
     }
 
+    if (!userId) {
+      return void res.status(401).json({ message: "Unauthorized" });
+    }
+
     // Fast path: in-memory blocklist.
     if (suspendedUserIds.has(userId)) {
       return void res.status(401).json({ message: "Account suspended. Contact your company administrator." });
