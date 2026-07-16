@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from "@stripe/react-stripe-js";
 import { apiRequest } from "@/lib/queryClient";
@@ -76,6 +76,26 @@ interface CheckoutModalProps {
 export function CheckoutModal({ plan, trialMode, onClose }: CheckoutModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const summary = PLAN_SUMMARY[plan] ?? null;
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const update = () => {
+      const el = overlayRef.current;
+      if (!el) return;
+      el.style.setProperty("--vvp-height", `${vv.height}px`);
+      el.style.setProperty("--vvp-offset-top", `${vv.offsetTop}px`);
+    };
+
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, []);
 
   const fetchClientSecret = useCallback(async () => {
     const res = await apiRequest("/api/create-subscription-checkout", "POST", {
