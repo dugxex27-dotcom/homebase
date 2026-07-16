@@ -36,6 +36,11 @@ const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2026-04-22.dahlia" })
   : null;
 
+// Rate-limit background Stripe subscription syncs to avoid hitting the API on every /api/user call.
+// Maps userId -> timestamp of last background sync attempt.
+const backgroundSyncCooldownMs = 5 * 60 * 1000; // 5 minutes
+const lastBackgroundSyncAttempt = new Map<string, number>();
+
 // Configure multer for memory storage
 const upload = multer({ 
   storage: multer.memoryStorage(),
@@ -2890,6 +2895,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!user) {
         return res.status(404).json({ message: "User not found" });
+      }
+
+      // Lazy background sync: if the user has a Stripe customer ID but their subscription
+      // status is still inactive/null, they may have closed the tab before the post-checkout
+      // sync call completed. Fire a background Stripe check so the next /api/user call
+      // returns the corrected status. Rate-limited per user to avoid hammering Stripe.
+      if (
+        stripe &&
+        user.stripeCustomerId &&
+        (user.subscriptionStatus === null || user.subscriptionStatus === 'inactive') &&
+        user.subscriptionSource !== 'apple'
+      ) {
+        const now = Date.now();
+        const lastAttempt = lastBackgroundSyncAttempt.get(userId);
+        if (!lastAttempt || now - lastAttempt > backgroundSyncCooldownMs) {
+          lastBackgroundSyncAttempt.set(userId, now);
+          const stripeCustomerId = user.stripeCustomerId;
+          const userRole = user.role;
+          // Fire-and-forget: does not block this response; next /api/user call picks up result
+          (async () => {
+            try {
+              // Check for active or trialing subscriptions
+              for (const status of ['active', 'trialing'] as const) {
+                const subs = await stripe.subscriptions.list({
+                  customer: stripeCustomerId,
+                  status,
+                  limit: 1,
+                });
+                if (subs.data.length > 0) {
+                  const sub = subs.data[0];
+                  const priceAmount = sub.items.data[0]?.price.unit_amount || 0;
+                  await storage.updateUserStripeSubscription(userId, sub.id, sub.items.data[0]?.price.id || '');
+                  await storage.updateUserSubscriptionStatus(userId, sub.status);
+                  const freshUser = await storage.getUser(userId);
+                  if (freshUser) {
+                    if (userRole === 'homeowner') {
+                      let maxHouses = 2;
+                      if (priceAmount >= 4000) maxHouses = 999;
+                      else if (priceAmount >= 2000) maxHouses = 6;
+                      await storage.upsertUser({
+                        ...freshUser,
+                        subscriptionStatus: sub.status,
+                        maxHousesAllowed: maxHouses === 999 ? null : maxHouses,
+                      });
+                    } else if (userRole === 'contractor') {
+                      await storage.upsertUser({
+                        ...freshUser,
+                        subscriptionStatus: sub.status,
+                        subscriptionTier: priceAmount >= 4000 ? 'contractor_pro' : 'contractor_basic',
+                      } as any);
+                    }
+                  }
+                  req.log.info({ userId, status: sub.status }, '[LAZY-SYNC] Background subscription sync succeeded');
+                  return;
+                }
+              }
+              req.log.info({ userId }, '[LAZY-SYNC] No active/trialing Stripe subscription found in background sync');
+            } catch (syncErr: any) {
+              req.log.warn({ err: syncErr?.message, userId }, '[LAZY-SYNC] Background subscription sync failed');
+            }
+          })();
+        }
       }
 
       return res.json(user);

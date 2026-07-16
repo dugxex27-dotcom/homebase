@@ -25,8 +25,8 @@ export default function SubscriptionSuccess() {
 
   useEffect(() => {
     const syncSubscription = async () => {
-      const MAX_ATTEMPTS = 3;
-      const RETRY_DELAY_MS = 2000;
+      const MAX_ATTEMPTS = 4;
+      const BASE_DELAY_MS = 1000;
 
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
         try {
@@ -35,12 +35,13 @@ export default function SubscriptionSuccess() {
             break;
           }
           if (attempt < MAX_ATTEMPTS) {
-            await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+            // Exponential backoff: 1s, 2s, 4s
+            await new Promise((resolve) => setTimeout(resolve, BASE_DELAY_MS * Math.pow(2, attempt - 1)));
           }
         } catch (error) {
           console.error(`Failed to sync subscription (attempt ${attempt}/${MAX_ATTEMPTS}):`, error);
           if (attempt < MAX_ATTEMPTS) {
-            await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+            await new Promise((resolve) => setTimeout(resolve, BASE_DELAY_MS * Math.pow(2, attempt - 1)));
           }
         }
       }
