@@ -2,8 +2,9 @@
  * Unit tests for the contractor-checkout page covering the auth-resolution race.
  *
  * Test 1 — delayed auth resolve:
- *   When `user` is null on mount and becomes non-null later the CheckoutModal
- *   must open (via the useEffect that watches `user`).
+ *   When `user` is null on mount and becomes non-null later, checkoutMutation.mutate()
+ *   must be called (via the useEffect that watches `user`). No modal is shown —
+ *   the component redirects to Stripe-hosted checkout directly.
  *
  * Test 2 — 10 s auth timeout:
  *   When `user` stays null for 10 000 ms the component renders the
@@ -57,23 +58,19 @@ vi.mock("@/lib/queryClient", () => ({
   apiRequest: vi.fn(),
 }));
 
+const mutateSpy = vi.hoisted(() => vi.fn());
+
 vi.mock("@tanstack/react-query", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@tanstack/react-query")>();
   return {
     ...actual,
     useMutation: vi.fn(() => ({
-      mutate: vi.fn(),
+      mutate: mutateSpy,
       isPending: false,
       isError: false,
     })),
   };
 });
-
-vi.mock("@/components/CheckoutModal", () => ({
-  CheckoutModal: ({ plan }: { plan: string; trialMode: boolean; onClose: () => void }) => (
-    <div data-testid="checkout-modal" data-plan={plan}>Checkout Modal</div>
-  ),
-}));
 
 // ---------------------------------------------------------------------------
 // Subject under test — imported after all mocks are registered
@@ -87,6 +84,7 @@ import ContractorCheckout from "./contractor-checkout";
 
 beforeEach(() => {
   authFlags.user = null;
+  mutateSpy.mockClear();
   vi.useFakeTimers();
 });
 
@@ -96,11 +94,11 @@ afterEach(() => {
 });
 
 describe("ContractorCheckout — delayed auth resolve", () => {
-  it("opens the checkout modal when user resolves after initial render", async () => {
-    // Render with null user — should show the loading spinner, not the modal.
+  it("calls mutate() when user resolves after initial render", async () => {
+    // Render with null user — should show the loading spinner, mutate not called yet.
     const { rerender } = render(<ContractorCheckout />);
 
-    expect(screen.queryByTestId("checkout-modal")).toBeNull();
+    expect(mutateSpy).not.toHaveBeenCalled();
     expect(screen.getByText(/preparing your checkout/i)).toBeTruthy();
 
     // Simulate auth resolving: update flag and re-render.
@@ -110,7 +108,10 @@ describe("ContractorCheckout — delayed auth resolve", () => {
       rerender(<ContractorCheckout />);
     });
 
-    expect(screen.getByTestId("checkout-modal")).toBeTruthy();
+    // The useEffect fires mutate() to start the hosted Stripe checkout redirect.
+    expect(mutateSpy).toHaveBeenCalledTimes(1);
+    // Loading spinner still visible while mutation is in flight.
+    expect(screen.getByText(/preparing your checkout/i)).toBeTruthy();
   });
 });
 
@@ -146,8 +147,10 @@ describe("ContractorCheckout — 10 s auth timeout", () => {
       render(<ContractorCheckout />);
     });
 
+    // Timeout error state must not appear.
     expect(screen.queryByText(/taking too long/i)).toBeNull();
-    expect(screen.getByTestId("checkout-modal")).toBeTruthy();
+    // mutate() was called to kick off the hosted checkout redirect.
+    expect(mutateSpy).toHaveBeenCalledTimes(1);
   });
 });
 
