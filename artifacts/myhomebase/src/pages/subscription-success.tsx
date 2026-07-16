@@ -16,13 +16,14 @@ export default function SubscriptionSuccess() {
   const urlParams = new URLSearchParams(window.location.search);
   const role = urlParams.get('role') || 'homeowner';
   const isTrial = urlParams.get('trial') === 'true';
+  const sessionId = urlParams.get('session_id') || undefined;
   
   const dashboardPath = role === 'contractor' ? '/contractor-dashboard' : '/maintenance';
 
   useEffect(() => {
     const syncSubscription = async () => {
       try {
-        await apiRequest('/api/sync-subscription', 'POST');
+        await apiRequest('/api/sync-subscription', 'POST', sessionId ? { sessionId } : undefined);
       } catch (error) {
         console.error('Failed to sync subscription:', error);
       } finally {

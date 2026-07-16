@@ -3,14 +3,16 @@ import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
-import { openPaymentUrl } from "@/lib/nativeBrowser";
+import { openPaymentUrl, isNativePlatform } from "@/lib/nativeBrowser";
 import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CheckoutModal } from "@/components/CheckoutModal";
 
 export default function ContractorCheckout() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
   const urlParams = new URLSearchParams(window.location.search);
   const plan = urlParams.get("plan") ?? "basic";
   const typedUser = user as { subscriptionStatus?: string; stripeCustomerId?: string } | undefined;
@@ -39,8 +41,11 @@ export default function ContractorCheckout() {
   });
 
   useEffect(() => {
-    if (user) {
+    if (!user) return;
+    if (isNativePlatform) {
       checkoutMutation.mutate();
+    } else {
+      setShowModal(true);
     }
   }, [user]);
 
@@ -82,9 +87,21 @@ export default function ContractorCheckout() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-      <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
-      <p className="text-gray-600">Preparing your checkout…</p>
-    </div>
+    <>
+      {showModal && user && (
+        <CheckoutModal
+          plan={plan}
+          trialMode={trialMode}
+          onClose={() => {
+            setShowModal(false);
+            setLocation("/contractor-dashboard");
+          }}
+        />
+      )}
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+        <p className="text-gray-600">Preparing your checkout…</p>
+      </div>
+    </>
   );
 }

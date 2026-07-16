@@ -2925,7 +2925,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.session.user.id;
       const userRole = req.session.user.role;
-      const { plan, trialMode } = req.body;
+      const { plan, trialMode, embedded } = req.body;
 
       // Validate plan
       const validHomeownerPlans = ['base', 'premium', 'premium_plus'];
@@ -2977,29 +2977,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Determine base URL for redirect
       const baseUrl = req.headers.origin || `https://${req.headers.host}`;
 
-      // Create Stripe Checkout Session for subscription
+      const lineItems = [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: selectedPlan.name,
+              description: userRole === 'homeowner'
+                ? `Manage up to ${selectedPlan.maxHouses === 999 ? 'unlimited' : selectedPlan.maxHouses} properties`
+                : plan === 'pro' ? 'Full CRM access with analytics' : 'Lead management and basic CRM',
+            },
+            unit_amount: selectedPlan.price,
+            recurring: { interval: 'month' as const },
+          },
+          quantity: 1,
+        },
+      ];
+      const sessionMetadata = {
+        userId: user.id,
+        plan: plan,
+        maxHouses: selectedPlan.maxHouses?.toString() || '',
+      };
+      const trialData = trialMode
+        ? { subscription_data: { trial_period_days: 14, metadata: { userId: user.id, plan } } }
+        : {};
+
+      if (embedded) {
+        // Embedded Checkout — returns clientSecret for use with @stripe/react-stripe-js
+        const session = await stripe!.checkout.sessions.create({
+          customer: stripeCustomerId,
+          ui_mode: 'embedded',
+          mode: 'subscription',
+          line_items: lineItems,
+          metadata: sessionMetadata,
+          ...trialData,
+          return_url: `${baseUrl}/subscription-success?session_id={CHECKOUT_SESSION_ID}&role=${userRole}${trialMode ? '&trial=true' : ''}`,
+        });
+        console.log(`[SUBSCRIPTION] Created embedded checkout session for user ${user.email}, plan: ${plan}`);
+        return res.json({ clientSecret: session.client_secret });
+      }
+
+      // Hosted Checkout — returns url for redirect (used by native/iOS)
       const session = await stripe!.checkout.sessions.create({
         customer: stripeCustomerId,
         mode: 'subscription',
         payment_method_types: ['card'],
-        line_items: [
-          {
-            price_data: {
-              currency: 'usd',
-              product_data: {
-                name: selectedPlan.name,
-                description: userRole === 'homeowner' 
-                  ? `Manage up to ${selectedPlan.maxHouses === 999 ? 'unlimited' : selectedPlan.maxHouses} properties`
-                  : plan === 'pro' ? 'Full CRM access with analytics' : 'Lead management and basic CRM',
-              },
-              unit_amount: selectedPlan.price,
-              recurring: {
-                interval: 'month',
-              },
-            },
-            quantity: 1,
-          },
-        ],
+        line_items: lineItems,
         custom_text: {
           submit: {
             message: trialMode
@@ -3007,22 +3030,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               : 'You\'ll be charged today. Cancel anytime from your MyHomeBase™ account settings.',
           },
         },
-        metadata: {
-          userId: user.id,
-          plan: plan,
-          maxHouses: selectedPlan.maxHouses?.toString() || '',
-        },
-        ...(trialMode ? {
-          subscription_data: {
-            trial_period_days: 14,
-            metadata: { userId: user.id, plan },
-          },
-        } : {}),
+        metadata: sessionMetadata,
+        ...trialData,
         success_url: `${baseUrl}/subscription-success?role=${userRole}${trialMode ? '&trial=true' : ''}`,
         cancel_url: `${baseUrl}/${userRole === 'homeowner' ? 'homeowner-pricing?onboarding=true' : 'contractor-dashboard'}?subscription=cancelled`,
       });
 
-      console.log(`[SUBSCRIPTION] Created checkout session for user ${user.email}, plan: ${plan}`);
+      console.log(`[SUBSCRIPTION] Created hosted checkout session for user ${user.email}, plan: ${plan}`);
       return res.json({ url: session.url });
     } catch (error: any) {
       console.error('[SUBSCRIPTION] Error creating checkout session:', error);
