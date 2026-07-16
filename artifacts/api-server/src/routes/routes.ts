@@ -38,8 +38,8 @@ const stripe = process.env.STRIPE_SECRET_KEY
 
 // Rate-limit background Stripe subscription syncs to avoid hitting the API on every /api/user call.
 // Maps userId -> timestamp of last background sync attempt.
-const backgroundSyncCooldownMs = 5 * 60 * 1000; // 5 minutes
-const lastBackgroundSyncAttempt = new Map<string, number>();
+export const backgroundSyncCooldownMs = 5 * 60 * 1000; // 5 minutes
+export const lastBackgroundSyncAttempt = new Map<string, number>();
 
 // Configure multer for memory storage
 const upload = multer({ 
