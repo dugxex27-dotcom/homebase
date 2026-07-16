@@ -128,48 +128,28 @@ export function CheckoutModal({ plan, trialMode, onClose }: CheckoutModalProps) 
 
         {/* Plan summary card */}
         {summary && (
-          <div
-            style={{
-              margin: "16px 20px 0",
-              borderRadius: "12px",
-              background: "linear-gradient(135deg, #3C258E 0%, #5B3FBF 100%)",
-              padding: "16px 20px",
-              fontFamily: "Inter, sans-serif",
-              color: "#fff",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "12px" }}>
-              <div>
-                <div style={{ fontSize: "11px", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", opacity: 0.75, marginBottom: "4px" }}>
+          <div className="plan-summary-card">
+            <div className="plan-summary-header">
+              <div className="plan-summary-name-block">
+                <div className="plan-summary-eyebrow">
                   {trialMode ? "14-day free trial, then" : "You're subscribing to"}
                 </div>
-                <div style={{ fontSize: "20px", fontWeight: 700, lineHeight: 1.2 }}>
+                <div className="plan-summary-name">
                   {summary.name}
                 </div>
               </div>
-              <div style={{ textAlign: "right", flexShrink: 0, marginLeft: "12px" }}>
-                <span style={{ fontSize: "28px", fontWeight: 800, lineHeight: 1 }}>{summary.price}</span>
-                <span style={{ fontSize: "13px", fontWeight: 400, opacity: 0.8 }}>{summary.period}</span>
+              <div className="plan-summary-price-block">
+                <span className="plan-summary-price">{summary.price}</span>
+                <span className="plan-summary-period">{summary.period}</span>
               </div>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <div className="plan-summary-benefits">
               {summary.benefits.map((benefit) => (
-                <div key={benefit} style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", fontWeight: 500 }}>
-                  <div
-                    style={{
-                      width: "18px",
-                      height: "18px",
-                      borderRadius: "50%",
-                      background: "rgba(255,255,255,0.2)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                    }}
-                  >
+                <div key={benefit} className="plan-summary-benefit-row">
+                  <div className="plan-summary-check-icon">
                     <Check size={11} strokeWidth={3} />
                   </div>
-                  <span style={{ opacity: 0.92 }}>{benefit}</span>
+                  <span className="plan-summary-benefit-text">{benefit}</span>
                 </div>
               ))}
             </div>
