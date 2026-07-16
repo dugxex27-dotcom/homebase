@@ -36,6 +36,10 @@ args = "myhomebase-typecheck"
 task = "workflow.run"
 args = "libs-typecheck"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "quiz-typecheck"
+
 [[workflows.workflow]]
 name = "myhomebase-test"
 author = "agent"
@@ -87,6 +91,17 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "pnpm run typecheck:libs"
+
+[workflows.workflow.metadata]
+isValidation = true
+
+[[workflows.workflow]]
+name = "quiz-typecheck"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/quiz run typecheck"
 
 [workflows.workflow.metadata]
 isValidation = true
