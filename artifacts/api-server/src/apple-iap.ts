@@ -89,7 +89,9 @@ export async function verifyAndActivateAppleTransaction(
   try {
     transaction = await decodeTransaction(signedTransactionInfo);
   } catch (error: any) {
-    console.error(`[APPLE-IAP] Signature verification FAILED for user ${userId}:`, error?.message || error);
+    // Log the full JWS prefix (first 80 chars, never expose the full signed payload)
+    const jwsPreview = signedTransactionInfo.length > 80 ? signedTransactionInfo.substring(0, 80) + '…' : signedTransactionInfo;
+    console.error(`[APPLE-IAP] JWS signature verification FAILED for user ${userId}. Error: ${error?.message || error}. JWS prefix: ${jwsPreview}`);
     throw new AppleIapError("Could not verify transaction with Apple", 400);
   }
 

@@ -42,6 +42,7 @@ export default function HomeownerPricing() {
   const rawPlanParam = urlParams.get('plan') ?? '';
   const preSelectedPlan = PLAN_SLUG_MAP[rawPlanParam] ?? null;
   const [checkoutPlan, setCheckoutPlan] = useState<string | null>(null);
+  const [purchaseFailedOnce, setPurchaseFailedOnce] = useState(false);
   const planRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const { 
     hasActiveSubscription, 
@@ -116,6 +117,7 @@ export default function HomeownerPricing() {
     const unsubFailed = onNativePurchaseFailed(({ message }) => {
       console.error('[HomeownerPricing] Native purchase failed:', message);
       setCheckoutPlan(null);
+      setPurchaseFailedOnce(true);
       toast({
         title: "Purchase Failed",
         description: message || "We couldn't complete your purchase. Please try again.",
@@ -278,6 +280,53 @@ export default function HomeownerPricing() {
             </>
           )}
         </div>
+
+        {/* Recovery banner — shown after a native purchase verification failure */}
+        {purchaseFailedOnce && isNativePlatform && !hasActiveSubscription && (
+          <div
+            className="max-w-2xl mx-auto rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 flex flex-col gap-3"
+            data-testid="purchase-failed-recovery-banner"
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 mt-0.5 text-amber-500">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-amber-900">Your purchase couldn't be confirmed</p>
+                <p className="text-sm text-amber-800 mt-0.5">
+                  If Apple charged you, use <strong>Restore Purchases</strong> below to activate your subscription.
+                  Your Apple ID purchase history is the record of charge — we'll match it to your account.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleRestore}
+                disabled={isRestoring}
+                className="border-amber-400 text-amber-900 hover:bg-amber-100"
+                data-testid="button-restore-after-failure"
+              >
+                {isRestoring ? (
+                  <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Restoring…</>
+                ) : (
+                  'Restore Purchases'
+                )}
+              </Button>
+              {isOnboarding && (
+                <button
+                  type="button"
+                  className="text-sm text-amber-700 underline hover:text-amber-900"
+                  onClick={() => setLocation('/dashboard')}
+                  data-testid="button-skip-onboarding-after-failure"
+                >
+                  Skip for now →
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Pre-selected plan banner — shown when arriving from onboarding with a plan param */}
         {preSelectedPlan && !hasActiveSubscription && PRICING_PLAN_INFO[preSelectedPlan] && (
