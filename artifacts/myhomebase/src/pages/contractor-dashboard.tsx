@@ -21,6 +21,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useContractorSubscription } from "@/hooks/useContractorSubscription";
 
 import { ContractorTrialExpiredPaywall, ContractorTrialBanner, ContractorNoPlanBanner } from "@/components/contractor-feature-gate";
+import { ActivatingPlanBanner } from "@/components/activating-plan-banner";
 import { TechDashboard } from "./tech-dashboard";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
@@ -1115,6 +1116,7 @@ export default function ContractorDashboard() {
         )}
       </div>
 
+      <ActivatingPlanBanner />
       {isInTrial && <ContractorTrialBanner />}
       <ContractorNoPlanBanner />
 

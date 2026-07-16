@@ -24,6 +24,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { HomeownerFeatureGate, HomeownerTrialBanner, FreeUserUpgradePrompt } from "@/components/homeowner-feature-gate";
+import { ActivatingPlanBanner } from "@/components/activating-plan-banner";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
 import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, ChevronUp, Settings, Plus, Edit, Trash2, Home, FileText, Building2, User, Building, Phone, MessageSquare, AlertTriangle, Thermometer, Cloud, Monitor, Book, ExternalLink, Upload, Trophy, Mail, Handshake, Globe, TrendingDown, PiggyBank, Truck, CheckCircle2, Circle, Download, X, Search, Loader2, Scan, AlertCircle, Sparkles, RefreshCw, ChevronRight } from "lucide-react";
 import { AppointmentScheduler } from "@/components/appointment-scheduler";
@@ -3472,6 +3473,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       {/* Trial Banner for Homeowners */}
       {userRole === 'homeowner' && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <ActivatingPlanBanner />
           <HomeownerTrialBanner />
         </div>
       )}
