@@ -10,7 +10,6 @@ import { Check, CreditCard, Home, Zap, Crown, Loader2, ShieldCheck } from "lucid
 import { Link, useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { openPaymentUrl, openExternalUrl, onBrowserFinished, isNativePlatform } from "@/lib/nativeBrowser";
-import { CheckoutModal } from "@/components/CheckoutModal";
 import {
   purchaseNativePlan,
   initNativePurchase,
@@ -43,7 +42,6 @@ export default function HomeownerPricing() {
   const rawPlanParam = urlParams.get('plan') ?? '';
   const preSelectedPlan = PLAN_SLUG_MAP[rawPlanParam] ?? null;
   const [checkoutPlan, setCheckoutPlan] = useState<string | null>(null);
-  const [activeModalPlan, setActiveModalPlan] = useState<string | null>(null);
   const [purchaseFailedOnce, setPurchaseFailedOnce] = useState(false);
   const planRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const { 
@@ -154,14 +152,6 @@ export default function HomeownerPricing() {
       toast({ title: "Restore Failed", description: err instanceof Error ? err.message : "Failed to restore purchases. Please try again.", variant: "destructive" });
     } finally {
       setIsRestoring(false);
-    }
-  };
-
-  const handlePlanSelect = (plan: string) => {
-    if (isNativePurchaseSupported()) {
-      checkoutMutation.mutate(plan);
-    } else {
-      setActiveModalPlan(plan);
     }
   };
 
@@ -448,8 +438,8 @@ export default function HomeownerPricing() {
                 <Button 
                   className="w-full bg-[#3C258E] hover:bg-[#2C0F5B] text-white"
                   data-testid="button-select-base-plan"
-                  onClick={() => handlePlanSelect('base')}
-                  disabled={isNativePurchaseSupported() && checkoutMutation.isPending}
+                  onClick={() => checkoutMutation.mutate('base')}
+                  disabled={checkoutMutation.isPending}
                 >
                   {checkoutMutation.isPending && checkoutPlan === 'base' ? (
                     <>
@@ -515,8 +505,8 @@ export default function HomeownerPricing() {
                 <Button 
                   className="w-full bg-[#3C258E] hover:bg-[#2C0F5B] text-white"
                   data-testid="button-select-premium-plan"
-                  onClick={() => handlePlanSelect('premium')}
-                  disabled={isNativePurchaseSupported() && checkoutMutation.isPending}
+                  onClick={() => checkoutMutation.mutate('premium')}
+                  disabled={checkoutMutation.isPending}
                 >
                   {checkoutMutation.isPending && checkoutPlan === 'premium' ? (
                     <>
@@ -582,8 +572,8 @@ export default function HomeownerPricing() {
                 <Button 
                   className="w-full bg-[#3C258E] hover:bg-[#2C0F5B] text-white"
                   data-testid="button-select-premium-plus-plan"
-                  onClick={() => handlePlanSelect('premium_plus')}
-                  disabled={isNativePurchaseSupported() && checkoutMutation.isPending}
+                  onClick={() => checkoutMutation.mutate('premium_plus')}
+                  disabled={checkoutMutation.isPending}
                 >
                   {checkoutMutation.isPending && checkoutPlan === 'premium_plus' ? (
                     <>
@@ -757,13 +747,6 @@ export default function HomeownerPricing() {
       </div>
     </div>
 
-    {activeModalPlan && (
-      <CheckoutModal
-        plan={activeModalPlan}
-        trialMode={isOnboarding}
-        onClose={() => setActiveModalPlan(null)}
-      />
-    )}
     </>
   );
 }

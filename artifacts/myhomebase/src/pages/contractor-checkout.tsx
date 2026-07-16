@@ -6,13 +6,10 @@ import { apiRequest } from "@/lib/queryClient";
 import { openPaymentUrl, isNativePlatform } from "@/lib/nativeBrowser";
 import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CheckoutModal } from "@/components/CheckoutModal";
-
 export default function ContractorCheckout() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  const [showModal, setShowModal] = useState(false);
   const [authTimedOut, setAuthTimedOut] = useState(false);
   const [nativeCheckoutTimedOut, setNativeCheckoutTimedOut] = useState(false);
   const urlParams = new URLSearchParams(window.location.search);
@@ -50,11 +47,7 @@ export default function ContractorCheckout() {
 
   useEffect(() => {
     if (!user) return;
-    if (isNativePlatform) {
-      checkoutMutation.mutate();
-    } else {
-      setShowModal(true);
-    }
+    checkoutMutation.mutate();
   }, [user]);
 
   useEffect(() => {
@@ -160,21 +153,9 @@ export default function ContractorCheckout() {
   }
 
   return (
-    <>
-      {showModal && user && (
-        <CheckoutModal
-          plan={plan}
-          trialMode={trialMode}
-          onClose={() => {
-            setShowModal(false);
-            setLocation("/contractor-dashboard");
-          }}
-        />
-      )}
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-        <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
-        <p className="text-gray-600">Preparing your checkout…</p>
-      </div>
-    </>
+    <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+      <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+      <p className="text-gray-600">Preparing your checkout…</p>
+    </div>
   );
 }
