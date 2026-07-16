@@ -166,6 +166,26 @@ export default function Home() {
     },
   });
 
+  // Install-year inline nudge — must be the last useMutation call in this component
+  const [activeNudge, setActiveNudge] = useState<string | null>(null);
+  const [nudgeYear, setNudgeYear] = useState("");
+  const patchInstallYearMutation = useMutation({
+    mutationFn: async ({ houseId, field, year }: { houseId: string; field: string; year: number }) => {
+      const res = await fetch(`/api/houses/${houseId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: year }),
+      });
+      if (!res.ok) throw new Error('Failed to save');
+      return res.json();
+    },
+    onSuccess: () => {
+      setActiveNudge(null);
+      setNudgeYear("");
+      queryClient.invalidateQueries({ queryKey: ["/api/houses"] });
+    },
+  });
+
   const [agentModalOpen, setAgentModalOpen] = useState(false);
   const [contractorInvoicesExpanded, setContractorInvoicesExpanded] = useState(false);
   const [claimedInvoiceIds, setClaimedInvoiceIds] = useState<Set<string>>(new Set());
@@ -209,6 +229,20 @@ export default function Home() {
 
   const getScoreClass = (s: number | undefined) =>
     s === undefined ? "" : s >= 60 ? "good" : s >= 30 ? "warn" : "alert";
+
+  // Profile nudge: show inline-edit card when any install year is missing
+  const primaryHouse = houses[0] as House | undefined;
+  const profileNudgeMissing = primaryHouse
+    ? MECHANICAL_FEATURES.filter(f => !primaryHouse[f.key as keyof House])
+    : [];
+  const showProfileNudge = profileNudgeMissing.length > 0;
+  const nudgeYearNum = parseInt(nudgeYear, 10);
+  const nudgeYearValid = nudgeYear !== "" && !isNaN(nudgeYearNum) && nudgeYearNum >= 1900 && nudgeYearNum <= new Date().getFullYear();
+
+  const handleNudgeSave = (field: string) => {
+    if (!nudgeYearValid || !primaryHouse) return;
+    patchInstallYearMutation.mutate({ houseId: primaryHouse.id, field, year: nudgeYearNum });
+  };
 
   return (
     <div>
@@ -332,6 +366,91 @@ export default function Home() {
                 Ask AI →
               </button>
             </Link>
+
+            {/* Profile nudge card — inline install-year entry */}
+            {showProfileNudge && (
+              <div className="dash-light-card" data-testid="profile-nudge-card" style={{ marginBottom: 8 }}>
+                <div className="dash-light-card-row">
+                  <div className="dash-light-card-icon">
+                    <Wrench size={18} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="dash-light-card-title">Complete your home profile</div>
+                    <div className="dash-light-card-sub">Add install years to raise your HWS™ score</div>
+                  </div>
+                </div>
+                <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {profileNudgeMissing.map(f => (
+                    <div key={f.key}>
+                      {activeNudge === f.key ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: 13, flex: 1, minWidth: 0 }}>{f.icon} {f.label}</span>
+                            <input
+                              data-testid={`input-install-year-${f.key}`}
+                              type="number"
+                              placeholder="e.g. 2010"
+                              value={nudgeYear}
+                              onChange={e => setNudgeYear(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') handleNudgeSave(f.key);
+                                if (e.key === 'Escape') { setActiveNudge(null); setNudgeYear(""); }
+                              }}
+                              style={{
+                                width: 90, padding: '4px 8px', fontSize: 13,
+                                border: '1px solid var(--purple-border)', borderRadius: 6,
+                                outline: 'none',
+                              }}
+                            />
+                            <button
+                              data-testid={`button-save-install-year-${f.key}`}
+                              disabled={!nudgeYearValid || patchInstallYearMutation.isPending}
+                              onClick={() => handleNudgeSave(f.key)}
+                              style={{
+                                padding: '4px 10px', fontSize: 12, fontWeight: 700,
+                                background: nudgeYearValid ? 'var(--purple)' : '#ccc',
+                                color: '#fff', border: 'none', borderRadius: 6, cursor: nudgeYearValid ? 'pointer' : 'default',
+                              }}
+                            >
+                              Save
+                            </button>
+                            <button
+                              data-testid={`button-cancel-install-year-${f.key}`}
+                              onClick={() => { setActiveNudge(null); setNudgeYear(""); }}
+                              style={{
+                                padding: '4px 8px', fontSize: 12, fontWeight: 600,
+                                background: 'none', border: '1px solid var(--purple-border)',
+                                borderRadius: 6, cursor: 'pointer', color: 'var(--purple-deep)',
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                          {patchInstallYearMutation.isError && (
+                            <p style={{ fontSize: 11, color: '#dc2626', margin: 0 }}>
+                              Couldn't save — please try again.
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <button
+                          data-testid={`button-nudge-${f.key}`}
+                          onClick={() => { setActiveNudge(f.key); setNudgeYear(""); patchInstallYearMutation.reset(); }}
+                          style={{
+                            width: '100%', textAlign: 'left', background: 'var(--purple-tint)',
+                            border: '1px dashed var(--purple-border)', borderRadius: 8,
+                            padding: '7px 10px', fontSize: 13, cursor: 'pointer',
+                            color: 'var(--purple-deep)', fontWeight: 500,
+                          }}
+                        >
+                          {f.icon} {f.label} — tap to add install year
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Inspection Summary (if present) */}
             {inspectionSummary && (
