@@ -307,16 +307,14 @@ export default function SignInContractor() {
                 <button type="submit" disabled={registerMutation.isPending} data-testid="button-register-contractor" style={primaryBtn(registerMutation.isPending)}>
                   {registerMutation.isPending ? 'Creating account…' : 'Create Account'}
                 </button>
-                {!isNative && (<>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                   <div style={{ flex: 1, height: 1, background: C.border }} />
                   <span style={{ fontSize: 10, fontWeight: 700, color: C.inactive }}>or</span>
                   <div style={{ flex: 1, height: 1, background: C.border }} />
                 </div>
-                <button type="button" onClick={() => { const ref = registerForm.getValues("referralCode"); const url = ref ? `/auth/google?intent=contractor&ref=${encodeURIComponent(ref)}` : '/auth/google?intent=contractor'; window.location.href = url; }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', background: '#fff', border: '1.5px solid rgba(0,0,0,0.12)', borderRadius: 12, padding: '12px 0', fontSize: 13, fontWeight: 700, color: '#1a1a1a', cursor: 'pointer', textDecoration: 'none', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', fontFamily: 'inherit' }}>
+                <button type="button" data-testid="button-google-register-contractor" onClick={() => { const ref = registerForm.getValues("referralCode"); const url = ref ? `/auth/google?intent=contractor&ref=${encodeURIComponent(ref)}` : '/auth/google?intent=contractor'; window.location.href = url; }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', background: '#fff', border: '1.5px solid rgba(0,0,0,0.12)', borderRadius: 12, padding: '12px 0', fontSize: 13, fontWeight: 700, color: '#1a1a1a', cursor: 'pointer', textDecoration: 'none', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', fontFamily: 'inherit' }}>
                   <GoogleSVG />Continue with Google
                 </button>
-                </>)}
               </form>
             </Form>
           )}
