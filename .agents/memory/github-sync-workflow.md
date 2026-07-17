@@ -14,8 +14,10 @@ scripts needed.
 ## Manual push from Shell (when needed)
 
 ```bash
-git push "https://x-token:${GITHUB_TOKEN}@github.com/dugxex27-dotcom/homebase.git" main
+git push "https://oauth2:${GITHUB_TOKEN}@github.com/dugxex27-dotcom/homebase.git" main
 ```
+
+Note: `x-token:` format does NOT work — GitHub rejects it with "Invalid username or token". Use `oauth2:` prefix.
 
 Run from the **Shell tab** — the agent's bash environment has a stale copy of
 `GITHUB_TOKEN` (always 401). The Shell tab always has the fresh token.
