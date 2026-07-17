@@ -161,7 +161,7 @@ export default function SignInContractor() {
     }
   };
 
-  const referralCodeValue = registerForm.watch("referralCode");
+
 
   const toggleBtn = (active: boolean) => ({
     flex: 1, padding: '7px 0', borderRadius: 8, fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', transition: 'all 0.15s',
@@ -318,11 +318,9 @@ export default function SignInContractor() {
                     <FormMessage />
                   </FormItem>
                 )} />
-                {referralCodeValue && (
-                  <FormField control={registerForm.control} name="referralCode" render={({ field }) => (
-                    <FormItem style={{ marginBottom: 10 }}><label style={labelStyle}>Referral code</label><FormControl><Input {...field} readOnly data-testid="input-referral-code-contractor" style={{ ...inpStyle, opacity: 0.7 }} className="focus-visible:ring-0 focus-visible:ring-offset-0" /></FormControl><FormMessage /></FormItem>
-                  )} />
-                )}
+                <FormField control={registerForm.control} name="referralCode" render={({ field }) => (
+                  <FormItem style={{ marginBottom: 10 }}><label style={labelStyle}>Referral code <span style={{ fontWeight: 400, opacity: 0.6 }}>(optional)</span></label><FormControl><Input {...field} placeholder="Enter a referral code" data-testid="input-referral-code-contractor" style={inpStyle} className="focus-visible:ring-0 focus-visible:ring-offset-0" /></FormControl><FormMessage /></FormItem>
+                )} />
                 <button type="submit" disabled={registerMutation.isPending} data-testid="button-register-contractor" style={primaryBtn(registerMutation.isPending)}>
                   {registerMutation.isPending ? 'Creating account…' : 'Create Account'}
                 </button>
