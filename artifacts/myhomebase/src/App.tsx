@@ -186,6 +186,7 @@ const MyHome = lazy(() => import("./pages/my-home"));
 const Maintenance = lazy(() => import("./pages/maintenance"));
 const HouseholdProfile = lazy(() => import("./pages/household-profile"));
 const CompleteProfile = lazy(() => import("./pages/complete-profile"));
+const ReferralEntry = lazy(() => import("./pages/referral-entry"));
 const TestUpload = lazy(() => import("./pages/test-upload"));
 const HouseTransferAccept = lazy(() => import("./pages/house-transfer-accept"));
 const NotFound = lazy(() => import("./pages/not-found"));
@@ -332,6 +333,7 @@ function Router() {
           <Route path="/signin"><RedirectTo to="/signin/homeowner" /></Route>
           <Route path="/test-upload" component={TestUpload} />
           <Route path="/complete-profile" component={CompleteProfile} />
+          <Route path="/referral-entry" component={ReferralEntry} />
           <Route path="/terms-of-service" component={TermsOfService} />
           <Route path="/privacy-policy" component={PrivacyPolicy} />
           <Route path="/legal-disclaimer" component={LegalDisclaimer} />
@@ -398,6 +400,7 @@ function Router() {
         {/* Shared routes - all authenticated users */}
         <Route path="/test-upload" component={TestUpload} />
         <Route path="/complete-profile" component={CompleteProfile} />
+        <Route path="/referral-entry" component={ReferralEntry} />
         <Route path="/house-transfer/:token" component={HouseTransferAccept} />
         <Route path="/handoff/:token" component={HandoffClaim} />
         <Route path="/messages" component={Messages} />

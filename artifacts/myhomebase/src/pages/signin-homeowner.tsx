@@ -334,7 +334,7 @@ export default function SignInHomeowner() {
                   <span style={{ fontSize: 10, fontWeight: 700, color: C.inactive }}>or</span>
                   <div style={{ flex: 1, height: 1, background: C.border }} />
                 </div>
-                <button type="button" onClick={() => { sessionStorage.removeItem('pendingPlan'); window.location.href = '/auth/google'; }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', background: '#fff', border: '1.5px solid rgba(0,0,0,0.12)', borderRadius: 12, padding: '12px 0', fontSize: 13, fontWeight: 700, color: '#1a1a1a', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', fontFamily: 'inherit' }}>
+                <button type="button" onClick={() => { sessionStorage.removeItem('pendingPlan'); const ref = registerForm.getValues("referralCode"); const url = ref ? `/auth/google?ref=${encodeURIComponent(ref)}` : '/auth/google'; window.location.href = url; }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', background: '#fff', border: '1.5px solid rgba(0,0,0,0.12)', borderRadius: 12, padding: '12px 0', fontSize: 13, fontWeight: 700, color: '#1a1a1a', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', fontFamily: 'inherit' }}>
                   <GoogleSVG />Continue with Google
                 </button>
                 </>)}

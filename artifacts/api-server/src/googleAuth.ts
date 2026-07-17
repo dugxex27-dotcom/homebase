@@ -64,6 +64,8 @@ export async function setupGoogleAuth(app: Express) {
             };
             
             user = await storage.upsertUser(newUserData);
+            // Temporary flag — consumed in the callback route to detect brand-new signups
+            return done(null, { ...user, _isNewOAuthUser: true });
           }
 
           return done(null, user);
@@ -99,6 +101,9 @@ export async function setupGoogleAuth(app: Express) {
       if (req.query.intent) {
         req.session.oauthIntent = req.query.intent;
       }
+      if (req.query.ref) {
+        req.session.oauthRef = req.query.ref;
+      }
       next();
     },
     passport.authenticate('google', { scope: ['profile', 'email'] })
@@ -109,19 +114,40 @@ export async function setupGoogleAuth(app: Express) {
     passport.authenticate('google', { failureRedirect: '/signin' }),
     async (req: any, res) => {
       try {
-        let user = req.user;
+        const rawUser = req.user;
 
-        if (!user) {
+        if (!rawUser) {
           return res.redirect('/signin');
         }
 
-        // Consume and clear the intent stored before the OAuth redirect.
+        // Detect new Google OAuth user (temp flag set in the verify callback)
+        const isNewOAuthUser = !!(rawUser as any)._isNewOAuthUser;
+        // Strip the temporary flag before storing in session
+        const { _isNewOAuthUser: _flag, ...user } = rawUser as any;
+
+        // Consume and clear flags stored before the OAuth redirect.
         const oauthIntent: string | undefined = req.session.oauthIntent;
+        const oauthRef: string | undefined = req.session.oauthRef as string | undefined;
         delete req.session.oauthIntent;
+        delete req.session.oauthRef;
 
         // Create session in the same format as email/password login
         req.session.isAuthenticated = true;
         req.session.user = user;
+
+        // Helper — redirects through /referral-entry for brand-new signups so
+        // they can optionally enter the referral code of whoever invited them.
+        const goTo = (dest: string) => {
+          if (isNewOAuthUser) {
+            const refParam = oauthRef
+              ? `&ref=${encodeURIComponent(String(oauthRef))}`
+              : '';
+            return res.redirect(
+              `/referral-entry?next=${encodeURIComponent(dest)}${refParam}`
+            );
+          }
+          return res.redirect(dest);
+        };
 
         // Save session before redirecting
         req.session.save(async (saveErr: any) => {
@@ -135,34 +161,34 @@ export async function setupGoogleAuth(app: Express) {
             // User needs a zip code first — send to complete-profile with the
             // contractor intent pre-selected so they don't have to pick a role.
             if (!user.zipCode) {
-              return res.redirect('/complete-profile?intent=contractor');
+              return goTo('/complete-profile?intent=contractor');
             }
 
             // User has a zip code but is still a homeowner — upgrade role and
             // send through contractor onboarding to collect company details.
             if (user.role !== 'contractor') {
               try {
-                user = await storage.upsertUser({ ...user, role: 'contractor' });
-                req.session.user = user;
+                const upgraded = await storage.upsertUser({ ...user, role: 'contractor' });
+                req.session.user = upgraded;
               } catch (err) {
                 console.error('Failed to update user role to contractor:', err);
               }
-              return res.redirect('/contractor-onboarding?fromOAuth=true');
+              return goTo('/contractor-onboarding?fromOAuth=true');
             }
 
             // User is already a contractor — send to onboarding if they have no
             // company yet, or to pricing if they need to subscribe.
             if (!user.companyId) {
-              return res.redirect('/contractor-onboarding?fromOAuth=true');
+              return goTo('/contractor-onboarding?fromOAuth=true');
             }
 
             // Has company — go to pricing if not yet subscribed, else dashboard.
             const needsSubscription =
               !user.subscriptionStatus || user.subscriptionStatus === 'inactive';
             if (needsSubscription) {
-              return res.redirect('/contractor-pricing?trial=true');
+              return goTo('/contractor-pricing?trial=true');
             }
-            return res.redirect('/contractor-dashboard');
+            return goTo('/contractor-dashboard');
           }
 
           // ── Agent intent ─────────────────────────────────────────────────
@@ -170,27 +196,27 @@ export async function setupGoogleAuth(app: Express) {
             // User needs a zip code first — send to complete-profile with the
             // agent intent pre-selected so they don't have to pick a role.
             if (!user.zipCode) {
-              return res.redirect('/complete-profile?intent=agent');
+              return goTo('/complete-profile?intent=agent');
             }
 
             // User has a zip code but is not yet an agent — upgrade role and
             // send to the agent dashboard.
             if (user.role !== 'agent') {
               try {
-                user = await storage.upsertUser({ ...user, role: 'agent' });
-                req.session.user = user;
+                const upgraded = await storage.upsertUser({ ...user, role: 'agent' });
+                req.session.user = upgraded;
               } catch (err) {
                 console.error('Failed to update user role to agent:', err);
               }
             }
 
-            return res.redirect('/agent-dashboard');
+            return goTo('/agent-dashboard');
           }
 
           // ── Default routing ──────────────────────────────────────────────
           // Check if user needs to complete profile (add zip code or role)
           if (!user.zipCode) {
-            return res.redirect('/complete-profile');
+            return goTo('/complete-profile');
           }
 
           // Redirect to appropriate dashboard based on role
@@ -202,7 +228,7 @@ export async function setupGoogleAuth(app: Express) {
               : user.role === 'agent'
               ? '/agent-dashboard'
               : '/dashboard';
-          res.redirect(redirectPath);
+          return goTo(redirectPath);
         });
       } catch (error) {
         console.error('Google OAuth callback error:', error);

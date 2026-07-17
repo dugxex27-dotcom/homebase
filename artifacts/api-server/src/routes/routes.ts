@@ -3621,6 +3621,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Apply a referral code to the currently authenticated user (post-signup step)
+  app.post('/api/apply-referral-code', isAuthenticated, async (req: any, res: any) => {
+    try {
+      const userId = req.session.user?.id;
+      if (!userId) return res.status(401).json({ message: "Not authenticated" });
+
+      const { referralCode } = req.body;
+      if (!referralCode?.trim()) {
+        return res.status(400).json({ message: "Referral code is required" });
+      }
+
+      const currentUser = await storage.getUser(userId);
+      if (!currentUser) return res.status(404).json({ message: "User not found" });
+
+      // Don't allow double-crediting
+      if (currentUser.referredBy) {
+        return res.status(400).json({ message: "You have already applied a referral code" });
+      }
+
+      const code = referralCode.trim().toUpperCase();
+
+      // Can't use your own code
+      if (currentUser.referralCode && currentUser.referralCode.toUpperCase() === code) {
+        return res.status(400).json({ message: "You cannot use your own referral code" });
+      }
+
+      // Resolve the code — user referral codes first, then company codes
+      let referringAgent: any = null;
+      let isValidCode = false;
+
+      const referrer = await storage.getUserByReferralCode(code);
+      if (referrer && referrer.id !== userId) {
+        isValidCode = true;
+        if (referrer.role === 'agent') {
+          referringAgent = referrer;
+        }
+      } else if (!referrer) {
+        const referrerCompany = await storage.getCompanyByReferralCode(code);
+        if (referrerCompany) {
+          isValidCode = true;
+        }
+      }
+
+      if (!isValidCode) {
+        return res.status(400).json({ message: "Invalid referral code" });
+      }
+
+      // Record referral on the user so the Stripe webhook credits the referrer on each payment
+      await storage.upsertUser({ ...currentUser, referredBy: code });
+      req.session.user = { ...req.session.user, referredBy: code };
+
+      // If referred by an agent, create the affiliate referral record immediately
+      if (referringAgent) {
+        const signupDate = new Date();
+        const trialEndDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+        await storage.createAffiliateReferral({
+          agentId: referringAgent.id,
+          referredUserId: userId,
+          referredUserRole: currentUser.role,
+          referralCode: code,
+          signupDate,
+          trialEndDate,
+          status: 'trial',
+        } as any);
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error applying referral code:", error);
+      res.status(500).json({ message: "Failed to apply referral code" });
+    }
+  });
+
   // Get referral information by code (for invite page)
   app.get('/api/referrals/:code', async (req: any, res: any) => {
     try {
@@ -4074,8 +4147,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Validate contractor company requirements - must create a company
       if (role === 'contractor') {
-        if (!companyName || !companyBio || !companyPhone) {
-          return res.status(400).json({ message: "Company name, bio, and phone are required for contractors" });
+        if (!companyName || !companyPhone) {
+          return res.status(400).json({ message: "Company name and phone are required for contractors" });
         }
       }
 
@@ -4506,8 +4579,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Validate contractor company requirements - must create a company
       if (role === 'contractor') {
-        if (!companyName || !companyBio || !companyPhone) {
-          return res.status(400).json({ message: "Company name, bio, and phone are required for contractors" });
+        if (!companyName || !companyPhone) {
+          return res.status(400).json({ message: "Company name and phone are required for contractors" });
         }
       }
 
