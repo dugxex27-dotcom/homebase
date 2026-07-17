@@ -46,7 +46,6 @@ const registerSchema = z.object({
   confirmPassword: z.string().min(1, "Please confirm your password"),
   zipCode: z.string().min(5, "Please enter a valid zip code").max(10, "Zip code is too long"),
   companyName: z.string().min(1, "Company name is required"),
-  companyBio: z.string().min(10, "Please write at least 10 characters about your company"),
   companyPhone: z.string().min(10, "Please enter a valid phone number"),
   referralCode: z.string().optional(),
 }).refine((d) => d.password === d.confirmPassword, { message: "Passwords don't match", path: ["confirmPassword"] });
@@ -95,7 +94,7 @@ export default function SignInContractor() {
   }, []);
 
   const loginForm = useForm<LoginFormData>({ resolver: zodResolver(loginSchema), defaultValues: { email: "", password: "" }, mode: "onBlur" });
-  const registerForm = useForm<RegisterFormData>({ resolver: zodResolver(registerSchema), defaultValues: { firstName: "", lastName: "", email: "", password: "", confirmPassword: "", zipCode: "", companyName: "", companyBio: "", companyPhone: "", referralCode: "" }, mode: "onBlur" });
+  const registerForm = useForm<RegisterFormData>({ resolver: zodResolver(registerSchema), defaultValues: { firstName: "", lastName: "", email: "", password: "", confirmPassword: "", zipCode: "", companyName: "", companyPhone: "", referralCode: "" }, mode: "onBlur" });
   const forgotPasswordForm = useForm<ForgotPasswordFormData>({ resolver: zodResolver(forgotPasswordSchema), defaultValues: { email: "" } });
   const resetPasswordForm = useForm<ResetPasswordFormData>({ resolver: zodResolver(resetPasswordSchema), defaultValues: { email: "", resetCode: "", newPassword: "", confirmPassword: "" } });
 
@@ -301,22 +300,6 @@ export default function SignInContractor() {
                 )} />
                 <FormField control={registerForm.control} name="companyPhone" render={({ field }) => (
                   <FormItem style={{ marginBottom: 10 }}><label style={labelStyle}>Company phone</label><FormControl><Input type="tel" placeholder="(555) 000-0000" {...field} data-testid="input-company-phone-contractor" style={inpStyle} className="focus-visible:ring-0 focus-visible:ring-offset-0" /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={registerForm.control} name="companyBio" render={({ field }) => (
-                  <FormItem style={{ marginBottom: 10 }}>
-                    <label style={labelStyle}>Company description</label>
-                    <FormControl>
-                      <textarea
-                        placeholder="Briefly describe your services and experience…"
-                        {...field}
-                        data-testid="input-company-bio-contractor"
-                        rows={3}
-                        style={{ ...inpStyle, resize: 'vertical', width: '100%', fontFamily: 'inherit' }}
-                        className="focus-visible:ring-0 focus-visible:ring-offset-0"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
                 )} />
                 <FormField control={registerForm.control} name="referralCode" render={({ field }) => (
                   <FormItem style={{ marginBottom: 10 }}><label style={labelStyle}>Referral code <span style={{ fontWeight: 400, opacity: 0.6 }}>(optional)</span></label><FormControl><Input {...field} placeholder="Enter a referral code" data-testid="input-referral-code-contractor" style={inpStyle} className="focus-visible:ring-0 focus-visible:ring-offset-0" /></FormControl><FormMessage /></FormItem>
