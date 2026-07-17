@@ -13,13 +13,19 @@ interface UnauthenticatedLayoutProps {
   hideHeader?: boolean;
 }
 
+// Paths that render their own full-page branded header — showing the
+// marketing PublicHeader above them would stack two navbars and expose
+// the mobile hamburger Sheet ("flyout") on these auth screens.
+const SELF_HEADED_PATHS = ['/signin', '/referral-entry', '/complete-profile'];
+
 // On native (Capacitor) builds, the marketing header/footer chrome is never
 // appropriate — the user already knows what app they installed and should
 // land directly in the sign-in flow with no nav links to marketing pages
 // like Pricing/FAQ/How It Works. Web/PWA keeps the marketing chrome as-is.
 export default function UnauthenticatedLayout({ children, hideHeader = false }: UnauthenticatedLayoutProps) {
   const [location] = useLocation();
-  const suppressChrome = hideHeader || isNativePlatform;
+  const isSelfHeaded = SELF_HEADED_PATHS.some(p => location === p || location.startsWith(p + '/'));
+  const suppressChrome = hideHeader || isNativePlatform || isSelfHeaded;
 
   return (
     <AnimatePresence mode="wait">
@@ -40,7 +46,7 @@ export default function UnauthenticatedLayout({ children, hideHeader = false }: 
             </div>
           </Suspense>
         </ErrorBoundary>
-        {!isNativePlatform && <Footer />}
+        {!isNativePlatform && !isSelfHeaded && <Footer />}
         <BackToTop bottom={24} />
       </motion.div>
     </AnimatePresence>
