@@ -1557,6 +1557,37 @@ export default function Maintenance() {
   const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
   const [suggestionDebounceTimer, setSuggestionDebounceTimer] = useState<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
+
+  // ── Camera-only capture enforcement ──────────────────────────────────────
+  // Validates that a file was taken from the camera (not the gallery) by checking
+  // how recently it was last modified. Camera photos are stamped with current time;
+  // gallery images can be days or years old.
+  const validateCameraCapture = (file: File): boolean => {
+    const ageMs = Date.now() - file.lastModified;
+    const oneHourMs = 60 * 60 * 1000;
+    return ageMs <= oneHourMs;
+  };
+
+  const filterCameraFiles = (files: File[]): File[] => {
+    const valid: File[] = [];
+    let rejected = 0;
+    for (const f of files) {
+      if (validateCameraCapture(f)) {
+        valid.push(f);
+      } else {
+        rejected++;
+      }
+    }
+    if (rejected > 0) {
+      toast({
+        title: "Camera photo required",
+        description: `${rejected} file${rejected > 1 ? 's' : ''} appeared to be from your gallery and ${rejected > 1 ? 'were' : 'was'} removed. Please take a new photo with your camera.`,
+        variant: "destructive",
+      });
+    }
+    return valid;
+  };
+  // ── End camera-only enforcement ───────────────────────────────────────────
   const queryClient = useQueryClient();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { needsUpgrade, isInTrial, trialDaysRemaining, isFreeUser, isLoading: subscriptionLoading } = useHomeownerSubscription();
@@ -4408,7 +4439,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-[#EEEDFE]" style={{ borderColor: 'var(--purple-light)' }}>
                       <Upload className="w-8 h-8 mb-2" style={{ color: 'var(--purple)' }} />
                       <span className="text-sm" style={{ color: 'var(--purple-deep)' }}>Take or upload invoice photos</span>
-                      <input type="file" className="hidden" accept="image/*" capture="environment" multiple onChange={(e) => setAiInvoiceFiles(Array.from(e.target.files || []))} />
+                      <input type="file" className="hidden" accept="image/*" capture="environment" onChange={(e) => { const files = filterCameraFiles(Array.from(e.target.files || [])); if (files.length) setAiInvoiceFiles(prev => [...prev, ...files]); }} />
                     </label>
                     {aiInvoiceFiles.length > 0 && <p className="text-xs text-[#079669]">{aiInvoiceFiles.length} file(s) selected</p>}
                   </div>
@@ -4460,7 +4491,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-[#EEEDFE]" style={{ borderColor: 'var(--purple-light)' }}>
                       <Upload className="w-5 h-5 mb-1" style={{ color: 'var(--purple)' }} />
                       <span className="text-xs text-gray-600">Take or upload before photos</span>
-                      <input type="file" className="hidden" accept="image/*" capture="environment" multiple onChange={(e) => setAiDiyVerifyFiles((p) => ({ ...p, before: Array.from(e.target.files || []) }))} />
+                      <input type="file" className="hidden" accept="image/*" capture="environment" onChange={(e) => { const files = filterCameraFiles(Array.from(e.target.files || [])); if (files.length) setAiDiyVerifyFiles((p) => ({ ...p, before: [...p.before, ...files] })); }} />
                     </label>
                     {aiDiyVerifyFiles.before.length > 0 && <p className="text-xs text-[#079669] mt-1">{aiDiyVerifyFiles.before.length} before photo(s)</p>}
                   </div>
@@ -4469,7 +4500,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-[#EEEDFE]" style={{ borderColor: 'var(--purple-light)' }}>
                       <Upload className="w-5 h-5 mb-1" style={{ color: 'var(--purple)' }} />
                       <span className="text-xs text-gray-600">Take or upload after photos</span>
-                      <input type="file" className="hidden" accept="image/*" capture="environment" multiple onChange={(e) => setAiDiyVerifyFiles((p) => ({ ...p, after: Array.from(e.target.files || []) }))} />
+                      <input type="file" className="hidden" accept="image/*" capture="environment" onChange={(e) => { const files = filterCameraFiles(Array.from(e.target.files || [])); if (files.length) setAiDiyVerifyFiles((p) => ({ ...p, after: [...p.after, ...files] })); }} />
                     </label>
                     {aiDiyVerifyFiles.after.length > 0 && <p className="text-xs text-[#079669] mt-1">{aiDiyVerifyFiles.after.length} after photo(s)</p>}
                   </div>
@@ -4875,10 +4906,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       type="file"
                       accept="image/*"
                       capture="environment"
-                      multiple
                       onChange={(e) => {
-                        const files = Array.from(e.target.files || []);
-                        setBeforePhotoFiles(prev => [...prev, ...files]);
+                        const files = filterCameraFiles(Array.from(e.target.files || []));
+                        if (files.length) setBeforePhotoFiles(prev => [...prev, ...files]);
                       }}
                       className="block w-full text-sm text-gray-500
                         file:mr-4 file:py-2 file:px-4
@@ -4915,10 +4945,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       type="file"
                       accept="image/*"
                       capture="environment"
-                      multiple
                       onChange={(e) => {
-                        const files = Array.from(e.target.files || []);
-                        setAfterPhotoFiles(prev => [...prev, ...files]);
+                        const files = filterCameraFiles(Array.from(e.target.files || []));
+                        if (files.length) setAfterPhotoFiles(prev => [...prev, ...files]);
                       }}
                       className="block w-full text-sm text-gray-500
                         file:mr-4 file:py-2 file:px-4

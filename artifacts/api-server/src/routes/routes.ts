@@ -1855,22 +1855,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   .limit(1);
 
                 // 4. Detect dedup-pair reuse: same (paymentMethodFingerprint, deviceFingerprint) pair
-                // across different referred accounts means the same card + browser is creating sock-puppet referrals
+                // across different referred accounts — checks the exact pair when both signals are
+                // available; falls back to single-signal check when only one is known.
                 let fingerprintAbuse = false;
-                if (pmFingerprint || deviceFp) {
-                  const dupFingerprintRows = await db.execute<{ cnt: number }>(
+                if (pmFingerprint && deviceFp) {
+                  // Exact pair (AND) — both must match
+                  const dupPairRows = await db.execute<{ cnt: number }>(
                     drizzleSql`
                       SELECT COUNT(DISTINCT referred_user_id)::int AS cnt
                       FROM referral_credits
                       WHERE referred_user_id <> ${user.id}
-                        AND (
-                          (payment_method_fingerprint IS NOT NULL AND payment_method_fingerprint = ${pmFingerprint})
-                          OR
-                          (device_fingerprint IS NOT NULL AND device_fingerprint = ${deviceFp})
-                        )
+                        AND payment_method_fingerprint = ${pmFingerprint}
+                        AND device_fingerprint = ${deviceFp}
                     `
                   );
-                  fingerprintAbuse = Number((dupFingerprintRows.rows[0] as any)?.cnt ?? 0) > 0;
+                  fingerprintAbuse = Number((dupPairRows.rows[0] as any)?.cnt ?? 0) > 0;
+                } else if (pmFingerprint) {
+                  // Fallback: only payment fingerprint available
+                  const dupPmRows = await db.execute<{ cnt: number }>(
+                    drizzleSql`
+                      SELECT COUNT(DISTINCT referred_user_id)::int AS cnt
+                      FROM referral_credits
+                      WHERE referred_user_id <> ${user.id}
+                        AND payment_method_fingerprint = ${pmFingerprint}
+                    `
+                  );
+                  fingerprintAbuse = Number((dupPmRows.rows[0] as any)?.cnt ?? 0) > 0;
+                } else if (deviceFp) {
+                  // Fallback: only device fingerprint available
+                  const dupDevRows = await db.execute<{ cnt: number }>(
+                    drizzleSql`
+                      SELECT COUNT(DISTINCT referred_user_id)::int AS cnt
+                      FROM referral_credits
+                      WHERE referred_user_id <> ${user.id}
+                        AND device_fingerprint = ${deviceFp}
+                    `
+                  );
+                  fingerprintAbuse = Number((dupDevRows.rows[0] as any)?.cnt ?? 0) > 0;
                 }
 
                 // 5. Detect referral-ring abuse: referrer with >15 distinct referees in 30 days
@@ -13368,8 +13389,14 @@ Include up to 3 tasks (fewer if fewer than 3 are pending). Do not include null e
         ),
       ]);
 
-      // Canonical wellness score — +4 per completed task (matches /api/houses/:id/health-score)
-      const wellnessScore = completedTaskRows.length * 4 + calculateMechanicalDocumentationBonus(house);
+      // ── Canonical wellness score — weighted by verification tier ───────────
+      // contractor_verified = 4 pts, self_reported = 2.4 pts; soft cap at 85 when all self-reported
+      // (mirrors /api/houses/:id/health-score weighting exactly)
+      const _rrCvCount = completedTaskRows.filter(c => (c as any).verificationTier === 'contractor_verified').length;
+      const _rrSrCount = completedTaskRows.length - _rrCvCount;
+      const _rrRawScore = _rrCvCount * 4 + _rrSrCount * 2.4;
+      const _rrAllSR = completedTaskRows.length > 0 && _rrCvCount === 0;
+      const wellnessScore = Math.round((_rrAllSR ? Math.min(_rrRawScore, 85) : _rrRawScore) + calculateMechanicalDocumentationBonus(house));
 
       // Maintenance logs from last 3 years
       const recentLogs = allMaintenanceLogs.filter(log => {
@@ -13460,7 +13487,7 @@ Include up to 3 tasks (fewer if fewer than 3 are pending). Do not include null e
 
       const contextBlock = [
         `Property: ${house.address ?? "address not recorded"} — ${houseAgeStr}`,
-        `Home Wellness Score: ${wellnessScore} points (${completedTaskRows.length} total tasks completed — canonical formula: +4 per task)`,
+        `Home Wellness Score: ${wellnessScore} points (${completedTaskRows.length} total tasks — ${_rrCvCount} contractor-verified @4pts, ${_rrSrCount} self-reported @2.4pts${_rrAllSR ? ', soft-capped at 85' : ''})`,
         `Tasks completed this year (${currentYear}): ${completedThisYear}`,
         `Total maintenance log entries in last 3 years: ${recentLogs.length}`,
         recentLogs.length > 0 ? `Homeowner-logged service history:\n${logSummaryLines.join("\n")}` : "No homeowner maintenance log entries in last 3 years.",
