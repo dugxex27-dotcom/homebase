@@ -20,6 +20,7 @@ import { onboardingNudgeScheduler } from "./onboarding-nudge-scheduler";
 import { invoiceOrphanCleanupScheduler } from "./invoice-orphan-cleanup-scheduler";
 import { storageOrphanCleanupScheduler } from "./storage-orphan-cleanup-scheduler";
 import { boostExpiryScheduler } from "./boost-expiry-scheduler";
+import { fraudScheduler } from "./fraud-scheduler";
 import { initLeaderLease, releaseLeaderLease } from "./lib/scheduler-leader";
 
 const allSchedulers = [
@@ -34,6 +35,7 @@ const allSchedulers = [
   invoiceOrphanCleanupScheduler,
   storageOrphanCleanupScheduler,
   boostExpiryScheduler,
+  fraudScheduler,
 ];
 
 const rawPort = process.env["PORT"];

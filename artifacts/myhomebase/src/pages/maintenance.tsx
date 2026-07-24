@@ -4459,8 +4459,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     <label className="block text-xs font-medium mb-1 text-gray-700">Before Photos *</label>
                     <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-[#EEEDFE]" style={{ borderColor: 'var(--purple-light)' }}>
                       <Upload className="w-5 h-5 mb-1" style={{ color: 'var(--purple)' }} />
-                      <span className="text-xs text-gray-600">Upload before photos</span>
-                      <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => setAiDiyVerifyFiles((p) => ({ ...p, before: Array.from(e.target.files || []) }))} />
+                      <span className="text-xs text-gray-600">Take or upload before photos</span>
+                      <input type="file" className="hidden" accept="image/*" capture="environment" multiple onChange={(e) => setAiDiyVerifyFiles((p) => ({ ...p, before: Array.from(e.target.files || []) }))} />
                     </label>
                     {aiDiyVerifyFiles.before.length > 0 && <p className="text-xs text-[#079669] mt-1">{aiDiyVerifyFiles.before.length} before photo(s)</p>}
                   </div>
@@ -4468,8 +4468,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     <label className="block text-xs font-medium mb-1 text-gray-700">After Photos *</label>
                     <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-[#EEEDFE]" style={{ borderColor: 'var(--purple-light)' }}>
                       <Upload className="w-5 h-5 mb-1" style={{ color: 'var(--purple)' }} />
-                      <span className="text-xs text-gray-600">Upload after photos</span>
-                      <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => setAiDiyVerifyFiles((p) => ({ ...p, after: Array.from(e.target.files || []) }))} />
+                      <span className="text-xs text-gray-600">Take or upload after photos</span>
+                      <input type="file" className="hidden" accept="image/*" capture="environment" multiple onChange={(e) => setAiDiyVerifyFiles((p) => ({ ...p, after: Array.from(e.target.files || []) }))} />
                     </label>
                     {aiDiyVerifyFiles.after.length > 0 && <p className="text-xs text-[#079669] mt-1">{aiDiyVerifyFiles.after.length} after photo(s)</p>}
                   </div>

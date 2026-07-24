@@ -49,6 +49,7 @@ export const referralCredits = pgTable("referral_credits", {
   appliedAt: timestamp("applied_at"), // When credit was redeemed toward a free month
   source: text("source").notNull().default("referral"), // "referral", "bonus", "promotion", etc.
   notes: text("notes"), // Additional notes about the credit
+  deviceFingerprint: text("device_fingerprint"), // Browser/device fingerprint for dedup
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -440,9 +441,26 @@ export const maintenanceLogs = pgTable("maintenance_logs", {
   completionMethod: text("completion_method"), // 'diy' or 'contractor' - how the task was completed (nullable for backward compatibility)
   diySavingsAmount: decimal("diy_savings_amount", { precision: 10, scale: 2 }), // Amount saved by doing DIY (pro cost - diy cost), null for contractor completions
   taskCompletionId: text("task_completion_id"), // references taskCompletions.id — kept in sync with serviceDate year/month
+  // Fraud-resistance fields
+  verificationTier: text("verification_tier").notNull().default('self_reported'), // 'self_reported' | 'contractor_verified'
+  deviceTimestamp: timestamp("device_timestamp"), // EXIF timestamp from camera
+  locationFlag: boolean("location_flag").notNull().default(false), // true if photo GPS is far from property
+  timestampFlag: boolean("timestamp_flag").notNull().default(false), // true if device_timestamp is >24h off server time
+  gpsLat: decimal("gps_lat", { precision: 10, scale: 8 }), // GPS lat extracted from photo EXIF
+  gpsLng: decimal("gps_lng", { precision: 11, scale: 8 }), // GPS lng extracted from photo EXIF
+  propertyLat: decimal("property_lat", { precision: 10, scale: 8 }), // House lat at time of submission
+  propertyLng: decimal("property_lng", { precision: 11, scale: 8 }), // House lng at time of submission
+  beforePhotoHashes: text("before_photo_hashes").array().default(sql`'{}'::text[]`), // SHA-256 hashes of before photos
+  afterPhotoHashes: text("after_photo_hashes").array().default(sql`'{}'::text[]`), // SHA-256 hashes of after photos
+  contractorAccountId: text("contractor_account_id"), // contractor user ID if platform-verified
+  invoiceRef: text("invoice_ref"), // reference to invoice upload
+  contractorBusinessName: text("contractor_business_name"), // required for contractor_verified
+  contractorLicenseNumber: text("contractor_license_number"), // optional for contractor_verified
+  contractorJobDate: text("contractor_job_date"), // date string, required for contractor_verified
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("IDX_maintenance_logs_completion_method").on(table.completionMethod),
+  index("IDX_maintenance_logs_verification_tier").on(table.verificationTier),
 ]);
 
 export const invoiceAnalyses = pgTable("invoice_analyses", {
@@ -858,10 +876,12 @@ export const taskCompletions = pgTable("task_completions", {
   costSavings: decimal("cost_savings", { precision: 10, scale: 2 }), // calculated savings (for DIY tasks)
   notes: text("notes"), // optional completion notes
   documentsUploaded: integer("documents_uploaded").default(0), // count of receipts/photos uploaded
+  verificationTier: text("verification_tier").notNull().default('self_reported'), // 'self_reported' | 'contractor_verified'
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("IDX_task_completions_homeowner").on(table.homeownerId),
   index("IDX_task_completions_date").on(table.year, table.month),
+  index("IDX_task_completions_verification_tier").on(table.verificationTier),
 ]);
 
 // Achievement definitions - master list of all available achievements
@@ -1021,6 +1041,15 @@ export const completeTaskSchema = z.object({
     materialsHigh: z.number().optional(),
   }).optional(),
   contractorCost: z.number().nonnegative().optional(),
+  // Fraud-resistance metadata (all optional — clients submit what they have)
+  gpsLat: z.number().optional(),
+  gpsLng: z.number().optional(),
+  deviceTimestamp: z.string().optional(), // ISO datetime string from EXIF
+  beforePhotoHashes: z.array(z.string()).optional(), // SHA-256 hashes of before photos
+  afterPhotoHashes: z.array(z.string()).optional(), // SHA-256 hashes of after photos
+  contractorBusinessName: z.string().optional(), // required when completionMethod === 'contractor'
+  contractorLicenseNumber: z.string().optional(),
+  contractorJobDate: z.string().optional(), // required when completionMethod === 'contractor'
 });
 
 export const insertContractorAppointmentSchema = createInsertSchema(contractorAppointments).omit({
@@ -2508,3 +2537,24 @@ export const pendingSeatSyncs = pgTable("pending_seat_syncs", {
 });
 
 export type PendingSeatSync = typeof pendingSeatSyncs.$inferSelect;
+
+// ─── Fraud Review Queue ───────────────────────────────────────────────────────
+// Nightly scheduler writes flagged accounts here for admin review.
+// Never auto-rejects submissions — review only.
+export const fraudReviewQueue = pgTable("fraud_review_queue", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  homeownerId: text("homeowner_id").notNull(),
+  flagType: text("flag_type").notNull(), // 'excessive_daily_completions' | 'duplicate_photos' | 'referral_dedup'
+  details: jsonb("details"), // JSONB blob with flagging context
+  reviewed: boolean("reviewed").notNull().default(false),
+  reviewedBy: text("reviewed_by"), // admin user ID
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_fraud_review_homeowner").on(table.homeownerId),
+  index("IDX_fraud_review_reviewed_created").on(table.reviewed, table.createdAt),
+]);
+
+export const insertFraudReviewQueueSchema = createInsertSchema(fraudReviewQueue).omit({ id: true, createdAt: true });
+export type InsertFraudReviewQueueEntry = z.infer<typeof insertFraudReviewQueueSchema>;
+export type FraudReviewQueueEntry = typeof fraudReviewQueue.$inferSelect;

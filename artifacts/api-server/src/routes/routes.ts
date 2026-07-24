@@ -1820,6 +1820,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const periodDate = new Date(periodTimestamp * 1000);
                 const billingMonth = `${periodDate.getFullYear()}-${String(periodDate.getMonth() + 1).padStart(2, '0')}`;
 
+                // ── Referral dedup / fraud guard ──────────────────────────────────
+                // 1. Prevent circular referrals (A→B and B→A simultaneously)
+                const reverseCredit = await db.select({ id: referralCredits.id })
+                  .from(referralCredits)
+                  .where(and(
+                    eq(referralCredits.referrerUserId, user.id),
+                    eq(referralCredits.referredUserId, referrer.id),
+                  ))
+                  .limit(1);
+
+                // 2. Detect referral-ring abuse: referrer with >15 distinct referees in 30 days
+                const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+                const recentReferrals = await db.select({ referredUserId: referralCredits.referredUserId })
+                  .from(referralCredits)
+                  .where(and(
+                    eq(referralCredits.referrerUserId, referrer.id),
+                    gte(referralCredits.earnedAt, thirtyDaysAgo),
+                  ));
+                const distinctRefereeCount = new Set(recentReferrals.map(r => r.referredUserId)).size;
+
+                const flagForReview = reverseCredit.length > 0 || distinctRefereeCount > 15;
+
+                if (flagForReview) {
+                  try {
+                    const { fraudReviewQueue: frq } = await import('@workspace/db');
+                    await db.insert(frq).values({
+                      homeownerId: referrer.id,
+                      flagType: reverseCredit.length > 0 ? 'circular_referral' : 'referral_ring',
+                      details: reverseCredit.length > 0
+                        ? `Circular referral: ${referrer.email} ↔ ${user.email}`
+                        : `Referral ring: ${referrer.email} has ${distinctRefereeCount} referees in 30 days`,
+                      severity: 'high',
+                      reviewed: false,
+                    } as any);
+                    console.warn(`[REFERRAL FRAUD] Flagged ${referrer.email}: ${reverseCredit.length > 0 ? 'circular' : 'ring'}`);
+                    // Skip credit issuance for circular referrals; allow ring referrals but flag them
+                    if (reverseCredit.length > 0) {
+                      console.warn(`[REFERRAL FRAUD] Skipping credit for circular referral: ${referrer.email} ↔ ${user.email}`);
+                      throw new Error('SKIP_CREDIT_CIRCULAR_REFERRAL');
+                    }
+                  } catch (flagErr: any) {
+                    if (flagErr.message === 'SKIP_CREDIT_CIRCULAR_REFERRAL') throw flagErr;
+                    console.error('[REFERRAL FRAUD] Failed to write fraud queue entry:', flagErr);
+                  }
+                }
+                // ── End referral dedup guard ───────────────────────────────────────
+
                 // Insert credit — unique constraint (referrer, referred, billingMonth) prevents duplicates
                 try {
                   await db.insert(referralCredits).values({
@@ -5385,6 +5432,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching audit logs:", error);
       res.status(500).json({ message: "Failed to fetch audit logs" });
+    }
+  });
+
+  // ── Fraud Review Queue (admin) ───────────────────────────────────────────────
+  // GET  /api/admin/fraud-review-queue     — list unreviewed entries + user info
+  // POST /api/admin/fraud-review-queue/:id/dismiss — mark as reviewed
+  app.get('/api/admin/fraud-review-queue', requireAdmin, async (req: any, res: any) => {
+    try {
+      const { fraudReviewQueue: frq } = await import('@workspace/db');
+      const rows = await db.select().from(frq)
+        .where(eq(frq.reviewed, false))
+        .orderBy(desc(frq.createdAt))
+        .limit(200);
+
+      // Attach basic user info for each entry
+      const enriched = await Promise.all(rows.map(async (row: any) => {
+        const user = await storage.getUser(row.homeownerId);
+        return {
+          ...row,
+          user: user ? { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName } : null,
+        };
+      }));
+
+      res.json(enriched);
+    } catch (error) {
+      console.error('[ADMIN] Error fetching fraud review queue:', error);
+      res.status(500).json({ message: 'Failed to fetch fraud review queue' });
+    }
+  });
+
+  app.post('/api/admin/fraud-review-queue/:id/dismiss', requireAdmin, async (req: any, res: any) => {
+    try {
+      const { fraudReviewQueue: frq } = await import('@workspace/db');
+      const entryId = req.params.id;
+      const adminUserId = req.session?.user?.id ?? 'admin';
+      const updated = await db.update(frq)
+        .set({ reviewed: true, reviewedBy: adminUserId, reviewedAt: new Date() })
+        .where(eq(frq.id, entryId))
+        .returning();
+      if (!updated.length) {
+        return res.status(404).json({ message: 'Fraud review queue entry not found' });
+      }
+      res.json(updated[0]);
+    } catch (error) {
+      console.error('[ADMIN] Error dismissing fraud review entry:', error);
+      res.status(500).json({ message: 'Failed to dismiss fraud review entry' });
     }
   });
 
@@ -10884,12 +10977,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Validate request body with Zod schema
       const validatedData = completeTaskSchema.parse(req.body);
-      const { houseId, taskTitle, completionMethod, costEstimate, contractorCost: providedCost } = validatedData;
+      const {
+        houseId, taskTitle, completionMethod, costEstimate, contractorCost: providedCost,
+        gpsLat, gpsLng, deviceTimestamp, beforePhotoHashes, afterPhotoHashes,
+        contractorBusinessName, contractorLicenseNumber, contractorJobDate,
+      } = validatedData;
+
+      // ── Contractor-verified enforcement ────────────────────────────────────
+      // When completionMethod is 'contractor', require business name + job date.
+      if (completionMethod === 'contractor') {
+        if (!contractorBusinessName || !contractorJobDate) {
+          return res.status(422).json({
+            message: "Contractor-verified submissions require contractor_business_name and contractor_job_date.",
+            code: "CONTRACTOR_FIELDS_REQUIRED",
+          });
+        }
+      }
+
+      // Determine verification tier
+      const verificationTier: string =
+        completionMethod === 'contractor' && contractorBusinessName && contractorJobDate
+          ? 'contractor_verified'
+          : 'self_reported';
       
       // Verify house belongs to user
       const house = await storage.getHouse(houseId);
       if (!house || house.homeownerId !== req.session.user.id) {
         return res.status(403).json({ message: "Access denied to house" });
+      }
+
+      // ── Location flag ──────────────────────────────────────────────────────
+      // Flag if photo GPS is absent or more than ~1 mile from property.
+      const houseLatNum = house.latitude ? parseFloat(house.latitude as string) : null;
+      const houseLngNum = house.longitude ? parseFloat(house.longitude as string) : null;
+
+      let locationFlag = false;
+      if (gpsLat == null || gpsLng == null) {
+        // No GPS in photo — flag as unverifiable location
+        locationFlag = true;
+      } else if (houseLatNum != null && houseLngNum != null) {
+        // Simple Haversine-based mile distance check
+        const R = 3958.8; // Earth radius in miles
+        const dLat = ((gpsLat - houseLatNum) * Math.PI) / 180;
+        const dLng = ((gpsLng - houseLngNum) * Math.PI) / 180;
+        const a =
+          Math.sin(dLat / 2) ** 2 +
+          Math.cos((houseLatNum * Math.PI) / 180) *
+            Math.cos((gpsLat * Math.PI) / 180) *
+            Math.sin(dLng / 2) ** 2;
+        const distanceMiles = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        if (distanceMiles > 1) locationFlag = true;
+      }
+
+      // ── Timestamp flag ─────────────────────────────────────────────────────
+      let timestampFlag = false;
+      let deviceTs: Date | null = null;
+      if (deviceTimestamp) {
+        deviceTs = new Date(deviceTimestamp);
+        if (!isNaN(deviceTs.getTime())) {
+          const diffHours = Math.abs(Date.now() - deviceTs.getTime()) / (1000 * 60 * 60);
+          if (diffHours > 24) timestampFlag = true;
+        } else {
+          deviceTs = null;
+        }
       }
       
       // Calculate DIY savings using shared helper function
@@ -10903,10 +11053,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let contractorCostStr: string | null = null;
       if (completionMethod === 'contractor') {
         if (providedCost !== undefined && providedCost !== null) {
-          // Use the actual cost provided by the user
           contractorCostStr = providedCost.toFixed(2);
         } else if (costEstimate) {
-          // Fall back to estimate midpoint if no cost provided
           const { proLow, proHigh } = costEstimate;
           if (proLow !== undefined && proHigh !== undefined) {
             contractorCostStr = ((proLow + proHigh) / 2).toFixed(2);
@@ -10914,17 +11062,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Create maintenance log
+      // Create maintenance log with fraud-resistance metadata
       const logData = {
         homeownerId: req.session.user.id,
         houseId,
-        homeArea: 'General Maintenance', // Default home area for task completions
+        homeArea: 'General Maintenance',
         serviceDate: new Date().toISOString().split('T')[0],
         serviceType: taskTitle,
         serviceDescription: `Completed ${completionMethod === 'diy' ? 'DIY' : 'by contractor'}`,
         completionMethod,
         diySavingsAmount,
-        cost: contractorCostStr
+        cost: contractorCostStr,
+        // Fraud-resistance fields
+        verificationTier,
+        deviceTimestamp: deviceTs,
+        locationFlag,
+        timestampFlag,
+        gpsLat: gpsLat != null ? String(gpsLat) : null,
+        gpsLng: gpsLng != null ? String(gpsLng) : null,
+        propertyLat: houseLatNum != null ? String(houseLatNum) : null,
+        propertyLng: houseLngNum != null ? String(houseLngNum) : null,
+        beforePhotoHashes: beforePhotoHashes ?? [],
+        afterPhotoHashes: afterPhotoHashes ?? [],
+        contractorBusinessName: contractorBusinessName ?? null,
+        contractorLicenseNumber: contractorLicenseNumber ?? null,
+        contractorJobDate: contractorJobDate ?? null,
       };
       
       const log = await storage.createMaintenanceLog(logData as any);
@@ -10932,36 +11094,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Also create task completion record for health score tracking
       const now = new Date();
       
-      // Calculate estimated cost properly - average only valid (finite) bounds
       let estimatedCost: number | null = null;
       if (costEstimate && (costEstimate.proLow !== undefined || costEstimate.proHigh !== undefined)) {
         const validBounds: number[] = [];
-        
         if (costEstimate.proLow !== undefined && costEstimate.proLow !== null) {
           const low = Number(costEstimate.proLow);
           if (isFinite(low) && low > 0) validBounds.push(low);
         }
-        
         if (costEstimate.proHigh !== undefined && costEstimate.proHigh !== null) {
           const high = Number(costEstimate.proHigh);
           if (isFinite(high) && high > 0) validBounds.push(high);
         }
-        
         if (validBounds.length > 0) {
-          const sum = validBounds.reduce((acc, val) => acc + val, 0);
-          estimatedCost = sum / validBounds.length;
+          estimatedCost = validBounds.reduce((acc, val) => acc + val, 0) / validBounds.length;
         }
       }
       
       const taskCompletionData = {
         homeownerId: req.session.user.id,
         houseId,
-        taskId: null, // Could be populated if we track specific task IDs
+        taskId: null,
         taskType: 'maintenance' as const,
         taskTitle,
         taskCategory: null,
         completedAt: now,
-        month: now.getMonth() + 1, // 1-12
+        month: now.getMonth() + 1,
         year: now.getFullYear(),
         completionMethod: completionMethod === 'diy' ? 'diy' : 'professional',
         estimatedCost: estimatedCost !== null ? estimatedCost.toFixed(2) : null,
@@ -10969,6 +11126,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         costSavings: diySavingsAmount || null,
         notes: null,
         documentsUploaded: 0,
+        verificationTier,
       };
       
       await db.insert(taskCompletions).values(taskCompletionData);
@@ -12128,13 +12286,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const scoringCount = scoringCompletions.length;
       const historicalCount = historicalCompletions.length;
 
-      // Score is +4 per task in the 12-month window, plus a documentation bonus.
-      const score = scoringCount * 4 + calculateMechanicalDocumentationBonus(house);
+      // ── Weighted score by verification tier ─────────────────────────────────
+      // contractor_verified = 4 pts, self_reported = 2.4 pts (60% weight)
+      // Soft cap: if ALL scored completions are self_reported, clamp the
+      // task-completion subtotal to 85 before adding the documentation bonus.
+      const contractorVerifiedCount = scoringCompletions.filter(
+        c => (c as any).verificationTier === 'contractor_verified',
+      ).length;
+      const selfReportedCount = scoringCount - contractorVerifiedCount;
+
+      const rawTaskScore = contractorVerifiedCount * 4 + selfReportedCount * 2.4;
+
+      const allSelfReported = scoringCount > 0 && contractorVerifiedCount === 0;
+      const taskScore = allSelfReported ? Math.min(rawTaskScore, 85) : rawTaskScore;
+
+      const docBonus = calculateMechanicalDocumentationBonus(house);
+      const score = Math.round(taskScore + docBonus);
 
       res.json({
         score,
         scoringCount,
         historicalCount,
+        contractorVerifiedCount,
+        selfReportedCount,
         // Legacy fields for backward-compatible clients
         completedTasks: scoringCount,
         missedTasks: 0,
@@ -12894,8 +13068,12 @@ ${JSON.stringify(questions.map(q => ({ id: q.id, text: q.text, type: q.type, ...
         storage.getCustomMaintenanceTasks(homeownerId, houseId),
       ]);
 
-      // Wellness score: canonical formula matching health-score endpoint
-      const wellnessScore = completedTaskRows.length * 4 + calculateMechanicalDocumentationBonus(house);
+      // Wellness score: canonical formula matching health-score endpoint (with tier weighting)
+      const _cvCount = completedTaskRows.filter(c => (c as any).verificationTier === 'contractor_verified').length;
+      const _srCount = completedTaskRows.length - _cvCount;
+      const _rawScore = _cvCount * 4 + _srCount * 2.4;
+      const _allSR = completedTaskRows.length > 0 && _cvCount === 0;
+      const wellnessScore = Math.round((_allSR ? Math.min(_rawScore, 85) : _rawScore) + calculateMechanicalDocumentationBonus(house));
 
       // Completed task titles for THIS month — used to filter out already-done tasks
       const completedThisMonth = new Set(
