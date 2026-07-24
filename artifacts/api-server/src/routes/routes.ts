@@ -1904,8 +1904,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   ));
                 const distinctRefereeCount = new Set(recentReferrals.map(r => r.referredUserId)).size;
 
-                const shouldSkipCredit = reverseCredit.length > 0 || fingerprintAbuse;
-                const shouldFlag = shouldSkipCredit || distinctRefereeCount > 15;
+                // Device fingerprint is required for credit issuance — guards against alt-account farming.
+                // Subscriptions initiated after the device-fingerprint enforcement was added always send
+                // it at checkout. If it is absent the subscription pre-dates this control; skip the
+                // credit rather than risk crediting a potentially fraudulent referral.
+                const missingDeviceFp = !deviceFp;
+                if (missingDeviceFp) {
+                  console.warn(
+                    `[REFERRAL] Skipping credit: device fingerprint absent — referrer: ${referrer.email}, referee: ${user.email}`
+                  );
+                }
+
+                const shouldSkipCredit = reverseCredit.length > 0 || fingerprintAbuse || missingDeviceFp;
+                const shouldFlag = (reverseCredit.length > 0 || fingerprintAbuse) || distinctRefereeCount > 15;
 
                 if (shouldFlag) {
                   try {

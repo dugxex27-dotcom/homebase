@@ -1019,6 +1019,7 @@ interface TaskDetailDialogProps {
   taskOverride: TaskOverride | undefined;
   onViewContractor: (id: string) => void;
   onContractorComplete: (task: MaintenanceTask) => void;
+  onDiyComplete: (task: MaintenanceTask) => void;
   showCustomizeTask: string | null;
   setShowCustomizeTask: (id: string | null) => void;
   getTaskOverride: (taskTitle: string, overrides: TaskOverride[]) => TaskOverride | undefined;
@@ -1044,6 +1045,7 @@ function TaskDetailDialog({
   taskOverride,
   onViewContractor,
   onContractorComplete,
+  onDiyComplete,
   showCustomizeTask,
   setShowCustomizeTask,
   getTaskOverride,
@@ -1168,17 +1170,11 @@ function TaskDetailDialog({
                     <Button
                       className="w-full bg-[#079669] hover:bg-[#09694A] text-white font-medium py-4 text-base"
                       onClick={() => {
-                        completeTaskMutation.mutate({
-                          houseId: selectedHouseId,
-                          taskTitle: task.title,
-                          completionMethod: 'diy',
-                          costEstimate: task.costEstimate,
-                        });
+                        onDiyComplete(task);
                         onClose();
                       }}
-                      disabled={completeTaskMutation.isPending}
                     >
-                      {completeTaskMutation.isPending ? 'Saving...' : 'Completed DIY'}
+                      Completed DIY
                     </Button>
                     <Button
                       className="w-full text-white hover:opacity-90 font-medium py-4 text-base border-0"
@@ -1654,6 +1650,19 @@ export default function Maintenance() {
   const [selectedTask, setSelectedTask] = useState<MaintenanceTask | null>(null);
   const [isTaskDetailDialogOpen, setIsTaskDetailDialogOpen] = useState(false);
 
+  // DIY completion dialog state
+  const [pendingDiyTask, setPendingDiyTask] = useState<MaintenanceTask | null>(null);
+  const [diyBeforeFile, setDiyBeforeFile] = useState<File | null>(null);
+  const [diyAfterFile, setDiyAfterFile] = useState<File | null>(null);
+  const [diyCompletePending, setDiyCompletePending] = useState(false);
+
+  // Contractor completion dialog state
+  const [pendingContractorTask, setPendingContractorTask] = useState<MaintenanceTask | null>(null);
+  const [cxBusinessName, setCxBusinessName] = useState('');
+  const [cxJobDate, setCxJobDate] = useState(new Date().toISOString().split('T')[0]);
+  const [cxInvoiceFile, setCxInvoiceFile] = useState<File | null>(null);
+  const [cxCompletePending, setCxCompletePending] = useState(false);
+
   // Use authenticated user's ID  
   const homeownerId = (user as any)?.id;
   const userRole = (user as any)?.role;
@@ -1965,6 +1974,15 @@ export default function Maintenance() {
         materialsHigh?: number;
       };
       contractorCost?: number;
+      gpsLat?: number;
+      gpsLng?: number;
+      deviceTimestamp?: string;
+      beforePhotoHashes?: string[];
+      afterPhotoHashes?: string[];
+      contractorBusinessName?: string;
+      contractorJobDate?: string;
+      invoiceRef?: string;
+      contractorAccountId?: string;
     }) => {
       const response = await fetch('/api/maintenance-logs/complete-task', {
         method: 'POST',
@@ -2948,25 +2966,17 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     setIsMaintenanceLogDialogOpen(true);
   };
 
+  const handleDiyCompletion = (task: MaintenanceTask) => {
+    setPendingDiyTask(task);
+    setDiyBeforeFile(null);
+    setDiyAfterFile(null);
+  };
+
   const handleContractorCompletion = (task: MaintenanceTask) => {
-    setEditingMaintenanceLog(null);
-    maintenanceLogForm.reset({
-      homeownerId,
-      houseId: selectedHouseId,
-      serviceType: task.title,
-      serviceDate: new Date().toISOString().split('T')[0],
-      homeArea: "General Maintenance",
-      serviceDescription: "Completed by contractor",
-      cost: undefined,
-      contractorName: "",
-      contractorCompany: "",
-      contractorId: "",
-      notes: "",
-      warrantyPeriod: "",
-      nextServiceDue: "",
-      completionMethod: "contractor",
-    });
-    setIsMaintenanceLogDialogOpen(true);
+    setPendingContractorTask(task);
+    setCxBusinessName('');
+    setCxJobDate(new Date().toISOString().split('T')[0]);
+    setCxInvoiceFile(null);
   };
 
   // Helper function to convert File to base64
@@ -2977,6 +2987,107 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       reader.onload = () => resolve(reader.result as string);
       reader.onerror = (error) => reject(error);
     });
+  };
+
+  // Upload a single image via /api/upload/image (returns sha256, GPS, timestamp)
+  const uploadImageForMeta = async (file: File): Promise<{ url?: string; sha256Hash?: string; gpsLat?: number; gpsLng?: number; deviceTimestamp?: string } | null> => {
+    try {
+      const base64 = await fileToBase64(file);
+      const resp = await fetch('/api/upload/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageData: base64, type: 'photo' }),
+      });
+      if (!resp.ok) return null;
+      return await resp.json();
+    } catch {
+      return null;
+    }
+  };
+
+  const submitDiyCompletion = async () => {
+    if (!pendingDiyTask) return;
+    setDiyCompletePending(true);
+    try {
+      let beforePhotoHashes: string[] = [];
+      let afterPhotoHashes: string[] = [];
+      let gpsLat: number | undefined;
+      let gpsLng: number | undefined;
+      let deviceTimestamp: string | undefined;
+
+      if (diyBeforeFile) {
+        const m = await uploadImageForMeta(diyBeforeFile);
+        if (m?.sha256Hash) beforePhotoHashes = [m.sha256Hash];
+        if (m?.gpsLat != null) { gpsLat = m.gpsLat; gpsLng = m.gpsLng ?? undefined; }
+        if (m?.deviceTimestamp) deviceTimestamp = m.deviceTimestamp;
+      }
+      if (diyAfterFile) {
+        const m = await uploadImageForMeta(diyAfterFile);
+        if (m?.sha256Hash) afterPhotoHashes = [m.sha256Hash];
+        if (m?.gpsLat != null && gpsLat == null) { gpsLat = m.gpsLat; gpsLng = m.gpsLng ?? undefined; }
+        if (m?.deviceTimestamp && !deviceTimestamp) deviceTimestamp = m.deviceTimestamp;
+      }
+
+      await completeTaskMutation.mutateAsync({
+        houseId: selectedHouseId,
+        taskTitle: pendingDiyTask.title,
+        completionMethod: 'diy',
+        costEstimate: pendingDiyTask.costEstimate,
+        beforePhotoHashes,
+        afterPhotoHashes,
+        gpsLat,
+        gpsLng,
+        deviceTimestamp,
+      });
+
+      setPendingDiyTask(null);
+      setDiyBeforeFile(null);
+      setDiyAfterFile(null);
+    } catch {
+      // error handled by mutation's onError
+    } finally {
+      setDiyCompletePending(false);
+    }
+  };
+
+  const submitContractorCompletion = async () => {
+    if (!pendingContractorTask) return;
+    if (!cxBusinessName.trim()) {
+      toast({ title: "Required", description: "Please enter the contractor's business name.", variant: "destructive" });
+      return;
+    }
+    if (!cxJobDate) {
+      toast({ title: "Required", description: "Please enter the job date.", variant: "destructive" });
+      return;
+    }
+    if (!cxInvoiceFile) {
+      toast({ title: "Required", description: "Please take a photo of the contractor's invoice.", variant: "destructive" });
+      return;
+    }
+    setCxCompletePending(true);
+    try {
+      const m = await uploadImageForMeta(cxInvoiceFile);
+      const invoiceRef = m?.url ?? undefined;
+
+      await completeTaskMutation.mutateAsync({
+        houseId: selectedHouseId,
+        taskTitle: pendingContractorTask.title,
+        completionMethod: 'contractor',
+        costEstimate: pendingContractorTask.costEstimate,
+        contractorBusinessName: cxBusinessName.trim(),
+        contractorJobDate: cxJobDate,
+        invoiceRef,
+      });
+
+      setPendingContractorTask(null);
+      setCxBusinessName('');
+      setCxJobDate(new Date().toISOString().split('T')[0]);
+      setCxInvoiceFile(null);
+    } catch {
+      // error handled by mutation's onError
+    } finally {
+      setCxCompletePending(false);
+    }
   };
 
   // Upload files to object storage
@@ -5783,6 +5894,141 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
           variant="destructive"
         />
 
+        {/* DIY Completion Dialog — photo proof step */}
+        <Dialog
+          open={!!pendingDiyTask}
+          onOpenChange={(open) => {
+            if (!open) { setPendingDiyTask(null); setDiyBeforeFile(null); setDiyAfterFile(null); }
+          }}
+        >
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>DIY Completion — Optional Photo Proof</DialogTitle>
+              <DialogDescription>
+                Add before/after photos from your camera for extra credit on your Home Wellness Score. Photos are optional for DIY completions.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div>
+                <p className="text-sm font-medium mb-1">Before Photo (optional)</p>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="w-full text-sm"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] || null;
+                    const valid = f ? filterCameraFiles([f]) : [];
+                    setDiyBeforeFile(valid[0] ?? null);
+                  }}
+                />
+                {diyBeforeFile && <p className="text-xs text-green-600 mt-1">✓ {diyBeforeFile.name}</p>}
+              </div>
+              <div>
+                <p className="text-sm font-medium mb-1">After Photo (optional)</p>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="w-full text-sm"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] || null;
+                    const valid = f ? filterCameraFiles([f]) : [];
+                    setDiyAfterFile(valid[0] ?? null);
+                  }}
+                />
+                {diyAfterFile && <p className="text-xs text-green-600 mt-1">✓ {diyAfterFile.name}</p>}
+              </div>
+            </div>
+            <DialogFooter className="gap-2 flex-col sm:flex-row">
+              <Button
+                variant="outline"
+                onClick={() => { setPendingDiyTask(null); setDiyBeforeFile(null); setDiyAfterFile(null); }}
+                disabled={diyCompletePending}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="bg-[#079669] hover:bg-[#09694A] text-white"
+                onClick={submitDiyCompletion}
+                disabled={diyCompletePending}
+              >
+                {diyCompletePending ? 'Saving...' : 'Mark Complete'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Contractor Completion Dialog — collects business name, job date, invoice photo */}
+        <Dialog
+          open={!!pendingContractorTask}
+          onOpenChange={(open) => {
+            if (!open) { setPendingContractorTask(null); setCxBusinessName(''); setCxJobDate(new Date().toISOString().split('T')[0]); setCxInvoiceFile(null); }
+          }}
+        >
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Contractor Completion Details</DialogTitle>
+              <DialogDescription>
+                Provide the contractor's details and an invoice photo to earn full contractor-verified credit.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div>
+                <label className="text-sm font-medium">Business Name <span className="text-red-500">*</span></label>
+                <Input
+                  className="mt-1"
+                  placeholder="e.g. Smith HVAC Services"
+                  value={cxBusinessName}
+                  onChange={(e) => setCxBusinessName(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Job Date <span className="text-red-500">*</span></label>
+                <Input
+                  type="date"
+                  className="mt-1"
+                  value={cxJobDate}
+                  onChange={(e) => setCxJobDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Invoice Photo <span className="text-red-500">*</span></label>
+                <p className="text-xs text-muted-foreground mb-1">Take a camera photo of the contractor's invoice or receipt.</p>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="w-full text-sm"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] || null;
+                    const valid = f ? filterCameraFiles([f]) : [];
+                    setCxInvoiceFile(valid[0] ?? null);
+                  }}
+                />
+                {cxInvoiceFile && <p className="text-xs text-green-600 mt-1">✓ {cxInvoiceFile.name}</p>}
+              </div>
+            </div>
+            <DialogFooter className="gap-2 flex-col sm:flex-row">
+              <Button
+                variant="outline"
+                onClick={() => { setPendingContractorTask(null); setCxBusinessName(''); setCxJobDate(new Date().toISOString().split('T')[0]); setCxInvoiceFile(null); }}
+                disabled={cxCompletePending}
+              >
+                Cancel
+              </Button>
+              <Button
+                style={{ backgroundColor: 'var(--purple-deep)' }}
+                className="text-white hover:opacity-90"
+                onClick={submitContractorCompletion}
+                disabled={cxCompletePending}
+              >
+                {cxCompletePending ? 'Submitting...' : 'Submit Completion'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Task Detail Dialog - Full Window View */}
         {selectedTask && (
           <TaskDetailDialog
@@ -5799,6 +6045,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             taskOverride={getTaskOverride(selectedTask.title, taskOverrides)}
             onViewContractor={(id) => window.open(`/contractor-profile/${id}`, '_blank')}
             onContractorComplete={handleContractorCompletion}
+            onDiyComplete={handleDiyCompletion}
             showCustomizeTask={showCustomizeTask}
             setShowCustomizeTask={setShowCustomizeTask}
             getTaskOverride={getTaskOverride}

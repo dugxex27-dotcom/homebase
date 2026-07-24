@@ -98,10 +98,12 @@ export function CheckoutModal({ plan, trialMode, onClose }: CheckoutModalProps) 
   }, []);
 
   const fetchClientSecret = useCallback(async () => {
+    const deviceFingerprint = btoa([navigator.userAgent, navigator.language, screen.width, screen.height, new Date().getTimezoneOffset()].join('|')).slice(0, 40);
     const res = await apiRequest("/api/create-subscription-checkout", "POST", {
       plan,
       trialMode,
       embedded: true,
+      deviceFingerprint,
     });
     const data = await res.json();
     if (!data.clientSecret) throw new Error(data.message ?? "Failed to start checkout");

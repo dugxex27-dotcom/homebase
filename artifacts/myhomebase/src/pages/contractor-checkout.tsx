@@ -23,7 +23,8 @@ export default function ContractorCheckout() {
   const checkoutMutation = useMutation({
     mutationFn: async () => {
       setCheckoutError(null);
-      const res = await apiRequest("/api/create-subscription-checkout", "POST", { plan, trialMode });
+      const deviceFingerprint = btoa([navigator.userAgent, navigator.language, screen.width, screen.height, new Date().getTimezoneOffset()].join('|')).slice(0, 40);
+      const res = await apiRequest("/api/create-subscription-checkout", "POST", { plan, trialMode, deviceFingerprint });
       return res.json();
     },
     onSuccess: async (data) => {

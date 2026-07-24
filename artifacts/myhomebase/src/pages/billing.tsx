@@ -188,7 +188,8 @@ export default function Billing() {
         await purchaseNativePlan(nativePlan, userData.id);
         return { native: true as const };
       }
-      const res = await apiRequest('/api/create-subscription-checkout', 'POST', { plan });
+      const deviceFingerprint = btoa([navigator.userAgent, navigator.language, screen.width, screen.height, new Date().getTimezoneOffset()].join('|')).slice(0, 40);
+      const res = await apiRequest('/api/create-subscription-checkout', 'POST', { plan, deviceFingerprint });
       return res.json();
     },
     onSuccess: async (data) => {
