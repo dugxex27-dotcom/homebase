@@ -1051,6 +1051,8 @@ export const completeTaskSchema = z.object({
   contractorBusinessName: z.string().optional(), // required when completionMethod === 'contractor'
   contractorLicenseNumber: z.string().optional(),
   contractorJobDate: z.string().optional(), // required when completionMethod === 'contractor'
+  invoiceRef: z.string().optional(), // required for contractor completions — object-storage key or URL of uploaded invoice
+  contractorAccountId: z.string().optional(), // platform-registered contractor user ID, alternative to invoiceRef
 });
 
 export const insertContractorAppointmentSchema = createInsertSchema(contractorAppointments).omit({

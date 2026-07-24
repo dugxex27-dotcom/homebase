@@ -1821,7 +1821,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const billingMonth = `${periodDate.getFullYear()}-${String(periodDate.getMonth() + 1).padStart(2, '0')}`;
 
                 // ── Referral dedup / fraud guard ──────────────────────────────────
-                // Extract payment method fingerprint from Stripe charge (best-effort)
+                // 1. Extract payment method fingerprint from Stripe charge (best-effort)
                 let pmFingerprint: string | null = null;
                 try {
                   const chargeId = (invoiceObj as any).charge as string | undefined;
@@ -1833,7 +1833,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   // Non-fatal — fingerprint check degrades gracefully
                 }
 
-                // 1. Prevent circular referrals (A→B and B→A simultaneously)
+                // 2. Extract device fingerprint from Stripe subscription metadata (stored at checkout)
+                let deviceFp: string | null = null;
+                try {
+                  const subscriptionId = (invoiceObj as any).subscription as string | undefined;
+                  if (stripe && subscriptionId) {
+                    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+                    deviceFp = (subscription.metadata as any)?.deviceFingerprint ?? null;
+                  }
+                } catch {
+                  // Non-fatal — degrades gracefully if subscription cannot be retrieved
+                }
+
+                // 3. Prevent circular referrals (A→B and B→A simultaneously)
                 const reverseCredit = await db.select({ id: referralCredits.id })
                   .from(referralCredits)
                   .where(and(
@@ -1842,22 +1854,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   ))
                   .limit(1);
 
-                // 2. Detect payment method fingerprint reuse across different referral pairs
-                // (same card used to subscribe under different accounts all referred by the same person)
+                // 4. Detect dedup-pair reuse: same (paymentMethodFingerprint, deviceFingerprint) pair
+                // across different referred accounts means the same card + browser is creating sock-puppet referrals
                 let fingerprintAbuse = false;
-                if (pmFingerprint) {
+                if (pmFingerprint || deviceFp) {
                   const dupFingerprintRows = await db.execute<{ cnt: number }>(
                     drizzleSql`
                       SELECT COUNT(DISTINCT referred_user_id)::int AS cnt
                       FROM referral_credits
-                      WHERE payment_method_fingerprint = ${pmFingerprint}
-                        AND referred_user_id <> ${user.id}
+                      WHERE referred_user_id <> ${user.id}
+                        AND (
+                          (payment_method_fingerprint IS NOT NULL AND payment_method_fingerprint = ${pmFingerprint})
+                          OR
+                          (device_fingerprint IS NOT NULL AND device_fingerprint = ${deviceFp})
+                        )
                     `
                   );
                   fingerprintAbuse = Number((dupFingerprintRows.rows[0] as any)?.cnt ?? 0) > 0;
                 }
 
-                // 3. Detect referral-ring abuse: referrer with >15 distinct referees in 30 days
+                // 5. Detect referral-ring abuse: referrer with >15 distinct referees in 30 days
                 const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
                 const recentReferrals = await db.select({ referredUserId: referralCredits.referredUserId })
                   .from(referralCredits)
@@ -1887,9 +1903,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                         reason: reverseCredit.length > 0
                           ? 'Circular: A→B and B→A credits found'
                           : fingerprintAbuse
-                            ? `Payment card fingerprint ${pmFingerprint} already used by another referred account`
+                            ? `Fingerprint pair reuse — pmFingerprint: ${pmFingerprint}, deviceFingerprint: ${deviceFp}`
                             : `Referral ring: ${distinctRefereeCount} distinct referees in 30 days`,
                         paymentMethodFingerprint: pmFingerprint,
+                        deviceFingerprint: deviceFp,
                       },
                       severity: 'high',
                       reviewed: false,
@@ -1917,6 +1934,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     source: "referral",
                     notes: `Monthly credit for ${billingMonth} — referred user: ${user.email}`,
                     paymentMethodFingerprint: pmFingerprint ?? undefined,
+                    deviceFingerprint: deviceFp ?? undefined,
                   });
 
                   console.log(`[REFERRAL CREDITS] Issued credit for ${billingMonth}: ${referrer.email} <- ${user.email}`);
@@ -3079,7 +3097,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.session.user.id;
       const userRole = req.session.user.role;
-      const { plan, trialMode, embedded } = req.body;
+      const { plan, trialMode, embedded, deviceFingerprint } = req.body;
 
       // Validate plan
       const validHomeownerPlans = ['base', 'premium', 'premium_plus'];
@@ -3151,10 +3169,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: user.id,
         plan: plan,
         maxHouses: selectedPlan.maxHouses?.toString() || '',
+        ...(deviceFingerprint && typeof deviceFingerprint === 'string' ? { deviceFingerprint } : {}),
       };
+      // Always include subscription_data.metadata so the webhook can read device fingerprint later
+      const subscriptionDataMetadata: Record<string, string> = { userId: user.id, plan };
+      if (deviceFingerprint && typeof deviceFingerprint === 'string') {
+        subscriptionDataMetadata.deviceFingerprint = deviceFingerprint;
+      }
       const trialData = trialMode
-        ? { subscription_data: { trial_period_days: 14, metadata: { userId: user.id, plan } } }
-        : {};
+        ? { subscription_data: { trial_period_days: 14, metadata: subscriptionDataMetadata } }
+        : { subscription_data: { metadata: subscriptionDataMetadata } };
 
       if (embedded) {
         // Embedded Checkout — returns clientSecret for use with @stripe/react-stripe-js
@@ -4772,39 +4796,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Image upload endpoint for contractor profiles
   app.post('/api/upload/image', isAuthenticated, async (req: any, res: any) => {
     try {
-      console.log('[IMAGE UPLOAD] Request received');
-      console.log('[IMAGE UPLOAD] Body keys:', Object.keys(req.body));
-      console.log('[IMAGE UPLOAD] Type:', req.body.type);
-      console.log('[IMAGE UPLOAD] ImageData length:', req.body.imageData?.length);
-      
       const { imageData, type } = req.body; // imageData is base64, type is 'logo' or 'photo'
       
       if (!imageData || !type) {
-        console.log('[IMAGE UPLOAD] Missing data - imageData:', !!imageData, 'type:', !!type);
         return res.status(400).json({ message: "Missing imageData or type" });
       }
 
       // Extract base64 data (remove data:image/...;base64, prefix)
       const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
       const buffer = Buffer.from(base64Data, 'base64');
-      
-      console.log('[IMAGE UPLOAD] Buffer size:', buffer.length);
+
+      // ── Server-side metadata extraction (fraud-resistance) ──────────────────
+      // SHA-256 hash of raw image bytes — canonical identifier for dedup
+      const { createHash } = await import('crypto');
+      const sha256Hash = createHash('sha256').update(buffer).digest('hex');
+
+      // EXIF extraction for GPS coordinates and device timestamp
+      let gpsLat: number | null = null;
+      let gpsLng: number | null = null;
+      let deviceTimestamp: string | null = null;
+      try {
+        const exifParser = require('exif-parser');
+        const parser = exifParser.create(buffer);
+        const exifResult = parser.parse();
+        const tags = exifResult?.tags ?? {};
+
+        if (tags.GPSLatitude != null && tags.GPSLongitude != null) {
+          gpsLat = tags.GPSLatitude * (tags.GPSLatitudeRef === 'S' ? -1 : 1);
+          gpsLng = tags.GPSLongitude * (tags.GPSLongitudeRef === 'W' ? -1 : 1);
+        }
+        const rawTs = tags.DateTimeOriginal ?? tags.DateTime;
+        if (rawTs) {
+          deviceTimestamp = new Date(rawTs * 1000).toISOString();
+        }
+      } catch {
+        // EXIF extraction is best-effort — not all images have EXIF data
+      }
+      // ── End metadata extraction ─────────────────────────────────────────────
       
       // Generate unique filename
       const fileExtension = imageData.match(/^data:image\/(\w+);/)?.[1] || 'jpg';
       const filename = `${randomUUID()}.${fileExtension}`;
-      const path = `contractor-images/${type}s/${filename}`;
-      
-      console.log('[IMAGE UPLOAD] Uploading to path:', path);
+      const storagePath = `contractor-images/${type}s/${filename}`;
       
       // Upload to object storage
       const objectStorage = new ObjectStorageService();
-      await objectStorage.uploadFile(path, buffer, `image/${fileExtension}`);
+      await objectStorage.uploadFile(storagePath, buffer, `image/${fileExtension}`);
       
-      // Return public URL
+      // Return public URL + server-extracted metadata for fraud-resistance checks
       const url = `/public/contractor-images/${type}s/${filename}`;
-      console.log('[IMAGE UPLOAD] Upload successful, URL:', url);
-      res.json({ url });
+      res.json({ url, sha256Hash, gpsLat, gpsLng, deviceTimestamp });
     } catch (error) {
       console.error("[IMAGE UPLOAD] Error uploading image:", error);
       res.status(500).json({ message: "Failed to upload image" });
@@ -11020,15 +11061,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         houseId, taskTitle, completionMethod, costEstimate, contractorCost: providedCost,
         gpsLat, gpsLng, deviceTimestamp, beforePhotoHashes, afterPhotoHashes,
         contractorBusinessName, contractorLicenseNumber, contractorJobDate,
+        invoiceRef, contractorAccountId,
       } = validatedData;
 
       // ── Contractor-verified enforcement ────────────────────────────────────
-      // When completionMethod is 'contractor', require business name + job date.
+      // When completionMethod is 'contractor', require business name + job date +
+      // at least one verifiable proof: an uploaded invoice reference OR a linked contractor account ID.
       if (completionMethod === 'contractor') {
         if (!contractorBusinessName || !contractorJobDate) {
           return res.status(422).json({
             message: "Contractor-verified submissions require contractor_business_name and contractor_job_date.",
             code: "CONTRACTOR_FIELDS_REQUIRED",
+          });
+        }
+        if (!invoiceRef && !contractorAccountId) {
+          return res.status(422).json({
+            message: "Contractor-verified submissions require either an invoice_ref (uploaded invoice) or a contractor_account_id (platform-linked contractor).",
+            code: "CONTRACTOR_PROOF_REQUIRED",
           });
         }
       }
@@ -11130,6 +11179,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         contractorBusinessName: contractorBusinessName ?? null,
         contractorLicenseNumber: contractorLicenseNumber ?? null,
         contractorJobDate: contractorJobDate ?? null,
+        invoiceRef: invoiceRef ?? null,
+        contractorAccountId: contractorAccountId ?? null,
       };
       
       const log = await storage.createMaintenanceLog(logData as any);
