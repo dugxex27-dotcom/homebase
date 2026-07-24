@@ -1,16 +1,23 @@
 import { db } from './db';
 import { maintenanceLogs, fraudReviewQueue } from '@workspace/db';
-import { eq, and, gte, sql, inArray } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 import { logger } from './lib/logger';
 import { isDemoId } from './storage';
 
-const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000; // Daily
-const DAILY_COMPLETION_THRESHOLD = 10; // Flag if >10 tasks completed in one calendar day
+const DAILY_COMPLETION_THRESHOLD = parseInt(process.env['FRAUD_DAILY_COMPLETION_THRESHOLD'] ?? '10', 10);
+const DUPLICATE_PHOTO_WINDOW_DAYS = parseInt(process.env['FRAUD_DUPLICATE_PHOTO_WINDOW_DAYS'] ?? '30', 10);
+const RUN_AFTER_HOUR = parseInt(process.env['FRAUD_SCHEDULER_HOUR'] ?? '2', 10); // 0-23, default 2AM
+
+let lastRunDate: string | null = null;
 
 async function runFraudPatternCheck() {
   const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
   const hour = now.getHours();
-  if (hour !== 2) return; // Run at 2 AM only
+
+  // Run once per calendar day, at or after RUN_AFTER_HOUR
+  if (hour < RUN_AFTER_HOUR || lastRunDate === todayStr) return;
+  lastRunDate = todayStr;
 
   logger.info('[FRAUD-SCHEDULER] Starting nightly fraud pattern check...');
 
@@ -47,7 +54,7 @@ async function runFraudPatternCheck() {
           AND reviewed = false
       `);
 
-      if ((existing.rows[0]?.count ?? 0) > 0) continue;
+      if (Number(existing.rows[0]?.count ?? 0) > 0) continue;
 
       await db.insert(fraudReviewQueue).values({
         homeownerId: row.homeowner_id,
@@ -57,6 +64,7 @@ async function runFraudPatternCheck() {
           completion_count: Number(row.completion_count),
           threshold: DAILY_COMPLETION_THRESHOLD,
         },
+        severity: 'medium',
       });
 
       logger.warn(
@@ -68,26 +76,25 @@ async function runFraudPatternCheck() {
     // ── 2. Duplicate photo hash check ─────────────────────────────────────────
     // Find homeowners whose before_photo_hashes or after_photo_hashes arrays
     // contain a hash that appears in more than one maintenance log.
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const windowStart = new Date(now.getTime() - DUPLICATE_PHOTO_WINDOW_DAYS * 24 * 60 * 60 * 1000);
 
     const dupHashRows = await db.execute<{
       homeowner_id: string;
       dup_hash: string;
       log_count: number;
     }>(sql`
-      WITH flattened AS (
-        SELECT homeowner_id, unnest(before_photo_hashes) AS hash FROM maintenance_logs
-          WHERE created_at >= ${thirtyDaysAgo} AND array_length(before_photo_hashes, 1) > 0
-        UNION ALL
-        SELECT homeowner_id, unnest(after_photo_hashes) AS hash FROM maintenance_logs
-          WHERE created_at >= ${thirtyDaysAgo} AND array_length(after_photo_hashes, 1) > 0
-      )
-      SELECT homeowner_id, hash AS dup_hash, COUNT(DISTINCT ctid) AS log_count
+      SELECT homeowner_id, hash AS dup_hash, COUNT(*) AS log_count
       FROM (
-        SELECT homeowner_id, hash,
-          ROW_NUMBER() OVER (PARTITION BY homeowner_id, hash ORDER BY hash) AS rn
-        FROM flattened
-      ) sub
+        SELECT homeowner_id, unnest(before_photo_hashes) AS hash
+        FROM maintenance_logs
+        WHERE created_at >= ${windowStart}
+          AND array_length(before_photo_hashes, 1) > 0
+        UNION ALL
+        SELECT homeowner_id, unnest(after_photo_hashes) AS hash
+        FROM maintenance_logs
+        WHERE created_at >= ${windowStart}
+          AND array_length(after_photo_hashes, 1) > 0
+      ) expanded
       GROUP BY homeowner_id, hash
       HAVING COUNT(*) > 1
     `);
@@ -103,7 +110,7 @@ async function runFraudPatternCheck() {
           AND reviewed = false
       `);
 
-      if ((existing.rows[0]?.count ?? 0) > 0) continue;
+      if (Number(existing.rows[0]?.count ?? 0) > 0) continue;
 
       await db.insert(fraudReviewQueue).values({
         homeownerId: row.homeowner_id,
@@ -111,8 +118,9 @@ async function runFraudPatternCheck() {
         details: {
           dup_hash: row.dup_hash,
           log_count: Number(row.log_count),
-          window_days: 30,
+          window_days: DUPLICATE_PHOTO_WINDOW_DAYS,
         },
+        severity: 'high',
       });
 
       logger.warn(
@@ -126,6 +134,8 @@ async function runFraudPatternCheck() {
     logger.error({ err: error }, '[FRAUD-SCHEDULER] Error running fraud pattern check');
   }
 }
+
+const CHECK_INTERVAL_MS = 60 * 60 * 1000; // Poll every hour, run logic gates once per day
 
 let schedulerInterval: NodeJS.Timeout | null = null;
 

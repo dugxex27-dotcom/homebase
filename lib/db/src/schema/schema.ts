@@ -50,6 +50,7 @@ export const referralCredits = pgTable("referral_credits", {
   source: text("source").notNull().default("referral"), // "referral", "bonus", "promotion", etc.
   notes: text("notes"), // Additional notes about the credit
   deviceFingerprint: text("device_fingerprint"), // Browser/device fingerprint for dedup
+  paymentMethodFingerprint: text("payment_method_fingerprint"), // Stripe payment method fingerprint for cross-account dedup
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
@@ -2544,8 +2545,9 @@ export type PendingSeatSync = typeof pendingSeatSyncs.$inferSelect;
 export const fraudReviewQueue = pgTable("fraud_review_queue", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   homeownerId: text("homeowner_id").notNull(),
-  flagType: text("flag_type").notNull(), // 'excessive_daily_completions' | 'duplicate_photos' | 'referral_dedup'
+  flagType: text("flag_type").notNull(), // 'excessive_daily_completions' | 'duplicate_photos' | 'circular_referral' | 'referral_ring' | 'payment_fingerprint_reuse'
   details: jsonb("details"), // JSONB blob with flagging context
+  severity: text("severity").notNull().default("medium"), // 'low' | 'medium' | 'high'
   reviewed: boolean("reviewed").notNull().default(false),
   reviewedBy: text("reviewed_by"), // admin user ID
   reviewedAt: timestamp("reviewed_at"),

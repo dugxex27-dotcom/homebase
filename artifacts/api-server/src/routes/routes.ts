@@ -1821,6 +1821,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const billingMonth = `${periodDate.getFullYear()}-${String(periodDate.getMonth() + 1).padStart(2, '0')}`;
 
                 // ── Referral dedup / fraud guard ──────────────────────────────────
+                // Extract payment method fingerprint from Stripe charge (best-effort)
+                let pmFingerprint: string | null = null;
+                try {
+                  const chargeId = (invoiceObj as any).charge as string | undefined;
+                  if (stripe && chargeId) {
+                    const charge = await stripe.charges.retrieve(chargeId);
+                    pmFingerprint = (charge.payment_method_details as any)?.card?.fingerprint ?? null;
+                  }
+                } catch {
+                  // Non-fatal — fingerprint check degrades gracefully
+                }
+
                 // 1. Prevent circular referrals (A→B and B→A simultaneously)
                 const reverseCredit = await db.select({ id: referralCredits.id })
                   .from(referralCredits)
@@ -1830,7 +1842,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   ))
                   .limit(1);
 
-                // 2. Detect referral-ring abuse: referrer with >15 distinct referees in 30 days
+                // 2. Detect payment method fingerprint reuse across different referral pairs
+                // (same card used to subscribe under different accounts all referred by the same person)
+                let fingerprintAbuse = false;
+                if (pmFingerprint) {
+                  const dupFingerprintRows = await db.execute<{ cnt: number }>(
+                    drizzleSql`
+                      SELECT COUNT(DISTINCT referred_user_id)::int AS cnt
+                      FROM referral_credits
+                      WHERE payment_method_fingerprint = ${pmFingerprint}
+                        AND referred_user_id <> ${user.id}
+                    `
+                  );
+                  fingerprintAbuse = Number((dupFingerprintRows.rows[0] as any)?.cnt ?? 0) > 0;
+                }
+
+                // 3. Detect referral-ring abuse: referrer with >15 distinct referees in 30 days
                 const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
                 const recentReferrals = await db.select({ referredUserId: referralCredits.referredUserId })
                   .from(referralCredits)
@@ -1840,28 +1867,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   ));
                 const distinctRefereeCount = new Set(recentReferrals.map(r => r.referredUserId)).size;
 
-                const flagForReview = reverseCredit.length > 0 || distinctRefereeCount > 15;
+                const shouldSkipCredit = reverseCredit.length > 0 || fingerprintAbuse;
+                const shouldFlag = shouldSkipCredit || distinctRefereeCount > 15;
 
-                if (flagForReview) {
+                if (shouldFlag) {
                   try {
                     const { fraudReviewQueue: frq } = await import('@workspace/db');
+                    const flagType = reverseCredit.length > 0
+                      ? 'circular_referral'
+                      : fingerprintAbuse
+                        ? 'payment_fingerprint_reuse'
+                        : 'referral_ring';
                     await db.insert(frq).values({
                       homeownerId: referrer.id,
-                      flagType: reverseCredit.length > 0 ? 'circular_referral' : 'referral_ring',
-                      details: reverseCredit.length > 0
-                        ? `Circular referral: ${referrer.email} ↔ ${user.email}`
-                        : `Referral ring: ${referrer.email} has ${distinctRefereeCount} referees in 30 days`,
+                      flagType,
+                      details: {
+                        referrerEmail: referrer.email,
+                        refereeEmail: user.email,
+                        reason: reverseCredit.length > 0
+                          ? 'Circular: A→B and B→A credits found'
+                          : fingerprintAbuse
+                            ? `Payment card fingerprint ${pmFingerprint} already used by another referred account`
+                            : `Referral ring: ${distinctRefereeCount} distinct referees in 30 days`,
+                        paymentMethodFingerprint: pmFingerprint,
+                      },
                       severity: 'high',
                       reviewed: false,
                     } as any);
-                    console.warn(`[REFERRAL FRAUD] Flagged ${referrer.email}: ${reverseCredit.length > 0 ? 'circular' : 'ring'}`);
-                    // Skip credit issuance for circular referrals; allow ring referrals but flag them
-                    if (reverseCredit.length > 0) {
-                      console.warn(`[REFERRAL FRAUD] Skipping credit for circular referral: ${referrer.email} ↔ ${user.email}`);
-                      throw new Error('SKIP_CREDIT_CIRCULAR_REFERRAL');
+                    console.warn(`[REFERRAL FRAUD] Flagged ${referrer.email}: ${flagType}`);
+                    if (shouldSkipCredit) {
+                      throw new Error('SKIP_CREDIT_FRAUD_DETECTED');
                     }
                   } catch (flagErr: any) {
-                    if (flagErr.message === 'SKIP_CREDIT_CIRCULAR_REFERRAL') throw flagErr;
+                    if (flagErr.message === 'SKIP_CREDIT_FRAUD_DETECTED') throw flagErr;
                     console.error('[REFERRAL FRAUD] Failed to write fraud queue entry:', flagErr);
                   }
                 }
@@ -1878,6 +1916,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     earnedAt: new Date(),
                     source: "referral",
                     notes: `Monthly credit for ${billingMonth} — referred user: ${user.email}`,
+                    paymentMethodFingerprint: pmFingerprint ?? undefined,
                   });
 
                   console.log(`[REFERRAL CREDITS] Issued credit for ${billingMonth}: ${referrer.email} <- ${user.email}`);
@@ -11027,6 +11066,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             Math.sin(dLng / 2) ** 2;
         const distanceMiles = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         if (distanceMiles > 1) locationFlag = true;
+      } else {
+        // GPS present in photo but house has no geocoordinates stored —
+        // cannot verify location against property, flag as unverifiable
+        locationFlag = true;
       }
 
       // ── Timestamp flag ─────────────────────────────────────────────────────

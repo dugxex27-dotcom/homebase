@@ -4407,8 +4407,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     </label>
                     <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-[#EEEDFE]" style={{ borderColor: 'var(--purple-light)' }}>
                       <Upload className="w-8 h-8 mb-2" style={{ color: 'var(--purple)' }} />
-                      <span className="text-sm" style={{ color: 'var(--purple-deep)' }}>Upload invoice photos</span>
-                      <input type="file" className="hidden" accept="image/*" multiple onChange={(e) => setAiInvoiceFiles(Array.from(e.target.files || []))} />
+                      <span className="text-sm" style={{ color: 'var(--purple-deep)' }}>Take or upload invoice photos</span>
+                      <input type="file" className="hidden" accept="image/*" capture="environment" multiple onChange={(e) => setAiInvoiceFiles(Array.from(e.target.files || []))} />
                     </label>
                     {aiInvoiceFiles.length > 0 && <p className="text-xs text-[#079669]">{aiInvoiceFiles.length} file(s) selected</p>}
                   </div>
