@@ -11113,6 +11113,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // ── Photo URL requirement ──────────────────────────────────────────────
+      // When photo hashes are present (photos were uploaded), the client MUST
+      // also supply the matching storage URLs so the server can re-extract EXIF
+      // for authoritative GPS verification.  A client that omits URLs while
+      // still sending hashes and client-side GPS coordinates would bypass the
+      // server-side EXIF check entirely.  Enforce symmetrically for both
+      // before and after photo sets.
+      if (afterPhotoHashes && afterPhotoHashes.length > 0 && (!afterPhotoUrls || afterPhotoUrls.length === 0)) {
+        return res.status(422).json({
+          message: "afterPhotoUrls is required when afterPhotoHashes are present. Include the storage URLs returned by /api/upload/image so the server can verify photo EXIF data.",
+          code: "PHOTO_URLS_REQUIRED",
+        });
+      }
+      if (beforePhotoHashes && beforePhotoHashes.length > 0 && (!beforePhotoUrls || beforePhotoUrls.length === 0)) {
+        return res.status(422).json({
+          message: "beforePhotoUrls is required when beforePhotoHashes are present. Include the storage URLs returned by /api/upload/image so the server can verify photo EXIF data.",
+          code: "PHOTO_URLS_REQUIRED",
+        });
+      }
+
       // Determine verification tier
       const verificationTier: string =
         completionMethod === 'contractor' && contractorBusinessName && contractorJobDate

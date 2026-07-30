@@ -1979,6 +1979,8 @@ export default function Maintenance() {
       deviceTimestamp?: string;
       beforePhotoHashes?: string[];
       afterPhotoHashes?: string[];
+      beforePhotoUrls?: string[];
+      afterPhotoUrls?: string[];
       contractorBusinessName?: string;
       contractorJobDate?: string;
       invoiceRef?: string;
@@ -3011,6 +3013,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     try {
       let beforePhotoHashes: string[] = [];
       let afterPhotoHashes: string[] = [];
+      let beforePhotoUrls: string[] = [];
+      let afterPhotoUrls: string[] = [];
       let gpsLat: number | undefined;
       let gpsLng: number | undefined;
       let deviceTimestamp: string | undefined;
@@ -3018,12 +3022,14 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       if (diyBeforeFile) {
         const m = await uploadImageForMeta(diyBeforeFile);
         if (m?.sha256Hash) beforePhotoHashes = [m.sha256Hash];
+        if (m?.url) beforePhotoUrls = [m.url];
         if (m?.gpsLat != null) { gpsLat = m.gpsLat; gpsLng = m.gpsLng ?? undefined; }
         if (m?.deviceTimestamp) deviceTimestamp = m.deviceTimestamp;
       }
       if (diyAfterFile) {
         const m = await uploadImageForMeta(diyAfterFile);
         if (m?.sha256Hash) afterPhotoHashes = [m.sha256Hash];
+        if (m?.url) afterPhotoUrls = [m.url];
         if (m?.gpsLat != null && gpsLat == null) { gpsLat = m.gpsLat; gpsLng = m.gpsLng ?? undefined; }
         if (m?.deviceTimestamp && !deviceTimestamp) deviceTimestamp = m.deviceTimestamp;
       }
@@ -3035,6 +3041,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
         costEstimate: pendingDiyTask.costEstimate,
         beforePhotoHashes,
         afterPhotoHashes,
+        beforePhotoUrls,
+        afterPhotoUrls,
         gpsLat,
         gpsLng,
         deviceTimestamp,
