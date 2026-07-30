@@ -2615,24 +2615,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Public payment page - get invoice details for payment
-  app.get('/api/pay/invoice/:invoiceId', async (req: any, res: any) => {
+  app.get('/api/pay/invoice/:invoiceId', isAuthenticated, async (req: any, res: any) => {
     try {
       const { invoiceId } = req.params;
 
-      // For now, allow access to invoice details for payment
-      // In production, you'd want a signed token or session
       const invoice = await storage.getCrmInvoice(invoiceId);
       if (!invoice) {
         return res.status(404).json({ error: 'Invoice not found' });
+      }
+
+      // Verify the session user is either the linked homeowner or the issuing contractor
+      const sessionUserId: string = req.session.user.id;
+      const isHomeowner = !!(invoice.homeownerId && invoice.homeownerId === sessionUserId);
+      const isContractor = invoice.contractorUserId === sessionUserId;
+      if (!isHomeowner && !isContractor) {
+        return res.status(403).json({ error: 'Forbidden' });
       }
 
       const client = await storage.getCrmClient(invoice.clientId);
       const contractor = await storage.getUser(invoice.contractorUserId);
       const company = invoice.companyId ? await storage.getCompany(invoice.companyId) : null;
 
-      // Determine if the authenticated session user is the linked homeowner
-      const sessionUserId: string | undefined = req.session?.user?.id;
-      const canSaveToHistory = !!(invoice.homeownerId && sessionUserId && invoice.homeownerId === sessionUserId);
+      const canSaveToHistory = isHomeowner;
 
       res.json({
         id: invoice.id,
@@ -10823,22 +10827,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Home Appliance routes
-  app.get("/api/appliances", async (req: any, res: any) => {
+  app.get("/api/appliances", isAuthenticated, async (req: any, res: any) => {
     try {
-      const homeownerId = req.query.homeownerId as string;
-      const houseId = req.query.houseId as string;
-      const appliances = await storage.getHomeAppliances(homeownerId, houseId);
+      const houseId = req.query.houseId as string | undefined;
+      // Always scope to the authenticated user — ignore any client-supplied homeownerId
+      const scopedHomeownerId: string = req.session.user.id;
+      // If a specific house is requested, verify it belongs to the authenticated user
+      if (houseId) {
+        const house = await storage.getHouse(houseId);
+        if (!house || house.homeownerId !== scopedHomeownerId) {
+          return res.status(403).json({ message: "Forbidden" });
+        }
+      }
+      const appliances = await storage.getHomeAppliances(scopedHomeownerId, houseId);
       res.json(appliances);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch appliances" });
     }
   });
 
-  app.get("/api/appliances/:id", async (req: any, res: any) => {
+  app.get("/api/appliances/:id", isAuthenticated, async (req: any, res: any) => {
     try {
       const appliance = await storage.getHomeAppliance(req.params.id);
       if (!appliance) {
         return res.status(404).json({ message: "Appliance not found" });
+      }
+      // Verify ownership via appliance → house chain
+      if (!appliance.houseId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const applianceHouse = await storage.getHouse(appliance.houseId);
+      if (!applianceHouse || applianceHouse.homeownerId !== req.session.user.id) {
+        return res.status(403).json({ message: "Forbidden" });
       }
       res.json(appliance);
     } catch (error) {
@@ -10846,10 +10866,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/appliances", async (req: any, res: any) => {
+  app.post("/api/appliances", isAuthenticated, async (req: any, res: any) => {
     try {
       const applianceData = insertHomeApplianceSchema.parse(req.body);
-      const appliance = await storage.createHomeAppliance(applianceData);
+      // Verify the target house belongs to the authenticated user before creating
+      if (!applianceData.houseId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      const targetHouse = await storage.getHouse(applianceData.houseId);
+      if (!targetHouse || targetHouse.homeownerId !== req.session.user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      // Always derive homeownerId server-side — never trust the client-supplied value
+      const appliance = await storage.createHomeAppliance({
+        ...applianceData,
+        homeownerId: req.session.user.id,
+      });
       res.status(201).json(appliance);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -10908,8 +10940,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Home Appliance Manual routes
-  app.get("/api/appliances/:applianceId/manuals", async (req: any, res: any) => {
+  app.get("/api/appliances/:applianceId/manuals", isAuthenticated, async (req: any, res: any) => {
     try {
+      // Verify ownership: appliance → house → homeowner
+      const manualAppliance = await storage.getHomeAppliance(req.params.applianceId);
+      if (!manualAppliance?.houseId) {
+        return res.status(404).json({ message: "Appliance not found" });
+      }
+      const manualHouse = await storage.getHouse(manualAppliance.houseId);
+      if (!manualHouse || manualHouse.homeownerId !== req.session.user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
       const manuals = await storage.getHomeApplianceManuals(req.params.applianceId);
       res.json(manuals);
     } catch (error) {
@@ -10917,11 +10958,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/appliance-manuals/:id", async (req: any, res: any) => {
+  app.get("/api/appliance-manuals/:id", isAuthenticated, async (req: any, res: any) => {
     try {
       const manual = await storage.getHomeApplianceManual(req.params.id);
       if (!manual) {
         return res.status(404).json({ message: "Manual not found" });
+      }
+      // Verify ownership: manual → appliance → house → homeowner
+      const manualAppliance = await storage.getHomeAppliance(manual.applianceId);
+      if (!manualAppliance?.houseId) {
+        return res.status(404).json({ message: "Manual not found" });
+      }
+      const manualHouse = await storage.getHouse(manualAppliance.houseId);
+      if (!manualHouse || manualHouse.homeownerId !== req.session.user.id) {
+        return res.status(403).json({ message: "Forbidden" });
       }
       res.json(manual);
     } catch (error) {
@@ -10929,8 +10979,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/appliances/:applianceId/manuals", async (req: any, res: any) => {
+  app.post("/api/appliances/:applianceId/manuals", isAuthenticated, async (req: any, res: any) => {
     try {
+      // Verify ownership before creating: appliance → house → homeowner
+      const manualCreateAppliance = await storage.getHomeAppliance(req.params.applianceId);
+      if (!manualCreateAppliance?.houseId) {
+        return res.status(404).json({ message: "Appliance not found" });
+      }
+      const manualCreateHouse = await storage.getHouse(manualCreateAppliance.houseId);
+      if (!manualCreateHouse || manualCreateHouse.homeownerId !== req.session.user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
       const manualData = insertHomeApplianceManualSchema.parse({
         ...req.body,
         applianceId: req.params.applianceId
