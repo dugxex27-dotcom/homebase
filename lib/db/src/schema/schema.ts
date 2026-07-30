@@ -1048,6 +1048,8 @@ export const completeTaskSchema = z.object({
   deviceTimestamp: z.string().optional(), // ISO datetime string from EXIF
   beforePhotoHashes: z.array(z.string()).optional(), // SHA-256 hashes of before photos
   afterPhotoHashes: z.array(z.string()).optional(), // SHA-256 hashes of after photos
+  beforePhotoUrls: z.array(z.string()).optional(), // object-storage URLs of before photos (returned by /api/upload/image)
+  afterPhotoUrls: z.array(z.string()).optional(), // object-storage URLs of after photos (returned by /api/upload/image)
   contractorBusinessName: z.string().optional(), // required when completionMethod === 'contractor'
   contractorLicenseNumber: z.string().optional(),
   contractorJobDate: z.string().optional(), // required when completionMethod === 'contractor'

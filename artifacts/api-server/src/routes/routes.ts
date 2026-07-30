@@ -11092,6 +11092,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const {
         houseId, taskTitle, completionMethod, costEstimate, contractorCost: providedCost,
         gpsLat, gpsLng, deviceTimestamp, beforePhotoHashes, afterPhotoHashes,
+        beforePhotoUrls, afterPhotoUrls,
         contractorBusinessName, contractorLicenseNumber, contractorJobDate,
         invoiceRef, contractorAccountId,
       } = validatedData;
@@ -11126,24 +11127,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied to house" });
       }
 
+      // ── Server-side EXIF extraction (authoritative GPS/timestamp) ────────────
+      // Re-extract EXIF from the actual stored image bytes so a malicious client
+      // cannot fabricate coordinates by submitting arbitrary gpsLat/gpsLng values.
+      // Falls back to client-supplied values only when EXIF is absent (e.g. screenshots).
+      let exifGpsLat: number | null = null;
+      let exifGpsLng: number | null = null;
+      let exifDeviceTimestamp: string | null = null;
+
+      const allPhotoUrls = [...(afterPhotoUrls ?? []), ...(beforePhotoUrls ?? [])];
+      if (allPhotoUrls.length > 0) {
+        const objectStorage = new ObjectStorageService();
+        for (const photoUrl of allPhotoUrls) {
+          try {
+            // Strip the /public/ prefix to recover the storage path used by uploadFile()
+            const storagePath = photoUrl.replace(/^\/public\//, '');
+            if (!storagePath || storagePath === photoUrl) continue;
+
+            const file = await objectStorage.searchPublicObject(storagePath);
+            if (!file) continue;
+
+            const [imageBuffer] = await file.download();
+            const exifr = await import('exifr');
+
+            // Extract GPS coordinates from EXIF
+            const gps = await exifr.gps(imageBuffer);
+            if (gps?.latitude != null && gps?.longitude != null) {
+              exifGpsLat = gps.latitude;
+              exifGpsLng = gps.longitude;
+            }
+
+            // Extract device timestamp from EXIF (DateTimeOriginal preferred)
+            const tags = await exifr.parse(imageBuffer, { DateTimeOriginal: true, DateTime: true });
+            const rawTs = tags?.DateTimeOriginal ?? tags?.DateTime;
+            if (rawTs instanceof Date && !isNaN(rawTs.getTime())) {
+              exifDeviceTimestamp = rawTs.toISOString();
+            }
+
+            if (exifGpsLat != null) break; // Found GPS — no need to check further photos
+          } catch {
+            // EXIF extraction is best-effort — non-fatal; try the next photo
+          }
+        }
+      }
+
+      // Authoritative values: EXIF-extracted takes priority; client-supplied is the fallback
+      // for screenshots and images that lack EXIF GPS tags (e.g. PNG screenshots).
+      const resolvedGpsLat = exifGpsLat ?? gpsLat ?? null;
+      const resolvedGpsLng = exifGpsLng ?? gpsLng ?? null;
+      const resolvedDeviceTimestamp = exifDeviceTimestamp ?? deviceTimestamp ?? null;
+
       // ── Location flag ──────────────────────────────────────────────────────
       // Flag if photo GPS is absent or more than ~1 mile from property.
       const houseLatNum = house.latitude ? parseFloat(house.latitude as string) : null;
       const houseLngNum = house.longitude ? parseFloat(house.longitude as string) : null;
 
       let locationFlag = false;
-      if (gpsLat == null || gpsLng == null) {
+      if (resolvedGpsLat == null || resolvedGpsLng == null) {
         // No GPS in photo — flag as unverifiable location
         locationFlag = true;
       } else if (houseLatNum != null && houseLngNum != null) {
         // Simple Haversine-based mile distance check
         const R = 3958.8; // Earth radius in miles
-        const dLat = ((gpsLat - houseLatNum) * Math.PI) / 180;
-        const dLng = ((gpsLng - houseLngNum) * Math.PI) / 180;
+        const dLat = ((resolvedGpsLat - houseLatNum) * Math.PI) / 180;
+        const dLng = ((resolvedGpsLng - houseLngNum) * Math.PI) / 180;
         const a =
           Math.sin(dLat / 2) ** 2 +
           Math.cos((houseLatNum * Math.PI) / 180) *
-            Math.cos((gpsLat * Math.PI) / 180) *
+            Math.cos((resolvedGpsLat * Math.PI) / 180) *
             Math.sin(dLng / 2) ** 2;
         const distanceMiles = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         if (distanceMiles > 1) locationFlag = true;
@@ -11156,8 +11207,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // ── Timestamp flag ─────────────────────────────────────────────────────
       let timestampFlag = false;
       let deviceTs: Date | null = null;
-      if (deviceTimestamp) {
-        deviceTs = new Date(deviceTimestamp);
+      if (resolvedDeviceTimestamp) {
+        deviceTs = new Date(resolvedDeviceTimestamp);
         if (!isNaN(deviceTs.getTime())) {
           const diffHours = Math.abs(Date.now() - deviceTs.getTime()) / (1000 * 60 * 60);
           if (diffHours > 24) timestampFlag = true;
@@ -11202,8 +11253,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         deviceTimestamp: deviceTs,
         locationFlag,
         timestampFlag,
-        gpsLat: gpsLat != null ? String(gpsLat) : null,
-        gpsLng: gpsLng != null ? String(gpsLng) : null,
+        gpsLat: resolvedGpsLat != null ? String(resolvedGpsLat) : null,
+        gpsLng: resolvedGpsLng != null ? String(resolvedGpsLng) : null,
         propertyLat: houseLatNum != null ? String(houseLatNum) : null,
         propertyLng: houseLngNum != null ? String(houseLngNum) : null,
         beforePhotoHashes: beforePhotoHashes ?? [],
