@@ -14936,6 +14936,15 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       if (!serviceRecord) {
         return res.status(404).json({ message: "Service record not found" });
       }
+      // Role-aware ownership: admin always passes; homeowner must own via homeownerId;
+      // contractor must own via contractorId.
+      const sessionUser = req.session.user;
+      const isAdmin = sessionUser.role === 'admin';
+      const isHomeownerOwner = sessionUser.role === 'homeowner' && serviceRecord.homeownerId === sessionUser.id;
+      const isContractorOwner = sessionUser.role === 'contractor' && serviceRecord.contractorId === sessionUser.id;
+      if (!isAdmin && !isHomeownerOwner && !isContractorOwner) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
       res.json(serviceRecord);
     } catch (error) {
       console.error("Error fetching service record:", error);
@@ -14973,7 +14982,25 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   app.put('/api/service-records/:id', isAuthenticated, async (req: any, res: any) => {
     try {
       const { id } = req.params;
-      const serviceRecord = await storage.updateServiceRecord(id, req.body);
+      // Ownership check: fetch the record first and verify the caller owns it
+      const existingRecord = await storage.getServiceRecord(id);
+      if (!existingRecord) {
+        return res.status(404).json({ message: "Service record not found" });
+      }
+      const sessionUser = req.session.user;
+      const isAdminPut = sessionUser.role === 'admin';
+      const isHomeownerOwnerPut = sessionUser.role === 'homeowner' && existingRecord.homeownerId === sessionUser.id;
+      const isContractorOwnerPut = sessionUser.role === 'contractor' && existingRecord.contractorId === sessionUser.id;
+      if (!isAdminPut && !isHomeownerOwnerPut && !isContractorOwnerPut) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      // Prevent ownership-field reassignment by non-admins
+      const updateData = { ...req.body };
+      if (!isAdminPut) {
+        delete updateData.homeownerId;
+        delete updateData.contractorId;
+      }
+      const serviceRecord = await storage.updateServiceRecord(id, updateData);
       if (!serviceRecord) {
         return res.status(404).json({ message: "Service record not found" });
       }
@@ -14999,6 +15026,18 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   app.delete('/api/service-records/:id', isAuthenticated, async (req: any, res: any) => {
     try {
       const { id } = req.params;
+      // Ownership check: fetch the record first and verify the caller owns it
+      const recordToDelete = await storage.getServiceRecord(id);
+      if (!recordToDelete) {
+        return res.status(404).json({ message: "Service record not found" });
+      }
+      const sessionUser = req.session.user;
+      const isAdminDel = sessionUser.role === 'admin';
+      const isHomeownerOwnerDel = sessionUser.role === 'homeowner' && recordToDelete.homeownerId === sessionUser.id;
+      const isContractorOwnerDel = sessionUser.role === 'contractor' && recordToDelete.contractorId === sessionUser.id;
+      if (!isAdminDel && !isHomeownerOwnerDel && !isContractorOwnerDel) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
       const deleted = await storage.deleteServiceRecord(id);
       if (!deleted) {
         return res.status(404).json({ message: "Service record not found" });
