@@ -1,27 +1,38 @@
 /**
- * backup.ts — database backup with dynamic table discovery, R2 upload, and retention.
+ * backup.ts — database backup with dynamic table discovery, Replit Object
+ * Storage upload, and 14-day retention.
  *
  * Usage:
- *   tsx src/backup.ts            — create a new backup
- *   tsx src/backup.ts list       — list local backup files
- *   tsx src/backup.ts list-r2    — list backups in R2 bucket
+ *   tsx src/backup.ts              — create a backup (local + upload)
+ *   tsx src/backup.ts list         — list local backup files
+ *   tsx src/backup.ts list-storage — list backups in Replit Object Storage
  *
- * Required env vars for R2 upload (optional — backup works locally without them):
- *   R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME
+ * Required env vars:
+ *   PRIVATE_OBJECT_DIR   — used to resolve the bucket (already set for file uploads)
+ *   DATABASE_URL         — already required for the API server
  *
- * Retention: old backups (>14 days) are pruned from R2 after each successful upload.
+ * Optional:
+ *   BACKUP_SECRET — if set, a POST /api/backup endpoint checks this in the
+ *                   Authorization header (Bearer <secret>) before running a backup.
  */
 
 import { is, getTableName } from 'drizzle-orm';
 import { PgTable } from 'drizzle-orm/pg-core';
-import { db, pool } from './db';
+import { pool } from './db';
 import * as schemaExports from '@workspace/db';
+import { objectStorageClient } from './objectStorage';
 import * as fs from 'fs';
 import * as path from 'path';
 
-// ─── Types ──────────────────────────────────────────────────────────────────
+// ─── Constants ───────────────────────────────────────────────────────────────
 
-interface BackupMeta {
+const BACKUP_DIR     = path.join(process.cwd(), 'backups');
+const BACKUP_PREFIX  = 'backups/';
+const RETENTION_DAYS = 14;
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+export interface BackupMeta {
   timestamp: string;       // ISO-8601
   schemaVersion: number;   // number of tables discovered (schema drift indicator)
   tableCount: number;      // tables actually captured
@@ -34,17 +45,12 @@ export interface BackupFile {
   tables: Record<string, unknown[]>;
 }
 
-// ─── Constants ───────────────────────────────────────────────────────────────
-
-const BACKUP_DIR = path.join(process.cwd(), 'backups');
-const RETENTION_DAYS = 14;
-
-// ─── Dynamic table discovery ─────────────────────────────────────────────────
+// ─── Dynamic table discovery ──────────────────────────────────────────────────
 
 /**
  * Return every pgTable exported from @workspace/db, sorted alphabetically by
- * SQL table name.  No hardcoded list — adding a table to the schema automatically
- * includes it in future backups.
+ * SQL table name.  No hardcoded list — adding a table to the Drizzle schema
+ * automatically includes it in future backups.
  */
 export function discoverTables(): Array<{
   exportName: string;
@@ -61,80 +67,75 @@ export function discoverTables(): Array<{
     .sort((a, b) => a.tableName.localeCompare(b.tableName));
 }
 
-// ─── R2 helpers ──────────────────────────────────────────────────────────────
+// ─── Object Storage helpers ───────────────────────────────────────────────────
 
-function r2Config() {
-  const id  = process.env.R2_ACCOUNT_ID;
-  const key = process.env.R2_ACCESS_KEY_ID;
-  const sec = process.env.R2_SECRET_ACCESS_KEY;
-  const bkt = process.env.R2_BUCKET_NAME;
-  if (!id || !key || !sec || !bkt) return null;
-  return { accountId: id, accessKeyId: key, secretAccessKey: sec, bucket: bkt };
+/**
+ * Resolve the bucket from PRIVATE_OBJECT_DIR.
+ * PRIVATE_OBJECT_DIR is a path like "/bucket-name/private" — the bucket name
+ * is always the first segment after the leading slash.
+ */
+function getBackupBucket() {
+  const dir = process.env.PRIVATE_OBJECT_DIR;
+  if (!dir) {
+    throw new Error('PRIVATE_OBJECT_DIR is not set — cannot upload backup');
+  }
+  const normalized = dir.startsWith('/') ? dir : `/${dir}`;
+  const bucketName = normalized.split('/')[1];
+  if (!bucketName) {
+    throw new Error(`Cannot parse bucket name from PRIVATE_OBJECT_DIR="${dir}"`);
+  }
+  return objectStorageClient.bucket(bucketName);
 }
 
-async function uploadToR2(localPath: string, objectKey: string): Promise<void> {
-  const cfg = r2Config();
-  if (!cfg) {
-    console.log('[backup] R2 secrets not configured — skipping upload.');
-    return;
-  }
+/**
+ * Upload a local backup file to Replit Object Storage under the backups/ prefix,
+ * then prune backups older than RETENTION_DAYS.
+ */
+async function uploadToObjectStorage(localPath: string, objectKey: string): Promise<void> {
+  const bucket = getBackupBucket();
+  const file = bucket.file(objectKey);
+  const body = fs.readFileSync(localPath);
 
-  // Lazy-import the AWS SDK so the script still runs without it installed
-  const { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectsCommand } =
-    await import('@aws-sdk/client-s3');
-
-  const s3 = new S3Client({
-    region: 'auto',
-    endpoint: `https://${cfg.accountId}.r2.cloudflarestorage.com`,
-    credentials: { accessKeyId: cfg.accessKeyId, secretAccessKey: cfg.secretAccessKey },
+  await file.save(body, {
+    contentType: 'application/json',
+    metadata: {
+      backupTimestamp: new Date().toISOString(),
+      sizeBytes:       String(body.length),
+    },
   });
 
-  const body = fs.readFileSync(localPath);
-  await s3.send(new PutObjectCommand({
-    Bucket: cfg.bucket,
-    Key: objectKey,
-    Body: body,
-    ContentType: 'application/json',
-    Metadata: {
-      'backup-timestamp': new Date().toISOString(),
-      'size-bytes': String(body.length),
-    },
-  }));
+  const sizeKb = Math.round(body.length / 1024);
+  console.log(`[backup] ✓ Uploaded to Replit Object Storage`);
+  console.log(`[backup]   key  : ${objectKey}`);
+  console.log(`[backup]   size : ${sizeKb} KB`);
 
-  console.log(`[backup] ✓ Uploaded to R2: s3://${cfg.bucket}/${objectKey}  (${Math.round(body.length / 1024)} KB)`);
-
-  // Apply retention: delete objects older than RETENTION_DAYS
-  await pruneR2Backups(s3, cfg.bucket);
+  await pruneOldBackups(bucket);
 }
 
-async function pruneR2Backups(
-  s3: any,
-  bucket: string,
-): Promise<void> {
-  const { ListObjectsV2Command, DeleteObjectsCommand } = await import('@aws-sdk/client-s3');
-
+/**
+ * List all backups/ objects in the bucket and delete any that are older than
+ * RETENTION_DAYS.  Runs after every successful upload.
+ */
+async function pruneOldBackups(bucket: ReturnType<typeof objectStorageClient.bucket>): Promise<void> {
   const cutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000);
 
-  const listed = await s3.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: 'backup-' }));
-  const objects: Array<{ Key: string }> = listed.Contents ?? [];
+  const [files] = await bucket.getFiles({ prefix: BACKUP_PREFIX });
 
-  const toDelete = objects.filter((obj: any) => {
-    const lastMod: Date | undefined = obj.LastModified;
-    return lastMod && lastMod < cutoff;
+  const toDelete = files.filter(f => {
+    const created = new Date(f.metadata.timeCreated as string);
+    return created < cutoff;
   });
 
   if (!toDelete.length) {
-    console.log(`[backup] Retention: no backups older than ${RETENTION_DAYS} days to prune.`);
+    console.log(`[backup] Retention: no backups older than ${RETENTION_DAYS} days — nothing pruned.`);
     return;
   }
 
-  await s3.send(new DeleteObjectsCommand({
-    Bucket: bucket,
-    Delete: { Objects: toDelete.map((o: any) => ({ Key: o.Key })) },
-  }));
-
+  for (const f of toDelete) {
+    await f.delete();
+    console.log(`[backup]   ✗ pruned ${f.name}`);
+  }
   console.log(`[backup] Retention: pruned ${toDelete.length} backup(s) older than ${RETENTION_DAYS} days.`);
-  toDelete.forEach((o: any) => console.log(`  ✗ deleted ${o.Key}`));
 }
 
 // ─── Main backup routine ──────────────────────────────────────────────────────
@@ -149,26 +150,26 @@ export async function createBackup(): Promise<string> {
   const tables = discoverTables();
   console.log(`[backup] Discovered ${tables.length} tables from Drizzle schema`);
 
-  const nowIso = new Date().toISOString();
+  const nowIso  = new Date().toISOString();
   const timestamp = nowIso.replace(/[:.]/g, '-');
 
   const backupFile: BackupFile = {
     meta: {
-      timestamp: nowIso,
+      timestamp:     nowIso,
       schemaVersion: tables.length,
-      tableCount: 0,
-      totalRows: 0,
-      dbHost: process.env.PGHOST,
+      tableCount:    0,
+      totalRows:     0,
+      dbHost:        process.env.PGHOST,
     },
     tables: {},
   };
 
-  let skipped = 0;
+  let skipped   = 0;
   let totalRows = 0;
 
   // Use raw SQL (not drizzle's ORM select) so backup stores actual SQL column
-  // names (snake_case) rather than drizzle's JavaScript aliases (camelCase).
-  // This ensures restore.ts can match columns against information_schema.columns.
+  // names (snake_case) — keeps column names consistent with information_schema
+  // and avoids drizzle's camelCase JS aliases breaking restore.ts comparisons.
   const client = await pool.connect();
   try {
     for (const { tableName } of tables) {
@@ -187,9 +188,9 @@ export async function createBackup(): Promise<string> {
   }
 
   backupFile.meta.tableCount = Object.keys(backupFile.tables).length;
-  backupFile.meta.totalRows = totalRows;
+  backupFile.meta.totalRows  = totalRows;
 
-  const filename = `backup-${timestamp}.json`;
+  const filename  = `backup-${timestamp}.json`;
   const localPath = path.join(BACKUP_DIR, filename);
   fs.writeFileSync(localPath, JSON.stringify(backupFile));
 
@@ -198,8 +199,8 @@ export async function createBackup(): Promise<string> {
   console.log(`[backup] Tables: ${backupFile.meta.tableCount} captured, ${skipped} skipped`);
   console.log(`[backup] Total rows: ${totalRows.toLocaleString()}`);
 
-  // Upload to R2 (no-op if secrets not configured)
-  await uploadToR2(localPath, filename);
+  // Upload to Replit Object Storage (key: backups/<filename>)
+  await uploadToObjectStorage(localPath, `${BACKUP_PREFIX}${filename}`);
 
   return localPath;
 }
@@ -219,22 +220,24 @@ async function listLocalBackups() {
   }
 }
 
-async function listR2Backups() {
-  const cfg = r2Config();
-  if (!cfg) { console.error('R2 secrets not configured.'); process.exit(1); }
-  const { S3Client, ListObjectsV2Command } = await import('@aws-sdk/client-s3');
-  const s3 = new S3Client({
-    region: 'auto',
-    endpoint: `https://${cfg.accountId}.r2.cloudflarestorage.com`,
-    credentials: { accessKeyId: cfg.accessKeyId, secretAccessKey: cfg.secretAccessKey },
+async function listStorageBackups() {
+  const bucket = getBackupBucket();
+  const [files] = await bucket.getFiles({ prefix: BACKUP_PREFIX });
+
+  if (!files.length) { console.log('No backups in Replit Object Storage.'); return; }
+
+  console.log(`Replit Object Storage backups (prefix: ${BACKUP_PREFIX}):`);
+  const sorted = [...files].sort((a, b) => {
+    const ta = new Date(a.metadata.timeCreated as string).getTime();
+    const tb = new Date(b.metadata.timeCreated as string).getTime();
+    return tb - ta; // newest first
   });
-  const resp = await s3.send(new ListObjectsV2Command({ Bucket: cfg.bucket }));
-  const objects = resp.Contents ?? [];
-  if (!objects.length) { console.log('No backups in R2.'); return; }
-  console.log('R2 backups:');
-  for (const obj of objects.sort((a: any, b: any) => b.LastModified - a.LastModified)) {
-    const sizeKb = Math.round((obj as any).Size / 1024);
-    console.log(`  ${(obj as any).Key}  (${sizeKb} KB)  ${(obj as any).LastModified?.toISOString()}`);
+  for (const f of sorted) {
+    const sizeKb   = Math.round(Number(f.metadata.size) / 1024);
+    const created  = new Date(f.metadata.timeCreated as string).toISOString();
+    const metadata = f.metadata.metadata as Record<string, string> | undefined;
+    const ts       = metadata?.backupTimestamp ?? created;
+    console.log(`  ${f.name}  (${sizeKb} KB)  ${ts}`);
   }
 }
 
@@ -243,9 +246,13 @@ async function listR2Backups() {
 const command = process.argv[2];
 
 if (command === 'list') {
-  listLocalBackups().then(() => process.exit(0)).catch(err => { console.error(err); process.exit(1); });
-} else if (command === 'list-r2') {
-  listR2Backups().then(() => process.exit(0)).catch(err => { console.error(err); process.exit(1); });
+  listLocalBackups()
+    .then(() => process.exit(0))
+    .catch(err => { console.error(err); process.exit(1); });
+} else if (command === 'list-storage') {
+  listStorageBackups()
+    .then(() => process.exit(0))
+    .catch(err => { console.error(err); process.exit(1); });
 } else {
   createBackup()
     .then(() => pool.end())

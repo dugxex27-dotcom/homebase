@@ -6266,6 +6266,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin / cron endpoint to trigger a full database backup on demand.
+  // Auth: Bearer token checked against BACKUP_SECRET env var (no session required
+  // so cron-job.org / Replit Scheduled Deployment can call it without a login cookie).
+  app.post('/api/admin/backup/run', async (req: any, res: any) => {
+    const secret = process.env.BACKUP_SECRET;
+    if (!secret) {
+      return res.status(503).json({ message: 'BACKUP_SECRET is not configured on this server' });
+    }
+    const auth = req.headers['authorization'] ?? '';
+    const provided = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+    if (provided !== secret) {
+      return res.status(401).json({ message: 'Invalid or missing Authorization: Bearer <BACKUP_SECRET>' });
+    }
+    try {
+      const { createBackup } = await import('../backup');
+      const localPath = await createBackup();
+      res.json({ ok: true, localPath });
+    } catch (error: any) {
+      req.log?.error({ err: error }, '[BACKUP] On-demand backup failed');
+      res.status(500).json({ message: 'Backup failed', detail: error?.message });
+    }
+  });
+
   // Admin endpoint to trigger invoice orphan file cleanup on demand
   app.post('/api/admin/invoice-orphan-cleanup/run', requireAdmin, async (req: any, res: any) => {
     try {
