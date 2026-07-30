@@ -36,6 +36,13 @@ const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2026-04-22.dahlia" })
   : null;
 
+// ---------------------------------------------------------------------------
+// Server-side boost pricing — never trust the client-supplied amount.
+// All boost purchases (new + renewal) must use this value.
+// ---------------------------------------------------------------------------
+/** Price of a 30-day contractor visibility boost, in USD dollars. */
+export const BOOST_PRICE_DOLLARS = 49;
+
 // Rate-limit background Stripe subscription syncs to avoid hitting the API on every /api/user call.
 // Maps userId -> timestamp of last background sync attempt.
 export const backgroundSyncCooldownMs = 5 * 60 * 1000; // 5 minutes
@@ -2230,7 +2237,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   boostRadius: boost.boostRadius,
                   startDate: renewalStart as any,
                   endDate: renewalEnd as any,
-                  amount: boost.amount,
+                  // Always use the server-side price; ignore any amount stored on the original boost.
+                  amount: BOOST_PRICE_DOLLARS.toString(),
                   status: 'active',
                   isActive: true,
                   stripePaymentIntentId: paymentIntentId,
@@ -9443,10 +9451,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only contractors can create boosts" });
       }
 
-      const boostData = insertContractorBoostSchema.parse({
+      // Coerce string dates to Date objects before Zod validation.
+      // JSON bodies always deliver dates as strings, but the schema expects Date.
+      const rawBoost = {
         ...req.body,
-        contractorId: userId
-      });
+        contractorId: userId,
+        // Always use the server-side price; ignore any client-supplied amount.
+        amount: BOOST_PRICE_DOLLARS.toString(),
+        startDate: req.body.startDate ? new Date(req.body.startDate) : undefined,
+        endDate: req.body.endDate ? new Date(req.body.endDate) : undefined,
+      };
+      const boostData = insertContractorBoostSchema.parse(rawBoost);
 
       const boost = await storage.createContractorBoost(boostData);
       res.json(boost);
@@ -9611,7 +9626,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         boostRadius: boost.boostRadius,
         startDate: renewalStart,
         endDate: renewalEnd,
-        amount: boost.amount,
+        // Always use the server-side price; ignore any amount stored on the original boost.
+        amount: BOOST_PRICE_DOLLARS.toString(),
         status: "active",
         isActive: true,
         stripePaymentIntentId: parsed.data.stripePaymentIntentId,
@@ -9649,10 +9665,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Boost is still active and does not need renewal yet" });
       }
 
-      const amountInCents = Math.round(parseFloat(boost.amount as string) * 100);
-      if (amountInCents <= 0) {
-        return res.status(400).json({ message: "Invalid boost amount" });
-      }
+      // Always derive the checkout amount from the server-side price map,
+      // never from the stored boost.amount (which may have been set by the client).
+      const amountInCents = BOOST_PRICE_DOLLARS * 100;
 
       const baseUrl = req.headers.origin || `https://${req.headers.host}`;
 
