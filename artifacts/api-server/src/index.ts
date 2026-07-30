@@ -1,4 +1,4 @@
-import { type Request, type Response } from "express";
+import { type Request, type Response, type NextFunction } from "express";
 import app from "./app";
 import { registerRoutes, recoverPendingSeatSyncs } from "./routes/routes";
 import { registerOnboardingRoutes } from "./routes/onboardingRoutes";
@@ -37,6 +37,24 @@ const allSchedulers = [
   boostExpiryScheduler,
   fraudScheduler,
 ];
+
+// ---------------------------------------------------------------------------
+// Process-level safety net — catches any promise rejection or synchronous
+// exception that escaped every try/catch and every Express error handler.
+// We log via Pino (so the error is structured and goes to the same sink as
+// the rest of the application logs) then exit so the process manager can
+// restart a clean instance.  Staying alive after an uncaughtException is
+// unsafe because the process may be in an indeterminate state.
+// ---------------------------------------------------------------------------
+process.on("unhandledRejection", (reason: unknown) => {
+  logger.error({ err: reason }, "Unhandled promise rejection — exiting");
+  process.exit(1);
+});
+
+process.on("uncaughtException", (err: Error) => {
+  logger.error({ err }, "Uncaught exception — exiting");
+  process.exit(1);
+});
 
 const rawPort = process.env["PORT"];
 
@@ -219,6 +237,20 @@ app.get("/info/*path", proxyToSquarespace);
 
   registerOnboardingRoutes(app);
   const server = await registerRoutes(app);
+
+  // ---------------------------------------------------------------------------
+  // Global Express error handler — registered AFTER all routes so it can
+  // catch any error passed to next(err) or thrown synchronously in a route.
+  // The 4-argument signature is required by Express to identify this as an
+  // error handler.  Async errors that never reach next() are caught by the
+  // process-level handlers below.
+  // ---------------------------------------------------------------------------
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+    logger.error({ err }, "Unhandled Express error");
+    if (res.headersSent) return;
+    res.status(500).json({ error: "Internal server error" });
+  });
 
   // Graceful shutdown — flush any in-memory boosts to the database before
   // the process exits, then close the HTTP server cleanly.
