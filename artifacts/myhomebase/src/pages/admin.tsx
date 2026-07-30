@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Users, Home, Briefcase, Plus, Ban, TrendingUp, DollarSign, UserMinus, MessageSquare, ArrowRight, Flag, UserCheck, CheckCircle, XCircle, Clock, Eye, ChevronDown, ChevronUp, FileText, ExternalLink, Mail, Phone, ImagePlus, X, Loader2, Gift } from "lucide-react";
+import { Users, Home, Briefcase, Plus, Ban, TrendingUp, DollarSign, UserMinus, MessageSquare, ArrowRight, Flag, UserCheck, CheckCircle, XCircle, Clock, Eye, ChevronDown, ChevronUp, FileText, ExternalLink, Mail, Phone, ImagePlus, X, Loader2, Gift, ShieldAlert } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { format } from "date-fns";
@@ -96,6 +96,22 @@ interface AgentWithUser {
   } | null;
 }
 
+interface FraudQueueEntry {
+  id: string;
+  homeownerId: string;
+  flagType: string;
+  details: string | null;
+  severity: string;
+  reviewed: boolean;
+  createdAt: string | null;
+  user: {
+    id: string;
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+  } | null;
+}
+
 const CHART_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899'];
 
 export default function AdminDashboard() {
@@ -176,6 +192,34 @@ The MyHomeBase™ Team`);
   // Fetch referral free months data
   const { data: referralFreeMonthsData, isLoading: referralLoading } = useQuery<any[]>({
     queryKey: ["/api/admin/referral-free-months"],
+  });
+
+  // Fetch fraud review queue
+  const { data: fraudQueue, isLoading: fraudQueueLoading } = useQuery<FraudQueueEntry[]>({
+    queryKey: ["/api/admin/fraud-review-queue"],
+    staleTime: 0,
+    refetchOnMount: true,
+  });
+
+  // Dismiss fraud queue entry mutation
+  const dismissFraudMutation = useMutation({
+    mutationFn: async (entryId: string) => {
+      return apiRequest(`/api/admin/fraud-review-queue/${entryId}/dismiss`, "POST", {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/fraud-review-queue"] });
+      toast({
+        title: "Entry dismissed",
+        description: "The fraud review entry has been marked as reviewed.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to dismiss the entry. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   // Verify agent mutation
@@ -664,6 +708,99 @@ The MyHomeBase™ Team`);
             <p className="text-sm text-muted-foreground">
               Review reported suspicious reviews, investigate IP/device duplicates, and take action on fraudulent content.
             </p>
+          </CardContent>
+        </Card>
+
+        {/* Fraud Review Queue */}
+        <Card className="mb-8" data-testid="card-fraud-review-queue">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <ShieldAlert className="h-5 w-5 text-red-600" />
+                  Fraud Review Queue
+                  {fraudQueue && fraudQueue.length > 0 && (
+                    <Badge variant="destructive" className="ml-1">{fraudQueue.length}</Badge>
+                  )}
+                </CardTitle>
+                <CardDescription className="mt-2">
+                  Flagged accounts awaiting review — dismiss entries once investigated
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {fraudQueueLoading ? (
+              <div className="space-y-2">
+                {[...Array(3)].map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full" />
+                ))}
+              </div>
+            ) : !fraudQueue || fraudQueue.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground gap-2">
+                <CheckCircle className="h-8 w-8 text-green-500" />
+                <p className="font-medium">No flagged accounts to review</p>
+                <p className="text-sm">The fraud queue is clear.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {fraudQueue.map((entry) => {
+                  const isHigh = entry.severity === 'high';
+                  const userName = entry.user
+                    ? `${entry.user.firstName || ''} ${entry.user.lastName || ''}`.trim() || 'Unknown'
+                    : 'Unknown';
+                  return (
+                    <div
+                      key={entry.id}
+                      className={`flex items-start justify-between gap-4 rounded-lg border p-4 ${isHigh ? 'border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950/30' : 'border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950/20'}`}
+                      data-testid={`row-fraud-entry-${entry.id}`}
+                    >
+                      <div className="flex items-start gap-3 min-w-0">
+                        <div className={`mt-0.5 shrink-0 rounded-full p-1 ${isHigh ? 'bg-red-100 text-red-600 dark:bg-red-900' : 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900'}`}>
+                          <ShieldAlert className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <span className="font-medium text-sm">{userName}</span>
+                            <span className="text-xs text-muted-foreground">{entry.user?.email || 'No email'}</span>
+                            <Badge
+                              variant={isHigh ? 'destructive' : 'outline'}
+                              className={`text-xs ${!isHigh ? 'border-yellow-400 text-yellow-700 dark:text-yellow-400' : ''}`}
+                            >
+                              {isHigh ? 'High' : 'Low'} severity
+                            </Badge>
+                            <Badge variant="secondary" className="text-xs font-mono">
+                              {entry.flagType}
+                            </Badge>
+                          </div>
+                          {entry.details && (
+                            <p className="text-sm text-muted-foreground line-clamp-2">{entry.details}</p>
+                          )}
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {entry.createdAt ? format(new Date(entry.createdAt), 'MMM d, yyyy h:mm a') : 'Unknown date'}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="shrink-0"
+                        onClick={() => dismissFraudMutation.mutate(entry.id)}
+                        disabled={dismissFraudMutation.isPending}
+                        data-testid={`button-dismiss-fraud-${entry.id}`}
+                      >
+                        {dismissFraudMutation.isPending ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                        )}
+                        Dismiss
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
 
