@@ -20,8 +20,7 @@ export default function PushNotificationManager({ userId }: PushNotificationMana
 
   useEffect(() => {
     checkPushSupport();
-    // Temporarily disabled to clear cache - Nov 2 2025
-    // registerServiceWorker();
+    registerServiceWorker();
   }, []);
 
   const checkPushSupport = () => {
