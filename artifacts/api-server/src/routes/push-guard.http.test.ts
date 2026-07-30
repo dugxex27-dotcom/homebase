@@ -239,3 +239,147 @@ describe("/api/push guard — no unauthenticated access, no demo-user fallback",
     expect(storage.getPushSubscriptions).toHaveBeenCalledWith("user-scope-check");
   });
 });
+
+// ---------------------------------------------------------------------------
+// /api/push/verify — subscription validity checks
+//
+// The client calls this after every service worker update cycle.  When the
+// server returns 200 the existing subscription is still valid and no
+// re-subscribe is needed.  When it returns 404 the client must re-subscribe.
+// ---------------------------------------------------------------------------
+
+describe("/api/push/verify — subscription validity for update-cycle recovery", () => {
+  beforeEach(() => {
+    suspendedUserIds.clear();
+    activeStatusCache.clear();
+    vi.clearAllMocks();
+    mockDbStatus("active");
+  });
+
+  it("returns 200 with exists:true when the subscription is active in the database", async () => {
+    (storage.getPushSubscriptions as any).mockResolvedValue([
+      { id: "sub-1", endpoint: "https://push.example/abc", isActive: true },
+    ]);
+
+    const response = await supertest(withSession("user-abc"))
+      .post("/api/push/verify")
+      .send({ endpoint: "https://push.example/abc" });
+
+    expect(response.status).toBe(200);
+    expect(response.body.exists).toBe(true);
+  });
+
+  it("returns 404 with exists:false when the subscription endpoint is not in the database", async () => {
+    (storage.getPushSubscriptions as any).mockResolvedValue([]);
+
+    const response = await supertest(withSession("user-abc"))
+      .post("/api/push/verify")
+      .send({ endpoint: "https://push.example/missing" });
+
+    expect(response.status).toBe(404);
+    expect(response.body.exists).toBe(false);
+  });
+
+  it("returns 404 when the subscription exists in the database but is marked inactive", async () => {
+    (storage.getPushSubscriptions as any).mockResolvedValue([
+      { id: "sub-1", endpoint: "https://push.example/abc", isActive: false },
+    ]);
+
+    const response = await supertest(withSession("user-abc"))
+      .post("/api/push/verify")
+      .send({ endpoint: "https://push.example/abc" });
+
+    expect(response.status).toBe(404);
+    expect(response.body.exists).toBe(false);
+  });
+
+  it("returns 400 when no endpoint is provided in the request body", async () => {
+    const response = await supertest(withSession("user-abc"))
+      .post("/api/push/verify")
+      .send({});
+
+    expect(response.status).toBe(400);
+  });
+
+  it("only considers the requesting user's own subscriptions when verifying", async () => {
+    // The subscription exists, but it belongs to a different user — the route
+    // fetches subscriptions scoped to the authenticated user, so it will not
+    // find it and must return 404.
+    (storage.getPushSubscriptions as any).mockResolvedValue([]);
+
+    const response = await supertest(withSession("user-abc"))
+      .post("/api/push/verify")
+      .send({ endpoint: "https://push.example/other-user-endpoint" });
+
+    expect(response.status).toBe(404);
+    expect(storage.getPushSubscriptions).toHaveBeenCalledWith("user-abc");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// /api/push/subscribe — idempotent re-subscribe after SW update cycle
+//
+// When the client re-subscribes after a service worker update, it may send
+// an endpoint the server already has on record (same device, same SW).  The
+// route must update, not duplicate, that record so pushes keep working.
+// ---------------------------------------------------------------------------
+
+describe("/api/push/subscribe — idempotent re-subscribe after SW update cycle", () => {
+  beforeEach(() => {
+    suspendedUserIds.clear();
+    activeStatusCache.clear();
+    vi.clearAllMocks();
+    mockDbStatus("active");
+  });
+
+  it("updates an existing subscription rather than creating a duplicate when the same endpoint is re-submitted", async () => {
+    const endpoint = "https://push.example/existing-endpoint";
+    (storage.getPushSubscriptions as any).mockResolvedValue([
+      { id: "sub-existing", endpoint, isActive: true },
+    ]);
+
+    const response = await supertest(withSession("user-abc"))
+      .post("/api/push/subscribe")
+      .send({ endpoint, keys: { p256dh: "key1", auth: "key2" } });
+
+    expect(response.status).toBe(200);
+    expect(storage.updatePushSubscription).toHaveBeenCalledWith(
+      "sub-existing",
+      expect.objectContaining({ isActive: true }),
+    );
+    expect(storage.createPushSubscription).not.toHaveBeenCalled();
+  });
+
+  it("re-activates an inactive subscription when the same endpoint is re-submitted", async () => {
+    const endpoint = "https://push.example/previously-inactive-endpoint";
+    (storage.getPushSubscriptions as any).mockResolvedValue([
+      { id: "sub-inactive", endpoint, isActive: false },
+    ]);
+
+    const response = await supertest(withSession("user-abc"))
+      .post("/api/push/subscribe")
+      .send({ endpoint, keys: { p256dh: "key1", auth: "key2" } });
+
+    expect(response.status).toBe(200);
+    expect(storage.updatePushSubscription).toHaveBeenCalledWith(
+      "sub-inactive",
+      expect.objectContaining({ isActive: true }),
+    );
+    expect(storage.createPushSubscription).not.toHaveBeenCalled();
+  });
+
+  it("creates a new subscription when the endpoint has not been seen before (fresh SW registration)", async () => {
+    const endpoint = "https://push.example/brand-new-after-sw-update";
+    (storage.getPushSubscriptions as any).mockResolvedValue([]);
+
+    const response = await supertest(withSession("user-new"))
+      .post("/api/push/subscribe")
+      .send({ endpoint, keys: { p256dh: "key1", auth: "key2" } });
+
+    expect(response.status).toBe(200);
+    expect(storage.createPushSubscription).toHaveBeenCalledWith(
+      expect.objectContaining({ endpoint, userId: "user-new" }),
+    );
+    expect(storage.updatePushSubscription).not.toHaveBeenCalled();
+  });
+});

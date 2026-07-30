@@ -135,7 +135,12 @@ export default function PushNotificationManager({ userId }: PushNotificationMana
   };
 
   const subscribeUser = async () => {
-    if (!isSupported) {
+    // Check browser APIs directly rather than reading the `isSupported` React
+    // state: this function may be called from verifySubscriptionOnServer, which
+    // runs inside the initial-render closure of the useEffect where isSupported
+    // is still false (state updates are async), so a state-based guard would
+    // incorrectly abort the re-subscribe flow.
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
       toast({
         title: "Not Supported",
         description: "Push notifications are not supported in this browser.",
