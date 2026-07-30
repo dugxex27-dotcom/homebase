@@ -2006,6 +2006,12 @@ export const crmInvoices = pgTable("crm_invoices", {
   termsAndConditions: text("terms_and_conditions"),
   homeownerId: varchar("homeowner_id").references(() => users.id, { onDelete: 'set null' }),
   houseId: varchar("house_id").references(() => houses.id, { onDelete: 'set null' }),
+  // Signed payment-link token — allows unauthenticated homeowners to view
+  // the invoice from an emailed link without requiring a session login.
+  // Stores the SHA-256 hex digest of the raw token; the raw token is only
+  // ever sent in the payment-link URL and never persisted.
+  paymentToken: varchar("payment_token", { length: 64 }),
+  paymentTokenExpiresAt: timestamp("payment_token_expires_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [

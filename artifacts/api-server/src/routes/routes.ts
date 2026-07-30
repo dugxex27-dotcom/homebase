@@ -6,7 +6,7 @@ import { storage, type IStorage } from "../storage";
 import { setupAuth, isAuthenticated, requireRole, requirePropertyOwner, suspendedUserIds, invalidateUserSessions, requireCompanyRole, requireCompanyRoleAny, requireDivisionAccess, requireBulkImport, requireApiAccess, requireNotSuspended, requireSameCompany, isOAuthUserSuspended } from "../replitAuth";
 import { setupGoogleAuth } from "../googleAuth";
 import { z } from "zod";
-import { randomUUID, randomBytes } from "crypto";
+import { randomUUID, randomBytes, createHash, timingSafeEqual } from "crypto";
 import rateLimit from "express-rate-limit";
 import { PgRateLimitStore } from "../lib/pg-rate-limit-store";
 import { eq, and, ne, inArray, sql as drizzleSql, isNotNull, isNull, desc, or, gt, gte, lte } from "drizzle-orm";
@@ -42,6 +42,50 @@ const stripe = process.env.STRIPE_SECRET_KEY
 // ---------------------------------------------------------------------------
 /** Price of a 30-day contractor visibility boost, in USD dollars. */
 export const BOOST_PRICE_DOLLARS = 49;
+
+// ---------------------------------------------------------------------------
+// Invoice payment-link tokens
+// A short-lived signed token is embedded in the payment-link URL so that
+// homeowners who haven't logged in can still view and pay an invoice.
+// The raw token is sent only in the URL; the SHA-256 digest is stored in DB.
+// ---------------------------------------------------------------------------
+
+/** Token lifetime in milliseconds (72 hours). */
+export const INVOICE_TOKEN_TTL_MS = 72 * 60 * 60 * 1000;
+
+/**
+ * Generate a new invoice payment token.
+ * Returns the raw token (for the URL) and its SHA-256 digest (for storage).
+ */
+export function generateInvoicePaymentToken(): {
+  raw: string;
+  hash: string;
+  expiresAt: Date;
+} {
+  const raw = randomBytes(32).toString('hex'); // 64-char URL-safe hex
+  const hash = createHash('sha256').update(raw).digest('hex');
+  const expiresAt = new Date(Date.now() + INVOICE_TOKEN_TTL_MS);
+  return { raw, hash, expiresAt };
+}
+
+/**
+ * Verify a raw token from a payment URL against a stored invoice.
+ * Returns true if the token matches and has not expired.
+ */
+export function verifyInvoicePaymentToken(
+  raw: string,
+  storedHash: string | null | undefined,
+  expiresAt: Date | string | null | undefined,
+): boolean {
+  if (!storedHash || !expiresAt) return false;
+  if (new Date() > new Date(expiresAt)) return false;
+  const candidateHash = createHash('sha256').update(raw).digest('hex');
+  try {
+    return timingSafeEqual(Buffer.from(candidateHash, 'utf8'), Buffer.from(storedHash, 'utf8'));
+  } catch {
+    return false;
+  }
+}
 
 // Rate-limit background Stripe subscription syncs to avoid hitting the API on every /api/user call.
 // Maps userId -> timestamp of last background sync attempt.
@@ -2622,22 +2666,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Public payment page - get invoice details for payment
-  app.get('/api/pay/invoice/:invoiceId', isAuthenticated, async (req: any, res: any) => {
+  // Payment page — get invoice details for payment.
+  // Access is granted when the caller has EITHER:
+  //   (a) a valid session as the linked homeowner or issuing contractor, OR
+  //   (b) a valid ?token= query param from the payment-link email.
+  app.get('/api/pay/invoice/:invoiceId', async (req: any, res: any) => {
     try {
       const { invoiceId } = req.params;
+      const rawToken = req.query?.token as string | undefined;
 
       const invoice = await storage.getCrmInvoice(invoiceId);
       if (!invoice) {
         return res.status(404).json({ error: 'Invoice not found' });
       }
 
-      // Verify the session user is either the linked homeowner or the issuing contractor
-      const sessionUserId: string = req.session.user.id;
+      // Path A: session-based access
+      const sessionUserId: string | undefined = req.session?.user?.id;
       const isHomeowner = !!(invoice.homeownerId && invoice.homeownerId === sessionUserId);
-      const isContractor = invoice.contractorUserId === sessionUserId;
-      if (!isHomeowner && !isContractor) {
-        return res.status(403).json({ error: 'Forbidden' });
+      const isContractor = !!(invoice.contractorUserId && invoice.contractorUserId === sessionUserId);
+
+      // Path B: payment-link token (allows unauthenticated homeowner access)
+      const hasValidToken = rawToken
+        ? verifyInvoicePaymentToken(rawToken, invoice.paymentToken, invoice.paymentTokenExpiresAt)
+        : false;
+
+      if (!isHomeowner && !isContractor && !hasValidToken) {
+        return res.status(401).json({ error: 'Unauthorized' });
       }
 
       const client = await storage.getCrmClient(invoice.clientId);
@@ -2671,6 +2725,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Process payment for invoice (creates checkout session)
+  // Requires either a valid session (homeowner/contractor) or a valid ?token= from the payment link.
   app.post('/api/pay/invoice/:invoiceId/checkout', async (req: any, res: any) => {
     if (!stripe) {
       return res.status(500).json({ error: 'Stripe not configured' });
@@ -2679,10 +2734,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { invoiceId } = req.params;
       const { customerEmail } = req.body;
+      const rawToken = req.query?.token as string | undefined;
 
       const invoice = await storage.getCrmInvoice(invoiceId);
       if (!invoice) {
         return res.status(404).json({ error: 'Invoice not found' });
+      }
+
+      // Verify caller is the linked homeowner, the issuing contractor, or holds a valid token
+      const sessionUserId: string | undefined = req.session?.user?.id;
+      const isHomeowner = !!(invoice.homeownerId && invoice.homeownerId === sessionUserId);
+      const isContractor = !!(invoice.contractorUserId && invoice.contractorUserId === sessionUserId);
+      const hasValidToken = rawToken
+        ? verifyInvoicePaymentToken(rawToken, invoice.paymentToken, invoice.paymentTokenExpiresAt)
+        : false;
+      if (!isHomeowner && !isContractor && !hasValidToken) {
+        return res.status(401).json({ error: 'Unauthorized' });
       }
 
       if (invoice.status === 'paid') {
@@ -7893,7 +7960,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const company = contractor?.companyId ? await storage.getCompany(contractor.companyId) : null;
 
       const baseUrl = process.env.NODE_ENV === 'production' ? 'https://gotohomebase.com' : `https://${req.headers.host}`;
-      const viewUrl = `${baseUrl}/pay/invoice/${existingInvoice.id}`;
+
+      // Generate a fresh payment-link token for this send/resend.
+      const { raw: tokenRaw, hash: tokenHash, expiresAt: tokenExpiresAt } = generateInvoicePaymentToken();
+      const viewUrl = `${baseUrl}/pay/invoice/${existingInvoice.id}?token=${tokenRaw}`;
 
       const formatCurrency = (amount: string | number) => `$${parseFloat(String(amount)).toFixed(2)}`;
       const formatDate = (date: Date | null) => date ? new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : undefined;
@@ -7951,9 +8021,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         smsSent = await smsService.sendInvoiceSMS(smsData);
       }
 
+      // Persist the new token (hashed) alongside the status update so future
+      // requests from the email link can be validated without a session.
       const updatedInvoice = await storage.updateCrmInvoice(req.params.id, {
         status: 'sent',
         sentAt: new Date(),
+        paymentToken: tokenHash,
+        paymentTokenExpiresAt: tokenExpiresAt,
       });
 
       res.json({ 
