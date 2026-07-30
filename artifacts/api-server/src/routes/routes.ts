@@ -4848,18 +4848,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let gpsLng: number | null = null;
       let deviceTimestamp: string | null = null;
       try {
-        const exifParser = require('exif-parser');
-        const parser = exifParser.create(buffer);
-        const exifResult = parser.parse();
-        const tags = exifResult?.tags ?? {};
-
-        if (tags.GPSLatitude != null && tags.GPSLongitude != null) {
-          gpsLat = tags.GPSLatitude * (tags.GPSLatitudeRef === 'S' ? -1 : 1);
-          gpsLng = tags.GPSLongitude * (tags.GPSLongitudeRef === 'W' ? -1 : 1);
+        const exifr = await import('exifr');
+        const gps = await exifr.gps(buffer);
+        if (gps?.latitude != null && gps?.longitude != null) {
+          gpsLat = gps.latitude;
+          gpsLng = gps.longitude;
         }
-        const rawTs = tags.DateTimeOriginal ?? tags.DateTime;
-        if (rawTs) {
-          deviceTimestamp = new Date(rawTs * 1000).toISOString();
+        const tags = await exifr.parse(buffer, { DateTimeOriginal: true, DateTime: true });
+        const rawTs = tags?.DateTimeOriginal ?? tags?.DateTime;
+        if (rawTs instanceof Date) {
+          deviceTimestamp = rawTs.toISOString();
         }
       } catch {
         // EXIF extraction is best-effort — not all images have EXIF data
