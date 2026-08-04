@@ -157,6 +157,8 @@ export default function Header() {
 
   const handleLogout = async () => {
     try {
+      const { clearRememberToken } = await import('@/lib/nativeSession');
+      await clearRememberToken();
       const response = await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
       if (response.ok) { queryClient.clear(); window.location.href = '/'; }
     } catch { window.location.href = '/'; }

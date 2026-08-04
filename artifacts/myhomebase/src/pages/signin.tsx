@@ -13,6 +13,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Eye, EyeOff } from "lucide-react";
 import logoWhite from '@assets/my-homebase-logo-tm-final-white_1777417516350.png';
 import { isNativePlatform } from '@/lib/nativeBrowser';
+import { storeRememberToken, clearRememberToken } from '@/lib/nativeSession';
 
 const C = {
   header: '#2C0F5B',
@@ -74,12 +75,17 @@ export default function SignIn() {
 
   const loginMutation = useMutation({
     mutationFn: async (data: LoginFormData) => {
-      const response = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data), credentials: "include" });
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (isNativePlatform) headers['x-native-app'] = '1';
+      const response = await fetch("/api/auth/login", { method: "POST", headers, body: JSON.stringify(data), credentials: "include" });
       const result = await response.json();
       if (!response.ok) throw new Error(result.message || "Invalid credentials");
       return result;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
+      if (isNativePlatform && data.rememberToken) {
+        await storeRememberToken(data.rememberToken);
+      }
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
       toast({ title: "Welcome back!" });
       const role = data.user?.role || 'homeowner';
@@ -124,7 +130,7 @@ export default function SignIn() {
 
   const handleDemoLogin = async (role: 'homeowner' | 'contractor') => {
     try {
-      try { await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); queryClient.clear(); } catch {}
+      try { const { clearRememberToken } = await import('@/lib/nativeSession'); await clearRememberToken(); await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); queryClient.clear(); } catch {}
       const endpoint = role === 'homeowner' ? '/api/auth/homeowner-demo-login' : '/api/auth/contractor-demo-login';
       const response = await apiRequest(endpoint, 'POST', {});
       if (response.ok) {

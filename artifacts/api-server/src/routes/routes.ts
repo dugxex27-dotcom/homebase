@@ -2878,6 +2878,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (userId) {
       await auditLogger.logLogout(userId, userEmail || '', userRole || '', req);
       await sessionManager.terminateSession(sessionSid, 'logout');
+      // Clear native remember-me token on explicit logout so the user truly signs out
+      db.update(users).set({ rememberToken: null, rememberTokenExpiresAt: null } as any)
+        .where(eq(users.id, userId)).catch(() => {});
     }
     
     req.logout((err: any) => {
@@ -2891,6 +2894,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json({ success: true });
       });
     });
+  });
+
+  // Restore native session using a remember-me token stored in @capacitor/preferences.
+  // Called automatically by useAuth on native when the session cookie is missing.
+  // The token is rotated on every use to limit replay window.
+  app.post('/api/auth/restore-session', async (req: any, res: any) => {
+    try {
+      const { rememberToken } = req.body;
+      if (!rememberToken || typeof rememberToken !== 'string') {
+        return res.status(400).json({ message: 'rememberToken required' });
+      }
+
+      const crypto = await import('crypto');
+      const tokenHash = crypto.createHash('sha256').update(rememberToken).digest('hex');
+
+      const [user] = await db.select().from(users).where(
+        and(
+          eq(users.rememberToken as any, tokenHash),
+          gt(users.rememberTokenExpiresAt as any, new Date()),
+        )
+      ).limit(1);
+
+      if (!user) {
+        return res.status(401).json({ message: 'Invalid or expired remember token' });
+      }
+
+      // Block suspended accounts
+      if (['suspended', 'removed'].includes((user as any).status) || suspendedUserIds.has(user.id)) {
+        return res.status(401).json({ message: 'Account suspended' });
+      }
+
+      // Rotate the token
+      const newToken = crypto.randomBytes(64).toString('hex');
+      const newTokenHash = crypto.createHash('sha256').update(newToken).digest('hex');
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+      await db.update(users)
+        .set({ rememberToken: newTokenHash, rememberTokenExpiresAt: expiresAt } as any)
+        .where(eq(users.id, user.id));
+
+      // Establish a fresh session
+      req.session.user = user;
+      req.session.isAuthenticated = true;
+
+      res.json({ success: true, user, newRememberToken: newToken });
+    } catch (error) {
+      console.error('[RESTORE-SESSION] Error:', error);
+      res.status(500).json({ message: 'Session restore failed' });
+    }
   });
 
   // Session management - Get user's active sessions
@@ -4619,7 +4671,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('[LOGIN] Security audit/session logging failed (login still succeeded):', auditError);
       }
 
-      res.json({ success: true, user });
+      // For native app (Capacitor): issue a long-lived remember-me token so the
+      // session can be restored after the OS kills the app and cookie is lost.
+      let rememberToken: string | undefined;
+      if (req.headers['x-native-app'] === '1') {
+        const crypto = await import('crypto');
+        const token = crypto.randomBytes(64).toString('hex');
+        const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+        await db.update(users).set({ rememberToken: tokenHash, rememberTokenExpiresAt: expiresAt } as any)
+          .where(eq(users.id, user.id));
+        rememberToken = token;
+      }
+
+      res.json({ success: true, user, ...(rememberToken ? { rememberToken } : {}) });
     } catch (error) {
       console.error("Error logging in:", error);
       res.status(500).json({ message: "Login failed" });

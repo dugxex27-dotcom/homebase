@@ -64,6 +64,8 @@ export default function Sidebar() {
 
   const handleLogout = async () => {
     try {
+      const { clearRememberToken } = await import('@/lib/nativeSession');
+      await clearRememberToken();
       const r = await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
       if (r.ok) { queryClient.clear(); window.location.href = '/'; }
     } catch { window.location.href = '/'; }

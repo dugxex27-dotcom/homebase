@@ -202,20 +202,18 @@ export default function HomeownerAccount() {
 
   const handleLogout = async () => {
     try {
+      const { clearRememberToken } = await import('@/lib/nativeSession');
+      await clearRememberToken();
       const response = await fetch('/api/auth/logout', { 
         method: 'POST',
         credentials: 'include'
       });
-      
       if (response.ok) {
-        // Clear all cached queries
         queryClient.clear();
-        // Reload the page to reset the app state
         window.location.href = '/';
       }
     } catch (error) {
       console.error('Logout error:', error);
-      // Fallback: try the GET endpoint
       window.location.href = '/api/logout';
     }
   };

@@ -200,6 +200,8 @@ export const users = pgTable("users", {
   inviteExpiresAt: timestamp("invite_expires_at"),
   deletedAt: timestamp("company_left_at"), // Set when a tech is removed from company (preserves history)
   lastLoginAt: timestamp("last_login_at"), // Last successful login timestamp
+  rememberToken: varchar("remember_token"), // SHA-256 hash of native app remember-me token
+  rememberTokenExpiresAt: timestamp("remember_token_expires_at"), // Expiry for the remember-me token
   canRespondToProposals: boolean("can_respond_to_proposals").notNull().default(false), // For employees: owner can toggle
   // Subscription fields
   subscriptionPlanId: varchar("subscription_plan_id").references(() => subscriptionPlans.id, { onDelete: 'set null' }), // FK to subscription_plans.id
