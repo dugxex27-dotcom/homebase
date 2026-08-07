@@ -18155,6 +18155,16 @@ Severity levels:
 - informational: routine maintenance recommendations, cosmetic issues, upgrades suggested
 IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report, even if only briefly noted. Include condition even if it is just "Not Inspected"."`;
 
+    // gpt-4o-mini has a 128K-token context window. At ~4 chars/token the system
+    // prompt + JSON response consume roughly 3,000 tokens, leaving ~100,000
+    // characters of body content before approaching the limit. That covers the
+    // vast majority of real inspection reports (a 200-page PDF is typically
+    // < 400,000 chars). The previous 14,000-char limit (~3,500 tokens) was
+    // far too conservative and silently dropped most of the report text.
+    const INSPECTION_TEXT_LIMIT = 100_000;
+    const rawContent = content || "";
+    const wasTruncated = !imageBase64 && rawContent.length > INSPECTION_TEXT_LIMIT;
+
     try {
       let response;
       if (imageBase64) {
@@ -18175,14 +18185,21 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
           model: "gpt-4o-mini",
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: `Inspection report content:\n\n${(content || "").slice(0, 14000)}` }
+            { role: "user", content: `Inspection report content:\n\n${rawContent.slice(0, INSPECTION_TEXT_LIMIT)}` }
           ],
           response_format: { type: "json_object" },
           temperature: 0.1,
         });
       }
       const raw = response.choices[0]?.message?.content || "{}";
-      return JSON.parse(raw) as Record<string, unknown>;
+      const result = JSON.parse(raw) as Record<string, unknown>;
+      if (wasTruncated) {
+        // Annotate the stored JSONB so reviewers can see the document was cut.
+        // The upload route reads _truncated to set ai_confidence = "low" on the DB row.
+        result._truncated = true;
+        result._truncationNote = `Document truncated for AI extraction: ${rawContent.length.toLocaleString()} chars original, ${INSPECTION_TEXT_LIMIT.toLocaleString()} chars used. Extraction may be incomplete.`;
+      }
+      return result;
     } catch (err) {
       console.error("[INSPECTION] AI extraction error:", err);
       return { deficiencies: [], generalSummary: null };
@@ -18392,6 +18409,10 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         extractedData,
         extractionConfirmed: false,
         flaggedItemCount: flaggedCount,
+        // If the document was truncated, mark confidence low immediately.
+        // Fix 3 (model confidence scoring) will not overwrite this back to a
+        // higher value — the truncation floor takes precedence.
+        ...(extractedData._truncated ? { aiConfidence: "low" as const } : {}),
       }).returning();
 
       res.json({ document: doc, extractedData });
