@@ -77,6 +77,29 @@ export const referralFreeMonths = pgTable("referral_free_months", {
   index("IDX_free_months_user_status").on(table.userId, table.status),
 ]);
 
+// Single source of truth for every referral credit earned, regardless of billing method.
+// Running balance for a user = SUM(amount_cents) WHERE user_id = ? AND status = 'pending'.
+export const referralCreditLedger = pgTable("referral_credit_ledger", {
+  id:                          varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId:                      varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  referralId:                  varchar("referral_id").references(() => affiliateReferrals.id, { onDelete: 'set null' }),
+  amountCents:                 integer("amount_cents").notNull(),
+  accrualPeriod:               text("accrual_period").notNull(), // 'YYYY-MM' — month this credit was earned for
+  earnedAt:                    timestamp("earned_at").notNull().defaultNow(),
+  appliedVia:                  text("applied_via"),              // 'stripe_balance' | 'iap_offer' | null
+  appliedAt:                   timestamp("applied_at"),
+  stripeBalanceTransactionId:  text("stripe_balance_transaction_id"),
+  status:                      text("status").notNull().default("pending"), // 'pending' | 'applied' | 'expired' | 'reversed'
+}, (table) => [
+  index("IDX_rcl_user_id").on(table.userId),
+  index("IDX_rcl_referral_id").on(table.referralId),
+  index("IDX_rcl_status").on(table.status),
+  index("IDX_rcl_user_status").on(table.userId, table.status),
+  uniqueIndex("rcl_unique_referral_period").on(table.referralId, table.accrualPeriod),
+  check("rcl_applied_via_check", sql`applied_via IN ('stripe_balance', 'iap_offer') OR applied_via IS NULL`),
+  check("rcl_status_check", sql`status IN ('pending', 'applied', 'expired', 'reversed')`),
+]);
+
 // Users table for Replit Auth with role and subscription support
 // Companies table for contractor businesses
 export const companies = pgTable("companies", {
@@ -1371,6 +1394,9 @@ export type InsertReferralCredit = z.infer<typeof insertReferralCreditSchema>;
 export type ReferralCredit = typeof referralCredits.$inferSelect;
 export type InsertReferralFreeMonth = z.infer<typeof insertReferralFreeMonthSchema>;
 export type ReferralFreeMonth = typeof referralFreeMonths.$inferSelect;
+export const insertReferralCreditLedgerSchema = createInsertSchema(referralCreditLedger).omit({ id: true, earnedAt: true });
+export type InsertReferralCreditLedger = z.infer<typeof insertReferralCreditLedgerSchema>;
+export type ReferralCreditLedger = typeof referralCreditLedger.$inferSelect;
 export type InsertContractor = z.infer<typeof insertContractorSchema>;
 export type Contractor = typeof contractors.$inferSelect;
 export type InsertCompany = z.infer<typeof insertCompanySchema>;
