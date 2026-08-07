@@ -18411,12 +18411,17 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         .where(and(eq(homeDocuments.id, req.params.id), eq(homeDocuments.homeownerId, userId)));
       if (!doc) return res.status(404).json({ message: "Document not found" });
 
-      const confirmedData: Record<string, unknown> = req.body.extractedData || doc.extractedData || {};
+      // Use only the server-side AI extraction stored at upload time.
+      // Client-supplied extractedData (req.body.extractedData) is intentionally ignored —
+      // the client can confirm but cannot alter what gets written to houses / systems / appliances.
+      if (!doc.extractedData) {
+        return res.status(409).json({ message: "No extracted data found for this document. Please re-upload to run extraction again." });
+      }
+      const confirmedData: Record<string, unknown> = doc.extractedData as Record<string, unknown>;
       const deficiencies = Array.isArray(confirmedData.deficiencies) ? confirmedData.deficiencies as Record<string, unknown>[] : [];
 
-      // Update the document with confirmed data
+      // Mark the document as confirmed — extractedData itself is unchanged (server-authored)
       await db.update(homeDocuments).set({
-        extractedData: confirmedData,
         extractionConfirmed: true,
         flaggedItemCount: deficiencies.length,
       }).where(eq(homeDocuments.id, doc.id));
