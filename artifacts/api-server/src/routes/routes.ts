@@ -18527,7 +18527,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         if (rawYearBuilt !== undefined && rawYearBuilt !== null) {
           if (typeof rawYearBuilt !== "number") {
             console.warn(`[INSPECTION] yearBuilt parse issue for houseId=${doc.houseId}: expected number, got`, typeof rawYearBuilt, rawYearBuilt);
-          } else if (!ownedHouse.yearBuilt) {
+          } else if (ownedHouse.yearBuilt === null || ownedHouse.yearBuilt === undefined) {
             profileUpdate.yearBuilt = rawYearBuilt;
           } else {
             skipped.push(`yearBuilt (existing: ${ownedHouse.yearBuilt}, inspection: ${rawYearBuilt})`);
@@ -18539,7 +18539,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         if (rawSquareFootage !== undefined && rawSquareFootage !== null) {
           if (typeof rawSquareFootage !== "number") {
             console.warn(`[INSPECTION] squareFootage parse issue for houseId=${doc.houseId}: expected number, got`, typeof rawSquareFootage, rawSquareFootage);
-          } else if (!ownedHouse.squareFootage) {
+          } else if (ownedHouse.squareFootage === null || ownedHouse.squareFootage === undefined) {
             profileUpdate.squareFootage = rawSquareFootage;
           } else {
             skipped.push(`squareFootage (existing: ${ownedHouse.squareFootage}, inspection: ${rawSquareFootage})`);
@@ -18551,7 +18551,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         if (rawHvacAge !== undefined && rawHvacAge !== null) {
           if (typeof rawHvacAge !== "number") {
             console.warn(`[INSPECTION] hvacAge parse issue for houseId=${doc.houseId}: expected number, got`, typeof rawHvacAge, rawHvacAge);
-          } else if (!ownedHouse.hvacAge) {
+          } else if (ownedHouse.hvacAge === null || ownedHouse.hvacAge === undefined) {
             profileUpdate.hvacAge = rawHvacAge;
           } else {
             skipped.push(`hvacAge (existing: ${ownedHouse.hvacAge}, inspection: ${rawHvacAge})`);
