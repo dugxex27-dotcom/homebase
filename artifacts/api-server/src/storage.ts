@@ -10730,10 +10730,11 @@ class DbStorage implements IStorage {
   }
 
   // Contractor Appointment methods — DATABASE BACKED for persistence
-  async getContractorAppointments(homeownerId?: string, houseId?: string): Promise<ContractorAppointment[]> {
+  async getContractorAppointments(homeownerId?: string, houseId?: string, contractorId?: string): Promise<ContractorAppointment[]> {
     const conditions = [];
-    if (homeownerId) conditions.push(eq(contractorAppointments.homeownerId, homeownerId));
-    if (houseId) conditions.push(eq(contractorAppointments.houseId, houseId));
+    if (homeownerId)  conditions.push(eq(contractorAppointments.homeownerId,  homeownerId));
+    if (houseId)      conditions.push(eq(contractorAppointments.houseId,       houseId));
+    if (contractorId) conditions.push(eq(contractorAppointments.contractorId, contractorId));
 
     const results = conditions.length > 0
       ? await db.select().from(contractorAppointments).where(and(...conditions))

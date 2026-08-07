@@ -7933,6 +7933,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
 
+      // ── Financial-field lock for non-draft invoices ────────────────────────
+      // Once an invoice has left draft status the homeowner has (or may have)
+      // already seen the amounts.  Silently patching financial fields after
+      // that point would change what they owe without any explicit re-issuance.
+      // The right path is to void and reissue — that flow is not yet built, but
+      // the silent-edit backdoor is closed here (task: void/reissue flow).
+      //
+      // Direct status patches are also blocked on locked invoices: PATCH-ing
+      // { status: 'draft' } would otherwise be a two-step bypass.
+      const LOCKED_STATUSES = ['sent', 'viewed', 'paid', 'partial', 'overdue', 'cancelled'] as const;
+      const FINANCIAL_FIELDS = ['lineItems', 'subtotal', 'taxRate', 'taxAmount', 'discount', 'total', 'amountDue', 'amountPaid', 'status'] as const;
+
+      if (LOCKED_STATUSES.includes(existingInvoice.status as typeof LOCKED_STATUSES[number])) {
+        const attemptedLockedFields = FINANCIAL_FIELDS.filter(f => f in req.body);
+        if (attemptedLockedFields.length > 0) {
+          return res.status(409).json({
+            message: `This invoice has status "${existingInvoice.status}" and its financial fields cannot be edited directly. To correct the amounts, void this invoice and reissue a new one.`,
+            blockedFields: attemptedLockedFields,
+            currentStatus: existingInvoice.status,
+          });
+        }
+      }
+
       const updateSchema = insertCrmInvoiceSchema.partial();
       const validationResult = updateSchema.safeParse(req.body);
 
@@ -12086,22 +12109,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Contractor Appointment routes
-  app.get("/api/appointments", async (req: any, res: any) => {
+  app.get("/api/appointments", isAuthenticated, async (req: any, res: any) => {
     try {
-      const homeownerId = req.query.homeownerId as string;
-      const appointments = await storage.getContractorAppointments(homeownerId);
-      res.json(appointments);
+      const userId = req.session.user.id;
+      const role   = req.session.user.role;
+
+      if (role === 'homeowner') {
+        // Homeowners see only their own appointments — derive from session, ignore any query param.
+        const appointments = await storage.getContractorAppointments(userId);
+        return res.json(appointments);
+      }
+
+      if (role === 'contractor') {
+        const requestedHomeownerId = req.query.homeownerId as string | undefined;
+
+        if (!requestedHomeownerId) {
+          // Contractor fetching their own full appointment list.
+          const appointments = await storage.getContractorAppointments(undefined, undefined, userId);
+          return res.json(appointments);
+        }
+
+        // Contractor requesting a specific homeowner's appointments.
+        // Require a proven relationship: at least one existing appointment that links
+        // this contractor to that homeowner.  The same query both proves the relationship
+        // and returns the correctly-scoped result set.
+        const shared = await storage.getContractorAppointments(requestedHomeownerId, undefined, userId);
+        if (shared.length === 0) {
+          return res.status(403).json({ message: "No relationship found with the specified homeowner" });
+        }
+        return res.json(shared);
+      }
+
+      return res.status(403).json({ message: "Not authorized to view appointments" });
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch appointments" });
     }
   });
 
-  app.get("/api/appointments/:id", async (req: any, res: any) => {
+  app.get("/api/appointments/:id", isAuthenticated, async (req: any, res: any) => {
     try {
+      const userId = req.session.user.id;
+      const role   = req.session.user.role;
+
       const appointment = await storage.getContractorAppointment(req.params.id);
       if (!appointment) {
         return res.status(404).json({ message: "Appointment not found" });
       }
+
+      const isOwner =
+        (role === 'homeowner'  && appointment.homeownerId  === userId) ||
+        (role === 'contractor' && appointment.contractorId === userId);
+
+      if (!isOwner) {
+        return res.status(403).json({ message: "Not authorized to view this appointment" });
+      }
+
       res.json(appointment);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch appointment" });
