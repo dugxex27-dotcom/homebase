@@ -1,7 +1,7 @@
 /// <reference types="cordova-plugin-purchase/www/store" />
 import 'cordova-plugin-purchase';
 import { isNativePlatform } from './nativeBrowser';
-import { apiRequest } from './queryClient';
+import { apiRequest, API_BASE } from './queryClient';
 
 /**
  * Apple product identifiers, mapped to the internal plan keys used elsewhere
@@ -140,28 +140,40 @@ export async function initNativePurchase(): Promise<boolean> {
 }
 
 /**
- * Parses the "STATUS: body" error thrown by apiRequest()'s throwIfResNotOk
- * into a numeric status code and a clean, user-facing message. Falls back to
- * a generic message rather than ever surfacing raw JSON/HTML response text.
+ * Calls POST /api/apple/verify-purchase using raw fetch — bypassing the
+ * global 401 handler in queryClient (throwIfResNotOk) which would otherwise
+ * redirect the user to /signin mid-purchase and strip the status code from
+ * the thrown error, breaking the 401-detection logic below.
+ *
+ * Returns { status, message } where message is always a clean, user-facing
+ * sentence. Never throws — network failures are returned as status 0.
  */
-function parseApiError(err: unknown): { status: number | null; message: string } {
-  const raw = err instanceof Error ? err.message : String(err);
-  const match = /^(\d{3}):\s*([\s\S]*)$/.exec(raw);
-  if (!match) {
-    return { status: null, message: 'Could not reach the server to verify your purchase.' };
-  }
-  const status = parseInt(match[1], 10);
-  let message = 'We could not verify your purchase. Please try again or contact support.';
+async function callVerifyPurchaseApi(
+  signedTransactionInfo: string,
+): Promise<{ status: number; body: unknown }> {
   try {
-    const parsed = JSON.parse(match[2]);
-    if (parsed && typeof parsed.message === 'string' && parsed.message.trim()) {
-      message = parsed.message;
-    }
-  } catch {
-    // Body wasn't JSON (e.g. an HTML error page) — keep the generic message
-    // rather than showing raw markup to the user.
+    const res = await fetch(`${API_BASE}/api/apple/verify-purchase`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ signedTransactionInfo }),
+      credentials: 'include',
+    });
+    const text = await res.text();
+    let body: unknown;
+    try { body = JSON.parse(text); } catch { body = { message: text || res.statusText }; }
+    return { status: res.status, body };
+  } catch (networkErr) {
+    logError('Network failure calling verify-purchase:', networkErr);
+    return { status: 0, body: { message: 'Could not reach the server to verify your purchase.' } };
   }
-  return { status, message };
+}
+
+function extractServerMessage(body: unknown, fallback: string): string {
+  if (body && typeof body === 'object' && 'message' in body) {
+    const m = (body as { message: unknown }).message;
+    if (typeof m === 'string' && m.trim()) return m.trim();
+  }
+  return fallback;
 }
 
 /**
@@ -206,41 +218,47 @@ async function verifyAndFinishTransaction(transaction: CdvPurchase.Transaction):
 
   log('Sending signed transaction to server for verification. Plan:', plan, 'transactionId:', transaction.transactionId);
 
-  let body: unknown;
-  try {
-    const res = await apiRequest('/api/apple/verify-purchase', 'POST', {
-      signedTransactionInfo: jwsRepresentation,
-    });
-    body = await res.json();
-  } catch (err) {
-    const { status, message } = parseApiError(err);
-    if (status === 401) {
-      // The user is not currently authenticated (e.g. StoreKit delivered a
-      // pending transaction before the user has signed in). Leave the
-      // transaction unfinished so StoreKit re-delivers it after login, and
-      // don't show any error — the purchase is fine, it just needs a session.
-      logError('Server returned 401 for purchase verification — user not yet authenticated. Leaving transaction pending for retry. transactionId:', transaction.transactionId);
-      throw new Error(message);
-    }
-    if (status !== null && status >= 400 && status < 500) {
-      // Permanent, well-defined rejection from our server (bad product, role
-      // mismatch, account-binding mismatch, etc). Retrying will never help —
-      // finish the transaction so StoreKit stops re-delivering it, and show
-      // a clean, single error instead of looping on every future launch.
-      logError('Server permanently rejected purchase verification (status', status, '):', message, 'transactionId:', transaction.transactionId);
-      await transaction.finish();
-      failedListeners.forEach((listener) => listener({ message }));
-      return;
-    }
-    // Transient failure (network error, or our own server 5xx). Leave the
-    // transaction unfinished so StoreKit retries delivering it (e.g. next
-    // launch or next network availability) instead of losing the purchase.
-    logError('Transient failure verifying purchase, will retry on next delivery:', message, 'transactionId:', transaction.transactionId);
-    throw new Error(message);
+  const { status, body } = await callVerifyPurchaseApi(jwsRepresentation);
+  const serverMessage = extractServerMessage(body, 'We could not verify your purchase. Please try again or contact support.');
+
+  log('Server verification response: status=%d body=%o', status, body);
+
+  if (status === 0) {
+    // Pure network failure — no HTTP response received. Leave the transaction
+    // unfinished so StoreKit re-delivers it when connectivity returns.
+    logError('Network failure verifying purchase, will retry on next delivery. transactionId:', transaction.transactionId);
+    throw new Error('Your payment was received but could not be confirmed yet. Please reopen the app in a few minutes.');
   }
 
-  log('Server verification response:', body);
+  if (status === 401) {
+    // The user is not currently authenticated (e.g. StoreKit delivered a
+    // pending transaction before the user has signed in). Leave the transaction
+    // unfinished so StoreKit re-delivers it after login. Return silently —
+    // do NOT throw, which would fire failedListeners and show an error toast
+    // for a purchase that is still in-flight and perfectly fine.
+    logError('Server returned 401 for purchase verification — user not yet authenticated. Leaving transaction pending for retry. transactionId:', transaction.transactionId);
+    return;
+  }
 
+  if (status >= 400 && status < 500) {
+    // Permanent, well-defined rejection from our server (bad product, role
+    // mismatch, account-binding mismatch, etc). Retrying will never help —
+    // finish the transaction so StoreKit stops re-delivering it, and show a
+    // clean, single error instead of looping on every future launch.
+    logError('Server permanently rejected purchase verification (status', status, '):', serverMessage, 'transactionId:', transaction.transactionId);
+    await transaction.finish();
+    failedListeners.forEach((listener) => listener({ message: serverMessage }));
+    return;
+  }
+
+  if (status >= 500) {
+    // Our server errored. Leave the transaction unfinished so StoreKit
+    // re-delivers it on the next launch or after a restart.
+    logError('Server 5xx during purchase verification, will retry on next delivery. status:', status, 'transactionId:', transaction.transactionId);
+    throw new Error('Your payment was received but our server had a temporary issue. Please reopen the app in a few minutes.');
+  }
+
+  // 2xx — verified successfully.
   log('Finishing transaction with StoreKit:', transaction.transactionId);
   await transaction.finish();
   log('Transaction finished:', transaction.transactionId);

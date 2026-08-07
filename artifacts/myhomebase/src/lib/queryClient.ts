@@ -6,7 +6,7 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 // In development and in the live-URL Capacitor approach the value is empty and
 // relative paths are used as-is.
 const NATIVE_FALLBACK_API_BASE = 'https://gotohomebase.com';
-const API_BASE = (import.meta.env.VITE_API_BASE_URL as string)
+export const API_BASE = (import.meta.env.VITE_API_BASE_URL as string)
   || (Capacitor.isNativePlatform() ? NATIVE_FALLBACK_API_BASE : '');
 
 // The Vite base path (e.g. "/myhomebase" in dev, "/" in production).
