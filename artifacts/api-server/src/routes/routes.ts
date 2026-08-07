@@ -18537,7 +18537,13 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
             const userNotes = (appliance.notes as string | null) || "";
             const combinedNotes = [conditionNote, userNotes].filter(Boolean).join(". ");
 
-            const [existingAppliance] = await db.select({ id: homeAppliances.id })
+            const [existingAppliance] = await db.select({
+                id: homeAppliances.id,
+                make: homeAppliances.make,
+                model: homeAppliances.model,
+                location: homeAppliances.location,
+                notes: homeAppliances.notes,
+              })
               .from(homeAppliances)
               .where(and(
                 eq(homeAppliances.houseId as any, doc.houseId),
@@ -18546,14 +18552,48 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
               .limit(1);
 
             if (existingAppliance) {
-              // Update in place — preserve yearInstalled if the inspection didn't find one
-              await db.update(homeAppliances).set({
-                make: (appliance.make as string | null) || "",
-                model: (appliance.model as string | null) || "",
-                ...(yearInstalled !== null ? { yearInstalled } : {}),
-                location: (appliance.location as string | null) || null,
-                notes: combinedNotes || null,
-              } as any).where(eq(homeAppliances.id, existingAppliance.id));
+              // Only overwrite a field if the existing row has no value — same guard as the houses fix.
+              // Fields the homeowner already filled in are preserved; skipped fields are logged for future review UI.
+              const incomingMake = (appliance.make as string | null) || "";
+              const incomingModel = (appliance.model as string | null) || "";
+              const incomingLocation = (appliance.location as string | null) || null;
+              const incomingNotes = combinedNotes || null;
+
+              const applianceUpdate: Record<string, unknown> = {};
+              const applianceSkipped: Array<{ field: string; existing: unknown; inspection: unknown }> = [];
+
+              if (!existingAppliance.make) {
+                applianceUpdate.make = incomingMake;
+              } else if (incomingMake && incomingMake !== existingAppliance.make) {
+                applianceSkipped.push({ field: "make", existing: existingAppliance.make, inspection: incomingMake });
+              }
+              if (!existingAppliance.model) {
+                applianceUpdate.model = incomingModel;
+              } else if (incomingModel && incomingModel !== existingAppliance.model) {
+                applianceSkipped.push({ field: "model", existing: existingAppliance.model, inspection: incomingModel });
+              }
+              if (!existingAppliance.location) {
+                applianceUpdate.location = incomingLocation;
+              } else if (incomingLocation && incomingLocation !== existingAppliance.location) {
+                applianceSkipped.push({ field: "location", existing: existingAppliance.location, inspection: incomingLocation });
+              }
+              if (!existingAppliance.notes) {
+                applianceUpdate.notes = incomingNotes;
+              } else if (incomingNotes && incomingNotes !== existingAppliance.notes) {
+                applianceSkipped.push({ field: "notes", existing: existingAppliance.notes, inspection: incomingNotes });
+              }
+              // yearInstalled: already guarded — only written if inspection value is non-null
+              if (yearInstalled !== null) applianceUpdate.yearInstalled = yearInstalled;
+
+              if (applianceSkipped.length > 0) {
+                console.warn("[INSPECTION] Skipped appliance fields (existing homeowner data preserved):", {
+                  applianceId: existingAppliance.id,
+                  name,
+                  skipped: applianceSkipped,
+                });
+              }
+
+              await db.update(homeAppliances).set(applianceUpdate as any).where(eq(homeAppliances.id, existingAppliance.id));
             } else {
               await db.insert(homeAppliances).values({
                 homeownerId: userId,
@@ -18616,7 +18656,11 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         }))]) {
           if (!sys.systemType) continue;
           try {
-            const [existingSystem] = await db.select({ id: homeSystems.id })
+            const [existingSystem] = await db.select({
+                id: homeSystems.id,
+                brand: homeSystems.brand,
+                notes: homeSystems.notes,
+              })
               .from(homeSystems)
               .where(and(
                 eq(homeSystems.houseId, doc.houseId),
@@ -18625,13 +18669,37 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
               .limit(1);
 
             if (existingSystem) {
-              // Update in place — preserve installationYear if the inspection didn't report one
-              await db.update(homeSystems).set({
-                ...(sys.installationYear !== null ? { installationYear: sys.installationYear } : {}),
-                ...((sys as any).brand ? { brand: (sys as any).brand } : {}),
-                notes: sys.notes || null,
-                updatedAt: new Date(),
-              } as any).where(eq(homeSystems.id, existingSystem.id));
+              // Only overwrite brand/notes if the existing row has no value — same guard as the houses fix.
+              // installationYear guard is unchanged. updatedAt always refreshes.
+              const incomingBrand = (sys as any).brand || null;
+              const incomingNotes = sys.notes || null;
+
+              const systemUpdate: Record<string, unknown> = { updatedAt: new Date() };
+              const systemSkipped: Array<{ field: string; existing: unknown; inspection: unknown }> = [];
+
+              // installationYear: already guarded — only written if inspection value is non-null
+              if (sys.installationYear !== null) systemUpdate.installationYear = sys.installationYear;
+
+              if (!existingSystem.brand) {
+                if (incomingBrand) systemUpdate.brand = incomingBrand;
+              } else if (incomingBrand && incomingBrand !== existingSystem.brand) {
+                systemSkipped.push({ field: "brand", existing: existingSystem.brand, inspection: incomingBrand });
+              }
+              if (!existingSystem.notes) {
+                systemUpdate.notes = incomingNotes;
+              } else if (incomingNotes && incomingNotes !== existingSystem.notes) {
+                systemSkipped.push({ field: "notes", existing: existingSystem.notes, inspection: incomingNotes });
+              }
+
+              if (systemSkipped.length > 0) {
+                console.warn("[INSPECTION] Skipped system fields (existing homeowner data preserved):", {
+                  systemId: existingSystem.id,
+                  systemType: sys.systemType,
+                  skipped: systemSkipped,
+                });
+              }
+
+              await db.update(homeSystems).set(systemUpdate as any).where(eq(homeSystems.id, existingSystem.id));
             } else {
               await db.insert(homeSystems).values({
                 homeownerId: userId,
