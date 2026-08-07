@@ -2,6 +2,7 @@
 import 'cordova-plugin-purchase';
 import { isNativePlatform } from './nativeBrowser';
 import { apiRequest, API_BASE } from './queryClient';
+import { tryRestoreSession } from './nativeSession';
 
 /**
  * Apple product identifiers, mapped to the internal plan keys used elsewhere
@@ -238,12 +239,63 @@ async function verifyAndFinishTransaction(transaction: CdvPurchase.Transaction):
     // The iOS WKWebView session expires while the Apple payment sheet is open
     // (the system UI pauses the WebView). The transaction is valid — Apple
     // already charged the user — but our server can't activate it without a
-    // session. Leave the transaction unfinished so StoreKit re-delivers it
-    // automatically the next time the app launches with an active session.
-    // Do NOT throw (which would fire store.error() with a confusing plugin
-    // message). Instead call failedListeners with a reassuring message so
-    // the UI resets from its loading state and the user knows what to do.
-    logError('Server returned 401 for purchase verification — session lost while Apple sheet was open. Leaving transaction pending for re-delivery after next login. transactionId:', transaction.transactionId);
+    // session.
+    //
+    // Before giving up: try to silently restore the session from the
+    // long-lived remember-me token stored in @capacitor/preferences. If the
+    // token is still valid the server issues a fresh session cookie, and we
+    // can immediately retry the verify call — the user never sees an error.
+    log('Got 401 on verify-purchase — attempting silent session restore. transactionId:', transaction.transactionId);
+    const restored = await tryRestoreSession();
+
+    if (restored) {
+      log('Session restored via remember-me token — retrying verify-purchase. transactionId:', transaction.transactionId);
+      const retry = await callVerifyPurchaseApi(jwsRepresentation);
+      log('Retry verify-purchase response: status=%d body=%o', retry.status, retry.body);
+
+      if (retry.status >= 200 && retry.status < 300) {
+        // Verified on retry — finish and notify success.
+        log('Finishing transaction after silent restore+retry:', transaction.transactionId);
+        await transaction.finish();
+        log('Transaction finished:', transaction.transactionId);
+        verifiedListeners.forEach((listener) => listener({ plan, productId }));
+        return;
+      }
+
+      // Retry produced a new error — fall through to the normal status
+      // handling below so the correct action is taken (finish on 4xx, leave
+      // pending on 5xx / network failure).
+      const retryMessage = extractServerMessage(retry.body, 'We could not verify your purchase. Please try again or contact support.');
+      log('Retry after session restore failed with status:', retry.status, 'transactionId:', transaction.transactionId);
+
+      if (retry.status === 0) {
+        logError('Network failure on retry after restore, will retry on next delivery. transactionId:', transaction.transactionId);
+        failedListeners.forEach((listener) => listener({ message: 'Your payment was received but could not be confirmed yet. Please reopen the app in a few minutes.' }));
+        return;
+      }
+      if (retry.status >= 400 && retry.status < 500) {
+        logError('Permanent rejection on retry after restore (status', retry.status, '):', retryMessage, 'transactionId:', transaction.transactionId);
+        await transaction.finish();
+        failedListeners.forEach((listener) => listener({ message: retryMessage }));
+        return;
+      }
+      if (retry.status >= 500) {
+        logError('Server 5xx on retry after restore, will retry on next delivery. status:', retry.status, 'transactionId:', transaction.transactionId);
+        failedListeners.forEach((listener) => listener({ message: 'Your payment was received but our server had a temporary issue. Please reopen the app in a few minutes.' }));
+        return;
+      }
+      // Unexpected status — treat as transient and leave pending.
+      logError('Unexpected status on retry after restore:', retry.status, 'transactionId:', transaction.transactionId);
+      failedListeners.forEach((listener) => listener({ message: 'Your payment was received but could not be confirmed yet. Please reopen the app in a few minutes.' }));
+      return;
+    }
+
+    // Session restore failed (token missing or expired). Leave the transaction
+    // unfinished so StoreKit re-delivers it automatically after the user signs
+    // back in. Do NOT throw (which would fire store.error() with a confusing
+    // plugin message). Instead call failedListeners with a reassuring message
+    // so the UI resets from its loading state and the user knows what to do.
+    logError('Session restore failed — leaving transaction pending for re-delivery after next login. transactionId:', transaction.transactionId);
     failedListeners.forEach((listener) => listener({
       message: 'Your payment was received. Please sign in again — your subscription will activate automatically.',
     }));
