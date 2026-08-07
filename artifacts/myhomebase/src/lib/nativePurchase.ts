@@ -225,18 +225,28 @@ async function verifyAndFinishTransaction(transaction: CdvPurchase.Transaction):
 
   if (status === 0) {
     // Pure network failure — no HTTP response received. Leave the transaction
-    // unfinished so StoreKit re-delivers it when connectivity returns.
+    // unfinished so StoreKit re-delivers it when connectivity returns. Return
+    // instead of throwing so cordova-plugin-purchase does NOT fire store.error()
+    // (which would show a confusing plugin-generated "could not be verified" toast
+    // on top of our own message).
     logError('Network failure verifying purchase, will retry on next delivery. transactionId:', transaction.transactionId);
-    throw new Error('Your payment was received but could not be confirmed yet. Please reopen the app in a few minutes.');
+    failedListeners.forEach((listener) => listener({ message: 'Your payment was received but could not be confirmed yet. Please reopen the app in a few minutes.' }));
+    return;
   }
 
   if (status === 401) {
-    // The user is not currently authenticated (e.g. StoreKit delivered a
-    // pending transaction before the user has signed in). Leave the transaction
-    // unfinished so StoreKit re-delivers it after login. Return silently —
-    // do NOT throw, which would fire failedListeners and show an error toast
-    // for a purchase that is still in-flight and perfectly fine.
-    logError('Server returned 401 for purchase verification — user not yet authenticated. Leaving transaction pending for retry. transactionId:', transaction.transactionId);
+    // The iOS WKWebView session expires while the Apple payment sheet is open
+    // (the system UI pauses the WebView). The transaction is valid — Apple
+    // already charged the user — but our server can't activate it without a
+    // session. Leave the transaction unfinished so StoreKit re-delivers it
+    // automatically the next time the app launches with an active session.
+    // Do NOT throw (which would fire store.error() with a confusing plugin
+    // message). Instead call failedListeners with a reassuring message so
+    // the UI resets from its loading state and the user knows what to do.
+    logError('Server returned 401 for purchase verification — session lost while Apple sheet was open. Leaving transaction pending for re-delivery after next login. transactionId:', transaction.transactionId);
+    failedListeners.forEach((listener) => listener({
+      message: 'Your payment was received. Please sign in again — your subscription will activate automatically.',
+    }));
     return;
   }
 
@@ -253,9 +263,12 @@ async function verifyAndFinishTransaction(transaction: CdvPurchase.Transaction):
 
   if (status >= 500) {
     // Our server errored. Leave the transaction unfinished so StoreKit
-    // re-delivers it on the next launch or after a restart.
+    // re-delivers it on the next launch or after a restart. Return instead of
+    // throwing so cordova-plugin-purchase does NOT independently fire
+    // store.error() with its own generic "could not be verified" message.
     logError('Server 5xx during purchase verification, will retry on next delivery. status:', status, 'transactionId:', transaction.transactionId);
-    throw new Error('Your payment was received but our server had a temporary issue. Please reopen the app in a few minutes.');
+    failedListeners.forEach((listener) => listener({ message: 'Your payment was received but our server had a temporary issue. Please reopen the app in a few minutes.' }));
+    return;
   }
 
   // 2xx — verified successfully.
