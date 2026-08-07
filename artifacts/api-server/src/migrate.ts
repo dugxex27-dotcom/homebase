@@ -206,6 +206,23 @@ export async function runMigrations() {
     console.warn('[MIGRATE] home_handoff_packages.house_id column warning (non-fatal):', err?.message ?? err);
   }
 
+  // Add house_ever_linked to home_handoff_packages.
+  // One-way flag: set to true when house_id is first assigned; never cleared.
+  // Distinguishes "package never linked to a house" (legacy AI path) from
+  // "house was linked and later deleted" (claim route returns 410 Gone).
+  try {
+    await pool.query(`
+      ALTER TABLE "home_handoff_packages"
+        ADD COLUMN IF NOT EXISTS "house_ever_linked" boolean NOT NULL DEFAULT false;
+
+      UPDATE "home_handoff_packages"
+        SET "house_ever_linked" = true
+        WHERE "house_id" IS NOT NULL;
+    `);
+  } catch (err: any) {
+    console.warn('[MIGRATE] home_handoff_packages.house_ever_linked column warning (non-fatal):', err?.message ?? err);
+  }
+
   // Create handoff_transfers — immutable audit log; one row per ownership transfer attempt.
   // No explicit ON DELETE on FKs (defaults to RESTRICT) so audit rows cannot be silently
   // removed by deleting the referenced package, house, or user.

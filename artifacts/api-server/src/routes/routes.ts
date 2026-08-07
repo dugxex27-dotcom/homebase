@@ -17825,6 +17825,9 @@ If the document contains no relevant home information, return the structure with
         buyerName: z.string().min(1).optional(),
         buyerEmail: z.string().email().optional(),
         notes: z.string().nullable().optional(),
+        // Agents can link (or unlink) an existing house record to this package.
+        // When set to a non-null value, houseEverLinked is stamped true — never cleared.
+        houseId: z.string().nullable().optional(),
         extractedData: z.object({
           systems: z.array(z.object({
             name: z.string(),
@@ -17868,6 +17871,12 @@ If the document contains no relevant home information, return the structure with
       if (parsed.data.buyerEmail !== undefined) updates.buyerEmail = parsed.data.buyerEmail;
       if (parsed.data.notes !== undefined) updates.notes = parsed.data.notes;
       if (parsed.data.extractedData !== undefined) updates.extractedData = parsed.data.extractedData;
+      if (parsed.data.houseId !== undefined) {
+        updates.houseId = parsed.data.houseId;
+        // One-way flag: once a house has ever been linked, never clear this flag —
+        // not even if the agent later sets houseId back to null.
+        if (parsed.data.houseId !== null) updates.houseEverLinked = true;
+      }
 
       const [updated] = await db.update(homeHandoffPackages).set(updates)
         .where(eq(homeHandoffPackages.id, pkg.id)).returning();
@@ -18014,7 +18023,17 @@ If the document contains no relevant home information, return the structure with
         });
       }
 
-      // ─── Fallback: no houseId → legacy AI re-extraction path (unchanged) ────────
+      // ─── Three-way dispatch: houseId is null at this point ──────────────────────
+      // Case 2: houseId null + houseEverLinked true → house was deleted after linking.
+      //   ON DELETE SET NULL fired; do NOT create a blank fallback. Return 410 Gone.
+      if (pkg.houseEverLinked) {
+        return res.status(410).json({
+          message: "The home record originally linked to this handoff has been removed and can no longer be claimed. Please contact the agent who sent this invitation.",
+        });
+      }
+
+      // Case 3: houseId null + houseEverLinked false → genuine legacy case.
+      //   Package was never linked to an existing house. Run AI re-extraction (unchanged).
       if (!pkg.houseId) {
         const extractedData = (pkg.extractedData ?? {}) as Record<string, unknown>;
         const extractedSystems = Array.isArray(extractedData.systems) ? extractedData.systems as Record<string, unknown>[] : [];

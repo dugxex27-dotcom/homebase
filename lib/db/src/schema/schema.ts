@@ -2318,6 +2318,10 @@ export const homeHandoffPackages = pgTable("home_handoff_packages", {
   // Links the package to the specific existing house record it represents.
   // Nullable: may not be resolved until the agent confirms the address match.
   houseId: varchar("house_id").references(() => houses.id, { onDelete: "set null" }),
+  // One-way flag: true once house_id has ever been set on this package.
+  // Never reset to false, even when ON DELETE SET NULL fires on house_id.
+  // Distinguishes "never linked" (legacy AI path) from "was linked, house later deleted".
+  houseEverLinked: boolean("house_ever_linked").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
