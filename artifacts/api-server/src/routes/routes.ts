@@ -18101,23 +18101,27 @@ If the document contains no relevant home information, return the structure with
 
       // ─── Transfer path: pkg.houseId is set ──────────────────────────────────────
 
-      // PRE-FLIGHT VALIDATION
-      const [targetHouse] = await db.select({ id: houses.id, homeownerId: houses.homeownerId })
-        .from(houses).where(eq(houses.id, pkg.houseId));
-      if (!targetHouse) {
+      const houseId = pkg.houseId; // confirmed non-null above
+
+      // PRE-FLIGHT (non-locking, fail-fast before opening any transaction)
+      const [preflight] = await db.select({ id: houses.id, homeownerId: houses.homeownerId })
+        .from(houses).where(eq(houses.id, houseId));
+      if (!preflight) {
         return res.status(422).json({ message: "The house linked to this package no longer exists" });
       }
-      if (targetHouse.homeownerId === userId) {
+      if (!preflight.homeownerId) {
+        return res.status(422).json({ message: "This house has no current owner on record — transfer cannot proceed" });
+      }
+      if (preflight.homeownerId === userId) {
         return res.status(409).json({ message: "You are already the owner of this house — transfer is not needed" });
       }
 
-      const previousHomeownerId = targetHouse.homeownerId;
-      const houseId = pkg.houseId; // confirmed non-null above
-
-      // Count rows to be reassigned — used by both dry-run and live transfer
+      // Count rows to be reassigned — outside the transaction (reads only, no lock needed)
       const [mlCount, srCount, haCount, hsCount, cmtCount, ciCount] = await Promise.all([
         db.select({ n: drizzleSql<number>`count(*)::int` }).from(maintenanceLogs).where(eq(maintenanceLogs.houseId, houseId)),
         db.select({ n: drizzleSql<number>`count(*)::int` }).from(serviceRecords).where(eq(serviceRecords.houseId, houseId)),
+        // homeAppliances.houseId is nullable text (no .notNull() in schema — see schema.ts ~line 399);
+        // as any works around Drizzle's eq() overload which rejects string for nullable text columns
         db.select({ n: drizzleSql<number>`count(*)::int` }).from(homeAppliances).where(eq(homeAppliances.houseId as any, houseId)),
         db.select({ n: drizzleSql<number>`count(*)::int` }).from(homeSystems).where(eq(homeSystems.houseId, houseId)),
         db.select({ n: drizzleSql<number>`count(*)::int` }).from(customMaintenanceTasks).where(eq(customMaintenanceTasks.houseId, houseId)),
@@ -18134,12 +18138,12 @@ If the document contains no relevant home information, return the structure with
         crm_invoices:     ciCount[0]?.n ?? 0,
       };
 
-      // DRY-RUN: record what would change, touch no data
+      // DRY-RUN: no writes, no lock needed; previousHomeownerId from the non-locking preflight read
       if (dryRun) {
         const [dryRow] = await db.insert(handoffTransfers).values({
           packageId: pkg.id,
           houseId,
-          previousHomeownerId,
+          previousHomeownerId: preflight.homeownerId,
           newHomeownerId: userId,
           tablesUpdated,
           status: "dry_run",
@@ -18148,9 +18152,39 @@ If the document contains no relevant home information, return the structure with
       }
 
       // TRANSACTIONAL TRANSFER
+      // capturedPreviousOwner is set inside the transaction from the FOR UPDATE read and
+      // hoisted here so the catch block and post-commit verification can reference it.
       let transferRow: typeof handoffTransfers.$inferSelect | null = null;
+      let capturedPreviousOwner: string | null = null;
+      let txPreflightError: { status: number; message: string } | null = null;
+
       try {
         await db.transaction(async (tx) => {
+          // SELECT FOR UPDATE: lock the house row for the duration of the transaction,
+          // closing the race window between reading homeownerId and writing it.
+          // previousHomeownerId is captured from this locked read, not from the preflight above.
+          const lockedRows = await tx.execute(
+            drizzleSql`SELECT id, homeowner_id FROM houses WHERE id = ${houseId} FOR UPDATE`
+          );
+          const locked = lockedRows.rows[0] as { id: string; homeowner_id: string | null } | undefined;
+
+          // Re-validate against the authoritative locked state (a concurrent claim may have changed ownership)
+          if (!locked) {
+            txPreflightError = { status: 422, message: "The house linked to this package no longer exists" };
+            return;
+          }
+          if (!locked.homeowner_id) {
+            txPreflightError = { status: 422, message: "This house has no current owner on record — transfer cannot proceed" };
+            return;
+          }
+          if (locked.homeowner_id === userId) {
+            txPreflightError = { status: 409, message: "You are already the owner of this house — transfer is not needed" };
+            return;
+          }
+
+          // Authoritative previous owner, captured from the locked row
+          capturedPreviousOwner = locked.homeowner_id;
+
           // 1. Reassign the house itself
           await tx.update(houses)
             .set({ homeownerId: userId })
@@ -18162,6 +18196,8 @@ If the document contains no relevant home information, return the structure with
           await tx.update(serviceRecords)
             .set({ homeownerId: userId })
             .where(eq(serviceRecords.houseId, houseId));
+          // homeAppliances.houseId is nullable text (no .notNull() in schema — see schema.ts ~line 399);
+          // as any works around Drizzle's eq() overload which rejects string for nullable text columns
           await tx.update(homeAppliances)
             .set({ homeownerId: userId })
             .where(eq(homeAppliances.houseId as any, houseId));
@@ -18185,7 +18221,7 @@ If the document contains no relevant home information, return the structure with
           const [inserted] = await tx.insert(handoffTransfers).values({
             packageId: pkg.id,
             houseId,
-            previousHomeownerId,
+            previousHomeownerId: capturedPreviousOwner,
             newHomeownerId: userId,
             tablesUpdated,
             status: "completed",
@@ -18197,7 +18233,8 @@ If the document contains no relevant home information, return the structure with
         await db.insert(handoffTransfers).values({
           packageId: pkg.id,
           houseId,
-          previousHomeownerId,
+          // fall back to preflight read if the lock was never acquired (e.g. connection error)
+          previousHomeownerId: capturedPreviousOwner ?? preflight.homeownerId,
           newHomeownerId: userId,
           tablesUpdated: {},
           status: "failed",
@@ -18207,12 +18244,20 @@ If the document contains no relevant home information, return the structure with
         return res.status(500).json({ message: "Ownership transfer failed and was rolled back. A failure record has been logged." });
       }
 
+      // Pre-condition failed inside the transaction (re-validation against the locked row)
+      if (txPreflightError) {
+        return res.status(txPreflightError.status).json({ message: txPreflightError.message });
+      }
+
       // POST-COMMIT VERIFICATION: any row still pointing at the old owner is a bug
+      const previousHomeownerId = capturedPreviousOwner!;
       const [vml, vsr, vha, vhs, vcmt, vci, vh] = await Promise.all([
         db.select({ n: drizzleSql<number>`count(*)::int` }).from(maintenanceLogs)
           .where(and(eq(maintenanceLogs.houseId, houseId), eq(maintenanceLogs.homeownerId, previousHomeownerId))),
         db.select({ n: drizzleSql<number>`count(*)::int` }).from(serviceRecords)
           .where(and(eq(serviceRecords.houseId, houseId), eq(serviceRecords.homeownerId, previousHomeownerId))),
+        // homeAppliances.houseId is nullable text (no .notNull() in schema — see schema.ts ~line 399);
+        // as any works around Drizzle's eq() overload which rejects string for nullable text columns
         db.select({ n: drizzleSql<number>`count(*)::int` }).from(homeAppliances)
           .where(and(eq(homeAppliances.houseId as any, houseId), eq(homeAppliances.homeownerId, previousHomeownerId))),
         db.select({ n: drizzleSql<number>`count(*)::int` }).from(homeSystems)
