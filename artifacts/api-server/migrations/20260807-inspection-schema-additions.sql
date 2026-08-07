@@ -2,13 +2,11 @@
 -- Adds columns for inspection-derived data, confidence scoring, and provenance tracking.
 -- Idempotent — safe to re-run; all statements use ADD COLUMN IF NOT EXISTS / IF NOT EXISTS.
 --
--- Columns NOT added because they already exist in the schema:
---   houses.year_built        (already present)
---   houses.square_footage    (already present)
-
-
 -- ── houses ────────────────────────────────────────────────────────────────────
--- hvac_age / hvac_condition: inspection-extracted HVAC information.
+-- year_built / square_footage: already present in schema.ts but included here
+--   defensively so the migration is self-contained and safe to run against any
+--   environment that may have been provisioned without them.
+-- hvac_age / hvac_condition: inspection-extracted HVAC detail.
 -- property_address_verified: cross-reference text from the inspection cover page;
 --   never overwrites houses.address (homeowner-entered).
 -- field_sources: jsonb map of column-name -> source home_documents.id;
@@ -16,6 +14,8 @@
 --   e.g. {"hvac_type": "doc-uuid-123", "hvac_age": "doc-uuid-123"}
 
 ALTER TABLE houses
+  ADD COLUMN IF NOT EXISTS year_built                INTEGER,
+  ADD COLUMN IF NOT EXISTS square_footage            INTEGER,
   ADD COLUMN IF NOT EXISTS hvac_age                  INTEGER,
   ADD COLUMN IF NOT EXISTS hvac_condition             TEXT,
   ADD COLUMN IF NOT EXISTS property_address_verified  TEXT,
