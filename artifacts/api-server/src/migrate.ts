@@ -190,6 +190,50 @@ export async function runMigrations() {
     console.warn('[MIGRATE] stripe_processed_events table setup warning (non-fatal):', err?.message ?? err);
   }
 
+  // Add house_id to home_handoff_packages — links a package to the specific
+  // existing house record it represents (set by agent at creation/send time).
+  // ON DELETE SET NULL: package survives if the house row is ever removed.
+  try {
+    await pool.query(`
+      ALTER TABLE "home_handoff_packages"
+        ADD COLUMN IF NOT EXISTS "house_id" varchar
+        REFERENCES "houses"("id") ON DELETE SET NULL;
+
+      CREATE INDEX IF NOT EXISTS "IDX_handoff_packages_house_id"
+        ON "home_handoff_packages"("house_id");
+    `);
+  } catch (err: any) {
+    console.warn('[MIGRATE] home_handoff_packages.house_id column warning (non-fatal):', err?.message ?? err);
+  }
+
+  // Create handoff_transfers — immutable audit log; one row per ownership transfer attempt.
+  // No explicit ON DELETE on FKs (defaults to RESTRICT) so audit rows cannot be silently
+  // removed by deleting the referenced package, house, or user.
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS "handoff_transfers" (
+        "id"                    varchar   PRIMARY KEY DEFAULT gen_random_uuid(),
+        "package_id"            varchar   NOT NULL REFERENCES "home_handoff_packages"("id"),
+        "house_id"              varchar   NOT NULL REFERENCES "houses"("id"),
+        "previous_homeowner_id" varchar   NOT NULL REFERENCES "users"("id"),
+        "new_homeowner_id"      varchar   NOT NULL REFERENCES "users"("id"),
+        "tables_updated"        jsonb,
+        "status"                text      NOT NULL,
+        "error_detail"          text,
+        "created_at"            timestamp NOT NULL DEFAULT now()
+      );
+
+      CREATE INDEX IF NOT EXISTS "IDX_handoff_transfers_package_id"
+        ON "handoff_transfers"("package_id");
+      CREATE INDEX IF NOT EXISTS "IDX_handoff_transfers_house_id"
+        ON "handoff_transfers"("house_id");
+      CREATE INDEX IF NOT EXISTS "IDX_handoff_transfers_status"
+        ON "handoff_transfers"("status");
+    `);
+  } catch (err: any) {
+    console.warn('[MIGRATE] handoff_transfers table warning (non-fatal):', err?.message ?? err);
+  }
+
   await pool.end();
 }
 

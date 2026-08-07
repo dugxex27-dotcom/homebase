@@ -2315,12 +2315,16 @@ export const homeHandoffPackages = pgTable("home_handoff_packages", {
   claimedByUserId: varchar("claimed_by_user_id").references(() => users.id, { onDelete: "set null" }),
   claimedAt: timestamp("claimed_at"),
   sentAt: timestamp("sent_at"),
+  // Links the package to the specific existing house record it represents.
+  // Nullable: may not be resolved until the agent confirms the address match.
+  houseId: varchar("house_id").references(() => houses.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   index("IDX_handoff_packages_agent_id").on(table.agentId),
   index("IDX_handoff_packages_invite_token").on(table.inviteToken),
   index("IDX_handoff_packages_status").on(table.status),
+  index("IDX_handoff_packages_house_id").on(table.houseId),
 ]);
 
 export const insertHomeHandoffPackageSchema = createInsertSchema(homeHandoffPackages).omit({ id: true, createdAt: true, updatedAt: true });
@@ -2342,6 +2346,28 @@ export const handoffDocuments = pgTable("handoff_documents", {
 export const insertHandoffDocumentSchema = createInsertSchema(handoffDocuments).omit({ id: true, createdAt: true });
 export type InsertHandoffDocument = z.infer<typeof insertHandoffDocumentSchema>;
 export type HandoffDocument = typeof handoffDocuments.$inferSelect;
+
+// Immutable audit log — one row inserted per ownership-transfer attempt; never updated.
+// No explicit onDelete on FKs (defaults to RESTRICT) so rows cannot be silently removed
+// by deleting the referenced package, house, or user.
+export const handoffTransfers = pgTable("handoff_transfers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  packageId: varchar("package_id").notNull().references(() => homeHandoffPackages.id),
+  houseId: varchar("house_id").notNull().references(() => houses.id),
+  previousHomeownerId: varchar("previous_homeowner_id").notNull().references(() => users.id),
+  newHomeownerId: varchar("new_homeowner_id").notNull().references(() => users.id),
+  tablesUpdated: jsonb("tables_updated"), // e.g. { maintenance_logs: 42, service_records: 8 }
+  status: text("status").notNull(), // "dry_run" | "completed" | "failed"
+  errorDetail: text("error_detail"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("IDX_handoff_transfers_package_id").on(table.packageId),
+  index("IDX_handoff_transfers_house_id").on(table.houseId),
+  index("IDX_handoff_transfers_status").on(table.status),
+]);
+
+export type HandoffTransfer = typeof handoffTransfers.$inferSelect;
+export type InsertHandoffTransfer = typeof handoffTransfers.$inferInsert;
 
 // ─── Home Document Vault ─────────────────────────────────────────────────────
 // Homeowners can upload and organize any home-related documents.
