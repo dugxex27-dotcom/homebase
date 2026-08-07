@@ -332,6 +332,51 @@ describe("MemStorage.transferHouseOwnership", () => {
     expect(invoicesForA.some((i) => i.id === unlinkedInvoice.id)).toBe(true);
   });
 
+  it("clears paymentToken and paymentTokenExpiresAt on transferred invoices so old payment links become invalid", async () => {
+    const house = await storage.createHouse({
+      homeownerId: ownerA,
+      name: "Token Test House",
+      climateZone: "mixed",
+      homeSystems: [],
+      address: "123 Token St",
+      isDefault: false,
+    });
+
+    // Create an invoice with an active payment token
+    const invoice = await storage.createCrmInvoice({
+      contractorUserId: "contractor-1",
+      clientId: "client-1",
+      invoiceNumber: "INV-TOKEN-001",
+      title: "Roofing Service",
+      subtotal: "500.00",
+      total: "500.00",
+      amountDue: "500.00",
+      lineItems: [],
+      homeownerId: ownerA,
+      houseId: house.id,
+    });
+
+    // Simulate a payment token having been issued before transfer
+    const futureExpiry = new Date(Date.now() + 72 * 60 * 60 * 1000);
+    await storage.updateCrmInvoice(invoice.id, {
+      paymentToken: "abc123hash",
+      paymentTokenExpiresAt: futureExpiry,
+    });
+
+    // Verify the token is set before transfer
+    const before = await storage.getCrmInvoice(invoice.id);
+    expect(before?.paymentToken).toBe("abc123hash");
+    expect(before?.paymentTokenExpiresAt).not.toBeNull();
+
+    await storage.transferHouseOwnership(house.id, ownerA, ownerB);
+
+    // Token must be cleared after transfer so the old owner's link no longer works
+    const after = await storage.getCrmInvoice(invoice.id);
+    expect(after?.homeownerId).toBe(ownerB);
+    expect(after?.paymentToken).toBeNull();
+    expect(after?.paymentTokenExpiresAt).toBeNull();
+  });
+
   it("returns crmInvoicesTransferred=0 and invoiceAnalysesTransferred=0 when there is nothing to transfer", async () => {
     const house = await storage.createHouse({
       homeownerId: ownerA,

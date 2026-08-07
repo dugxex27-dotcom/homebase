@@ -3972,13 +3972,17 @@ export class MemStorage implements IStorage {
       }
     }
 
-    // Transfer CRM invoices linked to the transferred house
+    // Transfer CRM invoices linked to the transferred house.
+    // Payment-link tokens are invalidated (cleared) so the previous owner's
+    // saved links no longer grant access to the invoice.
     let crmInvoicesTransferred = 0;
     for (const [id, invoice] of this.crmInvoicesMap.entries()) {
       if (invoice.houseId === houseId && invoice.homeownerId === fromHomeownerId) {
         const updated: CrmInvoice = {
           ...invoice,
           homeownerId: toHomeownerId,
+          paymentToken: null,
+          paymentTokenExpiresAt: null,
         };
         this.crmInvoicesMap.set(id, updated);
         crmInvoicesTransferred++;
@@ -7190,8 +7194,9 @@ class DbStorage implements IStorage {
       db.update(serviceRecords).set({ homeownerId: toHomeownerId }).where(and(eq(serviceRecords.houseId, houseId), eq(serviceRecords.homeownerId, fromHomeownerId))).returning(),
       db.update(taskCompletions).set({ homeownerId: toHomeownerId }).where(and(eq(taskCompletions.houseId, houseId), eq(taskCompletions.homeownerId, fromHomeownerId))).returning(),
       db.update(taskOverrides).set({ homeownerId: toHomeownerId }).where(and(eq(taskOverrides.houseId, houseId), eq(taskOverrides.homeownerId, fromHomeownerId))).returning(),
-      // CRM invoices linked to the transferred house (homeownerId is nullable on this table)
-      db.update(crmInvoices).set({ homeownerId: toHomeownerId }).where(and(eq(crmInvoices.houseId, houseId), eq(crmInvoices.homeownerId, fromHomeownerId))).returning(),
+      // CRM invoices linked to the transferred house (homeownerId is nullable on this table).
+      // Payment-link tokens are invalidated so the old owner's saved links no longer work.
+      db.update(crmInvoices).set({ homeownerId: toHomeownerId, paymentToken: null, paymentTokenExpiresAt: null }).where(and(eq(crmInvoices.houseId, houseId), eq(crmInvoices.homeownerId, fromHomeownerId))).returning(),
       // Invoice analyses are keyed by houseId; re-assign homeownerId so new owner can list them
       db.update(invoiceAnalyses).set({ homeownerId: toHomeownerId }).where(and(eq(invoiceAnalyses.houseId, houseId), eq(invoiceAnalyses.homeownerId, fromHomeownerId))).returning(),
     ]);
