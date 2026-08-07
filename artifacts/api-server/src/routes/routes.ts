@@ -18526,6 +18526,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         }
 
         // Save appliances to homeAppliances table
+        // Dedup: match on house_id + name (case-insensitive) — update existing row instead of inserting a duplicate.
         const appliancesRaw = Array.isArray(confirmedData.appliances) ? confirmedData.appliances as Record<string, unknown>[] : [];
         for (const appliance of appliancesRaw) {
           const name = (appliance.name as string | null) || "";
@@ -18535,22 +18536,43 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
             const conditionNote = appliance.condition ? `Condition: ${appliance.condition}` : "";
             const userNotes = (appliance.notes as string | null) || "";
             const combinedNotes = [conditionNote, userNotes].filter(Boolean).join(". ");
-            await db.insert(homeAppliances).values({
-              homeownerId: userId,
-              houseId: doc.houseId,
-              name,
-              make: (appliance.make as string | null) || "",
-              model: (appliance.model as string | null) || "",
-              yearInstalled,
-              location: (appliance.location as string | null) || null,
-              notes: combinedNotes || null,
-            } as any);
+
+            const [existingAppliance] = await db.select({ id: homeAppliances.id })
+              .from(homeAppliances)
+              .where(and(
+                eq(homeAppliances.houseId as any, doc.houseId),
+                drizzleSql`LOWER(${homeAppliances.name}) = LOWER(${name})`,
+              ))
+              .limit(1);
+
+            if (existingAppliance) {
+              // Update in place — preserve yearInstalled if the inspection didn't find one
+              await db.update(homeAppliances).set({
+                make: (appliance.make as string | null) || "",
+                model: (appliance.model as string | null) || "",
+                ...(yearInstalled !== null ? { yearInstalled } : {}),
+                location: (appliance.location as string | null) || null,
+                notes: combinedNotes || null,
+              } as any).where(eq(homeAppliances.id, existingAppliance.id));
+            } else {
+              await db.insert(homeAppliances).values({
+                homeownerId: userId,
+                houseId: doc.houseId,
+                name,
+                make: (appliance.make as string | null) || "",
+                model: (appliance.model as string | null) || "",
+                yearInstalled,
+                location: (appliance.location as string | null) || null,
+                notes: combinedNotes || null,
+              } as any);
+            }
           } catch (appErr) {
             console.warn("[INSPECTION] Failed to save appliance:", name, appErr);
           }
         }
 
         // Save mechanical systems to homeSystems table
+        // Dedup: match on house_id + systemType (case-insensitive) — update existing row instead of inserting a duplicate.
         const mechanicalRaw = Array.isArray(confirmedData.mechanicalSystems) ? confirmedData.mechanicalSystems as Record<string, unknown>[] : [];
         // Also create system records for major structural systems found in the report
         const structuralSystems: Array<{ systemType: string; notes: string; installationYear: number | null }> = [];
@@ -18594,14 +18616,32 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         }))]) {
           if (!sys.systemType) continue;
           try {
-            await db.insert(homeSystems).values({
-              homeownerId: userId,
-              houseId: doc.houseId,
-              systemType: sys.systemType,
-              installationYear: sys.installationYear || null,
-              brand: (sys as any).brand || null,
-              notes: sys.notes || null,
-            } as any);
+            const [existingSystem] = await db.select({ id: homeSystems.id })
+              .from(homeSystems)
+              .where(and(
+                eq(homeSystems.houseId, doc.houseId),
+                drizzleSql`LOWER(${homeSystems.systemType}) = LOWER(${sys.systemType})`,
+              ))
+              .limit(1);
+
+            if (existingSystem) {
+              // Update in place — preserve installationYear if the inspection didn't report one
+              await db.update(homeSystems).set({
+                ...(sys.installationYear !== null ? { installationYear: sys.installationYear } : {}),
+                ...((sys as any).brand ? { brand: (sys as any).brand } : {}),
+                notes: sys.notes || null,
+                updatedAt: new Date(),
+              } as any).where(eq(homeSystems.id, existingSystem.id));
+            } else {
+              await db.insert(homeSystems).values({
+                homeownerId: userId,
+                houseId: doc.houseId,
+                systemType: sys.systemType,
+                installationYear: sys.installationYear || null,
+                brand: (sys as any).brand || null,
+                notes: sys.notes || null,
+              } as any);
+            }
           } catch (sysErr) {
             console.warn("[INSPECTION] Failed to save system:", sys.systemType, sysErr);
           }
