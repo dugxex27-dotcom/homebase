@@ -18439,6 +18439,11 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
           plumbingType: houses.plumbingType,
           foundationType: houses.foundationType,
           waterHeaterType: houses.waterHeaterType,
+          yearBuilt: houses.yearBuilt,
+          squareFootage: houses.squareFootage,
+          hvacAge: houses.hvacAge,
+          hvacCondition: houses.hvacCondition,
+          fieldSources: houses.fieldSources,
         }).from(houses)
           .where(and(eq(houses.id, doc.houseId), eq(houses.homeownerId, userId)));
         if (!ownedHouse) {
@@ -18517,11 +18522,86 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
           }
         }
 
+        // yearBuilt — guarded integer write (only if null); log parse issues
+        const rawYearBuilt = confirmedData.yearBuilt;
+        if (rawYearBuilt !== undefined && rawYearBuilt !== null) {
+          if (typeof rawYearBuilt !== "number") {
+            console.warn(`[INSPECTION] yearBuilt parse issue for houseId=${doc.houseId}: expected number, got`, typeof rawYearBuilt, rawYearBuilt);
+          } else if (!ownedHouse.yearBuilt) {
+            profileUpdate.yearBuilt = rawYearBuilt;
+          } else {
+            skipped.push(`yearBuilt (existing: ${ownedHouse.yearBuilt}, inspection: ${rawYearBuilt})`);
+          }
+        }
+
+        // squareFootage — guarded integer write (only if null); log parse issues
+        const rawSquareFootage = confirmedData.squareFootage;
+        if (rawSquareFootage !== undefined && rawSquareFootage !== null) {
+          if (typeof rawSquareFootage !== "number") {
+            console.warn(`[INSPECTION] squareFootage parse issue for houseId=${doc.houseId}: expected number, got`, typeof rawSquareFootage, rawSquareFootage);
+          } else if (!ownedHouse.squareFootage) {
+            profileUpdate.squareFootage = rawSquareFootage;
+          } else {
+            skipped.push(`squareFootage (existing: ${ownedHouse.squareFootage}, inspection: ${rawSquareFootage})`);
+          }
+        }
+
+        // hvacAge — guarded integer write (only if null); log parse issues
+        const rawHvacAge = confirmedData.hvacAge;
+        if (rawHvacAge !== undefined && rawHvacAge !== null) {
+          if (typeof rawHvacAge !== "number") {
+            console.warn(`[INSPECTION] hvacAge parse issue for houseId=${doc.houseId}: expected number, got`, typeof rawHvacAge, rawHvacAge);
+          } else if (!ownedHouse.hvacAge) {
+            profileUpdate.hvacAge = rawHvacAge;
+          } else {
+            skipped.push(`hvacAge (existing: ${ownedHouse.hvacAge}, inspection: ${rawHvacAge})`);
+          }
+        }
+
+        // hvacCondition — guarded text write (only if null)
+        const hvacCondition = confirmedData.hvacCondition as string | null;
+        if (hvacCondition) {
+          if (!ownedHouse.hvacCondition) {
+            profileUpdate.hvacCondition = hvacCondition;
+          } else {
+            skipped.push(`hvacCondition (existing: ${ownedHouse.hvacCondition}, inspection: ${hvacCondition})`);
+          }
+        }
+
+        // propertyAddressVerified — always write; records what the inspection doc said the address was.
+        // This is NOT the authoritative address — houses.address is never touched here.
+        const rawPropertyAddress = confirmedData.propertyAddress as string | null;
+        if (rawPropertyAddress) {
+          profileUpdate.propertyAddressVerified = rawPropertyAddress;
+        }
+
         if (skipped.length > 0) {
           console.warn(`[INSPECTION] Skipped overwriting existing house fields for houseId=${doc.houseId}:`, skipped);
         }
 
         if (Object.keys(profileUpdate).length > 0) {
+          // Build field_sources map: for every key actually written, record this document as the source.
+          // Merge into the existing jsonb rather than overwriting the whole object.
+          const camelToColumn: Record<string, string> = {
+            hvacType: "hvac_type",
+            plumbingType: "plumbing_type",
+            foundationType: "foundation_type",
+            waterHeaterType: "water_heater_type",
+            yearBuilt: "year_built",
+            squareFootage: "square_footage",
+            hvacAge: "hvac_age",
+            hvacCondition: "hvac_condition",
+            propertyAddressVerified: "property_address_verified",
+          };
+          const existingFieldSources = (ownedHouse.fieldSources as Record<string, string> | null) ?? {};
+          const newFieldSourceEntries: Record<string, string> = {};
+          for (const key of Object.keys(profileUpdate)) {
+            const colName = camelToColumn[key];
+            if (colName) newFieldSourceEntries[colName] = doc.id;
+          }
+          if (Object.keys(newFieldSourceEntries).length > 0) {
+            profileUpdate.fieldSources = { ...existingFieldSources, ...newFieldSourceEntries };
+          }
           await db.update(houses).set(profileUpdate as any).where(eq(houses.id, doc.houseId));
         }
 
@@ -18593,6 +18673,11 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
                 });
               }
 
+              // source_document_id: only stamp when at least one data field was actually written
+              if (Object.keys(applianceUpdate).length > 0) {
+                applianceUpdate.sourceDocumentId = doc.id;
+              }
+
               await db.update(homeAppliances).set(applianceUpdate as any).where(eq(homeAppliances.id, existingAppliance.id));
             } else {
               await db.insert(homeAppliances).values({
@@ -18604,6 +18689,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
                 yearInstalled,
                 location: (appliance.location as string | null) || null,
                 notes: combinedNotes || null,
+                sourceDocumentId: doc.id,
               } as any);
             }
           } catch (appErr) {
@@ -18699,6 +18785,11 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
                 });
               }
 
+              // source_document_id: only stamp when at least one data field (beyond updatedAt) was actually written
+              if (Object.keys(systemUpdate).some(k => k !== "updatedAt")) {
+                systemUpdate.sourceDocumentId = doc.id;
+              }
+
               await db.update(homeSystems).set(systemUpdate as any).where(eq(homeSystems.id, existingSystem.id));
             } else {
               await db.insert(homeSystems).values({
@@ -18708,6 +18799,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
                 installationYear: sys.installationYear || null,
                 brand: (sys as any).brand || null,
                 notes: sys.notes || null,
+                sourceDocumentId: doc.id,
               } as any);
             }
           } catch (sysErr) {
