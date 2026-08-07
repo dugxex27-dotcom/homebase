@@ -408,6 +408,7 @@ export const homeAppliances = pgTable("home_appliances", {
   location: text("location"), // Kitchen, basement, garage, etc.
   warrantyExpiration: text("warranty_expiration"),
   lastServiceDate: text("last_service_date"),
+  sourceDocumentId: varchar("source_document_id").references(() => homeDocuments.id, { onDelete: "set null" }), // which inspection report created/last updated this row; null = manual entry
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -559,6 +560,11 @@ export const houses = pgTable("houses", {
   primaryHeatingFuel: text("primary_heating_fuel"), // "natural_gas", "electric", "oil", "propane", "wood", "other"
   hin: text("hin"), // Home Identification Number (assigned by HIN service)
   hinAssignedAt: timestamp("hin_assigned_at"), // When the HIN was assigned
+  // Inspection-derived fields
+  hvacAge: integer("hvac_age"), // Age of HVAC system in years, from inspection report
+  hvacCondition: text("hvac_condition"), // e.g. "good", "fair", "poor", from inspection report
+  propertyAddressVerified: text("property_address_verified"), // Address text from inspection cover page (cross-check only — never overwrites houses.address)
+  fieldSources: jsonb("field_sources"), // maps column-name -> home_documents.id — only set by inspection pipeline, not manual edits
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -800,6 +806,7 @@ export const homeSystems = pgTable("home_systems", {
   model: text("model"), // Model number
   serialNumber: text("serial_number"), // Serial number of the system/fixture
   notes: text("notes"), // Additional notes about the system
+  sourceDocumentId: varchar("source_document_id").references(() => homeDocuments.id, { onDelete: "set null" }), // which inspection report created/last updated this row; null = manual entry
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -2357,6 +2364,7 @@ export const homeDocuments = pgTable("home_documents", {
   extractedData: jsonb("extracted_data"), // AI-extracted inspection fields
   extractionConfirmed: boolean("extraction_confirmed").notNull().default(false), // true after user reviews/confirms
   flaggedItemCount: integer("flagged_item_count").default(0), // count of deficiencies flagged
+  aiConfidence: text("ai_confidence"), // overall extraction confidence: "high" | "medium" | "low"; null = not yet extracted
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("IDX_home_documents_homeowner_id").on(table.homeownerId),
