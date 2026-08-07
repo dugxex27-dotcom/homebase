@@ -14,6 +14,7 @@ import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaint
 import { calculateDIYSavingsAmount } from "../shared/cost-helpers";
 import { calculateMechanicalDocumentationBonus } from "../shared/maintenance-scheduler";
 import { invoiceOrphanCleanupScheduler } from "../invoice-orphan-cleanup-scheduler";
+import { referralAccrualScheduler } from "../referral-accrual-scheduler";
 import { extractInvoiceData, verifyDIYPhotos, type InvoiceExtraction } from "../invoice-analysis-service";
 import { invoiceAnalyses, contractorBoosts, affiliateReferrals, subscriptionCycleEvents, contractorInvoiceUploads, companies, proposals, securityAuditLogs, companyDivisions, companyBulkImports, insertCompanyDivisionSchema, conversations, messages } from "@workspace/db";
 import pushRoutes from "../push-routes";
@@ -6369,6 +6370,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       req.log?.error({ err: error }, '[INVOICE-ORPHAN-CLEANUP] On-demand run failed');
       res.status(500).json({ message: 'Invoice orphan cleanup failed' });
+    }
+  });
+
+  // Admin endpoint to trigger a referral accrual run on demand (dry-run / backfill)
+  app.post('/api/admin/referral-accrual/run', requireAdmin, async (req: any, res: any) => {
+    try {
+      const result = await referralAccrualScheduler.runNow();
+      res.json(result);
+    } catch (error) {
+      req.log?.error({ err: error }, '[REFERRAL-ACCRUAL] On-demand run failed');
+      res.status(500).json({ message: 'Referral accrual run failed' });
     }
   });
 
