@@ -3947,6 +3947,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // If referred by an agent, create the affiliate referral record immediately
       if (referringAgent) {
+        // Self-referral guard — an agent cannot apply their own referral code.
+        if (referringAgent.id === userId) {
+          return res.status(400).json({ message: "You cannot apply your own referral code." });
+        }
+
         const signupDate = new Date();
         const trialEndDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
         await storage.createAffiliateReferral({
@@ -4551,8 +4556,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        // Create affiliate referral record if referred by an agent
-        if (referringAgent) {
+        // Create affiliate referral record if referred by an agent.
+        // Self-referral guard: skip silently rather than failing the whole registration —
+        // if someone somehow submits their own code at signup, don't block account creation.
+        if (referringAgent && referringAgent.id !== user.id) {
           const signupDate = new Date();
           const trialEndDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
           
