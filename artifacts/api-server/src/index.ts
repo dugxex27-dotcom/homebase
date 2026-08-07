@@ -21,6 +21,7 @@ import { invoiceOrphanCleanupScheduler } from "./invoice-orphan-cleanup-schedule
 import { storageOrphanCleanupScheduler } from "./storage-orphan-cleanup-scheduler";
 import { boostExpiryScheduler } from "./boost-expiry-scheduler";
 import { fraudScheduler } from "./fraud-scheduler";
+import { referralAccrualScheduler } from "./referral-accrual-scheduler";
 import { initLeaderLease, releaseLeaderLease } from "./lib/scheduler-leader";
 
 const allSchedulers = [
@@ -36,6 +37,7 @@ const allSchedulers = [
   storageOrphanCleanupScheduler,
   boostExpiryScheduler,
   fraudScheduler,
+  referralAccrualScheduler,
 ];
 
 // ---------------------------------------------------------------------------
