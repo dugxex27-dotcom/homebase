@@ -18461,7 +18461,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
             "heat pump": "heat_pump", "central air": "central_air", "central ac": "central_air",
             "boiler": "boiler", "ductless": "ductless", "mini split": "ductless",
           };
-          const mappedHvac = hvacMap[hvacType.toLowerCase()] || null;
+          const mappedHvac = hvacMap[hvacType.trim().toLowerCase()] || null;
           if (mappedHvac) {
             if (!ownedHouse.hvacType) {
               profileUpdate.hvacType = mappedHvac;
@@ -18477,7 +18477,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
           const plumbMap: Record<string, string> = {
             "copper": "copper", "pex": "pex", "cpvc": "cpvc", "galvanized": "galvanized", "mixed": "mixed",
           };
-          const mappedPlumb = plumbMap[plumbingType.toLowerCase()] || null;
+          const mappedPlumb = plumbMap[plumbingType.trim().toLowerCase()] || null;
           if (mappedPlumb) {
             if (!ownedHouse.plumbingType) {
               profileUpdate.plumbingType = mappedPlumb;
@@ -18495,7 +18495,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
             "basement": "basement", "full basement": "basement",
             "pier and beam": "pier_and_beam", "pier & beam": "pier_and_beam",
           };
-          const mappedFound = foundMap[foundationType.toLowerCase()] || null;
+          const mappedFound = foundMap[foundationType.trim().toLowerCase()] || null;
           if (mappedFound) {
             if (!ownedHouse.foundationType) {
               profileUpdate.foundationType = mappedFound;
@@ -18512,7 +18512,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
             "tank": "tank", "storage tank": "tank", "tankless": "tankless",
             "on-demand": "tankless", "hybrid": "hybrid", "heat pump water heater": "hybrid",
           };
-          const mappedWh = whMap[waterHeaterType.toLowerCase()] || null;
+          const mappedWh = whMap[waterHeaterType.trim().toLowerCase()] || null;
           if (mappedWh) {
             if (!ownedHouse.waterHeaterType) {
               profileUpdate.waterHeaterType = mappedWh;
