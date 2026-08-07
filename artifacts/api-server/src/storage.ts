@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { type Contractor, type InsertContractor, type Company, type InsertCompany, type CompanyInviteCode, type InsertCompanyInviteCode, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type HomeApplianceManual, type InsertHomeApplianceManual, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type PushToken, type InsertPushToken, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics, type TaskOverride, type InsertTaskOverride, type Country, type InsertCountry, type Region, type InsertRegion, type ClimateZone, type InsertClimateZone, type RegulatoryBody, type InsertRegulatoryBody, type RegionalMaintenanceTask, type InsertRegionalMaintenanceTask, type TaskCompletion, type InsertTaskCompletion, type Achievement, type InsertAchievement, type AchievementDefinition, type UserAchievement, type InsertUserAchievement, type SearchAnalytics, type InsertSearchAnalytics, type InviteCode, type InsertInviteCode, type AgentProfile, type InsertAgentProfile, type AffiliateReferral, type InsertAffiliateReferral, type SubscriptionCycleEvent, type InsertSubscriptionCycleEvent, type AffiliatePayout, type InsertAffiliatePayout, type AgentVerificationAudit, type InsertAgentVerificationAudit, contractorAppointments, notifications, type SupportTicket, type InsertSupportTicket, type TicketReply, type InsertTicketReply, type SubscriptionPlan, users, contractors, companies, contractorLicenses, countries, regions, climateZones, regulatoryBodies, regionalMaintenanceTasks, taskCompletions, achievements, achievementDefinitions, userAchievements, maintenanceLogs, searchAnalytics, inviteCodes, agentProfiles, affiliateReferrals, subscriptionCycleEvents, affiliatePayouts, agentVerificationAudits, supportTickets, ticketReplies, houses, homeSystems, customMaintenanceTasks, taskOverrides, serviceRecords, conversations, messages, proposals, houseTransfers, subscriptionPlans, pushTokens, contractorAnalytics, contractorBoosts, pushSubscriptions, homeAppliances, homeApplianceManuals, companyInviteCodes, products, contractorReviews, reviewFlags, type ReviewFlag, type InsertReviewFlag, type CrmLead, type InsertCrmLead, type CrmNote, type InsertCrmNote, type ErrorLog, type InsertErrorLog, type ErrorBreadcrumb, type InsertErrorBreadcrumb, type CrmIntegration, type InsertCrmIntegration, type WebhookLog, type InsertWebhookLog, crmLeads, crmNotes, errorLogs, errorBreadcrumbs, crmIntegrations, webhookLogs, type CrmClient, type InsertCrmClient, type CrmJob, type InsertCrmJob, type CrmQuote, type InsertCrmQuote, type CrmInvoice, type InsertCrmInvoice, crmClients, crmJobs, crmQuotes, crmInvoices, referralCredits } from "@workspace/db";
-import { houseDisclosures, type HouseDisclosure, type InsertHouseDisclosure, insuranceClaimPackages, type InsuranceClaimPackage, type InsertInsuranceClaimPackage, insuranceEmailLogs, type InsuranceEmailLog, type InsertInsuranceEmailLog, stripeProcessedEvents, pendingSeatSyncs } from "@workspace/db";
+import { houseDisclosures, type HouseDisclosure, type InsertHouseDisclosure, insuranceClaimPackages, type InsuranceClaimPackage, type InsertInsuranceClaimPackage, insuranceEmailLogs, type InsuranceEmailLog, type InsertInsuranceEmailLog, stripeProcessedEvents, pendingSeatSyncs, invoiceAnalyses } from "@workspace/db";
 import { randomUUID, randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
@@ -277,6 +277,8 @@ export interface IStorage {
     serviceRecordsTransferred: number;
     taskCompletionsTransferred: number;
     taskOverridesTransferred: number;
+    crmInvoicesTransferred: number;
+    invoiceAnalysesTransferred: number;
   }>;
   getHousesCount(homeownerId: string): Promise<number>;
 
@@ -3857,6 +3859,8 @@ export class MemStorage implements IStorage {
     serviceRecordsTransferred: number;
     taskCompletionsTransferred: number;
     taskOverridesTransferred: number;
+    crmInvoicesTransferred: number;
+    invoiceAnalysesTransferred: number;
   }> {
     // First, transfer the house ownership
     const house = this.houses.get(houseId);
@@ -3968,6 +3972,22 @@ export class MemStorage implements IStorage {
       }
     }
 
+    // Transfer CRM invoices linked to the transferred house
+    let crmInvoicesTransferred = 0;
+    for (const [id, invoice] of this.crmInvoicesMap.entries()) {
+      if (invoice.houseId === houseId && invoice.homeownerId === fromHomeownerId) {
+        const updated: CrmInvoice = {
+          ...invoice,
+          homeownerId: toHomeownerId,
+        };
+        this.crmInvoicesMap.set(id, updated);
+        crmInvoicesTransferred++;
+      }
+    }
+
+    // invoiceAnalyses are database-backed only; in-memory transfer stays at 0
+    const invoiceAnalysesTransferred = 0;
+
     return {
       maintenanceLogsTransferred,
       appliancesTransferred,
@@ -3977,6 +3997,8 @@ export class MemStorage implements IStorage {
       serviceRecordsTransferred,
       taskCompletionsTransferred,
       taskOverridesTransferred,
+      crmInvoicesTransferred,
+      invoiceAnalysesTransferred,
     };
   }
 
@@ -7151,13 +7173,15 @@ class DbStorage implements IStorage {
     serviceRecordsTransferred: number;
     taskCompletionsTransferred: number;
     taskOverridesTransferred: number;
+    crmInvoicesTransferred: number;
+    invoiceAnalysesTransferred: number;
   }> {
     const houseRows = await db.select().from(houses).where(and(eq(houses.id, houseId), eq(houses.homeownerId, fromHomeownerId))).limit(1);
     if (!houseRows[0]) throw new Error("House not found or ownership mismatch");
 
     await db.update(houses).set({ homeownerId: toHomeownerId }).where(eq(houses.id, houseId));
 
-    const [logsResult, appResult, apptResult, customResult, sysResult, svcResult, completionsResult, overridesResult] = await Promise.all([
+    const [logsResult, appResult, apptResult, customResult, sysResult, svcResult, completionsResult, overridesResult, invoicesResult, analysesResult] = await Promise.all([
       db.update(maintenanceLogs).set({ homeownerId: toHomeownerId }).where(and(eq(maintenanceLogs.houseId, houseId), eq(maintenanceLogs.homeownerId, fromHomeownerId))).returning(),
       db.update(homeAppliances).set({ homeownerId: toHomeownerId }).where(and(eq(homeAppliances.houseId, houseId), eq(homeAppliances.homeownerId, fromHomeownerId))).returning(),
       db.update(contractorAppointments).set({ homeownerId: toHomeownerId }).where(and(eq(contractorAppointments.houseId, houseId), eq(contractorAppointments.homeownerId, fromHomeownerId))).returning(),
@@ -7166,6 +7190,10 @@ class DbStorage implements IStorage {
       db.update(serviceRecords).set({ homeownerId: toHomeownerId }).where(and(eq(serviceRecords.houseId, houseId), eq(serviceRecords.homeownerId, fromHomeownerId))).returning(),
       db.update(taskCompletions).set({ homeownerId: toHomeownerId }).where(and(eq(taskCompletions.houseId, houseId), eq(taskCompletions.homeownerId, fromHomeownerId))).returning(),
       db.update(taskOverrides).set({ homeownerId: toHomeownerId }).where(and(eq(taskOverrides.houseId, houseId), eq(taskOverrides.homeownerId, fromHomeownerId))).returning(),
+      // CRM invoices linked to the transferred house (homeownerId is nullable on this table)
+      db.update(crmInvoices).set({ homeownerId: toHomeownerId }).where(and(eq(crmInvoices.houseId, houseId), eq(crmInvoices.homeownerId, fromHomeownerId))).returning(),
+      // Invoice analyses are keyed by houseId; re-assign homeownerId so new owner can list them
+      db.update(invoiceAnalyses).set({ homeownerId: toHomeownerId }).where(and(eq(invoiceAnalyses.houseId, houseId), eq(invoiceAnalyses.homeownerId, fromHomeownerId))).returning(),
     ]);
 
     return {
@@ -7177,6 +7205,8 @@ class DbStorage implements IStorage {
       serviceRecordsTransferred: svcResult.length,
       taskCompletionsTransferred: completionsResult.length,
       taskOverridesTransferred: overridesResult.length,
+      crmInvoicesTransferred: invoicesResult.length,
+      invoiceAnalysesTransferred: analysesResult.length,
     };
   }
 

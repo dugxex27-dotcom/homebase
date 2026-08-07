@@ -253,6 +253,100 @@ describe("MemStorage.transferHouseOwnership", () => {
       storage.transferHouseOwnership(house.id, "wrong-owner", ownerB)
     ).rejects.toThrow("House not found or ownership mismatch");
   });
+
+  it("transfers crm_invoices linked to the house from owner A to owner B", async () => {
+    const house = await storage.createHouse({
+      homeownerId: ownerA,
+      name: "Test House",
+      climateZone: "mixed",
+      homeSystems: [],
+      address: "999 Invoice Ave",
+      isDefault: false,
+    });
+
+    const otherHouse = await storage.createHouse({
+      homeownerId: ownerA,
+      name: "Other House",
+      climateZone: "mixed",
+      homeSystems: [],
+      address: "888 Other Ave",
+      isDefault: false,
+    });
+
+    // Invoice linked to the house being transferred
+    const linkedInvoice = await storage.createCrmInvoice({
+      contractorUserId: "contractor-1",
+      clientId: "client-1",
+      invoiceNumber: "INV-2026-0001",
+      title: "HVAC Service",
+      subtotal: "250.00",
+      total: "250.00",
+      amountDue: "250.00",
+      lineItems: [],
+      homeownerId: ownerA,
+      houseId: house.id,
+    });
+
+    // Invoice linked to another house — must NOT transfer
+    const unlinkedInvoice = await storage.createCrmInvoice({
+      contractorUserId: "contractor-1",
+      clientId: "client-1",
+      invoiceNumber: "INV-2026-0002",
+      title: "Plumbing Service",
+      subtotal: "150.00",
+      total: "150.00",
+      amountDue: "150.00",
+      lineItems: [],
+      homeownerId: ownerA,
+      houseId: otherHouse.id,
+    });
+
+    // Invoice with no houseId — must NOT transfer
+    await storage.createCrmInvoice({
+      contractorUserId: "contractor-1",
+      clientId: "client-1",
+      invoiceNumber: "INV-2026-0003",
+      title: "Misc Service",
+      subtotal: "100.00",
+      total: "100.00",
+      amountDue: "100.00",
+      lineItems: [],
+      homeownerId: ownerA,
+      houseId: null,
+    });
+
+    const result = await storage.transferHouseOwnership(house.id, ownerA, ownerB);
+
+    expect(result.crmInvoicesTransferred).toBe(1);
+
+    // New owner sees the invoice
+    const invoicesForB = await storage.getLinkedInvoicesForHomeowner(ownerB);
+    expect(invoicesForB.some((i) => i.id === linkedInvoice.id)).toBe(true);
+    expect(invoicesForB.every((i) => i.homeownerId === ownerB)).toBe(true);
+
+    // Old owner no longer sees the transferred invoice
+    const invoicesForA = await storage.getLinkedInvoicesForHomeowner(ownerA);
+    expect(invoicesForA.some((i) => i.id === linkedInvoice.id)).toBe(false);
+
+    // Unlinked invoice (other house) stays with owner A
+    expect(invoicesForA.some((i) => i.id === unlinkedInvoice.id)).toBe(true);
+  });
+
+  it("returns crmInvoicesTransferred=0 and invoiceAnalysesTransferred=0 when there is nothing to transfer", async () => {
+    const house = await storage.createHouse({
+      homeownerId: ownerA,
+      name: "Empty House",
+      climateZone: "mixed",
+      homeSystems: [],
+      address: "0 Empty St",
+      isDefault: false,
+    });
+
+    const result = await storage.transferHouseOwnership(house.id, ownerA, ownerB);
+
+    expect(result.crmInvoicesTransferred).toBe(0);
+    expect(result.invoiceAnalysesTransferred).toBe(0);
+  });
 });
 
 // ---------------------------------------------------------------------------
