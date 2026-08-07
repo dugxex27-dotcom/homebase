@@ -238,6 +238,10 @@ export async function applyPendingCredits(): Promise<ReferralApplyResult> {
 
     try {
       // Negative amount = credit. Applies automatically to the customer's next invoice.
+      // Idempotency key prevents double-crediting if the server crashes after Stripe
+      // accepts the call but before the DB update below commits — same pattern as
+      // routes.ts line 699. Key is stable across retries because the ledger row ID
+      // is a UUID assigned at insert time and never changes.
       const balanceTx = await stripe.customers.createBalanceTransaction(
         row.stripeCustomerId,
         {
@@ -249,6 +253,7 @@ export async function applyPendingCredits(): Promise<ReferralApplyResult> {
             accrual_period:            row.accrualPeriod ?? '',
           },
         },
+        { idempotencyKey: `referral-credit-${row.id}` },
       );
 
       await db
