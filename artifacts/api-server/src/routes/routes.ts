@@ -18432,15 +18432,23 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         // The document-ownership check above only confirms the document belongs to
         // this user; it does not prove the stored houseId was legitimately theirs
         // (an attacker could have uploaded a document with a foreign houseId).
-        const [ownedHouse] = await db.select({ id: houses.id }).from(houses)
+        // Fetch current house values so we can avoid overwriting homeowner-entered data.
+        const [ownedHouse] = await db.select({
+          id: houses.id,
+          hvacType: houses.hvacType,
+          plumbingType: houses.plumbingType,
+          foundationType: houses.foundationType,
+          waterHeaterType: houses.waterHeaterType,
+        }).from(houses)
           .where(and(eq(houses.id, doc.houseId), eq(houses.homeownerId, userId)));
         if (!ownedHouse) {
           return res.status(403).json({ message: "You do not have permission to modify this house" });
         }
 
         const profileUpdate: Record<string, unknown> = {};
+        const skipped: string[] = []; // fields skipped because a value was already set
 
-        // Map HVAC type to enum
+        // Map HVAC type to enum — only write if the column is currently null
         const hvacType = confirmedData.hvacType as string | null;
         if (hvacType) {
           const hvacMap: Record<string, string> = {
@@ -18449,20 +18457,32 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
             "boiler": "boiler", "ductless": "ductless", "mini split": "ductless",
           };
           const mappedHvac = hvacMap[hvacType.toLowerCase()] || null;
-          if (mappedHvac) profileUpdate.hvacType = mappedHvac;
+          if (mappedHvac) {
+            if (!ownedHouse.hvacType) {
+              profileUpdate.hvacType = mappedHvac;
+            } else {
+              skipped.push(`hvacType (existing: ${ownedHouse.hvacType}, inspection: ${mappedHvac})`);
+            }
+          }
         }
 
-        // Map plumbing type to enum
+        // Map plumbing type to enum — only write if the column is currently null
         const plumbingType = confirmedData.plumbingType as string | null;
         if (plumbingType) {
           const plumbMap: Record<string, string> = {
             "copper": "copper", "pex": "pex", "cpvc": "cpvc", "galvanized": "galvanized", "mixed": "mixed",
           };
           const mappedPlumb = plumbMap[plumbingType.toLowerCase()] || null;
-          if (mappedPlumb) profileUpdate.plumbingType = mappedPlumb;
+          if (mappedPlumb) {
+            if (!ownedHouse.plumbingType) {
+              profileUpdate.plumbingType = mappedPlumb;
+            } else {
+              skipped.push(`plumbingType (existing: ${ownedHouse.plumbingType}, inspection: ${mappedPlumb})`);
+            }
+          }
         }
 
-        // Map foundation type to enum
+        // Map foundation type to enum — only write if the column is currently null
         const foundationType = confirmedData.foundationType as string | null;
         if (foundationType) {
           const foundMap: Record<string, string> = {
@@ -18471,10 +18491,16 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
             "pier and beam": "pier_and_beam", "pier & beam": "pier_and_beam",
           };
           const mappedFound = foundMap[foundationType.toLowerCase()] || null;
-          if (mappedFound) profileUpdate.foundationType = mappedFound;
+          if (mappedFound) {
+            if (!ownedHouse.foundationType) {
+              profileUpdate.foundationType = mappedFound;
+            } else {
+              skipped.push(`foundationType (existing: ${ownedHouse.foundationType}, inspection: ${mappedFound})`);
+            }
+          }
         }
 
-        // Map water heater type to enum
+        // Map water heater type to enum — only write if the column is currently null
         const waterHeaterType = confirmedData.waterHeaterType as string | null;
         if (waterHeaterType) {
           const whMap: Record<string, string> = {
@@ -18482,7 +18508,17 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
             "on-demand": "tankless", "hybrid": "hybrid", "heat pump water heater": "hybrid",
           };
           const mappedWh = whMap[waterHeaterType.toLowerCase()] || null;
-          if (mappedWh) profileUpdate.waterHeaterType = mappedWh;
+          if (mappedWh) {
+            if (!ownedHouse.waterHeaterType) {
+              profileUpdate.waterHeaterType = mappedWh;
+            } else {
+              skipped.push(`waterHeaterType (existing: ${ownedHouse.waterHeaterType}, inspection: ${mappedWh})`);
+            }
+          }
+        }
+
+        if (skipped.length > 0) {
+          console.warn(`[INSPECTION] Skipped overwriting existing house fields for houseId=${doc.houseId}:`, skipped);
         }
 
         if (Object.keys(profileUpdate).length > 0) {
