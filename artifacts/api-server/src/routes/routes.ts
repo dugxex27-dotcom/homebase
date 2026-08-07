@@ -18117,7 +18117,7 @@ If the document contains no relevant home information, return the structure with
       }
 
       // Count rows to be reassigned — outside the transaction (reads only, no lock needed)
-      const [mlCount, srCount, haCount, hsCount, cmtCount, ciCount] = await Promise.all([
+      const [mlCount, srCount, haCount, hsCount, cmtCount, ciCount, iaCount] = await Promise.all([
         db.select({ n: drizzleSql<number>`count(*)::int` }).from(maintenanceLogs).where(eq(maintenanceLogs.houseId, houseId)),
         db.select({ n: drizzleSql<number>`count(*)::int` }).from(serviceRecords).where(eq(serviceRecords.houseId, houseId)),
         // homeAppliances.houseId is nullable text (no .notNull() in schema — see schema.ts ~line 399);
@@ -18126,6 +18126,7 @@ If the document contains no relevant home information, return the structure with
         db.select({ n: drizzleSql<number>`count(*)::int` }).from(homeSystems).where(eq(homeSystems.houseId, houseId)),
         db.select({ n: drizzleSql<number>`count(*)::int` }).from(customMaintenanceTasks).where(eq(customMaintenanceTasks.houseId, houseId)),
         db.select({ n: drizzleSql<number>`count(*)::int` }).from(crmInvoices).where(eq(crmInvoices.houseId, houseId)),
+        db.select({ n: drizzleSql<number>`count(*)::int` }).from(invoiceAnalyses).where(eq(invoiceAnalyses.houseId, houseId)),
       ]);
 
       const tablesUpdated: Record<string, number> = {
@@ -18136,6 +18137,7 @@ If the document contains no relevant home information, return the structure with
         home_systems:     hsCount[0]?.n ?? 0,
         custom_maintenance_tasks: cmtCount[0]?.n ?? 0,
         crm_invoices:     ciCount[0]?.n ?? 0,
+        invoice_analyses: iaCount[0]?.n ?? 0,
       };
 
       // DRY-RUN: no writes, no lock needed; previousHomeownerId from the non-locking preflight read
@@ -18210,6 +18212,9 @@ If the document contains no relevant home information, return the structure with
           await tx.update(crmInvoices)
             .set({ homeownerId: userId })
             .where(eq(crmInvoices.houseId, houseId));
+          await tx.update(invoiceAnalyses)
+            .set({ homeownerId: userId })
+            .where(eq(invoiceAnalyses.houseId, houseId));
           // 3. Mark package claimed
           await tx.update(homeHandoffPackages).set({
             status: "claimed",
@@ -18245,13 +18250,16 @@ If the document contains no relevant home information, return the structure with
       }
 
       // Pre-condition failed inside the transaction (re-validation against the locked row)
+      // TypeScript narrows async-mutated let bindings to 'never' in this control-flow path;
+      // explicitly cast to recover the actual runtime type.
       if (txPreflightError) {
-        return res.status(txPreflightError.status).json({ message: txPreflightError.message });
+        const err = txPreflightError as { status: number; message: string };
+        return res.status(err.status).json({ message: err.message });
       }
 
       // POST-COMMIT VERIFICATION: any row still pointing at the old owner is a bug
       const previousHomeownerId = capturedPreviousOwner!;
-      const [vml, vsr, vha, vhs, vcmt, vci, vh] = await Promise.all([
+      const [vml, vsr, vha, vhs, vcmt, vci, vh, via] = await Promise.all([
         db.select({ n: drizzleSql<number>`count(*)::int` }).from(maintenanceLogs)
           .where(and(eq(maintenanceLogs.houseId, houseId), eq(maintenanceLogs.homeownerId, previousHomeownerId))),
         db.select({ n: drizzleSql<number>`count(*)::int` }).from(serviceRecords)
@@ -18268,6 +18276,8 @@ If the document contains no relevant home information, return the structure with
           .where(and(eq(crmInvoices.houseId, houseId), eq(crmInvoices.homeownerId, previousHomeownerId))),
         db.select({ n: drizzleSql<number>`count(*)::int` }).from(houses)
           .where(and(eq(houses.id, houseId), eq(houses.homeownerId, previousHomeownerId))),
+        db.select({ n: drizzleSql<number>`count(*)::int` }).from(invoiceAnalyses)
+          .where(and(eq(invoiceAnalyses.houseId, houseId), eq(invoiceAnalyses.homeownerId, previousHomeownerId))),
       ]);
 
       const leaked: Record<string, number> = {
@@ -18278,6 +18288,7 @@ If the document contains no relevant home information, return the structure with
         custom_maintenance_tasks: vcmt[0]?.n ?? 0,
         crm_invoices:             vci[0]?.n  ?? 0,
         houses:                   vh[0]?.n   ?? 0,
+        invoice_analyses:         via[0]?.n  ?? 0,
       };
       const leakedTotal = Object.values(leaked).reduce((a, b) => a + b, 0);
 
@@ -18292,7 +18303,7 @@ If the document contains no relevant home information, return the structure with
           success: true,
           houseId,
           tablesUpdated,
-          transfer: { ...transferRow, errorDetail: leakMsg },
+          transfer: { ...(transferRow!), errorDetail: leakMsg },
           verificationWarning: leaked,
           message: "Transfer committed but post-commit verification found residual rows. See verificationWarning — this indicates a bug in the transfer logic.",
         });
