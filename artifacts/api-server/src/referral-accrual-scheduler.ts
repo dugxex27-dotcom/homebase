@@ -253,6 +253,9 @@ export async function applyPendingCredits(): Promise<ReferralApplyResult> {
             accrual_period:            row.accrualPeriod ?? '',
           },
         },
+        // Residual risk: if the DB update below fails repeatedly for longer than Stripe's
+        // idempotency key retention window (~24h), a retry could produce a duplicate balance
+        // transaction. Accepted and documented — not mitigated further given the small amounts.
         { idempotencyKey: `referral-credit-${row.id}` },
       );
 
@@ -310,16 +313,34 @@ function startReferralAccrualScheduler(): void {
   // Delay the first run so the server is fully warmed up and Stripe webhooks
   // from startup don't race with the accrual insert.
   const startupTimer = setTimeout(() => {
-    runReferralAccrual()
-      .then(() => applyPendingCredits())
-      .catch((err) => logger.error({ err }, `${LOG_TAG} Initial run failed`));
+    (async () => {
+      try {
+        await runReferralAccrual();
+      } catch (err) {
+        logger.error({ err }, `${LOG_TAG} Accrual phase failed`);
+      }
+      try {
+        await applyPendingCredits();
+      } catch (err) {
+        logger.error({ err }, `${LOG_TAG} Apply phase failed`);
+      }
+    })();
   }, STARTUP_DELAY_MS);
   startupTimer.unref();
 
   schedulerInterval = setInterval(() => {
-    runReferralAccrual()
-      .then(() => applyPendingCredits())
-      .catch((err) => logger.error({ err }, `${LOG_TAG} Scheduled run failed`));
+    (async () => {
+      try {
+        await runReferralAccrual();
+      } catch (err) {
+        logger.error({ err }, `${LOG_TAG} Accrual phase failed`);
+      }
+      try {
+        await applyPendingCredits();
+      } catch (err) {
+        logger.error({ err }, `${LOG_TAG} Apply phase failed`);
+      }
+    })();
   }, CHECK_INTERVAL_MS);
 }
 
