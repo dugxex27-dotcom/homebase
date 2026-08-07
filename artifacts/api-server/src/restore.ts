@@ -167,20 +167,33 @@ async function sortTablesByDependency(
 
 // ─── Column introspection ─────────────────────────────────────────────────────
 
+interface ColumnInfo {
+  default: string | null;
+  /** true when the column type is json or jsonb — values must be JSON-serialised before insert */
+  isJson: boolean;
+}
+
 /**
  * Return the columns that actually exist in the live table, mapped to their
- * default expression (or null if none).
+ * default expression and whether they are a JSON/JSONB type.
  */
 async function getLiveColumns(
   pool: Pool,
   tableName: string,
-): Promise<Map<string, string | null>> {
-  const { rows } = await pool.query<{ column_name: string; column_default: string | null }>(`
-    SELECT column_name, column_default
+): Promise<Map<string, ColumnInfo>> {
+  const { rows } = await pool.query<{
+    column_name: string;
+    column_default: string | null;
+    udt_name: string;
+  }>(`
+    SELECT column_name, column_default, udt_name
     FROM information_schema.columns
     WHERE table_schema = 'public' AND table_name = $1
   `, [tableName]);
-  return new Map(rows.map((r: { column_name: string; column_default: string | null }) => [r.column_name, r.column_default]));
+  return new Map(rows.map(r => [
+    r.column_name,
+    { default: r.column_default, isJson: r.udt_name === 'json' || r.udt_name === 'jsonb' },
+  ]));
 }
 
 // ─── Table restore ────────────────────────────────────────────────────────────
@@ -226,7 +239,7 @@ async function restoreTable(
   // Columns in live schema but missing from backup (added columns → rely on DB default)
   const addedCols = [...liveColumns.keys()].filter(c => !backupCols.includes(c));
   if (addedCols.length) {
-    const withoutDefault = addedCols.filter(c => liveColumns.get(c) === null);
+    const withoutDefault = addedCols.filter(c => liveColumns.get(c)?.default === null);
     if (withoutDefault.length) {
       const w = `New columns with no default (rows may fail): ${withoutDefault.join(', ')}`;
       warnings.push(w);
@@ -259,7 +272,15 @@ async function restoreTable(
     const values: unknown[] = [];
     const placeholders = batch.map((row, bi) => {
       const rowPlaceholders = insertCols.map((c, ci) => {
-        values.push(row[c] ?? null);
+        const v = row[c] ?? null;
+        // pg serialises JS arrays as PostgreSQL array syntax ({...}), not JSON.
+        // Only stringify object/array values for json/jsonb columns — native array
+        // columns (text[], etc.) must be passed as-is for pg to handle correctly.
+        const info = liveColumns.get(c);
+        const serialised = (v !== null && typeof v === 'object' && info?.isJson)
+          ? JSON.stringify(v)
+          : v;
+        values.push(serialised);
         return `$${bi * insertCols.length + ci + 1}`;
       });
       return `(${rowPlaceholders.join(', ')})`;
