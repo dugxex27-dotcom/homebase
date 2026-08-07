@@ -10,7 +10,7 @@ import { randomUUID, randomBytes, createHash, timingSafeEqual } from "crypto";
 import rateLimit from "express-rate-limit";
 import { PgRateLimitStore } from "../lib/pg-rate-limit-store";
 import { eq, and, ne, inArray, sql as drizzleSql, isNotNull, isNull, desc, or, gt, gte, lte } from "drizzle-orm";
-import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertTaskCompletionSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, customMaintenanceTasks, insertSupportTicketSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, insertCrmLeadSchema, insertCrmNoteSchema, notificationPreferences, subscriptionPlans, securitySessions, referralCredits, referralFreeMonths, agentProfiles, users, siteContent, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, insertReviewFlagSchema, homeDocuments, quizResults, type House } from "@workspace/db";
+import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertTaskCompletionSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, customMaintenanceTasks, insertSupportTicketSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, insertCrmLeadSchema, insertCrmNoteSchema, notificationPreferences, subscriptionPlans, securitySessions, referralCredits, referralFreeMonths, agentProfiles, users, siteContent, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, insertReviewFlagSchema, homeDocuments, quizResults, crmInvoices, handoffTransfers, type House } from "@workspace/db";
 import { calculateDIYSavingsAmount } from "../shared/cost-helpers";
 import { calculateMechanicalDocumentationBonus } from "../shared/maintenance-scheduler";
 import { invoiceOrphanCleanupScheduler } from "../invoice-orphan-cleanup-scheduler";
@@ -17984,110 +17984,284 @@ If the document contains no relevant home information, return the structure with
     }
   });
 
-  // AUTHENTICATED: Homeowner claims the handoff package, creates their home record
+  // AUTHENTICATED: Homeowner claims the handoff package.
+  // When pkg.houseId is set: performs a transactional ownership transfer of the
+  // existing house record (all 6 child tables + houses) with pre-flight validation,
+  // dry-run support, and post-commit verification.
+  // When pkg.houseId is null: falls back to the original AI re-extraction path.
   app.post("/api/handoff/:token/claim", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
       if (userRole !== "homeowner") return res.status(403).json({ message: "Only homeowners can claim handoff packages" });
 
+      const dryRun = req.query.dryRun === "true" || req.body?.dryRun === true;
+
       const [pkg] = await db.select().from(homeHandoffPackages)
         .where(eq(homeHandoffPackages.inviteToken, req.params.token));
 
       if (!pkg) return res.status(404).json({ message: "Package not found or link is invalid" });
-      if (pkg.status === "claimed") return res.status(400).json({ message: "This home record has already been claimed" });
 
-      const extractedData = (pkg.extractedData ?? {}) as Record<string, unknown>;
-      const extractedSystems = Array.isArray(extractedData.systems) ? extractedData.systems as Record<string, unknown>[] : [];
-      const extractedAppliances = Array.isArray(extractedData.appliances) ? extractedData.appliances as Record<string, unknown>[] : [];
+      // IDEMPOTENCY: already claimed — return existing transfer record instead of re-running
+      if (pkg.claimedAt !== null) {
+        const [existingTransfer] = await db.select().from(handoffTransfers)
+          .where(eq(handoffTransfers.packageId, pkg.id))
+          .orderBy(desc(handoffTransfers.createdAt))
+          .limit(1);
+        return res.status(409).json({
+          message: "This handoff package has already been claimed",
+          transfer: existingTransfer ?? null,
+        });
+      }
 
-      // Find existing house for this homeowner at the same address (merge if found)
-      const existingHouses = await db.select().from(houses).where(eq(houses.homeownerId, userId));
-      const normalizeAddr = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
-      const normalizedPkgAddr = normalizeAddr(pkg.propertyAddress);
-      const matchingHouse = existingHouses.find(h =>
-        h.address && normalizeAddr(h.address) === normalizedPkgAddr
-      );
+      // ─── Fallback: no houseId → legacy AI re-extraction path (unchanged) ────────
+      if (!pkg.houseId) {
+        const extractedData = (pkg.extractedData ?? {}) as Record<string, unknown>;
+        const extractedSystems = Array.isArray(extractedData.systems) ? extractedData.systems as Record<string, unknown>[] : [];
+        const extractedAppliances = Array.isArray(extractedData.appliances) ? extractedData.appliances as Record<string, unknown>[] : [];
 
-      let targetHouseId: string;
-      let createdNewHouse = false;
+        const existingHouses = await db.select().from(houses).where(eq(houses.homeownerId, userId));
+        const normalizeAddr = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+        const normalizedPkgAddr = normalizeAddr(pkg.propertyAddress);
+        const matchingHouse = existingHouses.find(h =>
+          h.address && normalizeAddr(h.address) === normalizedPkgAddr
+        );
 
-      if (matchingHouse) {
-        // Merge into existing house — update its homeSystems array
-        targetHouseId = matchingHouse.id;
-        const existingSystems: string[] = Array.isArray(matchingHouse.homeSystems) ? matchingHouse.homeSystems as string[] : [];
-        const newSystemNames = extractedSystems
-          .map(s => typeof s.name === "string" ? s.name : null)
-          .filter((n): n is string => n !== null && !existingSystems.includes(n));
-        if (newSystemNames.length > 0) {
-          await db.update(houses)
-            .set({ homeSystems: [...existingSystems, ...newSystemNames] })
-            .where(eq(houses.id, matchingHouse.id));
-        }
-      } else {
-        // Create new house
-        const [newHouse] = await db.insert(houses).values({
-          homeownerId: userId,
-          name: pkg.propertyAddress.split(",")[0] || pkg.propertyAddress,
-          address: pkg.propertyAddress,
-          climateZone: "temperate",
-          homeSystems: extractedSystems
+        let targetHouseId: string;
+        let createdNewHouse = false;
+
+        if (matchingHouse) {
+          targetHouseId = matchingHouse.id;
+          const existingSystems: string[] = Array.isArray(matchingHouse.homeSystems) ? matchingHouse.homeSystems as string[] : [];
+          const newSystemNames = extractedSystems
             .map(s => typeof s.name === "string" ? s.name : null)
-            .filter((n): n is string => n !== null),
-          isDefault: false,
+            .filter((n): n is string => n !== null && !existingSystems.includes(n));
+          if (newSystemNames.length > 0) {
+            await db.update(houses)
+              .set({ homeSystems: [...existingSystems, ...newSystemNames] })
+              .where(eq(houses.id, matchingHouse.id));
+          }
+        } else {
+          const [newHouse] = await db.insert(houses).values({
+            homeownerId: userId,
+            name: pkg.propertyAddress.split(",")[0] || pkg.propertyAddress,
+            address: pkg.propertyAddress,
+            climateZone: "temperate",
+            homeSystems: extractedSystems
+              .map(s => typeof s.name === "string" ? s.name : null)
+              .filter((n): n is string => n !== null),
+            isDefault: false,
+          }).returning();
+          targetHouseId = newHouse.id;
+          createdNewHouse = true;
+        }
+
+        const systemInserts = extractedSystems.map(s => ({
+          homeownerId: userId,
+          houseId: targetHouseId,
+          systemType: typeof s.name === "string" ? s.name : "Unknown System",
+          brand: typeof s.brand === "string" ? s.brand : null,
+          model: typeof s.model === "string" ? s.model : null,
+          installationYear: typeof s.yearInstalled === "number" ? s.yearInstalled : null,
+          notes: typeof s.notes === "string" ? s.notes : null,
+        }));
+        if (systemInserts.length > 0) await db.insert(homeSystems).values(systemInserts);
+
+        const applianceInserts = extractedAppliances.map(a => ({
+          homeownerId: userId,
+          houseId: targetHouseId,
+          name: typeof a.name === "string" ? a.name : "Unknown Appliance",
+          make: typeof a.make === "string" ? a.make : "Unknown",
+          model: typeof a.model === "string" ? a.model : "Unknown",
+          serialNumber: typeof a.serialNumber === "string" ? a.serialNumber : null,
+          yearInstalled: typeof a.yearInstalled === "number" ? a.yearInstalled : null,
+          warrantyExpiration: typeof a.warrantyExpiration === "string" ? a.warrantyExpiration : null,
+          notes: typeof a.notes === "string" ? a.notes : null,
+          location: "",
+        }));
+        if (applianceInserts.length > 0) await db.insert(homeAppliances).values(applianceInserts);
+
+        await db.update(homeHandoffPackages).set({
+          status: "claimed",
+          claimedByUserId: userId,
+          claimedAt: new Date(),
+          updatedAt: new Date(),
+        }).where(eq(homeHandoffPackages.id, pkg.id));
+
+        const action = createdNewHouse ? "created" : "merged into existing record";
+        return res.json({
+          success: true,
+          houseId: targetHouseId,
+          mergedExisting: !createdNewHouse,
+          systemsAdded: systemInserts.length,
+          appliancesAdded: applianceInserts.length,
+          message: `Your home record has been ${action} with ${systemInserts.length} systems and ${applianceInserts.length} appliances.`,
+        });
+      }
+
+      // ─── Transfer path: pkg.houseId is set ──────────────────────────────────────
+
+      // PRE-FLIGHT VALIDATION
+      const [targetHouse] = await db.select({ id: houses.id, homeownerId: houses.homeownerId })
+        .from(houses).where(eq(houses.id, pkg.houseId));
+      if (!targetHouse) {
+        return res.status(422).json({ message: "The house linked to this package no longer exists" });
+      }
+      if (targetHouse.homeownerId === userId) {
+        return res.status(409).json({ message: "You are already the owner of this house — transfer is not needed" });
+      }
+
+      const previousHomeownerId = targetHouse.homeownerId;
+      const houseId = pkg.houseId; // confirmed non-null above
+
+      // Count rows to be reassigned — used by both dry-run and live transfer
+      const [mlCount, srCount, haCount, hsCount, cmtCount, ciCount] = await Promise.all([
+        db.select({ n: drizzleSql<number>`count(*)::int` }).from(maintenanceLogs).where(eq(maintenanceLogs.houseId, houseId)),
+        db.select({ n: drizzleSql<number>`count(*)::int` }).from(serviceRecords).where(eq(serviceRecords.houseId, houseId)),
+        db.select({ n: drizzleSql<number>`count(*)::int` }).from(homeAppliances).where(eq(homeAppliances.houseId as any, houseId)),
+        db.select({ n: drizzleSql<number>`count(*)::int` }).from(homeSystems).where(eq(homeSystems.houseId, houseId)),
+        db.select({ n: drizzleSql<number>`count(*)::int` }).from(customMaintenanceTasks).where(eq(customMaintenanceTasks.houseId, houseId)),
+        db.select({ n: drizzleSql<number>`count(*)::int` }).from(crmInvoices).where(eq(crmInvoices.houseId, houseId)),
+      ]);
+
+      const tablesUpdated: Record<string, number> = {
+        houses: 1,
+        maintenance_logs: mlCount[0]?.n ?? 0,
+        service_records:  srCount[0]?.n ?? 0,
+        home_appliances:  haCount[0]?.n ?? 0,
+        home_systems:     hsCount[0]?.n ?? 0,
+        custom_maintenance_tasks: cmtCount[0]?.n ?? 0,
+        crm_invoices:     ciCount[0]?.n ?? 0,
+      };
+
+      // DRY-RUN: record what would change, touch no data
+      if (dryRun) {
+        const [dryRow] = await db.insert(handoffTransfers).values({
+          packageId: pkg.id,
+          houseId,
+          previousHomeownerId,
+          newHomeownerId: userId,
+          tablesUpdated,
+          status: "dry_run",
         }).returning();
-        targetHouseId = newHouse.id;
-        createdNewHouse = true;
+        return res.json({ dryRun: true, tablesUpdated, transfer: dryRow });
       }
 
-      // Seed home systems
-      const systemInserts = extractedSystems.map(s => ({
-        homeownerId: userId,
-        houseId: targetHouseId,
-        systemType: typeof s.name === "string" ? s.name : "Unknown System",
-        brand: typeof s.brand === "string" ? s.brand : null,
-        model: typeof s.model === "string" ? s.model : null,
-        installationYear: typeof s.yearInstalled === "number" ? s.yearInstalled : null,
-        notes: typeof s.notes === "string" ? s.notes : null,
-      }));
-      if (systemInserts.length > 0) {
-        await db.insert(homeSystems).values(systemInserts);
+      // TRANSACTIONAL TRANSFER
+      let transferRow: typeof handoffTransfers.$inferSelect | null = null;
+      try {
+        await db.transaction(async (tx) => {
+          // 1. Reassign the house itself
+          await tx.update(houses)
+            .set({ homeownerId: userId })
+            .where(eq(houses.id, houseId));
+          // 2. Reassign all child tables
+          await tx.update(maintenanceLogs)
+            .set({ homeownerId: userId })
+            .where(eq(maintenanceLogs.houseId, houseId));
+          await tx.update(serviceRecords)
+            .set({ homeownerId: userId })
+            .where(eq(serviceRecords.houseId, houseId));
+          await tx.update(homeAppliances)
+            .set({ homeownerId: userId })
+            .where(eq(homeAppliances.houseId as any, houseId));
+          await tx.update(homeSystems)
+            .set({ homeownerId: userId })
+            .where(eq(homeSystems.houseId, houseId));
+          await tx.update(customMaintenanceTasks)
+            .set({ homeownerId: userId })
+            .where(eq(customMaintenanceTasks.houseId, houseId));
+          await tx.update(crmInvoices)
+            .set({ homeownerId: userId })
+            .where(eq(crmInvoices.houseId, houseId));
+          // 3. Mark package claimed
+          await tx.update(homeHandoffPackages).set({
+            status: "claimed",
+            claimedByUserId: userId,
+            claimedAt: new Date(),
+            updatedAt: new Date(),
+          }).where(eq(homeHandoffPackages.id, pkg.id));
+          // 4. Audit row — inside the transaction so it rolls back with everything else on failure
+          const [inserted] = await tx.insert(handoffTransfers).values({
+            packageId: pkg.id,
+            houseId,
+            previousHomeownerId,
+            newHomeownerId: userId,
+            tablesUpdated,
+            status: "completed",
+          }).returning();
+          transferRow = inserted;
+        });
+      } catch (txErr: any) {
+        // Transaction rolled back — insert failure record OUTSIDE so it survives the rollback
+        await db.insert(handoffTransfers).values({
+          packageId: pkg.id,
+          houseId,
+          previousHomeownerId,
+          newHomeownerId: userId,
+          tablesUpdated: {},
+          status: "failed",
+          errorDetail: txErr?.message ?? String(txErr),
+        });
+        console.error("[HANDOFF] Transfer transaction failed and rolled back:", txErr);
+        return res.status(500).json({ message: "Ownership transfer failed and was rolled back. A failure record has been logged." });
       }
 
-      // Seed appliances
-      const applianceInserts = extractedAppliances.map(a => ({
-        homeownerId: userId,
-        houseId: targetHouseId,
-        name: typeof a.name === "string" ? a.name : "Unknown Appliance",
-        make: typeof a.make === "string" ? a.make : "Unknown",
-        model: typeof a.model === "string" ? a.model : "Unknown",
-        serialNumber: typeof a.serialNumber === "string" ? a.serialNumber : null,
-        yearInstalled: typeof a.yearInstalled === "number" ? a.yearInstalled : null,
-        warrantyExpiration: typeof a.warrantyExpiration === "string" ? a.warrantyExpiration : null,
-        notes: typeof a.notes === "string" ? a.notes : null,
-        location: "",
-      }));
-      if (applianceInserts.length > 0) {
-        await db.insert(homeAppliances).values(applianceInserts);
+      // POST-COMMIT VERIFICATION: any row still pointing at the old owner is a bug
+      const [vml, vsr, vha, vhs, vcmt, vci, vh] = await Promise.all([
+        db.select({ n: drizzleSql<number>`count(*)::int` }).from(maintenanceLogs)
+          .where(and(eq(maintenanceLogs.houseId, houseId), eq(maintenanceLogs.homeownerId, previousHomeownerId))),
+        db.select({ n: drizzleSql<number>`count(*)::int` }).from(serviceRecords)
+          .where(and(eq(serviceRecords.houseId, houseId), eq(serviceRecords.homeownerId, previousHomeownerId))),
+        db.select({ n: drizzleSql<number>`count(*)::int` }).from(homeAppliances)
+          .where(and(eq(homeAppliances.houseId as any, houseId), eq(homeAppliances.homeownerId, previousHomeownerId))),
+        db.select({ n: drizzleSql<number>`count(*)::int` }).from(homeSystems)
+          .where(and(eq(homeSystems.houseId, houseId), eq(homeSystems.homeownerId, previousHomeownerId))),
+        db.select({ n: drizzleSql<number>`count(*)::int` }).from(customMaintenanceTasks)
+          .where(and(eq(customMaintenanceTasks.houseId, houseId), eq(customMaintenanceTasks.homeownerId, previousHomeownerId))),
+        db.select({ n: drizzleSql<number>`count(*)::int` }).from(crmInvoices)
+          .where(and(eq(crmInvoices.houseId, houseId), eq(crmInvoices.homeownerId, previousHomeownerId))),
+        db.select({ n: drizzleSql<number>`count(*)::int` }).from(houses)
+          .where(and(eq(houses.id, houseId), eq(houses.homeownerId, previousHomeownerId))),
+      ]);
+
+      const leaked: Record<string, number> = {
+        maintenance_logs:         vml[0]?.n  ?? 0,
+        service_records:          vsr[0]?.n  ?? 0,
+        home_appliances:          vha[0]?.n  ?? 0,
+        home_systems:             vhs[0]?.n  ?? 0,
+        custom_maintenance_tasks: vcmt[0]?.n ?? 0,
+        crm_invoices:             vci[0]?.n  ?? 0,
+        houses:                   vh[0]?.n   ?? 0,
+      };
+      const leakedTotal = Object.values(leaked).reduce((a, b) => a + b, 0);
+
+      if (leakedTotal > 0) {
+        const leakMsg = `[HANDOFF] POST-COMMIT VERIFICATION FAILED: ${leakedTotal} row(s) still reference previous owner ${previousHomeownerId} at houseId=${houseId} after transfer. Details: ${JSON.stringify(leaked)}`;
+        console.error(leakMsg);
+        // Stamp the audit row — transfer succeeded but something leaked
+        await db.update(handoffTransfers)
+          .set({ errorDetail: leakMsg })
+          .where(eq(handoffTransfers.id, transferRow!.id));
+        return res.json({
+          success: true,
+          houseId,
+          tablesUpdated,
+          transfer: { ...transferRow, errorDetail: leakMsg },
+          verificationWarning: leaked,
+          message: "Transfer committed but post-commit verification found residual rows. See verificationWarning — this indicates a bug in the transfer logic.",
+        });
       }
 
-      // Mark package as claimed
-      await db.update(homeHandoffPackages).set({
-        status: "claimed",
-        claimedByUserId: userId,
-        claimedAt: new Date(),
-        updatedAt: new Date(),
-      }).where(eq(homeHandoffPackages.id, pkg.id));
-
-      const action = createdNewHouse ? "created" : "merged into existing record";
-      res.json({
+      const totalRows = Object.values(tablesUpdated).reduce((a, b) => a + b, 0);
+      return res.json({
         success: true,
-        houseId: targetHouseId,
-        mergedExisting: !createdNewHouse,
-        systemsAdded: systemInserts.length,
-        appliancesAdded: applianceInserts.length,
-        message: `Your home record has been ${action} with ${systemInserts.length} systems and ${applianceInserts.length} appliances.`,
+        houseId,
+        tablesUpdated,
+        transfer: transferRow,
+        message: `Ownership transferred successfully. ${totalRows} total rows reassigned.`,
       });
+
     } catch (err) {
       console.error("[HANDOFF] claim error:", err);
       res.status(500).json({ message: "Failed to claim handoff package" });
