@@ -118,11 +118,18 @@ export default function HomeownerPricing() {
       console.error('[HomeownerPricing] Native purchase failed:', message);
       setCheckoutPlan(null);
       setPurchaseFailedOnce(true);
-      toast({
-        title: "Purchase Failed",
-        description: message || "We couldn't complete your purchase. Please try again.",
-        variant: "destructive",
-      });
+      // Session-loss (401 while Apple sheet was open): the amber recovery banner
+      // below already explains what happened and surfaces the Restore button.
+      // Skip the generic destructive toast so the user gets one clear message,
+      // not two conflicting ones.
+      const isSessionLoss = message?.includes('sign in again');
+      if (!isSessionLoss) {
+        toast({
+          title: "Purchase Failed",
+          description: message || "We couldn't complete your purchase. Please try again.",
+          variant: "destructive",
+        });
+      }
     });
     return () => {
       unsubVerified();

@@ -29,6 +29,7 @@ export default function Billing() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [selectedPlan, setSelectedPlan] = useState<'base' | 'premium' | 'premium_plus'>('base');
+  const [purchaseFailedOnce, setPurchaseFailedOnce] = useState(false);
   const { toast } = useToast();
 
   // Fetch user details to get trial and subscription info
@@ -122,11 +123,18 @@ export default function Billing() {
     });
     const unsubFailed = onNativePurchaseFailed(({ message }) => {
       console.error('[Billing] Native purchase failed:', message);
-      toast({
-        title: "Purchase Failed",
-        description: message || "We couldn't complete your purchase. Please try again.",
-        variant: "destructive",
-      });
+      // Session-loss (401 while Apple sheet was open): show the amber recovery
+      // banner with Restore button instead of the generic destructive toast.
+      const isSessionLoss = message?.includes('sign in again');
+      if (isSessionLoss) {
+        setPurchaseFailedOnce(true);
+      } else {
+        toast({
+          title: "Purchase Failed",
+          description: message || "We couldn't complete your purchase. Please try again.",
+          variant: "destructive",
+        });
+      }
     });
     return () => {
       unsubVerified();
@@ -319,6 +327,41 @@ export default function Billing() {
               <strong>Your free trial has ended.</strong> Subscribe below to continue using MyHomeBase™.
             </AlertDescription>
           </Alert>
+        )}
+
+        {/* Session-loss recovery banner — shown after a native purchase fails with a 401 */}
+        {purchaseFailedOnce && isNativePlatform && !hasActiveSubscription && (
+          <div
+            className="max-w-2xl mx-auto rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 flex flex-col gap-3 mb-6"
+            data-testid="purchase-failed-recovery-banner"
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 mt-0.5 text-amber-500">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" /></svg>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-amber-900">Your purchase couldn't be confirmed</p>
+                <p className="text-sm text-amber-800 mt-0.5">
+                  If Apple charged you, use <strong>Restore Purchases</strong> below to activate your subscription.
+                  Your Apple ID purchase history is the record of charge — we'll match it to your account.
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => restoreMutation.mutate()}
+              disabled={restoreMutation.isPending}
+              className="self-start border-amber-400 text-amber-900 hover:bg-amber-100"
+              data-testid="button-restore-after-failure"
+            >
+              {restoreMutation.isPending ? (
+                <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Restoring…</>
+              ) : (
+                'Restore Purchases'
+              )}
+            </Button>
+          </div>
         )}
 
         {/* Current Plan Display */}
