@@ -18147,13 +18147,15 @@ Return ONLY valid JSON with this exact structure (use null for fields that canno
       "area": "string (e.g. Roof, Electrical, Plumbing, HVAC, Foundation, Kitchen, Bathroom)"
     }
   ],
-  "generalSummary": "string|null"
+  "generalSummary": "string|null",
+  "aiConfidence": "high if most fields clearly found, medium if some fields are missing or uncertain, low if the document is unclear or very few fields could be extracted",
+  "aiNotes": "any caveats about extraction quality, e.g. 'handwritten sections difficult to read', 'inspection date not stated', 'HVAC section missing', or null"
 }
 Severity levels:
 - critical: items needing immediate attention, safety hazards, major defects, structural issues
 - monitor: items to watch, minor defects, items past their useful life, maintenance needed
 - informational: routine maintenance recommendations, cosmetic issues, upgrades suggested
-IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report, even if only briefly noted. Include condition even if it is just "Not Inspected"."`;
+IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report, even if only briefly noted. Include condition even if it is just "Not Inspected". Always populate aiConfidence and aiNotes."`;
 
     // gpt-4o-mini has a 128K-token context window. At ~4 chars/token the system
     // prompt + JSON response consume roughly 3,000 tokens, leaving ~100,000
@@ -18395,6 +18397,23 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       const deficiencies = Array.isArray(extractedData.deficiencies) ? extractedData.deficiencies as Record<string, unknown>[] : [];
       const flaggedCount = deficiencies.length;
 
+      // Determine effective ai_confidence: take the more cautious of the truncation
+      // floor (always "low" when the doc was cut) and the model's own self-assessment.
+      // Truncation never loses to a higher model score — if the model says "high"
+      // but we truncated the input, we still record "low".
+      const CONFIDENCE_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 };
+      const modelConf = (["high", "medium", "low"].includes(extractedData.aiConfidence as string)
+        ? extractedData.aiConfidence as "high" | "medium" | "low"
+        : null);
+      const truncationConf: "low" | null = extractedData._truncated ? "low" : null;
+      const effectiveConfidence: "high" | "medium" | "low" | null = (() => {
+        if (!truncationConf && !modelConf) return null;
+        if (!truncationConf) return modelConf;
+        if (!modelConf) return truncationConf;
+        // Higher CONFIDENCE_RANK value = more cautious; take the more cautious.
+        return (CONFIDENCE_RANK[truncationConf] >= CONFIDENCE_RANK[modelConf]) ? truncationConf : modelConf;
+      })();
+
       const [doc] = await db.insert(homeDocuments).values({
         homeownerId: userId,
         houseId: houseId || null,
@@ -18409,10 +18428,8 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         extractedData,
         extractionConfirmed: false,
         flaggedItemCount: flaggedCount,
-        // If the document was truncated, mark confidence low immediately.
-        // Fix 3 (model confidence scoring) will not overwrite this back to a
-        // higher value — the truncation floor takes precedence.
-        ...(extractedData._truncated ? { aiConfidence: "low" as const } : {}),
+        // Informational only — does not gate any writes (mirrors the invoice pipeline pattern).
+        ...(effectiveConfidence ? { aiConfidence: effectiveConfidence } : {}),
       }).returning();
 
       res.json({ document: doc, extractedData });
