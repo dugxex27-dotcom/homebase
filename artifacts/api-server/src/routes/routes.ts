@@ -6384,6 +6384,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin endpoint to apply all pending referral_credit_ledger rows to Stripe on demand
+  app.post('/api/admin/referral-accrual/apply', requireAdmin, async (req: any, res: any) => {
+    try {
+      const result = await referralAccrualScheduler.applyPendingNow();
+      res.json(result);
+    } catch (error) {
+      req.log?.error({ err: error }, '[REFERRAL-ACCRUAL] On-demand apply failed');
+      res.status(500).json({ message: 'Referral credit apply failed' });
+    }
+  });
+
   // Automated reply helper function
   function getAutomatedReply(category: string): string | null {
     const replies: Record<string, string> = {

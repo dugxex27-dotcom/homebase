@@ -1,25 +1,37 @@
 /**
- * Monthly Referral Accrual Scheduler
+ * Referral Accrual & Credit-Apply Scheduler
  *
- * Polls daily. Each run identifies every active affiliate_referrals row whose
- * referred user is a currently-paying subscriber and for which no
- * referral_credit_ledger entry yet exists for the current calendar month
- * (accrual_period = 'YYYY-MM'), then inserts one pending credit row per
- * qualifying referral.
+ * Phase 1 — Accrue (runReferralAccrual):
+ *   Polls daily. Identifies every active affiliate_referrals row whose referred
+ *   user is a currently-paying subscriber and for which no referral_credit_ledger
+ *   entry yet exists for the current calendar month (accrual_period = 'YYYY-MM'),
+ *   then inserts one status='pending' credit row per qualifying referral.
+ *
+ * Phase 2 — Apply (applyPendingCredits):
+ *   Finds all status='pending' ledger rows for Stripe-billed agents and posts a
+ *   Stripe customer balance transaction (-amountCents) so the credit reduces the
+ *   agent's next invoice automatically. Marks successfully applied rows as
+ *   status='applied'. Apple IAP subscribers are left pending (iap_offer path is
+ *   future work). Failures are logged per-row and do not abort the run.
+ *
+ * The daily scheduler runs both phases in sequence. Each phase is also exposed
+ * via its own admin endpoint for on-demand triggering.
  *
  * Idempotency: the rcl_unique_referral_period UNIQUE constraint on
- * (referral_id, accrual_period) is the safety net against concurrent runs,
- * but the scheduler queries for what is missing FIRST and only inserts what
- * is needed — the constraint is a last-resort guard, not the primary logic.
- *
- * Applying pending credits to an actual Stripe/IAP bill is Phase 3 and is
- * NOT done here.
+ * (referral_id, accrual_period) is the safety net for accrue; apply is
+ * idempotent because it only processes status='pending' rows.
  */
 
+import Stripe from 'stripe';
 import { db } from './db';
 import { affiliateReferrals, users, referralCreditLedger } from '@workspace/db';
 import { eq, ne, and, inArray } from 'drizzle-orm';
 import { logger } from './lib/logger';
+
+// Module-level Stripe client — same pattern as routes.ts.
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2026-04-22.dahlia' })
+  : null;
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -53,6 +65,14 @@ export interface ReferralAccrualResult {
   skippedNotActive:       number; // referred user's subscription is not active
   skippedVoided:          number; // referral.status === 'voided'
   errors:                 number; // insert failures (logged individually; run continues)
+}
+
+export interface ReferralApplyResult {
+  processed:         number; // pending ledger rows considered
+  applied:           number; // successfully applied to Stripe
+  skippedApple:      number; // subscription_source = 'apple' — iap_offer path not yet built
+  skippedNoCustomer: number; // agent has no stripe_customer_id
+  errors:            number; // Stripe call or DB update failed (row stays pending for next run)
 }
 
 // ── Core logic ────────────────────────────────────────────────────────────────
@@ -163,6 +183,110 @@ export async function runReferralAccrual(): Promise<ReferralAccrualResult> {
   return result;
 }
 
+// ── Phase 2: apply pending credits to Stripe ─────────────────────────────────
+
+export async function applyPendingCredits(): Promise<ReferralApplyResult> {
+  if (!stripe) {
+    logger.warn(`${LOG_TAG} STRIPE_SECRET_KEY not configured — skipping apply-pending-credits`);
+    return { processed: 0, applied: 0, skippedApple: 0, skippedNoCustomer: 0, errors: 0 };
+  }
+
+  logger.info(`${LOG_TAG} Starting apply-pending-credits run`);
+
+  // Fetch all pending ledger rows joined to the agent user for billing info.
+  // userId on the ledger is the agent_id (the person earning the referral credit).
+  const pending = await db
+    .select({
+      id:                 referralCreditLedger.id,
+      userId:             referralCreditLedger.userId,
+      amountCents:        referralCreditLedger.amountCents,
+      accrualPeriod:      referralCreditLedger.accrualPeriod,
+      stripeCustomerId:   users.stripeCustomerId,
+      subscriptionSource: users.subscriptionSource,
+    })
+    .from(referralCreditLedger)
+    .innerJoin(users, eq(users.id, referralCreditLedger.userId))
+    .where(eq(referralCreditLedger.status, 'pending'));
+
+  logger.info({ count: pending.length }, `${LOG_TAG} Pending credit rows found`);
+
+  let applied           = 0;
+  let skippedApple      = 0;
+  let skippedNoCustomer = 0;
+  let errors            = 0;
+
+  for (const row of pending) {
+    // Apple IAP subscribers — iap_offer apply path is future work.
+    if (row.subscriptionSource === 'apple') {
+      skippedApple++;
+      logger.debug(
+        { ledgerId: row.id, accrualPeriod: row.accrualPeriod },
+        `${LOG_TAG} Skipped — Apple subscriber (iap_offer path not yet implemented)`,
+      );
+      continue;
+    }
+
+    // Agent has never subscribed via Stripe (no customer record yet).
+    if (!row.stripeCustomerId) {
+      skippedNoCustomer++;
+      logger.debug(
+        { ledgerId: row.id, userId: row.userId },
+        `${LOG_TAG} Skipped — no Stripe customer ID`,
+      );
+      continue;
+    }
+
+    try {
+      // Negative amount = credit. Applies automatically to the customer's next invoice.
+      const balanceTx = await stripe.customers.createBalanceTransaction(
+        row.stripeCustomerId,
+        {
+          amount:      -(row.amountCents ?? CREDIT_AMOUNT_CENTS),
+          currency:    'usd',
+          description: `Referral credit — ${row.accrualPeriod}`,
+          metadata: {
+            referral_credit_ledger_id: row.id ?? '',
+            accrual_period:            row.accrualPeriod ?? '',
+          },
+        },
+      );
+
+      await db
+        .update(referralCreditLedger)
+        .set({
+          status:                     'applied',
+          appliedVia:                 'stripe_balance',
+          appliedAt:                  new Date(),
+          stripeBalanceTransactionId: balanceTx.id,
+        })
+        .where(eq(referralCreditLedger.id, row.id!));
+
+      applied++;
+      logger.info(
+        {
+          ledgerId:        row.id,
+          stripeCustomerId: row.stripeCustomerId,
+          balanceTxId:     balanceTx.id,
+          amountCents:     row.amountCents,
+          accrualPeriod:   row.accrualPeriod,
+        },
+        `${LOG_TAG} Credit applied to Stripe`,
+      );
+    } catch (err: any) {
+      errors++;
+      // Row stays status='pending' — next daily run will retry it.
+      logger.warn(
+        { err: err.message, ledgerId: row.id, stripeCustomerId: row.stripeCustomerId, accrualPeriod: row.accrualPeriod },
+        `${LOG_TAG} Stripe call failed — row stays pending for next run`,
+      );
+    }
+  }
+
+  const result: ReferralApplyResult = { processed: pending.length, applied, skippedApple, skippedNoCustomer, errors };
+  logger.info(result, `${LOG_TAG} Apply-pending-credits run complete`);
+  return result;
+}
+
 // ── Scheduler lifecycle ───────────────────────────────────────────────────────
 
 let schedulerInterval: NodeJS.Timeout | null = null;
@@ -181,16 +305,16 @@ function startReferralAccrualScheduler(): void {
   // Delay the first run so the server is fully warmed up and Stripe webhooks
   // from startup don't race with the accrual insert.
   const startupTimer = setTimeout(() => {
-    runReferralAccrual().catch((err) =>
-      logger.error({ err }, `${LOG_TAG} Initial run failed`),
-    );
+    runReferralAccrual()
+      .then(() => applyPendingCredits())
+      .catch((err) => logger.error({ err }, `${LOG_TAG} Initial run failed`));
   }, STARTUP_DELAY_MS);
   startupTimer.unref();
 
   schedulerInterval = setInterval(() => {
-    runReferralAccrual().catch((err) =>
-      logger.error({ err }, `${LOG_TAG} Scheduled run failed`),
-    );
+    runReferralAccrual()
+      .then(() => applyPendingCredits())
+      .catch((err) => logger.error({ err }, `${LOG_TAG} Scheduled run failed`));
   }, CHECK_INTERVAL_MS);
 }
 
@@ -203,7 +327,8 @@ function stopReferralAccrualScheduler(): void {
 }
 
 export const referralAccrualScheduler = {
-  start:  startReferralAccrualScheduler,
-  stop:   stopReferralAccrualScheduler,
-  runNow: runReferralAccrual,
+  start:             startReferralAccrualScheduler,
+  stop:              stopReferralAccrualScheduler,
+  runNow:            runReferralAccrual,
+  applyPendingNow:   applyPendingCredits,
 };
