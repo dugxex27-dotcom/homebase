@@ -10,7 +10,7 @@ import { randomUUID, randomBytes, createHash, timingSafeEqual } from "crypto";
 import rateLimit from "express-rate-limit";
 import { PgRateLimitStore } from "../lib/pg-rate-limit-store";
 import { eq, and, ne, inArray, sql as drizzleSql, isNotNull, isNull, desc, or, gt, gte, lte } from "drizzle-orm";
-import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertTaskCompletionSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, customMaintenanceTasks, insertSupportTicketSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, insertCrmLeadSchema, insertCrmNoteSchema, notificationPreferences, subscriptionPlans, securitySessions, referralCredits, referralFreeMonths, agentProfiles, users, siteContent, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, insertReviewFlagSchema, homeDocuments, quizResults, crmInvoices, handoffTransfers, type House } from "@workspace/db";
+import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertTaskCompletionSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, customMaintenanceTasks, insertSupportTicketSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, insertCrmLeadSchema, insertCrmNoteSchema, notificationPreferences, subscriptionPlans, securitySessions, referralCredits, referralFreeMonths, promoCodes, agentProfiles, users, siteContent, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, insertReviewFlagSchema, homeDocuments, quizResults, crmInvoices, handoffTransfers, type House } from "@workspace/db";
 import { calculateDIYSavingsAmount } from "../shared/cost-helpers";
 import { calculateMechanicalDocumentationBonus } from "../shared/maintenance-scheduler";
 import { invoiceOrphanCleanupScheduler } from "../invoice-orphan-cleanup-scheduler";
@@ -3340,8 +3340,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (deviceFingerprint && typeof deviceFingerprint === 'string') {
         subscriptionDataMetadata.deviceFingerprint = deviceFingerprint;
       }
-      const trialData = trialMode
-        ? { subscription_data: { trial_period_days: 14, metadata: subscriptionDataMetadata } }
+      // Promo codes grant free months by extending the Stripe trial period.
+      // promoFreeMonths * 30 days replaces the standard 14-day trial when set.
+      // Clear the field immediately so a second abandoned checkout can't re-use it.
+      const promoFreeMonths = (user as any).promoFreeMonths ?? 0;
+      if (promoFreeMonths > 0) {
+        await storage.upsertUser({ ...user, promoFreeMonths: null } as any);
+      }
+      const trialDays = promoFreeMonths > 0 ? promoFreeMonths * 30 : (trialMode ? 14 : 0);
+      const trialData = trialDays > 0
+        ? { subscription_data: { trial_period_days: trialDays, metadata: subscriptionDataMetadata } }
         : { subscription_data: { metadata: subscriptionDataMetadata } };
 
       if (embedded) {
@@ -4412,7 +4420,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { 
         email, password, firstName, lastName, role, zipCode, inviteCode, referralCode,
-        companyName, companyBio, companyPhone
+        companyName, companyBio, companyPhone, promoCode,
       } = req.body;
       
       if (!email || !password || !firstName || !lastName || !role || !zipCode) {
@@ -4574,6 +4582,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
             status: 'trial'
           });
         }
+      }
+
+      // Apply promo code if provided (homeowners and contractors only — agents don't subscribe)
+      if (promoCode?.trim() && role !== 'agent') {
+        const normalizedPromo = promoCode.trim().toUpperCase();
+        const [promo] = await db
+          .select()
+          .from(promoCodes)
+          .where(and(eq(promoCodes.code, normalizedPromo), eq(promoCodes.active, true)))
+          .limit(1);
+
+        if (!promo) {
+          return res.status(400).json({ message: "Invalid promo code" });
+        }
+        if (promo.expiresAt && promo.expiresAt < new Date()) {
+          return res.status(400).json({ message: "This promo code has expired" });
+        }
+        if (promo.roleRestriction && promo.roleRestriction !== role) {
+          return res.status(400).json({ message: "This promo code is not valid for your account type" });
+        }
+        if (promo.usesRemaining !== null && promo.usesRemaining <= 0) {
+          return res.status(400).json({ message: "This promo code has already been fully redeemed" });
+        }
+
+        // Decrement uses and record on the user
+        await db.update(promoCodes)
+          .set({
+            usesRemaining: promo.usesRemaining !== null ? promo.usesRemaining - 1 : null,
+            updatedAt: new Date(),
+          })
+          .where(eq(promoCodes.id, promo.id));
+
+        user = await storage.upsertUser({
+          ...user,
+          promoCodeApplied: normalizedPromo,
+          promoFreeMonths: promo.freeMonths,
+        } as any);
+
+        console.log(`[PROMO] Code ${normalizedPromo} applied to user ${user.id} (${user.email}) — ${promo.freeMonths} free months granted`);
       }
 
       // Create session
@@ -6392,6 +6439,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       req.log?.error({ err: error }, '[REFERRAL-ACCRUAL] On-demand apply failed');
       res.status(500).json({ message: 'Referral credit apply failed' });
+    }
+  });
+
+  // ── Promo code admin endpoints ────────────────────────────────────────────────
+
+  // List all promo codes
+  app.get('/api/admin/promo-codes', requireAdmin, async (req: any, res: any) => {
+    try {
+      const rows = await db.select().from(promoCodes).orderBy(desc(promoCodes.createdAt));
+      res.json(rows);
+    } catch (error) {
+      req.log?.error({ err: error }, '[PROMO] Failed to list promo codes');
+      res.status(500).json({ message: 'Failed to list promo codes' });
+    }
+  });
+
+  // Create a new promo code
+  app.post('/api/admin/promo-codes', requireAdmin, async (req: any, res: any) => {
+    try {
+      const { code, label, freeMonths, maxUses, roleRestriction, expiresAt } = req.body;
+
+      if (!code?.trim()) return res.status(400).json({ message: 'code is required' });
+      if (!freeMonths || freeMonths < 1) return res.status(400).json({ message: 'freeMonths must be >= 1' });
+
+      const normalizedCode = code.trim().toUpperCase();
+      const usesRemaining = maxUses != null ? Number(maxUses) : null;
+
+      const [created] = await db.insert(promoCodes).values({
+        code: normalizedCode,
+        label: label?.trim() || null,
+        freeMonths: Number(freeMonths),
+        maxUses: maxUses != null ? Number(maxUses) : null,
+        usesRemaining,
+        roleRestriction: roleRestriction?.trim() || null,
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
+        active: true,
+      }).returning();
+
+      req.log?.info({ code: normalizedCode, freeMonths, maxUses }, '[PROMO] Promo code created');
+      res.status(201).json(created);
+    } catch (error: any) {
+      if (error?.code === '23505') {
+        return res.status(409).json({ message: 'A promo code with that code already exists' });
+      }
+      req.log?.error({ err: error }, '[PROMO] Failed to create promo code');
+      res.status(500).json({ message: 'Failed to create promo code' });
+    }
+  });
+
+  // Deactivate / reactivate a promo code
+  app.patch('/api/admin/promo-codes/:id', requireAdmin, async (req: any, res: any) => {
+    try {
+      const { id } = req.params;
+      const { active, usesRemaining } = req.body;
+
+      const updates: Record<string, any> = { updatedAt: new Date() };
+      if (typeof active === 'boolean') updates.active = active;
+      if (usesRemaining != null) updates.usesRemaining = Number(usesRemaining);
+
+      const [updated] = await db.update(promoCodes).set(updates).where(eq(promoCodes.id, id)).returning();
+      if (!updated) return res.status(404).json({ message: 'Promo code not found' });
+
+      res.json(updated);
+    } catch (error) {
+      req.log?.error({ err: error }, '[PROMO] Failed to update promo code');
+      res.status(500).json({ message: 'Failed to update promo code' });
     }
   });
 

@@ -61,6 +61,7 @@ export function OnboardingWizard({ onComplete, isLoading, initialData }: Onboard
     companyPhone: "",
     referralCode: "",
     inviteCode: "",
+    promoCode: "",
   });
 
   const step1Form = useForm<Step1Data>({
@@ -563,6 +564,22 @@ export function OnboardingWizard({ onComplete, isLoading, initialData }: Onboard
                     </Button>
                   </div>
                 )}
+
+                {/* Promo code — shown for all roles */}
+                <div>
+                  <Label htmlFor="promoCode" className="flex items-center gap-2">
+                    Promo Code
+                    <span className="text-xs text-muted-foreground font-normal">(optional)</span>
+                  </Label>
+                  <Input
+                    id="promoCode"
+                    placeholder="Enter promo code"
+                    value={formData.promoCode}
+                    onChange={(e) => setFormData((prev: any) => ({ ...prev, promoCode: e.target.value.toUpperCase() }))}
+                    className="mt-2 uppercase"
+                    data-testid="input-promo-code"
+                  />
+                </div>
 
                 {selectedRole === 'contractor' && (
                   <>

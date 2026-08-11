@@ -63,6 +63,25 @@ export const referralCredits = pgTable("referral_credits", {
   check("CHK_not_self", sql`referrer_user_id <> referred_user_id`),
 ]);
 
+// Promotional codes that grant free months to the person who redeems them at signup.
+// Separate from agent referral codes — these are admin-issued, usage-limited, and give
+// the subscriber (not the referrer) a free period on their own subscription.
+export const promoCodes = pgTable("promo_codes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: varchar("code").unique().notNull(),               // Human-readable code, e.g. "LAUNCH6"
+  label: text("label"),                                   // Internal note, e.g. "Launch promo — 6 months free"
+  freeMonths: integer("free_months").notNull().default(1),// How many months of free access the redeemer gets
+  maxUses: integer("max_uses"),                           // null = unlimited
+  usesRemaining: integer("uses_remaining"),               // null = unlimited; decremented on each redemption
+  roleRestriction: text("role_restriction"),              // null = any role; 'homeowner' | 'contractor' | 'agent'
+  expiresAt: timestamp("expires_at"),                     // null = never expires
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_promo_codes_code").on(table.code),
+]);
+
 // Tracks free months earned through referral credit accumulation
 export const referralFreeMonths = pgTable("referral_free_months", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -245,6 +264,9 @@ export const users = pgTable("users", {
   subscriptionSource: text("subscription_source").notNull().default("stripe"), // "stripe" | "apple"
   appleOriginalTransactionId: varchar("apple_original_transaction_id"), // Apple's stable subscription identifier, used to correlate ASSN v2 webhook events back to a user
   appleProductId: varchar("apple_product_id"), // Last known Apple App Store product ID purchased (e.g. com.gotohomebase.app.homeowner.base.monthly)
+  // Promotional code applied at signup (admin-issued codes that grant free months to the subscriber)
+  promoCodeApplied: varchar("promo_code_applied"),        // The code that was redeemed
+  promoFreeMonths: integer("promo_free_months"),          // Months of free access granted; consumed at first Stripe checkout
   accountStatus: text("account_status").notNull().default("active"), // "active", "cancelled", "deleted"
   accountCancelledAt: timestamp("account_cancelled_at"),
   // Home setup wizard for new homeowners (7-step post-signup wizard)
