@@ -7,7 +7,7 @@ import { isNativePlatform } from "@/lib/nativeBrowser";
 import AddressAutocomplete from "@/components/address-autocomplete";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Check, Home, Gift, ChevronRight, X } from "lucide-react";
+import { Check, Home, Gift, Tag, ChevronRight, X } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -43,6 +43,12 @@ function OnboardingFlow({ initialStep, onClose }: OnboardingFlowProps) {
   const [referralName, setReferralName] = useState<string | null>(null);
   const [referralError, setReferralError] = useState<string | null>(null);
 
+  // Promo code step state
+  const [promoCode, setPromoCode] = useState("");
+  const [promoApplied, setPromoApplied] = useState(false);
+  const [promoMonths, setPromoMonths] = useState<number | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
+
   // Address step state
   const [addressText, setAddressText] = useState("");
   const [addressReady, setAddressReady] = useState(false);
@@ -55,6 +61,32 @@ function OnboardingFlow({ initialStep, onClose }: OnboardingFlowProps) {
       apiRequest("/api/onboarding/progress", "POST", body).then((r) => r.json()),
   });
 
+
+  // ── Promo code apply ──────────────────────────────────────────────────────
+  const promoMutation = useMutation({
+    mutationFn: (code: string) =>
+      apiRequest("/api/onboarding/promo", "POST", { code }).then((r) => r.json()),
+    onSuccess: (data) => {
+      setPromoApplied(true);
+      setPromoMonths(data.freeMonths ?? null);
+      setPromoError(null);
+    },
+    onError: async (err: any) => {
+      try {
+        const body = typeof err?.json === "function" ? await err.json() : {};
+        setPromoError(body?.message ?? "Invalid promo code. Try again.");
+      } catch {
+        setPromoError("Invalid promo code. Try again.");
+      }
+    },
+  });
+
+  const handleApplyPromo = useCallback(() => {
+    const code = promoCode.trim();
+    if (!code) return;
+    setPromoError(null);
+    promoMutation.mutate(code);
+  }, [promoCode, promoMutation]);
 
   // ── Referral apply ────────────────────────────────────────────────────────
   const referralMutation = useMutation({
@@ -174,6 +206,7 @@ function OnboardingFlow({ initialStep, onClose }: OnboardingFlowProps) {
   const isBusy =
     progressMutation.isPending ||
     referralMutation.isPending ||
+    promoMutation.isPending ||
     createHouseMutation.isPending;
 
   return createPortal(
@@ -263,6 +296,63 @@ function OnboardingFlow({ initialStep, onClose }: OnboardingFlowProps) {
                 )}
               </div>
             )}
+
+            {/* ── Promo code ── */}
+            <div className="flex items-center gap-3 my-1">
+              <div className="flex-1 h-px bg-white bg-opacity-10" />
+              <span className="text-purple-400 text-xs">or</span>
+              <div className="flex-1 h-px bg-white bg-opacity-10" />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-2 mb-0.5">
+                <Tag className="w-3.5 h-3.5 text-purple-300" />
+                <span className="text-purple-200 text-xs font-medium">Promo code</span>
+              </div>
+
+              {promoApplied ? (
+                <div className="rounded-2xl bg-emerald-500 bg-opacity-20 border border-emerald-500 border-opacity-40 px-4 py-3 flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
+                    <Check className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-emerald-300 text-sm font-semibold">Promo applied!</p>
+                    {promoMonths && (
+                      <p className="text-emerald-400 text-xs mt-0.5">{promoMonths} free month{promoMonths !== 1 ? "s" : ""} added to your subscription</p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <Input
+                      value={promoCode}
+                      onChange={(e) => {
+                        setPromoCode(e.target.value.toUpperCase());
+                        setPromoError(null);
+                      }}
+                      placeholder="Enter promo code"
+                      className="flex-1 bg-white bg-opacity-10 border-white border-opacity-20 text-white placeholder:text-purple-300 text-base h-12 rounded-xl"
+                      maxLength={30}
+                      autoCapitalize="characters"
+                      disabled={isBusy}
+                      onKeyDown={(e) => e.key === "Enter" && handleApplyPromo()}
+                    />
+                    <Button
+                      onClick={handleApplyPromo}
+                      disabled={!promoCode.trim() || isBusy}
+                      className="h-12 px-4 rounded-xl font-semibold"
+                      style={{ background: "#7c3aed", color: "white" }}
+                    >
+                      Apply
+                    </Button>
+                  </div>
+                  {promoError && (
+                    <p className="text-red-300 text-xs px-1">{promoError}</p>
+                  )}
+                </div>
+              )}
+            </div>
           </>
         ) : (
           /* ──── Step 3: Address ──── */

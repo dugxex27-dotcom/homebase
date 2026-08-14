@@ -6431,6 +6431,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Apply a promo code to the current authenticated user (post-registration, used by native onboarding flow)
+  app.post('/api/onboarding/promo', async (req: any, res: any) => {
+    const userId: string | undefined = req.session?.user?.id;
+    if (!userId) return res.status(401).json({ message: 'Not authenticated' });
+
+    const { code } = req.body;
+    if (!code?.trim()) return res.status(400).json({ message: 'code is required' });
+
+    const normalizedPromo = code.trim().toUpperCase();
+
+    const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if ((user as any).promoCodeApplied) {
+      return res.status(409).json({ message: 'A promo code has already been applied to your account' });
+    }
+
+    const [promo] = await db
+      .select()
+      .from(promoCodes)
+      .where(and(eq(promoCodes.code, normalizedPromo), eq(promoCodes.active, true)))
+      .limit(1);
+
+    if (!promo) return res.status(400).json({ message: 'Invalid promo code' });
+    if (promo.expiresAt && promo.expiresAt < new Date()) {
+      return res.status(400).json({ message: 'This promo code has expired' });
+    }
+    if (promo.roleRestriction && promo.roleRestriction !== user.role) {
+      return res.status(400).json({ message: 'This promo code is not valid for your account type' });
+    }
+    if (promo.usesRemaining !== null && promo.usesRemaining <= 0) {
+      return res.status(400).json({ message: 'This promo code has already been fully redeemed' });
+    }
+
+    await db.update(promoCodes)
+      .set({ usesRemaining: promo.usesRemaining !== null ? promo.usesRemaining - 1 : null, updatedAt: new Date() })
+      .where(eq(promoCodes.id, promo.id));
+
+    await storage.upsertUser({
+      ...user,
+      promoCodeApplied: normalizedPromo,
+      promoFreeMonths: promo.freeMonths,
+    } as any);
+
+    req.log?.info({ userId, code: normalizedPromo, freeMonths: promo.freeMonths }, '[PROMO] Promo code applied via onboarding');
+    res.json({ freeMonths: promo.freeMonths, code: normalizedPromo });
+  });
+
   // Admin endpoint to apply all pending referral_credit_ledger rows to Stripe on demand
   app.post('/api/admin/referral-accrual/apply', requireAdmin, async (req: any, res: any) => {
     try {
