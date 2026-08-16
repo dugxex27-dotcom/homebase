@@ -25,24 +25,24 @@ function getMonth() {
   return new Date().toLocaleString("default", { month: "long" });
 }
 
-const MECHANICAL_FEATURES: Array<{ key: "roofInstalledYear" | "hvacInstalledYear" | "waterHeaterInstalledYear"; label: string; icon: string; lifespan: [number, number] }> = [
-  { key: "roofInstalledYear", label: "Roof", icon: "🏠", lifespan: [20, 25] },
-  { key: "hvacInstalledYear", label: "HVAC", icon: "❄️", lifespan: [15, 20] },
-  { key: "waterHeaterInstalledYear", label: "Water Heater", icon: "🚿", lifespan: [8, 12] },
+const MECHANICAL_FEATURES: Array<{ key: "roofInstalledYear" | "hvacInstalledYear" | "waterHeaterInstalledYear"; label: string; icon: string; lifespan: [number, number]; category: string }> = [
+  { key: "roofInstalledYear", label: "Roof", icon: "🏠", lifespan: [20, 25], category: "roofing" },
+  { key: "hvacInstalledYear", label: "HVAC", icon: "❄️", lifespan: [15, 20], category: "hvac" },
+  { key: "waterHeaterInstalledYear", label: "Water Heater", icon: "🚿", lifespan: [8, 12], category: "plumbing" },
 ];
 
 function getMechanicalAgeInfo(house: House) {
   const currentYear = new Date().getFullYear();
-  return MECHANICAL_FEATURES.map(({ key, label, icon, lifespan }) => {
+  return MECHANICAL_FEATURES.map(({ key, label, icon, lifespan, category }) => {
     const installedYear = house[key] as number | null | undefined;
     if (!installedYear) {
-      return { label, icon, tone: "unknown" as const, text: "Add install year to raise your score" };
+      return { label, icon, category, tone: "unknown" as const, text: "Add install year to raise your score" };
     }
     const age = currentYear - installedYear;
     const [min, max] = lifespan;
     const tone = age <= min ? "good" as const : age <= max ? "warn" as const : "alert" as const;
     const status = age <= min ? "Good condition" : age <= max ? "Aging — plan ahead" : "Past typical lifespan";
-    return { label, icon, tone, text: `${age} yr${age === 1 ? "" : "s"} old · installed ${installedYear} · ${status}` };
+    return { label, icon, category, tone, text: `${age} yr${age === 1 ? "" : "s"} old · installed ${installedYear} · ${status}` };
   });
 }
 
@@ -512,8 +512,12 @@ export default function Home() {
                           <div style={{ fontWeight: 600, fontSize: 13, color: f.tone === 'alert' ? '#991b1b' : '#92400e' }}>{f.label}</div>
                           <div style={{ fontSize: 11, color: f.tone === 'alert' ? '#b91c1c' : '#b45309', marginTop: 1 }}>{f.text}</div>
                         </div>
-                        <Link href="/maintenance" style={{ fontSize: 11, color: f.tone === 'alert' ? '#dc2626' : '#d97706', fontWeight: 700, textDecoration: 'none', flexShrink: 0 }}>
-                          Plan →
+                        <Link
+                          href={`/find-contractors?category=${encodeURIComponent(f.category)}`}
+                          style={{ fontSize: 11, color: f.tone === 'alert' ? '#dc2626' : '#d97706', fontWeight: 700, textDecoration: 'none', flexShrink: 0 }}
+                          data-testid={`watch-list-find-help-${f.category}`}
+                        >
+                          Find help →
                         </Link>
                       </div>
                     ))}
