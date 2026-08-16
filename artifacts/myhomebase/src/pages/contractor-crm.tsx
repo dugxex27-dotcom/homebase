@@ -153,6 +153,17 @@ interface CrmInvoice {
   createdAt: string;
 }
 
+interface SentJobRecord {
+  id: string;
+  serviceType: string;
+  serviceDescription: string | null;
+  status: 'pending' | 'accepted' | 'declined';
+  createdAt: string;
+  acceptedAt: string | null;
+  homeownerFirstName: string | null;
+  homeownerLastName: string | null;
+}
+
 interface DashboardStats {
   totalClients: number;
   activeJobs: number;
@@ -459,6 +470,12 @@ export default function ContractorCRMPage() {
     enabled: hasProAccess,
   });
 
+  // Fetch sent job records (contractor feedback loop)
+  const { data: sentJobRecords, isLoading: isLoadingSentRecords } = useQuery<SentJobRecord[]>({
+    queryKey: ['/api/crm/sent-job-records'],
+    enabled: hasProAccess,
+  });
+
   // Fetch dashboard stats (Pro tier)
   const { data: dashboardStats, isLoading: isLoadingDashboard } = useQuery<DashboardStats>({
     queryKey: ['/api/crm/dashboard'],
@@ -719,6 +736,7 @@ export default function ContractorCRMPage() {
       setSthEquipment([]);
       setSthNextServiceDate('');
       setSthNotes('');
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/sent-job-records'] });
       toast({ title: "Record sent!", description: "The homeowner will see this in their MyHomeBase dashboard and can accept it to save to their home history." });
     },
     onError: (error: any) => {
@@ -1898,6 +1916,56 @@ export default function ContractorCRMPage() {
                       </CardContent>
                     </Card>
                   ))
+                )}
+              </div>
+
+              {/* Sent Records Panel */}
+              <div className="mt-8">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <HomeIcon className="h-5 w-5 text-green-600" />
+                  Sent Records
+                </h3>
+                {isLoadingSentRecords ? (
+                  <Card><CardContent className="py-8 text-center text-muted-foreground">Loading sent records...</CardContent></Card>
+                ) : !sentJobRecords || sentJobRecords.length === 0 ? (
+                  <Card>
+                    <CardContent className="py-8 text-center text-muted-foreground">
+                      <HomeIcon className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                      <p>No records sent yet. Use "Send to Homeowner" on a completed job to push it to a homeowner's dashboard.</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-3">
+                    {sentJobRecords.map((record) => {
+                      const homeownerName = [record.homeownerFirstName, record.homeownerLastName].filter(Boolean).join(' ') || 'Homeowner';
+                      const statusBadge = record.status === 'accepted'
+                        ? <Badge className="bg-green-100 text-green-800 border-green-200" data-testid={`sent-record-status-${record.id}`}><CheckCircle className="h-3 w-3 mr-1" />Accepted</Badge>
+                        : record.status === 'declined'
+                        ? <Badge className="bg-red-100 text-red-800 border-red-200" data-testid={`sent-record-status-${record.id}`}><XCircle className="h-3 w-3 mr-1" />Declined</Badge>
+                        : <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200" data-testid={`sent-record-status-${record.id}`}><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+                      return (
+                        <Card key={record.id} data-testid={`sent-record-${record.id}`}>
+                          <CardContent className="py-4">
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex-1 min-w-0">
+                                <div className="font-medium truncate">{record.serviceType}</div>
+                                <div className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
+                                  <User className="h-3 w-3" />
+                                  {homeownerName}
+                                  <span className="mx-1">·</span>
+                                  {format(new Date(record.createdAt), 'MMM d, yyyy')}
+                                </div>
+                                {record.serviceDescription && (
+                                  <div className="text-sm text-muted-foreground mt-1 truncate">{record.serviceDescription}</div>
+                                )}
+                              </div>
+                              <div className="shrink-0">{statusBadge}</div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
           </ProFeatureGate>

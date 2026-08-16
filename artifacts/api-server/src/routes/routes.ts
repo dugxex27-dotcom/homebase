@@ -15861,6 +15861,37 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
+  // GET /api/crm/sent-job-records
+  app.get('/api/crm/sent-job-records', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
+    try {
+      const userId = req.session.user.id;
+      if (req.session.user.role !== 'contractor') {
+        return res.status(403).json({ message: "Only contractors can view sent job records" });
+      }
+
+      const records = await db
+        .select({
+          id: contractorJobRecords.id,
+          serviceType: contractorJobRecords.serviceType,
+          serviceDescription: contractorJobRecords.serviceDescription,
+          status: contractorJobRecords.status,
+          createdAt: contractorJobRecords.createdAt,
+          acceptedAt: contractorJobRecords.acceptedAt,
+          homeownerFirstName: users.firstName,
+          homeownerLastName: users.lastName,
+        })
+        .from(contractorJobRecords)
+        .innerJoin(users, eq(contractorJobRecords.homeownerId, users.id))
+        .where(eq(contractorJobRecords.contractorUserId, userId))
+        .orderBy(desc(contractorJobRecords.createdAt));
+
+      res.json(records);
+    } catch (error) {
+      console.error("Error fetching sent job records:", error);
+      res.status(500).json({ message: "Failed to fetch sent job records" });
+    }
+  });
+
   // GET /api/homeowner/pending-job-records
   app.get('/api/homeowner/pending-job-records', isAuthenticated, async (req: any, res: any) => {
     try {
