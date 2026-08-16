@@ -16,7 +16,7 @@ import { calculateMechanicalDocumentationBonus } from "../shared/maintenance-sch
 import { invoiceOrphanCleanupScheduler } from "../invoice-orphan-cleanup-scheduler";
 import { referralAccrualScheduler } from "../referral-accrual-scheduler";
 import { extractInvoiceData, verifyDIYPhotos, type InvoiceExtraction } from "../invoice-analysis-service";
-import { invoiceAnalyses, contractorBoosts, affiliateReferrals, subscriptionCycleEvents, contractorInvoiceUploads, companies, proposals, securityAuditLogs, companyDivisions, companyBulkImports, insertCompanyDivisionSchema, conversations, messages } from "@workspace/db";
+import { invoiceAnalyses, contractorBoosts, affiliateReferrals, subscriptionCycleEvents, contractorInvoiceUploads, companies, proposals, securityAuditLogs, companyDivisions, companyBulkImports, insertCompanyDivisionSchema, conversations, messages, contractorJobRecords } from "@workspace/db";
 import pushRoutes from "../push-routes";
 import { pushService } from "../push-service";
 import { ObjectStorageService, ObjectNotFoundError } from "../objectStorage";
@@ -15777,6 +15777,199 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     } catch (error) {
       console.error("Error claiming invoice:", error);
       res.status(500).json({ message: "Failed to claim invoice" });
+    }
+  });
+
+  // ── CONTRACTOR JOB RECORDS (contractor → homeowner push) ─────────────────
+
+  // POST /api/crm/jobs/:jobId/send-to-homeowner
+  app.post('/api/crm/jobs/:jobId/send-to-homeowner', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
+    try {
+      const userId = req.session.user.id;
+      if (req.session.user.role !== 'contractor') {
+        return res.status(403).json({ message: "Only contractors can send job records" });
+      }
+
+      const { jobId } = req.params;
+      const { homeownerId, houseId, serviceDescription, equipmentInfo, nextServiceDate, nextServiceNotes } = req.body;
+
+      if (!homeownerId) {
+        return res.status(400).json({ message: "homeownerId is required" });
+      }
+
+      // Verify job belongs to this contractor
+      const job = await storage.getCrmJob(jobId);
+      if (!job || job.contractorUserId !== userId) {
+        return res.status(404).json({ message: "Job not found" });
+      }
+
+      // Verify homeowner exists
+      const homeowner = await storage.getUser(homeownerId);
+      if (!homeowner || homeowner.role !== 'homeowner') {
+        return res.status(400).json({ message: "Invalid homeowner" });
+      }
+
+      // Build contractor display info
+      const contractor = await storage.getUser(userId);
+      const contractorName = contractor?.firstName && contractor?.lastName
+        ? `${contractor.firstName} ${contractor.lastName}`
+        : contractor?.email || 'Contractor';
+      const companyId = req.session.user.companyId;
+      const company = companyId ? await storage.getCompany(companyId) : null;
+      const contractorCompany = company?.name || null;
+
+      const [record] = await db.insert(contractorJobRecords).values({
+        contractorUserId: userId,
+        contractorName,
+        contractorCompany,
+        homeownerId,
+        houseId: houseId || null,
+        jobId: jobId || null,
+        invoiceId: null,
+        serviceType: job.serviceType,
+        serviceDescription: serviceDescription || job.description || null,
+        completionNotes: job.completionNotes || null,
+        equipmentInfo: Array.isArray(equipmentInfo) ? equipmentInfo : [],
+        photos: [],
+        nextServiceDate: nextServiceDate ? new Date(nextServiceDate) : null,
+        nextServiceNotes: nextServiceNotes || null,
+        status: 'pending',
+      }).returning();
+
+      // Email notification (best-effort)
+      if (homeowner.email) {
+        try {
+          const homeownerFirstName = (homeowner as any).firstName || (homeowner as any).name?.split(' ')[0] || 'there';
+          await emailService.sendEmail({
+            to: homeowner.email,
+            subject: `${contractorName} sent you a home service record`,
+            text: `Hi ${homeownerFirstName},\n\n${contractorName}${contractorCompany ? ` (${contractorCompany})` : ''} just completed a job and sent you a service record for ${job.serviceType}.\n\nLog into your MyHomeBase dashboard to review and accept the record — it will be permanently saved to your home's history.\n\nhttps://gotohomebase.com`,
+            html: `<p>Hi ${homeownerFirstName},</p>
+              <p><strong>${contractorName}${contractorCompany ? ` (${contractorCompany})` : ''}</strong> just completed a job and sent you a service record for <strong>${job.serviceType}</strong>.</p>
+              <p>Log into your MyHomeBase dashboard to review and accept the record — it will be permanently saved to your home's history.</p>
+              <p><a href="https://gotohomebase.com" style="background:#7c3aed;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;">View in MyHomeBase →</a></p>`,
+          });
+        } catch (emailErr) {
+          console.error('[send-to-homeowner] Email failed:', emailErr);
+        }
+      }
+
+      res.status(201).json(record);
+    } catch (error) {
+      console.error("Error sending job record to homeowner:", error);
+      res.status(500).json({ message: "Failed to send job record" });
+    }
+  });
+
+  // GET /api/homeowner/pending-job-records
+  app.get('/api/homeowner/pending-job-records', isAuthenticated, async (req: any, res: any) => {
+    try {
+      const userId = req.session.user.id;
+      if (req.session.user.role !== 'homeowner') {
+        return res.status(403).json({ message: "Only homeowners can view pending job records" });
+      }
+
+      const records = await db.select().from(contractorJobRecords)
+        .where(and(
+          eq(contractorJobRecords.homeownerId, userId),
+          eq(contractorJobRecords.status, 'pending')
+        ))
+        .orderBy(desc(contractorJobRecords.createdAt));
+
+      res.json(records);
+    } catch (error) {
+      console.error("Error fetching pending job records:", error);
+      res.status(500).json({ message: "Failed to fetch pending job records" });
+    }
+  });
+
+  // POST /api/homeowner/pending-job-records/:id/accept
+  app.post('/api/homeowner/pending-job-records/:id/accept', isAuthenticated, async (req: any, res: any) => {
+    try {
+      const userId = req.session.user.id;
+      if (req.session.user.role !== 'homeowner') {
+        return res.status(403).json({ message: "Only homeowners can accept job records" });
+      }
+
+      const { id } = req.params;
+      const { houseId: bodyHouseId } = req.body;
+
+      const rows = await db.select().from(contractorJobRecords)
+        .where(and(eq(contractorJobRecords.id, id), eq(contractorJobRecords.homeownerId, userId)));
+      const record = rows[0];
+
+      if (!record) return res.status(404).json({ message: "Record not found" });
+      if (record.status !== 'pending') return res.status(409).json({ message: "Record already processed" });
+
+      const houseId = bodyHouseId || record.houseId;
+      if (!houseId) return res.status(400).json({ message: "houseId is required to save this record" });
+
+      const house = await storage.getHouse(houseId);
+      if (!house || house.homeownerId !== userId) {
+        return res.status(403).json({ message: "House not found or does not belong to you" });
+      }
+
+      // Create a contractor-verified maintenance log
+      const maintenanceLog = await storage.createMaintenanceLog({
+        homeownerId: userId,
+        houseId,
+        serviceDate: record.createdAt ? record.createdAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        serviceType: record.serviceType,
+        homeArea: record.serviceType,
+        serviceDescription: record.serviceDescription || record.completionNotes || record.serviceType,
+        cost: null,
+        contractorName: record.contractorName || 'Contractor',
+        contractorCompany: record.contractorCompany || null,
+        contractorId: record.contractorUserId,
+        notes: record.nextServiceNotes ? `Next service recommended: ${record.nextServiceNotes}` : null,
+        warrantyPeriod: null,
+        nextServiceDue: record.nextServiceDate ? record.nextServiceDate.toISOString().split('T')[0] : null,
+        receiptUrls: [],
+        beforePhotoUrls: [],
+        afterPhotoUrls: Array.isArray(record.photos) ? (record.photos as string[]) : [],
+        completionMethod: 'contractor',
+        verificationTier: 'contractor_verified',
+        contractorAccountId: record.contractorUserId,
+        contractorBusinessName: record.contractorCompany || null,
+        contractorJobDate: record.createdAt ? record.createdAt.toISOString().split('T')[0] : null,
+      });
+
+      await db.update(contractorJobRecords)
+        .set({ status: 'accepted', acceptedAt: new Date() })
+        .where(eq(contractorJobRecords.id, id));
+
+      res.json({ maintenanceLog, message: "Record accepted and saved to your home history" });
+    } catch (error) {
+      console.error("Error accepting job record:", error);
+      res.status(500).json({ message: "Failed to accept job record" });
+    }
+  });
+
+  // POST /api/homeowner/pending-job-records/:id/decline
+  app.post('/api/homeowner/pending-job-records/:id/decline', isAuthenticated, async (req: any, res: any) => {
+    try {
+      const userId = req.session.user.id;
+      if (req.session.user.role !== 'homeowner') {
+        return res.status(403).json({ message: "Only homeowners can decline job records" });
+      }
+
+      const { id } = req.params;
+
+      const rows = await db.select().from(contractorJobRecords)
+        .where(and(eq(contractorJobRecords.id, id), eq(contractorJobRecords.homeownerId, userId)));
+      const record = rows[0];
+
+      if (!record) return res.status(404).json({ message: "Record not found" });
+      if (record.status !== 'pending') return res.status(409).json({ message: "Record already processed" });
+
+      await db.update(contractorJobRecords)
+        .set({ status: 'declined' })
+        .where(eq(contractorJobRecords.id, id));
+
+      res.json({ message: "Record dismissed" });
+    } catch (error) {
+      console.error("Error declining job record:", error);
+      res.status(500).json({ message: "Failed to dismiss record" });
     }
   });
 

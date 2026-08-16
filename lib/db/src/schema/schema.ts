@@ -2086,6 +2086,38 @@ export const insertCrmInvoiceSchema = createInsertSchema(crmInvoices).omit({ id:
 export type InsertCrmInvoice = z.infer<typeof insertCrmInvoiceSchema>;
 export type CrmInvoice = typeof crmInvoices.$inferSelect;
 
+// Contractor Job Records — contractor pushes a completed job record to a homeowner's home history
+export const contractorJobRecords = pgTable("contractor_job_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  contractorUserId: varchar("contractor_user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  contractorName: text("contractor_name"),
+  contractorCompany: text("contractor_company"),
+  homeownerId: varchar("homeowner_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  houseId: varchar("house_id").references(() => houses.id, { onDelete: 'set null' }),
+  jobId: varchar("job_id").references(() => crmJobs.id, { onDelete: 'set null' }),
+  invoiceId: varchar("invoice_id").references(() => crmInvoices.id, { onDelete: 'set null' }),
+  serviceType: text("service_type").notNull(),
+  serviceDescription: text("service_description"),
+  completionNotes: text("completion_notes"),
+  // Array of {name, brand, model, serialNumber, installedYear}
+  equipmentInfo: jsonb("equipment_info").notNull().default(sql`'[]'::jsonb`),
+  // Array of photo URLs
+  photos: jsonb("photos").notNull().default(sql`'[]'::jsonb`),
+  nextServiceDate: timestamp("next_service_date"),
+  nextServiceNotes: text("next_service_notes"),
+  status: varchar("status").notNull().default('pending'), // 'pending' | 'accepted' | 'declined'
+  acceptedAt: timestamp("accepted_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_contractor_job_records_homeowner").on(table.homeownerId),
+  index("IDX_contractor_job_records_contractor").on(table.contractorUserId),
+  index("IDX_contractor_job_records_status").on(table.status),
+]);
+
+export const insertContractorJobRecordSchema = createInsertSchema(contractorJobRecords).omit({ id: true, createdAt: true });
+export type InsertContractorJobRecord = z.infer<typeof insertContractorJobRecordSchema>;
+export type ContractorJobRecord = typeof contractorJobRecords.$inferSelect;
+
 // CRM Payments table - tracks payments made via Stripe Connect
 export const crmPayments = pgTable("crm_payments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

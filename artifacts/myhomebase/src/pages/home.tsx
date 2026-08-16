@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, Calendar, Search, Star, TrendingUp, Gift, Sparkles, FileText, AlertTriangle, ClipboardList, Bell, ChevronRight, ChevronDown, ChevronUp, Phone, Mail, Globe, MapPin, X as XIcon, Wrench, DollarSign, Info } from "lucide-react";
+import { Users, Calendar, Search, Star, TrendingUp, Gift, Sparkles, FileText, AlertTriangle, ClipboardList, Bell, ChevronRight, ChevronDown, ChevronUp, Phone, Mail, Globe, MapPin, X as XIcon, Wrench, DollarSign, Info, CheckCircle2, Clock } from "lucide-react";
 import HouseMap from "@/components/house-map";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -124,6 +124,27 @@ export default function Home() {
     enabled: typedUser?.role === "homeowner",
   });
 
+  // Pending contractor job records (contractor pushed completed job to homeowner)
+  interface PendingJobRecord {
+    id: string;
+    contractorName: string | null;
+    contractorCompany: string | null;
+    serviceType: string;
+    serviceDescription: string | null;
+    completionNotes: string | null;
+    equipmentInfo: Array<{ name: string; brand?: string; model?: string; serialNumber?: string; installedYear?: string }>;
+    photos: string[];
+    nextServiceDate: string | null;
+    nextServiceNotes: string | null;
+    status: string;
+    createdAt: string;
+  }
+  const { data: pendingJobRecords = [] } = useQuery<PendingJobRecord[]>({
+    queryKey: ["/api/homeowner/pending-job-records"],
+    enabled: typedUser?.role === "homeowner",
+    refetchInterval: 60000,
+  });
+
   // Linked invoices from contractors (via connection code)
   const { data: linkedInvoices = [] } = useQuery<Array<{
     id: string; invoiceNumber: string; title: string; status: string;
@@ -153,6 +174,34 @@ export default function Home() {
     onSuccess: (_, { invoiceId }) => {
       setClaimedInvoiceIds(prev => new Set(prev).add(invoiceId));
       queryClient.invalidateQueries({ queryKey: ["/api/homeowner/linked-invoices/unclaimed-count"] });
+    },
+  });
+
+  // Accept / decline contractor job records
+  const acceptJobRecordMutation = useMutation({
+    mutationFn: async ({ id, houseId }: { id: string; houseId: string }) => {
+      const res = await fetch(`/api/homeowner/pending-job-records/${id}/accept`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ houseId }),
+      });
+      if (!res.ok) throw new Error((await res.json()).message || 'Failed to accept');
+      return res.json();
+    },
+    onSuccess: (_, { id }) => {
+      setAcceptedJobRecordIds(prev => new Set(prev).add(id));
+      queryClient.invalidateQueries({ queryKey: ["/api/homeowner/pending-job-records"] });
+    },
+  });
+  const declineJobRecordMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/homeowner/pending-job-records/${id}/decline`, { method: 'POST' });
+      if (!res.ok) throw new Error((await res.json()).message || 'Failed to dismiss');
+      return res.json();
+    },
+    onSuccess: (_, id) => {
+      setDeclinedJobRecordIds(prev => new Set(prev).add(id));
+      queryClient.invalidateQueries({ queryKey: ["/api/homeowner/pending-job-records"] });
     },
   });
 
@@ -196,6 +245,9 @@ export default function Home() {
   const [agentModalOpen, setAgentModalOpen] = useState(false);
   const [contractorInvoicesExpanded, setContractorInvoicesExpanded] = useState(false);
   const [claimedInvoiceIds, setClaimedInvoiceIds] = useState<Set<string>>(new Set());
+  const [acceptedJobRecordIds, setAcceptedJobRecordIds] = useState<Set<string>>(new Set());
+  const [declinedJobRecordIds, setDeclinedJobRecordIds] = useState<Set<string>>(new Set());
+  const [jobRecordHouseOverrides, setJobRecordHouseOverrides] = useState<Record<string, string>>({});
   // Per-invoice house overrides: homeowner can reassign before saving
   const [invoiceHouseOverrides, setInvoiceHouseOverrides] = useState<Record<string, string>>({});
   const [changingHouseForInvoice, setChangingHouseForInvoice] = useState<string | null>(null);
@@ -327,6 +379,148 @@ export default function Home() {
       {typedUser?.role === "homeowner" && houses.length > 0 && (
         <HomeownerFeatureGate featureName="Home Dashboard">
           <div className="dash-body">
+
+            {/* ── NEEDS ATTENTION: Pending contractor job records ─── */}
+            {(pendingJobRecords as any[]).filter(r => !acceptedJobRecordIds.has(r.id) && !declinedJobRecordIds.has(r.id)).length > 0 && (
+              <div className="dash-light-card" style={{ borderLeft: '3px solid #7c3aed', marginBottom: 8 }} data-testid="pending-job-records-section">
+                <div className="dash-light-card-row" style={{ marginBottom: 10 }}>
+                  <div className="dash-light-card-icon" style={{ background: '#ede9fe' }}>
+                    <CheckCircle2 size={18} style={{ color: '#7c3aed' }} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="dash-light-card-title">From Your Contractors</div>
+                    <div className="dash-light-card-sub">
+                      {(pendingJobRecords as any[]).filter(r => !acceptedJobRecordIds.has(r.id) && !declinedJobRecordIds.has(r.id)).length} pending record{(pendingJobRecords as any[]).filter(r => !acceptedJobRecordIds.has(r.id) && !declinedJobRecordIds.has(r.id)).length !== 1 ? 's' : ''} — tap Accept to save to your home history
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {(pendingJobRecords as any[]).filter(r => !acceptedJobRecordIds.has(r.id) && !declinedJobRecordIds.has(r.id)).map((record: any) => {
+                    const isAccepted = acceptedJobRecordIds.has(record.id);
+                    const effectiveHouseId = jobRecordHouseOverrides[record.id] ?? record.houseId ?? (houses.length === 1 ? (houses[0] as House)?.id : undefined);
+                    const effectiveHouse = effectiveHouseId ? (houses as House[]).find(h => h.id === effectiveHouseId) : undefined;
+                    const canAccept = !!effectiveHouseId;
+                    const multiHouse = (houses as House[]).length > 1;
+
+                    return (
+                      <div key={record.id} style={{
+                        background: '#f5f3ff', border: '1px solid #ddd6fe', borderRadius: 10,
+                        padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8,
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: '#2C0F5B' }}>
+                              {record.serviceType}
+                            </div>
+                            <div style={{ fontSize: 11, color: '#7B6FA0', marginTop: 2 }}>
+                              {record.contractorName}{record.contractorCompany ? ` · ${record.contractorCompany}` : ''}
+                            </div>
+                            {record.serviceDescription && (
+                              <div style={{ fontSize: 12, color: '#4C3B6E', marginTop: 4, lineHeight: 1.4 }}>
+                                {record.serviceDescription}
+                              </div>
+                            )}
+                            {record.nextServiceDate && (
+                              <div style={{ fontSize: 11, color: '#059669', marginTop: 4, fontWeight: 600 }}>
+                                <Clock size={10} style={{ display: 'inline', marginRight: 3, verticalAlign: 'middle' }} />
+                                Next service: {new Date(record.nextServiceDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                              </div>
+                            )}
+                            {Array.isArray(record.equipmentInfo) && record.equipmentInfo.length > 0 && (
+                              <div style={{ fontSize: 11, color: '#7B6FA0', marginTop: 4 }}>
+                                🔧 {record.equipmentInfo.map((e: any) => e.name).join(', ')}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* House assignment + actions */}
+                        <div style={{ borderTop: '1px solid #ddd6fe', paddingTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                          <div style={{ fontSize: 11, color: '#2C0F5B', flex: 1 }}>
+                            {multiHouse ? (
+                              <select
+                                value={effectiveHouseId ?? ''}
+                                onChange={e => setJobRecordHouseOverrides(prev => ({ ...prev, [record.id]: e.target.value }))}
+                                style={{ fontSize: 11, padding: '3px 6px', borderRadius: 5, border: '1px solid #ddd6fe', color: '#2C0F5B' }}
+                                data-testid={`select-job-record-house-${record.id}`}
+                              >
+                                <option value="">— choose property —</option>
+                                {(houses as House[]).map(h => (
+                                  <option key={h.id} value={h.id}>{(h as any).name || (h as any).address}</option>
+                                ))}
+                              </select>
+                            ) : effectiveHouse ? (
+                              <span>📍 {(effectiveHouse as any).name || (effectiveHouse as any).address}</span>
+                            ) : null}
+                          </div>
+                          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                            <button
+                              onClick={() => declineJobRecordMutation.mutate(record.id)}
+                              disabled={declineJobRecordMutation.isPending}
+                              style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, background: 'none', border: '1px solid #ddd6fe', cursor: 'pointer', color: '#7B6FA0' }}
+                              data-testid={`button-dismiss-job-record-${record.id}`}
+                            >
+                              Dismiss
+                            </button>
+                            <button
+                              onClick={() => canAccept && acceptJobRecordMutation.mutate({ id: record.id, houseId: effectiveHouseId! })}
+                              disabled={!canAccept || acceptJobRecordMutation.isPending}
+                              style={{ fontSize: 11, padding: '4px 10px', borderRadius: 6, background: canAccept ? '#7c3aed' : '#ccc', color: '#fff', border: 'none', cursor: canAccept ? 'pointer' : 'default', fontWeight: 600 }}
+                              data-testid={`button-accept-job-record-${record.id}`}
+                            >
+                              Accept ✓
+                            </button>
+                          </div>
+                        </div>
+                        {isAccepted && (
+                          <div style={{ fontSize: 11, color: '#22c55e', fontWeight: 600 }}>✓ Saved to your home history</div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* ── WATCH LIST: Aging systems that need attention ─────── */}
+            {primaryHouse && (() => {
+              const ageItems = getMechanicalAgeInfo(primaryHouse).filter(f => f.tone === 'alert' || f.tone === 'warn');
+              if (ageItems.length === 0) return null;
+              return (
+                <div className="dash-light-card" style={{ borderLeft: `3px solid ${ageItems.some(f => f.tone === 'alert') ? '#dc2626' : '#f59e0b'}`, marginBottom: 8 }} data-testid="watch-list-section">
+                  <div className="dash-light-card-row" style={{ marginBottom: 8 }}>
+                    <div className="dash-light-card-icon" style={{ background: ageItems.some(f => f.tone === 'alert') ? '#fee2e2' : '#fef3c7' }}>
+                      <AlertTriangle size={18} style={{ color: ageItems.some(f => f.tone === 'alert') ? '#dc2626' : '#d97706' }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="dash-light-card-title">
+                        {ageItems.some(f => f.tone === 'alert') ? 'Needs Attention' : 'Plan Ahead'}
+                      </div>
+                      <div className="dash-light-card-sub">Aging systems that could become costly</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {ageItems.map(f => (
+                      <div key={f.label} style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        background: f.tone === 'alert' ? '#fef2f2' : '#fffbeb',
+                        border: `1px solid ${f.tone === 'alert' ? '#fecaca' : '#fde68a'}`,
+                        borderRadius: 8, padding: '8px 10px',
+                      }}>
+                        <span style={{ fontSize: 20 }}>{f.icon}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: 13, color: f.tone === 'alert' ? '#991b1b' : '#92400e' }}>{f.label}</div>
+                          <div style={{ fontSize: 11, color: f.tone === 'alert' ? '#b91c1c' : '#b45309', marginTop: 1 }}>{f.text}</div>
+                        </div>
+                        <Link href="/maintenance" style={{ fontSize: 11, color: f.tone === 'alert' ? '#dc2626' : '#d97706', fontWeight: 700, textDecoration: 'none', flexShrink: 0 }}>
+                          Plan →
+                        </Link>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Agent Banner — in body (purple-tint area) per reference design */}
             {referringAgent && (

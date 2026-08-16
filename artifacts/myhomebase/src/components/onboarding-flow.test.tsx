@@ -380,9 +380,9 @@ describe("OnboardingFlowController — referral step transitions to address step
       "FRIEND10"
     );
 
-    // Click Apply — triggers referralMutation.mutate → mutationFn → onSuccess → setReferralApplied(true)
+    // Click Apply (referral) — triggers referralMutation.mutate → mutationFn → onSuccess → setReferralApplied(true)
     await act(async () => {
-      within(document.body).getByRole("button", { name: "Apply" }).click();
+      within(document.body).getAllByRole("button", { name: "Apply" })[0].click();
       for (let i = 0; i < 20; i++) await Promise.resolve();
     });
 

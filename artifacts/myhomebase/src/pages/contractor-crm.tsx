@@ -15,7 +15,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   Plus, Phone, MessageCircle, Calendar, Search, Filter, Plug, Copy, Check, Trash2, 
   ExternalLink, Users, Briefcase, FileText, Receipt, LayoutDashboard, Crown, 
-  Send, DollarSign, Clock, Edit, Eye, CheckCircle, XCircle, AlertTriangle, User
+  Send, DollarSign, Clock, Edit, Eye, CheckCircle, XCircle, AlertTriangle, User, Home as HomeIcon
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -402,6 +402,20 @@ export default function ContractorCRMPage() {
   const [sendDialogItemId, setSendDialogItemId] = useState<string>('');
   const [sendMethod, setSendMethod] = useState<'email' | 'sms' | 'both'>('email');
 
+  // Send-to-homeowner state
+  const [sendToHomeownerOpen, setSendToHomeownerOpen] = useState(false);
+  const [sendToHomeownerJob, setSendToHomeownerJob] = useState<CrmJob | null>(null);
+  const [sthConnectionCode, setSthConnectionCode] = useState('');
+  const [sthLinkedHomeowner, setSthLinkedHomeowner] = useState<{
+    id: string; name: string; email: string;
+    houses: Array<{ id: string; name: string; address: string }>;
+  } | null>(null);
+  const [isValidatingSth, setIsValidatingSth] = useState(false);
+  const [sthSelectedHouseId, setSthSelectedHouseId] = useState('');
+  const [sthEquipment, setSthEquipment] = useState<Array<{ name: string; brand: string; model: string; serialNumber: string; installedYear: string }>>([]);
+  const [sthNextServiceDate, setSthNextServiceDate] = useState('');
+  const [sthNotes, setSthNotes] = useState('');
+
   // Check Pro tier access
   const { data: proAccessData, error: proAccessError, isLoading: isCheckingProAccess } = useQuery<CrmClient[]>({
     queryKey: ['/api/crm/clients'],
@@ -683,6 +697,58 @@ export default function ContractorCRMPage() {
       toast({ title: "Error", description: error.message || "Failed to record payment", variant: "destructive" });
     },
   });
+
+  const sendToHomeownerMutation = useMutation({
+    mutationFn: async () => {
+      if (!sendToHomeownerJob || !sthLinkedHomeowner) throw new Error("Missing data");
+      const houseId = sthSelectedHouseId || (sthLinkedHomeowner.houses.length === 1 ? sthLinkedHomeowner.houses[0].id : undefined);
+      return await apiRequest(`/api/crm/jobs/${sendToHomeownerJob.id}/send-to-homeowner`, 'POST', {
+        homeownerId: sthLinkedHomeowner.id,
+        houseId,
+        serviceDescription: sthNotes || null,
+        equipmentInfo: sthEquipment.filter(e => e.name.trim()),
+        nextServiceDate: sthNextServiceDate || null,
+      });
+    },
+    onSuccess: () => {
+      setSendToHomeownerOpen(false);
+      setSendToHomeownerJob(null);
+      setSthConnectionCode('');
+      setSthLinkedHomeowner(null);
+      setSthSelectedHouseId('');
+      setSthEquipment([]);
+      setSthNextServiceDate('');
+      setSthNotes('');
+      toast({ title: "Record sent!", description: "The homeowner will see this in their MyHomeBase dashboard and can accept it to save to their home history." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to send record", variant: "destructive" });
+    },
+  });
+
+  const validateSthConnectionCode = async () => {
+    if (!sthConnectionCode || sthConnectionCode.length !== 8) {
+      toast({ title: "Invalid Code", description: "Please enter an 8-character connection code.", variant: "destructive" });
+      return;
+    }
+    setIsValidatingSth(true);
+    try {
+      const response = await fetch('/api/permanent-connection-code/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: sthConnectionCode.toUpperCase() }),
+      });
+      if (!response.ok) throw new Error('Invalid connection code');
+      const data = await response.json();
+      setSthLinkedHomeowner({ id: data.homeownerId, name: data.homeownerName, email: data.homeownerEmail, houses: data.houses || [] });
+      setSthSelectedHouseId(data.houses?.length === 1 ? data.houses[0].id : '');
+      toast({ title: "Homeowner found", description: `Linked to ${data.homeownerName}'s account.` });
+    } catch {
+      toast({ title: "Invalid code", description: "No homeowner found with that code. Ask them to share their 8-character code from the MyHomeBase app.", variant: "destructive" });
+    } finally {
+      setIsValidatingSth(false);
+    }
+  };
 
   // Forms
   const leadForm = useForm<CreateLeadForm>({
@@ -1813,6 +1879,17 @@ export default function ContractorCRMPage() {
                             <Button variant="outline" size="sm" onClick={() => openSendDialog('job', job.id)} disabled={sendJobNotificationMutation.isPending} data-testid={`button-notify-job-${job.id}`}>
                               <Send className="h-4 w-4 mr-2" />Notify
                             </Button>
+                            {job.status === 'completed' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-green-300 text-green-700 hover:bg-green-50"
+                                onClick={() => { setSendToHomeownerJob(job); setSendToHomeownerOpen(true); setSthConnectionCode(''); setSthLinkedHomeowner(null); setSthSelectedHouseId(''); setSthEquipment([]); setSthNextServiceDate(''); setSthNotes(''); }}
+                                data-testid={`button-send-to-homeowner-${job.id}`}
+                              >
+                                <HomeIcon className="h-4 w-4 mr-2" />Send to Homeowner
+                              </Button>
+                            )}
                             <Button variant="outline" size="sm" onClick={() => { setJobToDelete(job); setDeleteJobConfirmOpen(true); }} data-testid={`button-delete-job-${job.id}`}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -2616,6 +2693,141 @@ export default function ContractorCRMPage() {
               {(sendDialogType === 'quote' && sendQuoteMutation.isPending) ||
                (sendDialogType === 'invoice' && sendInvoiceMutation.isPending) ||
                (sendDialogType === 'job' && sendJobNotificationMutation.isPending) ? "Sending..." : "Send"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Send to Homeowner Modal */}
+      <Dialog open={sendToHomeownerOpen} onOpenChange={(open) => { if (!open) { setSendToHomeownerOpen(false); setSendToHomeownerJob(null); setSthConnectionCode(''); setSthLinkedHomeowner(null); setSthEquipment([]); } }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <HomeIcon className="h-5 w-5 text-green-600" />
+              Send Job Record to Homeowner
+            </DialogTitle>
+            <DialogDescription>
+              Push this completed job record directly to the homeowner's MyHomeBase dashboard. They'll see it immediately and can accept it to save to their home history.
+              {sendToHomeownerJob && <span className="block mt-1 font-medium text-foreground">{sendToHomeownerJob.title} · {sendToHomeownerJob.serviceType}</span>}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5 py-2">
+            {/* Step 1: Homeowner connection code */}
+            {!sthLinkedHomeowner ? (
+              <div className="space-y-2">
+                <label className="text-sm font-semibold">Homeowner's Connection Code</label>
+                <p className="text-xs text-muted-foreground">Ask your client to share their 8-character code from the MyHomeBase app (Settings → Connection Code).</p>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="8-character code"
+                    value={sthConnectionCode}
+                    onChange={e => setSthConnectionCode(e.target.value.toUpperCase())}
+                    maxLength={8}
+                    className="font-mono tracking-wider text-center"
+                    data-testid="input-sth-connection-code"
+                  />
+                  <Button onClick={validateSthConnectionCode} disabled={isValidatingSth || sthConnectionCode.length !== 8} data-testid="button-validate-sth-code">
+                    {isValidatingSth ? "Checking…" : "Connect"}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-green-800">{sthLinkedHomeowner.name}</p>
+                  <p className="text-xs text-green-600">{sthLinkedHomeowner.email}</p>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => { setSthLinkedHomeowner(null); setSthConnectionCode(''); setSthSelectedHouseId(''); }} className="text-xs text-muted-foreground">
+                  Change
+                </Button>
+              </div>
+            )}
+
+            {/* Property picker if multiple */}
+            {sthLinkedHomeowner && sthLinkedHomeowner.houses.length > 1 && (
+              <div className="space-y-2">
+                <label className="text-sm font-semibold">Which property?</label>
+                <Select value={sthSelectedHouseId} onValueChange={setSthSelectedHouseId}>
+                  <SelectTrigger data-testid="select-sth-house"><SelectValue placeholder="Select a property" /></SelectTrigger>
+                  <SelectContent>
+                    {sthLinkedHomeowner.houses.map(h => (
+                      <SelectItem key={h.id} value={h.id}>{h.name || h.address}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Notes */}
+            {sthLinkedHomeowner && (
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold">Work summary / notes <span className="text-muted-foreground font-normal">(optional)</span></label>
+                  <Textarea
+                    placeholder="Describe the work performed, materials used, etc."
+                    value={sthNotes}
+                    onChange={e => setSthNotes(e.target.value)}
+                    rows={3}
+                    data-testid="textarea-sth-notes"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold">Next service date <span className="text-muted-foreground font-normal">(optional)</span></label>
+                  <Input
+                    type="date"
+                    value={sthNextServiceDate}
+                    onChange={e => setSthNextServiceDate(e.target.value)}
+                    data-testid="input-sth-next-service-date"
+                  />
+                </div>
+
+                {/* Equipment */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-semibold">Equipment installed / serviced <span className="text-muted-foreground font-normal">(optional)</span></label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSthEquipment(prev => [...prev, { name: '', brand: '', model: '', serialNumber: '', installedYear: '' }])}
+                      data-testid="button-sth-add-equipment"
+                    >
+                      <Plus className="h-3 w-3 mr-1" />Add
+                    </Button>
+                  </div>
+                  {sthEquipment.map((eq, i) => (
+                    <div key={i} className="border rounded-lg p-3 space-y-2 bg-muted/30">
+                      <div className="flex gap-2">
+                        <Input placeholder="Name (e.g. Furnace)" value={eq.name} onChange={e => { const u = [...sthEquipment]; u[i].name = e.target.value; setSthEquipment(u); }} className="flex-1" />
+                        <Button variant="ghost" size="sm" onClick={() => setSthEquipment(prev => prev.filter((_, j) => j !== i))} className="text-red-500 hover:text-red-700 px-2">×</Button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input placeholder="Brand" value={eq.brand} onChange={e => { const u = [...sthEquipment]; u[i].brand = e.target.value; setSthEquipment(u); }} />
+                        <Input placeholder="Model" value={eq.model} onChange={e => { const u = [...sthEquipment]; u[i].model = e.target.value; setSthEquipment(u); }} />
+                        <Input placeholder="Serial #" value={eq.serialNumber} onChange={e => { const u = [...sthEquipment]; u[i].serialNumber = e.target.value; setSthEquipment(u); }} />
+                        <Input placeholder="Install year" value={eq.installedYear} onChange={e => { const u = [...sthEquipment]; u[i].installedYear = e.target.value; setSthEquipment(u); }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSendToHomeownerOpen(false)} data-testid="button-sth-cancel">Cancel</Button>
+            <Button
+              onClick={() => sendToHomeownerMutation.mutate()}
+              disabled={
+                !sthLinkedHomeowner ||
+                (sthLinkedHomeowner.houses.length > 1 && !sthSelectedHouseId) ||
+                sendToHomeownerMutation.isPending
+              }
+              className="bg-green-600 hover:bg-green-700 text-white"
+              data-testid="button-sth-submit"
+            >
+              {sendToHomeownerMutation.isPending ? "Sending…" : "Send Record →"}
             </Button>
           </DialogFooter>
         </DialogContent>
