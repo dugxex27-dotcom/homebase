@@ -1734,16 +1734,24 @@ export default function Maintenance() {
     enabled: isAuthenticated && !!homeownerId && !!selectedHouseId && !isContractor
   });
 
-  // Appliance manuals queries (only for homeowners)
-  const { data: applianceManuals = [], isLoading: applianceManualsLoading } = useQuery<HomeApplianceManual[]>({
-    queryKey: ['/api/appliances', selectedApplianceId, 'manuals'],
+  // Fetch manuals for every appliance shown in the current house. The previous
+  // query only fetched manuals for the appliance last selected in the Add Manual
+  // dialog, and its result was never rendered in the appliance card.
+  const applianceIds = appliances.map((appliance) => appliance.id).sort();
+  const applianceManualsQueryKey = ['/api/appliance-manuals', applianceIds] as const;
+  const { data: applianceManualsByAppliance = {} } = useQuery<Record<string, HomeApplianceManual[]>>({
+    queryKey: applianceManualsQueryKey,
     queryFn: async () => {
-      if (!selectedApplianceId) return [];
-      const response = await fetch(`/api/appliances/${selectedApplianceId}/manuals`);
-      if (!response.ok) throw new Error('Failed to fetch appliance manuals');
-      return response.json();
+      const manualEntries = await Promise.all(
+        applianceIds.map(async (applianceId) => {
+          const response = await fetch(`/api/appliances/${applianceId}/manuals`);
+          if (!response.ok) throw new Error('Failed to fetch appliance manuals');
+          return [applianceId, await response.json()] as const;
+        }),
+      );
+      return Object.fromEntries(manualEntries);
     },
-    enabled: isAuthenticated && !!homeownerId && !!selectedApplianceId && !isContractor
+    enabled: isAuthenticated && !!homeownerId && applianceIds.length > 0 && !isContractor,
   });
 
   // Appliance brands (curated list for autocomplete)
@@ -2339,9 +2347,20 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     mutationFn: async (id: string) => {
       const response = await fetch(`/api/appliances/${id}`, { method: 'DELETE' });
       if (!response.ok) throw new Error('Failed to delete appliance');
-      return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (_, deletedApplianceId) => {
+      // Do not invalidate the previous appliance's manual query after deletion:
+      // the appliance list has not re-rendered yet, so that would briefly issue
+      // GET /api/appliances/:id/manuals for an appliance that no longer exists.
+      // Remove its cached manuals instead; the appliance query below supplies
+      // the new set of manual query keys after it refreshes.
+      queryClient.setQueryData<Record<string, HomeApplianceManual[]>>(
+        applianceManualsQueryKey,
+        (current = {}) => {
+          const { [deletedApplianceId]: _deletedManuals, ...remainingManuals } = current;
+          return remainingManuals;
+        },
+      );
       queryClient.invalidateQueries({ queryKey: ['/api/appliances'] });
       toast({ title: "Success", description: "Appliance deleted successfully" });
     },
@@ -2361,8 +2380,15 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       if (!response.ok) throw new Error('Failed to create appliance manual');
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/appliances'] });
+    onSuccess: (manual: HomeApplianceManual) => {
+      queryClient.setQueryData<Record<string, HomeApplianceManual[]>>(
+        applianceManualsQueryKey,
+        (current = {}) => ({
+          ...current,
+          [manual.applianceId]: [...(current[manual.applianceId] ?? []), manual],
+        }),
+      );
+      queryClient.invalidateQueries({ queryKey: ['/api/appliance-manuals'] });
       setIsApplianceManualDialogOpen(false);
       applianceManualForm.reset();
       toast({ title: "Success", description: "Manual added successfully" });
@@ -2382,8 +2408,17 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       if (!response.ok) throw new Error('Failed to update appliance manual');
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/appliances'] });
+    onSuccess: (manual: HomeApplianceManual) => {
+      queryClient.setQueryData<Record<string, HomeApplianceManual[]>>(
+        applianceManualsQueryKey,
+        (current = {}) => ({
+          ...current,
+          [manual.applianceId]: (current[manual.applianceId] ?? []).map((existing) =>
+            existing.id === manual.id ? manual : existing,
+          ),
+        }),
+      );
+      queryClient.invalidateQueries({ queryKey: ['/api/appliance-manuals'] });
       setIsApplianceManualDialogOpen(false);
       setEditingApplianceManual(null);
       applianceManualForm.reset();
@@ -2395,13 +2430,22 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
   });
 
   const deleteApplianceManualMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const response = await fetch(`/api/appliance-manuals/${id}`, { method: 'DELETE' });
+    mutationFn: async (manual: Pick<HomeApplianceManual, 'id' | 'applianceId'>) => {
+      const response = await fetch(`/api/appliance-manuals/${manual.id}`, { method: 'DELETE' });
       if (!response.ok) throw new Error('Failed to delete appliance manual');
-      return response.json();
+      return manual;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/appliances'] });
+    onSuccess: (manual) => {
+      queryClient.setQueryData<Record<string, HomeApplianceManual[]>>(
+        applianceManualsQueryKey,
+        (current = {}) => ({
+          ...current,
+          [manual.applianceId]: (current[manual.applianceId] ?? []).filter(
+            (existing) => existing.id !== manual.id,
+          ),
+        }),
+      );
+      queryClient.invalidateQueries({ queryKey: ['/api/appliance-manuals'] });
       toast({ title: "Success", description: "Manual deleted successfully" });
     },
     onError: () => {
@@ -4364,6 +4408,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       ? new Date(appliance.installDate).getFullYear()
                       : appliance.yearInstalled;
                     const age = installYear ? new Date().getFullYear() - installYear : null;
+                    const applianceManuals = applianceManualsByAppliance[appliance.id] ?? [];
 
                     return (
                       <AccordionItem
@@ -4442,6 +4487,85 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                                 {appliance.notes}
                               </p>
                             )}
+
+                            <div className="rounded-md border border-gray-100 bg-gray-50/70 p-3 space-y-2" data-testid={`appliance-manuals-${appliance.id}`}>
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Manuals</p>
+                                <span className="text-xs text-gray-400">
+                                  {applianceManuals.length === 0
+                                    ? "No manuals yet"
+                                    : `${applianceManuals.length} manual${applianceManuals.length === 1 ? "" : "s"}`}
+                                </span>
+                              </div>
+                              {applianceManuals.map((manual) => (
+                                <div
+                                  key={manual.id}
+                                  className="flex items-center justify-between gap-2 rounded border border-gray-100 bg-white px-2.5 py-2"
+                                  data-testid={`appliance-manual-${manual.id}`}
+                                >
+                                  <div className="flex min-w-0 items-center gap-2">
+                                    <FileText className="h-4 w-4 shrink-0" style={{ color: 'var(--purple-deep)' }} />
+                                    <div className="min-w-0">
+                                      {manual.url ? (
+                                        <a
+                                          href={manual.url}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="block truncate text-sm font-medium hover:underline"
+                                          style={{ color: 'var(--purple-deep)' }}
+                                        >
+                                          {manual.title}
+                                        </a>
+                                      ) : (
+                                        <p className="truncate text-sm font-medium" style={{ color: 'var(--purple-deep)' }}>
+                                          {manual.title}
+                                        </p>
+                                      )}
+                                      <p className="text-xs text-gray-400">{manual.type}</p>
+                                    </div>
+                                  </div>
+                                  <div className="flex shrink-0 items-center gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 w-7 p-0"
+                                      onClick={() => {
+                                        setSelectedApplianceId(appliance.id);
+                                        setEditingApplianceManual(manual);
+                                        applianceManualForm.reset({
+                                          applianceId: appliance.id,
+                                          title: manual.title,
+                                          type: manual.type,
+                                          source: manual.source,
+                                          url: manual.url,
+                                          fileName: manual.fileName ?? "",
+                                          fileSize: manual.fileSize ?? undefined,
+                                        });
+                                        setIsApplianceManualDialogOpen(true);
+                                      }}
+                                      data-testid={`button-edit-manual-${manual.id}`}
+                                      aria-label={`Edit ${manual.title}`}
+                                    >
+                                      <Edit className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 w-7 p-0 text-red-500 hover:text-red-700"
+                                      onClick={() => deleteApplianceManualMutation.mutate({
+                                        id: manual.id,
+                                        applianceId: appliance.id,
+                                      })}
+                                      disabled={deleteApplianceManualMutation.isPending}
+                                      data-testid={`button-delete-manual-${manual.id}`}
+                                      aria-label={`Delete ${manual.title}`}
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
 
                             <div className="flex items-center justify-between pt-2">
                               <div className="flex gap-2">

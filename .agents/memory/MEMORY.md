@@ -19,3 +19,4 @@
 - [Development Stripe checkout mode](development-stripe-checkout-mode.md) — dev hosted checkout currently runs in Stripe live mode, so Stripe test cards cannot complete a real purchase
 - [Production invoice AI fallback](production-invoice-ai-fallback.md) — AI credential outages return a manual-review analysis instead of failing the invoice endpoint
 - [Replit OIDC email linking](replit-oidc-email-linking.md) — retain the database user ID in the OAuth session when linking a new provider subject by email
+- [Appliance manual query lifecycle](appliance-manual-query-lifecycle.md) — remove child manual cache on appliance deletion; invalidation briefly fetches a deleted parent
