@@ -244,7 +244,6 @@ const HwsModalPage = lazy(() => import("./pages/hws-modal"));
 // Lazy-loaded pages - Auth
 const Landing = lazy(() => import("./pages/landing"));
 const ComingSoon = lazy(() => import("./pages/coming-soon"));
-const SignIn = lazy(() => import("./pages/signin"));
 const SignInHomeowner = lazy(() => import("./pages/signin-homeowner"));
 const SignInContractor = lazy(() => import("./pages/signin-contractor"));
 const SignInAgent = lazy(() => import("./pages/signin-agent"));
