@@ -269,6 +269,11 @@ export const users = pgTable("users", {
   promoFreeMonths: integer("promo_free_months"),          // Months of free access granted; consumed at first Stripe checkout
   accountStatus: text("account_status").notNull().default("active"), // "active", "cancelled", "deleted"
   accountCancelledAt: timestamp("account_cancelled_at"),
+  // Production QA accounts are synthetic, isolated identities. They must never
+  // be included in customer-facing discovery or standard business analytics.
+  isQaAccount: boolean("is_qa_account").notNull().default(false),
+  qaAccessScopes: text("qa_access_scopes").array().notNull().default(sql`ARRAY[]::text[]`),
+  qaFixtureKey: varchar("qa_fixture_key", { length: 80 }).unique(),
   // Home setup wizard for new homeowners (7-step post-signup wizard)
   homeWizardStep: integer("home_wizard_step").notNull().default(0), // 0 = not started, 1-7 = current step, 8 = completed
   homeWizardCompletedAt: timestamp("home_wizard_completed_at"),
@@ -283,7 +288,28 @@ export const users = pgTable("users", {
   index("IDX_users_email_verification_token").on(table.emailVerificationToken),
   index("IDX_users_invite_token").on(table.inviteToken),
   index("IDX_users_apple_original_transaction_id").on(table.appleOriginalTransactionId),
+  index("IDX_users_is_qa_account").on(table.isQaAccount),
 ]);
+
+// Registry for deterministic, production-safe QA fixture roots. It enables
+// disable-first retirement and prevents cleanup tooling from targeting real data.
+export const qaFixtureRegistry = pgTable("qa_fixture_registry", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  fixtureKey: varchar("fixture_key", { length: 80 }).notNull().unique(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  fixtureRole: text("fixture_role").notNull(), // "admin" | "contractor" | "homeowner"
+  isActive: boolean("is_active").notNull().default(true),
+  metadata: jsonb("metadata").notNull().default(sql`'{}'::jsonb`),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  retiredAt: timestamp("retired_at"),
+}, (table) => [
+  index("IDX_qa_fixture_registry_user_id").on(table.userId),
+  index("IDX_qa_fixture_registry_active").on(table.isActive),
+]);
+
+export const insertQaFixtureRegistrySchema = createInsertSchema(qaFixtureRegistry).omit({ id: true, createdAt: true, retiredAt: true });
+export type QaFixtureRegistry = typeof qaFixtureRegistry.$inferSelect;
+export type InsertQaFixtureRegistry = z.infer<typeof insertQaFixtureRegistrySchema>;
 
 // Password reset tokens table
 export const passwordResetTokens = pgTable("password_reset_tokens", {

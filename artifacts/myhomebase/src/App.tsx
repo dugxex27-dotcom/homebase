@@ -229,6 +229,7 @@ const AdminDashboard = lazy(() => import("./pages/admin"));
 const AdminSupport = lazy(() => import("./pages/admin-support"));
 const AdminFlaggedReviews = lazy(() => import("./pages/admin-flagged-reviews"));
 const DeveloperConsole = lazy(() => import("./pages/developer-console"));
+const QaAdminConsole = lazy(() => import("./pages/qa-admin-console"));
 
 // Lazy-loaded pages - Support
 const Support = lazy(() => import("./pages/support"));
@@ -429,6 +430,7 @@ function Router() {
         <Route path="/pay/success" component={PaymentSuccess} />
         <Route path="/pay/cancelled" component={PaymentCancelled} />
         <Route path="/subscription-success" component={SubscriptionSuccess} />
+        <Route path="/qa/admin" component={QaAdminConsole} />
         
         {/* Admin routes */}
         {isAdmin && (

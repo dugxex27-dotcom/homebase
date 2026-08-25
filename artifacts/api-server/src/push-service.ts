@@ -1,5 +1,6 @@
 import webpush from 'web-push';
 import { storage } from './storage';
+import { isQaAccountUserId } from './qa-access';
 import type { PushSubscription } from '@workspace/db';
 import { smsService } from './sms-service';
 
@@ -60,6 +61,10 @@ export interface PushNotificationPayload {
 export class PushNotificationService {
   // Send push notification to a specific user
   async sendToUser(userId: string, payload: PushNotificationPayload): Promise<void> {
+    if (await isQaAccountUserId(userId)) {
+      console.log('[PUSH] Skipping web push for QA recipient');
+      return;
+    }
     try {
       const subscriptions = await storage.getPushSubscriptions(userId);
       

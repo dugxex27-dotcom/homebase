@@ -34,6 +34,7 @@ async function sendReferralReminders() {
       .where(and(
         isNotNull(users.email),
         isNotNull(users.referralCode),
+        eq(users.isQaAccount, false),
         or(
           eq(users.subscriptionStatus, 'active'),
           eq(users.subscriptionStatus, 'trialing')

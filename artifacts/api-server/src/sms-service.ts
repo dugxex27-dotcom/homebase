@@ -1,5 +1,6 @@
 import twilio from 'twilio';
 import { storage } from './storage';
+import { isQaAccountUserId } from './qa-access';
 import { getPreparednessInfo } from './email-service';
 import { db } from './db';
 import { notificationPreferences } from '@workspace/db';
@@ -148,6 +149,10 @@ export async function sendNewMessageNotification(
   senderName: string,
   messagePreview: string
 ): Promise<boolean> {
+  if (await isQaAccountUserId(recipientId)) {
+    console.log('[SMS] Skipping new-message SMS for QA recipient');
+    return false;
+  }
   if (!await canSendSMS(recipientId, 'messages')) return false;
   
   const user = await storage.getUser(recipientId);

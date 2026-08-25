@@ -4,6 +4,7 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage, type IStorage } from "../storage";
 import { setupAuth, isAuthenticated, requireRole, requirePropertyOwner, suspendedUserIds, invalidateUserSessions, requireCompanyRole, requireCompanyRoleAny, requireDivisionAccess, requireBulkImport, requireApiAccess, requireNotSuspended, requireSameCompany, isOAuthUserSuspended } from "../replitAuth";
+import { blockQaOperationalMutations, getQaErrorLogWithBreadcrumbs, getQaErrorLogs, getQaSearchAnalytics, requireQaAdminReadOnly } from "../qa-access";
 import { setupGoogleAuth } from "../googleAuth";
 import { z } from "zod";
 import { randomUUID, randomBytes, createHash, timingSafeEqual } from "crypto";
@@ -18,7 +19,7 @@ import { createGuestContactTicket } from "../contact-ticket-writer";
 import { invoiceOrphanCleanupScheduler } from "../invoice-orphan-cleanup-scheduler";
 import { referralAccrualScheduler } from "../referral-accrual-scheduler";
 import { extractInvoiceData, verifyDIYPhotos, type InvoiceExtraction } from "../invoice-analysis-service";
-import { invoiceAnalyses, contractorBoosts, affiliateReferrals, subscriptionCycleEvents, contractorInvoiceUploads, companies, proposals, securityAuditLogs, companyDivisions, companyBulkImports, insertCompanyDivisionSchema, conversations, messages, contractorJobRecords } from "@workspace/db";
+import { invoiceAnalyses, contractorBoosts, affiliateReferrals, subscriptionCycleEvents, contractorInvoiceUploads, companies, contractors, proposals, securityAuditLogs, companyDivisions, companyBulkImports, insertCompanyDivisionSchema, conversations, messages, contractorJobRecords } from "@workspace/db";
 import pushRoutes from "../push-routes";
 import { pushService } from "../push-service";
 import { ObjectStorageService, ObjectNotFoundError } from "../objectStorage";
@@ -1491,6 +1492,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Set up Replit Auth (handles Google OAuth via Replit)
   await setupAuth(app);
+  app.use("/api", blockQaOperationalMutations);
 
   // Set up direct Google OAuth (for "Continue with Google" on sign-in pages)
   await setupGoogleAuth(app);
@@ -5062,9 +5064,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin middleware
-  const requireAdmin: any = (req: any, res: any, next: any) => {
+  const requireAdmin: any = async (req: any, res: any, next: any) => {
     if (!req.session?.isAuthenticated || !req.session?.user) {
       return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const persistedUser = await storage.getUser(req.session.user.id);
+    if (persistedUser?.isQaAccount) {
+      return res.status(403).json({ message: "QA accounts cannot access ordinary admin routes" });
     }
 
     const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim()).filter(Boolean);
@@ -5073,6 +5080,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     next();
+  };
+
+  const isQaContractorIdentifier = async (id: string) => {
+    const rows = await db
+      .select({ isQaAccount: users.isQaAccount })
+      .from(contractors)
+      .innerJoin(users, eq(contractors.userId, users.id))
+      .where(eq(contractors.id, id))
+      .limit(1);
+    if (rows[0]?.isQaAccount) return true;
+
+    const user = await storage.getUser(id);
+    return user?.role === "contractor" && user.isQaAccount === true;
   };
 
   // Serve public object storage files
@@ -5249,6 +5269,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching search analytics:", error);
       res.status(500).json({ message: "Failed to fetch search analytics" });
+    }
+  });
+
+  // QA console endpoints intentionally expose only QA-owned diagnostics and
+  // analytics. They do not reuse the broad ADMIN_EMAILS authorization path.
+  app.get('/api/qa/admin/search-analytics', requireQaAdminReadOnly, async (req: any, res: any) => {
+    try {
+      const limit = req.query.limit ? Number.parseInt(req.query.limit as string, 10) : 50;
+      res.json(await getQaSearchAnalytics(limit));
+    } catch (error) {
+      req.log?.error({ err: error }, "Failed to fetch QA search analytics");
+      res.status(500).json({ message: "Failed to fetch QA search analytics" });
+    }
+  });
+
+  app.get('/api/qa/admin/errors', requireQaAdminReadOnly, async (req: any, res: any) => {
+    try {
+      const limit = req.query.limit ? Number.parseInt(req.query.limit as string, 10) : 50;
+      res.json(await getQaErrorLogs(limit));
+    } catch (error) {
+      req.log?.error({ err: error }, "Failed to fetch QA error logs");
+      res.status(500).json({ message: "Failed to fetch QA error logs" });
+    }
+  });
+
+  app.get('/api/qa/admin/errors/:id', requireQaAdminReadOnly, async (req: any, res: any) => {
+    try {
+      const error = await getQaErrorLogWithBreadcrumbs(req.params.id);
+      if (!error) return res.status(404).json({ message: "QA error log not found" });
+      return res.json(error);
+    } catch (error) {
+      req.log?.error({ err: error }, "Failed to fetch QA error details");
+      return res.status(500).json({ message: "Failed to fetch QA error details" });
     }
   });
 
@@ -9744,6 +9797,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/contractors/:id", async (req: any, res: any) => {
     try {
+      if (await isQaContractorIdentifier(req.params.id)) {
+        return res.status(404).json({ message: "Contractor not found" });
+      }
       console.log('[DEBUG] GET /api/contractors/:id - Looking for contractor ID:', req.params.id);
       let contractor = await storage.getContractor(req.params.id);
       console.log('[DEBUG] Contractor found in contractors table:', !!contractor);
@@ -15171,7 +15227,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       }
 
       const contractorId = req.session.user.id;
-      const profile = await storage.getContractorProfile(contractorId);
+      const profile = await storage.getContractorProfileForUser(contractorId);
       
       if (!profile) {
         // Return default profile structure
@@ -16182,6 +16238,13 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
         ...req.body,
         [userType === 'homeowner' ? 'homeownerId' : 'contractorId']: userId
       });
+       const conversationParties = await Promise.all([
+         storage.getUser(conversationData.homeownerId),
+         storage.getUser(conversationData.contractorId),
+       ]);
+       if (conversationParties.some(party => party?.isQaAccount)) {
+         return res.status(403).json({ message: "QA accounts cannot be contacted", code: "QA_TARGET_NOT_ALLOWED" });
+       }
       
       // Check if conversation already exists between these parties
       const existingConversations = await storage.getConversations(userId, userType);
@@ -16220,6 +16283,13 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       if (!subject || !message || !contractorIds || !Array.isArray(contractorIds) || contractorIds.length === 0) {
         return res.status(400).json({ message: "Missing required fields" });
       }
+       const conversationParties = await Promise.all([
+         storage.getUser(userId),
+         ...contractorIds.map((contractorId: string) => storage.getUser(contractorId)),
+       ]);
+       if (conversationParties.some(party => party?.isQaAccount)) {
+         return res.status(403).json({ message: "QA accounts cannot be contacted", code: "QA_TARGET_NOT_ALLOWED" });
+       }
 
       const createdConversations = [];
       
@@ -16275,6 +16345,13 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       if (!conversation) {
         return res.status(404).json({ message: "Conversation not found" });
       }
+       const conversationParties = await Promise.all([
+         storage.getUser(conversation.homeownerId),
+         storage.getUser(conversation.contractorId),
+       ]);
+       if (conversationParties.some(party => party?.isQaAccount)) {
+         return res.status(404).json({ message: "Conversation not found" });
+       }
       
       const userType = req.session.user.role;
       if (userType === 'homeowner' && conversation.homeownerId !== userId) {
@@ -16307,6 +16384,13 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       if (!conversation) {
         return res.status(404).json({ message: "Conversation not found" });
       }
+       const conversationParties = await Promise.all([
+         storage.getUser(conversation.homeownerId),
+         storage.getUser(conversation.contractorId),
+       ]);
+       if (conversationParties.some(party => party?.isQaAccount)) {
+         return res.status(403).json({ message: "QA accounts cannot be contacted", code: "QA_TARGET_NOT_ALLOWED" });
+       }
       
       if (userType === 'homeowner' && conversation.homeownerId !== userId) {
         return res.status(403).json({ message: "Access denied" });
@@ -16411,6 +16495,9 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   // Review API endpoints
   app.get('/api/contractors/:id/reviews', async (req: any, res: any) => {
     try {
+      if (await isQaContractorIdentifier(req.params.id)) {
+        return res.status(404).json({ message: "Contractor not found" });
+      }
       const reviews = await storage.getContractorReviews(req.params.id);
       
       // Enhance reviews with reviewer email verification status
@@ -16431,6 +16518,9 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
 
   app.get('/api/contractors/:id/rating', async (req: any, res: any) => {
     try {
+      if (await isQaContractorIdentifier(req.params.id)) {
+        return res.status(404).json({ message: "Contractor not found" });
+      }
       const rating = await storage.getContractorAverageRating(req.params.id);
 
       // Build star breakdown (1-5) using direct DB aggregation

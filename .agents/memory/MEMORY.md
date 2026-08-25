@@ -22,3 +22,4 @@
 - [Appliance manual query lifecycle](appliance-manual-query-lifecycle.md) — remove child manual cache on appliance deletion; invalidation briefly fetches a deleted parent
 - [Wouter query parameters](wouter-query-parameters.md) — use `useSearch`, not `useLocation`, when initializing views from URL query parameters
 - [Production schema verification](production-schema-verification.md) — a successful build is not schema proof; inspect production metadata after publishing database changes
+- [QA fixture lifecycle safety](qa-fixture-lifecycle-safety.md) — QA fixtures require pristine identities, retire before purge, and never delete the retained QA identity records

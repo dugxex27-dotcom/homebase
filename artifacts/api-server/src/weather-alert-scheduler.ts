@@ -161,7 +161,7 @@ async function checkWeatherAlertsForAllHomes(): Promise<void> {
   try {
     const homeowners = await db.select({ id: users.id, email: users.email })
       .from(users)
-      .where(eq(users.role, 'homeowner'));
+      .where(and(eq(users.role, 'homeowner'), eq(users.isQaAccount, false)));
 
     let processed = 0;
     let alertsSent = 0;
