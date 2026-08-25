@@ -1715,7 +1715,7 @@ export type AgentVerificationAudit = typeof agentVerificationAudits.$inferSelect
 // Support tickets table - customer support ticket system
 export const supportTickets = pgTable("support_tickets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").references(() => users.id, { onDelete: 'cascade' }),
   category: text("category").notNull(), // 'billing', 'technical', 'feature_request', 'account', 'contractor', 'general'
   priority: text("priority").notNull().default("medium"), // 'low', 'medium', 'high', 'urgent'
   status: text("status").notNull().default("open"), // 'open', 'in_progress', 'waiting_on_customer', 'resolved', 'closed'

@@ -13,6 +13,8 @@ import { eq, and, ne, inArray, sql as drizzleSql, isNotNull, isNull, desc, or, g
 import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertTaskCompletionSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, customMaintenanceTasks, insertSupportTicketSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, insertCrmLeadSchema, insertCrmNoteSchema, notificationPreferences, subscriptionPlans, securitySessions, referralCredits, referralFreeMonths, promoCodes, agentProfiles, users, siteContent, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, insertReviewFlagSchema, homeDocuments, quizResults, crmInvoices, handoffTransfers, type House } from "@workspace/db";
 import { calculateDIYSavingsAmount } from "../shared/cost-helpers";
 import { calculateMechanicalDocumentationBonus } from "../shared/maintenance-scheduler";
+import { createImmediateNotification, createNotificationSafely, notificationCategories, type ImmediateNotificationInput } from "../notification-writers";
+import { createGuestContactTicket } from "../contact-ticket-writer";
 import { invoiceOrphanCleanupScheduler } from "../invoice-orphan-cleanup-scheduler";
 import { referralAccrualScheduler } from "../referral-accrual-scheduler";
 import { extractInvoiceData, verifyDIYPhotos, type InvoiceExtraction } from "../invoice-analysis-service";
@@ -6089,33 +6091,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const validatedData = contactSchema.parse(req.body);
       
-      // Create a support ticket without a user ID (guest ticket)
-      const ticket = await storage.createSupportTicket({
-        userId: 'guest',
-        category: validatedData.category,
-        priority: 'medium',
-        subject: validatedData.subject,
-        description: `From: ${validatedData.name} (${validatedData.email})\n\n${validatedData.message}`,
-      });
-      
       // Notify admins about the new contact form submission
       const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
       const supportNotificationEmail = 'gotohomebase2025@gmail.com';
       const allNotificationEmails = [...new Set([...adminEmails, supportNotificationEmail])];
-      
-      // Find admin users and create notifications
-      for (const email of allNotificationEmails) {
-        const adminUser = await storage.getUserByEmail(email);
-        if (adminUser) {
-          await storage.createNotification({
-            homeownerId: adminUser.id,
-            type: 'support_ticket',
-            title: 'New Contact Form Submission',
-            message: `${validatedData.name} (${validatedData.email}) submitted a contact form: "${validatedData.subject}"`,
-            link: `/admin/support`,
-          } as any);
-        }
-      }
+      const ticket = await createGuestContactTicket(storage, validatedData, allNotificationEmails);
       
       res.json({ success: true, ticketId: ticket.id });
     } catch (error) {
@@ -6232,25 +6212,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const supportNotificationEmail = 'gotohomebase2025@gmail.com';
       const allNotificationEmails = [...new Set([...adminEmails, supportNotificationEmail])];
       
-      const submittingUser = await storage.getUser(userId);
-      const submitterName = submittingUser ? `${submittingUser.firstName || ''} ${submittingUser.lastName || ''}`.trim() || submittingUser.email : 'A user';
-      
-      for (const notifyEmail of allNotificationEmails) {
-        const notifyUser = await storage.getUserByEmail(notifyEmail);
-        if (notifyUser && notifyUser.id !== userId) {
-          try {
-            await storage.createNotification({
-              homeownerId: notifyUser.id,
-              type: 'support_ticket',
-              category: 'support',
-              title: 'New Support Ticket',
-              message: `${submitterName} submitted a ${validatedData.priority} priority ticket: "${validatedData.subject}"`,
-              link: `/admin/support`,
-            } as any);
-          } catch (notificationError) {
-            console.error(`[SUPPORT] Admin notification failed for ticket ${ticket.id}:`, notificationError);
+      try {
+        const submittingUser = await storage.getUser(userId);
+        const submitterName = submittingUser ? `${submittingUser.firstName || ''} ${submittingUser.lastName || ''}`.trim() || submittingUser.email : 'A user';
+
+        for (const notifyEmail of allNotificationEmails) {
+          const notifyUser = await storage.getUserByEmail(notifyEmail);
+          if (notifyUser && notifyUser.id !== userId) {
+            await createNotificationSafely(
+              storage,
+              createImmediateNotification({
+                homeownerId: notifyUser.id,
+                type: 'support_ticket',
+                category: notificationCategories.supportTicket,
+                title: 'New Support Ticket',
+                message: `${submitterName} submitted a ${validatedData.priority} priority ticket: "${validatedData.subject}"`,
+                actionUrl: '/admin/support',
+              }),
+              `admin notification for support ticket ${ticket.id}`,
+            );
           }
         }
+      } catch (notificationError) {
+        console.error(`[SUPPORT] Failed to prepare admin notification for ticket ${ticket.id}; ticket was created.`, notificationError);
       }
       
       res.json(ticket);
@@ -12118,22 +12102,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       const proposal = await storage.createProposal(proposalData);
       
-      // Create notification for homeowner when proposal is created
+      // Create notification for homeowner when proposal is created. The proposal
+      // has already been persisted, so a secondary alert must not change success.
       if (proposal.homeownerId) {
-        const contractorUser = await storage.getUser(userId);
-        const company = contractorUser?.companyId 
-          ? await storage.getCompany(contractorUser.companyId)
-          : null;
-        const contractorName = company?.name || (contractorUser ? `${contractorUser.firstName || ''} ${contractorUser.lastName || ''}`.trim() : '') || 'A contractor';
-        
-        await storage.createNotification({
-          homeownerId: proposal.homeownerId,
-          type: 'proposal',
-          title: 'New Proposal',
-          message: `${contractorName} sent you a proposal: ${proposal.title}`,
-          link: '/messages',
-          priority: 'high'
-        } as any);
+        try {
+          const contractorUser = await storage.getUser(userId);
+          const company = contractorUser?.companyId
+            ? await storage.getCompany(contractorUser.companyId)
+            : null;
+          const contractorName = company?.name || (contractorUser ? `${contractorUser.firstName || ''} ${contractorUser.lastName || ''}`.trim() : '') || 'A contractor';
+
+          await createNotificationSafely(
+            storage,
+            createImmediateNotification({
+              homeownerId: proposal.homeownerId,
+              type: 'proposal',
+              category: notificationCategories.proposal,
+              title: 'New Proposal',
+              message: `${contractorName} sent you a proposal: ${proposal.title}`,
+              actionUrl: '/messages',
+              priority: 'high',
+            }),
+            `homeowner notification for proposal ${proposal.id}`,
+          );
+        } catch (notificationError) {
+          console.error(`[PROPOSAL] Failed to prepare homeowner notification for proposal ${proposal.id}; proposal was created.`, notificationError);
+        }
       }
       
       res.status(201).json(proposal);
@@ -12164,20 +12158,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create notification when proposal status changes to "sent"
       if (oldProposal && oldProposal.status !== 'sent' && proposal.status === 'sent' && proposal.homeownerId) {
-        const contractorUser = await storage.getUser(userId);
-        const company = contractorUser?.companyId 
-          ? await storage.getCompany(contractorUser.companyId)
-          : null;
-        const contractorName = company?.name || (contractorUser ? `${contractorUser.firstName || ''} ${contractorUser.lastName || ''}`.trim() : '') || 'A contractor';
-        
-        await storage.createNotification({
-          homeownerId: proposal.homeownerId,
-          type: 'proposal',
-          title: 'New Proposal',
-          message: `${contractorName} sent you a proposal: ${proposal.title}`,
-          link: '/messages',
-          priority: 'high'
-        } as any);
+        try {
+          const contractorUser = await storage.getUser(userId);
+          const company = contractorUser?.companyId
+            ? await storage.getCompany(contractorUser.companyId)
+            : null;
+          const contractorName = company?.name || (contractorUser ? `${contractorUser.firstName || ''} ${contractorUser.lastName || ''}`.trim() : '') || 'A contractor';
+
+          await createNotificationSafely(
+            storage,
+            createImmediateNotification({
+              homeownerId: proposal.homeownerId,
+              type: 'proposal',
+              category: notificationCategories.proposal,
+              title: 'New Proposal',
+              message: `${contractorName} sent you a proposal: ${proposal.title}`,
+              actionUrl: '/messages',
+              priority: 'high',
+            }),
+            `homeowner notification for sent proposal ${proposal.id}`,
+          );
+        } catch (notificationError) {
+          console.error(`[PROPOSAL] Failed to prepare homeowner notification for proposal ${proposal.id}; proposal was updated.`, notificationError);
+        }
       }
       
       if (oldProposal && oldProposal.status !== 'accepted' && proposal.status === 'accepted' && proposal.homeownerId) {
@@ -12598,7 +12601,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             if (regionData && currentMonthTasks) {
               // Create regional suggestions notifications
-              const regionalNotifications: any[] = [];
+              const regionalNotifications: ImmediateNotificationInput[] = [];
               
               // Add seasonal tasks as notifications
               currentMonthTasks.seasonal.forEach((task, index) => {
@@ -12606,14 +12609,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   id: `regional-seasonal-${homeownerId}-${currentMonth}-${index}`,
                   homeownerId,
                   houseId: house.id,
-                  type: "maintenance_task" as const,
+                  type: "maintenance_task",
+                  category: notificationCategories.regionalMaintenance,
                   title: `${region} Regional Suggestion`,
-                  message: task,
-                  priority: currentMonthTasks.priority as "high" | "medium" | "low",
+                  message: `${task.title}: ${task.description}`,
+                  priority: task.priority ?? currentMonthTasks.priority,
                   isRead: false,
                   actionUrl: "/maintenance",
-                  createdAt: new Date(),
-                  updatedAt: new Date()
                 });
               });
               
@@ -12623,14 +12625,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   id: `regional-weather-${homeownerId}-${currentMonth}-${index}`,
                   homeownerId,
                   houseId: house.id,
-                  type: "maintenance_task" as const,
+                  type: "maintenance_task",
+                  category: notificationCategories.regionalMaintenance,
                   title: `Weather-Specific Task for ${region}`,
-                  message: task,
-                  priority: "medium" as const,
+                  message: `${task.title}: ${task.description}`,
+                  priority: task.priority ?? "medium",
                   isRead: false,
                   actionUrl: "/maintenance",
-                  createdAt: new Date(),
-                  updatedAt: new Date()
                 });
               });
               
@@ -12640,20 +12641,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   id: `regional-consideration-${homeownerId}-${currentMonth}-${index}`,
                   homeownerId,
                   houseId: house.id,
-                  type: "maintenance_task" as const,
+                  type: "maintenance_task",
+                  category: notificationCategories.regionalMaintenance,
                   title: `${region} Regional Consideration`,
                   message: consideration,
-                  priority: "low" as const,
+                  priority: "low",
                   isRead: false,
                   actionUrl: "/maintenance",
-                  createdAt: new Date(),
-                  updatedAt: new Date()
                 });
               });
               
               // Create the notifications
               for (const notification of regionalNotifications) {
-                await storage.createNotification(notification);
+                await createNotificationSafely(
+                  storage,
+                  createImmediateNotification(notification),
+                  `regional maintenance notification for house ${house.id}`,
+                );
               }
             }
           }
@@ -16681,7 +16685,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
           type: "review_response",
           category: "reviews",
           scheduledFor: new Date().toISOString(),
-        } as any);
+        });
       } catch (notifyErr) {
         console.warn("[REVIEW] Notification failed:", notifyErr);
       }
@@ -16736,17 +16740,22 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       // In-app notification
       try {
         const contractor = await storage.getUser(contractorId);
-        await storage.createNotification({
-          homeownerId: homeownerId,
-          title: "Review Request",
-          message: `${contractor?.firstName + ' ' + '.lastName' || "Your contractor"} is requesting a review of their services. Verified reviews help homeowners in your community.`,
-          type: "review_request",
-          relatedEntityId: created.id,
-          relatedEntityType: "review_request",
-          isRead: false,
-        } as any);
+        const contractorName = [contractor?.firstName, contractor?.lastName].filter(Boolean).join(" ") || "Your contractor";
+        await createNotificationSafely(
+          storage,
+          createImmediateNotification({
+            homeownerId,
+            title: "Review Request",
+            message: `${contractorName} is requesting a review of their services. Verified reviews help homeowners in your community.`,
+            type: "review_request",
+            category: notificationCategories.reviewRequest,
+            isRead: false,
+            actionUrl: "/messages",
+          }),
+          `homeowner notification for review request ${created.id}`,
+        );
       } catch (notifyErr) {
-        console.warn("[REVIEW REQUEST] Notification failed:", notifyErr);
+        console.warn("[REVIEW REQUEST] Failed to prepare notification; review request was created:", notifyErr);
       }
 
       // Push notification
