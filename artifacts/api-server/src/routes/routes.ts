@@ -2458,7 +2458,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return next();
     }
     // OAuth path: check suspension for fully OAuth-authenticated users
-    const oauthUserId: string | undefined = req.user?.claims?.sub;
+    const oauthUserId: string | undefined = req.user?.id || req.user?.claims?.sub;
     if (oauthUserId && typeof req.isAuthenticated === 'function' && req.isAuthenticated()) {
       if (await isOAuthUserSuspended(oauthUserId)) {
         return res.status(401).json({ message: "Account suspended. Contact your company administrator." });
@@ -2481,7 +2481,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return next();
     }
     // OAuth path: check suspension for fully OAuth-authenticated users
-    const oauthUserId: string | undefined = req.user?.claims?.sub;
+    const oauthUserId: string | undefined = req.user?.id || req.user?.claims?.sub;
     if (oauthUserId && typeof req.isAuthenticated === 'function' && req.isAuthenticated()) {
       if (await isOAuthUserSuspended(oauthUserId)) {
         return res.status(401).json({ message: "Account suspended. Contact your company administrator." });

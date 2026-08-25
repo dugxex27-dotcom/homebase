@@ -59,12 +59,39 @@ function updateUserSession(
 }
 
 async function upsertUser(claims: any) {
-  // Check if user already exists to preserve existing data
-  const existingUser = await storage.getUser(claims["sub"]);
+  const subject = typeof claims["sub"] === "string" ? claims["sub"].trim() : "";
+  const email = typeof claims["email"] === "string" ? claims["email"].trim() : "";
+
+  if (!subject) {
+    throw new Error("OIDC identity is missing a subject");
+  }
+
+  // Resolve by email first so an identity-provider subject change reuses the
+  // existing account. Also check the subject so returning users continue to
+  // work when their email claim changes or is unavailable.
+  const existingUserByEmail = email
+    ? await storage.getUserByEmail(email)
+    : undefined;
+  const existingUserBySubject = await storage.getUser(subject);
+
+  // Never silently merge two different accounts. A subject already owned by
+  // one account and an email already owned by another is an identity conflict,
+  // not a safe account-linking case.
+  if (
+    existingUserByEmail &&
+    existingUserBySubject &&
+    existingUserByEmail.id !== existingUserBySubject.id
+  ) {
+    throw new Error("OIDC identity conflicts with two existing user accounts");
+  }
+
+  const existingUser = existingUserByEmail ?? existingUserBySubject;
   
   const userData: any = {
-    id: claims["sub"],
-    email: claims["email"] || existingUser?.email,
+    // Keep the existing database ID when linking a new OIDC subject. The
+    // persisted ID is also copied into the Passport session below.
+    id: existingUser?.id ?? subject,
+    email: email || existingUser?.email,
     firstName: claims["first_name"] || existingUser?.firstName,
     lastName: claims["last_name"] || existingUser?.lastName,
     profileImageUrl: claims["profile_image_url"] || existingUser?.profileImageUrl,
@@ -90,10 +117,12 @@ async function upsertUser(claims: any) {
     userData.maxHousesAllowed = userData.role === 'homeowner' ? 2 : undefined; // Base plan: 2 houses during trial
   }
 
-  await storage.upsertUser(userData);
+  const persistedUser = await storage.upsertUser(userData);
   
   // Clear the pending role
   delete (global as any).pendingUserRole;
+
+  return persistedUser;
 }
 
 export async function setupAuth(app: Express) {
@@ -113,10 +142,19 @@ export async function setupAuth(app: Express) {
     tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
     verified: passport.AuthenticateCallback
   ) => {
-    const user = {};
+    const user: any = {};
     updateUserSession(user, tokens);
-    await upsertUser(tokens.claims());
-    verified(null, user);
+
+    try {
+      const persistedUser = await upsertUser(tokens.claims());
+      // OAuth claims.sub identifies the provider identity. Passport's user ID
+      // must instead be the application's user ID after email-based linking.
+      user.id = persistedUser.id;
+      verified(null, user);
+    } catch (error) {
+      console.error("[OAUTH] Failed to persist authenticated user:", error);
+      verified(error as Error, undefined);
+    }
   };
 
 
@@ -226,7 +264,7 @@ export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
   }
 
   // Block suspended OAuth users before any token refresh is attempted.
-  const oauthUserId: string | undefined = user?.claims?.sub;
+  const oauthUserId: string | undefined = user?.id || user?.claims?.sub;
   if (oauthUserId && suspendedUserIds.has(oauthUserId)) {
     return res.status(401).json({ message: "Account suspended. Contact your company administrator." });
   }
@@ -667,9 +705,9 @@ export const requireNotSuspended = (): RequestHandler => {
     } else if (
       typeof req.isAuthenticated === 'function' &&
       req.isAuthenticated() &&
-      req.user?.claims?.sub
+      req.user?.id || req.user?.claims?.sub
     ) {
-      userId = req.user.claims.sub;
+      userId = req.user.id || req.user.claims.sub;
     } else {
       return void res.status(401).json({ message: "Unauthorized" });
     }

@@ -15,7 +15,7 @@ function resolveUserId(req: any): string | null {
   if (sessionId) return sessionId;
 
   // OAuth path (Replit OIDC / passport)
-  const oauthId = req.user?.claims?.sub;
+  const oauthId = req.user?.id || req.user?.claims?.sub;
   if (oauthId && typeof req.isAuthenticated === 'function' && req.isAuthenticated()) {
     return oauthId;
   }
