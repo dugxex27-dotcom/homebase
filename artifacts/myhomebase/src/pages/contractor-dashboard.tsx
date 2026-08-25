@@ -57,6 +57,11 @@ import {
 import type { User as UserType, Proposal, ContractorAppointment } from "@shared/schema";
 import { Link, useLocation, useSearch } from "wouter";
 import { format, formatDistanceToNow } from "date-fns";
+import {
+  countRecentNewLeads,
+  getAppointmentsInNextSevenDays,
+  hasScheduledAppointmentForProposal,
+} from "./contractor-dashboard-stats";
 import "./home.css";
 
 /** Fraction of seats used at which the amber "nearly full" warning appears (e.g. 0.8 = 80%). */
@@ -102,6 +107,11 @@ interface ContractorBoostItem {
   status: string;
   isActive: boolean;
   createdAt: string | null;
+}
+
+interface ContractorLeadSummary {
+  status: string;
+  createdAt: string | Date | null;
 }
 
 interface BulkImportError {
@@ -911,6 +921,22 @@ export default function ContractorDashboard() {
     enabled: !!typedUser?.id,
   });
 
+  const {
+    data: contractorLeads = [],
+    isLoading: isLoadingContractorLeads,
+    isError: isContractorLeadsError,
+  } = useQuery<ContractorLeadSummary[]>({
+    queryKey: ["/api/crm/leads", typedUser?.id],
+    queryFn: async () => {
+      const response = await fetch("/api/crm/leads", {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch contractor leads");
+      return response.json();
+    },
+    enabled: !!typedUser?.id,
+  });
+
   const { data: contactedHomeowners = [], isLoading: isLoadingHomeowners } = useQuery<ContactedHomeowner[]>({
     queryKey: ["/api/contractors", typedUser?.id, "contacted-homeowners"],
     queryFn: async () => {
@@ -1013,9 +1039,9 @@ export default function ContractorDashboard() {
 
   const totalEarnings = acceptedProposals.reduce((sum, p) => sum + parseFloat(p.estimatedCost || '0'), 0);
 
-  const upcomingAppointments = appointments
-    .filter(a => new Date(a.scheduledDateTime) >= new Date())
-    .sort((a, b) => new Date(a.scheduledDateTime).getTime() - new Date(b.scheduledDateTime).getTime());
+  const now = new Date();
+  const recentNewLeadCount = countRecentNewLeads(contractorLeads, now);
+  const upcomingAppointments = getAppointmentsInNextSevenDays(appointments, now);
   const nextAppointment = upcomingAppointments[0];
   
   if (!typedUser) {
@@ -1044,19 +1070,21 @@ export default function ContractorDashboard() {
             <div className="dash-subtitle">Manage your work and grow your client base</div>
             <div className="dash-chips" data-tour-id="contractor-stats">
               <div className="dash-chip">
-                <div className={`dash-chip-num${totalEarnings > 0 ? ' good' : ''}`} data-testid="text-monthly-earnings">${totalEarnings.toLocaleString()}</div>
-                <div className="dash-chip-label">This Month</div>
+                <div className={`dash-chip-num${totalEarnings > 0 ? ' good' : ''}`} data-testid="text-all-time-earnings">${totalEarnings.toLocaleString()}</div>
+                <div className="dash-chip-label">All-Time Earnings</div>
               </div>
               <div className="dash-chip">
                 <div className={`dash-chip-num${acceptedProposals.length > 0 ? ' good' : ''}`} data-testid="text-active-jobs">{acceptedProposals.length}</div>
-                <div className="dash-chip-label">Active Jobs</div>
+                <div className="dash-chip-label">Accepted Proposals</div>
               </div>
               <div className="dash-chip">
                 <div className={`dash-chip-num${pendingProposals.length > 0 ? ' warn' : ''}`} data-testid="text-pending-proposals">{pendingProposals.length}</div>
                 <div className="dash-chip-label">Proposals</div>
               </div>
               <div className="dash-chip">
-                <div className={`dash-chip-num${referralCount > 0 ? ' good' : ''}`} data-testid="text-new-leads">{referralCount}</div>
+                <div className={`dash-chip-num${recentNewLeadCount > 0 ? ' good' : ''}`} data-testid="text-new-leads">
+                  {isLoadingContractorLeads || isContractorLeadsError ? '–' : recentNewLeadCount}
+                </div>
                 <div className="dash-chip-label">New Leads</div>
               </div>
             </div>
@@ -2249,9 +2277,9 @@ export default function ContractorDashboard() {
               <div className="dash-light-card-title">
                 {nextAppointment
                   ? `${new Date(nextAppointment.scheduledDateTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${new Date(nextAppointment.scheduledDateTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
-                  : 'No upcoming appointments'}
+                  : 'No appointments in the next 7 days'}
               </div>
-              <div className="dash-light-card-sub">{upcomingAppointments.length} upcoming this week</div>
+              <div className="dash-light-card-sub">{upcomingAppointments.length} upcoming in the next 7 days</div>
             </div>
             <Link href="/calendar">
               <span className="dash-light-card-btn" style={{ background: '#EAF4FD', color: '#1560A2' }} data-testid="button-view-calendar">View →</span>
@@ -2271,25 +2299,29 @@ export default function ContractorDashboard() {
           )}
         </div>
 
-        {/* Active Jobs */}
-        <span className="dash-section-label" style={{ marginTop: 4 }}>Active Jobs</span>
+        {/* Accepted proposals are the available proxy for active work. */}
+        <span className="dash-section-label" style={{ marginTop: 4 }}>Accepted Proposals</span>
         {acceptedProposals.length > 0 ? (
-          acceptedProposals.slice(0, 3).map(job => (
-            <div key={job.id} className="dash-light-card" style={{ marginBottom: 10 }}>
-              <div className="dash-light-card-row">
-                <div className="dash-light-card-icon" style={{ background: '#F0FAF4', color: '#09694A' }}>
-                  <CheckCircle size={18} />
+          acceptedProposals.slice(0, 3).map(job => {
+            const isScheduled = hasScheduledAppointmentForProposal(job, appointments, now);
+
+            return (
+              <div key={job.id} className="dash-light-card" style={{ marginBottom: 10 }}>
+                <div className="dash-light-card-row">
+                  <div className="dash-light-card-icon" style={{ background: '#F0FAF4', color: '#09694A' }}>
+                    <CheckCircle size={18} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="dash-light-card-title">{job.title}</div>
+                    <div className="dash-light-card-sub">{job.estimatedDuration || 'TBD'} · ${parseFloat(job.estimatedCost || '0').toLocaleString()}</div>
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: '#079669', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                    <CheckCircle size={12} /> {isScheduled ? 'Scheduled' : 'Accepted'}
+                  </span>
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="dash-light-card-title">{job.title}</div>
-                  <div className="dash-light-card-sub">{job.estimatedDuration || 'TBD'} · ${parseFloat(job.estimatedCost || '0').toLocaleString()}</div>
-                </div>
-                <span style={{ fontSize: 11, fontWeight: 600, color: '#079669', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                  <CheckCircle size={12} /> Scheduled
-                </span>
               </div>
-            </div>
-          ))
+            );
+          })
         ) : (
           <div className="dash-light-card" style={{ textAlign: 'center', padding: '24px 14px', marginBottom: 10 }}>
             <Briefcase size={28} style={{ color: 'var(--gray-400)', margin: '0 auto 8px', display: 'block' }} />
