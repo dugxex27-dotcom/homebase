@@ -174,14 +174,26 @@ export default function Home() {
     enabled: typedUser?.role === "homeowner",
   });
 
-  // Health scores per house (for stat chips)
-  const { data: score0 } = useQuery<{ score: number }>({
-    queryKey: ["/api/houses", houses[0]?.id, "health-score"],
-    enabled: !!houses[0]?.id && typedUser?.role === "homeowner",
-  });
-  const { data: score1 } = useQuery<{ score: number }>({
-    queryKey: ["/api/houses", houses[1]?.id, "health-score"],
-    enabled: !!houses[1]?.id && typedUser?.role === "homeowner",
+  // Health scores per house (for stat chips). Fetch every house in parallel
+  // instead of limiting the dashboard to a fixed number of score queries.
+  const { data: scoresByHouseId = {} } = useQuery<Record<string, { score: number }>>({
+    queryKey: ["/api/houses", houses.map((house) => house.id), "health-scores"],
+    queryFn: async () => {
+      const scoreEntries = await Promise.all(
+        houses.map(async (house) => {
+          const response = await fetch(`/api/houses/${house.id}/health-score`, {
+            credentials: "include",
+          });
+          if (!response.ok) {
+            throw new Error(`Failed to fetch the health score for ${house.id}`);
+          }
+          return [house.id, await response.json()] as const;
+        }),
+      );
+
+      return Object.fromEntries(scoreEntries) as Record<string, { score: number }>;
+    },
+    enabled: houses.length > 0 && typedUser?.role === "homeowner",
   });
 
   // Maintenance tasks for task count chip
@@ -352,8 +364,10 @@ export default function Home() {
   const progressPercentage = Math.min(100, (referralCount / referralsNeeded) * 100);
 
   // Stat chip computations
-  const rawScores = [score0?.score, score1?.score];
-  const houseScores = houses.map((h, i) => ({ house: h, score: rawScores[i] }));
+  const houseScores = houses.map((house) => ({
+    house,
+    score: scoresByHouseId[house.id]?.score,
+  }));
   const totalSystems = houses.reduce((sum, h) => sum + (Array.isArray(h.homeSystems) ? h.homeSystems.length : 0), 0);
   const tasksCount = tasksData
     ? ((tasksData as any).tasks?.seasonal?.length || 0) + ((tasksData as any).tasks?.weatherSpecific?.length || 0)

@@ -167,8 +167,8 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
           };
         }
 
-        if (queryKey.length === 3 && queryKey[2] === "health-score") {
-          return { data: { score: 55 }, isLoading: false };
+        if (queryKey.length === 3 && queryKey[2] === "health-scores") {
+          return { data: { "house-1": { score: 55 } }, isLoading: false };
         }
 
         if (key0 === "/api/homeowner/linked-invoices/unclaimed-count") {
