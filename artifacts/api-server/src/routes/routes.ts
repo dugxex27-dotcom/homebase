@@ -20188,7 +20188,15 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
       const finalDescription = serviceDescription || analysis.serviceDescription || "Home Maintenance";
       const finalDate = serviceDate || analysis.serviceDate || new Date().toISOString().split("T")[0];
-      const finalCost = totalAmount ?? (analysis.totalAmount ? parseFloat(analysis.totalAmount) : null);
+      const rawTotalAmount = totalAmount ?? (analysis.totalAmount ? parseFloat(analysis.totalAmount) : null);
+      let finalCost: number | null = null;
+      if (rawTotalAmount !== null && rawTotalAmount !== undefined && rawTotalAmount !== "") {
+        const parsedTotalAmount = typeof rawTotalAmount === "number" ? rawTotalAmount : Number(rawTotalAmount);
+        if (!Number.isFinite(parsedTotalAmount)) {
+          return res.status(400).json({ message: "totalAmount must be a valid number" });
+        }
+        finalCost = parsedTotalAmount;
+      }
       const finalContractorName = contractorName || analysis.contractorName || null;
       const finalContractorCompany = contractorCompany || analysis.contractorCompany || null;
       const finalHomeArea = homeArea || analysis.homeArea || "other";
