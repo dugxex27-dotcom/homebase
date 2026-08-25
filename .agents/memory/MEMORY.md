@@ -20,3 +20,4 @@
 - [Production invoice AI fallback](production-invoice-ai-fallback.md) — AI credential outages return a manual-review analysis instead of failing the invoice endpoint
 - [Replit OIDC email linking](replit-oidc-email-linking.md) — retain the database user ID in the OAuth session when linking a new provider subject by email
 - [Appliance manual query lifecycle](appliance-manual-query-lifecycle.md) — remove child manual cache on appliance deletion; invalidation briefly fetches a deleted parent
+- [Wouter query parameters](wouter-query-parameters.md) — use `useSearch`, not `useLocation`, when initializing views from URL query parameters

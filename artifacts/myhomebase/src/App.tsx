@@ -387,6 +387,12 @@ function Router() {
       <ContractorGuidedTour />
       <AgentGuidedTour />
       <Switch>
+        {/* This must precede the generic /contractor route because Switch
+            resolves the first matching route for the current user. */}
+        {typedUser?.role === 'homeowner' && (
+          <Route path="/contractor/:id" component={ContractorDetail} />
+        )}
+
         {/* Home route */}
         <Route path="/" component={Home} />
         <Route path="/homeowner" component={Home} />
@@ -441,7 +447,6 @@ function Router() {
             <Route path="/contractors" component={Contractors} />
             <Route path="/find-contractors" component={Contractors} />
             <Route path="/products" component={Products} />
-            <Route path="/contractor/:id" component={ContractorDetail} />
             <Route path="/service-records" component={HomeownerServiceRecords} />
             <Route path="/account" component={HomeownerAccount} />
             <Route path="/homeowner-referral" component={HomeownerReferral} />

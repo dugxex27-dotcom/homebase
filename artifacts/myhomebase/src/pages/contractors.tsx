@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useSearch } from "wouter";
 import ContractorCard from "@/components/contractor-card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -11,10 +11,11 @@ import type { Contractor, House } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
 import { getDistanceOptions, getDistanceUnit, extractCountryFromAddress, convertDistanceForStorage } from '@shared/distance-utils';
 import { HomeownerConnectionCodes } from "@/components/ConnectionCodes";
+import { getDirectorySearchTrackingSignature, trackDirectorySearch } from "@/lib/analytics";
 import "./home.css";
 
 export default function Contractors() {
-  const [location] = useLocation();
+  const urlSearch = useSearch();
   const [filters, setFilters] = useState<any>({});
   const [sortBy, setSortBy] = useState('best-match');
   const [searchQuery, setSearchQuery] = useState('');
@@ -162,7 +163,7 @@ export default function Contractors() {
   useEffect(() => {
     if (hasInitializedFromUrl.current) return;
     
-    const params = new URLSearchParams(location.split('?')[1] || '');
+    const params = new URLSearchParams(urlSearch);
     const searchQuery = params.get('q') || '';
     const searchLocation = params.get('location') || '';
     const category = params.get('category') || '';
@@ -215,13 +216,13 @@ export default function Contractors() {
         setSelectedServices(servicesToFilter);
       }
     }
-  }, [location]);
+  }, [urlSearch]);
 
   // Separate effect to handle house matching from URL location parameter
   useEffect(() => {
     if (!hasInitializedFromUrl.current) return;
     
-    const params = new URLSearchParams(location.split('?')[1] || '');
+    const params = new URLSearchParams(urlSearch);
     const searchLocation = params.get('location') || '';
     
     // If location parameter exists and houses are loaded, try to find matching house
@@ -234,7 +235,7 @@ export default function Contractors() {
         setSelectedHouseId(matchingHouse.id);
       }
     }
-  }, [houses, selectedHouseId]);
+  }, [houses, selectedHouseId, urlSearch]);
 
   // Don't auto-set location filter - wait for user to search
   // (This prevents showing contractors without an explicit search)
@@ -265,6 +266,20 @@ export default function Contractors() {
 
   // Track if filters have been applied at least once
   const [hasAppliedFilters, setHasAppliedFilters] = useState(false);
+  const lastTrackedSearchSignature = useRef<string | null>(null);
+
+  // Track the effective search state rather than a particular results query.
+  // This covers service-only filters, text/location searches, and URL-driven
+  // searches while keeping repeated renders and identical Apply clicks quiet.
+  useEffect(() => {
+    if (!hasAppliedFilters) return;
+
+    const searchSignature = getDirectorySearchTrackingSignature(filters);
+    if (lastTrackedSearchSignature.current === searchSignature) return;
+    lastTrackedSearchSignature.current = searchSignature;
+
+    void trackDirectorySearch(filters);
+  }, [filters, hasAppliedFilters]);
 
   const { data: contractors, isLoading, error } = useQuery<(Contractor & { isBoosted?: boolean })[]>({
     queryKey: filters.searchQuery || filters.searchLocation 
@@ -286,21 +301,6 @@ export default function Contractors() {
         // Add search parameters
         if (filters.searchQuery) params.set('q', filters.searchQuery);
         if (filters.searchLocation) params.set('location', filters.searchLocation);
-        
-        // Track search analytics for any filter or search activity
-        try {
-          await fetch('/api/analytics/search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              searchTerm: filters.searchQuery || filters.services?.join(', ') || 'contractor search',
-              serviceType: filters.services?.join(', '),
-              searchContext: 'contractor_directory'
-            })
-          });
-        } catch (error) {
-          console.error('Failed to track search:', error);
-        }
         
         const response = await fetch(`/api/contractors/search?${params}`);
         if (!response.ok) throw new Error('Failed to search contractors');
