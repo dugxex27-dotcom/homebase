@@ -167,7 +167,7 @@ export default function CompleteProfile() {
                           placeholder="Enter your zip code"
                           {...field}
                           data-testid="input-zip-code"
-                          style={{ color: '#ffffff' }}
+                          className="text-foreground"
                         />
                       </FormControl>
                       <FormMessage />
@@ -238,7 +238,7 @@ export default function CompleteProfile() {
                               placeholder="e.g., ABC Plumbing"
                               {...field}
                               data-testid="input-company-name"
-                              style={{ color: '#ffffff' }}
+                              className="text-foreground"
                             />
                           </FormControl>
                           <FormMessage />
@@ -257,7 +257,7 @@ export default function CompleteProfile() {
                               placeholder="Brief description of your company"
                               {...field}
                               data-testid="input-company-bio"
-                              style={{ color: '#ffffff' }}
+                              className="text-foreground"
                             />
                           </FormControl>
                           <FormMessage />
@@ -276,7 +276,7 @@ export default function CompleteProfile() {
                               placeholder="(555) 123-4567"
                               {...field}
                               data-testid="input-company-phone"
-                              style={{ color: '#ffffff' }}
+                              className="text-foreground"
                             />
                           </FormControl>
                           <FormMessage />
