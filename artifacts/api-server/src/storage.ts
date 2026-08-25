@@ -63,6 +63,8 @@ export function isDemoDataEnabled(): boolean {
   return process.env.DISABLE_DEMO_DATA !== 'true';
 }
 
+export type StripeEventClaimResult = 'claimed' | 'committed' | 'pending' | 'stale';
+
 export interface IStorage {
   // User operations (required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
@@ -631,9 +633,12 @@ export interface IStorage {
   getInsuranceEmailLogs(homeownerId: string): Promise<InsuranceEmailLog[]>;
 
   // Stripe webhook dedup operations
+  claimStripeEvent(eventId: string, claimedAt?: Date): Promise<StripeEventClaimResult>;
+  claimStaleStripeEvent(eventId: string, olderThanMinutes: number, claimedAt?: Date): Promise<boolean>;
+  refreshStripeEventClaim(eventId: string, expectedProcessedAt: Date, refreshedAt: Date): Promise<boolean>;
   hasProcessedStripeEvent(eventId: string): Promise<boolean>;
   markStripeEventPending(eventId: string): Promise<void>;
-  markStripeEventCommitted(eventId: string): Promise<void>;
+  markStripeEventCommitted(eventId: string, expectedProcessedAt?: Date): Promise<boolean>;
   deleteStripeEventPending(eventId: string): Promise<void>;
   getIncompleteStripeProcessedEvents(olderThanMinutes: number): Promise<Array<{ eventId: string; processedAt: Date }>>;
   failStaleStripePendingEvents(): Promise<{ updated: number }>;
@@ -6762,9 +6767,12 @@ export class MemStorage implements IStorage {
   }
 
   // Stripe webhook dedup — in-memory stubs (tests mock storage directly)
+  async claimStripeEvent(_eventId: string, _claimedAt?: Date): Promise<StripeEventClaimResult> { return 'claimed'; }
+  async claimStaleStripeEvent(_eventId: string, _olderThanMinutes: number, _claimedAt?: Date): Promise<boolean> { return false; }
+  async refreshStripeEventClaim(_eventId: string, _expectedProcessedAt: Date, _refreshedAt: Date): Promise<boolean> { return false; }
   async hasProcessedStripeEvent(_eventId: string): Promise<boolean> { return false; }
   async markStripeEventPending(_eventId: string): Promise<void> {}
-  async markStripeEventCommitted(_eventId: string): Promise<void> {}
+  async markStripeEventCommitted(_eventId: string, _expectedProcessedAt?: Date): Promise<boolean> { return true; }
   async deleteStripeEventPending(_eventId: string): Promise<void> {}
   async getIncompleteStripeProcessedEvents(_olderThanMinutes: number): Promise<Array<{ eventId: string; processedAt: Date }>> { return []; }
   async failStaleStripePendingEvents(): Promise<{ updated: number }> { return { updated: 0 }; }
@@ -9581,6 +9589,99 @@ class DbStorage implements IStorage {
   // Rows older than that are treated as stale (server crash) and do not block.
   private readonly STRIPE_DEDUP_PENDING_STALE_MS = 5 * 60 * 1000;
 
+  /**
+   * Atomically claim an event for normal webhook processing.
+   *
+   * A normal webhook worker may create a missing row or retry a terminal
+   * failed row. Pending rows are never reclaimed here: recent rows are
+   * actively processing and stale rows are exclusively leased by the recovery
+   * path, preventing a retry from racing recovery side effects.
+   */
+  async claimStripeEvent(eventId: string, claimedAt = new Date()): Promise<StripeEventClaimResult> {
+    const now = claimedAt;
+    const inserted = await db.insert(stripeProcessedEvents)
+      .values({ stripeEventId: eventId, status: 'pending', processedAt: now, updatedAt: now })
+      .onConflictDoNothing()
+      .returning({ stripeEventId: stripeProcessedEvents.stripeEventId });
+
+    if (inserted.length > 0) {
+      return 'claimed';
+    }
+
+    // Failed rows are intentionally retryable. The conditional update ensures
+    // only one concurrent delivery can re-claim the same event.
+    const reclaimed = await db.update(stripeProcessedEvents)
+      .set({ status: 'pending', processedAt: now, updatedAt: now })
+      .where(and(
+        eq(stripeProcessedEvents.stripeEventId, eventId),
+        eq(stripeProcessedEvents.status, 'failed'),
+      ))
+      .returning({ stripeEventId: stripeProcessedEvents.stripeEventId });
+
+    if (reclaimed.length > 0) {
+      return 'claimed';
+    }
+
+    const rows = await db.select({
+      status: stripeProcessedEvents.status,
+      processedAt: stripeProcessedEvents.processedAt,
+    })
+      .from(stripeProcessedEvents)
+      .where(eq(stripeProcessedEvents.stripeEventId, eventId))
+      .limit(1);
+
+    // A cleanup job can delete a very old row between the insert conflict and
+    // this read. Retry once through the same atomic insert path in that case.
+    if (rows.length === 0) {
+      return this.claimStripeEvent(eventId, claimedAt);
+    }
+
+    const row = rows[0];
+    if (row.status === 'committed') {
+      return 'committed';
+    }
+
+    const staleCutoff = new Date(now.getTime() - this.STRIPE_DEDUP_PENDING_STALE_MS);
+    return row.processedAt < staleCutoff ? 'stale' : 'pending';
+  }
+
+  /**
+   * Lease a stale pending event before recovery re-runs its side effects.
+   * Advancing processedAt is a compare-and-set lease: another recovery scan
+   * cannot win after this call, and webhook retries only receive a retryable
+   * response while recovery owns the event.
+   */
+  async claimStaleStripeEvent(eventId: string, olderThanMinutes: number, claimedAt = new Date()): Promise<boolean> {
+    const now = claimedAt;
+    const cutoff = new Date(now.getTime() - olderThanMinutes * 60 * 1000);
+    const claimed = await db.update(stripeProcessedEvents)
+      .set({ processedAt: now, updatedAt: now })
+      .where(and(
+        eq(stripeProcessedEvents.stripeEventId, eventId),
+        eq(stripeProcessedEvents.status, 'pending'),
+        lt(stripeProcessedEvents.processedAt, cutoff),
+      ))
+      .returning({ stripeEventId: stripeProcessedEvents.stripeEventId });
+    return claimed.length > 0;
+  }
+
+  /**
+   * Extends an active worker's lease only if it still owns the exact claim
+   * timestamp. This prevents recovery or cleanup from taking over a handler
+   * that is legitimately still running.
+   */
+  async refreshStripeEventClaim(eventId: string, expectedProcessedAt: Date, refreshedAt: Date): Promise<boolean> {
+    const refreshed = await db.update(stripeProcessedEvents)
+      .set({ processedAt: refreshedAt, updatedAt: refreshedAt })
+      .where(and(
+        eq(stripeProcessedEvents.stripeEventId, eventId),
+        eq(stripeProcessedEvents.status, 'pending'),
+        eq(stripeProcessedEvents.processedAt, expectedProcessedAt),
+      ))
+      .returning({ stripeEventId: stripeProcessedEvents.stripeEventId });
+    return refreshed.length > 0;
+  }
+
   async hasProcessedStripeEvent(eventId: string): Promise<boolean> {
     const staleCutoff = new Date(Date.now() - this.STRIPE_DEDUP_PENDING_STALE_MS);
     const rows = await db.select({ stripeEventId: stripeProcessedEvents.stripeEventId })
@@ -9614,10 +9715,19 @@ class DbStorage implements IStorage {
       });
   }
 
-  async markStripeEventCommitted(eventId: string): Promise<void> {
-    await db.update(stripeProcessedEvents)
+  async markStripeEventCommitted(eventId: string, expectedProcessedAt?: Date): Promise<boolean> {
+    const conditions = [
+      eq(stripeProcessedEvents.stripeEventId, eventId),
+      eq(stripeProcessedEvents.status, 'pending'),
+    ];
+    if (expectedProcessedAt) {
+      conditions.push(eq(stripeProcessedEvents.processedAt, expectedProcessedAt));
+    }
+    const committed = await db.update(stripeProcessedEvents)
       .set({ status: 'committed', updatedAt: new Date() })
-      .where(eq(stripeProcessedEvents.stripeEventId, eventId));
+      .where(and(...conditions))
+      .returning({ stripeEventId: stripeProcessedEvents.stripeEventId });
+    return committed.length > 0;
   }
 
   async deleteStripeEventPending(eventId: string): Promise<void> {

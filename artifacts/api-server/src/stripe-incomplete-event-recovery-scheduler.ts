@@ -7,6 +7,8 @@ import { recoverIncompleteStripeEvents } from "./routes/routes";
 // still giving an in-flight request a reasonable window to finish normally.
 const OLDER_THAN_MINUTES = 15;
 const INTERVAL_MS = 10 * 60 * 1000; // run every 10 minutes
+let initialRunTimer: NodeJS.Timeout | null = null;
+let schedulerInterval: NodeJS.Timeout | null = null;
 
 async function runRecoveryScan(): Promise<void> {
   try {
@@ -37,17 +39,33 @@ async function runRecoveryScan(): Promise<void> {
 
 export const stripeIncompleteEventRecoveryScheduler = {
   start() {
+    if (schedulerInterval) {
+      logger.info("[STRIPE-RECOVERY] Incomplete Stripe event recovery scheduler already running");
+      return;
+    }
+
     logger.info(
       { intervalMinutes: INTERVAL_MS / 60_000, olderThanMinutes: OLDER_THAN_MINUTES },
       "[STRIPE-RECOVERY] Incomplete Stripe event recovery scheduler started",
     );
 
-    setTimeout(() => {
+    initialRunTimer = setTimeout(() => {
       runRecoveryScan();
     }, 60 * 1000);
 
-    setInterval(() => {
+    schedulerInterval = setInterval(() => {
       runRecoveryScan();
     }, INTERVAL_MS);
+  },
+  stop() {
+    if (initialRunTimer) {
+      clearTimeout(initialRunTimer);
+      initialRunTimer = null;
+    }
+    if (schedulerInterval) {
+      clearInterval(schedulerInterval);
+      schedulerInterval = null;
+      logger.info("[STRIPE-RECOVERY] Incomplete Stripe event recovery scheduler stopped");
+    }
   },
 };

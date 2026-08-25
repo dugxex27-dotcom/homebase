@@ -20,8 +20,9 @@ import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 const {
   mockConstructEvent,
   mockEventsRetrieve,
-  mockHasProcessedStripeEvent,
-  mockMarkStripeEventPending,
+  mockClaimStripeEvent,
+  mockClaimStaleStripeEvent,
+  mockRefreshStripeEventClaim,
   mockMarkStripeEventCommitted,
   mockDeleteStripeEventPending,
   mockRecordProcessedStripeEvent,
@@ -37,9 +38,10 @@ const {
 } = vi.hoisted(() => ({
   mockConstructEvent: vi.fn(),
   mockEventsRetrieve: vi.fn(),
-  mockHasProcessedStripeEvent: vi.fn().mockResolvedValue(false),
-  mockMarkStripeEventPending: vi.fn().mockResolvedValue(undefined),
-  mockMarkStripeEventCommitted: vi.fn().mockResolvedValue(undefined),
+  mockClaimStripeEvent: vi.fn().mockResolvedValue("claimed"),
+  mockClaimStaleStripeEvent: vi.fn().mockResolvedValue(true),
+  mockRefreshStripeEventClaim: vi.fn().mockResolvedValue(true),
+  mockMarkStripeEventCommitted: vi.fn().mockResolvedValue(true),
   mockDeleteStripeEventPending: vi.fn().mockResolvedValue(undefined),
   mockRecordProcessedStripeEvent: vi.fn().mockResolvedValue(undefined),
   mockMarkStripeEventSideEffectsComplete: vi.fn().mockResolvedValue(undefined),
@@ -82,8 +84,9 @@ vi.mock("../storage", async () => {
   return {
     storage: createStorageMock({
       getRecentStripeProcessedEventIds: mockGetRecentStripeProcessedEventIds,
-      hasProcessedStripeEvent: mockHasProcessedStripeEvent,
-      markStripeEventPending: mockMarkStripeEventPending,
+      claimStripeEvent: mockClaimStripeEvent,
+      claimStaleStripeEvent: mockClaimStaleStripeEvent,
+      refreshStripeEventClaim: mockRefreshStripeEventClaim,
       markStripeEventCommitted: mockMarkStripeEventCommitted,
       deleteStripeEventPending: mockDeleteStripeEventPending,
       recordProcessedStripeEvent: mockRecordProcessedStripeEvent,
@@ -258,6 +261,7 @@ import {
   inFlightWebhookEventIds,
   registerRoutes,
   recoverIncompleteStripeEvents,
+  startStripeEventLease,
 } from "./routes";
 
 // ---------------------------------------------------------------------------
@@ -288,6 +292,43 @@ const FAKE_SIG = "t=1234567890,v1=fakesignature";
 // Test suite
 // ---------------------------------------------------------------------------
 
+describe("Stripe event lease finalization", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("waits for an in-progress heartbeat and commits with its refreshed lease timestamp", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-25T14:05:00.000Z"));
+    const eventId = "evt_lease_heartbeat_commit_race";
+    const initialClaimedAt = new Date();
+    let resolveRefresh!: (value: boolean) => void;
+    const refreshPromise = new Promise<boolean>((resolve) => {
+      resolveRefresh = resolve;
+    });
+    mockRefreshStripeEventClaim.mockReset().mockReturnValueOnce(refreshPromise);
+    mockMarkStripeEventCommitted.mockReset().mockResolvedValue(true);
+
+    const lease = startStripeEventLease(eventId, initialClaimedAt);
+    vi.advanceTimersByTime(2 * 60 * 1000);
+    expect(mockRefreshStripeEventClaim).toHaveBeenCalledWith(
+      eventId,
+      initialClaimedAt,
+      expect.any(Date),
+    );
+    const refreshedAt = mockRefreshStripeEventClaim.mock.calls[0][2] as Date;
+
+    const commit = lease.commit();
+    expect(mockMarkStripeEventCommitted).not.toHaveBeenCalled();
+
+    resolveRefresh(true);
+    await commit;
+
+    expect(mockMarkStripeEventCommitted).toHaveBeenCalledWith(eventId, refreshedAt);
+    lease.stop();
+  });
+});
+
 describe("Stripe webhook idempotency — end-to-end route integration", () => {
   const EVENT_ID = "evt_integration_test_double_trigger_001";
   let app: express.Express;
@@ -303,9 +344,8 @@ describe("Stripe webhook idempotency — end-to-end route integration", () => {
 
     // Reset storage spies
     mockGetRecentStripeProcessedEventIds.mockReset().mockResolvedValue(new Map());
-    mockHasProcessedStripeEvent.mockReset().mockResolvedValue(false);
-    mockMarkStripeEventPending.mockReset().mockResolvedValue(undefined);
-    mockMarkStripeEventCommitted.mockReset().mockResolvedValue(undefined);
+    mockClaimStripeEvent.mockReset().mockResolvedValue("claimed");
+    mockMarkStripeEventCommitted.mockReset().mockResolvedValue(true);
     mockDeleteStripeEventPending.mockReset().mockResolvedValue(undefined);
     mockPruneOldStripeProcessedEvents.mockReset().mockResolvedValue(undefined);
 
@@ -338,13 +378,11 @@ describe("Stripe webhook idempotency — end-to-end route integration", () => {
     // Must NOT have the duplicate flag on first delivery
     expect(first.body.duplicate).toBeUndefined();
 
-    // DB cold-check must have run and the two-phase write must fire exactly once
-    expect(mockHasProcessedStripeEvent).toHaveBeenCalledOnce();
-    expect(mockHasProcessedStripeEvent).toHaveBeenCalledWith(EVENT_ID);
-    expect(mockMarkStripeEventPending).toHaveBeenCalledOnce();
-    expect(mockMarkStripeEventPending).toHaveBeenCalledWith(EVENT_ID);
+    // The atomic claim and commit must each run exactly once.
+    expect(mockClaimStripeEvent).toHaveBeenCalledOnce();
+    expect(mockClaimStripeEvent).toHaveBeenCalledWith(EVENT_ID, expect.any(Date));
     expect(mockMarkStripeEventCommitted).toHaveBeenCalledOnce();
-    expect(mockMarkStripeEventCommitted).toHaveBeenCalledWith(EVENT_ID);
+    expect(mockMarkStripeEventCommitted).toHaveBeenCalledWith(EVENT_ID, expect.any(Date));
 
     // ── Second POST — Stripe retry with the same event ID ───────────────────
     const second = await request(app)
@@ -357,8 +395,7 @@ describe("Stripe webhook idempotency — end-to-end route integration", () => {
     expect(second.body).toMatchObject({ received: true, duplicate: true });
 
     // The in-memory cache must have blocked the second call before any DB access
-    expect(mockHasProcessedStripeEvent).toHaveBeenCalledOnce(); // still one total
-    expect(mockMarkStripeEventPending).toHaveBeenCalledOnce(); // still one total
+    expect(mockClaimStripeEvent).toHaveBeenCalledOnce(); // still one total
     expect(mockMarkStripeEventCommitted).toHaveBeenCalledOnce(); // still one total
   });
 
@@ -378,7 +415,7 @@ describe("Stripe webhook idempotency — end-to-end route integration", () => {
     expect(processedWebhookEventIds.has(EVENT_ID)).toBe(true);
 
     // Reset the DB spy so we can verify it isn't touched again
-    mockHasProcessedStripeEvent.mockClear();
+    mockClaimStripeEvent.mockClear();
 
     // Second retry — cache is warm, DB must NOT be consulted
     const retry = await request(app)
@@ -389,7 +426,7 @@ describe("Stripe webhook idempotency — end-to-end route integration", () => {
 
     expect(retry.status).toBe(200);
     expect(retry.body).toMatchObject({ received: true, duplicate: true });
-    expect(mockHasProcessedStripeEvent).not.toHaveBeenCalled();
+    expect(mockClaimStripeEvent).not.toHaveBeenCalled();
   });
 
   it("distinct event IDs are each processed once with no cross-event false positives", async () => {
@@ -416,13 +453,13 @@ describe("Stripe webhook idempotency — end-to-end route integration", () => {
     expect(resB.status).toBe(200);
     expect(resB.body.duplicate).toBeUndefined();
 
-    // Both events must have been recorded exactly once each (two-phase: pending then committed)
-    expect(mockMarkStripeEventPending).toHaveBeenCalledTimes(2);
-    expect(mockMarkStripeEventPending).toHaveBeenCalledWith(EVENT_A);
-    expect(mockMarkStripeEventPending).toHaveBeenCalledWith(EVENT_B);
+    // Both events must have been atomically claimed once.
+    expect(mockClaimStripeEvent).toHaveBeenCalledTimes(2);
+    expect(mockClaimStripeEvent).toHaveBeenCalledWith(EVENT_A, expect.any(Date));
+    expect(mockClaimStripeEvent).toHaveBeenCalledWith(EVENT_B, expect.any(Date));
     expect(mockMarkStripeEventCommitted).toHaveBeenCalledTimes(2);
-    expect(mockMarkStripeEventCommitted).toHaveBeenCalledWith(EVENT_A);
-    expect(mockMarkStripeEventCommitted).toHaveBeenCalledWith(EVENT_B);
+    expect(mockMarkStripeEventCommitted).toHaveBeenCalledWith(EVENT_A, expect.any(Date));
+    expect(mockMarkStripeEventCommitted).toHaveBeenCalledWith(EVENT_B, expect.any(Date));
 
     // Replaying event A is now blocked by the in-memory cache
     mockConstructEvent.mockReturnValueOnce(makeStripeEvent(EVENT_A));
@@ -435,14 +472,14 @@ describe("Stripe webhook idempotency — end-to-end route integration", () => {
     expect(resARetry.body).toMatchObject({ received: true, duplicate: true });
 
     // No extra storage calls from the replay
-    expect(mockMarkStripeEventPending).toHaveBeenCalledTimes(2);
+    expect(mockClaimStripeEvent).toHaveBeenCalledTimes(2);
     expect(mockMarkStripeEventCommitted).toHaveBeenCalledTimes(2);
   });
 
   it("returns duplicate:true via the DB fallback when cache is cold but DB already has the event", async () => {
     // Simulate a server-restart scenario: in-memory cache is empty (cold) but
     // the DB already recorded this event from a previous server instance.
-    mockHasProcessedStripeEvent.mockResolvedValueOnce(true);
+    mockClaimStripeEvent.mockResolvedValueOnce("committed");
 
     const body = makeWebhookBody(makeStripeEvent(EVENT_ID));
     const res = await request(app)
@@ -454,10 +491,26 @@ describe("Stripe webhook idempotency — end-to-end route integration", () => {
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ received: true, duplicate: true });
 
-    // DB was consulted but no new record was written (already processed)
-    expect(mockHasProcessedStripeEvent).toHaveBeenCalledOnce();
-    expect(mockMarkStripeEventPending).not.toHaveBeenCalled();
+    // The database reported this event was already committed.
+    expect(mockClaimStripeEvent).toHaveBeenCalledOnce();
     expect(mockMarkStripeEventCommitted).not.toHaveBeenCalled();
+  });
+
+  it("does not acknowledge or cache an event when its conditional commit loses the lease", async () => {
+    mockMarkStripeEventCommitted.mockResolvedValueOnce(false);
+
+    const res = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(makeWebhookBody(makeStripeEvent(EVENT_ID)));
+
+    expect(res.status).toBe(500);
+    expect(res.body.error).toContain("lease was lost");
+    expect(mockClaimStripeEvent).toHaveBeenCalledWith(EVENT_ID, expect.any(Date));
+    expect(mockMarkStripeEventCommitted).toHaveBeenCalledWith(EVENT_ID, expect.any(Date));
+    expect(processedWebhookEventIds.has(EVENT_ID)).toBe(false);
+    expect(inFlightWebhookEventIds.has(EVENT_ID)).toBe(false);
   });
 
   it("concurrent duplicate deliveries: only one request is processed even when both arrive simultaneously", async () => {
@@ -471,7 +524,7 @@ describe("Stripe webhook idempotency — end-to-end route integration", () => {
     // pass the in-memory cache check and both will await the DB check mock.
     // The first one to resume claims the inFlightWebhookEventIds slot; the
     // second finds it occupied and returns duplicate:true.  At the end,
-    // markStripeEventPending/markStripeEventCommitted must have been called exactly once each.
+    // claimStripeEvent/markStripeEventCommitted must have been called exactly once each.
     const body = makeWebhookBody(makeStripeEvent(EVENT_ID));
 
     const [res1, res2] = await Promise.all([
@@ -504,10 +557,10 @@ describe("Stripe webhook idempotency — end-to-end route integration", () => {
 
     // The DB write must have happened exactly once — the DB `INSERT … ON CONFLICT
     // DO NOTHING` is the last line of defence and must not be called twice.
-    expect(mockMarkStripeEventPending).toHaveBeenCalledOnce();
-    expect(mockMarkStripeEventPending).toHaveBeenCalledWith(EVENT_ID);
+    expect(mockClaimStripeEvent).toHaveBeenCalledOnce();
+    expect(mockClaimStripeEvent).toHaveBeenCalledWith(EVENT_ID, expect.any(Date));
     expect(mockMarkStripeEventCommitted).toHaveBeenCalledOnce();
-    expect(mockMarkStripeEventCommitted).toHaveBeenCalledWith(EVENT_ID);
+    expect(mockMarkStripeEventCommitted).toHaveBeenCalledWith(EVENT_ID, expect.any(Date));
   });
 });
 
@@ -528,6 +581,7 @@ describe("recoverIncompleteStripeEvents — incomplete side-effect recovery", ()
     inFlightWebhookEventIds.clear();
 
     mockGetIncompleteStripeProcessedEvents.mockReset().mockResolvedValue([]);
+    mockClaimStaleStripeEvent.mockReset().mockResolvedValue(true);
     mockMarkStripeEventSideEffectsComplete.mockReset().mockResolvedValue(undefined);
     mockEventsRetrieve.mockReset();
 
@@ -562,8 +616,21 @@ describe("recoverIncompleteStripeEvents — incomplete side-effect recovery", ()
     const results = await recoverIncompleteStripeEvents(15);
 
     expect(mockEventsRetrieve).toHaveBeenCalledWith(eventId);
-    expect(mockMarkStripeEventCommitted).toHaveBeenCalledWith(eventId);
+    expect(mockMarkStripeEventCommitted).toHaveBeenCalledWith(eventId, expect.any(Date));
     expect(results).toEqual([{ eventId, processedAt, outcome: "recovered" }]);
+  });
+
+  it("skips an incomplete event already leased by another recovery worker", async () => {
+    const eventId = "evt_incomplete_leased_elsewhere_01";
+    const processedAt = new Date(Date.now() - 20 * 60 * 1000);
+    mockGetIncompleteStripeProcessedEvents.mockResolvedValueOnce([{ eventId, processedAt }]);
+    mockClaimStaleStripeEvent.mockResolvedValueOnce(false);
+
+    const results = await recoverIncompleteStripeEvents(15);
+
+    expect(results).toEqual([]);
+    expect(mockEventsRetrieve).not.toHaveBeenCalled();
+    expect(mockMarkStripeEventCommitted).not.toHaveBeenCalled();
   });
 
   it("marks an event as not_found_in_stripe when Stripe no longer has the event (past retention)", async () => {
@@ -620,7 +687,7 @@ describe("recoverIncompleteStripeEvents — incomplete side-effect recovery", ()
       { eventId: failedId, processedAt, outcome: "failed", error: "boom" },
     ]);
     expect(mockMarkStripeEventCommitted).toHaveBeenCalledOnce();
-    expect(mockMarkStripeEventCommitted).toHaveBeenCalledWith(recoveredId);
+    expect(mockMarkStripeEventCommitted).toHaveBeenCalledWith(recoveredId, expect.any(Date));
   });
 });
 
@@ -700,9 +767,8 @@ describe("Stripe webhook idempotency — event-type specific (checkout.session.c
     processedWebhookEventIds.clear();
 
     mockGetRecentStripeProcessedEventIds.mockReset().mockResolvedValue(new Map());
-    mockHasProcessedStripeEvent.mockReset().mockResolvedValue(false);
-    mockMarkStripeEventPending.mockReset().mockResolvedValue(undefined);
-    mockMarkStripeEventCommitted.mockReset().mockResolvedValue(undefined);
+    mockClaimStripeEvent.mockReset().mockResolvedValue("claimed");
+    mockMarkStripeEventCommitted.mockReset().mockResolvedValue(true);
     mockDeleteStripeEventPending.mockReset().mockResolvedValue(undefined);
     mockPruneOldStripeProcessedEvents.mockReset().mockResolvedValue(undefined);
     mockGetUser.mockReset().mockResolvedValue(null);
@@ -753,7 +819,7 @@ describe("Stripe webhook idempotency — event-type specific (checkout.session.c
     expect(mockGetUser).toHaveBeenCalledWith("user_test_checkout_01");
     expect(mockUpdateUserStripeSubscription).toHaveBeenCalledOnce();
     expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledOnce();
-    expect(mockMarkStripeEventPending).toHaveBeenCalledOnce();
+    expect(mockClaimStripeEvent).toHaveBeenCalledOnce();
     expect(mockMarkStripeEventCommitted).toHaveBeenCalledOnce();
 
     // ── Second delivery (Stripe retry) ───────────────────────────────────────
@@ -771,7 +837,68 @@ describe("Stripe webhook idempotency — event-type specific (checkout.session.c
     expect(mockGetUser).toHaveBeenCalledOnce();
     expect(mockUpdateUserStripeSubscription).toHaveBeenCalledOnce();
     expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledOnce();
-    expect(mockMarkStripeEventPending).toHaveBeenCalledOnce();
+    expect(mockClaimStripeEvent).toHaveBeenCalledOnce();
+    expect(mockMarkStripeEventCommitted).toHaveBeenCalledOnce();
+  });
+
+  it("a separate API process receives retryable pending state and cannot duplicate checkout side effects", async () => {
+    const EVENT_ID = "evt_checkout_cross_process_claim_001";
+    const event = makeCheckoutSessionCompletedEvent(EVENT_ID);
+    const fakeUser = {
+      id: "user_test_checkout_01",
+      role: "agent",
+      companyId: null,
+      stripeCustomerId: null,
+      stripeSubscriptionId: null,
+      subscriptionStatus: null,
+    };
+    mockGetUser.mockResolvedValue(fakeUser);
+    mockConstructEvent.mockReset().mockReturnValue(event);
+
+    let resolveFirstClaim!: (result: "claimed") => void;
+    const firstClaim = new Promise<"claimed">((resolve) => {
+      resolveFirstClaim = resolve;
+    });
+    // The first process owns the durable claim. A second process sees the
+    // same database row as active pending and must ask Stripe to retry.
+    mockClaimStripeEvent
+      .mockImplementationOnce(() => firstClaim)
+      .mockResolvedValueOnce("pending");
+
+    const firstRequest = new Promise<request.Response>((resolve, reject) => {
+      request(app)
+        .post("/api/webhooks/stripe")
+        .set("Content-Type", "application/octet-stream")
+        .set("stripe-signature", FAKE_SIG)
+        .send(makeWebhookBody(event))
+        .end((error, response) => error ? reject(error) : resolve(response));
+    });
+
+    await vi.waitFor(() => {
+      expect(mockClaimStripeEvent).toHaveBeenCalledOnce();
+    });
+
+    // Process-local sets are not shared between API instances. Clearing the
+    // set models a second process while both requests retain the same durable
+    // claim mock.
+    inFlightWebhookEventIds.clear();
+    const secondResponse = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(makeWebhookBody(event));
+
+    expect(secondResponse.status).toBe(500);
+    expect(secondResponse.body).toMatchObject({ retry: true });
+    expect(mockGetUser).not.toHaveBeenCalled();
+
+    resolveFirstClaim("claimed");
+    const firstResponse = await firstRequest;
+
+    expect(firstResponse.status).toBe(200);
+    expect(mockGetUser).toHaveBeenCalledOnce();
+    expect(mockUpdateUserStripeSubscription).toHaveBeenCalledOnce();
+    expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledOnce();
     expect(mockMarkStripeEventCommitted).toHaveBeenCalledOnce();
   });
 
@@ -814,7 +941,7 @@ describe("Stripe webhook idempotency — event-type specific (checkout.session.c
     );
     expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledOnce();
     expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledWith("user_test_sub_01", "active");
-    expect(mockMarkStripeEventPending).toHaveBeenCalledOnce();
+    expect(mockClaimStripeEvent).toHaveBeenCalledOnce();
     expect(mockMarkStripeEventCommitted).toHaveBeenCalledOnce();
 
     // ── Second delivery (Stripe retry) ───────────────────────────────────────
@@ -832,7 +959,7 @@ describe("Stripe webhook idempotency — event-type specific (checkout.session.c
     expect(mockGetUserByStripeCustomerId2).toHaveBeenCalledOnce();
     expect(mockUpdateUserStripeSubscription).toHaveBeenCalledOnce();
     expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledOnce();
-    expect(mockMarkStripeEventPending).toHaveBeenCalledOnce();
+    expect(mockClaimStripeEvent).toHaveBeenCalledOnce();
     expect(mockMarkStripeEventCommitted).toHaveBeenCalledOnce();
   });
 });
@@ -840,13 +967,13 @@ describe("Stripe webhook idempotency — event-type specific (checkout.session.c
 // ---------------------------------------------------------------------------
 // Crash-mid-write / server-restart simulation
 //
-// Scenario: markStripeEventPending() is called BEFORE the checkout side
+// Scenario: claimStripeEvent() is called BEFORE the checkout side
 // effects run (see routes.ts comment above the call site) specifically so
 // that a crash/outage between the DB write and the side effects leaves the
 // event durably marked "pending" rather than leaving side effects
 // unprotected. This test instead covers the mirror case explicitly called
 // out in the task: the process crashes/restarts while
-// markStripeEventPending() itself is failing to complete (e.g. the DB
+// claimStripeEvent() itself is failing to complete (e.g. the DB
 // write throws), so the in-memory cache is never warmed for that delivery.
 // On "restart" the in-memory caches are cold (cleared, as they would be on a
 // fresh process) and Stripe's retry arrives again. The DB row from the
@@ -867,9 +994,8 @@ describe("Stripe webhook idempotency — crash mid-write then restart (checkout.
     inFlightWebhookEventIds.clear();
 
     mockGetRecentStripeProcessedEventIds.mockReset().mockResolvedValue(new Map());
-    mockHasProcessedStripeEvent.mockReset().mockResolvedValue(false);
-    mockMarkStripeEventPending.mockReset().mockResolvedValue(undefined);
-    mockMarkStripeEventCommitted.mockReset().mockResolvedValue(undefined);
+    mockClaimStripeEvent.mockReset().mockResolvedValue("claimed");
+    mockMarkStripeEventCommitted.mockReset().mockResolvedValue(true);
     mockDeleteStripeEventPending.mockReset().mockResolvedValue(undefined);
     mockPruneOldStripeProcessedEvents.mockReset().mockResolvedValue(undefined);
     mockGetUser.mockReset().mockResolvedValue(null);
@@ -888,7 +1014,7 @@ describe("Stripe webhook idempotency — crash mid-write then restart (checkout.
     vi.clearAllMocks();
   });
 
-  it("first delivery crashes mid-write (markStripeEventPending throws); after a cold restart the DB fallback prevents duplicate side effects", async () => {
+  it("first delivery crashes while claiming; after a cold restart the committed claim prevents duplicate side effects", async () => {
     const EVENT_ID = "evt_checkout_crash_restart_test_001";
     const event = makeCheckoutSessionCompletedEvent(EVENT_ID);
 
@@ -906,9 +1032,9 @@ describe("Stripe webhook idempotency — crash mid-write then restart (checkout.
     // Simulate an outage/crash: the very first attempt to durably record the
     // event throws (e.g. the process is killed mid-write, or the DB write
     // itself fails). The handler must abort BEFORE running any of the
-    // checkout side effects, since markStripeEventPending() is called
+    // checkout side effects, since claimStripeEvent() is called
     // ahead of the switch statement.
-    mockMarkStripeEventPending.mockRejectedValueOnce(new Error("simulated crash mid-write"));
+    mockClaimStripeEvent.mockRejectedValueOnce(new Error("simulated crash mid-write"));
 
     const crashed = await request(app)
       .post("/api/webhooks/stripe")
@@ -923,7 +1049,7 @@ describe("Stripe webhook idempotency — crash mid-write then restart (checkout.
     expect(mockGetUser).not.toHaveBeenCalled();
     expect(mockUpdateUserStripeSubscription).not.toHaveBeenCalled();
     expect(mockUpdateUserSubscriptionStatus2).not.toHaveBeenCalled();
-    expect(mockMarkStripeEventPending).toHaveBeenCalledOnce();
+    expect(mockClaimStripeEvent).toHaveBeenCalledOnce();
     expect(mockMarkStripeEventCommitted).not.toHaveBeenCalled();
 
     // The in-flight slot must be released on error so the retry isn't
@@ -937,12 +1063,11 @@ describe("Stripe webhook idempotency — crash mid-write then restart (checkout.
     // In-memory caches are cold on a fresh process. We model the fact that
     // the crashed write may or may not have partially landed in the DB by
     // asserting the safe (worst-case-for-idempotency) outcome: the write did
-    // NOT land, so Stripe's retry must re-attempt markStripeEventPending
+    // NOT land, so Stripe's retry must re-attempt the atomic claim
     // and this time succeed, running side effects exactly once.
     processedWebhookEventIds.clear();
     inFlightWebhookEventIds.clear();
-    mockHasProcessedStripeEvent.mockResolvedValue(false);
-    mockMarkStripeEventPending.mockReset().mockResolvedValue(undefined);
+    mockClaimStripeEvent.mockReset().mockResolvedValue("claimed");
 
     const retry = await request(app)
       .post("/api/webhooks/stripe")
@@ -958,16 +1083,16 @@ describe("Stripe webhook idempotency — crash mid-write then restart (checkout.
     expect(mockGetUser).toHaveBeenCalledOnce();
     expect(mockUpdateUserStripeSubscription).toHaveBeenCalledOnce();
     expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledOnce();
-    expect(mockMarkStripeEventPending).toHaveBeenCalledOnce();
+    expect(mockClaimStripeEvent).toHaveBeenCalledOnce();
     expect(mockMarkStripeEventCommitted).toHaveBeenCalledOnce();
 
     // ── A second Stripe retry after the successful write must be a no-op ────
     // This exercises the literal DB-fallback path named in the task: cache
     // is cold again (fresh process), but the DB now has the record, so
-    // hasProcessedStripeEvent must short-circuit before any side effects run.
+    // claimStripeEvent must short-circuit before any side effects run.
     processedWebhookEventIds.clear();
     inFlightWebhookEventIds.clear();
-    mockHasProcessedStripeEvent.mockResolvedValueOnce(true);
+    mockClaimStripeEvent.mockResolvedValueOnce("committed");
 
     const secondRetryAfterRestart = await request(app)
       .post("/api/webhooks/stripe")
@@ -983,7 +1108,7 @@ describe("Stripe webhook idempotency — crash mid-write then restart (checkout.
     expect(mockGetUser).toHaveBeenCalledOnce();
     expect(mockUpdateUserStripeSubscription).toHaveBeenCalledOnce();
     expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledOnce();
-    expect(mockMarkStripeEventPending).toHaveBeenCalledOnce();
+    expect(mockClaimStripeEvent).toHaveBeenCalledTimes(2);
     expect(mockMarkStripeEventCommitted).toHaveBeenCalledOnce();
   });
 });
@@ -1110,9 +1235,8 @@ describe("Stripe webhook — incomplete subscription 3DS lifecycle (upgrade and 
     inFlightWebhookEventIds.clear();
 
     mockGetRecentStripeProcessedEventIds.mockReset().mockResolvedValue(new Map());
-    mockHasProcessedStripeEvent.mockReset().mockResolvedValue(false);
-    mockMarkStripeEventPending.mockReset().mockResolvedValue(undefined);
-    mockMarkStripeEventCommitted.mockReset().mockResolvedValue(undefined);
+    mockClaimStripeEvent.mockReset().mockResolvedValue("claimed");
+    mockMarkStripeEventCommitted.mockReset().mockResolvedValue(true);
     mockDeleteStripeEventPending.mockReset().mockResolvedValue(undefined);
     mockPruneOldStripeProcessedEvents.mockReset().mockResolvedValue(undefined);
     mockGetUser.mockReset().mockResolvedValue(null);

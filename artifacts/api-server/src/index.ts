@@ -22,6 +22,8 @@ import { storageOrphanCleanupScheduler } from "./storage-orphan-cleanup-schedule
 import { boostExpiryScheduler } from "./boost-expiry-scheduler";
 import { fraudScheduler } from "./fraud-scheduler";
 import { referralAccrualScheduler } from "./referral-accrual-scheduler";
+import { stripeDedupCleanupScheduler } from "./stripe-dedup-cleanup-scheduler";
+import { stripeIncompleteEventRecoveryScheduler } from "./stripe-incomplete-event-recovery-scheduler";
 import { initLeaderLease, releaseLeaderLease } from "./lib/scheduler-leader";
 
 const allSchedulers = [
@@ -38,6 +40,8 @@ const allSchedulers = [
   boostExpiryScheduler,
   fraudScheduler,
   referralAccrualScheduler,
+  stripeDedupCleanupScheduler,
+  stripeIncompleteEventRecoveryScheduler,
 ];
 
 // ---------------------------------------------------------------------------

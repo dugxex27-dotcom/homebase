@@ -349,11 +349,61 @@ export function checkPhotoCountGuard(
 }
 // Internal ref wired by registerRoutes so recoverIncompleteStripeEvents can re-run side effects.
 let _processStripeEventSideEffectsRef: ((event: Stripe.Event) => Promise<void>) | null = null;
+const STRIPE_EVENT_LEASE_HEARTBEAT_MS = 2 * 60 * 1000;
+
+export function startStripeEventLease(eventId: string, initialClaimedAt: Date) {
+  let currentClaimedAt = initialClaimedAt;
+  let leaseLost = false;
+  let refreshInFlight: Promise<void> | null = null;
+  let stopped = false;
+  const refreshLease = async () => {
+    const refreshedAt = new Date();
+    try {
+      const refreshed = await storage.refreshStripeEventClaim(eventId, currentClaimedAt, refreshedAt);
+      if (refreshed) {
+        currentClaimedAt = refreshedAt;
+      } else {
+        leaseLost = true;
+      }
+    } catch (error) {
+      leaseLost = true;
+      console.error("[STRIPE WEBHOOK] Failed to refresh event-processing lease:", error);
+    }
+  };
+  const heartbeat = setInterval(() => {
+    if (stopped || refreshInFlight) return;
+    refreshInFlight = refreshLease().finally(() => {
+      refreshInFlight = null;
+    });
+  }, STRIPE_EVENT_LEASE_HEARTBEAT_MS);
+  heartbeat.unref?.();
+
+  return {
+    async commit() {
+      // Stop future heartbeats, then wait for any timer callback that had
+      // already started. This serializes the final conditional commit with
+      // the most recent lease refresh.
+      stopped = true;
+      clearInterval(heartbeat);
+      if (refreshInFlight) {
+        await refreshInFlight;
+      }
+      if (leaseLost || !(await storage.markStripeEventCommitted(eventId, currentClaimedAt))) {
+        throw new Error("Stripe event-processing lease was lost before commit");
+      }
+    },
+    stop() {
+      stopped = true;
+      clearInterval(heartbeat);
+    },
+  };
+}
 
 /**
  * Background recovery: re-fetch events that were durably recorded as 'pending'
  * (side effects started) but never marked 'committed' (e.g. process crashed mid-handler).
- * Called by the scheduler; safe to call concurrently.
+ * Each candidate is atomically leased before work begins, making concurrent
+ * recovery scans and webhook retries skip work already owned by recovery.
  */
 export async function recoverIncompleteStripeEvents(olderThanMinutes: number): Promise<Array<{
   eventId: string;
@@ -374,13 +424,23 @@ export async function recoverIncompleteStripeEvents(olderThanMinutes: number): P
 
   for (const { eventId, processedAt } of incompleteEvents) {
     try {
-      if (!currentStripe) throw new Error("Stripe not configured");
-      const event = await currentStripe.events.retrieve(eventId);
-      if (_processStripeEventSideEffectsRef) {
-        await _processStripeEventSideEffectsRef(event);
+      const claimedAt = new Date();
+      const claimed = await storage.claimStaleStripeEvent(eventId, olderThanMinutes, claimedAt);
+      if (!claimed) {
+        continue;
       }
-      await storage.markStripeEventCommitted(eventId);
-      results.push({ eventId, processedAt, outcome: "recovered" });
+      const lease = startStripeEventLease(eventId, claimedAt);
+      try {
+        if (!currentStripe) throw new Error("Stripe not configured");
+        const event = await currentStripe.events.retrieve(eventId);
+        if (_processStripeEventSideEffectsRef) {
+          await _processStripeEventSideEffectsRef(event);
+        }
+        await lease.commit();
+        results.push({ eventId, processedAt, outcome: "recovered" });
+      } finally {
+        lease.stop();
+      }
     } catch (err: any) {
       if (err.code === "resource_missing") {
         results.push({ eventId, processedAt, outcome: "not_found_in_stripe", error: err.message });
@@ -1680,26 +1740,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     inFlightWebhookEventIds.add(eventId);
 
     try {
-      // ── Layer 3: DB cold-start fallback ───────────────────────────────────
-      // Checked inside the try/finally so the in-flight slot is always released.
-      const alreadyProcessed = await storage.hasProcessedStripeEvent(eventId);
-      if (alreadyProcessed) {
+      // ── Layer 3: atomic database claim ────────────────────────────────────
+      // A single statement decides ownership across all API instances. Normal
+      // webhook workers never reclaim stale pending rows; recovery owns that
+      // path so retries cannot duplicate recovery side effects.
+      const claimedAt = new Date();
+      const claim = await storage.claimStripeEvent(eventId, claimedAt);
+      if (claim === 'committed') {
         enforceWebhookDedupCacheCap();
         processedWebhookEventIds.set(eventId, Date.now());
         return res.json({ received: true, duplicate: true });
       }
 
-      // ── Two-phase write: persist BEFORE side effects so a crash leaves a
-      //    durable "pending" row that the recovery job can re-process. ───────
-      await storage.markStripeEventPending(eventId);
-
-      // ── Side effects (the event-type switch) ─────────────────────────────
-      if (_processStripeEventSideEffectsRef) {
-        await _processStripeEventSideEffectsRef(event);
+      if (claim === 'pending' || claim === 'stale') {
+        // Do not acknowledge a request another worker or the recovery path
+        // owns. Stripe will retry after the active/recovery lease changes.
+        return res.status(500).json({
+          error: claim === 'pending'
+            ? 'Stripe event is already being processed'
+            : 'Stripe event is awaiting recovery',
+          retry: true,
+        });
       }
 
-      // ── Commit: mark the row as fully processed ───────────────────────────
-      await storage.markStripeEventCommitted(eventId);
+      const lease = startStripeEventLease(eventId, claimedAt);
+      try {
+        // ── Side effects (the event-type switch) ───────────────────────────
+        if (_processStripeEventSideEffectsRef) {
+          await _processStripeEventSideEffectsRef(event);
+        }
+
+        // ── Commit: only the current lease holder may finish the event. ─────
+        await lease.commit();
+      } finally {
+        lease.stop();
+      }
 
       // Warm the in-memory cache so future retries skip the DB.
       enforceWebhookDedupCacheCap();

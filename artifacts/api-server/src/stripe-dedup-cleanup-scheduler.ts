@@ -6,6 +6,8 @@ import { storage } from "./storage";
 // processed a second time.  96 h gives a comfortable safety margin.
 const TTL_HOURS = 96;
 const INTERVAL_MS = 24 * 60 * 60 * 1000;
+let initialRunTimer: NodeJS.Timeout | null = null;
+let schedulerInterval: NodeJS.Timeout | null = null;
 
 // Alert threshold: warn if more than this many rows remain after pruning.
 // With a 96-hour TTL, normal traffic produces at most a few hundred rows.
@@ -46,18 +48,34 @@ async function pruneStripeDedupTable(): Promise<void> {
 
 export const stripeDedupCleanupScheduler = {
   start() {
+    if (schedulerInterval) {
+      logger.info("[STRIPE-DEDUP] Stripe dedup cleanup scheduler already running");
+      return;
+    }
+
     logger.info("[STRIPE-DEDUP] Stripe dedup cleanup scheduler started (24-hour interval)");
 
-    setTimeout(() => {
+    initialRunTimer = setTimeout(() => {
       pruneStripeDedupTable().catch((err) =>
         logger.error({ err }, "[STRIPE-DEDUP] Initial prune failed")
       );
     }, 60 * 1000);
 
-    setInterval(() => {
+    schedulerInterval = setInterval(() => {
       pruneStripeDedupTable().catch((err) =>
         logger.error({ err }, "[STRIPE-DEDUP] Scheduled prune failed")
       );
     }, INTERVAL_MS);
+  },
+  stop() {
+    if (initialRunTimer) {
+      clearTimeout(initialRunTimer);
+      initialRunTimer = null;
+    }
+    if (schedulerInterval) {
+      clearInterval(schedulerInterval);
+      schedulerInterval = null;
+      logger.info("[STRIPE-DEDUP] Stripe dedup cleanup scheduler stopped");
+    }
   },
 };
