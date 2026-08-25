@@ -1,5 +1,15 @@
 import OpenAI from "openai";
 
+function createOpenAIClient(): OpenAI {
+  const replitBaseUrl = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
+  const replitApiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+
+  return new OpenAI({
+    apiKey: replitApiKey || process.env.OPENAI_API_KEY,
+    ...(replitBaseUrl ? { baseURL: replitBaseUrl } : {}),
+  });
+}
+
 export interface InvoiceExtraction {
   isValidInvoice: boolean; // false if image is not an invoice/receipt at all
   invalidReason: string | null; // populated when isValidInvoice is false
@@ -124,7 +134,7 @@ export async function extractInvoiceData(
   imageBase64: string,
   mimeType: string
 ): Promise<InvoiceExtraction> {
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const openai = createOpenAIClient();
 
   // PDF fast path: text extraction is more reliable than vision for text-heavy
   // digital invoices. Only falls back to vision for scanned/image-only PDFs.
@@ -174,7 +184,7 @@ export async function extractInvoiceData(
 export async function verifyDIYPhotos(
   photoBase64List: Array<{ base64: string; mimeType: string }>
 ): Promise<DIYVerification> {
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const openai = createOpenAIClient();
 
   const imageContent = photoBase64List.map((p) => ({
     type: "image_url" as const,
