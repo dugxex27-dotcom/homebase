@@ -171,6 +171,20 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
           return { data: { "house-1": { score: 55 } }, isLoading: false };
         }
 
+        if (queryKey.length === 3 && queryKey[2] === "maintenance-tasks") {
+          return {
+            data: {
+              "house-1": {
+                tasks: {
+                  seasonal: ["Check HVAC filters"],
+                  weatherSpecific: ["Inspect roof"],
+                },
+              },
+            },
+            isLoading: false,
+          };
+        }
+
         if (key0 === "/api/homeowner/linked-invoices/unclaimed-count") {
           return { data: { count: 0 }, isLoading: false };
         }

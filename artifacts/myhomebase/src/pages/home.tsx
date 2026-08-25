@@ -45,6 +45,13 @@ type ContractorLeadSummary = {
   createdAt: string | Date | null;
 };
 
+type MaintenanceTasksResponse = {
+  tasks?: {
+    seasonal?: unknown[];
+    weatherSpecific?: unknown[];
+  };
+};
+
 function getMechanicalAgeInfo(house: House) {
   const currentYear = new Date().getFullYear();
   return MECHANICAL_FEATURES.map(({ key, label, icon, lifespan, category }) => {
@@ -196,10 +203,26 @@ export default function Home() {
     enabled: houses.length > 0 && typedUser?.role === "homeowner",
   });
 
-  // Maintenance tasks for task count chip
-  const { data: tasksData } = useQuery({
-    queryKey: ["/api/houses", houses[0]?.id, "maintenance-tasks"],
-    enabled: !!houses[0]?.id && typedUser?.role === "homeowner",
+  // Maintenance tasks for the task count chip. Fetch each property's task
+  // plan so multi-property homeowners see the combined count.
+  const { data: tasksByHouseId = {} } = useQuery<Record<string, MaintenanceTasksResponse>>({
+    queryKey: ["/api/houses", houses.map((house) => house.id), "maintenance-tasks"],
+    queryFn: async () => {
+      const taskEntries = await Promise.all(
+        houses.map(async (house) => {
+          const response = await fetch(`/api/houses/${house.id}/maintenance-tasks`, {
+            credentials: "include",
+          });
+          if (!response.ok) {
+            throw new Error(`Failed to fetch maintenance tasks for ${house.id}`);
+          }
+          return [house.id, await response.json()] as const;
+        }),
+      );
+
+      return Object.fromEntries(taskEntries) as Record<string, MaintenanceTasksResponse>;
+    },
+    enabled: houses.length > 0 && typedUser?.role === "homeowner",
   });
 
   // Referring agent (only present if agent brought this user onto the app)
@@ -369,8 +392,15 @@ export default function Home() {
     score: scoresByHouseId[house.id]?.score,
   }));
   const totalSystems = houses.reduce((sum, h) => sum + (Array.isArray(h.homeSystems) ? h.homeSystems.length : 0), 0);
-  const tasksCount = tasksData
-    ? ((tasksData as any).tasks?.seasonal?.length || 0) + ((tasksData as any).tasks?.weatherSpecific?.length || 0)
+  const taskPlans = Object.values(tasksByHouseId);
+  const tasksCount = taskPlans.length > 0
+    ? taskPlans.reduce(
+        (total, taskPlan) =>
+          total +
+          (taskPlan.tasks?.seasonal?.length || 0) +
+          (taskPlan.tasks?.weatherSpecific?.length || 0),
+        0,
+      )
     : null;
 
   const firstName = (typedUser as any)?.firstName || (typedUser as any)?.name?.split(" ")[0] || "";
