@@ -15,6 +15,13 @@
       "when": 1787664154000,
       "tag": "20260825-stripe-processed-events",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787667836786,
+      "tag": "20260825-invite-codes",
+      "breakpoints": true
     }
   ]
 }
