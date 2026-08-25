@@ -31,6 +31,20 @@ const MECHANICAL_FEATURES: Array<{ key: "roofInstalledYear" | "hvacInstalledYear
   { key: "waterHeaterInstalledYear", label: "Water Heater", icon: "🚿", lifespan: [8, 12], category: "plumbing" },
 ];
 
+type ContractorProposalSummary = {
+  status: string;
+};
+
+type ContractorRatingSummary = {
+  averageRating: number;
+  totalReviews: number;
+};
+
+type ContractorLeadSummary = {
+  status: string;
+  createdAt: string | Date | null;
+};
+
 function getMechanicalAgeInfo(house: House) {
   const currentYear = new Date().getFullYear();
   return MECHANICAL_FEATURES.map(({ key, label, icon, lifespan, category }) => {
@@ -69,6 +83,68 @@ export default function Home() {
       }
     }
   }, [typedUser, setLocation, subscriptionStatus, subLoading]);
+
+  const isContractor = typedUser?.role === "contractor" && !!typedUser.id;
+
+  // Reuse the same authenticated data sources as the contractor dashboard,
+  // review summary, and CRM screens. These queries are contractor-only so
+  // homeowner dashboard loads do not request contractor data.
+  const {
+    data: contractorProposals = [],
+    isLoading: isLoadingContractorProposals,
+    isError: isContractorProposalsError,
+  } = useQuery<ContractorProposalSummary[]>({
+    queryKey: ["/api/proposals", typedUser?.id],
+    queryFn: async () => {
+      const response = await fetch(`/api/proposals?contractorId=${typedUser?.id}`, {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch contractor projects");
+      return response.json();
+    },
+    enabled: isContractor,
+  });
+
+  const {
+    data: contractorRating,
+    isLoading: isLoadingContractorRating,
+    isError: isContractorRatingError,
+  } = useQuery<ContractorRatingSummary>({
+    queryKey: ["/api/contractors", typedUser?.id, "rating"],
+    queryFn: async () => {
+      const response = await fetch(`/api/contractors/${typedUser?.id}/rating`, {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch contractor rating");
+      return response.json();
+    },
+    enabled: isContractor,
+  });
+
+  const {
+    data: contractorLeads = [],
+    isLoading: isLoadingContractorLeads,
+    isError: isContractorLeadsError,
+  } = useQuery<ContractorLeadSummary[]>({
+    queryKey: ["/api/crm/leads", typedUser?.id],
+    queryFn: async () => {
+      const response = await fetch("/api/crm/leads", {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch contractor leads");
+      return response.json();
+    },
+    enabled: isContractor,
+  });
+
+  const activeProjectCount = contractorProposals.filter(
+    (proposal) => proposal.status === "accepted",
+  ).length;
+  const recentNewLeadCount = contractorLeads.filter((lead) => {
+    if (lead.status !== "new" || !lead.createdAt) return false;
+    const createdAt = new Date(lead.createdAt).getTime();
+    return !Number.isNaN(createdAt) && createdAt >= Date.now() - 7 * 24 * 60 * 60 * 1000;
+  }).length;
 
 
   // Inspection summary
@@ -1162,9 +1238,45 @@ export default function Home() {
                 {[
                   { href: "/contractor-profile", Icon: Users, label: "My Profile", sub: "Update info", body: "Manage your professional profile and service offerings" },
                   { href: "/messages", Icon: Bell, label: "Messages", sub: "Client communication", body: "Communicate with potential and existing clients" },
-                  { href: "/contractor-dashboard", Icon: Calendar, label: "Active Projects", sub: "Current work", body: "3 active projects scheduled this week" },
-                  { href: "/contractor-dashboard", Icon: Star, label: "Reviews", sub: "Customer feedback", body: "4.8/5 stars from 127 recent reviews" },
-                  { href: "/contractor-dashboard", Icon: Search, label: "New Leads", sub: "Opportunities", body: "5 new client inquiries this week" },
+                  {
+                    href: "/contractor-dashboard",
+                    Icon: Calendar,
+                    label: "Active Projects",
+                    sub: "Current work",
+                    body: isLoadingContractorProposals
+                      ? "Loading active projects…"
+                      : isContractorProposalsError
+                        ? "Active projects unavailable"
+                        : activeProjectCount > 0
+                          ? `${activeProjectCount} active project${activeProjectCount === 1 ? "" : "s"}`
+                          : "No active projects yet",
+                  },
+                  {
+                    href: "/contractor-dashboard",
+                    Icon: Star,
+                    label: "Reviews",
+                    sub: "Customer feedback",
+                    body: isLoadingContractorRating
+                      ? "Loading review summary…"
+                      : isContractorRatingError
+                        ? "Reviews unavailable"
+                        : contractorRating && contractorRating.totalReviews > 0
+                          ? `${contractorRating.averageRating.toFixed(1)}/5 stars from ${contractorRating.totalReviews} review${contractorRating.totalReviews === 1 ? "" : "s"}`
+                          : "No reviews yet",
+                  },
+                  {
+                    href: "/contractor-dashboard",
+                    Icon: Search,
+                    label: "New Leads",
+                    sub: "Opportunities",
+                    body: isLoadingContractorLeads
+                      ? "Loading new leads…"
+                      : isContractorLeadsError
+                        ? "New leads unavailable"
+                        : recentNewLeadCount > 0
+                          ? `${recentNewLeadCount} new lead${recentNewLeadCount === 1 ? "" : "s"} this week`
+                          : "No new leads this week",
+                  },
                 ].map(({ href, Icon, label, sub, body }) => (
                   <Link key={label} href={href} className="h-full">
                     <Card className="shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group h-full flex flex-col" style={{ background: "var(--gray-100)" }}>

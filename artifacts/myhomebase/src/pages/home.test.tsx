@@ -25,6 +25,7 @@ import userEvent from "@testing-library/user-event";
 // ---------------------------------------------------------------------------
 
 const flags = vi.hoisted(() => ({
+  role: "homeowner" as "homeowner" | "contractor",
   isPending: false,
   isError: false,
   triggerOnSuccess: false,
@@ -43,6 +44,13 @@ const flags = vi.hoisted(() => ({
   // When true the house mock returns every profile field filled in, making
   // profileNudgeAllDone === true so the card should not render.
   allInstallYearsDone: false,
+  contractorProposals: undefined as Array<{ status: string }> | undefined,
+  contractorRating: undefined as
+    | { averageRating: number; totalReviews: number }
+    | undefined,
+  contractorLeads: undefined as
+    | Array<{ status: string; createdAt: string | null }>
+    | undefined,
 }));
 
 // ---------------------------------------------------------------------------
@@ -51,7 +59,7 @@ const flags = vi.hoisted(() => ({
 
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({
-    user: { id: "user-001", role: "homeowner", firstName: "Alex" },
+    user: { id: "user-001", role: flags.role, firstName: "Alex" },
     isLoading: false,
     isAuthenticated: true,
   }),
@@ -167,6 +175,34 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
           return { data: { count: 0 }, isLoading: false };
         }
 
+        if (key0 === "/api/proposals") {
+          return {
+            data: flags.contractorProposals,
+            isLoading: false,
+            isError: false,
+          };
+        }
+
+        if (
+          key0 === "/api/contractors" &&
+          queryKey.length === 3 &&
+          queryKey[2] === "rating"
+        ) {
+          return {
+            data: flags.contractorRating,
+            isLoading: false,
+            isError: false,
+          };
+        }
+
+        if (key0 === "/api/crm/leads") {
+          return {
+            data: flags.contractorLeads,
+            isLoading: false,
+            isError: false,
+          };
+        }
+
         return { data: undefined, isLoading: false };
       },
     ),
@@ -239,6 +275,7 @@ function renderHome() {
 
 afterEach(() => {
   cleanup();
+  flags.role = "homeowner";
   flags.isPending = false;
   flags.isError = false;
   flags.triggerOnSuccess = false;
@@ -251,6 +288,84 @@ afterEach(() => {
   flags.resetSpy.mockClear();
   flags.setLocationSpy.mockClear();
   flags.invalidateQueriesSpy.mockClear();
+  flags.contractorProposals = undefined;
+  flags.contractorRating = undefined;
+  flags.contractorLeads = undefined;
+});
+
+// ---------------------------------------------------------------------------
+
+describe("Contractor dashboard business stats", () => {
+  it("shows populated proposal, rating, and recent new-lead values", () => {
+    flags.role = "contractor";
+    flags.contractorProposals = [
+      { status: "accepted" },
+      { status: "accepted" },
+      { status: "draft" },
+    ];
+    flags.contractorRating = { averageRating: 4.6, totalReviews: 3 };
+    flags.contractorLeads = [
+      {
+        status: "new",
+        createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+      {
+        status: "contacted",
+        createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+      {
+        status: "new",
+        createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+    ];
+
+    renderHome();
+
+    expect(screen.getByText("2 active projects")).toBeDefined();
+    expect(screen.getByText("4.6/5 stars from 3 reviews")).toBeDefined();
+    expect(screen.getByText("1 new lead this week")).toBeDefined();
+    expect(screen.queryByText("3 active projects scheduled this week")).toBeNull();
+    expect(screen.queryByText("4.8/5 stars from 127 recent reviews")).toBeNull();
+    expect(screen.queryByText("5 new client inquiries this week")).toBeNull();
+  });
+
+  it("shows honest zero states without rendering a zero rating", () => {
+    flags.role = "contractor";
+    flags.contractorProposals = [];
+    flags.contractorRating = { averageRating: 0, totalReviews: 0 };
+    flags.contractorLeads = [
+      {
+        status: "new",
+        createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+    ];
+
+    renderHome();
+
+    expect(screen.getByText("No active projects yet")).toBeDefined();
+    expect(screen.getByText("No reviews yet")).toBeDefined();
+    expect(screen.getByText("No new leads this week")).toBeDefined();
+    expect(screen.queryByText(/0\/5/)).toBeNull();
+    expect(screen.queryByText(/from 0 reviews?/i)).toBeNull();
+  });
+
+  it("does not request or render contractor stats for homeowners", () => {
+    flags.role = "homeowner";
+    flags.contractorProposals = [{ status: "accepted" }];
+    flags.contractorRating = { averageRating: 5, totalReviews: 1 };
+    flags.contractorLeads = [
+      {
+        status: "new",
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    renderHome();
+
+    expect(screen.queryByText("Active Projects")).toBeNull();
+    expect(screen.queryByText("Reviews")).toBeNull();
+    expect(screen.queryByText("New Leads")).toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------
