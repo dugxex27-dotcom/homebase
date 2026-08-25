@@ -247,7 +247,12 @@ export default function SupportPage() {
     f.a.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const { data: tickets = [], isLoading: ticketsLoading } = useQuery<SupportTicket[]>({
+  const {
+    data: tickets = [],
+    isLoading: ticketsLoading,
+    isError: ticketsError,
+    refetch: refetchTickets,
+  } = useQuery<SupportTicket[]>({
     queryKey: ['/api/support/tickets'],
     enabled: isAuthenticated,
   });
@@ -590,6 +595,15 @@ export default function SupportPage() {
             {/* Existing tickets */}
             {ticketsLoading ? (
               <div style={{ textAlign: 'center', padding: '24px 0', color: r.light, fontSize: 13 }}>Loading tickets…</div>
+            ) : ticketsError ? (
+              <div style={{ background: '#fff7f7', borderRadius: 14, border: '1px solid #fecaca', padding: '24px 16px', textAlign: 'center' }}>
+                <AlertCircle style={{ width: 36, height: 36, margin: '0 auto 12px', color: '#dc2626' }} />
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#991b1b', marginBottom: 4 }}>Couldn't load your tickets — try again</div>
+                <div style={{ fontSize: 12, color: '#b91c1c', marginBottom: 14 }}>Your tickets may still be available. Please retry in a moment.</div>
+                <Button type="button" variant="outline" size="sm" onClick={() => refetchTickets()}>
+                  Try again
+                </Button>
+              </div>
             ) : tickets.length === 0 ? (
               <div style={{ background: '#fff', borderRadius: 14, border: `0.5px solid ${r.border}`, padding: '32px 16px', textAlign: 'center' }}>
                 <Ticket style={{ width: 36, height: 36, margin: '0 auto 12px', color: r.border }} />

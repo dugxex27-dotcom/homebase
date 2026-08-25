@@ -4648,9 +4648,14 @@ export class MemStorage implements IStorage {
     const userAchievs = await this.getUserAchievements(homeownerId);
     const unlockedKeys = new Set(userAchievs.filter(a => a.isUnlocked).map(a => a.achievementKey));
     
-    // PRE-LOAD all in-memory data once to avoid repeated iterations
-    const allCompletions = Array.from(this.taskCompletionsMap.values()).filter(c => c.homeownerId === homeownerId);
-    const allLogs = Array.from(this.maintenanceLogs.values()).filter(l => l.homeownerId === homeownerId);
+    // Use storage accessors rather than MemStorage's private maps so this
+    // shared evaluator also works when DbStorage borrows it.
+    const [allCompletions, allLogs, allProposals, userHouses] = await Promise.all([
+      this.getTaskCompletions(homeownerId),
+      this.getMaintenanceLogs(homeownerId),
+      this.getProposals(undefined, homeownerId),
+      this.getHouses(homeownerId),
+    ]);
     const currentYear = new Date().getFullYear();
     const currentYearCompletions = allCompletions.filter(c => c.year === currentYear);
 
@@ -4937,7 +4942,7 @@ export class MemStorage implements IStorage {
         
         case 'contractor_hired': {
           // Count unique contractor hires
-          const acceptedProposals = Array.from(this.proposals.values()).filter(
+          const acceptedProposals = allProposals.filter(
             p => p.homeownerId === homeownerId && p.status === 'accepted'
           );
           
@@ -4948,10 +4953,6 @@ export class MemStorage implements IStorage {
         
         case 'multi_property': {
           // Count user's houses
-          const userHouses = Array.from(this.houses.values()).filter(
-            h => h.homeownerId === homeownerId
-          );
-          
           progress = Math.min(100, (userHouses.length / criteria.count) * 100);
           isCompleted = userHouses.length >= criteria.count;
           break;
@@ -4959,19 +4960,13 @@ export class MemStorage implements IStorage {
         
         case 'profile_complete': {
           // Check if user has added home systems
-          const userHouses = Array.from(this.houses.values()).filter(
-            h => h.homeownerId === homeownerId
-          );
-          
           if (userHouses.length === 0) {
             progress = 0;
             isCompleted = false;
             break;
           }
           
-          const systemsData = Array.from(this.homeSystems.values()).filter(
-            s => s.houseId === userHouses[0].id
-          );
+          const systemsData = await this.getHomeSystems(homeownerId, userHouses[0].id);
           
           progress = Math.min(100, (systemsData.length / criteria.systems) * 100);
           isCompleted = systemsData.length >= criteria.systems;

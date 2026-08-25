@@ -6213,13 +6213,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Automated reply based on category
       const autoReplyContent = getAutomatedReply(ticket.category);
       if (autoReplyContent) {
-        await storage.createTicketReply({
-          ticketId: ticket.id,
-          userId: 'system',
-          content: autoReplyContent,
-          isInternal: false,
-          isAutomated: true,
-        });
+        const systemUser = await storage.getUser('system');
+        if (systemUser) {
+          await storage.createTicketReply({
+            ticketId: ticket.id,
+            userId: systemUser.id,
+            content: autoReplyContent,
+            isInternal: false,
+            isAutomated: true,
+          });
+        } else {
+          console.warn(`[SUPPORT] Skipping automated reply for ticket ${ticket.id}: no system user exists`);
+        }
       }
       
       // Notify all admin users and support email about the new support ticket
@@ -6233,13 +6238,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const notifyEmail of allNotificationEmails) {
         const notifyUser = await storage.getUserByEmail(notifyEmail);
         if (notifyUser && notifyUser.id !== userId) {
-          await storage.createNotification({
-            homeownerId: notifyUser.id,
-            type: 'support_ticket',
-            title: 'New Support Ticket',
-            message: `${submitterName} submitted a ${validatedData.priority} priority ticket: "${validatedData.subject}"`,
-            link: `/admin/support`,
-          } as any);
+          try {
+            await storage.createNotification({
+              homeownerId: notifyUser.id,
+              type: 'support_ticket',
+              category: 'support',
+              title: 'New Support Ticket',
+              message: `${submitterName} submitted a ${validatedData.priority} priority ticket: "${validatedData.subject}"`,
+              link: `/admin/support`,
+            } as any);
+          } catch (notificationError) {
+            console.error(`[SUPPORT] Admin notification failed for ticket ${ticket.id}:`, notificationError);
+          }
         }
       }
       
