@@ -17,3 +17,4 @@
 - [replitAuth.ts duplicate export pattern](replitauth-duplicate-exports.md) — large function blocks appended mid-file can re-declare already-exported symbols; esbuild catches this as "Multiple exports with the same name" and blocks ALL test files that import replitAuth
 - [Cross-process lock simulation in tests](cross-process-lock-simulation.md) — seatUpdateLocks.clear() after process A acquires the lock simulates process B having its own fresh Map; A's chain keeps running, B starts unblocked
 - [Development Stripe checkout mode](development-stripe-checkout-mode.md) — dev hosted checkout currently runs in Stripe live mode, so Stripe test cards cannot complete a real purchase
+- [Production invoice AI fallback](production-invoice-ai-fallback.md) — AI credential outages return a manual-review analysis instead of failing the invoice endpoint
