@@ -36,6 +36,13 @@
       "when": 1787679929185,
       "tag": "20260825-error-logs",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787683021204,
+      "tag": "20260825-missing-analytics-tables",
+      "breakpoints": true
     }
   ]
 }
