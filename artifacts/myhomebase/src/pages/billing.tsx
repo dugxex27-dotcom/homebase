@@ -5,22 +5,19 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Crown, Check, Home, Calendar, ArrowLeft, CheckCircle, XCircle, Clock, Users, FileText, Receipt, Briefcase, Loader2 } from "lucide-react";
+import { Crown, Calendar, ArrowLeft, CheckCircle, XCircle, Clock, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { User, SubscriptionCycleEvent } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { PageHero } from "@/components/page-hero";
-import { openPaymentUrl, openExternalUrl, onBrowserFinished, isNativePlatform } from "@/lib/nativeBrowser";
+import { openExternalUrl, onBrowserFinished, isNativePlatform } from "@/lib/nativeBrowser";
 import {
-  purchaseNativePlan,
   initNativePurchase,
   restoreNativePurchases,
   onNativePurchaseVerified,
   onNativePurchaseFailed,
-  isNativePurchaseSupported,
-  type NativePlanKey,
 } from "@/lib/nativePurchase";
 
 type Plan = 'trial' | 'base' | 'premium' | 'premium_plus' | 'contractor' | 'contractor_pro' | 'grandfathered';
@@ -28,7 +25,6 @@ type Plan = 'trial' | 'base' | 'premium' | 'premium_plus' | 'contractor' | 'cont
 export default function Billing() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
-  const [selectedPlan, setSelectedPlan] = useState<'base' | 'premium' | 'premium_plus'>('base');
   const [purchaseFailedOnce, setPurchaseFailedOnce] = useState(false);
   const { toast } = useToast();
 
@@ -72,54 +68,9 @@ export default function Billing() {
   }, []);
 
   useEffect(() => {
-    const unsubVerified = onNativePurchaseVerified(async ({ plan, productId }) => {
+    const unsubVerified = onNativePurchaseVerified(({ plan, productId }) => {
       console.log('[Billing] Native purchase verified:', plan, productId);
-      queryClient.setQueryData(['/api/user'], (old: any) => old ? ({
-        ...old,
-        subscriptionStatus: 'active',
-        subscriptionSource: 'apple',
-        appleProductId: productId,
-      }) : old);
-      queryClient.setQueryData(['/api/auth/user'], (old: any) => old ? ({
-        ...old,
-        subscriptionStatus: 'active',
-        subscriptionSource: 'apple',
-        appleProductId: productId,
-      }) : old);
-      queryClient.setQueryData(['/api/my-subscription'], (old: any) => old ? ({
-        ...old,
-        currentPlan: plan === 'premium_plus' ? 'premium_plus' : plan,
-        subscriptionStatus: 'active',
-        needsUpgrade: false,
-        isFreeUser: false,
-      }) : old);
-      queryClient.setQueryData(['/api/contractor/subscription'], (old: any) => old ? ({
-        ...old,
-        status: 'active',
-        plan: plan === 'contractor_basic' ? 'basic' : old.plan,
-      }) : old);
-      try {
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ['/api/user'] }),
-          queryClient.invalidateQueries({ queryKey: ['/api/billing-history'] }),
-          queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] }),
-          queryClient.invalidateQueries({ queryKey: ['/api/my-subscription'] }),
-          queryClient.invalidateQueries({ queryKey: ['/api/contractor/subscription'] }),
-        ]);
-        await Promise.all([
-          queryClient.refetchQueries({ queryKey: ['/api/user'] }),
-          queryClient.refetchQueries({ queryKey: ['/api/billing-history'] }),
-          queryClient.refetchQueries({ queryKey: ['/api/auth/user'] }),
-          queryClient.refetchQueries({ queryKey: ['/api/my-subscription'] }),
-          queryClient.refetchQueries({ queryKey: ['/api/contractor/subscription'] }),
-        ]);
-      } catch (error) {
-        console.warn('[Billing] Failed to refresh subscription state after native purchase:', error);
-      }
-      toast({
-        title: "Subscription Activated",
-        description: "Your subscription is now active.",
-      });
+      setPurchaseFailedOnce(false);
     });
     const unsubFailed = onNativePurchaseFailed(({ message }) => {
       console.error('[Billing] Native purchase failed:', message);
@@ -128,12 +79,6 @@ export default function Billing() {
       const isSessionLoss = message?.includes('sign in again');
       if (isSessionLoss) {
         setPurchaseFailedOnce(true);
-      } else {
-        toast({
-          title: "Purchase Failed",
-          description: message || "We couldn't complete your purchase. Please try again.",
-          variant: "destructive",
-        });
       }
     });
     return () => {
@@ -185,39 +130,6 @@ export default function Billing() {
     },
   });
 
-  const subscriptionMutation = useMutation({
-    mutationFn: async (plan: string) => {
-      if (isNativePurchaseSupported() && plan !== 'pro') {
-        console.log('[Billing] Starting native StoreKit purchase for plan:', plan);
-        if (!userData?.id) {
-          throw new Error('You must be signed in to purchase a subscription');
-        }
-        const nativePlan: NativePlanKey = plan === 'basic' ? 'contractor_basic' : (plan as NativePlanKey);
-        await purchaseNativePlan(nativePlan, userData.id);
-        return { native: true as const };
-      }
-      const deviceFingerprint = btoa([navigator.userAgent, navigator.language, screen.width, screen.height, new Date().getTimezoneOffset()].join('|')).slice(0, 40);
-      const res = await apiRequest('/api/create-subscription-checkout', 'POST', { plan, deviceFingerprint });
-      return res.json();
-    },
-    onSuccess: async (data) => {
-      if (data?.native) {
-        console.log('[Billing] Native purchase order placed, awaiting StoreKit verification callback');
-        return;
-      }
-      if (data.url) {
-        await openPaymentUrl(data.url);
-      }
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Subscription Error",
-        description: error.message || "Failed to start subscription. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
   // Calculate trial status - use trialEndsAt if set, otherwise createdAt + 14 days
   const now = new Date();
   let effectiveTrialEndsAt: Date | null = null;
@@ -262,16 +174,6 @@ export default function Billing() {
   };
 
   const currentPlan = getCurrentPlan();
-
-  const handleSubscribe = (plan: 'base' | 'premium' | 'premium_plus' | 'contractor' | 'contractor_pro') => {
-    // Map contractor plan names to API expected values
-    const planMap: Record<string, string> = {
-      'contractor': 'basic',
-      'contractor_pro': 'pro',
-    };
-    const apiPlan = planMap[plan] || plan;
-    subscriptionMutation.mutate(apiPlan);
-  };
 
   return (
     <div className="min-h-screen">
@@ -388,352 +290,16 @@ export default function Billing() {
           </Card>
         )}
 
-        {/* Contractor Plan Cards - Basic and Pro tiers */}
-        {isContractor && currentPlan !== 'grandfathered' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 max-w-4xl mx-auto mb-6 sm:mb-8">
-            {/* Basic Contractor Plan */}
-            <Card className={`relative ${currentPlan === 'contractor' ? 'ring-2 ring-red-500' : ''}`} data-testid="card-plan-contractor-basic">
-              <CardHeader className="pb-4 sm:pb-6">
-                <div className="flex items-center justify-between mb-2">
-                  <CardTitle className="text-lg sm:text-xl lg:text-2xl" style={{ color: '#b91c1c' }}>
-                    Basic
-                  </CardTitle>
-                  {currentPlan === 'contractor' && (
-                    <Badge variant="secondary" className="text-xs">Current Plan</Badge>
-                  )}
-                </div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-3xl sm:text-4xl font-bold" style={{ color: '#b91c1c' }}>$20</span>
-                  <span className="text-sm sm:text-base text-gray-600">/month</span>
-                </div>
-                <CardDescription className="text-xs sm:text-sm">Essential tools to connect with homeowners</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-3 mb-6">
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-red-600 mt-0.5" />
-                    <span><strong>14-day free trial</strong></span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-red-600 mt-0.5" />
-                    <span>Unlimited client connections</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-red-600 mt-0.5" />
-                    <span>Professional contractor profile</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-red-600 mt-0.5" />
-                    <span>Service record management</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-red-600 mt-0.5" />
-                    <span>Proposal creation tools</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-red-600 mt-0.5" />
-                    <span>Direct messaging with homeowners</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-red-600 mt-0.5" />
-                    <span>Company & team management</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-red-600 mt-0.5" />
-                    <span>$20/month referral credit cap</span>
-                  </li>
-                </ul>
-                {(currentPlan === 'trial' || currentPlan === 'contractor_pro') && (
-                  <Button
-                    onClick={() => handleSubscribe('contractor')}
-                    variant="outline"
-                    className="w-full"
-                    style={{ borderColor: '#b91c1c', color: '#b91c1c' }}
-                    data-testid="button-subscribe-contractor-basic"
-                  >
-                    {currentPlan === 'contractor_pro' ? 'Switch to Basic' : 'Select Basic'}
-                  </Button>
-                )}
-                {currentPlan === 'contractor' && (
-                  <div className="text-center p-4 bg-red-50 rounded-lg border border-red-200">
-                    <p className="text-sm text-red-900 font-medium">
-                      ✓ Active Subscription
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Pro Contractor Plan */}
-            <Card className={`relative ${currentPlan === 'contractor_pro' ? 'ring-2 ring-red-500' : ''}`} data-testid="card-plan-contractor-pro">
-              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                <Badge className="bg-red-600 text-white">Most Popular</Badge>
-              </div>
-              <CardHeader className="pt-8 pb-4 sm:pb-6">
-                <div className="flex items-center justify-between mb-2">
-                  <CardTitle className="text-lg sm:text-xl lg:text-2xl flex items-center gap-2" style={{ color: '#b91c1c' }}>
-                    <Crown className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" />
-                    Pro
-                  </CardTitle>
-                  {currentPlan === 'contractor_pro' && (
-                    <Badge variant="secondary" className="text-xs">Current Plan</Badge>
-                  )}
-                </div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-3xl sm:text-4xl font-bold" style={{ color: '#b91c1c' }}>$40</span>
-                  <span className="text-sm sm:text-base text-gray-600">/month</span>
-                </div>
-                <CardDescription className="text-xs sm:text-sm">Complete business management for solo contractors</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-3 mb-6">
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-red-600 mt-0.5" />
-                    <span><strong>Everything in Basic, plus:</strong></span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Users className="h-5 w-5 text-red-600 mt-0.5" />
-                    <span><strong>Full CRM</strong> - Client management</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Briefcase className="h-5 w-5 text-red-600 mt-0.5" />
-                    <span><strong>Job Scheduling</strong> - Calendar & tracking</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <FileText className="h-5 w-5 text-red-600 mt-0.5" />
-                    <span><strong>Professional Quotes</strong> - Create & send</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Receipt className="h-5 w-5 text-red-600 mt-0.5" />
-                    <span><strong>Invoicing</strong> - Bill & track payments</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-red-600 mt-0.5" />
-                    <span>Business dashboard & analytics</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-red-600 mt-0.5" />
-                    <span>$40/month referral credit cap</span>
-                  </li>
-                </ul>
-                {(currentPlan === 'trial' || currentPlan === 'contractor') && !isNativePlatform && (
-                  <Button
-                    onClick={() => handleSubscribe('contractor_pro')}
-                    style={{ backgroundColor: '#b91c1c', color: 'white' }}
-                    className="w-full hover:opacity-90"
-                    data-testid="button-subscribe-contractor-pro"
-                  >
-                    <Crown className="h-4 w-4 mr-2" />
-                    {currentPlan === 'contractor' ? 'Upgrade to Pro' : 'Start with Pro'}
-                  </Button>
-                )}
-                {(currentPlan === 'trial' || currentPlan === 'contractor') && isNativePlatform && (
-                  <p className="text-center text-xs text-gray-500 px-2" data-testid="text-contractor-pro-web-only">
-                    Contractor Pro is available when you sign in at gotohomebase.com on the web.
-                  </p>
-                )}
-                {currentPlan === 'contractor_pro' && (
-                  <div className="text-center p-4 bg-red-50 rounded-lg border border-red-200">
-                    <p className="text-sm text-red-900 font-medium">
-                      ✓ Active Subscription
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Homeowner Plan Comparison */}
+        {/* Plan selection lives on the dedicated homeowner pricing page. */}
         {!isContractor && currentPlan !== 'grandfathered' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
-            {/* Base Plan */}
-            <Card 
-              className={`relative transition-all ${selectedPlan === 'base' ? 'ring-2 ring-[#3C258E]' : ''}`}
-              data-testid="card-plan-base"
+          <div className="flex justify-center mb-6 sm:mb-8">
+            <Button
+              asChild
+              className="bg-[#3C258E] hover:bg-[#2C0F5B] text-white"
+              data-testid="button-change-plan"
             >
-              <CardHeader className="pb-4 sm:pb-6">
-                <div className="flex items-center justify-between mb-2">
-                  <CardTitle className="text-lg sm:text-xl lg:text-2xl" style={{ color: 'var(--purple-deep)' }}>
-                    Base Plan
-                  </CardTitle>
-                  {currentPlan === 'base' && (
-                    <Badge variant="secondary" className="text-xs">Current Plan</Badge>
-                  )}
-                </div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-3xl sm:text-4xl font-bold" style={{ color: 'var(--purple-deep)' }}>$5</span>
-                  <span className="text-sm sm:text-base text-gray-600">/month</span>
-                </div>
-                <CardDescription className="text-xs sm:text-sm">Perfect for managing a primary residence</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-3 mb-6">
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
-                    <span><strong>14-day free trial</strong></span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
-                    <span>Up to <strong>2 properties</strong></span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
-                    <span>Full maintenance scheduling</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
-                    <span>Contractor directory access</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
-                    <span>Service record tracking</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
-                    <span>AI contractor recommendations</span>
-                  </li>
-                </ul>
-                {currentPlan !== 'base' && (
-                  <Button
-                    onClick={() => handleSubscribe('base')}
-                    variant="outline"
-                    className="w-full"
-                    style={{ borderColor: 'var(--purple-deep)', color: 'var(--purple-deep)' }}
-                    data-testid="button-subscribe-base"
-                  >
-                    Select Base Plan
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Premium Plan */}
-            <Card 
-              className={`relative transition-all ${selectedPlan === 'premium' ? 'ring-2 ring-[#3C258E]' : ''}`}
-              data-testid="card-plan-premium"
-            >
-              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                <Badge className="bg-[#3C258E] text-white">Most Popular</Badge>
-              </div>
-              <CardHeader className="pt-8">
-                <div className="flex items-center justify-between mb-2">
-                  <CardTitle className="text-2xl flex items-center gap-2" style={{ color: 'var(--purple-deep)' }}>
-                    <Crown className="h-6 w-6 text-[#3C258E]" />
-                    Premium Plan
-                  </CardTitle>
-                  {currentPlan === 'premium' && (
-                    <Badge variant="secondary">Current Plan</Badge>
-                  )}
-                </div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold" style={{ color: 'var(--purple-deep)' }}>$20</span>
-                  <span className="text-gray-600">/month</span>
-                </div>
-                <CardDescription>Ideal for landlords and rental properties</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-3 mb-6">
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
-                    <span><strong>14-day free trial</strong></span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
-                    <span><strong>3-6 properties</strong></span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
-                    <span>Full maintenance scheduling</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
-                    <span>Contractor directory access</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
-                    <span>Service record tracking</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
-                    <span>AI contractor recommendations</span>
-                  </li>
-                </ul>
-                {currentPlan !== 'premium' && (
-                  <Button
-                    onClick={() => handleSubscribe('premium')}
-                    style={{ backgroundColor: 'var(--purple-deep)', color: 'white' }}
-                    className="w-full hover:opacity-90"
-                    data-testid="button-subscribe-premium"
-                  >
-                    <Crown className="h-4 w-4 mr-2" />
-                    Upgrade to Premium
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Premium Plus Plan */}
-            <Card 
-              className={`relative transition-all ${selectedPlan === 'premium_plus' ? 'ring-2 ring-[#3C258E]' : ''}`}
-              data-testid="card-plan-premium-plus"
-            >
-              <CardHeader>
-                <div className="flex items-center justify-between mb-2">
-                  <CardTitle className="text-2xl flex items-center gap-2" style={{ color: 'var(--purple-deep)' }}>
-                    <Crown className="h-6 w-6 text-[#3C258E]" />
-                    Premium Plus
-                  </CardTitle>
-                  {currentPlan === 'premium_plus' && (
-                    <Badge variant="secondary">Current Plan</Badge>
-                  )}
-                </div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold" style={{ color: 'var(--purple-deep)' }}>$40</span>
-                  <span className="text-gray-600">/month</span>
-                </div>
-                <CardDescription>Perfect for property managers</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-3 mb-6">
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
-                    <span><strong>14-day free trial</strong></span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
-                    <span><strong>7+ properties</strong></span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
-                    <span>Full maintenance scheduling</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
-                    <span>Contractor directory access</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
-                    <span>Service record tracking</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-[#3C258E] mt-0.5" />
-                    <span>AI contractor recommendations</span>
-                  </li>
-                </ul>
-                {currentPlan !== 'premium_plus' && (
-                  <Button
-                    onClick={() => handleSubscribe('premium_plus')}
-                    style={{ backgroundColor: 'var(--purple-deep)', color: 'white' }}
-                    className="w-full hover:opacity-90"
-                    data-testid="button-subscribe-premium-plus"
-                  >
-                    <Crown className="h-4 w-4 mr-2" />
-                    Upgrade to Premium Plus
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
+              <a href="/homeowner-pricing">Change or upgrade plan</a>
+            </Button>
           </div>
         )}
 

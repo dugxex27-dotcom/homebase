@@ -72,46 +72,10 @@ export default function HomeownerPricing() {
   }, []);
 
   useEffect(() => {
-    const unsubVerified = onNativePurchaseVerified(async ({ plan, productId }) => {
+    const unsubVerified = onNativePurchaseVerified(({ plan, productId }) => {
       console.log('[HomeownerPricing] Native purchase verified:', plan, productId);
-      queryClient.setQueryData(['/api/user'], (old: any) => old ? ({
-        ...old,
-        subscriptionStatus: 'active',
-        subscriptionSource: 'apple',
-        appleProductId: productId,
-      }) : old);
-      queryClient.setQueryData(['/api/auth/user'], (old: any) => old ? ({
-        ...old,
-        subscriptionStatus: 'active',
-        subscriptionSource: 'apple',
-        appleProductId: productId,
-      }) : old);
-      queryClient.setQueryData(['/api/my-subscription'], (old: any) => old ? ({
-        ...old,
-        currentPlan: plan === 'premium_plus' ? 'premium_plus' : plan,
-        subscriptionStatus: 'active',
-        needsUpgrade: false,
-        isFreeUser: false,
-      }) : old);
-      try {
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: ['/api/user'] }),
-          queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] }),
-          queryClient.invalidateQueries({ queryKey: ['/api/my-subscription'] }),
-        ]);
-        await Promise.all([
-          queryClient.refetchQueries({ queryKey: ['/api/user'] }),
-          queryClient.refetchQueries({ queryKey: ['/api/auth/user'] }),
-          queryClient.refetchQueries({ queryKey: ['/api/my-subscription'] }),
-        ]);
-      } catch (error) {
-        console.warn('[HomeownerPricing] Failed to refresh subscription state after native purchase:', error);
-      }
       setCheckoutPlan(null);
-      toast({
-        title: "Subscription Activated",
-        description: `Your ${PRICING_PLAN_INFO[plan]?.name || plan} subscription is now active.`,
-      });
+      setPurchaseFailedOnce(false);
       setLocation('/dashboard');
     });
     const unsubFailed = onNativePurchaseFailed(({ message }) => {
@@ -123,13 +87,7 @@ export default function HomeownerPricing() {
       // Skip the generic destructive toast so the user gets one clear message,
       // not two conflicting ones.
       const isSessionLoss = message?.includes('sign in again');
-      if (!isSessionLoss) {
-        toast({
-          title: "Purchase Failed",
-          description: message || "We couldn't complete your purchase. Please try again.",
-          variant: "destructive",
-        });
-      }
+      if (isSessionLoss) setPurchaseFailedOnce(true);
     });
     return () => {
       unsubVerified();
