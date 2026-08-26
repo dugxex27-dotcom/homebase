@@ -18,7 +18,7 @@ import { createImmediateNotification, createNotificationSafely, notificationCate
 import { createGuestContactTicket } from "../contact-ticket-writer";
 import { invoiceOrphanCleanupScheduler } from "../invoice-orphan-cleanup-scheduler";
 import { referralAccrualScheduler } from "../referral-accrual-scheduler";
-import { extractInvoiceData, verifyDIYPhotos, type InvoiceExtraction } from "../invoice-analysis-service";
+import { extractInvoiceData, verifyDIYPhotos, getMockInvoiceExtraction, getMockDIYVerification, type InvoiceExtraction } from "../invoice-analysis-service";
 import { invoiceAnalyses, contractorBoosts, affiliateReferrals, subscriptionCycleEvents, contractorInvoiceUploads, companies, contractors, proposals, securityAuditLogs, companyDivisions, companyBulkImports, insertCompanyDivisionSchema, conversations, messages, contractorJobRecords } from "@workspace/db";
 import pushRoutes from "../push-routes";
 import { pushService } from "../push-service";
@@ -208,9 +208,21 @@ const requireHomeownerSubscription = async (req: any, res: any, next: any) => {
     if (user.role !== 'homeowner') {
       return next();
     }
-    
-    // Demo accounts get unlimited access - check for demo-homeowner prefix or demo email patterns
-    if (userId.startsWith('demo-homeowner') || user.email?.includes('demo@homeowner') || user.email?.includes('@homebase.com')) {
+
+    // Lazily attach isDemoAccount to the session so downstream handlers (e.g.
+    // invoice-analysis routes deciding whether to skip paid AI calls) can
+    // read it from req.session.user without a second DB round-trip —
+    // mirrors the companyTier lazy-attach pattern in requireContractorSubscription.
+    if (req.session.user?.isDemoAccount !== user.isDemoAccount) {
+      req.session.user = { ...req.session.user, isDemoAccount: user.isDemoAccount };
+    }
+
+    // Demo accounts get unlimited access to the full-featured demo experience.
+    // Matched only by the immutable isDemoAccount DB flag set by the demo
+    // seeder — never by user-supplied ID prefixes or email substrings, which
+    // could accidentally match a real account (e.g. '@homebase.com' was a
+    // substring match, not an exact domain check).
+    if (user.isDemoAccount) {
       return next();
     }
     
@@ -261,6 +273,23 @@ const requireContractorSubscription = async (req: any, res: any, next: any) => {
     
     // Skip check for non-contractors
     if (user.role !== 'contractor') {
+      return next();
+    }
+
+    // Lazily attach isDemoAccount to the session (mirrors the companyTier
+    // lazy-attach below) so downstream handlers and hasCrmProAccess() can
+    // read it straight from req.session.user.
+    if (req.session.user?.isDemoAccount !== user.isDemoAccount) {
+      req.session.user = { ...req.session.user, isDemoAccount: user.isDemoAccount };
+    }
+
+    // Demo accounts get unlimited access to the full-featured demo experience.
+    // Matched only by the immutable isDemoAccount DB flag — the demo
+    // contractor is seeded with subscriptionStatus 'grandfathered' for
+    // historical reasons, but access no longer depends on that; this check
+    // is evaluated first so a demo account never needs a real Stripe
+    // subscription or the grandfathered-status coupling below.
+    if (user.isDemoAccount) {
       return next();
     }
     
@@ -1633,9 +1662,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'User not found' });
       }
       
-      // Demo homeowner accounts get unlimited access - never expires
-      // Check for demo-homeowner prefix to catch all demo homeowner accounts
-      if (userId.startsWith('demo-homeowner') || user.email?.includes('demo@homeowner') || user.email?.includes('@homebase.com')) {
+      // Demo homeowner accounts get unlimited access - never expires.
+      // Matched only by the immutable isDemoAccount DB flag.
+      if (user.isDemoAccount) {
         const housesCount = await storage.getHousesCount(userId);
         return res.json({
           currentPlan: 'premium_plus',
@@ -4288,7 +4317,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           profileImageUrl: null, role: 'homeowner', zipCode: '98101',
           subscriptionStatus: 'trialing',
           trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-          maxHousesAllowed: 2, connectionCode: 'DEMO4567'
+          maxHousesAllowed: 2, connectionCode: 'DEMO4567',
+          isDemoAccount: true,
         });
       }
 
@@ -7272,8 +7302,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!user || user.role !== 'contractor') return false;
 
     // Demo contractor accounts always have full CRM access — matched only by
-    // the immutable demo user ID prefix, never by user-supplied email content
-    if (user.id?.startsWith('demo-contractor')) {
+    // the immutable isDemoAccount DB flag, never by user-supplied ID/email content
+    if (user.isDemoAccount) {
       return true;
     }
 
@@ -14874,9 +14904,9 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
         return res.status(403).json({ message: 'Not a contractor account' });
       }
       
-      // Demo contractor accounts get full Pro access - never expires
-      // Check for demo-contractor prefix to catch all demo contractor accounts
-      if (userId.startsWith('demo-contractor') || user.email?.includes('demo@contractor') || user.email?.includes('precisionhvac')) {
+      // Demo contractor accounts get full Pro access - never expires.
+      // Matched only by the immutable isDemoAccount DB flag.
+      if (user.isDemoAccount) {
         return res.json({
           hasActiveSubscription: true,
           needsSubscription: false,
@@ -20082,7 +20112,12 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
           else mimeType = "image/jpeg";
         }
         try {
-          extraction = await extractInvoiceData(base64Data, mimeType);
+          // Demo accounts never trigger a real (paid) GPT-4o call — see
+          // getMockInvoiceExtraction for rationale. Full UI flow still works
+          // end to end against realistic example data.
+          extraction = req.session.user.isDemoAccount
+            ? getMockInvoiceExtraction()
+            : await extractInvoiceData(base64Data, mimeType);
           // If the image is not a valid invoice/receipt, return 422 immediately (no files uploaded)
           if (!extraction.isValidInvoice) {
             return res.status(422).json({
@@ -20291,7 +20326,11 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
             base64: f.fileData.includes("base64,") ? f.fileData.split("base64,")[1] : f.fileData,
             mimeType: f.fileType || "image/jpeg",
           }));
-          const verification = await verifyDIYPhotos(photoData);
+          // Demo accounts never trigger a real (paid) GPT-4o vision call —
+          // see getMockDIYVerification for rationale.
+          const verification = req.session.user.isDemoAccount
+            ? getMockDIYVerification()
+            : await verifyDIYPhotos(photoData);
           diyVerified = verification.verified;
           verificationNotes = verification.notes;
         } catch (verifyErr) {

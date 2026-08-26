@@ -702,7 +702,11 @@ export async function seedContractorDemo(log: DemoLog): Promise<SeedOutcome> {
       profileImageUrl: null,
       role: "contractor",
       zipCode: "98103",
-      subscriptionStatus: "grandfathered",
+      // Demo access is granted purely via isDemoAccount (see
+      // requireContractorSubscription), not this status — 'trialing' just
+      // keeps the seeded data honest instead of masquerading as a real
+      // grandfathered subscription in admin/analytics views.
+      subscriptionStatus: "trialing",
       trialEndsAt,
       companyId: null,
       companyRole: null,

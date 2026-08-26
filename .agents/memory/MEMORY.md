@@ -26,3 +26,4 @@
 - [HIN address unit extraction](hin-unit-extraction.md) — where Apt/Unit/Suite/# tokens are pulled from combined addresses for Home Identification Numbers, and its limits
 - [Demo account isolation (isDemoAccount)](demo-account-isolation.md) — separate flag from isQaAccount so demo accounts stay interactive but are excluded from real aggregates/notifications
 - [lib/db schema changes need tsc --build](composite-project-schema-changes.md) — run `typecheck:libs` after editing lib/db schema, or consumers typecheck against stale .d.ts
+- [Demo paywall bypass consolidation](demo-paywall-bypass-consolidation.md) — use isDemoAccount only, never ID/email string matching; check test fixtures too, they silently rely on the old bypass strings

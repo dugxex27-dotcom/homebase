@@ -2,8 +2,9 @@
  * Tests that POST /api/crm/invoices/:id/send generates a fresh payment-link
  * token on every send/resend and persists it to the invoice record.
  *
- * Uses the demo-contractor shortcut so hasCrmProAccess returns true without
- * needing a real subscription record in the database.
+ * Uses isDemoAccount: true on the session user so hasCrmProAccess returns
+ * true without needing a real subscription record in the database (the
+ * contractor id itself is no longer treated as a demo signal).
  */
 
 import { vi, describe, it, expect, afterEach } from "vitest";
@@ -41,6 +42,7 @@ const CONTRACTOR_SESSION = {
     role: "contractor",
     email: "contractor@test.com",
     status: "active",
+    isDemoAccount: true,
   },
 };
 

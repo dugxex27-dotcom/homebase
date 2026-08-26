@@ -130,6 +130,45 @@ export async function tryExtractPdfText(pdfBase64: string): Promise<string | nul
   }
 }
 
+/**
+ * Static, realistic example data returned for demo accounts instead of a
+ * real GPT-4o call. Demo prospects are evaluating the product, not actually
+ * paying a contractor or doing DIY work — a real AI vision call here would
+ * burn real API cost per demo click with no corresponding value (the "photo"
+ * is usually not even a real invoice). The mock still exercises the full
+ * confirm/reject/maintenance-log UI flow end to end.
+ */
+export function getMockInvoiceExtraction(): InvoiceExtraction {
+  return {
+    isValidInvoice: true,
+    invalidReason: null,
+    serviceDescription: "Annual HVAC system tune-up, filter replacement, and refrigerant level check",
+    serviceDate: new Date().toISOString().split("T")[0],
+    totalAmount: 189,
+    contractorName: "David Martinez",
+    contractorCompany: "Precision HVAC Services",
+    homeArea: "hvac",
+    serviceType: "maintenance",
+    aiConfidence: "high",
+    aiNotes: "This is a sample AI analysis shown for demo accounts — no AI service was called. In the full product, this reflects the invoice you actually upload.",
+  };
+}
+
+/**
+ * Static, realistic example data returned for demo accounts instead of a
+ * real GPT-4o vision call on uploaded before/after photos. See
+ * getMockInvoiceExtraction for rationale.
+ */
+export function getMockDIYVerification(): DIYVerification {
+  return {
+    verified: true,
+    confidence: "high",
+    notes: "This is a sample AI verification shown for demo accounts — no AI service was called. In the full product, this confirms your before/after photos show completed work.",
+    workDescribed: "Replaced a worn kitchen faucet and resealed the surrounding countertop with silicone caulk",
+    materialsIdentified: ["Faucet", "Plumber's tape", "Silicone caulk"],
+  };
+}
+
 export async function extractInvoiceData(
   imageBase64: string,
   mimeType: string
