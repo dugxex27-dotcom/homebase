@@ -12833,7 +12833,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!homeownerId || !Array.isArray(tasks)) {
         return res.status(400).json({ message: "homeownerId and tasks array are required" });
       }
-      
+
+      // Verify the caller is acting on their own account — mirrors the
+      // ownership check used for notification read/delete (homeownerId must
+      // equal the authenticated session user's id), same as
+      // PATCH/DELETE /api/notifications/:id.
+      if (homeownerId !== req.session.user.id) {
+        return res.status(403).json({ message: "Not authorized to manage notifications for this homeowner" });
+      }
+
       await storage.createMaintenanceNotifications(homeownerId, tasks);
       
       // Also create regional maintenance suggestions notifications
