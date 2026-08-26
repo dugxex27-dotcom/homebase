@@ -3,7 +3,29 @@ import logoWhite from '@assets/my-homebase-logo-tm-final-white_1777417516350.png
 const NAV_BG = '#1a0a3e';
 const NAV_BORDER = 'rgba(255,255,255,0.08)';
 
-export default function PublicHeader() {
+interface PublicHeaderProps {
+  // Logo-only header for focused single-step flows (e.g. onboarding plan
+  // selection) — no nav links, no sign-in/Get Started buttons, nothing to
+  // navigate away with.
+  minimal?: boolean;
+}
+
+export default function PublicHeader({ minimal = false }: PublicHeaderProps) {
+  if (minimal) {
+    return (
+      <header
+        className="mhb-public-header sticky top-0 z-50"
+        style={{ background: NAV_BG, borderBottom: `0.5px solid ${NAV_BORDER}` }}
+      >
+        <div className="flex items-center justify-center px-6 h-14 max-w-[1200px] mx-auto w-full">
+          <span className="flex items-center" data-testid="img-public-logo">
+            <img src={logoWhite} alt="MyHomeBase™" className="h-7 w-auto" />
+          </span>
+        </div>
+      </header>
+    );
+  }
+
   return (
     <header
       className="mhb-public-header sticky top-0 z-50"

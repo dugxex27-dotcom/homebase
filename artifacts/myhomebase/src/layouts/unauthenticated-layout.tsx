@@ -11,6 +11,10 @@ import { isNativePlatform } from '@/lib/nativeBrowser';
 interface UnauthenticatedLayoutProps {
   children: ReactNode;
   hideHeader?: boolean;
+  // Focused single-step flows (e.g. onboarding plan selection): show just the
+  // logo, no nav links, and no footer — nothing to compete for attention or
+  // navigate away with.
+  minimal?: boolean;
 }
 
 // Paths that render their own full-page branded header — showing the
@@ -22,7 +26,7 @@ const SELF_HEADED_PATHS = ['/signin', '/referral-entry', '/complete-profile'];
 // appropriate — the user already knows what app they installed and should
 // land directly in the sign-in flow with no nav links to marketing pages
 // like Pricing/FAQ/How It Works. Web/PWA keeps the marketing chrome as-is.
-export default function UnauthenticatedLayout({ children, hideHeader = false }: UnauthenticatedLayoutProps) {
+export default function UnauthenticatedLayout({ children, hideHeader = false, minimal = false }: UnauthenticatedLayoutProps) {
   const [location] = useLocation();
   const isSelfHeaded = SELF_HEADED_PATHS.some(p => location === p || location.startsWith(p + '/'));
   const suppressChrome = hideHeader || isNativePlatform || isSelfHeaded;
@@ -38,7 +42,7 @@ export default function UnauthenticatedLayout({ children, hideHeader = false }: 
         className="mhb-page-shell min-h-screen flex flex-col"
         style={{ minHeight: '100dvh' }}
       >
-        {!suppressChrome && <PublicHeader />}
+        {minimal ? <PublicHeader minimal /> : !suppressChrome && <PublicHeader />}
         <ErrorBoundary>
           <Suspense fallback={<LoadingFallback variant="full" />}>
             <div className="flex-1">
@@ -46,7 +50,7 @@ export default function UnauthenticatedLayout({ children, hideHeader = false }: 
             </div>
           </Suspense>
         </ErrorBoundary>
-        {!isNativePlatform && !isSelfHeaded && <Footer />}
+        {!minimal && !isNativePlatform && !isSelfHeaded && <Footer />}
         <BackToTop bottom={24} />
       </motion.div>
     </AnimatePresence>

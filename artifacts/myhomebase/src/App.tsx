@@ -1,5 +1,5 @@
 import { lazy, useEffect, useState } from "react";
-import { Router as WouterRouter, Switch, Route, useLocation } from "wouter";
+import { Router as WouterRouter, Switch, Route, useLocation, useSearch } from "wouter";
 import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -260,6 +260,8 @@ const SubscriptionSuccess = lazy(() => import("./pages/subscription-success"));
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const [currentPath] = useLocation();
+  const search = useSearch();
+  const isOnboardingPricing = new URLSearchParams(search).get('onboarding') === 'true';
 
   // Detect if running as installed PWA / from App Store (standalone mode)
   const isStandalone =
@@ -378,6 +380,19 @@ function Router() {
   if (currentPath === "/signin/homeowner") return <SignInHomeowner />;
   if (currentPath === "/signin/contractor") return <SignInContractor />;
   if (currentPath === "/signin/agent") return <SignInAgent />;
+
+  // Onboarding plan selection is a focused signup step, not a page within the
+  // app proper — a brand-new user hasn't finished signing up yet and shouldn't
+  // see the full sidebar/nav. Render it through the minimal logo-only layout
+  // instead. Accessed later without ?onboarding=true (e.g. an upgrade prompt
+  // from the dashboard), it falls through to the normal AuthenticatedLayout below.
+  if (currentPath === "/homeowner-pricing" && isOnboardingPricing) {
+    return (
+      <UnauthenticatedLayout minimal>
+        <HomeownerPricing />
+      </UnauthenticatedLayout>
+    );
+  }
 
   return (
     <AuthenticatedLayout>
