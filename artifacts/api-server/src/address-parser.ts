@@ -75,6 +75,51 @@ function abbreviateState(raw: string): string | null {
   return null;
 }
 
+// Matches an apartment/unit/suite token embedded in a street string, e.g.
+// "789 Main St Apt 12", "789 Main St, Unit 5B", "789 Main St Suite 200".
+const UNIT_WORD_REGEX =
+  /\b(APARTMENT|APT|UNIT|SUITE|STE)\.?\s*#?\s*([A-Za-z0-9]+(?:-[A-Za-z0-9]+)?)\b/i;
+
+// Matches a "#4"-style unit token. No leading `\b` since `#` sits between two
+// non-word characters (a space and a digit boundary handles the trailing side).
+const UNIT_HASH_REGEX = /#\s*([A-Za-z0-9]+(?:-[A-Za-z0-9]+)?)\b/;
+
+/**
+ * Pulls an apartment/unit/suite token out of a street string, if present,
+ * returning the street with the token removed (and separators cleaned up)
+ * alongside the extracted unit text (e.g. "Apt 12").
+ */
+export function extractUnitFromStreet(streetRaw: string): { street: string; unit: string } {
+  const wordMatch = streetRaw.match(UNIT_WORD_REGEX);
+  const hashMatch = streetRaw.match(UNIT_HASH_REGEX);
+
+  // Prefer whichever token appears first in the string when both could match.
+  let match: RegExpMatchArray | null = wordMatch;
+  let unit = "";
+  if (wordMatch && (!hashMatch || (wordMatch.index ?? Infinity) <= (hashMatch.index ?? Infinity))) {
+    match = wordMatch;
+    unit = `${wordMatch[1]} ${wordMatch[2]}`.trim();
+  } else if (hashMatch) {
+    match = hashMatch;
+    unit = `# ${hashMatch[1]}`.trim();
+  }
+
+  if (!match || match.index == null || !unit) {
+    return { street: streetRaw, unit: "" };
+  }
+
+  const before = streetRaw.slice(0, match.index);
+  const after = streetRaw.slice(match.index + match[0].length);
+  const street = (before + after)
+    .replace(/,\s*,/g, ",")
+    .replace(/^[\s,]+/, "")
+    .replace(/[\s,]+$/, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+
+  return { street, unit };
+}
+
 /**
  * Best-effort split of a single free-text US address string into
  * street / city / state / zip, e.g.:
@@ -93,6 +138,7 @@ export function splitCombinedAddress(fullAddress: string): {
   city: string;
   state: string;
   zip: string;
+  unit: string;
 } | null {
   const parts = fullAddress.split(",").map((p) => p.trim()).filter(Boolean);
 
@@ -115,13 +161,14 @@ export function splitCombinedAddress(fullAddress: string): {
 
   if (stateZipIndex !== -1 && zip) {
     const city = stateZipIndex > 0 ? parts[stateZipIndex - 1] : "";
-    const street =
+    const rawStreet =
       parts.slice(0, Math.max(stateZipIndex - 1, stateZipIndex === 0 ? 0 : 1)).join(", ") ||
       parts[0] ||
       "";
 
-    if (!city || !street) return null;
-    return { street, city, state, zip };
+    if (!city || !rawStreet) return null;
+    const { street, unit } = extractUnitFromStreet(rawStreet);
+    return { street, city, state, zip, unit };
   }
 
   // Fallback path: ZIP and state live in separate parts, and/or the state is
@@ -152,12 +199,30 @@ export function splitCombinedAddress(fullAddress: string): {
   // City is the part immediately before the state (skipping county/town
   // administrative segments is out of scope — we take the closest preceding
   // part that isn't itself state/zip noise).
-  const city = stateIndex > 0 ? parts[stateIndex - 1] : "";
-  const street = parts[0] || "";
+  const cityIndex = stateIndex > 0 ? stateIndex - 1 : -1;
+  const city = cityIndex >= 0 ? parts[cityIndex] : "";
+  const rawStreet = parts[0] || "";
 
-  if (!city || !street || street === city) return null;
+  if (!city || !rawStreet || rawStreet === city) return null;
 
-  return { street, city, state, zip };
+  const { street, unit: embeddedUnit } = extractUnitFromStreet(rawStreet);
+  let unit = embeddedUnit;
+
+  // A unit can also show up as its own comma-separated segment between the
+  // street and the city (e.g. "789 Main St, Apt 12, Seattle, Washington,
+  // 98101"), which this path otherwise treats as address noise and drops —
+  // check those segments for a unit token before giving up on one.
+  if (!unit) {
+    for (let i = 1; i < cityIndex; i++) {
+      const segment = extractUnitFromStreet(parts[i]);
+      if (segment.unit) {
+        unit = segment.unit;
+        break;
+      }
+    }
+  }
+
+  return { street, city, state, zip, unit };
 }
 
 export function normalizeAddress(

@@ -23,3 +23,4 @@
 - [Wouter query parameters](wouter-query-parameters.md) — use `useSearch`, not `useLocation`, when initializing views from URL query parameters
 - [Production schema verification](production-schema-verification.md) — a successful build is not schema proof; inspect production metadata after publishing database changes
 - [QA fixture lifecycle safety](qa-fixture-lifecycle-safety.md) — QA fixtures require pristine identities, retire before purge, and never delete the retained QA identity records
+- [HIN address unit extraction](hin-unit-extraction.md) — where Apt/Unit/Suite/# tokens are pulled from combined addresses for Home Identification Numbers, and its limits

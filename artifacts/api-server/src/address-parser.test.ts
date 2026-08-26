@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { splitCombinedAddress, normalizeAddress } from "./address-parser";
+import { splitCombinedAddress, normalizeAddress, extractUnitFromStreet } from "./address-parser";
 
 describe("splitCombinedAddress", () => {
   it("parses a standard 'street, city, ST zip' address", () => {
@@ -9,6 +9,7 @@ describe("splitCombinedAddress", () => {
       city: "Seattle",
       state: "WA",
       zip: "98101",
+      unit: "",
     });
   });
 
@@ -48,6 +49,113 @@ describe("splitCombinedAddress", () => {
 
   it("returns null for an empty string", () => {
     expect(splitCombinedAddress("")).toBeNull();
+  });
+
+  it("extracts an 'Apt' unit embedded in the street segment", () => {
+    const result = splitCombinedAddress("789 Main St Apt 12, Seattle, WA 98101");
+    expect(result).toEqual({
+      street: "789 Main St",
+      city: "Seattle",
+      state: "WA",
+      zip: "98101",
+      unit: "Apt 12",
+    });
+  });
+
+  it("extracts a 'Unit' token that is its own comma-separated segment", () => {
+    const result = splitCombinedAddress("789 Main St, Unit 5B, Seattle, WA 98101");
+    expect(result).toEqual({
+      street: "789 Main St",
+      city: "Seattle",
+      state: "WA",
+      zip: "98101",
+      unit: "Unit 5B",
+    });
+  });
+
+  it("extracts a 'Suite' token", () => {
+    const result = splitCombinedAddress("500 Corporate Pkwy Suite 200, Austin, TX 78701");
+    expect(result).toEqual({
+      street: "500 Corporate Pkwy",
+      city: "Austin",
+      state: "TX",
+      zip: "78701",
+      unit: "Suite 200",
+    });
+  });
+
+  it("extracts a '#' unit token", () => {
+    const result = splitCombinedAddress("42 Ocean Ave #4, Miami, FL 33101");
+    expect(result).toEqual({
+      street: "42 Ocean Ave",
+      city: "Miami",
+      state: "FL",
+      zip: "33101",
+      unit: "# 4",
+    });
+  });
+
+  it("leaves the unit empty when no apartment/unit/suite token is present", () => {
+    const result = splitCombinedAddress("2847 Maple Drive, Seattle, WA 98101");
+    expect(result?.unit).toBe("");
+  });
+
+  it("extracts a unit that is its own segment in a verbose address with a full state name and separate zip", () => {
+    const result = splitCombinedAddress("789 Main St, Apt 12, Seattle, Washington, 98101");
+    expect(result).not.toBeNull();
+    expect(result!.street).toBe("789 Main St");
+    expect(result!.city).toBe("Seattle");
+    expect(result!.state).toBe("WA");
+    expect(result!.zip).toBe("98101");
+    expect(result!.unit).toBe("Apt 12");
+  });
+
+  it("extracts a unit embedded in the street segment of a verbose address", () => {
+    const result = splitCombinedAddress(
+      "44 Crown Acres Road Unit 3, Centereach, Town of Brookhaven, Suffolk County, New York, 11720, United States",
+    );
+    expect(result).not.toBeNull();
+    expect(result!.street).toBe("44 Crown Acres Road");
+    expect(result!.state).toBe("NY");
+    expect(result!.zip).toBe("11720");
+    expect(result!.unit).toBe("Unit 3");
+  });
+});
+
+describe("extractUnitFromStreet", () => {
+  it("extracts and strips an Apt token", () => {
+    expect(extractUnitFromStreet("789 Main St Apt 12")).toEqual({
+      street: "789 Main St",
+      unit: "Apt 12",
+    });
+  });
+
+  it("extracts and strips a Unit token", () => {
+    expect(extractUnitFromStreet("789 Main St Unit 5B")).toEqual({
+      street: "789 Main St",
+      unit: "Unit 5B",
+    });
+  });
+
+  it("extracts and strips a Suite/Ste token", () => {
+    expect(extractUnitFromStreet("500 Corporate Pkwy Ste 200")).toEqual({
+      street: "500 Corporate Pkwy",
+      unit: "Ste 200",
+    });
+  });
+
+  it("extracts and strips a # token", () => {
+    expect(extractUnitFromStreet("42 Ocean Ave #4")).toEqual({
+      street: "42 Ocean Ave",
+      unit: "# 4",
+    });
+  });
+
+  it("leaves the street untouched when there is no unit token", () => {
+    expect(extractUnitFromStreet("2847 Maple Drive")).toEqual({
+      street: "2847 Maple Drive",
+      unit: "",
+    });
   });
 });
 

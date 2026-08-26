@@ -148,7 +148,14 @@ export async function getOrCreateHINForCombinedAddress(
 ): Promise<HINRecord | null> {
   const parsed = splitCombinedAddress(fullAddress);
   if (!parsed) return null;
-  return getOrCreateHIN(parsed.street, parsed.city, parsed.state, parsed.zip, options);
+  // An explicit `options.unit` (e.g. from a dedicated form field) wins over
+  // one inferred from the free-text address; otherwise fall back to the
+  // unit token extracted from the combined address string, if any.
+  const unit = options?.unit || parsed.unit || undefined;
+  return getOrCreateHIN(parsed.street, parsed.city, parsed.state, parsed.zip, {
+    ...options,
+    unit,
+  });
 }
 
 export async function lookupByHIN(hin: string): Promise<HINRecord | null> {
