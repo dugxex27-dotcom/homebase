@@ -171,6 +171,10 @@ export interface IStorage {
   getUnreadContractorNotifications(contractorId: string): Promise<Notification[]>;
   markNotificationAsRead(id: string): Promise<boolean>;
   createMaintenanceNotifications(homeownerId: string, tasks: any[]): Promise<void>;
+  // Marks prior-month unread "maintenance" category notifications as read so recurring
+  // monthly reminders (which mint a fresh maintenanceTaskId/id each month) don't pile up
+  // forever for homeowners who never open the notification bell. Returns count archived.
+  archiveStaleMaintenanceNotifications(homeownerId: string): Promise<number>;
   
   // Search methods
   searchContractors(query: string, location?: string, services?: string[], maxDistance?: number): Promise<Contractor[]>;
@@ -2066,6 +2070,27 @@ export class MemStorage implements IStorage {
       notification.category === "maintenance" &&
       !notification.isRead
     );
+  }
+
+  // MemStorage is dev/test only (DbStorage is the active runtime store); mirror the
+  // same "archive prior-month unread maintenance reminders" behavior for interface parity.
+  async archiveStaleMaintenanceNotifications(homeownerId: string): Promise<number> {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    let archived = 0;
+    for (const notification of this.notifications.values()) {
+      if (
+        notification.homeownerId === homeownerId &&
+        notification.category === "maintenance" &&
+        !notification.isRead &&
+        notification.createdAt &&
+        new Date(notification.createdAt) < startOfMonth
+      ) {
+        notification.isRead = true;
+        archived++;
+      }
+    }
+    return archived;
   }
 
   // Helper method to update notifications when appointment time changes
@@ -11262,9 +11287,34 @@ class DbStorage implements IStorage {
     return { migrated, skipped };
   }
 
+  async archiveStaleMaintenanceNotifications(homeownerId: string): Promise<number> {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const archived = await db.update(notifications)
+      .set({ isRead: true })
+      .where(
+        and(
+          eq(notifications.homeownerId, homeownerId),
+          eq(notifications.category, "maintenance"),
+          eq(notifications.isRead, false),
+          lt(notifications.createdAt, startOfMonth),
+        )
+      )
+      .returning({ id: notifications.id });
+    return archived.length;
+  }
+
   async createMaintenanceNotifications(homeownerId: string, tasks: any[]): Promise<void> {
     const now = new Date();
     const currentMonth = now.getMonth() + 1;
+
+    // Recurring monthly reminders mint a fresh maintenanceTaskId/id every cycle (the id
+    // embeds the month), so the per-task dedup below only ever catches duplicates within
+    // the same month. Without this, a homeowner who never opens the notification bell
+    // accumulates one unread "due this month" reminder per applicable task, every month,
+    // forever. Superseding last month's still-unread maintenance reminders here bounds
+    // the unread count to roughly one month's worth at a time.
+    await this.archiveStaleMaintenanceNotifications(homeownerId);
 
     const pendingTasks = tasks.filter(task => task.month === currentMonth);
 
