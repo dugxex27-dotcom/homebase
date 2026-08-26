@@ -84,6 +84,11 @@ const UNIT_WORD_REGEX =
 // non-word characters (a space and a digit boundary handles the trailing side).
 const UNIT_HASH_REGEX = /#\s*([A-Za-z0-9]+(?:-[A-Za-z0-9]+)?)\b/;
 
+// Matches a comma-separated segment that is *only* a house number (e.g. "44",
+// "44A"), used to detect when a source address split the house number away
+// from the street name onto its own segment (e.g. "44, Crown Acres Road, ...").
+const HOUSE_NUMBER_ONLY_REGEX = /^\d+[A-Za-z]?$/;
+
 /**
  * Pulls an apartment/unit/suite token out of a street string, if present,
  * returning the street with the token removed (and separators cleaned up)
@@ -201,7 +206,19 @@ export function splitCombinedAddress(fullAddress: string): {
   // part that isn't itself state/zip noise).
   const cityIndex = stateIndex > 0 ? stateIndex - 1 : -1;
   const city = cityIndex >= 0 ? parts[cityIndex] : "";
-  const rawStreet = parts[0] || "";
+
+  // Normally the street is just the first segment. But some sources split
+  // the house number onto its own leading segment (e.g. "44, Crown Acres
+  // Road, ..."), in which case parts[0] is just "44" and the real street
+  // name is parts[1] — rejoin them so the street name isn't silently
+  // dropped. This is scoped to *only* the house-number segment (unlike the
+  // fast path, which can safely join everything up to the city in one
+  // shot) because the fallback path legitimately has extra county/town
+  // administrative segments between the street and the chosen city that
+  // must NOT be swept into the street.
+  const houseNumberSplit = HOUSE_NUMBER_ONLY_REGEX.test(parts[0] || "") && parts.length > 1;
+  const rawStreet = houseNumberSplit ? `${parts[0]}, ${parts[1]}` : parts[0] || "";
+  const streetSegmentsConsumed = houseNumberSplit ? 2 : 1;
 
   if (!city || !rawStreet || rawStreet === city) return null;
 
@@ -213,7 +230,7 @@ export function splitCombinedAddress(fullAddress: string): {
   // 98101"), which this path otherwise treats as address noise and drops —
   // check those segments for a unit token before giving up on one.
   if (!unit) {
-    for (let i = 1; i < cityIndex; i++) {
+    for (let i = streetSegmentsConsumed; i < cityIndex; i++) {
       const segment = extractUnitFromStreet(parts[i]);
       if (segment.unit) {
         unit = segment.unit;

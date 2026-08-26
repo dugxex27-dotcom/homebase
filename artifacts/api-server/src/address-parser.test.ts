@@ -120,6 +120,36 @@ describe("splitCombinedAddress", () => {
     expect(result!.zip).toBe("11720");
     expect(result!.unit).toBe("Unit 3");
   });
+
+  it("rejoins a house number that lands on its own segment in the verbose fallback path (#879)", () => {
+    const result = splitCombinedAddress(
+      "44, Crown Acres Road, Centereach, Town of Brookhaven, Suffolk County, New York, 11720, United States",
+    );
+    expect(result).not.toBeNull();
+    expect(result!.street).toBe("44, Crown Acres Road");
+    expect(result!.state).toBe("NY");
+    expect(result!.zip).toBe("11720");
+  });
+
+  it("rejoins a split house number in the fast path too (no regression)", () => {
+    const result = splitCombinedAddress("44, Crown Acres Road, Centereach, NY 11720");
+    expect(result).not.toBeNull();
+    expect(result!.street).toBe("44, Crown Acres Road");
+    expect(result!.city).toBe("Centereach");
+    expect(result!.state).toBe("NY");
+    expect(result!.zip).toBe("11720");
+  });
+
+  it("does not alter a normal address with no leading comma after the house number", () => {
+    const result = splitCombinedAddress("123 Main St, Springfield, IL 62704");
+    expect(result).toEqual({
+      street: "123 Main St",
+      city: "Springfield",
+      state: "IL",
+      zip: "62704",
+      unit: "",
+    });
+  });
 });
 
 describe("extractUnitFromStreet", () => {
