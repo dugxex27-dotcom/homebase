@@ -1910,14 +1910,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
               else if (newConsecutiveMonths === 3) newStatus = 'month_3';
               else if (newConsecutiveMonths >= 4) newStatus = 'eligible';
 
-              // Update the affiliate referral
-              await storage.updateAffiliateReferral(affiliateReferral.id, {
+              // Atomically advance the referral, guarded on the status we just
+              // read. A duplicate/replayed webhook delivery for the same event
+              // (Stripe retries, or recovery re-running a stuck event) will
+              // read the same pre-advance status; only the delivery that wins
+              // this conditional UPDATE gets a row back, so only one proceeds
+              // to the payout logic below.
+              const advanced = await storage.advanceAffiliateReferralPayment(affiliateReferral.id, affiliateReferral.status, {
                 consecutiveMonthsPaid: newConsecutiveMonths,
                 lastPaymentDate: new Date(),
                 firstPaymentDate: affiliateReferral.firstPaymentDate || new Date(),
                 status: newStatus,
               });
 
+              if (!advanced) {
+                console.log(`[AFFILIATE] Referral ${affiliateReferral.id} was already advanced by another request (expected status ${affiliateReferral.status}); skipping duplicate payment processing`);
+              } else {
               console.log(`[AFFILIATE] Updated referral ${affiliateReferral.id}: ${newConsecutiveMonths} months paid, status: ${newStatus}`);
 
               // Check if eligible for payout (4+ months) and hasn't been paid yet
@@ -1936,26 +1944,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   const agentProfile = await storage.getAgentProfile(affiliateReferral.agentId);
                   
                   if (agentProfile?.stripeConnectAccountId && agentProfile.stripeOnboardingComplete) {
-                    // Create or update payout record
+                    // Create or atomically claim the payout record for transfer.
+                    // Claiming is the second independent guard: even if two
+                    // requests both got past the referral-advance guard above
+                    // (e.g. two different eligible referrals racing on the
+                    // same payout row is not possible, but a replay after a
+                    // crash could re-observe an existing 'processing' payout),
+                    // only one can win the conditional claim below.
                     let payout = existingPayout;
                     if (!payout) {
-                      payout = await storage.createAffiliatePayout({
-                        affiliateReferralId: affiliateReferral.id,
-                        agentId: affiliateReferral.agentId,
-                        amount: "15.00",
-                        status: 'processing',
-                      });
+                      try {
+                        payout = await storage.createAffiliatePayout({
+                          affiliateReferralId: affiliateReferral.id,
+                          agentId: affiliateReferral.agentId,
+                          amount: "15.00",
+                          status: 'processing',
+                        });
+                      } catch (createErr: any) {
+                        // Unique constraint on affiliateReferralId: another
+                        // concurrent request already created the payout row.
+                        if (createErr?.code === '23505') {
+                          console.log(`[AFFILIATE] Payout for referral ${affiliateReferral.id} already created by a concurrent request; skipping duplicate transfer`);
+                          payout = undefined;
+                        } else {
+                          throw createErr;
+                        }
+                      }
                     } else {
-                      // Update existing failed/pending payout to processing
-                      await storage.updateAffiliatePayout(payout.id, {
-                        status: 'processing',
-                        errorMessage: null,
-                      });
+                      // Existing failed/pending/stuck payout: atomically claim
+                      // it for processing. Returns undefined if it's already
+                      // 'paid' or already 'processing' (claimed elsewhere).
+                      payout = await storage.claimAffiliatePayoutForTransfer(payout.id);
+                      if (!payout) {
+                        console.log(`[AFFILIATE] Payout for referral ${affiliateReferral.id} already paid or being processed by another request; skipping duplicate transfer`);
+                      }
                     }
 
                     // Attempt to transfer to the agent's Stripe Connect account
+                    if (payout) {
                     try {
                       if (stripe) {
+                        // Stable idempotency key derived from the payout row
+                        // (unique per referral via the affiliateReferralId
+                        // unique constraint) so that even a network retry of
+                        // this exact call can't create a second real transfer.
                         const transfer = await stripe.transfers.create({
                           amount: 1500, // $15.00 in cents
                           currency: 'usd',
@@ -1965,6 +1997,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                             affiliateReferralId: affiliateReferral.id,
                             agentId: affiliateReferral.agentId,
                           },
+                        }, {
+                          idempotencyKey: `affiliate-payout-${payout.id}`,
                         });
 
                         // Update payout as successful
@@ -1988,6 +2022,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                         errorMessage: transferError.message,
                       });
                     }
+                    }
                   } else if (!existingPayout) {
                     // Agent doesn't have Stripe Connect set up - create pending payout (only if not already created)
                     await storage.createAffiliatePayout({
@@ -2008,6 +2043,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     console.log(`[AFFILIATE] Pending payout already exists for referral ${affiliateReferral.id}, waiting for agent to complete Stripe onboarding`);
                   }
                 }
+              }
               }
             }
           } catch (affiliateError: any) {

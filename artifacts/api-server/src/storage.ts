@@ -437,6 +437,15 @@ export interface IStorage {
   getReferringAgentForHomeowner(homeownerId: string): Promise<{ firstName: string; lastName: string; email: string | null; phone: string | null; website: string | null; officeAddress: string | null; referralCode: string | null; profileImageUrl: string | null; } | undefined>;
   createAffiliateReferral(referral: InsertAffiliateReferral): Promise<AffiliateReferral>;
   updateAffiliateReferral(id: string, referral: Partial<InsertAffiliateReferral>): Promise<AffiliateReferral | undefined>;
+  // Atomically advances consecutiveMonthsPaid/status, but only if the row's
+  // current status still matches expectedStatus. Two concurrent/duplicate
+  // webhook deliveries reading the same stale status will race on this
+  // conditional UPDATE — only one gets the updated row back.
+  advanceAffiliateReferralPayment(
+    id: string,
+    expectedStatus: string,
+    updates: { consecutiveMonthsPaid: number; status: string; lastPaymentDate: Date; firstPaymentDate: Date },
+  ): Promise<AffiliateReferral | undefined>;
   
   // Subscription cycle event operations
   getSubscriptionCycleEvents(userId: string): Promise<SubscriptionCycleEvent[]>;
@@ -448,6 +457,10 @@ export interface IStorage {
   getAffiliatePayout(id: string): Promise<AffiliatePayout | undefined>;
   createAffiliatePayout(payout: InsertAffiliatePayout): Promise<AffiliatePayout>;
   updateAffiliatePayout(id: string, payout: Partial<InsertAffiliatePayout>): Promise<AffiliatePayout | undefined>;
+  // Atomically claims a payout for transfer processing: only succeeds if the
+  // row is not already 'paid' or 'processing', so a duplicate/replayed
+  // webhook delivery can't launch a second Stripe transfer for it.
+  claimAffiliatePayoutForTransfer(id: string): Promise<AffiliatePayout | undefined>;
   getPendingPayouts(): Promise<AffiliatePayout[]>;
   
   // Agent dashboard stats
@@ -5936,6 +5949,18 @@ export class MemStorage implements IStorage {
     return updated;
   }
 
+  async advanceAffiliateReferralPayment(
+    id: string,
+    expectedStatus: string,
+    updates: { consecutiveMonthsPaid: number; status: string; lastPaymentDate: Date; firstPaymentDate: Date },
+  ): Promise<AffiliateReferral | undefined> {
+    const existing = this.affiliateReferralsMap.get(id);
+    if (!existing || existing.status !== expectedStatus) return undefined;
+    const updated = { ...existing, ...updates, updatedAt: new Date() } as AffiliateReferral;
+    this.affiliateReferralsMap.set(id, updated);
+    return updated;
+  }
+
   // Subscription cycle event operations (in-memory stubs — MemStorage is dev/test only)
   private subscriptionCycleEventsArr: SubscriptionCycleEvent[] = [];
 
@@ -5976,6 +6001,14 @@ export class MemStorage implements IStorage {
     const existing = this.affiliatePayoutsMap.get(id);
     if (!existing) return undefined;
     const updated = { ...existing, ...payout, updatedAt: new Date() } as AffiliatePayout;
+    this.affiliatePayoutsMap.set(id, updated);
+    return updated;
+  }
+
+  async claimAffiliatePayoutForTransfer(id: string): Promise<AffiliatePayout | undefined> {
+    const existing = this.affiliatePayoutsMap.get(id);
+    if (!existing || existing.status === 'paid' || existing.status === 'processing') return undefined;
+    const updated = { ...existing, status: 'processing', errorMessage: null, updatedAt: new Date() } as AffiliatePayout;
     this.affiliatePayoutsMap.set(id, updated);
     return updated;
   }
@@ -10808,6 +10841,22 @@ class DbStorage implements IStorage {
     return updated;
   }
 
+  async advanceAffiliateReferralPayment(
+    id: string,
+    expectedStatus: string,
+    updates: { consecutiveMonthsPaid: number; status: string; lastPaymentDate: Date; firstPaymentDate: Date },
+  ): Promise<AffiliateReferral | undefined> {
+    // Conditional UPDATE guarded on the status we originally read: if a
+    // duplicate/concurrent webhook delivery already advanced this referral,
+    // the WHERE clause won't match and this returns undefined — the caller
+    // must treat that as "someone else already processed this" and skip.
+    const [updated] = await db.update(affiliateReferrals)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(eq(affiliateReferrals.id, id), eq(affiliateReferrals.status, expectedStatus)))
+      .returning();
+    return updated;
+  }
+
   async getAffiliatePayouts(agentId: string): Promise<AffiliatePayout[]> {
     return db.select().from(affiliatePayouts).where(eq(affiliatePayouts.agentId, agentId));
   }
@@ -10825,6 +10874,21 @@ class DbStorage implements IStorage {
   async updateAffiliatePayout(id: string, payout: Partial<InsertAffiliatePayout>): Promise<AffiliatePayout | undefined> {
     const [updated] = await db.update(affiliatePayouts).set({ ...payout, updatedAt: new Date() }).where(eq(affiliatePayouts.id, id)).returning();
     return updated;
+  }
+
+  async claimAffiliatePayoutForTransfer(id: string): Promise<AffiliatePayout | undefined> {
+    // Conditional UPDATE: only claims the row if it isn't already 'paid' or
+    // currently 'processing' (i.e. a concurrent/duplicate delivery already
+    // claimed it). Prevents two Stripe transfer attempts for one payout.
+    const [claimed] = await db.update(affiliatePayouts)
+      .set({ status: 'processing', errorMessage: null, updatedAt: new Date() })
+      .where(and(
+        eq(affiliatePayouts.id, id),
+        not(eq(affiliatePayouts.status, 'paid')),
+        not(eq(affiliatePayouts.status, 'processing')),
+      ))
+      .returning();
+    return claimed;
   }
 
   async getPendingPayouts(): Promise<AffiliatePayout[]> {
