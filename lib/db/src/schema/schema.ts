@@ -2607,6 +2607,30 @@ export const insertQuizResultSchema = createInsertSchema(quizResults).omit({ id:
 export type InsertQuizResult = z.infer<typeof insertQuizResultSchema>;
 export type QuizResult = typeof quizResults.$inferSelect;
 
+// ─── Demo Gate Leads ──────────────────────────────────────────────────────
+// Marketing lead captures from the pre-demo-login gate (demo-gate.tsx). Anonymous
+// visitors optionally submit name/email/zipcode before entering a role demo.
+// Every submission is kept as its own row (no upsert/dedupe on email) — repeated
+// attempts from the same email are themselves a useful signal for later fraud/
+// engagement analysis, and consumers can dedupe by email in a query if needed.
+
+export const demoLeads = pgTable("demo_leads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  zipcode: text("zipcode").notNull(),
+  role: text("role").notNull().default("homeowner"), // 'homeowner' | 'contractor' | 'agent'
+  ipAddress: text("ip_address"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("IDX_demo_leads_email").on(table.email),
+  index("IDX_demo_leads_created_at").on(table.createdAt),
+]);
+
+export const insertDemoLeadSchema = createInsertSchema(demoLeads).omit({ id: true, createdAt: true });
+export type InsertDemoLead = z.infer<typeof insertDemoLeadSchema>;
+export type DemoLead = typeof demoLeads.$inferSelect;
+
 // ─── Enterprise Contractor Tech Invoices ─────────────────────────────────────
 // Techs and admins upload proof-of-work invoices scoped to their company.
 // Admins can see all company invoices; techs can only see their own.
