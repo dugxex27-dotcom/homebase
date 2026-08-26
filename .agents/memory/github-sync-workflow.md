@@ -45,3 +45,12 @@ until either:
 The agent bash tool environment captures `GITHUB_TOKEN` at process start.
 Updating the secret in Replit doesn't refresh the running agent bash env.
 Always delegate actual GitHub API pushes to Shell commands when the token is needed.
+
+Confirmed 2026-08-26: this staleness survives even a fresh login shell
+(`bash -lc '...'`) within the same agent ShellExec tool — the value's
+length/prefix/suffix/hash stayed identical across 3 separate `requestSecrets`
+updates and multiple new subprocess invocations. Don't try to "test" a newly
+requested GITHUB_TOKEN via the agent's ShellExec tool at all — it will always
+read the value from whenever the agent process itself started. The only way
+to see the current secret value is a command run by the user in Replit's
+actual Shell tab UI (a separate process Replit manages independently).
