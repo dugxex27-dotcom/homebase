@@ -45,8 +45,13 @@ const {
   mockDbInsertReturning,
   mockDbUpdateSet,
   mockDbUpdateWhere,
+  mockDbUpdateReturning,
 } = vi.hoisted(() => {
-  const mockDbUpdateWhere = vi.fn().mockResolvedValue([]);
+  // db.update(...).set(...).where(...).returning() — the accept/decline routes
+  // use the atomic conditional-update pattern (WHERE id=:id AND status='pending'
+  // RETURNING *), so .where() must return an object exposing .returning().
+  const mockDbUpdateReturning = vi.fn().mockResolvedValue([]);
+  const mockDbUpdateWhere = vi.fn().mockReturnValue({ returning: mockDbUpdateReturning });
   const mockDbUpdateSet = vi.fn().mockReturnValue({ where: mockDbUpdateWhere });
   const mockDbInsertReturning = vi.fn().mockResolvedValue([]);
   const mockDbInsertValues = vi.fn().mockReturnValue({ returning: mockDbInsertReturning });
@@ -67,6 +72,7 @@ const {
     mockDbInsertReturning,
     mockDbUpdateSet,
     mockDbUpdateWhere,
+    mockDbUpdateReturning,
   };
 });
 
@@ -480,7 +486,10 @@ describe("POST /api/homeowner/pending-job-records/:id/accept", () => {
     app = await buildApp();
     mockGetHouse.mockResolvedValue(HOUSE_FIXTURE);
     mockCreateMaintenanceLog.mockResolvedValue(MAINTENANCE_LOG_FIXTURE);
-    mockDbUpdateWhere.mockResolvedValue([]);
+    // Default: the atomic conditional update succeeds and returns the claimed row.
+    mockDbUpdateReturning.mockResolvedValue([
+      { ...JOB_RECORD_FIXTURE, status: "accepted", acceptedAt: new Date() },
+    ]);
   });
 
   afterEach(() => {
@@ -554,6 +563,40 @@ describe("POST /api/homeowner/pending-job-records/:id/accept", () => {
     expect(logArg.completionMethod).toBe("contractor");
     expect(logArg.homeownerId).toBe(HOMEOWNER_ID);
   });
+
+  it("race condition: two concurrent accepts for the same record — only one creates a maintenance log, the other gets 409", async () => {
+    // Both concurrent requests read the record as still "pending" (the classic
+    // check-then-act race window), but only the first request's atomic
+    // UPDATE ... WHERE status='pending' RETURNING * actually matches a row.
+    selectOnce([JOB_RECORD_FIXTURE]);
+    selectOnce([JOB_RECORD_FIXTURE]);
+    mockDbUpdateReturning
+      .mockResolvedValueOnce([{ ...JOB_RECORD_FIXTURE, status: "accepted", acceptedAt: new Date() }])
+      .mockResolvedValueOnce([]); // second request's conditional UPDATE matches nothing — it lost the race
+
+    const [resA, resB] = await Promise.all([
+      request(app)
+        .post(`/api/homeowner/pending-job-records/${RECORD_ID}/accept`)
+        .set("x-test-user", "homeowner")
+        .send({ houseId: HOUSE_ID }),
+      request(app)
+        .post(`/api/homeowner/pending-job-records/${RECORD_ID}/accept`)
+        .set("x-test-user", "homeowner")
+        .send({ houseId: HOUSE_ID }),
+    ]);
+
+    const statuses = [resA.status, resB.status].sort();
+    expect(statuses).toEqual([200, 409]);
+
+    const winner = resA.status === 200 ? resA : resB;
+    const loser = resA.status === 200 ? resB : resA;
+    expect(winner.body.maintenanceLog).toBeDefined();
+    expect(loser.body.message).toMatch(/already processed/i);
+
+    // The decisive assertion: exactly one maintenance log was created, never two,
+    // even though both requests observed the record as "pending" via their SELECT.
+    expect(mockCreateMaintenanceLog).toHaveBeenCalledOnce();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -565,7 +608,10 @@ describe("POST /api/homeowner/pending-job-records/:id/decline", () => {
 
   beforeEach(async () => {
     app = await buildApp();
-    mockDbUpdateWhere.mockResolvedValue([]);
+    // Default: the atomic conditional update succeeds and returns the claimed row.
+    mockDbUpdateReturning.mockResolvedValue([
+      { ...JOB_RECORD_FIXTURE, status: "declined" },
+    ]);
   });
 
   afterEach(() => {

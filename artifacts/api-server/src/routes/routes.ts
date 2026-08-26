@@ -16177,34 +16177,44 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
         return res.status(403).json({ message: "House not found or does not belong to you" });
       }
 
+      // Atomically claim this record: the UPDATE only affects a row that is
+      // still 'pending', and RETURNING tells us whether *this* request won
+      // that race. If two accept requests land concurrently, only one of
+      // them gets a row back here — the other must not create a duplicate
+      // maintenance log.
+      const [claimed] = await db.update(contractorJobRecords)
+        .set({ status: 'accepted', acceptedAt: new Date() })
+        .where(and(eq(contractorJobRecords.id, id), eq(contractorJobRecords.status, 'pending')))
+        .returning();
+
+      if (!claimed) {
+        return res.status(409).json({ message: "Record already processed" });
+      }
+
       // Create a contractor-verified maintenance log
       const maintenanceLog = await storage.createMaintenanceLog({
         homeownerId: userId,
         houseId,
-        serviceDate: record.createdAt ? record.createdAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        serviceType: record.serviceType,
-        homeArea: record.serviceType,
-        serviceDescription: record.serviceDescription || record.completionNotes || record.serviceType,
+        serviceDate: claimed.createdAt ? claimed.createdAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        serviceType: claimed.serviceType,
+        homeArea: claimed.serviceType,
+        serviceDescription: claimed.serviceDescription || claimed.completionNotes || claimed.serviceType,
         cost: null,
-        contractorName: record.contractorName || 'Contractor',
-        contractorCompany: record.contractorCompany || null,
-        contractorId: record.contractorUserId,
-        notes: record.nextServiceNotes ? `Next service recommended: ${record.nextServiceNotes}` : null,
+        contractorName: claimed.contractorName || 'Contractor',
+        contractorCompany: claimed.contractorCompany || null,
+        contractorId: claimed.contractorUserId,
+        notes: claimed.nextServiceNotes ? `Next service recommended: ${claimed.nextServiceNotes}` : null,
         warrantyPeriod: null,
-        nextServiceDue: record.nextServiceDate ? record.nextServiceDate.toISOString().split('T')[0] : null,
+        nextServiceDue: claimed.nextServiceDate ? claimed.nextServiceDate.toISOString().split('T')[0] : null,
         receiptUrls: [],
         beforePhotoUrls: [],
-        afterPhotoUrls: Array.isArray(record.photos) ? (record.photos as string[]) : [],
+        afterPhotoUrls: Array.isArray(claimed.photos) ? (claimed.photos as string[]) : [],
         completionMethod: 'contractor',
         verificationTier: 'contractor_verified',
-        contractorAccountId: record.contractorUserId,
-        contractorBusinessName: record.contractorCompany || null,
-        contractorJobDate: record.createdAt ? record.createdAt.toISOString().split('T')[0] : null,
+        contractorAccountId: claimed.contractorUserId,
+        contractorBusinessName: claimed.contractorCompany || null,
+        contractorJobDate: claimed.createdAt ? claimed.createdAt.toISOString().split('T')[0] : null,
       });
-
-      await db.update(contractorJobRecords)
-        .set({ status: 'accepted', acceptedAt: new Date() })
-        .where(eq(contractorJobRecords.id, id));
 
       res.json({ maintenanceLog, message: "Record accepted and saved to your home history" });
     } catch (error) {
@@ -16230,9 +16240,16 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       if (!record) return res.status(404).json({ message: "Record not found" });
       if (record.status !== 'pending') return res.status(409).json({ message: "Record already processed" });
 
-      await db.update(contractorJobRecords)
+      // Same atomic-update pattern as accept, for consistency — even though a
+      // concurrent double-decline has no side effect to duplicate here.
+      const [claimed] = await db.update(contractorJobRecords)
         .set({ status: 'declined' })
-        .where(eq(contractorJobRecords.id, id));
+        .where(and(eq(contractorJobRecords.id, id), eq(contractorJobRecords.status, 'pending')))
+        .returning();
+
+      if (!claimed) {
+        return res.status(409).json({ message: "Record already processed" });
+      }
 
       res.json({ message: "Record dismissed" });
     } catch (error) {
