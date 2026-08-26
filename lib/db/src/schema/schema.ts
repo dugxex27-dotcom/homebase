@@ -1,5 +1,5 @@
 import { sql, eq } from "drizzle-orm";
-import { pgTable, text, varchar, integer, decimal, boolean, timestamp, index, uniqueIndex, unique, check, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, decimal, boolean, timestamp, index, uniqueIndex, unique, check, jsonb, char } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -643,6 +643,12 @@ export const homeIdentificationNumbers = pgTable("home_identification_numbers", 
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   hin: text("hin").notNull().unique(), // The Home Identification Number
   normalizedAddress: text("normalized_address").notNull(), // Normalized form of the address
+  streetNumber: varchar("street_number", { length: 20 }), // Parsed street number component
+  streetName: varchar("street_name", { length: 100 }), // Parsed street name component
+  streetSuffix: varchar("street_suffix", { length: 20 }), // Parsed street suffix (ST, AVE, etc.)
+  unit: varchar("unit", { length: 30 }), // Parsed unit/apartment/suite component
+  censusDivision: integer("census_division"), // Census division digit from the encoded HIN
+  registrationYearChar: char("registration_year_char", { length: 1 }), // Registration-year character from the encoded HIN
   city: text("city"),
   state: text("state"),
   zip: text("zip"),
