@@ -15047,20 +15047,27 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  // Phase 6 — Stripe Customer Portal (self-service billing management)
-  app.get('/api/contractor/billing/portal', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
+  // Stripe Customer Portal (self-service billing management: card-on-file, next
+  // charge date, invoice history/downloads — all handled by Stripe's own hosted UI).
+  // Role-agnostic: homeowners and contractors share the same `users.stripeCustomerId`
+  // shape (both get a real Stripe Customer created in /api/create-subscription-checkout),
+  // so there's no structural reason to restrict this to contractors.
+  const createBillingPortalSession = async (req: any, res: any) => {
     try {
-      if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
+      if (!req.session?.isAuthenticated || !req.session?.user) {
         return res.status(401).json({ message: 'Unauthorized' });
       }
       if (!stripe) return res.status(503).json({ message: 'Billing not configured' });
 
       const user = await storage.getUser(req.session.user.id);
       if (!user?.stripeCustomerId) {
+        // Grandfathered / trial / never-subscribed accounts have no Stripe customer —
+        // there's nothing for Stripe's portal to manage for them.
         return res.status(400).json({ message: 'No billing account found. Subscribe to a plan first.' });
       }
 
-      const returnUrl = req.query.returnUrl as string || `${process.env.APP_URL || ''}/contractor`;
+      const baseUrl = req.headers.origin || `https://${req.headers.host}`;
+      const returnUrl = (req.query.returnUrl as string) || `${baseUrl}/billing`;
       const session = await stripe.billingPortal.sessions.create({
         customer: user.stripeCustomerId,
         return_url: returnUrl,
@@ -15068,10 +15075,13 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
 
       res.json({ url: session.url });
     } catch (error) {
-      req.log?.error({ error }, '[PHASE6] Error creating billing portal session');
+      req.log?.error({ error }, '[BILLING PORTAL] Error creating billing portal session');
       res.status(500).json({ message: 'Failed to open billing portal' });
     }
-  });
+  };
+  app.get('/api/billing/portal', isAuthenticated, requireNotSuspended(), createBillingPortalSession);
+  // Kept for backward compatibility with the original contractor-only path.
+  app.get('/api/contractor/billing/portal', isAuthenticated, requireNotSuspended(), createBillingPortalSession);
 
   // Contractor home management routes 
   app.get('/api/contractor/my-home', async (req: any, res: any) => {

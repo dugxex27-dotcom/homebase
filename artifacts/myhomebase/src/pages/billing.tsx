@@ -12,7 +12,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { PageHero } from "@/components/page-hero";
-import { openExternalUrl, onBrowserFinished, isNativePlatform } from "@/lib/nativeBrowser";
+import { openExternalUrl, openPaymentUrl, onBrowserFinished, isNativePlatform } from "@/lib/nativeBrowser";
+import { CreditCard } from "lucide-react";
 import {
   initNativePurchase,
   restoreNativePurchases,
@@ -86,6 +87,27 @@ export default function Billing() {
       unsubFailed();
     };
   }, [queryClient, toast]);
+
+  // Opens Stripe's hosted Customer Portal (card-on-file, next charge date, invoice
+  // history/downloads — all handled by Stripe's own UI). Only meaningful for accounts
+  // with a real Stripe customer; Grandfathered/trial/never-subscribed accounts have
+  // nothing for Stripe's portal to manage, so the button is hidden for them (see below).
+  const billingPortalMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('/api/billing/portal', 'GET');
+      return res.json() as Promise<{ url: string }>;
+    },
+    onSuccess: ({ url }) => {
+      openPaymentUrl(url);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Couldn't open billing portal",
+        description: error.message || "Please try again in a moment.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const restoreMutation = useMutation({
     mutationFn: async () => {
@@ -299,6 +321,27 @@ export default function Billing() {
               data-testid="button-change-plan"
             >
               <a href="/homeowner-pricing">Change or upgrade plan</a>
+            </Button>
+          </div>
+        )}
+
+        {/* Manage Payment Method — opens Stripe's hosted Customer Portal for card-on-file,
+            next charge date, and invoice history/downloads. Only shown for accounts with a
+            real Stripe customer; Grandfathered/trial/never-subscribed accounts have nothing
+            for Stripe's portal to manage. */}
+        {userData?.stripeCustomerId && (
+          <div className="flex justify-center mb-6 sm:mb-8">
+            <Button
+              variant="outline"
+              onClick={() => billingPortalMutation.mutate()}
+              disabled={billingPortalMutation.isPending}
+              data-testid="button-manage-payment-method"
+            >
+              {billingPortalMutation.isPending ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Opening billing portal…</>
+              ) : (
+                <><CreditCard className="w-4 h-4 mr-2" />Manage Payment Method</>
+              )}
             </Button>
           </div>
         )}
