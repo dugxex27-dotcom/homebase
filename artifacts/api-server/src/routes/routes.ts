@@ -129,6 +129,54 @@ const authLimiter = rateLimit({
   store: new PgRateLimitStore('auth'),
 });
 
+// Rate limiting specific to the six public demo-login routes (homeowner/
+// contractor/agent, GET+POST). Deliberately separate from `authLimiter`:
+// authLimiter uses `skipSuccessfulRequests: true`, which is correct for real
+// login (don't punish someone who mistyped a password once, then logged in
+// fine) but makes it a no-op here, since demo logins almost always succeed —
+// a script could call them indefinitely with zero throttling. This limiter
+// counts every request, success or failure.
+//
+// Limit chosen for a public marketing "Try Demo" feature: a real visitor
+// comparing homeowner/contractor/agent demos, retrying after a reload, etc.
+// will land well under 20 calls in 15 minutes. Sustained scripted abuse
+// (which was previously unbounded) is now capped at 20 requests per IP per
+// 15-minute window, both blocking further seeding/session-creation load and
+// bounding how many demo sessions a script can use to reach paid AI
+// endpoints (invoice analysis, DIY photo verification) once logged in.
+const demoLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // 20 demo-login calls per IP per 15 minutes, counting successes
+  message: 'Too many demo login attempts from this location. Please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Consistent with `generalLimiter` in app.ts: rate limiting is enforced in
+  // production only. This is the surface we're actually protecting (the
+  // public deployed demo-login routes); dev traffic and the test suite
+  // (which exercises these routes directly against a real DB, e.g.
+  // demo-seeder.test.ts) are unthrottled, same as every other limiter here.
+  skip: () => process.env.NODE_ENV !== 'production',
+  store: new PgRateLimitStore('demo-login'),
+  handler: (req: any, res: any) => {
+    req.log?.warn(
+      { ip: req.ip, path: req.path, method: req.method },
+      '[DEMO LOGIN] Rate limit exceeded — possible scripted abuse'
+    );
+    res.status(429).json({ message: 'Too many demo login attempts from this location. Please try again later.' });
+  },
+});
+
+// Lightweight per-request visibility for demo-login volume. There was
+// previously no logging/metric of any kind on these routes, so a scripted
+// abuse spike would go unnoticed. This logs every attempt (allowed or later
+// rate-limited) tagged by role so volume/spikes are greppable in logs.
+function logDemoLoginAttempt(role: 'homeowner' | 'contractor' | 'agent') {
+  return (req: any, _res: any, next: any) => {
+    req.log?.info({ ip: req.ip, role, method: req.method }, '[DEMO LOGIN] attempt');
+    next();
+  };
+}
+
 // Rate limiting for the public quiz-result endpoint
 const quizLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -4194,7 +4242,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Simple homeowner demo login with realistic profile
-  app.post('/api/auth/homeowner-demo-login', authLimiter, async (req: any, res: any) => {
+  app.post('/api/auth/homeowner-demo-login', logDemoLoginAttempt('homeowner'), authLimiter, demoLoginLimiter, async (req: any, res: any) => {
     try {
       const { user, seedResults } = await seedHomeownerDemo(req.log);
       
@@ -4229,7 +4277,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET version — browser navigation, sets session and redirects
-  app.get('/api/auth/homeowner-demo-login', authLimiter, async (req: any, res: any) => {
+  app.get('/api/auth/homeowner-demo-login', logDemoLoginAttempt('homeowner'), authLimiter, demoLoginLimiter, async (req: any, res: any) => {
     try {
       const demoId = 'demo-homeowner-permanent-id';
       const demoEmail = 'sarah.anderson@homebase.com';
@@ -4267,7 +4315,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Simple contractor demo login with realistic company profile
-  app.post('/api/auth/contractor-demo-login', authLimiter, async (req: any, res: any) => {
+  app.post('/api/auth/contractor-demo-login', logDemoLoginAttempt('contractor'), authLimiter, demoLoginLimiter, async (req: any, res: any) => {
     try {
       const { user, seedResults } = await seedContractorDemo(req.log);
       // Regenerate session to prevent session fixation
@@ -4301,7 +4349,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET version — browser navigation, sets session and redirects
-  app.get('/api/auth/contractor-demo-login', authLimiter, async (req: any, res: any) => {
+  app.get('/api/auth/contractor-demo-login', logDemoLoginAttempt('contractor'), authLimiter, demoLoginLimiter, async (req: any, res: any) => {
     try {
       const demoEmail = 'david.martinez@precisionhvac.com';
       let user = await storage.getUserByEmail(demoEmail);
@@ -4438,7 +4486,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Simple agent demo login with realistic agent profile
-  app.post('/api/auth/agent-demo-login', authLimiter, async (req: any, res: any) => {
+  app.post('/api/auth/agent-demo-login', logDemoLoginAttempt('agent'), authLimiter, demoLoginLimiter, async (req: any, res: any) => {
     try {
       const { user, seedResults } = await seedAgentDemo(req.log);
       // Regenerate session to prevent session fixation
@@ -4473,7 +4521,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET version — browser navigation, sets session and redirects
-  app.get('/api/auth/agent-demo-login', authLimiter, async (req: any, res: any) => {
+  app.get('/api/auth/agent-demo-login', logDemoLoginAttempt('agent'), authLimiter, demoLoginLimiter, async (req: any, res: any) => {
     try {
       const demoEmail = 'jessica.roberts@ellisonrealty.com';
       let user = await storage.getUserByEmail(demoEmail);
