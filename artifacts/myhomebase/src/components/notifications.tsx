@@ -160,9 +160,9 @@ export function Notifications({ homeownerId }: NotificationsProps) {
           {unreadNotifications.length > 0 && (
             <Badge 
               variant="destructive" 
-              className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+              className="absolute -top-1 -right-1 h-5 min-w-[1.25rem] rounded-full px-1 flex items-center justify-center text-[10px] font-bold leading-none"
             >
-              {unreadNotifications.length}
+              {unreadNotifications.length > 99 ? '99+' : unreadNotifications.length}
             </Badge>
           )}
         </Button>

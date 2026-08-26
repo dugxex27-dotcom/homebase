@@ -192,8 +192,12 @@ export default function SignInHomeowner() {
           <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#B6A6F4' }} />
           <span style={{ fontSize: 10, fontWeight: 700, color: '#B6A6F4', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Homeowner</span>
         </div>
-        <div style={{ fontSize: 26, fontWeight: 800, color: '#fff', letterSpacing: '-0.5px', lineHeight: 1.15, position: 'relative', zIndex: 2, marginBottom: 8 }}>Welcome back</div>
-        <div style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', position: 'relative', zIndex: 2, lineHeight: 1.5 }}>Sign in to your homeowner account</div>
+        <div style={{ fontSize: 26, fontWeight: 800, color: '#fff', letterSpacing: '-0.5px', lineHeight: 1.15, position: 'relative', zIndex: 2, marginBottom: 8 }}>
+          {activeTab === 'login' ? 'Welcome back' : registerStep === 'plan' ? 'Choose your plan' : 'Create your account'}
+        </div>
+        <div style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.5)', position: 'relative', zIndex: 2, lineHeight: 1.5 }}>
+          {activeTab === 'login' ? 'Sign in to your homeowner account' : registerStep === 'plan' ? 'Almost there — pick a plan to finish setup' : 'Get started tracking your home'}
+        </div>
         <div style={{ position: 'absolute', bottom: -1, left: 0, right: 0, height: 28, borderRadius: '28px 28px 0 0', background: C.bg, zIndex: 1 }} />
       </div>
 
