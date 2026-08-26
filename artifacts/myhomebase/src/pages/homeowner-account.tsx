@@ -369,7 +369,10 @@ export default function HomeownerAccount() {
   // House transfer queries and mutations
   const { data: houses } = useQuery<any>({
     queryKey: ['/api/houses'],
-    queryFn: () => apiRequest('/api/houses', 'GET'),
+    queryFn: async () => {
+      const res = await apiRequest('/api/houses', 'GET');
+      return res.json();
+    },
   });
 
   const { data: transfers, refetch: refetchTransfers } = useQuery<any>({
@@ -1417,7 +1420,7 @@ export default function HomeownerAccount() {
                 </div>
                 <div className="text-sm">
                   <span className="text-gray-600">Properties:</span>
-                  <span className="ml-2 font-medium">2 Active</span>
+                  <span className="ml-2 font-medium">{housesCount} Active</span>
                 </div>
               </CardContent>
             </Card>
