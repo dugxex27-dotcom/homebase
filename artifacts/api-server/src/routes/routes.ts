@@ -10,7 +10,7 @@ import { z } from "zod";
 import { randomUUID, randomBytes, createHash, timingSafeEqual } from "crypto";
 import rateLimit from "express-rate-limit";
 import { PgRateLimitStore } from "../lib/pg-rate-limit-store";
-import { eq, and, ne, inArray, sql as drizzleSql, isNotNull, isNull, desc, or, gt, gte, lte } from "drizzle-orm";
+import { eq, and, ne, inArray, sql as drizzleSql, isNotNull, isNull, desc, or, gt, gte, lte, ilike } from "drizzle-orm";
 import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertTaskCompletionSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, customMaintenanceTasks, insertSupportTicketSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, insertCrmLeadSchema, insertCrmNoteSchema, notificationPreferences, subscriptionPlans, securitySessions, referralCredits, referralFreeMonths, promoCodes, agentProfiles, users, siteContent, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, insertReviewFlagSchema, homeDocuments, quizResults, crmInvoices, handoffTransfers, demoLeads, insertDemoLeadSchema, type House } from "@workspace/db";
 import { calculateDIYSavingsAmount } from "../shared/cost-helpers";
 import { calculateMechanicalDocumentationBonus } from "../shared/maintenance-scheduler";
@@ -21900,6 +21900,32 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     } catch (err) {
       req.log.error(err, '[Demo Lead] error');
       return res.status(500).json({ message: "Server error" });
+    }
+  });
+
+  // Admin: view captured demo-gate leads (name/email/zipcode/role/IP/timestamp).
+  // Supports optional role filter and email search; sorted by most recent first.
+  app.get('/api/admin/demo-leads', requireAdmin, async (req: any, res: any) => {
+    try {
+      const { role, email } = req.query;
+      const conditions = [];
+      if (typeof role === 'string' && ['homeowner', 'contractor', 'agent'].includes(role)) {
+        conditions.push(eq(demoLeads.role, role));
+      }
+      if (typeof email === 'string' && email.trim()) {
+        conditions.push(ilike(demoLeads.email, `%${email.trim()}%`));
+      }
+
+      const leads = await db
+        .select()
+        .from(demoLeads)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(demoLeads.createdAt));
+
+      res.json(leads);
+    } catch (error) {
+      console.error("Error fetching demo leads:", error);
+      res.status(500).json({ message: "Failed to fetch demo leads" });
     }
   });
 

@@ -711,6 +711,35 @@ The MyHomeBase™ Team`);
           </CardContent>
         </Card>
 
+        {/* Demo Leads */}
+        <Card className="mb-8" data-testid="card-demo-leads-link">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" style={{ color: 'var(--purple)' }} />
+                  Demo Leads
+                </CardTitle>
+                <CardDescription className="mt-2">
+                  View marketing leads captured from the pre-demo-login gate
+                </CardDescription>
+              </div>
+              <Button
+                onClick={() => navigate('/admin/demo-leads')}
+                data-testid="button-view-demo-leads"
+              >
+                View Demo Leads
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              See name, email, zip code, role, submission time, and IP address for every lead captured before entering a role demo.
+            </p>
+          </CardContent>
+        </Card>
+
         {/* Fraud Review Queue */}
         <Card className="mb-8" data-testid="card-fraud-review-queue">
           <CardHeader>
