@@ -60,6 +60,25 @@ interface DemoLog {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Existing demo accounts can end up with isDemoAccount=false in a database
+ * that never got backfilled after the column was introduced — publishing
+ * migrates schema only, never data, so a demo account created before this
+ * flag existed keeps whatever default the column had at creation time.
+ * Every entry point that fetches an already-existing demo user runs this so
+ * the flag self-heals on next login, without a manual per-environment data
+ * migration.
+ */
+export async function ensureDemoAccountFlag<T extends { id: string; isDemoAccount?: boolean | null }>(
+  user: T
+): Promise<T> {
+  if (user && user.isDemoAccount !== true) {
+    await db.update(users).set({ isDemoAccount: true }).where(eq(users.id, user.id));
+    return { ...user, isDemoAccount: true };
+  }
+  return user;
+}
+
 async function generateUniqueReferralCode(): Promise<string> {
   const characters = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let attempts = 0;
@@ -100,6 +119,8 @@ export async function seedHomeownerDemo(log: DemoLog): Promise<SeedOutcome> {
       connectionCode: "DEMO4567",
       isDemoAccount: true,
     });
+  } else {
+    user = await ensureDemoAccountFlag(user);
   }
 
   const mainHouseId = "8d44c1d0-af55-4f1c-bada-b70e54c823bc";
@@ -712,6 +733,8 @@ export async function seedContractorDemo(log: DemoLog): Promise<SeedOutcome> {
       companyRole: null,
       isDemoAccount: true,
     });
+  } else {
+    user = await ensureDemoAccountFlag(user);
   }
 
   const seedResults: SeedResults = {};
@@ -1056,6 +1079,8 @@ export async function seedAgentDemo(log: DemoLog): Promise<SeedOutcome> {
       companyRole: null,
       isDemoAccount: true,
     });
+  } else {
+    user = await ensureDemoAccountFlag(user);
   }
 
   const agentUser = await storage.getUser(demoId);

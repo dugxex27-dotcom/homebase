@@ -34,7 +34,7 @@ import { notificationOrchestrator } from "../notification-orchestrator";
 import { sendEmail, emailService, sendCheckoutFailureEmail } from "../email-service";
 import { verifyAndActivateAppleTransaction, handleAppleServerNotification, AppleIapError } from "../apple-iap";
 import { lookupByHIN } from "../hin-service";
-import { seedHomeownerDemo, seedContractorDemo, seedAgentDemo, topUpHomeownerTaskCompletions } from "../demo-seeder";
+import { seedHomeownerDemo, seedContractorDemo, seedAgentDemo, topUpHomeownerTaskCompletions, ensureDemoAccountFlag } from "../demo-seeder";
 
 const stripe = process.env.STRIPE_SECRET_KEY 
   ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2026-04-22.dahlia" })
@@ -4320,6 +4320,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           maxHousesAllowed: 2, connectionCode: 'DEMO4567',
           isDemoAccount: true,
         });
+      } else {
+        user = await ensureDemoAccountFlag(user);
       }
 
       // Fire-and-forget task completion top-up
@@ -4384,6 +4386,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const demoEmail = 'david.martinez@precisionhvac.com';
       let user = await storage.getUserByEmail(demoEmail);
       if (!user) return res.redirect('/contractor?demo_error=1');
+      user = await ensureDemoAccountFlag(user);
       req.session.regenerate((err: any) => {
         if (err) return res.redirect('/contractor?demo_error=1');
         req.session.isAuthenticated = true;
@@ -4556,6 +4559,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const demoEmail = 'jessica.roberts@ellisonrealty.com';
       let user = await storage.getUserByEmail(demoEmail);
       if (!user) return res.redirect('/agent?demo_error=1');
+      user = await ensureDemoAccountFlag(user);
       req.session.regenerate((err: any) => {
         if (err) return res.redirect('/agent?demo_error=1');
         req.session.isAuthenticated = true;
