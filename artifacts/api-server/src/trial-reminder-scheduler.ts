@@ -28,6 +28,7 @@ async function checkAndSendTrialReminders() {
       subscriptionStatus: users.subscriptionStatus,
       trialEndsAt: users.trialEndsAt,
       trialRemindersSent: users.trialRemindersSent,
+      isDemoAccount: users.isDemoAccount,
     })
       .from(users)
       .where(and(
@@ -37,7 +38,7 @@ async function checkAndSendTrialReminders() {
       ));
     
     // Filter out demo users
-    const realUsers = trialingUsers.filter(u => !isDemoId(u.id));
+    const realUsers = trialingUsers.filter(u => !isDemoId(u.id) && !u.isDemoAccount);
     
     console.log(`[TRIAL-SCHEDULER] Found ${realUsers.length} trialing users to check`);
     

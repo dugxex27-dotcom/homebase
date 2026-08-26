@@ -1,6 +1,6 @@
 import { sendFcmMulticast, isFcmConfigured } from './firebase-admin';
 import { storage } from './storage';
-import { isQaAccountUserId } from './qa-access';
+import { isSyntheticAccountUserId } from './qa-access';
 import type { PushToken } from '@workspace/db';
 
 interface PushPayload {
@@ -16,8 +16,8 @@ class PushNotificationService {
   }
 
   async sendToUser(userId: string, payload: PushPayload): Promise<boolean> {
-    if (await isQaAccountUserId(userId)) {
-      console.log('[PUSH] Skipping push notification for QA recipient');
+    if (await isSyntheticAccountUserId(userId)) {
+      console.log('[PUSH] Skipping push notification for QA/demo recipient');
       return false;
     }
     if (!this.isConfigured()) {

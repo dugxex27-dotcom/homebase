@@ -6953,7 +6953,7 @@ class DbStorage implements IStorage {
     const rows = await db.select({ review: contractorReviews }).from(contractorReviews)
       .innerJoin(contractors, eq(contractorReviews.contractorId, contractors.id))
       .innerJoin(users, eq(contractors.userId, users.id))
-      .where(and(eq(contractorReviews.contractorId, contractorId), eq(users.isQaAccount, false)))
+      .where(and(eq(contractorReviews.contractorId, contractorId), eq(users.isQaAccount, false), eq(users.isDemoAccount, false)))
       .orderBy(desc(contractorReviews.createdAt));
     return rows.map(row => row.review);
   }
@@ -6961,7 +6961,7 @@ class DbStorage implements IStorage {
   async getReviewsByHomeowner(homeownerId: string): Promise<ContractorReview[]> {
     const rows = await db.select({ review: contractorReviews }).from(contractorReviews)
       .innerJoin(users, eq(contractorReviews.homeownerId, users.id))
-      .where(and(eq(contractorReviews.homeownerId, homeownerId), eq(users.isQaAccount, false)))
+      .where(and(eq(contractorReviews.homeownerId, homeownerId), eq(users.isQaAccount, false), eq(users.isDemoAccount, false)))
       .orderBy(desc(contractorReviews.createdAt));
     return rows.map(row => row.review);
   }
@@ -8145,7 +8145,7 @@ class DbStorage implements IStorage {
     maxDistance?: number;
   }): Promise<(Contractor & { isBoosted?: boolean })[]> {
     let results = await db.select().from(contractors);
-    const qaUsers = await db.select({ id: users.id }).from(users).where(eq(users.isQaAccount, true));
+    const qaUsers = await db.select({ id: users.id }).from(users).where(or(eq(users.isQaAccount, true), eq(users.isDemoAccount, true)));
     const qaUserIds = new Set(qaUsers.map(user => user.id));
     results = results.filter(contractor => !qaUserIds.has(contractor.userId));
 
@@ -8218,7 +8218,7 @@ class DbStorage implements IStorage {
       })
       .from(companies)
       .innerJoin(users, eq(users.companyId, companies.id))
-      .where(and(eq(users.companyRole, 'owner'), eq(users.isQaAccount, false)));
+      .where(and(eq(users.companyRole, 'owner'), eq(users.isQaAccount, false), eq(users.isDemoAccount, false)));
     
     // Transform company data to contractor format
     let results = companyResults.map(c => ({
@@ -8543,7 +8543,7 @@ class DbStorage implements IStorage {
     const result = await db.select({ contractor: contractors })
       .from(contractors)
       .innerJoin(users, eq(contractors.userId, users.id))
-      .where(and(eq(contractors.id, contractorId), eq(users.isQaAccount, false)))
+      .where(and(eq(contractors.id, contractorId), eq(users.isQaAccount, false), eq(users.isDemoAccount, false)))
       .limit(1);
     return result[0]?.contractor;
   }
@@ -8888,7 +8888,7 @@ class DbStorage implements IStorage {
     const result = await db.select({ contractor: contractors })
       .from(contractors)
       .innerJoin(users, eq(contractors.userId, users.id))
-      .where(and(eq(contractors.id, id), eq(users.isQaAccount, false)))
+      .where(and(eq(contractors.id, id), eq(users.isQaAccount, false), eq(users.isDemoAccount, false)))
       .limit(1);
     return result[0]?.contractor;
   }
@@ -8898,7 +8898,7 @@ class DbStorage implements IStorage {
     const result = await db.select({ contractor: contractors })
       .from(contractors)
       .innerJoin(users, eq(contractors.userId, users.id))
-      .where(and(eq(contractors.userId, userId), eq(users.isQaAccount, false)))
+      .where(and(eq(contractors.userId, userId), eq(users.isQaAccount, false), eq(users.isDemoAccount, false)))
       .limit(1);
     return result[0]?.contractor;
   }
@@ -9441,7 +9441,7 @@ class DbStorage implements IStorage {
       conditions.push(eq(errorLogs.userId, filters.userId));
     }
 
-    const qaUsers = await db.select({ id: users.id }).from(users).where(eq(users.isQaAccount, true));
+    const qaUsers = await db.select({ id: users.id }).from(users).where(or(eq(users.isQaAccount, true), eq(users.isDemoAccount, true)));
     if (qaUsers.length > 0) {
       const qaUserIds = qaUsers.map(user => user.id);
       conditions.push(or(isNull(errorLogs.userId), not(inArray(errorLogs.userId, qaUserIds))));
@@ -9468,7 +9468,7 @@ class DbStorage implements IStorage {
       .select({ error: errorLogs })
       .from(errorLogs)
       .leftJoin(users, eq(errorLogs.userId, users.id))
-      .where(and(eq(errorLogs.id, id), or(isNull(users.isQaAccount), eq(users.isQaAccount, false))));
+      .where(and(eq(errorLogs.id, id), or(isNull(users.isQaAccount), and(eq(users.isQaAccount, false), eq(users.isDemoAccount, false)))));
     return result[0]?.error;
   }
 
@@ -9526,7 +9526,7 @@ class DbStorage implements IStorage {
   }> {
     try {
       // Query actual database for user counts - include ALL users, not just non-cancelled
-      const allDbUsers = await db.select().from(users).where(eq(users.isQaAccount, false));
+      const allDbUsers = await db.select().from(users).where(and(eq(users.isQaAccount, false), eq(users.isDemoAccount, false)));
       
       console.log("[getAdminStats] Raw database query returned:", allDbUsers.length, "total rows");
       
@@ -10558,12 +10558,12 @@ class DbStorage implements IStorage {
 
   async getSearchAnalytics(filters?: { zipCode?: string; limit?: number }): Promise<SearchAnalytics[]> {
     const allResults = await db
-      .select({ analytics: searchAnalytics, isQaAccount: users.isQaAccount })
+      .select({ analytics: searchAnalytics, isQaAccount: users.isQaAccount, isDemoAccount: users.isDemoAccount })
       .from(searchAnalytics)
       .leftJoin(users, eq(searchAnalytics.userId, users.id))
       .orderBy(desc(searchAnalytics.createdAt));
     let filtered = allResults
-      .filter(row => row.isQaAccount !== true)
+      .filter(row => row.isQaAccount !== true && row.isDemoAccount !== true)
       .map(row => row.analytics);
     if (filters?.zipCode) {
       filtered = filtered.filter(a => a.userZipCode === filters.zipCode);
@@ -10576,7 +10576,7 @@ class DbStorage implements IStorage {
 
   // Analytics series - DATABASE BACKED (derived from DB users table)
   async getActiveUsersSeries(days: number): Promise<Array<{ date: string; count: number }>> {
-    const allUsers = await db.select({ createdAt: users.createdAt }).from(users).where(eq(users.isQaAccount, false));
+    const allUsers = await db.select({ createdAt: users.createdAt }).from(users).where(and(eq(users.isQaAccount, false), eq(users.isDemoAccount, false)));
     const now = new Date();
     const series: Array<{ date: string; count: number }> = [];
     for (let i = days - 1; i >= 0; i--) {
@@ -10600,7 +10600,7 @@ class DbStorage implements IStorage {
       .select({ referralCredit: referralCredits })
       .from(referralCredits)
       .innerJoin(users, eq(referralCredits.referrerUserId, users.id))
-      .where(eq(users.isQaAccount, false));
+      .where(and(eq(users.isQaAccount, false), eq(users.isDemoAccount, false)));
     const now = new Date();
     const series: Array<{ date: string; count: number }> = [];
     for (let i = days - 1; i >= 0; i--) {
@@ -10621,7 +10621,7 @@ class DbStorage implements IStorage {
 
   async getContractorSignupsSeries(days: number): Promise<Array<{ date: string; count: number }>> {
     const allContractors = await db.select({ createdAt: users.createdAt }).from(users)
-      .where(and(eq(users.role, 'contractor'), eq(users.isQaAccount, false)));
+      .where(and(eq(users.role, 'contractor'), eq(users.isQaAccount, false), eq(users.isDemoAccount, false)));
     const now = new Date();
     const series: Array<{ date: string; count: number }> = [];
     for (let i = days - 1; i >= 0; i--) {
@@ -10648,12 +10648,12 @@ class DbStorage implements IStorage {
     revenueSeries: Array<{ date: string; amount: number }>;
   }> {
     const activeSubscribers = await db.select().from(users)
-      .where(and(eq(users.subscriptionStatus, 'active'), eq(users.isQaAccount, false)));
+      .where(and(eq(users.subscriptionStatus, 'active'), eq(users.isQaAccount, false), eq(users.isDemoAccount, false)));
     const cycleEventRows = await db
       .select({ event: subscriptionCycleEvents })
       .from(subscriptionCycleEvents)
       .innerJoin(users, eq(subscriptionCycleEvents.userId, users.id))
-      .where(eq(users.isQaAccount, false));
+      .where(and(eq(users.isQaAccount, false), eq(users.isDemoAccount, false)));
     const cycleEvents = cycleEventRows.map(row => row.event);
     const mrr = activeSubscribers.length * 20;
     const totalRevenue = cycleEvents
@@ -10690,7 +10690,7 @@ class DbStorage implements IStorage {
     totalActiveUsers: number;
     churnSeries: Array<{ date: string; rate: number }>;
   }> {
-    const allUsers = await db.select().from(users).where(eq(users.isQaAccount, false));
+    const allUsers = await db.select().from(users).where(and(eq(users.isQaAccount, false), eq(users.isDemoAccount, false)));
     const churnedUsers = allUsers.filter(u => u.accountCancelledAt != null).length;
     const totalActiveUsers = allUsers.filter(u => u.subscriptionStatus === 'active').length;
     const churnRate = totalActiveUsers > 0 ? (churnedUsers / (churnedUsers + totalActiveUsers)) * 100 : 0;
@@ -10726,35 +10726,35 @@ class DbStorage implements IStorage {
     const [taskCompletionsArr, messagesArr, proposalsArr, serviceRecordsArr, housesArr, activeBoostsArr, expiredBoostsArr, cancelledBoostsArr] = await Promise.all([
       db.select({ id: taskCompletions.id }).from(taskCompletions)
         .innerJoin(users, eq(taskCompletions.homeownerId, users.id))
-        .where(eq(users.isQaAccount, false)),
+        .where(and(eq(users.isQaAccount, false), eq(users.isDemoAccount, false))),
       db.select({ id: messages.id }).from(messages)
         .innerJoin(conversations, eq(messages.conversationId, conversations.id))
         .where(sql`
           ${conversations.homeownerId} NOT IN (
-            SELECT ${users.id} FROM ${users} WHERE ${users.isQaAccount} = true
+            SELECT ${users.id} FROM ${users} WHERE ${users.isQaAccount} = true OR ${users.isDemoAccount} = true
           )
           AND ${conversations.contractorId} NOT IN (
-            SELECT ${users.id} FROM ${users} WHERE ${users.isQaAccount} = true
+            SELECT ${users.id} FROM ${users} WHERE ${users.isQaAccount} = true OR ${users.isDemoAccount} = true
           )
         `),
       db.select({ id: proposals.id }).from(proposals)
         .innerJoin(users, eq(proposals.contractorId, users.id))
-        .where(eq(users.isQaAccount, false)),
+        .where(and(eq(users.isQaAccount, false), eq(users.isDemoAccount, false))),
       db.select({ id: serviceRecords.id }).from(serviceRecords)
         .innerJoin(users, eq(serviceRecords.contractorId, users.id))
-        .where(eq(users.isQaAccount, false)),
+        .where(and(eq(users.isQaAccount, false), eq(users.isDemoAccount, false))),
       db.select({ id: houses.id }).from(houses)
         .innerJoin(users, eq(houses.homeownerId, users.id))
-        .where(eq(users.isQaAccount, false)),
+        .where(and(eq(users.isQaAccount, false), eq(users.isDemoAccount, false))),
       db.select({ id: contractorBoosts.id }).from(contractorBoosts)
         .innerJoin(users, eq(contractorBoosts.contractorId, users.id))
-        .where(and(eq(users.isQaAccount, false), eq(contractorBoosts.status, 'active'), gte(contractorBoosts.endDate, now))),
+        .where(and(eq(users.isQaAccount, false), eq(users.isDemoAccount, false), eq(contractorBoosts.status, 'active'), gte(contractorBoosts.endDate, now))),
       db.select({ id: contractorBoosts.id }).from(contractorBoosts)
         .innerJoin(users, eq(contractorBoosts.contractorId, users.id))
-        .where(and(eq(users.isQaAccount, false), or(eq(contractorBoosts.status, 'expired'), and(eq(contractorBoosts.status, 'active'), sql`${contractorBoosts.endDate} < ${now}`)))),
+        .where(and(eq(users.isQaAccount, false), eq(users.isDemoAccount, false), or(eq(contractorBoosts.status, 'expired'), and(eq(contractorBoosts.status, 'active'), sql`${contractorBoosts.endDate} < ${now}`)))),
       db.select({ id: contractorBoosts.id }).from(contractorBoosts)
         .innerJoin(users, eq(contractorBoosts.contractorId, users.id))
-        .where(and(eq(users.isQaAccount, false), eq(contractorBoosts.status, 'cancelled'))),
+        .where(and(eq(users.isQaAccount, false), eq(users.isDemoAccount, false), eq(contractorBoosts.status, 'cancelled'))),
     ]);
     return [
       { feature: 'Task Completions', count: taskCompletionsArr.length },

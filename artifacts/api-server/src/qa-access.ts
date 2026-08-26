@@ -50,6 +50,19 @@ export async function isQaAccountUserId(userId: string): Promise<boolean> {
   return user?.isQaAccount === true;
 }
 
+/**
+ * True for QA fixtures AND public-facing demo accounts. Demo accounts stay
+ * fully interactive in-app (unlike QA, they are not mutation-blocked or
+ * admin-denied — see blockQaOperationalMutations/requireAdmin), but neither
+ * should trigger real outbound email/SMS/push to their synthetic contact
+ * info. Use this for notification suppression; use isQaAccountUserId directly
+ * where QA-specific access-control semantics are actually intended.
+ */
+export async function isSyntheticAccountUserId(userId: string): Promise<boolean> {
+  const user = await storage.getUser(userId);
+  return user?.isQaAccount === true || user?.isDemoAccount === true;
+}
+
 export const requireQaAdminReadOnly: RequestHandler = async (req: any, res, next) => {
   if (req.method !== "GET" && req.method !== "HEAD") {
     return res.status(405).json({ message: "QA admin access is read-only" });

@@ -54,6 +54,7 @@ async function sendExpiredTrialReengagementEmails() {
       .where(and(
         isNotNull(users.email),
          eq(users.isQaAccount, false),
+         eq(users.isDemoAccount, false),
         or(
           // Trialing with expired trial
           and(

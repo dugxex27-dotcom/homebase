@@ -2,7 +2,7 @@ import { smsService } from './sms-service';
 import { emailService } from './email-service';
 import { pushNotificationService } from './push-notification-service';
 import { isDemoId } from './storage';
-import { isQaAccountUserId } from './qa-access';
+import { isSyntheticAccountUserId } from './qa-access';
 
 export async function sendWelcomeNotifications(
   userId: string,
@@ -15,8 +15,8 @@ export async function sendWelcomeNotifications(
     console.log('[NOTIFICATIONS] Skipping welcome for demo user');
     return results;
   }
-  if (await isQaAccountUserId(userId)) {
-    console.log('[NOTIFICATIONS] Skipping welcome for QA user');
+  if (await isSyntheticAccountUserId(userId)) {
+    console.log('[NOTIFICATIONS] Skipping welcome for QA/demo user');
     return results;
   }
 
@@ -50,8 +50,8 @@ export async function sendTrialExpiringNotifications(
     console.log('[NOTIFICATIONS] Skipping trial reminder for demo user');
     return results;
   }
-  if (await isQaAccountUserId(userId)) {
-    console.log('[NOTIFICATIONS] Skipping trial reminder for QA user');
+  if (await isSyntheticAccountUserId(userId)) {
+    console.log('[NOTIFICATIONS] Skipping trial reminder for QA/demo user');
     return results;
   }
 

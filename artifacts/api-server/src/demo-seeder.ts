@@ -98,6 +98,7 @@ export async function seedHomeownerDemo(log: DemoLog): Promise<SeedOutcome> {
       trialEndsAt,
       maxHousesAllowed: 2,
       connectionCode: "DEMO4567",
+      isDemoAccount: true,
     });
   }
 
@@ -705,6 +706,7 @@ export async function seedContractorDemo(log: DemoLog): Promise<SeedOutcome> {
       trialEndsAt,
       companyId: null,
       companyRole: null,
+      isDemoAccount: true,
     });
   }
 
@@ -1048,6 +1050,7 @@ export async function seedAgentDemo(log: DemoLog): Promise<SeedOutcome> {
       subscriptionStatus: "active",
       companyId: null,
       companyRole: null,
+      isDemoAccount: true,
     });
   }
 
@@ -1102,10 +1105,11 @@ export async function seedAgentDemo(log: DemoLog): Promise<SeedOutcome> {
             subscriptionStatus: referral.subscriptionStatus,
             trialEndsAt,
             maxHousesAllowed: referral.role === "homeowner" ? 2 : null,
+            isDemoAccount: true,
           })
           .onConflictDoUpdate({
             target: users.id,
-            set: { subscriptionStatus: referral.subscriptionStatus, trialEndsAt },
+            set: { subscriptionStatus: referral.subscriptionStatus, trialEndsAt, isDemoAccount: true },
           });
         referralUserInserted++;
 

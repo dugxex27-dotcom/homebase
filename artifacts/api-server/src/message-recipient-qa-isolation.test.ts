@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { isQaAccountUserId } = vi.hoisted(() => ({
-  isQaAccountUserId: vi.fn(),
+const { isSyntheticAccountUserId } = vi.hoisted(() => ({
+  isSyntheticAccountUserId: vi.fn(),
 }));
 
 vi.mock("./qa-access", () => ({
-  isQaAccountUserId,
+  isSyntheticAccountUserId,
 }));
 
 vi.mock("./storage", () => ({
@@ -32,7 +32,7 @@ import { pushNotificationService } from "./push-notification-service";
 describe("new-message QA recipient isolation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    isQaAccountUserId.mockResolvedValue(true);
+    isSyntheticAccountUserId.mockResolvedValue(true);
   });
 
   it("suppresses email, SMS, and push before a QA recipient can reach a provider", async () => {
@@ -40,6 +40,6 @@ describe("new-message QA recipient isolation", () => {
     await expect(smsService.sendNewMessageNotification("qa-recipient", "Normal User", "Hello")).resolves.toBe(false);
     await expect(pushNotificationService.sendNewMessagePush("qa-recipient", "Normal User")).resolves.toBe(false);
 
-    expect(isQaAccountUserId).toHaveBeenCalledWith("qa-recipient");
+    expect(isSyntheticAccountUserId).toHaveBeenCalledWith("qa-recipient");
   });
 });

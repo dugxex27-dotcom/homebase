@@ -1,6 +1,6 @@
 import sgMail from '@sendgrid/mail';
 import { storage } from './storage';
-import { isQaAccountUserId } from './qa-access';
+import { isSyntheticAccountUserId } from './qa-access';
 import { db } from './db';
 import { notificationPreferences } from '@workspace/db';
 import { eq, and } from 'drizzle-orm';
@@ -626,8 +626,8 @@ export async function sendNewMessageEmail(
   senderName: string,
   messagePreview: string
 ): Promise<boolean> {
-  if (await isQaAccountUserId(userId)) {
-    console.log('[EMAIL] Skipping new-message email for QA recipient');
+  if (await isSyntheticAccountUserId(userId)) {
+    console.log('[EMAIL] Skipping new-message email for QA/demo recipient');
     return false;
   }
   if (!apiKey) {

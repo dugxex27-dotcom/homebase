@@ -44,6 +44,7 @@ async function sendOnboardingNudges(): Promise<void> {
         and(
           eq(users.role, 'homeowner'),
           eq(users.isQaAccount, false),
+          eq(users.isDemoAccount, false),
           isNotNull(users.email),
           isNull(onboardingProgress.completedAt),
           lt(users.createdAt, nudgeCutoff),

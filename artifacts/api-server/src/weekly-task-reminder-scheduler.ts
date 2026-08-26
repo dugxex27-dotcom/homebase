@@ -133,6 +133,7 @@ async function sendWeeklyTaskReminders() {
       .where(and(
         eq(users.role, 'homeowner'),
         eq(users.isQaAccount, false),
+        eq(users.isDemoAccount, false),
         isNotNull(users.email)
       ));
     

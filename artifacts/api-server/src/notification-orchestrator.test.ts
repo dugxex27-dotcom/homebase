@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { isQaAccountUserId, sendWelcomeSMS, sendWelcomeEmail, sendWelcomePush } = vi.hoisted(() => ({
-  isQaAccountUserId: vi.fn(),
+const { isSyntheticAccountUserId, sendWelcomeSMS, sendWelcomeEmail, sendWelcomePush } = vi.hoisted(() => ({
+  isSyntheticAccountUserId: vi.fn(),
   sendWelcomeSMS: vi.fn(),
   sendWelcomeEmail: vi.fn(),
   sendWelcomePush: vi.fn(),
@@ -12,7 +12,7 @@ vi.mock("./storage", () => ({
 }));
 
 vi.mock("./qa-access", () => ({
-  isQaAccountUserId,
+  isSyntheticAccountUserId,
 }));
 
 vi.mock("./sms-service", () => ({
@@ -35,7 +35,7 @@ describe("notification orchestrator QA isolation", () => {
   });
 
   it("does not fan out email, SMS, or push for a QA account", async () => {
-    isQaAccountUserId.mockResolvedValue(true);
+    isSyntheticAccountUserId.mockResolvedValue(true);
 
     await expect(sendWelcomeNotifications("qa-user", "QA User", "homeowner")).resolves.toEqual({
       sms: false,
@@ -49,7 +49,7 @@ describe("notification orchestrator QA isolation", () => {
   });
 
   it("continues normal fan-out for a non-QA account", async () => {
-    isQaAccountUserId.mockResolvedValue(false);
+    isSyntheticAccountUserId.mockResolvedValue(false);
     sendWelcomeSMS.mockResolvedValue(true);
     sendWelcomeEmail.mockResolvedValue(true);
     sendWelcomePush.mockResolvedValue(true);

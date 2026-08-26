@@ -108,7 +108,7 @@ async function checkForecastRemindersForAllHomes(): Promise<void> {
   try {
     const homeowners = await db.select({ id: users.id, email: users.email, firstName: users.firstName })
       .from(users)
-      .where(and(eq(users.role, 'homeowner'), eq(users.isQaAccount, false)));
+      .where(and(eq(users.role, 'homeowner'), eq(users.isQaAccount, false), eq(users.isDemoAccount, false)));
 
     let processed = 0;
     let remindersSent = 0;

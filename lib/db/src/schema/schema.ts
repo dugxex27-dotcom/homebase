@@ -274,6 +274,11 @@ export const users = pgTable("users", {
   isQaAccount: boolean("is_qa_account").notNull().default(false),
   qaAccessScopes: text("qa_access_scopes").array().notNull().default(sql`ARRAY[]::text[]`),
   qaFixtureKey: varchar("qa_fixture_key", { length: 80 }).unique(),
+  // Public-facing "Try Demo" accounts (seeded via demo-seeder.ts). Unlike QA
+  // accounts they must stay fully interactive (no mutation blocking, no admin
+  // access denial) but their activity must still be excluded from real
+  // business analytics, search/directory results, and outbound notifications.
+  isDemoAccount: boolean("is_demo_account").notNull().default(false),
   // Home setup wizard for new homeowners (7-step post-signup wizard)
   homeWizardStep: integer("home_wizard_step").notNull().default(0), // 0 = not started, 1-7 = current step, 8 = completed
   homeWizardCompletedAt: timestamp("home_wizard_completed_at"),
@@ -289,6 +294,7 @@ export const users = pgTable("users", {
   index("IDX_users_invite_token").on(table.inviteToken),
   index("IDX_users_apple_original_transaction_id").on(table.appleOriginalTransactionId),
   index("IDX_users_is_qa_account").on(table.isQaAccount),
+  index("IDX_users_is_demo_account").on(table.isDemoAccount),
 ]);
 
 // Registry for deterministic, production-safe QA fixture roots. It enables
