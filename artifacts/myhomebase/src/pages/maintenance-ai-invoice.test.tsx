@@ -308,6 +308,111 @@ describe("Maintenance Page — AI invoice upload: 409 DUPLICATE_INVOICE", () => 
 
 // ---------------------------------------------------------------------------
 
+describe("Maintenance Page — AI invoice upload: separate camera vs. file upload inputs (#881)", () => {
+  it("keeps the camera input camera-only and lets the new Upload File input accept a PDF, forwarded correctly", async () => {
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      status: 200,
+      ok: true,
+      json: async () => ({
+        id: "ana-pdf-001",
+        status: "pending",
+        serviceDescription: "PDF invoice test",
+        serviceDate: "2025-05-01",
+        totalAmount: "100.00",
+        contractorName: "Jane",
+        contractorCompany: "Jane Co",
+        homeArea: "roof",
+        serviceType: "maintenance",
+        diyVerified: false,
+        maintenanceLogId: null,
+        houseId: "house-1",
+        homeownerId: "user-001",
+        createdAt: "2025-05-01T00:00:00.000Z",
+        updatedAt: "2025-05-01T00:00:00.000Z",
+      }),
+    } as Response);
+
+    await renderAndWaitForHouse();
+    await openAiDialog();
+
+    // "Take Photo" (camera) input must remain exactly as before: image-only, camera capture
+    const cameraInput = screen.getByTestId("input-ai-invoice-camera") as HTMLInputElement;
+    expect(cameraInput.accept).toBe("image/*");
+    expect(cameraInput.getAttribute("capture")).toBe("environment");
+
+    // New "Upload File" input must accept photo or PDF, with no camera restriction
+    const fileInput = screen.getByTestId("input-ai-invoice-file") as HTMLInputElement;
+    expect(fileInput.accept).toBe("image/*,.pdf");
+    expect(fileInput.getAttribute("capture")).toBeNull();
+
+    const pdfFile = new File(["%PDF-1.4 fake pdf content"], "invoice.pdf", {
+      type: "application/pdf",
+    });
+    await userEvent.upload(fileInput, pdfFile);
+
+    const analyzeBtn = screen.getByRole("button", { name: /analyze with ai/i });
+    await userEvent.click(analyzeBtn);
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/invoice-analyses/analyze",
+      expect.objectContaining({ method: "POST" }),
+    );
+    const [, callOpts] = (global.fetch as any).mock.calls[0];
+    const body = JSON.parse(callOpts.body);
+    expect(body.invoiceFiles).toHaveLength(1);
+    expect(body.invoiceFiles[0].fileType).toBe("application/pdf");
+    expect(body.invoiceFiles[0].fileName).toBe("invoice.pdf");
+  });
+
+  it("accepts a regular image file through the Upload File input with no recency check applied", async () => {
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      status: 200,
+      ok: true,
+      json: async () => ({
+        id: "ana-img-001",
+        status: "pending",
+        diyVerified: false,
+        houseId: "house-1",
+        homeownerId: "user-001",
+        createdAt: "2025-05-01T00:00:00.000Z",
+        updatedAt: "2025-05-01T00:00:00.000Z",
+      }),
+    } as Response);
+
+    await renderAndWaitForHouse();
+    await openAiDialog();
+
+    const fileInput = screen.getByTestId("input-ai-invoice-file") as HTMLInputElement;
+    // An old gallery photo — the camera-recency filter (filterCameraFiles) would reject
+    // this, but the Upload File input must not run that filter at all.
+    const oldImage = new File(["fake image bytes"], "old-photo.jpg", { type: "image/jpeg" });
+    Object.defineProperty(oldImage, "lastModified", {
+      value: Date.now() - 1000 * 60 * 60 * 24 * 30, // 30 days old
+    });
+
+    await userEvent.upload(fileInput, oldImage);
+
+    const analyzeBtn = screen.getByRole("button", { name: /analyze with ai/i });
+    await userEvent.click(analyzeBtn);
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/invoice-analyses/analyze",
+      expect.objectContaining({ method: "POST" }),
+    );
+    const [, callOpts] = (global.fetch as any).mock.calls[0];
+    const body = JSON.parse(callOpts.body);
+    expect(body.invoiceFiles).toHaveLength(1);
+    expect(body.invoiceFiles[0].fileType).toBe("image/jpeg");
+
+    // No "camera photo required" destructive toast should have fired
+    const destructiveCalls = flags.toastSpy.mock.calls.filter(
+      (args: unknown[]) =>
+        (args[0] as { variant?: string })?.variant === "destructive",
+    );
+    expect(destructiveCalls).toHaveLength(0);
+  });
+});
+
 describe("Maintenance Page — AI invoice upload: 200 success path", () => {
   it("shows the review step after a successful analysis (no duplicate UI)", async () => {
     global.fetch = vi.fn().mockResolvedValueOnce({

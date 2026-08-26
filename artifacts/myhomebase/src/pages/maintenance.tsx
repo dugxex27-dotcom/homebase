@@ -26,7 +26,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { HomeownerFeatureGate, HomeownerTrialBanner, FreeUserUpgradePrompt } from "@/components/homeowner-feature-gate";
 import { ActivatingPlanBanner } from "@/components/activating-plan-banner";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
-import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, ChevronUp, Settings, Plus, Edit, Trash2, Home, FileText, Building2, User, Building, Phone, MessageSquare, AlertTriangle, Thermometer, Cloud, Monitor, Book, ExternalLink, Upload, Trophy, Mail, Handshake, Globe, TrendingDown, PiggyBank, Truck, CheckCircle2, Circle, Download, X, Search, Loader2, Scan, AlertCircle, Sparkles, RefreshCw, ChevronRight } from "lucide-react";
+import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, ChevronUp, Settings, Plus, Edit, Trash2, Home, FileText, Building2, User, Building, Phone, MessageSquare, AlertTriangle, Thermometer, Cloud, Monitor, Book, ExternalLink, Upload, Trophy, Mail, Handshake, Globe, TrendingDown, PiggyBank, Truck, CheckCircle2, Circle, Download, X, Search, Loader2, Scan, AlertCircle, Sparkles, RefreshCw, ChevronRight, Camera, FileUp } from "lucide-react";
 import { AppointmentScheduler } from "@/components/appointment-scheduler";
 import { CustomMaintenanceTasks } from "@/components/custom-maintenance-tasks";
 import HouseMap from "@/components/house-map";
@@ -4677,13 +4677,34 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                 {aiCompletionMethod === "contractor" ? (
                   <div className="space-y-2">
                     <label className="text-sm font-medium" style={{ color: 'var(--purple-deep)' }}>
-                      Invoice / Receipt Photos *
+                      Invoice / Receipt <span className="text-muted-foreground text-xs">(photo or PDF)</span> *
                     </label>
-                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-[#EEEDFE]" style={{ borderColor: 'var(--purple-light)' }}>
-                      <Upload className="w-8 h-8 mb-2" style={{ color: 'var(--purple)' }} />
-                      <span className="text-sm" style={{ color: 'var(--purple-deep)' }}>Take or upload invoice photos</span>
-                      <input type="file" className="hidden" accept="image/*" capture="environment" onChange={(e) => { const files = filterCameraFiles(Array.from(e.target.files || [])); if (files.length) setAiInvoiceFiles(prev => [...prev, ...files]); }} />
-                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="flex flex-col items-center justify-center h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-[#EEEDFE]" style={{ borderColor: 'var(--purple-light)' }}>
+                        <Camera className="w-6 h-6 mb-1" style={{ color: 'var(--purple)' }} />
+                        <span className="text-xs text-center" style={{ color: 'var(--purple-deep)' }}>Take Photo</span>
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept="image/*"
+                          capture="environment"
+                          data-testid="input-ai-invoice-camera"
+                          onChange={(e) => { const files = filterCameraFiles(Array.from(e.target.files || [])); if (files.length) setAiInvoiceFiles(prev => [...prev, ...files]); }}
+                        />
+                      </label>
+                      <label className="flex flex-col items-center justify-center h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-[#EEEDFE]" style={{ borderColor: 'var(--purple-light)' }}>
+                        <FileUp className="w-6 h-6 mb-1" style={{ color: 'var(--purple)' }} />
+                        <span className="text-xs text-center" style={{ color: 'var(--purple-deep)' }}>Upload File<br /><span className="text-[10px] text-muted-foreground">(photo or PDF)</span></span>
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept="image/*,.pdf"
+                          multiple
+                          data-testid="input-ai-invoice-file"
+                          onChange={(e) => { const files = Array.from(e.target.files || []); if (files.length) setAiInvoiceFiles(prev => [...prev, ...files]); }}
+                        />
+                      </label>
+                    </div>
                     {aiInvoiceFiles.length > 0 && <p className="text-xs text-[#079669]">{aiInvoiceFiles.length} file(s) selected</p>}
                   </div>
                 ) : (
