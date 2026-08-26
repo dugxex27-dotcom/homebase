@@ -309,6 +309,31 @@ function Router() {
     return <LoadingFallback />;
   }
 
+  // Sign-in / register pages must render at the SAME position in the component
+  // tree no matter what isAuthenticated is, or React remounts SignInHomeowner
+  // the instant registration flips isAuthenticated to true mid-flow — wiping
+  // its local wizard state (e.g. the in-progress "choose your plan" step) and
+  // bouncing the brand-new user back to the sign-in tab. Handling these paths
+  // here, before the isAuthenticated branch, keeps one stable mount point.
+  if (
+    currentPath === "/signin" ||
+    currentPath === "/signin/homeowner" ||
+    currentPath === "/signin/contractor" ||
+    currentPath === "/signin/agent"
+  ) {
+    return (
+      <UnauthenticatedLayout>
+        <RobotsManager authenticated={isAuthenticated} />
+        <ScrollToTop />
+        <BackToTop />
+        {currentPath === "/signin" && <RedirectTo to="/signin/homeowner" />}
+        {currentPath === "/signin/homeowner" && <SignInHomeowner />}
+        {currentPath === "/signin/contractor" && <SignInContractor />}
+        {currentPath === "/signin/agent" && <SignInAgent />}
+      </UnauthenticatedLayout>
+    );
+  }
+
   // Unauthenticated routes
   if (!isAuthenticated) {
     return (
@@ -329,10 +354,6 @@ function Router() {
           <Route path="/agent-onboarding">{() => { window.location.replace('/agent-onboarding.html'); return null; }}</Route>
           <Route path="/welcome">{() => { window.location.replace('/signin/homeowner'); return null; }}</Route>
           <Route path="/onboarding">{() => { window.location.replace('/signin/homeowner'); return null; }}</Route>
-          <Route path="/signin/homeowner" component={SignInHomeowner} />
-          <Route path="/signin/contractor" component={SignInContractor} />
-          <Route path="/signin/agent" component={SignInAgent} />
-          <Route path="/signin"><RedirectTo to="/signin/homeowner" /></Route>
           <Route path="/test-upload" component={TestUpload} />
           <Route path="/complete-profile" component={CompleteProfile} />
           <Route path="/referral-entry" component={ReferralEntry} />
@@ -374,12 +395,9 @@ function Router() {
   // Use server-provided isAdmin flag (more reliable than build-time env vars)
   const isAdmin = typedUser?.isAdmin === true;
 
-  // Sign-in/register pages must render without the sidebar layout so authenticated
-  // users (e.g. demo users) can register a new account without seeing the dashboard shell.
-  if (currentPath === "/signin") return <SignInHomeowner />;
-  if (currentPath === "/signin/homeowner") return <SignInHomeowner />;
-  if (currentPath === "/signin/contractor") return <SignInContractor />;
-  if (currentPath === "/signin/agent") return <SignInAgent />;
+  // Note: /signin, /signin/homeowner, /signin/contractor, and /signin/agent are
+  // handled above (before the isAuthenticated branch) so they keep one stable
+  // mount point across the auth-state transition — see the comment there.
 
   // Onboarding plan selection is a focused signup step, not a page within the
   // app proper — a brand-new user hasn't finished signing up yet and shouldn't
@@ -436,11 +454,8 @@ function Router() {
         <Route path="/terms-of-service" component={TermsOfService} />
         <Route path="/privacy-policy" component={PrivacyPolicy} />
         <Route path="/legal-disclaimer" component={LegalDisclaimer} />
-        <Route path="/signin"><RedirectTo to="/signin/homeowner" /></Route>
-        {/* Allow authenticated users to reach sign-in pages so they can register a new account */}
-        <Route path="/signin/homeowner" component={SignInHomeowner} />
-        <Route path="/signin/contractor" component={SignInContractor} />
-        <Route path="/signin/agent" component={SignInAgent} />
+        {/* /signin* paths are intercepted before this branch — see the comment
+            near the top of Router() — so no route for them is needed here. */}
         <Route path="/pay/invoice/:invoiceId" component={PayInvoice} />
         <Route path="/pay/success" component={PaymentSuccess} />
         <Route path="/pay/cancelled" component={PaymentCancelled} />
