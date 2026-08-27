@@ -1,24 +1,19 @@
 /**
- * HTTP-level tests: tech-seat-limit race condition fix
+ * HTTP-level tests: unified team-capacity race condition
  *
  * Covers:
  *  - POST /api/contractor/invite-tech — atomic row-locked (FOR UPDATE on the
  *    company row) transaction closes the read-count-then-insert race that
  *    previously let two concurrent invites both pass the seat-limit check and
- *    both insert, exceeding maxTechSeats.
+ *    both insert, exceeding the role-agnostic 50-person ceiling.
  *  - POST /api/contractor/bulk-import — same row lock wraps the whole import;
  *    each CSV row re-checks the seat count from inside the transaction (seeing
  *    its own earlier inserts), so a partial import (some rows succeed, the
  *    rest rejected once the limit is hit) is correctly reported and no
  *    concurrent request (another import, or a single invite) can interleave.
- *  - Seat-limit precedence is reconciled between the two routes: previously
- *    invite-tech defaulted to 3 seats and bulk-import defaulted to 10 seats
- *    when a company had no maxTechSeats override and its plan had no
- *    includedTechSeats value. Both now resolve identically (see
- *    resolveTechSeatLimit in routes.ts).
- *  - Normal single-invite and normal bulk-import (within limits) still work.
- *  - `maxTechSeats: null` (explicit unlimited / custom-contract accounts)
- *    bypasses the limit entirely on both routes.
+ *  - Tech, admin, manager, and dispatcher invitations share the same ceiling.
+ *  - Legacy role-specific company/plan limits no longer affect admission.
+ *  - Normal single-invite and bulk-import behavior remains intact.
  *
  * NOTE: registerRoutes() performs its own startup seeding (subscription
  * plans, etc.) via db.insert/db.update, so this file's mocks dispatch by the
@@ -253,15 +248,17 @@ function sessionHeader(session: Record<string, unknown>) {
 // ---------------------------------------------------------------------------
 
 interface SeatState {
-  companyMaxTechSeats: number | null | undefined; // undefined = column not overridden
-  planIncludedTechSeats: number | null;
-  additionalSeatPrice: string | null;
-  techIds: string[]; // active (non-removed) tech user ids — grows as inserts happen
+  actorCompanyRole: "owner" | "admin";
+  companyMaxTechSeats: number | null | undefined; // legacy value, intentionally ignored
+  planIncludedTechSeats: number | null; // legacy value, intentionally ignored
+  additionalSeatPrice: string | null; // legacy value, intentionally ignored
+  techIds: string[]; // all reserved company-member ids, including the owner and pending invites
   existingUsersByEmail: Record<string, any>;
 }
 
 function freshState(overrides: Partial<SeatState> = {}): SeatState {
   return {
+    actorCompanyRole: "owner",
     companyMaxTechSeats: undefined,
     planIncludedTechSeats: null,
     additionalSeatPrice: null,
@@ -295,8 +292,13 @@ function wireDbMocks(state: SeatState, capturedInserts: any[]) {
             // requireNotSuspended / getUserStatusCached / recheckSuspensionFromDb
             return hybrid(Promise.resolve([{ status: "active" }]));
           }
+          if (projection && "count" in projection) {
+            return hybrid(Promise.resolve([{ count: state.techIds.length }]));
+          }
+          if (projection && "companyRole" in projection && Object.keys(projection).length === 1) {
+            return hybrid(Promise.resolve([{ companyRole: state.actorCompanyRole }]));
+          }
           if (projection && "id" in projection && Object.keys(projection).length === 1) {
-            // countActiveTechs
             return hybrid(Promise.resolve(state.techIds.map((id) => ({ id }))));
           }
           // existing-user-by-email lookup (bare select())
@@ -314,7 +316,7 @@ function wireDbMocks(state: SeatState, capturedInserts: any[]) {
       }
       if (table === users) {
         capturedInserts.push(payload);
-        if (payload.companyRole === "tech") state.techIds.push(payload.id);
+        state.techIds.push(payload.id);
         return Promise.resolve(undefined);
       }
       return Promise.resolve(undefined);
@@ -364,12 +366,12 @@ afterEach(() => {
 describe("POST /api/contractor/invite-tech — seat-limit race condition", () => {
   it("allows a normal single invite under the limit", async () => {
     const app = await buildApp();
-    const state = freshState({ companyMaxTechSeats: 3, techIds: ["t1"] });
+    const state = freshState({ companyMaxTechSeats: 3, techIds: ["owner"] });
     const captured: any[] = [];
     wireDbMocks(state, captured);
 
     const res = await request(app)
-      .post("/api/contractor/invite-tech")
+      .post("/api/contractor/invite-team-member")
       .set("x-test-session", sessionHeader(adminSession()))
       .send({ email: "newtech@example.com", role: "tech" });
 
@@ -378,9 +380,40 @@ describe("POST /api/contractor/invite-tech — seat-limit race condition", () =>
     expect(mockSendTechInviteEmail).toHaveBeenCalledTimes(1);
   });
 
+  it("allows an owner to invite an admin", async () => {
+    const app = await buildApp();
+    const state = freshState({ actorCompanyRole: "owner", techIds: ["owner"] });
+    const captured: any[] = [];
+    wireDbMocks(state, captured);
+
+    const res = await request(app)
+      .post("/api/contractor/invite-team-member")
+      .set("x-test-session", sessionHeader(adminSession()))
+      .send({ email: "newadmin@example.com", role: "admin" });
+
+    expect(res.status).toBe(200);
+    expect(captured[0]).toMatchObject({ email: "newadmin@example.com", companyRole: "admin" });
+  });
+
+  it("prevents an admin from inviting another admin", async () => {
+    const app = await buildApp();
+    const state = freshState({ actorCompanyRole: "admin", techIds: ["owner", "admin"] });
+    const captured: any[] = [];
+    wireDbMocks(state, captured);
+
+    const res = await request(app)
+      .post("/api/contractor/invite-team-member")
+      .set("x-test-session", sessionHeader(adminSession({ companyRole: "admin" })))
+      .send({ email: "blocked-admin@example.com", role: "admin" });
+
+    expect(res.status).toBe(403);
+    expect(res.body.message).toMatch(/only the company owner/i);
+    expect(captured).toHaveLength(0);
+  });
+
   it("blocks a normal single invite already at the limit", async () => {
     const app = await buildApp();
-    const state = freshState({ companyMaxTechSeats: 2, techIds: ["t1", "t2"] });
+    const state = freshState({ companyMaxTechSeats: 2, techIds: Array.from({ length: 50 }, (_, i) => `member-${i}`) });
     const captured: any[] = [];
     wireDbMocks(state, captured);
 
@@ -394,12 +427,7 @@ describe("POST /api/contractor/invite-tech — seat-limit race condition", () =>
     expect(captured).toHaveLength(0);
   });
 
-  it("honors a large explicit company.maxTechSeats override (e.g. an enterprise/custom-contract account)", async () => {
-    // There is no "null means unlimited" bypass wired up for tech seats
-    // (unlike houses' maxHousesAllowed === null) — enterprise-tier accounts
-    // are expected to carry a large explicit numeric override instead. A
-    // literal DB `null` here falls through to the plan/default, it does not
-    // bypass the check (see resolveTechSeatLimit's doc comment in routes.ts).
+  it("ignores a legacy company.maxTechSeats override and enforces the unified ceiling", async () => {
     const app = await buildApp();
     const state = freshState({ companyMaxTechSeats: 100, techIds: Array.from({ length: 50 }, (_, i) => `t${i}`) });
     const captured: any[] = [];
@@ -410,30 +438,31 @@ describe("POST /api/contractor/invite-tech — seat-limit race condition", () =>
       .set("x-test-session", sessionHeader(adminSession()))
       .send({ email: "newtech@example.com", role: "tech" });
 
-    expect(res.status).toBe(200);
-    expect(captured).toHaveLength(1);
+    expect(res.status).toBe(400);
+    expect(res.body.maxSeats).toBe(50);
+    expect(captured).toHaveLength(0);
   });
 
-  it("a literal company.maxTechSeats of null falls through to the plan/default rather than bypassing the limit", async () => {
+  it("counts every invited role against the same unified ceiling", async () => {
     const app = await buildApp();
-    const state = freshState({ companyMaxTechSeats: null, planIncludedTechSeats: 2, techIds: ["t1", "t2"] });
+    const state = freshState({ companyMaxTechSeats: null, planIncludedTechSeats: 2, techIds: Array.from({ length: 49 }, (_, i) => `member-${i}`) });
     const captured: any[] = [];
     wireDbMocks(state, captured);
 
     const res = await request(app)
       .post("/api/contractor/invite-tech")
       .set("x-test-session", sessionHeader(adminSession({ subscriptionPlanId: "plan-1" })))
-      .send({ email: "newtech@example.com", role: "tech" });
+      .send({ email: "newmanager@example.com", role: "manager" });
 
-    expect(res.status).toBe(400);
-    expect(res.body.maxSeats).toBe(2);
-    expect(captured).toHaveLength(0);
+    expect(res.status).toBe(200);
+    expect(captured[0]).toMatchObject({ email: "newmanager@example.com", companyRole: "manager" });
+    expect(state.techIds).toHaveLength(50);
   });
 
-  it("resolves the same fallback seat limit as bulk-import when there is no company override or plan value (reconciled default)", async () => {
+  it("uses the same fixed ceiling when no legacy company or plan limit exists", async () => {
     const app = await buildApp();
     // No company override (undefined -> null from DB), no plan attached at all.
-    const state = freshState({ companyMaxTechSeats: undefined, planIncludedTechSeats: null, techIds: ["t1", "t2", "t3"] });
+    const state = freshState({ companyMaxTechSeats: undefined, planIncludedTechSeats: null, techIds: Array.from({ length: 50 }, (_, i) => `member-${i}`) });
     const captured: any[] = [];
     wireDbMocks(state, captured);
 
@@ -442,15 +471,13 @@ describe("POST /api/contractor/invite-tech — seat-limit race condition", () =>
       .set("x-test-session", sessionHeader(adminSession({ subscriptionPlanId: null })))
       .send({ email: "newtech@example.com", role: "tech" });
 
-    // Reconciled fallback default is 3 seats (matches the schema column default
-    // and bulk-import's own test below) — at 3 existing techs, this must block.
     expect(res.status).toBe(400);
-    expect(res.body.maxSeats).toBe(3);
+    expect(res.body.maxSeats).toBe(50);
   });
 
   it("never lets two concurrent invites both exceed the seat limit (real Promise.all race)", async () => {
     const app = await buildApp();
-    const state = freshState({ companyMaxTechSeats: 2, techIds: ["t1"] }); // 1 seat available
+    const state = freshState({ companyMaxTechSeats: 2, techIds: Array.from({ length: 49 }, (_, i) => `member-${i}`) }); // 1 place available
     const captured: any[] = [];
     wireDbMocks(state, captured);
     await withSerializedTransactions(async () => {});
@@ -468,7 +495,7 @@ describe("POST /api/contractor/invite-tech — seat-limit race condition", () =>
 
     // Exactly one insert ever happened, never both.
     expect(captured).toHaveLength(1);
-    expect(state.techIds).toHaveLength(2);
+    expect(state.techIds).toHaveLength(50);
   });
 });
 
@@ -480,7 +507,7 @@ describe("POST /api/contractor/bulk-import — seat-limit race condition", () =>
 
   it("imports all rows when comfortably under the limit", async () => {
     const app = await buildApp();
-    const state = freshState({ companyMaxTechSeats: 5, techIds: [] });
+    const state = freshState({ companyMaxTechSeats: 5, techIds: ["owner"] });
     const captured: any[] = [];
     wireDbMocks(state, captured);
 
@@ -492,13 +519,13 @@ describe("POST /api/contractor/bulk-import — seat-limit race condition", () =>
     expect(res.status).toBe(200);
     expect(res.body.successRows).toBe(3);
     expect(res.body.failedRows).toBe(0);
-    expect(state.techIds).toHaveLength(3);
+    expect(state.techIds).toHaveLength(4);
   });
 
   it("imports only up to the available seat count and reports the rest as failed (partial import)", async () => {
     const app = await buildApp();
-    // maxSeats=3, 1 already used -> 2 seats available for a 5-row CSV.
-    const state = freshState({ companyMaxTechSeats: 3, techIds: ["existing-1"] });
+    // Unified ceiling=50, 48 places already reserved -> 2 available.
+    const state = freshState({ companyMaxTechSeats: 3, techIds: Array.from({ length: 48 }, (_, i) => `member-${i}`) });
     const captured: any[] = [];
     wireDbMocks(state, captured);
 
@@ -515,15 +542,15 @@ describe("POST /api/contractor/bulk-import — seat-limit race condition", () =>
     expect(res.body.totalRows).toBe(5);
     expect(res.body.successRows).toBe(2);
     expect(res.body.failedRows).toBe(3);
-    expect(res.body.errors.filter((e: any) => /seat limit reached/i.test(e.error))).toHaveLength(3);
+    expect(res.body.errors.filter((e: any) => /team capacity reached/i.test(e.error))).toHaveLength(3);
     // Only the first two rows (in file order) got the available seats.
     expect(captured.map((c) => c.email)).toEqual(["a@example.com", "b@example.com"]);
     expect(mockSendTechInviteEmail).toHaveBeenCalledTimes(2);
   });
 
-  it("resolves the same fallback seat limit as invite-tech when there is no company override or plan value (reconciled default)", async () => {
+  it("uses the same fixed ceiling as invite-tech when legacy limits are absent", async () => {
     const app = await buildApp();
-    const state = freshState({ companyMaxTechSeats: undefined, planIncludedTechSeats: null, techIds: ["t1", "t2", "t3"] });
+    const state = freshState({ companyMaxTechSeats: undefined, planIncludedTechSeats: null, techIds: Array.from({ length: 50 }, (_, i) => `member-${i}`) });
     const captured: any[] = [];
     wireDbMocks(state, captured);
 
@@ -532,19 +559,13 @@ describe("POST /api/contractor/bulk-import — seat-limit race condition", () =>
       .set("x-test-session", sessionHeader(adminSession({ subscriptionPlanId: null })))
       .attach("file", csvBuffer(["a@example.com"]), "techs.csv");
 
-    // Reconciled fallback default is 3 seats — with 3 existing techs already,
-    // the single row must be rejected for lack of seats (previously
-    // bulk-import alone defaulted to 10 here and would have let it through).
     expect(res.status).toBe(200);
     expect(res.body.successRows).toBe(0);
     expect(res.body.failedRows).toBe(1);
-    expect(res.body.errors[0].error).toMatch(/seat limit reached \(3\)/i);
+    expect(res.body.errors[0].error).toMatch(/team capacity reached \(50\)/i);
   });
 
-  it("honors a large explicit company.maxTechSeats override (e.g. an enterprise/custom-contract account)", async () => {
-    // Same note as invite-tech's equivalent test: no "null means unlimited"
-    // bypass exists for tech seats, so a high-capacity account is expressed
-    // as a large explicit numeric override, not a null sentinel.
+  it("does not let a legacy high company.maxTechSeats override bypass the unified ceiling", async () => {
     const app = await buildApp();
     const state = freshState({ companyMaxTechSeats: 100, techIds: Array.from({ length: 50 }, (_, i) => `t${i}`) });
     const captured: any[] = [];
@@ -556,13 +577,13 @@ describe("POST /api/contractor/bulk-import — seat-limit race condition", () =>
       .attach("file", csvBuffer(["a@example.com", "b@example.com"]), "techs.csv");
 
     expect(res.status).toBe(200);
-    expect(res.body.successRows).toBe(2);
-    expect(res.body.failedRows).toBe(0);
+    expect(res.body.successRows).toBe(0);
+    expect(res.body.failedRows).toBe(2);
   });
 
-  it("a literal company.maxTechSeats of null falls through to the plan/default rather than bypassing the limit", async () => {
+  it("allows an import below the unified ceiling regardless of a smaller legacy plan value", async () => {
     const app = await buildApp();
-    const state = freshState({ companyMaxTechSeats: null, planIncludedTechSeats: 1, techIds: ["existing-1"] });
+    const state = freshState({ companyMaxTechSeats: null, planIncludedTechSeats: 1, techIds: ["owner"] });
     const captured: any[] = [];
     wireDbMocks(state, captured);
 
@@ -572,14 +593,13 @@ describe("POST /api/contractor/bulk-import — seat-limit race condition", () =>
       .attach("file", csvBuffer(["a@example.com"]), "techs.csv");
 
     expect(res.status).toBe(200);
-    expect(res.body.successRows).toBe(0);
-    expect(res.body.failedRows).toBe(1);
-    expect(res.body.errors[0].error).toMatch(/seat limit reached \(1\)/i);
+    expect(res.body.successRows).toBe(1);
+    expect(res.body.failedRows).toBe(0);
   });
 
   it("never lets a concurrent bulk import and single invite together exceed the seat limit (real Promise.all race)", async () => {
     const app = await buildApp();
-    const state = freshState({ companyMaxTechSeats: 2, techIds: ["existing-1"] }); // 1 seat available
+    const state = freshState({ companyMaxTechSeats: 2, techIds: Array.from({ length: 49 }, (_, i) => `member-${i}`) }); // 1 place available
     const captured: any[] = [];
     wireDbMocks(state, captured);
     await withSerializedTransactions(async () => {});
@@ -597,7 +617,7 @@ describe("POST /api/contractor/bulk-import — seat-limit race condition", () =>
     ]);
 
     // Exactly one of the two ever claims the single remaining seat.
-    expect(state.techIds).toHaveLength(2);
+    expect(state.techIds).toHaveLength(50);
     expect(captured).toHaveLength(1);
 
     const bulkGotSeat = importRes.body.successRows === 1;
@@ -606,7 +626,7 @@ describe("POST /api/contractor/bulk-import — seat-limit race condition", () =>
 
     if (!bulkGotSeat) {
       expect(importRes.body.failedRows).toBe(1);
-      expect(importRes.body.errors[0].error).toMatch(/seat limit reached/i);
+      expect(importRes.body.errors[0].error).toMatch(/team capacity reached/i);
     }
     if (!inviteGotSeat) {
       expect(inviteRes.status).toBe(400);

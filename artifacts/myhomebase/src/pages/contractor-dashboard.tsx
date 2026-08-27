@@ -64,9 +64,6 @@ import {
 } from "./contractor-dashboard-stats";
 import "./home.css";
 
-/** Fraction of seats used at which the amber "nearly full" warning appears (e.g. 0.8 = 80%). */
-const SEAT_WARN_THRESHOLD = 0.8;
-
 interface ContactedHomeowner {
   id: string;
   email?: string;
@@ -598,7 +595,7 @@ export default function ContractorDashboard() {
   const [editFirstName, setEditFirstName] = useState('');
   const [editLastName, setEditLastName] = useState('');
   const [editEmail, setEditEmail] = useState('');
-  const [editCompanyRole, setEditCompanyRole] = useState<'tech' | 'admin'>('tech');
+  const [editCompanyRole, setEditCompanyRole] = useState<'tech' | 'admin' | 'manager' | 'dispatcher'>('tech');
 
   // Phase 4 — invite role + division
   const [inviteRole, setInviteRole] = useState<'tech' | 'admin' | 'manager' | 'dispatcher'>('tech');
@@ -618,7 +615,15 @@ export default function ContractorDashboard() {
   const isAdminRole = (typedUser as any)?.companyRole === 'owner' || (typedUser as any)?.companyRole === 'admin';
   const isOwner = (typedUser as any)?.companyRole === 'owner';
 
-  const { data: teamData, isLoading: isLoadingTeam, refetch: refetchTeam } = useQuery<{ teamMembers: TeamMember[]; maxTechSeats: number; techCount: number; adminCount: number }>({
+  const { data: teamData, isLoading: isLoadingTeam, refetch: refetchTeam } = useQuery<{
+    teamMembers: TeamMember[];
+    acceptedTeamCount: number;
+    reservedTeamCount: number;
+    pendingInviteCount: number;
+    billedTeamSeatCount: number;
+    includedTeamSeats: number;
+    teamSeatLimit: number;
+  }>({
     queryKey: ['/api/contractor/team'],
     queryFn: async () => {
       const res = await fetch('/api/contractor/team', { credentials: 'include' });
@@ -628,8 +633,13 @@ export default function ContractorDashboard() {
     enabled: isAdminRole && !!typedUser,
   });
 
-  const activeTeamCount = teamData?.teamMembers.filter(m => m.status === 'active').length ?? null;
-  const pendingTeamCount = teamData?.teamMembers.filter(m => m.status !== 'active').length ?? 0;
+  const acceptedTeamCount = teamData?.acceptedTeamCount ?? null;
+  const pendingTeamCount = teamData?.pendingInviteCount ?? 0;
+  const reservedTeamCount = teamData?.reservedTeamCount ?? 0;
+  const availableTeamCapacity = teamData
+    ? Math.max(0, teamData.teamSeatLimit - teamData.reservedTeamCount)
+    : null;
+  const isTeamAtCapacity = availableTeamCapacity === 0;
 
   const { data: adminInvoices = [], isLoading: isLoadingInvoices } = useQuery<AdminInvoice[]>({
     queryKey: ['/api/contractor/invoices', invoiceTechFilter, invoiceStartDate, invoiceEndDate, invoiceHomeownerName],
@@ -678,7 +688,7 @@ export default function ContractorDashboard() {
 
   const inviteMutation = useMutation({
     mutationFn: async ({ email, firstName, lastName, role, divisionId }: { email: string; firstName?: string; lastName?: string; role?: string; divisionId?: string }) => {
-      const res = await fetch('/api/contractor/invite-tech', {
+      const res = await fetch('/api/contractor/invite-team-member', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -736,7 +746,7 @@ export default function ContractorDashboard() {
   });
 
   const updateMemberMutation = useMutation({
-    mutationFn: async ({ userId, firstName, lastName, companyRole, email }: { userId: string; firstName: string; lastName: string; companyRole: 'tech' | 'admin'; email?: string }) => {
+    mutationFn: async ({ userId, firstName, lastName, companyRole, email }: { userId: string; firstName: string; lastName: string; companyRole: 'tech' | 'admin' | 'manager' | 'dispatcher'; email?: string }) => {
       const res = await fetch(`/api/contractor/team/${userId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -860,7 +870,7 @@ export default function ContractorDashboard() {
     setEditFirstName(member.firstName ?? '');
     setEditLastName(member.lastName ?? '');
     setEditEmail(member.email ?? '');
-    setEditCompanyRole((member.companyRole as 'tech' | 'admin') ?? 'tech');
+    setEditCompanyRole((member.companyRole as 'tech' | 'admin' | 'manager' | 'dispatcher') ?? 'tech');
   };
 
 
@@ -1094,13 +1104,19 @@ export default function ContractorDashboard() {
         {/* Team tab header */}
         {activeTab === 'team' && (
           <>
-            <div className="dash-subtitle">Manage your field technicians and admins</div>
+            <div className="dash-subtitle">Manage your team across every role</div>
             <div className="dash-chips">
               <div className="dash-chip">
-                <div className={`dash-chip-num${activeTeamCount !== null && activeTeamCount > 0 ? ' good' : ''}`}>
-                  {isLoadingTeam ? '–' : (activeTeamCount ?? 0)}
+                <div className={`dash-chip-num${reservedTeamCount > 0 ? ' good' : ''}`}>
+                  {isLoadingTeam ? '–' : reservedTeamCount}
                 </div>
-                <div className="dash-chip-label">Active</div>
+                <div className="dash-chip-label">Team Seats</div>
+              </div>
+              <div className="dash-chip">
+                <div className={`dash-chip-num${acceptedTeamCount !== null && acceptedTeamCount > 0 ? ' good' : ''}`}>
+                  {isLoadingTeam ? '–' : (acceptedTeamCount ?? 0)}
+                </div>
+                <div className="dash-chip-label">Accepted</div>
               </div>
               <div className="dash-chip">
                 <div className={`dash-chip-num${pendingTeamCount > 0 ? ' warn' : ''}`}>
@@ -1109,16 +1125,10 @@ export default function ContractorDashboard() {
                 <div className="dash-chip-label">Pending</div>
               </div>
               <div className="dash-chip">
-                <div className="dash-chip-num">
-                  {isLoadingTeam ? '–' : (teamData?.maxTechSeats ?? '–')}
+                <div className={`dash-chip-num${availableTeamCapacity !== null && availableTeamCapacity <= 5 ? ' warn' : ' good'}`}>
+                  {isLoadingTeam ? '–' : (availableTeamCapacity ?? '–')}
                 </div>
-                <div className="dash-chip-label">Seats</div>
-              </div>
-              <div className="dash-chip">
-                <div className={`dash-chip-num${activeTeamCount !== null && teamData?.maxTechSeats != null && teamData.maxTechSeats - activeTeamCount <= 1 ? ' warn' : ' good'}`}>
-                  {isLoadingTeam ? '–' : (teamData?.maxTechSeats != null && activeTeamCount != null ? teamData.maxTechSeats - activeTeamCount : '–')}
-                </div>
-                <div className="dash-chip-label">Available</div>
+                <div className="dash-chip-label">Capacity Left</div>
               </div>
             </div>
           </>
@@ -1167,7 +1177,7 @@ export default function ContractorDashboard() {
                 textTransform: 'capitalize',
               }}
             >
-              {tab === 'team' ? `Team (${teamData?.teamMembers.length ?? 0})` : tab === 'invoices' ? `Tech Invoices (${adminInvoices.length})` : 'Overview'}
+              {tab === 'team' ? `Team (${teamData?.reservedTeamCount ?? 0})` : tab === 'invoices' ? `Tech Invoices (${adminInvoices.length})` : 'Overview'}
             </button>
           ))}
         </div>
@@ -1176,7 +1186,7 @@ export default function ContractorDashboard() {
       {/* ── Team tab ── */}
       {isAdminRole && activeTab === 'team' && (
         <div className="dash-body">
-          {/* 4.1 — Role-Breakdown Seat Gauge */}
+          {/* Unified role-agnostic team-seat summary */}
           <div className="dash-light-card" style={{ marginBottom: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: '#0C3460' }}>Team Seats</span>
@@ -1191,80 +1201,32 @@ export default function ContractorDashboard() {
                 )}
                 <button
                   onClick={() => setInviteModalOpen(true)}
-                  style={{ background: '#1560A2', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                  disabled={isTeamAtCapacity}
+                  title={isTeamAtCapacity ? 'Remove or cancel a team member before inviting someone new.' : undefined}
+                  style={{ background: '#1560A2', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: isTeamAtCapacity ? 'not-allowed' : 'pointer', opacity: isTeamAtCapacity ? 0.55 : 1 }}
                 >
                   + Invite Member
                 </button>
               </div>
             </div>
 
-            {/* Techs bar — teal, always shown */}
             {(() => {
-              const used = seatInfo.currentTechCount || teamData?.techCount || 0;
-              const max = seatInfo.maxTechSeats ?? teamData?.maxTechSeats ?? 3;
+              const used = teamData?.reservedTeamCount ?? seatInfo.reservedTeamCount;
+              const max = teamData?.teamSeatLimit ?? seatInfo.teamSeatLimit;
               const pct = max > 0 ? Math.min(100, (used / max) * 100) : 0;
               return (
-                <div style={{ marginBottom: 8 }}>
+                <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: '#0e7490' }}>Field Techs</span>
-                    <span style={{ fontSize: 11, color: '#64748b' }}>{used} of {max} seats</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#0e7490' }}>Total team capacity</span>
+                    <span style={{ fontSize: 11, color: '#64748b' }}>{used} of {max} people</span>
                   </div>
                   <div style={{ background: '#e2e8f0', borderRadius: 6, height: 6, overflow: 'hidden' }}>
                     <div style={{ width: `${pct}%`, height: 6, borderRadius: 6, background: '#0891b2', transition: 'width 0.4s' }} />
                   </div>
-                </div>
-              );
-            })()}
-
-            {/* Admins bar — purple, always shown for Pro+ */}
-            {(() => {
-              const used = seatInfo.currentAdminCount || teamData?.adminCount || 0;
-              const max = seatInfo.maxAdminSeats;
-              const pct = max != null && max > 0 ? Math.min(100, (used / max) * 100) : used > 0 ? 100 : 0;
-              return (
-                <div style={{ marginBottom: 8 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: '#7c3aed' }}>Admins</span>
-                    <span style={{ fontSize: 11, color: '#64748b' }}>{used}{max != null ? ` of ${max} seats` : ''}</span>
-                  </div>
-                  <div style={{ background: '#e2e8f0', borderRadius: 6, height: 6, overflow: 'hidden' }}>
-                    <div style={{ width: `${Math.min(100, pct)}%`, height: 6, borderRadius: 6, background: '#7c3aed', transition: 'width 0.4s' }} />
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Managers bar — coral, only if maxManagerSeats > 0 */}
-            {seatInfo.maxManagerSeats != null && seatInfo.maxManagerSeats > 0 && (() => {
-              const used = teamData?.teamMembers.filter(m => m.companyRole === 'manager' && m.status !== 'removed').length ?? 0;
-              const max = seatInfo.maxManagerSeats!;
-              const pct = max > 0 ? Math.min(100, (used / max) * 100) : 0;
-              return (
-                <div style={{ marginBottom: 8 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: '#e11d48' }}>Managers</span>
-                    <span style={{ fontSize: 11, color: '#64748b' }}>{used} of {max} seats</span>
-                  </div>
-                  <div style={{ background: '#e2e8f0', borderRadius: 6, height: 6, overflow: 'hidden' }}>
-                    <div style={{ width: `${pct}%`, height: 6, borderRadius: 6, background: '#f43f5e', transition: 'width 0.4s' }} />
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Dispatchers bar — amber, only if maxDispatcherSeats > 0 */}
-            {seatInfo.maxDispatcherSeats != null && seatInfo.maxDispatcherSeats > 0 && (() => {
-              const used = teamData?.teamMembers.filter(m => m.companyRole === 'dispatcher' && m.status !== 'removed').length ?? 0;
-              const max = seatInfo.maxDispatcherSeats!;
-              const pct = max > 0 ? Math.min(100, (used / max) * 100) : 0;
-              return (
-                <div style={{ marginBottom: 4 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: '#d97706' }}>Dispatchers</span>
-                    <span style={{ fontSize: 11, color: '#64748b' }}>{used} of {max} seats</span>
-                  </div>
-                  <div style={{ background: '#e2e8f0', borderRadius: 6, height: 6, overflow: 'hidden' }}>
-                    <div style={{ width: `${pct}%`, height: 6, borderRadius: 6, background: '#f59e0b', transition: 'width 0.4s' }} />
+                  <div style={{ fontSize: 11, color: '#64748b', marginTop: 8, lineHeight: 1.45 }}>
+                    Your subscription includes the owner plus 2 accepted team members.
+                    Each additional accepted person is ${seatInfo.additionalTeamSeatPrice.toFixed(2)}/month,
+                    regardless of role. Pending invitations reserve capacity but are not billed until accepted.
                   </div>
                 </div>
               );
@@ -1283,8 +1245,8 @@ export default function ContractorDashboard() {
           ) : !teamData?.teamMembers.length ? (
             <div className="dash-light-card" style={{ textAlign: 'center', padding: '24px 14px' }}>
               <Users size={28} style={{ color: 'var(--gray-400)', margin: '0 auto 8px', display: 'block' }} />
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gray-600)' }}>No techs yet</div>
-              <div style={{ fontSize: 12, color: 'var(--gray-400)', marginTop: 4 }}>Invite your first technician above</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gray-600)' }}>No additional team members yet</div>
+              <div style={{ fontSize: 12, color: 'var(--gray-400)', marginTop: 4 }}>Invite your first team member above</div>
             </div>
           ) : (
             teamData.teamMembers
@@ -1473,7 +1435,7 @@ export default function ContractorDashboard() {
                         <div style={{ marginBottom: 10 }}>
                           <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#374151', marginBottom: 3 }}>Role</label>
                           <div style={{ display: 'flex', gap: 6 }}>
-                            {(['tech', 'admin'] as const).map(role => (
+                            {(['tech', 'admin', 'manager', 'dispatcher'] as const).map(role => (
                               <button
                                 key={role}
                                 onClick={() => setEditCompanyRole(role)}
@@ -1483,7 +1445,7 @@ export default function ContractorDashboard() {
                                   background: editCompanyRole === role ? (role === 'admin' ? '#ede9fe' : '#eff6ff') : '#fff',
                                   color: editCompanyRole === role ? (role === 'admin' ? '#7c3aed' : '#1560A2') : '#64748b',
                                 }}
-                              >{role === 'tech' ? 'Field Tech' : 'Admin'}</button>
+                              >{role === 'tech' ? 'Field Tech' : role.charAt(0).toUpperCase() + role.slice(1)}</button>
                             ))}
                           </div>
                         </div>
@@ -1893,35 +1855,19 @@ export default function ContractorDashboard() {
                         style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, background: '#fff', outline: 'none', boxSizing: 'border-box' }}
                       >
                         <option value="tech">Field Tech</option>
-                        <option value="admin">Admin</option>
-                        {(seatInfo.maxManagerSeats ?? 0) > 0 && <option value="manager">Manager</option>}
-                        {(seatInfo.maxDispatcherSeats ?? 0) > 0 && <option value="dispatcher">Dispatcher</option>}
+                        {typedUser?.companyRole === 'owner' && <option value="admin">Admin</option>}
+                        <option value="manager">Manager</option>
+                        <option value="dispatcher">Dispatcher</option>
                       </select>
-                      {/* Live seat usage label */}
-                      {(() => {
-                        const roleInfo: Record<string, { used: number; max: number | null; label: string; upgradeMsg: string }> = {
-                          tech: { used: seatInfo.currentTechCount || teamData?.techCount || 0, max: seatInfo.maxTechSeats ?? teamData?.maxTechSeats ?? null, label: 'Tech', upgradeMsg: 'Contact support to add more tech seats.' },
-                          admin: { used: seatInfo.currentAdminCount || teamData?.adminCount || 0, max: seatInfo.maxAdminSeats, label: 'Admin', upgradeMsg: 'Upgrade to add more admin seats.' },
-                          manager: { used: teamData?.teamMembers.filter(m => m.companyRole === 'manager' && m.status !== 'removed').length ?? 0, max: seatInfo.maxManagerSeats, label: 'Manager', upgradeMsg: 'Upgrade to Business to add more managers.' },
-                          dispatcher: { used: teamData?.teamMembers.filter(m => m.companyRole === 'dispatcher' && m.status !== 'removed').length ?? 0, max: seatInfo.maxDispatcherSeats, label: 'Dispatcher', upgradeMsg: 'Upgrade to Business to add more dispatchers.' },
-                        };
-                        const info = roleInfo[inviteRole];
-                        const atLimit = info.max != null && info.used >= info.max;
-                        return (
-                          <div style={{ marginTop: 5 }}>
-                            {info.max != null && (
-                              <div style={{ fontSize: 11, color: atLimit ? '#dc2626' : '#64748b' }}>
-                                {info.used} of {info.max} {info.label} seats used
-                              </div>
-                            )}
-                            {atLimit && (
-                              <div style={{ marginTop: 6, padding: '8px 12px', background: '#fef3c7', borderRadius: 8, border: '1px solid #fcd34d', fontSize: 12, color: '#92400e' }}>
-                                ⚠ Seat limit reached. {info.upgradeMsg}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })()}
+                      <div style={{ marginTop: 5, fontSize: 11, color: isTeamAtCapacity ? '#dc2626' : '#64748b' }}>
+                        {reservedTeamCount} of {teamData?.teamSeatLimit ?? seatInfo.teamSeatLimit} total team places reserved.
+                        Pending invitations count toward capacity but are not billed until accepted.
+                      </div>
+                      {isTeamAtCapacity && (
+                        <div style={{ marginTop: 6, padding: '8px 12px', background: '#fef3c7', borderRadius: 8, border: '1px solid #fcd34d', fontSize: 12, color: '#92400e' }}>
+                          Team capacity reached. Remove a member or cancel a pending invitation before adding someone new.
+                        </div>
+                      )}
                     </div>
 
                     {/* 4.2 — Division dropdown (Manager / Dispatcher only) */}
@@ -1943,23 +1889,8 @@ export default function ContractorDashboard() {
                       <button onClick={resetInviteModal} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer', fontSize: 13 }}>Cancel</button>
                       <button
                         onClick={() => inviteMutation.mutate({ email: inviteEmail, firstName: inviteFirstName, lastName: inviteLastName, role: inviteRole, divisionId: inviteDivisionId || undefined })}
-                        disabled={!inviteEmail.includes('@') || inviteMutation.isPending || (() => {
-                          const roleMaxMap: Record<string, number | null | undefined> = {
-                            tech: seatInfo.maxTechSeats ?? teamData?.maxTechSeats,
-                            admin: seatInfo.maxAdminSeats,
-                            manager: seatInfo.maxManagerSeats,
-                            dispatcher: seatInfo.maxDispatcherSeats,
-                          };
-                          const roleUsedMap: Record<string, number> = {
-                            tech: seatInfo.currentTechCount || teamData?.techCount || 0,
-                            admin: seatInfo.currentAdminCount || teamData?.adminCount || 0,
-                            manager: teamData?.teamMembers.filter(m => m.companyRole === 'manager' && m.status !== 'removed').length ?? 0,
-                            dispatcher: teamData?.teamMembers.filter(m => m.companyRole === 'dispatcher' && m.status !== 'removed').length ?? 0,
-                          };
-                          const max = roleMaxMap[inviteRole];
-                          return max != null && roleUsedMap[inviteRole] >= max;
-                        })()}
-                        style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#1560A2', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: (!inviteEmail.includes('@') || inviteMutation.isPending) ? 0.6 : 1 }}
+                        disabled={!inviteEmail.includes('@') || inviteMutation.isPending || isTeamAtCapacity}
+                        style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#1560A2', color: '#fff', fontSize: 13, fontWeight: 600, cursor: (!inviteEmail.includes('@') || inviteMutation.isPending || isTeamAtCapacity) ? 'not-allowed' : 'pointer', opacity: (!inviteEmail.includes('@') || inviteMutation.isPending || isTeamAtCapacity) ? 0.6 : 1 }}
                       >{inviteMutation.isPending ? 'Sending…' : 'Send Invite'}</button>
                     </div>
                   </>

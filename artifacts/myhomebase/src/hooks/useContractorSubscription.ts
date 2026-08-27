@@ -3,14 +3,12 @@ import { useAuth } from "@/hooks/useAuth";
 import type { User } from "@shared/schema";
 
 export interface SeatInfo {
-  includedTechSeats: number | null;
-  additionalSeatPrice: number | null;
-  currentTechCount: number;
-  currentAdminCount: number;
-  maxTechSeats: number | null;
-  maxAdminSeats: number | null;
-  maxManagerSeats: number | null;
-  maxDispatcherSeats: number | null;
+  includedTeamSeats: number;
+  additionalTeamSeatPrice: number;
+  acceptedTeamCount: number;
+  reservedTeamCount: number;
+  billedTeamSeatCount: number;
+  teamSeatLimit: number;
 }
 
 export interface ContractorSubscriptionStatus {
@@ -39,14 +37,12 @@ export interface ContractorSubscriptionStatus {
 }
 
 const DEFAULT_SEAT_INFO: SeatInfo = {
-  includedTechSeats: null,
-  additionalSeatPrice: null,
-  currentTechCount: 0,
-  currentAdminCount: 0,
-  maxTechSeats: null,
-  maxAdminSeats: null,
-  maxManagerSeats: null,
-  maxDispatcherSeats: null,
+  includedTeamSeats: 3,
+  additionalTeamSeatPrice: 5,
+  acceptedTeamCount: 0,
+  reservedTeamCount: 0,
+  billedTeamSeatCount: 0,
+  teamSeatLimit: 50,
 };
 
 export function useContractorSubscription(): ContractorSubscriptionStatus {

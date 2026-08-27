@@ -32,5 +32,5 @@
 - [Demo paywall bypass consolidation](demo-paywall-bypass-consolidation.md) — use isDemoAccount only, never ID/email string matching; check test fixtures too, they silently rely on the old bypass strings
 - [Count-based limit race fix pattern](count-based-limit-race-fix.md) — COUNT-based limits need db.transaction+FOR UPDATE row lock, not a plain atomic UPDATE...RETURNING; also notes a TS closure-narrowing gotcha
 - [Seat/quota limit fallback reconciliation](seat-limit-fallback-reconciliation.md) — before unifying two routes' "limit ?? default" chains, check each hardcoded fallback constant individually; don't assume a null/undefined column means "unlimited" unless another code path actually sets it that way
-- [Quantity-based tech-seat billing](quantity-based-seat-billing.md) — seats billed via Stripe subscription-item quantity (not metered usage); 0 billed seats means delete the item, not quantity 0
+- [Quantity-based team-seat billing](quantity-based-seat-billing.md) — 3 accepted people included, then $5 each via Stripe item quantity; pending invites reserve the 50-person ceiling but are unbilled
 - [routes.test.ts pool mock needs .query](seat-mock-query-import-side-effect.md) — pg-rate-limit-store.ts calls pool.query at import time; vi.mock("../db") must stub pool.query directly or the whole test file fails to load

@@ -350,7 +350,7 @@ export default function ContractorOnboarding() {
               )}
               {form.teamSizeSelection === '2_10' && (
                 <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8, background: '#f5f3ff', fontSize: 12, color: '#7c3aed' }}>
-                  ✓ Pro plan required for teams. Includes 3 tech seats and full CRM access.
+                  ✓ Includes the owner plus 2 accepted team members and full CRM access. Additional accepted members are $5/month each.
                 </div>
               )}
               {form.teamSizeSelection === '11_99' && (

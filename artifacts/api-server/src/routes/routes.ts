@@ -542,10 +542,11 @@ export async function recoverIncompleteStripeEvents(olderThanMinutes: number): P
 // Seat billing helpers
 // ---------------------------------------------------------------------------
 //
-// Quantity-based tech-seat billing: the first 2 active seats on a contractor
-// company are included in the base subscription price; each seat beyond that
+// Quantity-based team-seat billing: the first 3 accepted people on a contractor
+// company (owner + 2 additional members) are included in the base subscription
+// price; each accepted person beyond that
 // is billed at a flat $5/month via a second, licensed (non-metered) Stripe
-// subscription item whose `quantity` is kept in sync with active headcount.
+// subscription item whose `quantity` is kept in sync with accepted headcount.
 //
 // This replaced an earlier metered-usage-record design (createUsageRecord
 // against a `recurring.usage_type === 'metered'` price). That design is not
@@ -556,8 +557,22 @@ export async function recoverIncompleteStripeEvents(olderThanMinutes: number): P
 // resolveBilledSeatCount) and the crash-safe checkpointing + advisory-lock
 // machinery below are billing-model-agnostic and are kept as-is.
 
+export const INCLUDED_TEAM_SEATS = 3;
+export const MAX_RESERVED_COMPANY_SEATS = 50;
+export const BILLABLE_COMPANY_MEMBER_STATUSES = ['active', 'suspended'] as const;
+export const TEAM_MEMBER_ROLES = ['tech', 'admin', 'manager', 'dispatcher'] as const;
+export const ADMIN_MANAGEABLE_TEAM_MEMBER_ROLES = ['tech', 'manager', 'dispatcher'] as const;
+
+export function isBillableCompanyMemberStatus(status: string | null | undefined): boolean {
+  return BILLABLE_COMPANY_MEMBER_STATUSES.includes(status as typeof BILLABLE_COMPANY_MEMBER_STATUSES[number]);
+}
+
+export function isReservedCompanyMemberStatus(status: string | null | undefined): boolean {
+  return status !== 'removed';
+}
+
 export function calcBilledSeats(totalSeats: number): number {
-  return Math.max(0, totalSeats - 2);
+  return Math.max(0, totalSeats - INCLUDED_TEAM_SEATS);
 }
 
 export async function countActiveCompanySeats(
@@ -567,16 +582,34 @@ export async function countActiveCompanySeats(
   const rows = await dbInstance
     .select({ count: drizzleSql<number>`count(*)::int` })
     .from(users)
-    .where(and(eq(users.companyId, companyId), ne(users.status as any, 'removed')));
+    .where(and(
+      eq(users.companyId, companyId),
+      inArray(users.status as any, [...BILLABLE_COMPANY_MEMBER_STATUSES]),
+    ));
+  return rows[0]?.count ?? 1;
+}
+
+export async function countReservedCompanySeats(
+  companyId: string,
+  dbInstance: any,
+): Promise<number> {
+  const rows = await dbInstance
+    .select({ count: drizzleSql<number>`count(*)::int` })
+    .from(users)
+    .where(and(
+      eq(users.companyId, companyId),
+      or(ne(users.status as any, 'removed'), isNull(users.status as any)),
+    ));
   return rows[0]?.count ?? 1;
 }
 
 // ---------------------------------------------------------------------------
-// Tech-seat Stripe Price resolution
+// Team-seat Stripe Price resolution
 // ---------------------------------------------------------------------------
 
-/** Stable lookup_key for the $5/mo additional-tech-seat Price. Stripe enforces
- *  uniqueness of lookup_key among active Prices, so find-or-create against it
+/** Stable legacy lookup_key for the $5/mo additional-team-seat Price. The
+ *  value remains unchanged so existing subscriptions keep matching the same
+ *  Price. Stripe enforces uniqueness of lookup_key among active Prices, so find-or-create against it
  *  is safe to call repeatedly (e.g. once per cold start) without ever
  *  creating a duplicate Price. */
 export const TECH_SEAT_PRICE_LOOKUP_KEY = 'contractor_tech_seat_v1';
@@ -585,7 +618,7 @@ export const TECH_SEAT_MONTHLY_PRICE_CENTS = 500; // $5.00/month per additional 
 let cachedSeatPriceId: string | null = null;
 
 /**
- * Finds the standard (non-metered, quantity-based) $5/mo tech-seat Price by
+ * Finds the standard (non-metered, quantity-based) $5/mo team-seat Price by
  * its lookup_key, creating the underlying Product + Price on first use if it
  * doesn't exist yet. Result is cached in-process for the life of the server
  * (cleared only by resetSeatPriceCache, used in tests).
@@ -599,13 +632,27 @@ export async function resolveSeatPriceId(stripeClient: any): Promise<string> {
     limit: 1,
   });
   if (existing?.data?.[0]?.id) {
-    cachedSeatPriceId = existing.data[0].id;
+    const existingPrice = existing.data[0];
+    const productId = typeof existingPrice.product === 'string'
+      ? existingPrice.product
+      : existingPrice.product?.id;
+    if (productId && stripeClient.products?.update) {
+      try {
+        await stripeClient.products.update(productId, {
+          name: 'Additional Team Seat',
+          description: 'Per-person charge for accepted contractor team members beyond the 3 people included with a Contractor subscription.',
+        });
+      } catch (error) {
+        console.warn('[SEAT_BILLING] Could not refresh existing Stripe team-seat product copy:', error);
+      }
+    }
+    cachedSeatPriceId = existingPrice.id;
     return cachedSeatPriceId as string;
   }
 
   const product = await stripeClient.products.create({
-    name: 'Additional Tech Seat',
-    description: 'Per-seat charge for contractor field technicians beyond the 2 included with a Contractor subscription.',
+    name: 'Additional Team Seat',
+    description: 'Per-person charge for accepted contractor team members beyond the 3 people included with a Contractor subscription.',
   });
   const price = await stripeClient.prices.create({
     product: product.id,
@@ -628,7 +675,7 @@ export function resetSeatPriceCache(): void {
 // ---------------------------------------------------------------------------
 
 /**
- * Ensures a Stripe subscription's tech-seat line item quantity matches
+ * Ensures a Stripe subscription's team-seat line item quantity matches
  * `billedSeats`. Unlike metered usage-reporting, a licensed item's quantity
  * IS the bill, so this creates the item on first need, updates its quantity
  * on change, and removes it entirely once billedSeats returns to 0 (Stripe
@@ -794,16 +841,16 @@ export async function withSeatUpdateLock<T>(
 // ---------------------------------------------------------------------------
 
 /**
- * Immediately syncs the quantity-based tech-seat subscription item for a
- * company after a member change (invite, remove, bulk import). No-ops if
- * Stripe is not configured or the company has no active subscription.
+ * Immediately syncs the quantity-based team-seat subscription item after an
+ * accepted-member change (invite acceptance or removal). No-ops if
+ * Stripe is not configured or the company has no active/trialing subscription.
  *
  * If `storageInstance` is provided, a durable checkpoint is written to the DB
  * before the Stripe API call and cleared on success. This ensures a server
  * restart (or any uncaught failure) mid-update leaves a record that
  * recoverPendingSeatSyncs can detect and retry later — callers should treat a
  * thrown error here as "logged and retryable", never as a reason to roll back
- * the underlying DB change (e.g. a successful tech invite/removal).
+ * the underlying DB change (e.g. a successful invite acceptance/removal).
  */
 export async function refreshSeatsForCompany(
   companyId: string,
@@ -834,7 +881,7 @@ export async function refreshSeatsForCompany(
     await storageInstance?.upsertPendingSeatSync(companyId);
 
     const subscription = await stripeClient.subscriptions.retrieve(stripeSubscriptionId);
-    if (subscription.status !== 'active') {
+    if (!['active', 'trialing'].includes(subscription.status)) {
       // Subscription is not billable — nothing to sync; clear the checkpoint.
       await storageInstance?.deletePendingSeatSync(companyId);
       return;
@@ -1148,7 +1195,7 @@ export async function executeRemoveMember(
     return { outcome: 'unauthorized' };
   }
 
-  // Admins may only remove tech members; owners may remove any member
+  // Admins may remove non-admin team members; owners may remove any member.
   const targetRows =
     requestorRole === 'admin'
       ? await dbInstance
@@ -1158,7 +1205,7 @@ export async function executeRemoveMember(
             and(
               eq(users.companyId, companyId),
               eq(users.id as any, targetId),
-              eq(users.companyRole as any, 'tech'),
+              inArray(users.companyRole as any, [...ADMIN_MANAGEABLE_TEAM_MEMBER_ROLES]),
             ),
           )
           .limit(1)
@@ -1197,7 +1244,7 @@ export async function executeRemoveMember(
     );
     if (guardError) return { outcome: 'guard_error', ...guardError };
   } else {
-    // Tech target — only check self-removal
+    // Non-admin target — only check self-removal
     const selfError = checkRemoveTeamMemberGuard(
       requestorId,
       targetId,
@@ -1426,11 +1473,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const CONTRACTOR_PLANS = [
     {
-      // Unified contractor plan: $20/month covers solo + up to 2 techs.
-      // Each additional tech beyond the 2 included = $5/month.
+      // Unified contractor plan: $20/month covers the owner + 2 accepted members.
+      // Each additional accepted person beyond those 3 = $5/month.
       tierName: 'contractor_basic',
       displayName: 'Contractor',
-      description: 'Everything you need — solo or with a team. $20/mo covers you and 2 techs; add more for $5/mo each.',
+      description: 'Everything you need — solo or with a team. $20/mo covers you and 2 accepted team members; each additional accepted person is $5/mo.',
       monthlyPrice: '20.00',
       minHouses: 0,
       maxHouses: 1, // 1 personal home for maintenance tracking
@@ -1442,14 +1489,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'Reviews and ratings profile',
         'Full CRM — clients, jobs, quotes & invoices',
         'Accept payments via Stripe Connect',
-        'Team management (2 techs included)',
-        '$5/mo per additional tech',
+        'Team management (owner + 2 additional people included)',
+        '$5/mo per additional accepted team member',
         'Earn up to $20/month in referral credits',
       ],
       referralCreditCap: '20.00',
       hasCrmAccess: true,
-      includedTechSeats: 2,        // techs bundled in base price
-      additionalSeatPrice: '5.00', // $/month per tech beyond the 2 included
+      includedTeamSeats: 3,
+      additionalTeamSeatPrice: '5.00',
       sortOrder: 0
     },
     // contractor_pro is retired — pricing now per-seat on contractor_basic.
@@ -1465,13 +1512,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       features: ['Legacy plan — see Contractor plan for current pricing'],
       referralCreditCap: '40.00',
       hasCrmAccess: true,
-      includedTechSeats: null,
-      additionalSeatPrice: null,
+      includedTeamSeats: null,
+      additionalTeamSeatPrice: null,
       isActive: false, // hidden from new sign-ups; existing subscribers unaffected
       sortOrder: 99
     },
     // Business tier — adds divisions, manager/dispatcher roles, bulk import, analytics.
-    // Per-seat pricing mirrors base plan: $20 base + $5/tech (no separate Business base fee).
+    // Per-seat pricing mirrors base plan: $20 base + $5/team member beyond 3.
     {
       tierName: 'contractor_business',
       displayName: 'Contractor Business',
@@ -1482,15 +1529,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       planType: 'contractor',
       referralCreditCap: '20.00',
       hasCrmAccess: true,
-      includedTechSeats: 2,
-      additionalSeatPrice: '5.00',
-      maxTechSeats: 99,
-      maxAdminSeats: 5,
-      maxManagerSeats: 10,
-      maxDispatcherSeats: 10,
+      includedTeamSeats: 3,
+      additionalTeamSeatPrice: '5.00',
       features: [
         'Everything in Contractor',
-        'Up to 99 field technicians',
+        'Up to 50 total team members',
         'Manager role for division leads',
         'Dispatcher role for scheduling',
         'Bulk tech import via CSV',
@@ -1503,7 +1546,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // contractor_enterprise removed: it was a placeholder plan literal
     // ("unlimited seats", $0 price) with no real Stripe product behind it and
     // no code path that ever treated its null seat fields as "unlimited" —
-    // see resolveTechSeatLimit's comment. Confirmed via prod + dev DB checks
+    // The unified 50-person ceiling is applied in the team routes below.
     // that no company.tier, user.subscriptionStatus, or user.subscriptionPlanId
     // referenced it before removal. True custom/negotiated enterprise deals
     // are still handled manually (see EnterpriseContactModal's "contact
@@ -1567,8 +1610,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               features: plan.features,
               referralCreditCap: (plan as any).referralCreditCap || null,
               hasCrmAccess: (plan as any).hasCrmAccess || false,
-              includedTechSeats: (plan as any).includedTechSeats ?? null,
-              additionalSeatPrice: (plan as any).additionalSeatPrice ?? null,
+              includedTeamSeats: (plan as any).includedTeamSeats ?? null,
+              additionalTeamSeatPrice: (plan as any).additionalTeamSeatPrice ?? null,
               isActive: (plan as any).isActive !== false, // default true unless explicitly false
               sortOrder: plan.sortOrder,
               updatedAt: new Date(),
@@ -1588,8 +1631,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             features: plan.features,
             referralCreditCap: (plan as any).referralCreditCap || null,
             hasCrmAccess: (plan as any).hasCrmAccess || false,
-            includedTechSeats: (plan as any).includedTechSeats ?? null,
-            additionalSeatPrice: (plan as any).additionalSeatPrice ?? null,
+            includedTeamSeats: (plan as any).includedTeamSeats ?? null,
+            additionalTeamSeatPrice: (plan as any).additionalTeamSeatPrice ?? null,
             isActive: (plan as any).isActive !== false,
             sortOrder: plan.sortOrder,
           });
@@ -1620,8 +1663,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               features: plan.features,
               referralCreditCap: (plan as any).referralCreditCap || null,
               hasCrmAccess: (plan as any).hasCrmAccess || false,
-              includedTechSeats: (plan as any).includedTechSeats ?? null,
-              additionalSeatPrice: (plan as any).additionalSeatPrice ?? null,
+              includedTeamSeats: (plan as any).includedTeamSeats ?? null,
+              additionalTeamSeatPrice: (plan as any).additionalTeamSeatPrice ?? null,
               isActive: (plan as any).isActive !== false,
               sortOrder: plan.sortOrder,
               updatedAt: new Date(),
@@ -1639,8 +1682,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             features: plan.features,
             referralCreditCap: (plan as any).referralCreditCap || null,
             hasCrmAccess: (plan as any).hasCrmAccess || false,
-            includedTechSeats: (plan as any).includedTechSeats ?? null,
-            additionalSeatPrice: (plan as any).additionalSeatPrice ?? null,
+            includedTeamSeats: (plan as any).includedTeamSeats ?? null,
+            additionalTeamSeatPrice: (plan as any).additionalTeamSeatPrice ?? null,
             isActive: (plan as any).isActive !== false,
             sortOrder: plan.sortOrder,
           });
@@ -2461,8 +2504,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           await storage.updateUserSubscriptionStatus(user.id, status, subscriptionUpdatedEventAt);
 
-          // Recalculate the quantity-based tech-seat subscription item so it
-          // always reflects current active headcount and current subscription
+          // Recalculate the quantity-based team-seat subscription item so it
+          // always reflects current accepted headcount and current subscription
           // status (billing stops immediately on cancellation/past_due).
           // See syncSeatQuantityForSubscription for the quantity-based design.
           if (user.companyId && stripe) {
@@ -2477,7 +2520,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 storage,
               );
             } catch (seatErr) {
-              console.error('[STRIPE WEBHOOK] Failed to sync tech-seat quantity:', seatErr);
+              console.error('[STRIPE WEBHOOK] Failed to sync team-seat quantity:', seatErr);
             }
           }
 
@@ -15923,19 +15966,21 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
         }
       }
 
-      // Seat counts (tech + admin, excluding removed)
-      let currentTechCount = 0;
-      let currentAdminCount = 0;
+      // Unified team-seat summary. Accepted active/suspended people are
+      // billable; pending invitations reserve capacity but are not billed.
+      let acceptedTeamCount = 0;
+      let reservedTeamCount = 0;
       if (user.companyId) {
-        const seats = await db.select({ role: users.companyRole })
-          .from(users)
-          .where(and(eq(users.companyId, user.companyId), inArray(users.companyRole as any, ['tech', 'admin']), ne(users.status as any, 'removed')));
-        currentTechCount = seats.filter(s => s.role === 'tech').length;
-        currentAdminCount = seats.filter(s => s.role === 'admin').length;
+        [acceptedTeamCount, reservedTeamCount] = await Promise.all([
+          countActiveCompanySeats(user.companyId, db),
+          countReservedCompanySeats(user.companyId, db),
+        ]);
       }
 
-      const includedTechSeats = plan?.includedTechSeats ?? null;
-      const additionalSeatPrice = plan?.additionalSeatPrice ? parseFloat(plan.additionalSeatPrice as string) : null;
+      const includedTeamSeats = plan?.includedTeamSeats ?? INCLUDED_TEAM_SEATS;
+      const additionalTeamSeatPrice = plan?.additionalTeamSeatPrice
+        ? parseFloat(plan.additionalTeamSeatPrice as string)
+        : TECH_SEAT_MONTHLY_PRICE_CENTS / 100;
 
       res.json({
         hasActiveSubscription,
@@ -15954,14 +15999,12 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
         // Phase 3.5 — Scale-Up fields
         companyTier: companyData?.tier ?? null,
         seatInfo: {
-          includedTechSeats,
-          additionalSeatPrice,
-          currentTechCount,
-          currentAdminCount,
-          maxTechSeats: companyData?.maxTechSeats ?? null,
-          maxAdminSeats: companyData?.maxAdminSeats ?? null,
-          maxManagerSeats: companyData?.maxManagerSeats ?? null,
-          maxDispatcherSeats: companyData?.maxDispatcherSeats ?? null,
+          includedTeamSeats,
+          additionalTeamSeatPrice,
+          acceptedTeamCount,
+          reservedTeamCount,
+          billedTeamSeatCount: calcBilledSeats(acceptedTeamCount),
+          teamSeatLimit: MAX_RESERVED_COMPANY_SEATS,
         },
         divisionCount,
         ssoEnabled: companyData?.ssoEnabled ?? false,
@@ -21538,60 +21581,9 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Enterprise Contractor Team Management
-  // Owner/admin can invite techs, suspend/reactivate/remove them.
+      // Owner/admin can invite and manage company team members.
   // Tech role has restricted access (no CRM, billing, referrals, team tabs).
   // ─────────────────────────────────────────────────────────────────────────────
-
-  /** Matches the `max_tech_seats` column's own DB default; see resolveTechSeatLimit. */
-  const TECH_SEAT_FALLBACK_DEFAULT = 3;
-
-  /**
-   * Shared tech-seat-limit precedence for /api/contractor/invite-tech and
-   * /api/contractor/bulk-import.
-   *
-   * These two routes previously used different fallback constants (3 vs 10)
-   * when a company had no maxTechSeats override and its plan had no
-   * includedTechSeats value, so the same company could be held to a different
-   * limit depending on which endpoint was used. Reconciled to one precedence
-   * (unchanged from invite-tech's prior behavior, just with a single shared
-   * fallback constant):
-   *   1. company.maxTechSeats, when non-nullish, is the authoritative ceiling.
-   *   2. else plan.includedTechSeats
-   *   3. else 3 (TECH_SEAT_FALLBACK_DEFAULT, matching the schema column's own
-   *      default, so this branch is only reached if a company row is missing
-   *      its default entirely).
-   *
-   * NOTE: there is currently no "unlimited seats" bypass wired up for tech
-   * seats analogous to houses' `maxHousesAllowed === null` — the enterprise
-   * plan literal documents `maxTechSeats: null` as an intent, but no code
-   * path ever copies that onto a company row, so this helper deliberately
-   * preserves the original nullish-fallback behavior rather than inventing a
-   * new "null means unlimited" semantic.
-   * Exported for unit tests only.
-   */
-  function resolveTechSeatLimit(
-    companyRow: { maxTechSeats?: number | null } | undefined,
-    planRow: { includedTechSeats?: number | null } | null | undefined,
-  ): number {
-    return companyRow?.maxTechSeats ?? planRow?.includedTechSeats ?? TECH_SEAT_FALLBACK_DEFAULT;
-  }
-
-  /**
-   * Counts active (non-removed) techs for a company. Pass the transaction (`tx`)
-   * holding a `SELECT ... FOR UPDATE` lock on the company row so the count
-   * reflects any writes already made earlier in the same transaction
-   * (Postgres read-your-own-writes) and blocks other concurrent requests for
-   * the same company until this transaction commits.
-   */
-  async function countActiveTechs(dbOrTx: any, companyId: string): Promise<number> {
-    const rows = await dbOrTx.select({ id: users.id }).from(users)
-      .where(and(
-        eq(users.companyId, companyId),
-        eq(users.companyRole as any, 'tech'),
-        ne(users.status as any, 'removed'),
-      ));
-    return rows.length;
-  }
 
   // Validate invite token (public — returns company info for the invite UI)
   // ─── Enterprise Contractor Team & Invoice Routes ─────────────────────────────
@@ -21704,6 +21696,28 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         req.session.save((err: any) => (err ? reject(err) : resolve()))
       );
 
+      // Pending invitations reserve capacity but are not billable. Acceptance
+      // is the point at which this person joins accepted headcount, so sync
+      // Stripe after the activation commits. A Stripe failure must not undo
+      // the successful account activation; the durable checkpoint is retried.
+      if (activated.companyId) {
+        try {
+          await refreshSeatsForCompany(
+            activated.companyId,
+            stripe,
+            db,
+            (companyId) => countActiveCompanySeats(companyId, db),
+            storage,
+            pool,
+          );
+        } catch (seatSyncErr: any) {
+          req.log?.error(
+            { err: seatSyncErr, companyId: activated.companyId },
+            '[SEAT_SYNC] Failed to sync Stripe team-seat quantity after invite acceptance; queued for retry via pending_seat_syncs',
+          );
+        }
+      }
+
       res.json({ message: "Account activated successfully", user: updatedUser });
     } catch (error) {
       req.log?.error({ error }, '[ENTERPRISE] Error accepting invite');
@@ -21711,12 +21725,13 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     }
   });
 
-  // Invite a tech (admin/owner only)
-  app.post('/api/contractor/invite-tech', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), async (req: any, res: any) => {
+  // Invite a team member (admin/owner only). Keep /invite-tech as a
+  // compatibility alias for older clients.
+  const inviteTeamMemberHandler = async (req: any, res: any) => {
     try {
       const adminUser = req.session.user;
       if (adminUser.role !== 'contractor' || !adminUser.companyId) {
-        return res.status(400).json({ message: "You must be a contractor with a company to invite techs" });
+        return res.status(400).json({ message: "You must be a contractor with a company to invite team members" });
       }
 
       const bodySchema = z.object({
@@ -21731,6 +21746,15 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         return res.status(400).json({ message: "Invalid data", errors: parsed.error.flatten() });
       }
       const { email, firstName, lastName, role: inviteRole, divisionId: inviteDivisionId } = parsed.data;
+      const [freshInviteActor] = await db
+        .select({ companyRole: users.companyRole })
+        .from(users)
+        .where(eq(users.id, adminUser.id))
+        .limit(1);
+      const freshInviteActorRole = (freshInviteActor as any)?.companyRole ?? adminUser.companyRole;
+      if (inviteRole === 'admin' && freshInviteActorRole !== 'owner') {
+        return res.status(403).json({ message: "Only the company owner can invite an admin" });
+      }
 
       // Wrap the seat-limit check + write in a transaction with a row lock on the
       // company so concurrent invites/imports for the same company are serialized
@@ -21750,19 +21774,17 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         const [companyRow] = await tx.select().from(companies).where(eq(companies.id, adminUser.companyId)).limit(1);
         outcome.companyName = companyRow?.name || null;
 
-        let planRow: typeof subscriptionPlans.$inferSelect | null = null;
-        if (adminUser.subscriptionPlanId) {
-          const [pr] = await tx.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, adminUser.subscriptionPlanId)).limit(1);
-          planRow = pr ?? null;
-        }
-        const maxSeats = resolveTechSeatLimit(companyRow as any, planRow);
-
-        const currentTechCount = await countActiveTechs(tx, adminUser.companyId);
-        if (currentTechCount >= maxSeats) {
-          const seatMsg = planRow?.additionalSeatPrice
-            ? `Tech seat limit reached (${maxSeats} included). Additional seats are $${parseFloat(planRow.additionalSeatPrice as string).toFixed(2)}/mo — contact support to add seats.`
-            : `Tech seat limit reached (${maxSeats}). Contact support to add more seats.`;
-          outcome.limitError = { status: 400, body: { message: seatMsg, code: 'SEAT_LIMIT_REACHED', maxSeats, currentCount: currentTechCount } };
+        const currentReservedCount = await countReservedCompanySeats(adminUser.companyId, tx);
+        if (currentReservedCount >= MAX_RESERVED_COMPANY_SEATS) {
+          outcome.limitError = {
+            status: 400,
+            body: {
+              message: `Team capacity reached (${MAX_RESERVED_COMPANY_SEATS} people, including pending invitations). Remove or cancel an existing member before inviting someone new.`,
+              code: 'SEAT_LIMIT_REACHED',
+              maxSeats: MAX_RESERVED_COMPANY_SEATS,
+              currentCount: currentReservedCount,
+            },
+          };
           return;
         }
 
@@ -21772,9 +21794,9 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         const inviteExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
         if (existingUser) {
-          // Only contractor-role accounts may be onboarded as techs; mutating homeowner/agent accounts is forbidden
+          // Only contractor-role accounts may join a contractor team; mutating homeowner/agent accounts is forbidden.
           if ((existingUser as any).role !== 'contractor') {
-            outcome.otherError = { status: 400, body: { message: "An account with this email already exists and cannot be invited as a field technician. Please use a different email address." } };
+            outcome.otherError = { status: 400, body: { message: "An account with this email already exists and cannot be invited as a team member. Please use a different email address." } };
             return;
           }
           if (existingUser.companyId && existingUser.companyId !== adminUser.companyId) {
@@ -21814,18 +21836,6 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       if (outcome.limitError) return res.status(outcome.limitError.status).json(outcome.limitError.body);
       if (outcome.otherError) return res.status(outcome.otherError.status).json(outcome.otherError.body);
 
-      // Phase 2 seat billing: sync the Stripe seat-item quantity right after the
-      // DB write commits, rather than waiting for startup recovery. A failure
-      // here must NOT roll back or fail this request — the tech was already
-      // successfully added; refreshSeatsForCompany already checkpoints via
-      // pending_seat_syncs before calling Stripe, so a failure here is logged
-      // and left for recoverPendingSeatSyncs to retry.
-      try {
-        await refreshSeatsForCompany(adminUser.companyId, stripe, db, (cid) => countActiveCompanySeats(cid, db), storage, pool);
-      } catch (seatSyncErr: any) {
-        req.log?.error({ err: seatSyncErr, companyId: adminUser.companyId }, '[SEAT_SYNC] Failed to sync Stripe seat quantity after tech invite; queued for retry via pending_seat_syncs');
-      }
-
       const domain = process.env.REPLIT_DOMAINS?.split(',')[0]?.trim() || 'gotohomebase.com';
       const inviteUrl = `https://${domain}/contractor/accept-invite?token=${outcome.inviteToken}`;
       await emailService.sendTechInviteEmail(
@@ -21837,10 +21847,12 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
       res.json({ message: "Invite sent successfully", inviteUrl });
     } catch (error) {
-      req.log?.error({ error }, '[ENTERPRISE] Error inviting tech');
+      req.log?.error({ error }, '[ENTERPRISE] Error inviting team member');
       res.status(500).json({ message: "Failed to send invite" });
     }
-  });
+  };
+  app.post('/api/contractor/invite-team-member', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), inviteTeamMemberHandler);
+  app.post('/api/contractor/invite-tech', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), inviteTeamMemberHandler);
 
   // Resend invite email to a pending tech (admin/owner only)
   app.post('/api/contractor/team/:userId/resend-invite', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), async (req: any, res: any) => {
@@ -21918,13 +21930,10 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       const limit = Math.min(parseInt(req.query.limit as string) || 200, 500);
       const offset = Math.max(parseInt(req.query.offset as string) || 0, 0);
 
-      const [companyRow] = await db.select({ maxTechSeats: companies.maxTechSeats })
-        .from(companies).where(eq(companies.id, adminUser.companyId)).limit(1);
-
       const teamWhereClause = and(
         eq(users.companyId, adminUser.companyId),
-        inArray(users.companyRole as any, ['tech', 'admin', 'manager', 'dispatcher']),
-        ne(users.status as any, 'removed')
+        inArray(users.companyRole as any, [...TEAM_MEMBER_ROLES]),
+        or(ne(users.status as any, 'removed'), isNull(users.status as any))
       );
 
       // Count query for pagination metadata
@@ -21952,17 +21961,30 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         )
         .limit(limit).offset(offset);
 
-      const techCount = teamMembers.filter((m: any) => m.companyRole === 'tech').length;
-      const adminCount = teamMembers.filter((m: any) => m.companyRole === 'admin').length;
       const total = countRow?.total ?? 0;
-      res.json({ teamMembers, total, limit, offset, maxTechSeats: (companyRow as any)?.maxTechSeats ?? 3, techCount, adminCount });
+      const [acceptedTeamCount, reservedTeamCount] = await Promise.all([
+        countActiveCompanySeats(adminUser.companyId, db),
+        countReservedCompanySeats(adminUser.companyId, db),
+      ]);
+      res.json({
+        teamMembers,
+        total,
+        limit,
+        offset,
+        acceptedTeamCount,
+        reservedTeamCount,
+        pendingInviteCount: Math.max(0, reservedTeamCount - acceptedTeamCount),
+        billedTeamSeatCount: calcBilledSeats(acceptedTeamCount),
+        includedTeamSeats: INCLUDED_TEAM_SEATS,
+        teamSeatLimit: MAX_RESERVED_COMPANY_SEATS,
+      });
     } catch (error) {
       req.log?.error({ error }, '[ENTERPRISE] Error fetching team');
       res.status(500).json({ message: "Failed to fetch team members" });
     }
   });
 
-  // Suspend a tech or admin (owner can target either; admin can only target techs)
+  // Suspend a team member. Owners can target any non-owner; admins can target non-admin members.
   app.patch('/api/contractor/team/:userId/suspend', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), requireSameCompany(), async (req: any, res: any) => {
     try {
       const { userId } = req.params;
@@ -21976,12 +21998,13 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       const [actorRoleFreshSuspend] = await db.select({ companyRole: users.companyRole }).from(users).where(eq(users.id, adminUser.id)).limit(1);
       const requesterRole = (actorRoleFreshSuspend as any)?.companyRole ?? adminUser.companyRole;
       const roleCondition = requesterRole === 'owner'
-        ? inArray(users.companyRole as any, ['tech', 'admin'])
-        : eq(users.companyRole as any, 'tech');
+        ? inArray(users.companyRole as any, [...TEAM_MEMBER_ROLES])
+        : inArray(users.companyRole as any, [...ADMIN_MANAGEABLE_TEAM_MEMBER_ROLES]);
       const [targetUser] = await db.select().from(users).where(and(
         eq(users.id, userId),
         eq(users.companyId, adminUser.companyId),
-        roleCondition
+        roleCondition,
+        eq(users.status as any, 'active')
       )).limit(1);
       if (!targetUser) return res.status(404).json({ message: "Team member not found" });
 
@@ -22012,7 +22035,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     }
   });
 
-  // Reactivate a tech or admin (owner can target either; admin can only target techs)
+  // Reactivate a team member. Owners can target any non-owner; admins can target non-admin members.
   app.patch('/api/contractor/team/:userId/reactivate', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), requireSameCompany(), async (req: any, res: any) => {
     try {
       const { userId } = req.params;
@@ -22026,12 +22049,13 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       const [actorRoleFreshReact] = await db.select({ companyRole: users.companyRole }).from(users).where(eq(users.id, adminUser.id)).limit(1);
       const requesterRole = (actorRoleFreshReact as any)?.companyRole ?? adminUser.companyRole;
       const roleCondition = requesterRole === 'owner'
-        ? inArray(users.companyRole as any, ['tech', 'admin'])
-        : eq(users.companyRole as any, 'tech');
+        ? inArray(users.companyRole as any, [...TEAM_MEMBER_ROLES])
+        : inArray(users.companyRole as any, [...ADMIN_MANAGEABLE_TEAM_MEMBER_ROLES]);
       const [targetUser] = await db.select().from(users).where(and(
         eq(users.id, userId),
         eq(users.companyId, adminUser.companyId),
-        roleCondition
+        roleCondition,
+        eq(users.status as any, 'suspended')
       )).limit(1);
       if (!targetUser) return res.status(404).json({ message: "Team member not found" });
 
@@ -22074,8 +22098,8 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       const [actorRoleFreshInv] = await db.select({ companyRole: users.companyRole }).from(users).where(eq(users.id, adminUser.id)).limit(1);
       const requesterRole = (actorRoleFreshInv as any)?.companyRole ?? adminUser.companyRole;
       const roleCondition = requesterRole === 'owner'
-        ? inArray(users.companyRole as any, ['tech', 'admin'])
-        : eq(users.companyRole as any, 'tech');
+        ? inArray(users.companyRole as any, [...TEAM_MEMBER_ROLES])
+        : inArray(users.companyRole as any, [...ADMIN_MANAGEABLE_TEAM_MEMBER_ROLES]);
       const [targetUser] = await db.select().from(users).where(and(
         eq(users.id, userId),
         eq(users.companyId, adminUser.companyId),
@@ -22096,14 +22120,6 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       suspendedUserIds.add(userId);
       invalidateUserSessions(req.sessionStore, userId, req.log);
 
-      // Phase 2 seat billing: a cancelled pending invite frees a seat exactly
-      // like a hard removal — sync now rather than waiting for recovery.
-      try {
-        await refreshSeatsForCompany(adminUser.companyId, stripe, db, (cid) => countActiveCompanySeats(cid, db), storage, pool);
-      } catch (seatSyncErr: any) {
-        req.log?.error({ err: seatSyncErr, companyId: adminUser.companyId }, '[SEAT_SYNC] Failed to sync Stripe seat quantity after invite cancellation; queued for retry via pending_seat_syncs');
-      }
-
       res.json({ message: "Invite cancelled" });
     } catch (error) {
       req.log?.error({ error }, '[ENTERPRISE] Error cancelling invite');
@@ -22123,12 +22139,12 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       if (actorGuardErrRole) return res.status(actorGuardErrRole.status).json({ message: actorGuardErrRole.message });
       // Demotion guard: re-verify actor's companyRole from DB to prevent stale privilege use
       const [actorRoleFreshRole] = await db.select({ companyRole: users.companyRole }).from(users).where(eq(users.id, adminUser.id)).limit(1);
-      void actorRoleFreshRole; // consumed for demotion-guard call count
+      const requesterRole = (actorRoleFreshRole as any)?.companyRole ?? adminUser.companyRole;
 
       const schema = z.object({
         firstName: z.string().min(1).max(100).optional(),
         lastName: z.string().min(1).max(100).optional(),
-        companyRole: z.enum(['tech', 'admin']).optional(),
+        companyRole: z.enum(['tech', 'admin', 'manager', 'dispatcher']).optional(),
         email: z.string().email().max(254).optional(),
       }).refine(d => d.firstName !== undefined || d.lastName !== undefined || d.companyRole !== undefined || d.email !== undefined, {
         message: "At least one field must be provided",
@@ -22136,12 +22152,19 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
       const parsed = schema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0]?.message ?? "Invalid input" });
+      if (requesterRole !== 'owner' && parsed.data.companyRole === 'admin') {
+        return res.status(403).json({ message: "Only the company owner can assign the admin role" });
+      }
+
+      const roleCondition = requesterRole === 'owner'
+        ? inArray(users.companyRole as any, [...TEAM_MEMBER_ROLES])
+        : inArray(users.companyRole as any, [...ADMIN_MANAGEABLE_TEAM_MEMBER_ROLES]);
 
       const [targetUser] = await db.select().from(users).where(and(
         eq(users.id, userId),
         eq(users.companyId, adminUser.companyId),
-        inArray(users.companyRole as any, ['tech', 'admin']),
-        ne(users.status as any, 'removed')
+        roleCondition,
+        or(ne(users.status as any, 'removed'), isNull(users.status as any))
       )).limit(1);
       if (!targetUser) return res.status(404).json({ message: "Team member not found" });
 
@@ -22170,7 +22193,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     }
   });
 
-  // Remove a team member — soft-delete, preserves invoice history (owner can remove tech or admin; admin can only remove techs)
+  // Remove a team member — soft-delete, preserving invoice history.
   app.delete('/api/contractor/team/:userId', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), requireSameCompany(), async (req: any, res: any) => {
     try {
       const { userId } = req.params;
@@ -22183,12 +22206,16 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       if (actorGuardErrRemove) return res.status(actorGuardErrRemove.status).json({ message: actorGuardErrRemove.message });
       const requesterRole = (actorRowRemove as any)?.companyRole ?? adminUser.companyRole;
       const roleCondition = requesterRole === 'owner'
-        ? inArray(users.companyRole as any, ['tech', 'admin'])
-        : eq(users.companyRole as any, 'tech');
+        ? inArray(users.companyRole as any, [...TEAM_MEMBER_ROLES])
+        : inArray(users.companyRole as any, [...ADMIN_MANAGEABLE_TEAM_MEMBER_ROLES]);
       const [targetUser] = await db.select().from(users).where(and(
         eq(users.id, userId),
         eq(users.companyId, adminUser.companyId),
-        roleCondition
+        roleCondition,
+        or(
+          inArray(users.status as any, [...BILLABLE_COMPANY_MEMBER_STATUSES]),
+          isNull(users.status as any),
+        )
       )).limit(1);
       if (!targetUser) return res.status(404).json({ message: "Team member not found" });
 
@@ -22230,7 +22257,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       });
       res.json({ message: "Team member removed from company" });
     } catch (error) {
-      req.log?.error({ error }, '[ENTERPRISE] Error removing tech');
+      req.log?.error({ error }, '[ENTERPRISE] Error removing team member');
       res.status(500).json({ message: "Failed to remove team member" });
     }
   });
@@ -22582,27 +22609,17 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       const reserved: Array<{ row: number; email: string; inviteToken: string }> = [];
       let companyNameForEmail = 'Your Company';
 
-      // Wrap the whole import's seat-limit checks + writes in a transaction with a
+      // Wrap the whole import's unified team-capacity checks + writes in a transaction with a
       // row lock on the company, so this import is serialized against any
       // concurrent single-tech invite AND any other concurrent bulk import for the
       // same company — otherwise two importers (or an import racing an invite)
-      // could each read a stale seat count and together exceed maxTechSeats.
+      // could each read a stale seat count and together exceed company capacity.
       // Same pattern as the house-count-vs-plan-limit race fix.
       await db.transaction(async (tx) => {
         await tx.execute(drizzleSql`SELECT id FROM companies WHERE id = ${adminUser.companyId} FOR UPDATE`);
 
         const [companyRow] = await tx.select().from(companies).where(eq(companies.id, adminUser.companyId)).limit(1);
         companyNameForEmail = companyRow?.name || 'Your Company';
-
-        let planForImport: typeof subscriptionPlans.$inferSelect | null = null;
-        if (adminUser.subscriptionPlanId) {
-          const [pr] = await tx.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, adminUser.subscriptionPlanId)).limit(1);
-          planForImport = pr ?? null;
-        }
-        // Reconciled with /api/contractor/invite-tech — see resolveTechSeatLimit.
-        // Previously this route defaulted to 10 seats when uncapped vs. 3 on the
-        // single-invite route; both now resolve identically.
-        const maxSeatsForImport = resolveTechSeatLimit(companyRow as any, planForImport);
 
         for (let i = 0; i < rows.length; i++) {
           const row = rows[i];
@@ -22619,9 +22636,9 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
           // Once the limit is hit, remaining rows are rejected individually
           // (partial import) rather than failing the whole import or silently
           // importing over the limit — each rejected row is reported by number.
-          const currentTechCount = await countActiveTechs(tx, adminUser.companyId);
-          if (currentTechCount >= maxSeatsForImport) {
-            errors.push({ row: i + 2, error: `Row ${i + 2}: seat limit reached (${maxSeatsForImport})` });
+          const currentReservedCount = await countReservedCompanySeats(adminUser.companyId, tx);
+          if (currentReservedCount >= MAX_RESERVED_COMPANY_SEATS) {
+            errors.push({ row: i + 2, error: `Row ${i + 2}: team capacity reached (${MAX_RESERVED_COMPANY_SEATS})` });
             continue;
           }
 
@@ -22670,17 +22687,6 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         errorLog: errors as any,
         completedAt: new Date(),
       }).where(eq(companyBulkImports.id, importRecord.id));
-
-      // Phase 2 seat billing: sync the Stripe seat quantity exactly once for
-      // the whole import (not per row) — reserved.length seats were added
-      // above, regardless of whether their invite email later succeeded.
-      if (reserved.length > 0) {
-        try {
-          await refreshSeatsForCompany(adminUser.companyId, stripe, db, (cid) => countActiveCompanySeats(cid, db), storage, pool);
-        } catch (seatSyncErr: any) {
-          req.log?.error({ err: seatSyncErr, companyId: adminUser.companyId }, '[SEAT_SYNC] Failed to sync Stripe seat quantity after bulk import; queued for retry via pending_seat_syncs');
-        }
-      }
 
       res.json({ importId: importRecord.id, totalRows: rows.length, successRows: successCount, failedRows: errors.length, errors });
     } catch (err) {

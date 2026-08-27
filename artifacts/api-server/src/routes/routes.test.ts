@@ -4,6 +4,10 @@ import express from "express";
 import {
   calcBilledSeats,
   countActiveCompanySeats,
+  isBillableCompanyMemberStatus,
+  isReservedCompanyMemberStatus,
+  TEAM_MEMBER_ROLES,
+  ADMIN_MANAGEABLE_TEAM_MEMBER_ROLES,
   syncSeatSubscriptionItem,
   resolveSeatPriceId,
   resetSeatPriceCache,
@@ -58,8 +62,8 @@ describe("calcBilledSeats", () => {
     expect(calcBilledSeats(2)).toBe(0);
   });
 
-  it("bills 1 additional seat for a company with 3 team members", () => {
-    expect(calcBilledSeats(3)).toBe(1);
+  it("bills 0 additional seats for the owner plus 2 accepted members", () => {
+    expect(calcBilledSeats(3)).toBe(0);
   });
 
   it("bills 0 additional seats for a solo contractor (1 member)", () => {
@@ -70,34 +74,60 @@ describe("calcBilledSeats", () => {
     expect(calcBilledSeats(0)).toBe(0);
   });
 
-  it("bills N-2 seats for larger teams", () => {
-    expect(calcBilledSeats(10)).toBe(8);
+  it("bills N-3 seats for larger teams", () => {
+    expect(calcBilledSeats(10)).toBe(7);
   });
 
   it("bills 0 for a fresh company where only the owner exists", () => {
     expect(calcBilledSeats(1)).toBe(0);
   });
 
-  it("bills 0 when exactly on the 2-seat threshold", () => {
-    expect(calcBilledSeats(2)).toBe(0);
+  it("bills 0 when exactly on the 3-person threshold", () => {
+    expect(calcBilledSeats(3)).toBe(0);
   });
 
-  it("bills 1 the moment a third seat is added", () => {
-    expect(calcBilledSeats(3)).toBe(1);
+  it("bills 1 when a fourth accepted person is added", () => {
+    expect(calcBilledSeats(4)).toBe(1);
   });
 
   it("bills correctly for a medium-sized crew (5 members)", () => {
-    expect(calcBilledSeats(5)).toBe(3);
+    expect(calcBilledSeats(5)).toBe(2);
   });
 
   it("bills correctly for a large team (50 members)", () => {
-    expect(calcBilledSeats(50)).toBe(48);
+    expect(calcBilledSeats(50)).toBe(47);
   });
 
   it("always returns a non-negative integer regardless of large input", () => {
     const result = calcBilledSeats(1000);
-    expect(result).toBe(998);
+    expect(result).toBe(997);
     expect(result).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("unified team-seat membership rules", () => {
+  it("bills active and suspended accepted members but not pending invitations or removed members", () => {
+    expect(isBillableCompanyMemberStatus("active")).toBe(true);
+    expect(isBillableCompanyMemberStatus("suspended")).toBe(true);
+    expect(isBillableCompanyMemberStatus("pending_invite")).toBe(false);
+    expect(isBillableCompanyMemberStatus("removed")).toBe(false);
+  });
+
+  it("reserves capacity for accepted and pending members but not removed members", () => {
+    expect(isReservedCompanyMemberStatus("active")).toBe(true);
+    expect(isReservedCompanyMemberStatus("suspended")).toBe(true);
+    expect(isReservedCompanyMemberStatus("pending_invite")).toBe(true);
+    expect(isReservedCompanyMemberStatus("removed")).toBe(false);
+  });
+
+  it("applies the same billing math to mixed team roles", () => {
+    const acceptedRoles = ["owner", "tech", "admin", "manager", "dispatcher"];
+    expect(calcBilledSeats(acceptedRoles.length)).toBe(2);
+  });
+
+  it("keeps manager and dispatcher roles manageable under the unified team model", () => {
+    expect(TEAM_MEMBER_ROLES).toEqual(["tech", "admin", "manager", "dispatcher"]);
+    expect(ADMIN_MANAGEABLE_TEAM_MEMBER_ROLES).toEqual(["tech", "manager", "dispatcher"]);
   });
 });
 
@@ -277,18 +307,17 @@ describe("countActiveCompanySeats — removed members excluded from billing", ()
   it("drops billed seat count by 1 when a member is set to removed", async () => {
     const companyId = "company-abc";
 
-    // Before removal: DB returns 3 active members (ne(status, 'removed') kept all 3)
-    const dbBefore = makeDbMock(3);
+    // Before removal: owner plus 3 accepted members produces one paid seat.
+    const dbBefore = makeDbMock(4);
     const seatsBefore = await countActiveCompanySeats(companyId, dbBefore as any);
     const billedBefore = calcBilledSeats(seatsBefore);
-    expect(seatsBefore).toBe(3);
+    expect(seatsBefore).toBe(4);
     expect(billedBefore).toBe(1);
 
-    // After removal: DB returns 2 because ne(status, 'removed') now excludes 1
-    const dbAfter = makeDbMock(2);
+    const dbAfter = makeDbMock(3);
     const seatsAfter = await countActiveCompanySeats(companyId, dbAfter as any);
     const billedAfter = calcBilledSeats(seatsAfter);
-    expect(seatsAfter).toBe(2);
+    expect(seatsAfter).toBe(3);
     expect(billedAfter).toBe(0);
 
     // The billed seat count dropped by exactly 1
@@ -415,10 +444,10 @@ describe("refreshSeatsForCompany — seat count corrects on member removal witho
     expect(stripeMock.subscriptionItems.del).toHaveBeenCalledWith("si_seat_001");
   });
 
-  it("updates quantity to 1 billed seat immediately after a removal drops active count from 4 to 3", async () => {
+  it("updates quantity to 1 billed seat immediately after a removal drops accepted count from 5 to 4", async () => {
     const db = makeOwnerDbMock(SUB_ID);
     const stripeMock = makeStripeMock();
-    const getActiveUserCount = vi.fn().mockResolvedValue(3);
+    const getActiveUserCount = vi.fn().mockResolvedValue(4);
 
     await refreshSeatsForCompany(COMPANY_ID, stripeMock as any, db as any, getActiveUserCount);
 
@@ -435,10 +464,10 @@ describe("refreshSeatsForCompany — seat count corrects on member removal witho
     expect(stripeMock.subscriptions.retrieve).toHaveBeenCalledWith(SUB_ID);
   });
 
-  it("creates the seat item when none exists yet and headcount now exceeds the included 2 seats", async () => {
+  it("creates the seat item when none exists yet and accepted headcount exceeds the included 3 people", async () => {
     const db = makeOwnerDbMock(SUB_ID);
     const stripeMock = makeStripeMock("active", null);
-    const getActiveUserCount = vi.fn().mockResolvedValue(3);
+    const getActiveUserCount = vi.fn().mockResolvedValue(4);
 
     await refreshSeatsForCompany(COMPANY_ID, stripeMock as any, db as any, getActiveUserCount);
 
@@ -448,13 +477,23 @@ describe("refreshSeatsForCompany — seat count corrects on member removal witho
     );
   });
 
+  it("synchronizes accepted headcount while the subscription is trialing", async () => {
+    const db = makeOwnerDbMock(SUB_ID);
+    const stripeMock = makeStripeMock("trialing");
+    const getActiveUserCount = vi.fn().mockResolvedValue(4);
+
+    await refreshSeatsForCompany(COMPANY_ID, stripeMock as any, db as any, getActiveUserCount);
+
+    expect(stripeMock.subscriptionItems.update).toHaveBeenCalledWith("si_seat_001", { quantity: 1 });
+  });
+
   it("propagates Stripe errors so callers can log and handle them", async () => {
     const db = makeOwnerDbMock(SUB_ID);
     const stripeMock = makeStripeMock();
     (stripeMock.subscriptionItems.update as any).mockRejectedValue(
       new Error("Stripe rate limit"),
     );
-    const getActiveUserCount = vi.fn().mockResolvedValue(3);
+    const getActiveUserCount = vi.fn().mockResolvedValue(4);
 
     await expect(
       refreshSeatsForCompany(COMPANY_ID, stripeMock as any, db as any, getActiveUserCount),
@@ -551,7 +590,7 @@ describe("processedWebhookEventIds — webhook idempotency guard", () => {
     processedWebhookEventIds.set(EVENT_ID, Date.now());
 
     expect(stripeClient.subscriptionItems.update).toHaveBeenCalledOnce();
-    expect(stripeClient.subscriptionItems.update).toHaveBeenCalledWith(SEAT_ITEM_ID, { quantity: 3 });
+    expect(stripeClient.subscriptionItems.update).toHaveBeenCalledWith(SEAT_ITEM_ID, { quantity: 2 });
 
     // Simulate Stripe retry: same event ID delivered again
     const retryIsDuplicate = processedWebhookEventIds.has(EVENT_ID);
@@ -1138,18 +1177,18 @@ describe("resolveBilledSeatCount — billing stops immediately on company cancel
     expect(resolveBilledSeatCount("past_due", 1)).toBe(0);
   });
 
-  it("applies normal seat billing (N-2) for an active subscription", () => {
-    // 5 active seats → 3 billed (5 - 2 included)
-    expect(resolveBilledSeatCount("active", 5)).toBe(3);
+  it("applies normal seat billing (N-3) for an active subscription", () => {
+    // 5 accepted people → 2 billed (5 - 3 included)
+    expect(resolveBilledSeatCount("active", 5)).toBe(2);
   });
 
   it("applies normal seat billing for a trialing subscription", () => {
     // Trials still bill seats the same way
-    expect(resolveBilledSeatCount("trialing", 4)).toBe(2);
+    expect(resolveBilledSeatCount("trialing", 4)).toBe(1);
   });
 
   it("never returns a negative number for an active subscription with a small team", () => {
-    // 1 active seat — 2 included seats → max(0, -1) = 0
+    // 1 active seat — 3 included people → 0 billed
     expect(resolveBilledSeatCount("active", 1)).toBe(0);
   });
 });
@@ -1240,7 +1279,7 @@ describe("syncSeatQuantityForSubscription — webhook path: quantity-based Strip
     const { stripeClient, update } = makeStripeClientMock();
     const subscription = makeSubscription("active");
 
-    // Inject a mock db that reports 7 active seats (7 - 2 included = 5 billed)
+    // Inject a mock db that reports 7 accepted people (7 - 3 included = 4 billed)
     const dbMock = makeDbMock(7);
 
     const result = await syncSeatQuantityForSubscription(
@@ -1250,9 +1289,9 @@ describe("syncSeatQuantityForSubscription — webhook path: quantity-based Strip
       dbMock as any,
     );
 
-    expect(result).toBe(5);
+    expect(result).toBe(4);
     expect(update).toHaveBeenCalledOnce();
-    expect(update).toHaveBeenCalledWith("si_seat_001", { quantity: 5 });
+    expect(update).toHaveBeenCalledWith("si_seat_001", { quantity: 4 });
   });
 
   it("never queries the DB when a subscription is canceled — avoids stale data", async () => {
@@ -1299,7 +1338,7 @@ describe("syncSeatQuantityForSubscription — webhook path: quantity-based Strip
   it("does NOT skip seat sync when previous status was not canceled (normal active update)", async () => {
     const { stripeClient, update } = makeStripeClientMock();
     const subscription = makeSubscription("active");
-    const dbMock = makeDbMock(4); // 4 seats → 2 billed
+    const dbMock = makeDbMock(4); // 4 accepted people → 1 billed
 
     const result = await syncSeatQuantityForSubscription(
       subscription as any,
@@ -1309,15 +1348,15 @@ describe("syncSeatQuantityForSubscription — webhook path: quantity-based Strip
       false, // not a reactivation
     );
 
-    expect(result).toBe(2);
+    expect(result).toBe(1);
     expect(update).toHaveBeenCalledOnce();
-    expect(update).toHaveBeenCalledWith("si_seat_001", { quantity: 2 });
+    expect(update).toHaveBeenCalledWith("si_seat_001", { quantity: 1 });
   });
 
   it("passes a stable idempotency key derived from the Stripe event ID when creating a new item", async () => {
     const { stripeClient, create } = makeStripeClientMock(null); // no existing item -> create path
     const subscription = makeSubscription("active");
-    const dbMock = makeDbMock(4); // 4 seats -> 2 billed
+    const dbMock = makeDbMock(4); // 4 accepted people -> 1 billed
 
     await syncSeatQuantityForSubscription(
       subscription as any,
@@ -1330,7 +1369,7 @@ describe("syncSeatQuantityForSubscription — webhook path: quantity-based Strip
 
     expect(create).toHaveBeenCalledOnce();
     expect(create).toHaveBeenCalledWith(
-      { subscription: subscription.id, price: TEST_SEAT_PRICE_ID, quantity: 2 },
+      { subscription: subscription.id, price: TEST_SEAT_PRICE_ID, quantity: 1 },
       { idempotencyKey: expect.stringContaining("evt_retry_test_123") },
     );
   });
@@ -3646,7 +3685,7 @@ describe("recoverPendingSeatSyncs — startup recovery path", () => {
         // Even calls: seat count (no .limit())
         return {
           from: vi.fn().mockReturnValue({
-            where: vi.fn().mockResolvedValue([{ count: 3 }]),
+            where: vi.fn().mockResolvedValue([{ count: 4 }]),
           }),
         };
       }),
@@ -3711,7 +3750,7 @@ describe("recoverPendingSeatSyncs — startup recovery path", () => {
     expect(result.failed).toEqual([]);
     expect(stripeMock.subscriptionItems.update).toHaveBeenCalledWith(
       "si_recover_001",
-      { quantity: 1 }, // 3 seats − 2 included = 1 billed
+      { quantity: 1 }, // 4 accepted people − 3 included = 1 billed
     );
     // Checkpoint written BEFORE the Stripe retrieve call, cleared AFTER success.
     expect(storageStub.upsertPendingSeatSync).toHaveBeenCalledWith(COMPANY_A);
@@ -3767,7 +3806,7 @@ describe("recoverPendingSeatSyncs — startup recovery path", () => {
         }
         return {
           from: vi.fn().mockReturnValue({
-            where: vi.fn().mockResolvedValue([{ count: 3 }]),
+            where: vi.fn().mockResolvedValue([{ count: 4 }]),
           }),
         };
       }),
@@ -3789,7 +3828,7 @@ describe("recoverPendingSeatSyncs — startup recovery path", () => {
     // Build a DB mock whose .where() result is both a Promise (for the seat-count
     // query that awaits it directly) AND has a .limit() method (for the owner query).
     // This dual-purpose object satisfies both query shapes with one mock factory.
-    function makeDualWhereChain(subId: string, count = 3) {
+    function makeDualWhereChain(subId: string, count = 4) {
       const whereResult = {
         limit: vi.fn().mockResolvedValue([{ stripeSubscriptionId: subId }]),
         then: (res: any, rej: any) => Promise.resolve([{ count }]).then(res, rej),

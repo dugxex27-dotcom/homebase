@@ -29,8 +29,10 @@ export const subscriptionPlans = pgTable("subscription_plans", {
   features: text("features").array().notNull(), // Array of feature descriptions
   referralCreditCap: decimal("referral_credit_cap", { precision: 10, scale: 2 }), // Max referral credits per month (null = use default)
   hasCrmAccess: boolean("has_crm_access").notNull().default(false), // Whether tier includes CRM features
-  includedTechSeats: integer("included_tech_seats"), // How many tech seats are bundled in the base price (null = N/A for homeowner plans)
-  additionalSeatPrice: decimal("additional_seat_price", { precision: 10, scale: 2 }), // $/month per tech beyond includedTechSeats (null = no per-seat billing)
+  // Keep the existing database column names for compatibility while exposing
+  // role-neutral application names for the unified team-seat model.
+  includedTeamSeats: integer("included_tech_seats"), // Total accepted people bundled in the base price (null = N/A for homeowner plans)
+  additionalTeamSeatPrice: decimal("additional_seat_price", { precision: 10, scale: 2 }), // $/month per accepted person beyond includedTeamSeats
   isActive: boolean("is_active").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0), // For display ordering
   createdAt: timestamp("created_at").defaultNow(),
@@ -163,12 +165,10 @@ export const companies = pgTable("companies", {
   stripePayoutsEnabled: boolean("stripe_payouts_enabled").default(false),
   stripeDefaultCurrency: varchar("stripe_default_currency", { length: 3 }).default("usd"),
   subscriptionTier: text("subscription_tier").default("individual"), // "individual" | "enterprise"
-  maxTechSeats: integer("max_tech_seats").default(3), // Enterprise: max number of tech seat licenses
-  // Scale-Up Plan: tier model and seat limits
+  // Scale-Up Plan: tier model. Legacy role-specific seat-limit columns remain
+  // in the database for compatibility but are intentionally not part of the
+  // application schema; admission uses one role-agnostic policy constant.
   tier: varchar("tier").notNull().default("solo"), // "solo" | "pro" | "business" | "enterprise"
-  maxAdminSeats: integer("max_admin_seats").default(2),
-  maxDispatcherSeats: integer("max_dispatcher_seats").default(0),
-  maxManagerSeats: integer("max_manager_seats").default(0),
   ssoEnabled: boolean("sso_enabled").default(false),
   ssoProvider: varchar("sso_provider"), // e.g. 'okta', 'google_workspace'
   ssoDomain: varchar("sso_domain"), // verified domain for SSO
