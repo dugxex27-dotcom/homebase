@@ -29,3 +29,4 @@
 - [lib/db schema changes need tsc --build](composite-project-schema-changes.md) — run `typecheck:libs` after editing lib/db schema, or consumers typecheck against stale .d.ts
 - [Demo paywall bypass consolidation](demo-paywall-bypass-consolidation.md) — use isDemoAccount only, never ID/email string matching; check test fixtures too, they silently rely on the old bypass strings
 - [Count-based limit race fix pattern](count-based-limit-race-fix.md) — COUNT-based limits need db.transaction+FOR UPDATE row lock, not a plain atomic UPDATE...RETURNING; also notes a TS closure-narrowing gotcha
+- [Seat/quota limit fallback reconciliation](seat-limit-fallback-reconciliation.md) — before unifying two routes' "limit ?? default" chains, check each hardcoded fallback constant individually; don't assume a null/undefined column means "unlimited" unless another code path actually sets it that way

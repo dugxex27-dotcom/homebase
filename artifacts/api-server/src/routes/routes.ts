@@ -20804,6 +20804,57 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   // Tech role has restricted access (no CRM, billing, referrals, team tabs).
   // ─────────────────────────────────────────────────────────────────────────────
 
+  /** Matches the `max_tech_seats` column's own DB default; see resolveTechSeatLimit. */
+  const TECH_SEAT_FALLBACK_DEFAULT = 3;
+
+  /**
+   * Shared tech-seat-limit precedence for /api/contractor/invite-tech and
+   * /api/contractor/bulk-import.
+   *
+   * These two routes previously used different fallback constants (3 vs 10)
+   * when a company had no maxTechSeats override and its plan had no
+   * includedTechSeats value, so the same company could be held to a different
+   * limit depending on which endpoint was used. Reconciled to one precedence
+   * (unchanged from invite-tech's prior behavior, just with a single shared
+   * fallback constant):
+   *   1. company.maxTechSeats, when non-nullish, is the authoritative ceiling.
+   *   2. else plan.includedTechSeats
+   *   3. else 3 (TECH_SEAT_FALLBACK_DEFAULT, matching the schema column's own
+   *      default, so this branch is only reached if a company row is missing
+   *      its default entirely).
+   *
+   * NOTE: there is currently no "unlimited seats" bypass wired up for tech
+   * seats analogous to houses' `maxHousesAllowed === null` — the enterprise
+   * plan literal documents `maxTechSeats: null` as an intent, but no code
+   * path ever copies that onto a company row, so this helper deliberately
+   * preserves the original nullish-fallback behavior rather than inventing a
+   * new "null means unlimited" semantic.
+   * Exported for unit tests only.
+   */
+  function resolveTechSeatLimit(
+    companyRow: { maxTechSeats?: number | null } | undefined,
+    planRow: { includedTechSeats?: number | null } | null | undefined,
+  ): number {
+    return companyRow?.maxTechSeats ?? planRow?.includedTechSeats ?? TECH_SEAT_FALLBACK_DEFAULT;
+  }
+
+  /**
+   * Counts active (non-removed) techs for a company. Pass the transaction (`tx`)
+   * holding a `SELECT ... FOR UPDATE` lock on the company row so the count
+   * reflects any writes already made earlier in the same transaction
+   * (Postgres read-your-own-writes) and blocks other concurrent requests for
+   * the same company until this transaction commits.
+   */
+  async function countActiveTechs(dbOrTx: any, companyId: string): Promise<number> {
+    const rows = await dbOrTx.select({ id: users.id }).from(users)
+      .where(and(
+        eq(users.companyId, companyId),
+        eq(users.companyRole as any, 'tech'),
+        ne(users.status as any, 'removed'),
+      ));
+    return rows.length;
+  }
+
   // Validate invite token (public — returns company info for the invite UI)
   // ─── Enterprise Contractor Team & Invoice Routes ─────────────────────────────
 
@@ -20928,79 +20979,93 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       }
       const { email, firstName, lastName, role: inviteRole, divisionId: inviteDivisionId } = parsed.data;
 
-      const [companyRow] = await db.select().from(companies).where(eq(companies.id, adminUser.companyId)).limit(1);
+      // Wrap the seat-limit check + write in a transaction with a row lock on the
+      // company so concurrent invites/imports for the same company are serialized
+      // — otherwise two simultaneous requests can each read a stale seat count and
+      // both pass the limit check. Same pattern as the house-count-vs-plan-limit
+      // race fix (SELECT ... FOR UPDATE + re-check inside the transaction).
+      const outcome: {
+        limitError: { status: number; body: any } | null;
+        otherError: { status: number; body: any } | null;
+        inviteToken: string | null;
+        companyName: string | null;
+      } = { limitError: null, otherError: null, inviteToken: null, companyName: null };
 
-      // Phase 3.3: use includedTechSeats from subscription plan when available (per-seat billing model)
-      let maxSeats = (companyRow as any)?.maxTechSeats ?? 3;
-      let planRow: typeof subscriptionPlans.$inferSelect | null = null;
-      if (adminUser.subscriptionPlanId) {
-        const [pr] = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, adminUser.subscriptionPlanId)).limit(1);
-        planRow = pr ?? null;
-      }
-      if (planRow?.includedTechSeats != null) {
-        // Per-seat model: base seats from plan; company.maxTechSeats is authoritative ceiling
-        maxSeats = (companyRow as any)?.maxTechSeats ?? planRow.includedTechSeats;
-      }
+      await db.transaction(async (tx) => {
+        await tx.execute(drizzleSql`SELECT id FROM companies WHERE id = ${adminUser.companyId} FOR UPDATE`);
 
-      const currentTechs = await db.select({ id: users.id }).from(users)
-        .where(and(
-          eq(users.companyId, adminUser.companyId),
-          eq(users.companyRole as any, 'tech'),
-          ne(users.status as any, 'removed')
-        ));
-      if (currentTechs.length >= maxSeats) {
-        const seatMsg = planRow?.additionalSeatPrice
-          ? `Tech seat limit reached (${maxSeats} included). Additional seats are $${parseFloat(planRow.additionalSeatPrice as string).toFixed(2)}/mo — contact support to add seats.`
-          : `Tech seat limit reached (${maxSeats}). Contact support to add more seats.`;
-        return res.status(400).json({ message: seatMsg, code: 'SEAT_LIMIT_REACHED', maxSeats, currentCount: currentTechs.length });
-      }
+        const [companyRow] = await tx.select().from(companies).where(eq(companies.id, adminUser.companyId)).limit(1);
+        outcome.companyName = companyRow?.name || null;
 
-      const [existingUser] = await db.select().from(users).where(eq(users.email, email)).limit(1);
-      const cryptoMod = await import('crypto');
-      const inviteToken = cryptoMod.randomBytes(32).toString('hex');
-      const inviteExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-
-      if (existingUser) {
-        // Only contractor-role accounts may be onboarded as techs; mutating homeowner/agent accounts is forbidden
-        if ((existingUser as any).role !== 'contractor') {
-          return res.status(400).json({ message: "An account with this email already exists and cannot be invited as a field technician. Please use a different email address." });
+        let planRow: typeof subscriptionPlans.$inferSelect | null = null;
+        if (adminUser.subscriptionPlanId) {
+          const [pr] = await tx.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, adminUser.subscriptionPlanId)).limit(1);
+          planRow = pr ?? null;
         }
-        if (existingUser.companyId && existingUser.companyId !== adminUser.companyId) {
-          return res.status(400).json({ message: "This user already belongs to another company" });
+        const maxSeats = resolveTechSeatLimit(companyRow as any, planRow);
+
+        const currentTechCount = await countActiveTechs(tx, adminUser.companyId);
+        if (currentTechCount >= maxSeats) {
+          const seatMsg = planRow?.additionalSeatPrice
+            ? `Tech seat limit reached (${maxSeats} included). Additional seats are $${parseFloat(planRow.additionalSeatPrice as string).toFixed(2)}/mo — contact support to add seats.`
+            : `Tech seat limit reached (${maxSeats}). Contact support to add more seats.`;
+          outcome.limitError = { status: 400, body: { message: seatMsg, code: 'SEAT_LIMIT_REACHED', maxSeats, currentCount: currentTechCount } };
+          return;
         }
-        await db.update(users).set({
-          companyId: adminUser.companyId,
-          companyRole: inviteRole,
-          ...(inviteDivisionId ? { divisionId: inviteDivisionId } : {}),
-          status: 'pending_invite',
-          inviteToken,
-          inviteExpiresAt,
-          updatedAt: new Date(),
-        } as any).where(eq(users.id, existingUser.id));
-      } else {
-        await db.insert(users).values({
-          id: randomUUID(),
-          email,
-          firstName: firstName || null,
-          lastName: lastName || null,
-          role: 'contractor',
-          companyId: adminUser.companyId,
-          companyRole: inviteRole,
-          ...(inviteDivisionId ? { divisionId: inviteDivisionId } : {}),
-          status: 'pending_invite',
-          inviteToken,
-          inviteExpiresAt,
-          accountStatus: 'active',
-          subscriptionStatus: 'active',
-          emailVerified: false,
-        } as any);
-      }
+
+        const [existingUser] = await tx.select().from(users).where(eq(users.email, email)).limit(1);
+        const cryptoMod = await import('crypto');
+        const inviteToken = cryptoMod.randomBytes(32).toString('hex');
+        const inviteExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+        if (existingUser) {
+          // Only contractor-role accounts may be onboarded as techs; mutating homeowner/agent accounts is forbidden
+          if ((existingUser as any).role !== 'contractor') {
+            outcome.otherError = { status: 400, body: { message: "An account with this email already exists and cannot be invited as a field technician. Please use a different email address." } };
+            return;
+          }
+          if (existingUser.companyId && existingUser.companyId !== adminUser.companyId) {
+            outcome.otherError = { status: 400, body: { message: "This user already belongs to another company" } };
+            return;
+          }
+          await tx.update(users).set({
+            companyId: adminUser.companyId,
+            companyRole: inviteRole,
+            ...(inviteDivisionId ? { divisionId: inviteDivisionId } : {}),
+            status: 'pending_invite',
+            inviteToken,
+            inviteExpiresAt,
+            updatedAt: new Date(),
+          } as any).where(eq(users.id, existingUser.id));
+        } else {
+          await tx.insert(users).values({
+            id: randomUUID(),
+            email,
+            firstName: firstName || null,
+            lastName: lastName || null,
+            role: 'contractor',
+            companyId: adminUser.companyId,
+            companyRole: inviteRole,
+            ...(inviteDivisionId ? { divisionId: inviteDivisionId } : {}),
+            status: 'pending_invite',
+            inviteToken,
+            inviteExpiresAt,
+            accountStatus: 'active',
+            subscriptionStatus: 'active',
+            emailVerified: false,
+          } as any);
+        }
+        outcome.inviteToken = inviteToken;
+      });
+
+      if (outcome.limitError) return res.status(outcome.limitError.status).json(outcome.limitError.body);
+      if (outcome.otherError) return res.status(outcome.otherError.status).json(outcome.otherError.body);
 
       const domain = process.env.REPLIT_DOMAINS?.split(',')[0]?.trim() || 'gotohomebase.com';
-      const inviteUrl = `https://${domain}/contractor/accept-invite?token=${inviteToken}`;
+      const inviteUrl = `https://${domain}/contractor/accept-invite?token=${outcome.inviteToken}`;
       await emailService.sendTechInviteEmail(
         email,
-        companyRow?.name || 'Your Company',
+        outcome.companyName || 'Your Company',
         adminUser.firstName || 'Your manager',
         inviteUrl
       );
@@ -21709,56 +21774,92 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       } as any).returning();
 
       const domain = process.env.REPLIT_DOMAINS?.split(',')[0]?.trim() || 'gotohomebase.com';
-      const [companyRow] = await db.select().from(companies).where(eq(companies.id, adminUser.companyId)).limit(1);
-
-      // Get plan for seat limits
-      let planForImport: typeof subscriptionPlans.$inferSelect | null = null;
-      if (adminUser.subscriptionPlanId) {
-        const [pr] = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, adminUser.subscriptionPlanId)).limit(1);
-        planForImport = pr ?? null;
-      }
-      const maxSeatsForImport = (companyRow as any)?.maxTechSeats ?? (planForImport?.includedTechSeats ?? 10);
 
       const errors: Array<{ row: number; error: string }> = [];
-      let successCount = 0;
+      // Rows whose user record was mutated (seat reserved) inside the locked
+      // transaction below. Invite emails are sent afterward, outside the lock,
+      // since email delivery is slow external I/O that shouldn't hold the row
+      // lock open — matches the single-invite route's ordering.
+      const reserved: Array<{ row: number; email: string; inviteToken: string }> = [];
+      let companyNameForEmail = 'Your Company';
 
-      for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        const email = row['email']?.trim();
-        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-          errors.push({ row: i + 2, error: `Row ${i + 2}: invalid or missing email` });
-          continue;
+      // Wrap the whole import's seat-limit checks + writes in a transaction with a
+      // row lock on the company, so this import is serialized against any
+      // concurrent single-tech invite AND any other concurrent bulk import for the
+      // same company — otherwise two importers (or an import racing an invite)
+      // could each read a stale seat count and together exceed maxTechSeats.
+      // Same pattern as the house-count-vs-plan-limit race fix.
+      await db.transaction(async (tx) => {
+        await tx.execute(drizzleSql`SELECT id FROM companies WHERE id = ${adminUser.companyId} FOR UPDATE`);
+
+        const [companyRow] = await tx.select().from(companies).where(eq(companies.id, adminUser.companyId)).limit(1);
+        companyNameForEmail = companyRow?.name || 'Your Company';
+
+        let planForImport: typeof subscriptionPlans.$inferSelect | null = null;
+        if (adminUser.subscriptionPlanId) {
+          const [pr] = await tx.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, adminUser.subscriptionPlanId)).limit(1);
+          planForImport = pr ?? null;
         }
+        // Reconciled with /api/contractor/invite-tech — see resolveTechSeatLimit.
+        // Previously this route defaulted to 10 seats when uncapped vs. 3 on the
+        // single-invite route; both now resolve identically.
+        const maxSeatsForImport = resolveTechSeatLimit(companyRow as any, planForImport);
 
-        // Check seat limit per iteration
-        const currentTechCount = await db.select({ id: users.id }).from(users)
-          .where(and(eq(users.companyId, adminUser.companyId), eq(users.companyRole as any, 'tech'), ne(users.status as any, 'removed')));
-        if (currentTechCount.length >= maxSeatsForImport) {
-          errors.push({ row: i + 2, error: `Row ${i + 2}: seat limit reached (${maxSeatsForImport})` });
-          continue;
-        }
-
-        try {
-          const [existing] = await db.select().from(users).where(eq(users.email, email)).limit(1);
-          const cryptoMod = await import('crypto');
-          const inviteToken = cryptoMod.randomBytes(32).toString('hex');
-          const inviteExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-          const firstName = row['firstname'] || row['first_name'] || row['first name'] || null;
-          const lastName = row['lastname'] || row['last_name'] || row['last name'] || null;
-
-          if (existing) {
-            if ((existing as any).role !== 'contractor') { errors.push({ row: i + 2, error: `${email}: non-contractor account` }); continue; }
-            if (existing.companyId && existing.companyId !== adminUser.companyId) { errors.push({ row: i + 2, error: `${email}: belongs to another company` }); continue; }
-            await db.update(users).set({ companyId: adminUser.companyId, companyRole: 'tech', status: 'pending_invite', inviteToken, inviteExpiresAt, updatedAt: new Date() } as any).where(eq(users.id, existing.id));
-          } else {
-            await db.insert(users).values({ id: randomUUID(), email, firstName, lastName, role: 'contractor', companyId: adminUser.companyId, companyRole: 'tech', status: 'pending_invite', inviteToken, inviteExpiresAt, accountStatus: 'active', subscriptionStatus: 'active', emailVerified: false } as any);
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
+          const email = row['email']?.trim();
+          if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            errors.push({ row: i + 2, error: `Row ${i + 2}: invalid or missing email` });
+            continue;
           }
 
-          const inviteUrl = `https://${domain}/contractor/accept-invite?token=${inviteToken}`;
-          await emailService.sendTechInviteEmail(email, companyRow?.name || 'Your Company', adminUser.firstName || 'Your manager', inviteUrl);
+          // Re-check the seat count on every row from inside the same locked
+          // transaction. This sees this loop's own earlier inserts (Postgres
+          // read-your-own-writes), so seats are reserved one at a time and no
+          // concurrent request for this company can interleave until commit.
+          // Once the limit is hit, remaining rows are rejected individually
+          // (partial import) rather than failing the whole import or silently
+          // importing over the limit — each rejected row is reported by number.
+          const currentTechCount = await countActiveTechs(tx, adminUser.companyId);
+          if (currentTechCount >= maxSeatsForImport) {
+            errors.push({ row: i + 2, error: `Row ${i + 2}: seat limit reached (${maxSeatsForImport})` });
+            continue;
+          }
+
+          try {
+            const [existing] = await tx.select().from(users).where(eq(users.email, email)).limit(1);
+            const cryptoMod = await import('crypto');
+            const inviteToken = cryptoMod.randomBytes(32).toString('hex');
+            const inviteExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+            const firstName = row['firstname'] || row['first_name'] || row['first name'] || null;
+            const lastName = row['lastname'] || row['last_name'] || row['last name'] || null;
+
+            if (existing) {
+              if ((existing as any).role !== 'contractor') { errors.push({ row: i + 2, error: `${email}: non-contractor account` }); continue; }
+              if (existing.companyId && existing.companyId !== adminUser.companyId) { errors.push({ row: i + 2, error: `${email}: belongs to another company` }); continue; }
+              await tx.update(users).set({ companyId: adminUser.companyId, companyRole: 'tech', status: 'pending_invite', inviteToken, inviteExpiresAt, updatedAt: new Date() } as any).where(eq(users.id, existing.id));
+            } else {
+              await tx.insert(users).values({ id: randomUUID(), email, firstName, lastName, role: 'contractor', companyId: adminUser.companyId, companyRole: 'tech', status: 'pending_invite', inviteToken, inviteExpiresAt, accountStatus: 'active', subscriptionStatus: 'active', emailVerified: false } as any);
+            }
+            reserved.push({ row: i + 2, email, inviteToken });
+          } catch (rowErr) {
+            errors.push({ row: i + 2, error: `${email}: ${(rowErr as Error).message}` });
+          }
+        }
+      });
+
+      // Send invite emails outside the lock. A row only counts as a final success
+      // once its email is sent — matches the pre-existing single-invite semantics
+      // (email failure still reports the row as failed, though the seat/account
+      // mutation is not rolled back — pre-existing behavior, unchanged here).
+      let successCount = 0;
+      for (const r of reserved) {
+        try {
+          const inviteUrl = `https://${domain}/contractor/accept-invite?token=${r.inviteToken}`;
+          await emailService.sendTechInviteEmail(r.email, companyNameForEmail, adminUser.firstName || 'Your manager', inviteUrl);
           successCount++;
-        } catch (rowErr) {
-          errors.push({ row: i + 2, error: `${email}: ${(rowErr as Error).message}` });
+        } catch (emailErr) {
+          errors.push({ row: r.row, error: `${r.email}: ${(emailErr as Error).message}` });
         }
       }
 
