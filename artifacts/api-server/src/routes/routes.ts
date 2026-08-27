@@ -13177,7 +13177,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/proposals/:id", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
-      const partialData = insertProposalSchema.partial().parse(req.body);
       const oldProposal = await storage.getProposal(req.params.id);
       if (!oldProposal) {
         return res.status(404).json({ message: "Proposal not found" });
@@ -13185,6 +13184,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (oldProposal.contractorId !== userId && oldProposal.homeownerId !== userId) {
         return res.status(403).json({ message: "Access denied" });
       }
+
+      // Homeowners may not use the generic PATCH route to change workflow
+      // state, signatures, or contract metadata. Those fields must only be
+      // changed by the dedicated response/signing flows.
+      if (oldProposal.homeownerId === userId) {
+        const homeownerEditableFields = new Set(["customerNotes"]);
+        const requestedFields = Object.keys(req.body ?? {});
+        const blockedFields = requestedFields.filter(
+          (field) => !homeownerEditableFields.has(field),
+        );
+        if (blockedFields.length > 0) {
+          return res.status(403).json({
+            message:
+              "Homeowners may only update customer notes through this endpoint",
+            blockedFields,
+          });
+        }
+      }
+
+      const partialData = insertProposalSchema.partial().parse(req.body);
       // Atomic conditional update: only apply this patch if the proposal's
       // status is still what we just read. This closes the race where two
       // concurrent requests (e.g. two homeowner/contractor actions on the

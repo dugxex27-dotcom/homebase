@@ -239,6 +239,78 @@ describe("PATCH /api/proposals/:id — race condition", () => {
     // Exactly one homeowner notification for the transition, not two.
     expect(mockCreateNotificationSafely).toHaveBeenCalledTimes(1);
   });
+
+  it.each([
+    ["status", "accepted"],
+    ["customerSignature", "forged-signature"],
+    ["contractSignedAt", new Date().toISOString()],
+    ["signatureIpAddress", "203.0.113.10"],
+  ])(
+    "rejects a homeowner PATCH attempting to change %s",
+    async (field, value) => {
+      const state: ProposalState = {
+        id: PROPOSAL_ID,
+        contractorId: CONTRACTOR_ID,
+        homeownerId: HOMEOWNER_ID,
+        status: "sent",
+        title: "Roof repair",
+      };
+      wireProposalMocks(state);
+      const app = await buildApp({ id: HOMEOWNER_ID });
+
+      const res = await request(app)
+        .patch(`/api/proposals/${PROPOSAL_ID}`)
+        .send({ [field]: value });
+
+      expect(res.status).toBe(403);
+      expect(res.body.message).toContain("only update customer notes");
+      expect(state.status).toBe("sent");
+      expect(state.customerSignature).toBeUndefined();
+      expect(mockUpdateProposalIfStatusMatches).not.toHaveBeenCalled();
+    },
+  );
+
+  it("still allows a homeowner to update customer notes", async () => {
+    const state: ProposalState = {
+      id: PROPOSAL_ID,
+      contractorId: CONTRACTOR_ID,
+      homeownerId: HOMEOWNER_ID,
+      status: "sent",
+      title: "Roof repair",
+    };
+    wireProposalMocks(state);
+    const app = await buildApp({ id: HOMEOWNER_ID });
+
+    const res = await request(app)
+      .patch(`/api/proposals/${PROPOSAL_ID}`)
+      .send({ customerNotes: "Please call before arriving." });
+
+    expect(res.status).toBe(200);
+    expect(mockUpdateProposalIfStatusMatches).toHaveBeenCalledWith(
+      PROPOSAL_ID,
+      "sent",
+      { customerNotes: "Please call before arriving." },
+    );
+  });
+
+  it("preserves contractor ability to PATCH proposal status", async () => {
+    const state: ProposalState = {
+      id: PROPOSAL_ID,
+      contractorId: CONTRACTOR_ID,
+      homeownerId: HOMEOWNER_ID,
+      status: "draft",
+      title: "Roof repair",
+    };
+    wireProposalMocks(state);
+    const app = await buildApp({ id: CONTRACTOR_ID });
+
+    const res = await request(app)
+      .patch(`/api/proposals/${PROPOSAL_ID}`)
+      .send({ status: "sent" });
+
+    expect(res.status).toBe(200);
+    expect(state.status).toBe("sent");
+  });
 });
 
 describe("POST /api/proposals/:id/sign — race condition", () => {
