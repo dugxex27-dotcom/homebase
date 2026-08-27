@@ -35,6 +35,7 @@ import { sendEmail, emailService, sendCheckoutFailureEmail } from "../email-serv
 import { verifyAndActivateAppleTransaction, handleAppleServerNotification, AppleIapError } from "../apple-iap";
 import { lookupByHIN } from "../hin-service";
 import { seedHomeownerDemo, seedContractorDemo, seedAgentDemo, topUpHomeownerTaskCompletions, ensureDemoAccountFlag } from "../demo-seeder";
+import { parse as parseCsvSync, CsvError } from "csv-parse/sync";
 
 const stripe = process.env.STRIPE_SECRET_KEY 
   ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2026-04-22.dahlia" })
@@ -12424,9 +12425,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (oldProposal.contractorId !== userId && oldProposal.homeownerId !== userId) {
         return res.status(403).json({ message: "Access denied" });
       }
-      const proposal = await storage.updateProposal(req.params.id, partialData);
+      // Atomic conditional update: only apply this patch if the proposal's
+      // status is still what we just read. This closes the race where two
+      // concurrent requests (e.g. two homeowner/contractor actions on the
+      // same proposal) each read the same prior status and would otherwise
+      // both fire a duplicate status-transition notification, or silently
+      // clobber a status change the other request made in between.
+      const proposal = await storage.updateProposalIfStatusMatches(req.params.id, oldProposal.status, partialData);
       if (!proposal) {
-        return res.status(404).json({ message: "Proposal not found" });
+        return res.status(409).json({ message: "This proposal was just updated by someone else. Please refresh and try again." });
       }
       
       // Create notification when proposal status changes to "sent"
@@ -12500,13 +12507,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only the homeowner can sign this proposal" });
       }
 
-      // Update proposal with signature data
-      const updatedProposal = await storage.updateProposal(proposalId, {
+      // Atomic conditional update: only apply the signature if the proposal's
+      // status is still what we just read. This closes the race where two
+      // concurrent /sign submissions for the same proposal (e.g. a
+      // double-click or double-submit) both read the same prior status and
+      // would otherwise both write a signature and both fire duplicate
+      // "achievement unlocked" notifications — only the request whose UPDATE
+      // actually matches a row applies its signature.
+      const updatedProposal = await storage.updateProposalIfStatusMatches(proposalId, proposal.status, {
         customerSignature: signature,
         contractSignedAt: new Date(signedAt),
         signatureIpAddress: ipAddress,
         status: "accepted"
       });
+      if (!updatedProposal) {
+        return res.status(409).json({ message: "This proposal was just updated (it may already be signed). Please refresh and try again." });
+      }
 
       try {
         const newAchievements = await storage.checkAndUnlockContractorHiringAchievements(userId);
@@ -20917,21 +20933,18 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       }
       const { token, firstName, lastName, password } = parsed.data;
 
-      const [invitedUser] = await db.select().from(users).where(eq(users.inviteToken, token)).limit(1);
-      if (!invitedUser) {
-        return res.status(404).json({ message: "Invalid or expired invite token" });
-      }
-      if ((invitedUser as any).status !== 'pending_invite') {
-        return res.status(400).json({ message: "This invite has already been accepted" });
-      }
-      if ((invitedUser as any).inviteExpiresAt && new Date() > new Date((invitedUser as any).inviteExpiresAt)) {
-        return res.status(400).json({ message: "This invite has expired" });
-      }
-
       const bcrypt = await import('bcryptjs');
       const passwordHash = await bcrypt.hash(password, 10);
 
-      await db.update(users).set({
+      // Atomic conditional update: the eligibility check (status is still
+      // 'pending_invite' and not expired) and the activation write happen in
+      // one UPDATE...WHERE...RETURNING statement, so two concurrent accepts
+      // of the same token can no longer both pass a separate read-then-write
+      // check and both activate. Postgres serializes concurrent UPDATEs on
+      // the same row — whichever request's statement runs second re-evaluates
+      // the WHERE clause against the first request's already-committed
+      // result and matches zero rows, so only one accept can ever succeed.
+      const [activated] = await db.update(users).set({
         firstName,
         lastName,
         passwordHash,
@@ -20942,9 +20955,27 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         accountStatus: 'active',
         emailVerified: true,
         updatedAt: new Date(),
-      } as any).where(eq(users.id, invitedUser.id));
+      } as any).where(and(
+        eq(users.inviteToken, token),
+        eq(users.status as any, 'pending_invite'),
+        or(isNull(users.inviteExpiresAt as any), gt(users.inviteExpiresAt as any, new Date())),
+      )).returning();
 
-      const updatedUser = await storage.getUser(invitedUser.id);
+      if (!activated) {
+        // Differentiate the failure reason for a clear message — this extra
+        // read is for messaging only; it plays no part in the activation
+        // decision, which is fully governed by the atomic UPDATE above.
+        const [invitedUser] = await db.select().from(users).where(eq(users.inviteToken, token)).limit(1);
+        if (!invitedUser) {
+          return res.status(404).json({ message: "Invalid or expired invite token" });
+        }
+        if ((invitedUser as any).status !== 'pending_invite') {
+          return res.status(400).json({ message: "This invite has already been accepted" });
+        }
+        return res.status(400).json({ message: "This invite has expired" });
+      }
+
+      const updatedUser = await storage.getUser(activated.id);
       req.session.isAuthenticated = true;
       req.session.user = updatedUser;
       await new Promise<void>((resolve, reject) =>
@@ -21734,15 +21765,22 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
   // ─── Phase 3.2 — Bulk Tech Import ────────────────────────────────────────────
 
-  // Lightweight inline CSV parser (no external deps needed for simple email,firstName,lastName CSVs)
+  // CSV parser backed by the `csv-parse` library so quoted fields (which may
+  // contain commas, newlines, or escaped `""` double-quotes per RFC 4180) are
+  // handled correctly instead of naively splitting on every raw comma — a
+  // comma inside an unquoted name/address field used to shift every later
+  // column. Throws a CsvError (caught by the route below and turned into a
+  // 400 with a clear message) for malformed CSV such as unmatched quotes or
+  // a row with the wrong number of columns.
   const parseCsvRows = (raw: string): Array<Record<string, string>> => {
-    const lines = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter(l => l.trim());
-    if (lines.length < 2) return [];
-    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
-    return lines.slice(1).map(line => {
-      const vals = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
-      return Object.fromEntries(headers.map((h, i) => [h, vals[i] ?? '']));
-    });
+    const withoutBom = raw.replace(/^\uFEFF/, '');
+    const records = parseCsvSync(withoutBom, {
+      columns: (header: string[]) => header.map(h => h.trim().toLowerCase()),
+      skip_empty_lines: true,
+      trim: true,
+      relax_column_count: false,
+    }) as Array<Record<string, string>>;
+    return records;
   };
 
   // POST /api/contractor/bulk-import — upload CSV of techs to invite
@@ -21756,7 +21794,13 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       }
 
       const raw = req.file.buffer.toString('utf-8');
-      const rows = parseCsvRows(raw);
+      let rows: Array<Record<string, string>>;
+      try {
+        rows = parseCsvRows(raw);
+      } catch (parseErr: any) {
+        const detail = parseErr instanceof CsvError ? parseErr.message : 'Unable to parse CSV file';
+        return res.status(400).json({ message: `Invalid CSV format: ${detail}` });
+      }
       if (rows.length === 0) return res.status(400).json({ message: 'CSV is empty or has no data rows' });
       if (rows.length > 200) return res.status(400).json({ message: 'CSV exceeds 200-row limit per import' });
 

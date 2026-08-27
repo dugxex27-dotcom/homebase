@@ -232,6 +232,13 @@ export interface IStorage {
   getProposal(id: string): Promise<Proposal | undefined>;
   createProposal(proposal: InsertProposal): Promise<Proposal>;
   updateProposal(id: string, proposal: Partial<InsertProposal>): Promise<Proposal | undefined>;
+  // Atomic conditional update: only applies `proposal` if the row's current
+  // status still equals `expectedStatus` (checked and written in one step).
+  // Used to close races where two concurrent requests read the same prior
+  // status and would otherwise both apply a status transition and both fire
+  // a duplicate transition notification. Returns undefined (no write applied)
+  // if the status no longer matches.
+  updateProposalIfStatusMatches(id: string, expectedStatus: string, proposal: Partial<InsertProposal>): Promise<Proposal | undefined>;
   deleteProposal(id: string): Promise<boolean>;
 
   // Home system operations
@@ -364,6 +371,12 @@ export interface IStorage {
   getUserAchievements(homeownerId: string): Promise<UserAchievement[]>;
   getUserAchievement(homeownerId: string, achievementKey: string): Promise<UserAchievement | undefined>;
   createUserAchievement(userAchievement: InsertUserAchievement): Promise<UserAchievement>;
+  // Atomic guard against the achievement duplicate-award race: creates the
+  // row only if one doesn't already exist for this (homeownerId,
+  // achievementKey) pair (backed by the DB's unique index). Returns
+  // undefined if a concurrent request already created it — callers must
+  // treat that as "not newly awarded by me", not retry or overwrite.
+  createUserAchievementIfAbsent(userAchievement: InsertUserAchievement): Promise<UserAchievement | undefined>;
   updateUserAchievementProgress(homeownerId: string, achievementKey: string, progress: number, metadata?: string): Promise<UserAchievement | undefined>;
   unlockUserAchievement(homeownerId: string, achievementKey: string): Promise<UserAchievement | undefined>;
   checkAndAwardAchievements(homeownerId: string): Promise<UserAchievement[]>;
@@ -2669,6 +2682,20 @@ export class MemStorage implements IStorage {
     return updated;
   }
 
+  async updateProposalIfStatusMatches(id: string, expectedStatus: string, proposalData: Partial<InsertProposal>): Promise<Proposal | undefined> {
+    const existing = this.proposals.get(id);
+    if (!existing || existing.status !== expectedStatus) {
+      return undefined;
+    }
+    const updated: Proposal = {
+      ...existing,
+      ...proposalData,
+      updatedAt: new Date(),
+    };
+    this.proposals.set(id, updated);
+    return updated;
+  }
+
   async deleteProposal(id: string): Promise<boolean> {
     return this.proposals.delete(id);
   }
@@ -4660,6 +4687,19 @@ export class MemStorage implements IStorage {
     return created;
   }
 
+  async createUserAchievementIfAbsent(userAchievement: InsertUserAchievement): Promise<UserAchievement | undefined> {
+    // Synchronous check-and-insert over the in-memory map mirrors the
+    // atomicity a real unique index gives DatabaseStorage: no other request
+    // can interleave between the find() and the set() below.
+    const already = Array.from(this.userAchievementsMap.values()).find(
+      (a) => a.homeownerId === userAchievement.homeownerId && a.achievementKey === userAchievement.achievementKey
+    );
+    if (already) {
+      return undefined;
+    }
+    return this.createUserAchievement(userAchievement);
+  }
+
   async updateUserAchievementProgress(homeownerId: string, achievementKey: string, progress: number, metadata?: string): Promise<UserAchievement | undefined> {
     for (const [key, a] of this.userAchievementsMap.entries()) {
       if (a.homeownerId === homeownerId && a.achievementKey === achievementKey) {
@@ -5126,18 +5166,26 @@ export class MemStorage implements IStorage {
           const unlocked = await this.unlockUserAchievement(homeownerId, def.achievementKey);
           if (unlocked) newlyUnlocked.push(unlocked);
         } else {
-          const created = await this.createUserAchievement({
+          // Guarded by the DB's unique (homeownerId, achievementKey) index:
+          // if a concurrent check already inserted this achievement between
+          // our read of `userAchievs` above and this insert, `created` comes
+          // back undefined. Skip silently rather than pushing a duplicate
+          // into `newlyUnlocked` (which would fire a second badge/notification
+          // for the same award) — the row already exists, so this request
+          // simply lost the race and has nothing left to do.
+          const created = await this.createUserAchievementIfAbsent({
             homeownerId,
             achievementKey: def.achievementKey,
             progress: "100",
             isUnlocked: true,
             unlockedAt: new Date()
           });
-          newlyUnlocked.push(created);
+          if (created) newlyUnlocked.push(created);
         }
       } else if (!existing && progress > 0) {
-        // Create progress tracking
-        await this.createUserAchievement({
+        // Create progress tracking (same conflict-safe guard: a concurrent
+        // call may have already created this row).
+        await this.createUserAchievementIfAbsent({
           homeownerId,
           achievementKey: def.achievementKey,
           progress: progress.toString(),
@@ -7633,6 +7681,18 @@ class DbStorage implements IStorage {
     return result[0];
   }
 
+  async createUserAchievementIfAbsent(achievement: InsertUserAchievement): Promise<UserAchievement | undefined> {
+    // Relies on the DB's unique index on (homeowner_id, achievement_key):
+    // onConflictDoNothing makes the insert a no-op (empty `returning()`)
+    // instead of throwing, when a concurrent request already inserted the
+    // same achievement row first.
+    const result = await db.insert(userAchievements)
+      .values(achievement)
+      .onConflictDoNothing({ target: [userAchievements.homeownerId, userAchievements.achievementKey] })
+      .returning();
+    return result[0];
+  }
+
   async updateUserAchievementProgress(homeownerId: string, achievementKey: string, progress: number, metadata?: string): Promise<UserAchievement | undefined> {
     const updateData: any = { progress };
     if (metadata) updateData.metadata = metadata;
@@ -9281,6 +9341,18 @@ class DbStorage implements IStorage {
     const result = await db.update(proposals)
       .set({ ...proposalData, updatedAt: new Date() })
       .where(eq(proposals.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async updateProposalIfStatusMatches(id: string, expectedStatus: string, proposalData: Partial<InsertProposal>): Promise<Proposal | undefined> {
+    // Single atomic UPDATE...WHERE...RETURNING: the eligibility check (row
+    // status still equals what the caller read) and the write happen in one
+    // statement, so a concurrent request that changed the status first is
+    // guaranteed to make this WHERE clause match zero rows.
+    const result = await db.update(proposals)
+      .set({ ...proposalData, updatedAt: new Date() })
+      .where(and(eq(proposals.id, id), eq(proposals.status, expectedStatus)))
       .returning();
     return result[0];
   }
