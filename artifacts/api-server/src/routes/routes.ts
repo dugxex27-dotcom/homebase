@@ -11,7 +11,7 @@ import { randomUUID, randomBytes, createHash, timingSafeEqual } from "crypto";
 import rateLimit from "express-rate-limit";
 import { PgRateLimitStore } from "../lib/pg-rate-limit-store";
 import { eq, and, ne, inArray, sql as drizzleSql, isNotNull, isNull, desc, or, gt, gte, lte, ilike } from "drizzle-orm";
-import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertTaskCompletionSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, customMaintenanceTasks, insertSupportTicketSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, insertCrmLeadSchema, insertCrmNoteSchema, notificationPreferences, subscriptionPlans, securitySessions, referralCredits, referralFreeMonths, promoCodes, agentProfiles, users, siteContent, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, insertReviewFlagSchema, homeDocuments, quizResults, crmInvoices, handoffTransfers, houseTransfers, demoLeads, insertDemoLeadSchema, type House } from "@workspace/db";
+import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertTaskCompletionSchema, insertCompanySchema, insertCompanyInviteCodeSchema, insertServiceRecordSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, customMaintenanceTasks, insertSupportTicketSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, insertCrmLeadSchema, insertCrmNoteSchema, notificationPreferences, subscriptionPlans, securitySessions, referralCredits, referralFreeMonths, promoCodes, agentProfiles, users, siteContent, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, insertReviewFlagSchema, homeDocuments, quizResults, crmInvoices, handoffTransfers, houseTransfers, demoLeads, insertDemoLeadSchema, type House } from "@workspace/db";
 import { calculateDIYSavingsAmount } from "../shared/cost-helpers";
 import { calculateMechanicalDocumentationBonus } from "../shared/maintenance-scheduler";
 import { createImmediateNotification, createNotificationSafely, notificationCategories, type ImmediateNotificationInput } from "../notification-writers";
@@ -36,6 +36,10 @@ import { verifyAndActivateAppleTransaction, handleAppleServerNotification, Apple
 import { lookupByHIN } from "../hin-service";
 import { seedHomeownerDemo, seedContractorDemo, seedAgentDemo, topUpHomeownerTaskCompletions, ensureDemoAccountFlag } from "../demo-seeder";
 import { parse as parseCsvSync, CsvError } from "csv-parse/sync";
+import {
+  normalizeServiceRecordMutationInput,
+  ServiceRecordInputError,
+} from "../service-record-normalization";
 
 const stripe = process.env.STRIPE_SECRET_KEY 
   ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2026-04-22.dahlia" })
@@ -16588,10 +16592,10 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   app.post('/api/service-records', isAuthenticated, requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       const contractorId = req.session.user.id;
-      const serviceRecordData = {
-        ...req.body,
+      const serviceRecordData = insertServiceRecordSchema.parse({
+        ...normalizeServiceRecordMutationInput(req.body),
         contractorId,
-      };
+      });
       const serviceRecord = await storage.createServiceRecord(serviceRecordData);
       
       // Check for homeowner achievements if there's cost savings
@@ -16607,6 +16611,15 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       
       res.json({ serviceRecord, newAchievements });
     } catch (error) {
+      if (error instanceof ServiceRecordInputError) {
+        return res.status(400).json({ message: error.message });
+      }
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({
+          message: "Invalid service record data",
+          errors: error.issues,
+        });
+      }
       console.error("Error creating service record:", error);
       res.status(500).json({ message: "Failed to create service record" });
     }
@@ -16627,12 +16640,10 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       if (!isAdminPut && !isHomeownerOwnerPut && !isContractorOwnerPut) {
         return res.status(403).json({ message: "Forbidden" });
       }
-      // Prevent ownership-field reassignment by non-admins
-      const updateData = { ...req.body };
-      if (!isAdminPut) {
-        delete updateData.homeownerId;
-        delete updateData.contractorId;
-      }
+      // Normalize date/cost input and only allow explicitly supported fields.
+      // Server-owned IDs and timestamps are never copied from the request body.
+      const updateData = normalizeServiceRecordMutationInput(req.body);
+      if (!isAdminPut) delete updateData.homeownerId;
       const serviceRecord = await storage.updateServiceRecord(id, updateData);
       if (!serviceRecord) {
         return res.status(404).json({ message: "Service record not found" });
@@ -16651,6 +16662,9 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       
       res.json({ serviceRecord, newAchievements });
     } catch (error) {
+      if (error instanceof ServiceRecordInputError) {
+        return res.status(400).json({ message: error.message });
+      }
       console.error("Error updating service record:", error);
       res.status(500).json({ message: "Failed to update service record" });
     }

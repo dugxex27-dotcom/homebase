@@ -3951,6 +3951,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     </Button>
                   )}
                   <AppointmentScheduler 
+                    homeownerId={(user as any)?.id}
+                    houseId={selectedHouseId}
                     triggerButtonText="Schedule Visit" 
                     triggerButtonVariant="outline"
                   />

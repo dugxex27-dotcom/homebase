@@ -1,11 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Calendar, Clock, User, Building2, Phone, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -25,7 +22,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod/v4";
 import { insertContractorAppointmentSchema } from "@shared/schema";
+import type { ContractorAppointment } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 const SERVICE_TYPES = [
   { value: "maintenance", label: "Routine Maintenance" },
@@ -63,52 +62,123 @@ const HOME_AREAS = [
   { value: "other", label: "Other" }
 ];
 
-const appointmentFormSchema = insertContractorAppointmentSchema.extend({
+const appointmentFormSchema = insertContractorAppointmentSchema.omit({
+  scheduledDateTime: true,
+}).extend({
   homeownerId: z.string().min(1, "Homeowner ID is required"),
+  houseId: z.string().min(1, "Property is required"),
   scheduledDate: z.string().min(1, "Date is required"),
   scheduledTime: z.string().min(1, "Time is required"),
 });
 
-type AppointmentFormData = Omit<z.infer<typeof appointmentFormSchema>, 'scheduledDateTime'> & {
-  scheduledDate: string;
-  scheduledTime: string;
-};
+type AppointmentFormData = z.infer<typeof appointmentFormSchema>;
 
 interface AppointmentSchedulerProps {
   homeownerId?: string;
+  houseId?: string;
+  contractorId?: string;
+  contractorName?: string;
+  contractorCompany?: string;
+  contractorPhone?: string;
+  appointment?: ContractorAppointment;
   triggerButtonText?: string;
   triggerButtonVariant?: "default" | "outline" | "secondary" | "ghost" | "link" | "destructive";
+  onSaved?: () => void;
+  disabled?: boolean;
 }
 
 export function AppointmentScheduler({ 
-  homeownerId = "demo-homeowner-123", 
+  homeownerId,
+  houseId,
+  contractorId,
+  contractorName,
+  contractorCompany,
+  contractorPhone,
+  appointment,
   triggerButtonText = "Schedule Appointment",
-  triggerButtonVariant = "default"
+  triggerButtonVariant = "default",
+  onSaved,
+  disabled = false,
 }: AppointmentSchedulerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
+  const typedUser = user as {
+    id?: string;
+    role?: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    email?: string | null;
+    companyName?: string | null;
+    phone?: string | null;
+  } | null;
+
+  const resolvedHomeownerId =
+    homeownerId || (typedUser?.role === "homeowner" ? typedUser.id : "") || "";
+  const resolvedContractorId =
+    contractorId || (typedUser?.role === "contractor" ? typedUser.id : "") || "";
+  const resolvedContractorName =
+    contractorName ||
+    [typedUser?.firstName, typedUser?.lastName].filter(Boolean).join(" ") ||
+    typedUser?.email ||
+    "";
+
+  const getDefaultValues = (): AppointmentFormData => {
+    let scheduledDate = "";
+    let scheduledTime = "";
+    if (appointment?.scheduledDateTime) {
+      const scheduled = new Date(appointment.scheduledDateTime);
+      if (!Number.isNaN(scheduled.getTime())) {
+        const pad = (value: number) => String(value).padStart(2, "0");
+        scheduledDate = `${scheduled.getFullYear()}-${pad(scheduled.getMonth() + 1)}-${pad(scheduled.getDate())}`;
+        scheduledTime = `${pad(scheduled.getHours())}:${pad(scheduled.getMinutes())}`;
+      }
+    }
+
+    return {
+      homeownerId: appointment?.homeownerId || resolvedHomeownerId,
+      houseId: appointment?.houseId || houseId || "",
+      contractorName: appointment?.contractorName || resolvedContractorName,
+      contractorCompany:
+        appointment?.contractorCompany ||
+        contractorCompany ||
+        typedUser?.companyName ||
+        "",
+      contractorPhone:
+        appointment?.contractorPhone ||
+        contractorPhone ||
+        typedUser?.phone ||
+        "",
+      serviceType: appointment?.serviceType || "",
+      serviceDescription: appointment?.serviceDescription || "",
+      homeArea: appointment?.homeArea || "",
+      scheduledDate,
+      scheduledTime,
+      estimatedDuration: appointment?.estimatedDuration || 60,
+      status: appointment?.status || "scheduled",
+      notes: appointment?.notes || "",
+      contractorId: appointment?.contractorId || resolvedContractorId || null,
+    };
+  };
 
   const form = useForm<AppointmentFormData>({
     resolver: zodResolver(appointmentFormSchema as any),
-    defaultValues: {
-      homeownerId,
-      contractorName: "",
-      contractorCompany: "",
-      contractorPhone: "",
-      serviceType: "",
-      serviceDescription: "",
-      homeArea: "",
-      scheduledDate: "",
-      scheduledTime: "",
-      estimatedDuration: 60,
-      status: "scheduled",
-      notes: "",
-      contractorId: "",
-    },
+    defaultValues: getDefaultValues(),
   });
 
-  const createAppointmentMutation = useMutation({
+  useEffect(() => {
+    if (isOpen) form.reset(getDefaultValues());
+  }, [
+    isOpen,
+    appointment,
+    resolvedHomeownerId,
+    houseId,
+    resolvedContractorId,
+    resolvedContractorName,
+  ]);
+
+  const saveAppointmentMutation = useMutation({
     mutationFn: async (data: AppointmentFormData) => {
       // Combine date and time into ISO datetime string
       const scheduledDateTime = new Date(`${data.scheduledDate}T${data.scheduledTime}`).toISOString();
@@ -121,42 +191,64 @@ export function AppointmentScheduler({
       // Remove the separate date/time fields
       const { scheduledDate, scheduledTime, ...finalData } = appointmentData;
       
-      const response = await fetch('/api/appointments', {
-        method: 'POST',
+      const response = await fetch(
+        appointment ? `/api/appointments/${appointment.id}` : '/api/appointments',
+        {
+        method: appointment ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(finalData),
       });
-      if (!response.ok) throw new Error('Failed to create appointment');
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        throw new Error(
+          errorBody?.message ||
+          `Failed to ${appointment ? "update" : "create"} appointment`,
+        );
+      }
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/appointments'] });
       queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
       setIsOpen(false);
-      form.reset();
+      form.reset(getDefaultValues());
+      onSaved?.();
       toast({ 
-        title: "Success", 
-        description: "Appointment scheduled successfully. You'll receive notifications before the visit." 
+        title: appointment ? "Appointment updated" : "Appointment scheduled",
+        description: appointment
+          ? "The visit details and reminders have been updated."
+          : "The visit was scheduled and reminders were created.",
       });
     },
-    onError: () => {
+    onError: (error: Error) => {
       toast({ 
         title: "Error", 
-        description: "Failed to schedule appointment", 
+        description: error.message,
         variant: "destructive" 
       });
     },
   });
 
   const onSubmit = (data: AppointmentFormData) => {
-    createAppointmentMutation.mutate(data);
+    saveAppointmentMutation.mutate(data);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button
+          variant={triggerButtonVariant}
+          disabled={disabled}
+          data-testid={appointment ? `button-edit-appointment-${appointment.id}` : "button-schedule-appointment"}
+        >
+          {triggerButtonText}
+        </Button>
+      </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Schedule Contractor Appointment</DialogTitle>
+          <DialogTitle>
+            {appointment ? "Edit appointment" : "Schedule contractor appointment"}
+          </DialogTitle>
         </DialogHeader>
         
         <Form {...form}>
@@ -350,9 +442,13 @@ export function AppointmentScheduler({
               </Button>
               <Button 
                 type="submit" 
-                disabled={createAppointmentMutation.isPending}
+                disabled={saveAppointmentMutation.isPending}
               >
-                {createAppointmentMutation.isPending ? 'Scheduling...' : 'Schedule Appointment'}
+                {saveAppointmentMutation.isPending
+                  ? 'Saving...'
+                  : appointment
+                    ? 'Save changes'
+                    : 'Schedule appointment'}
               </Button>
             </div>
           </form>

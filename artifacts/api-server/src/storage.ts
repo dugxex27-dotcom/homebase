@@ -2322,7 +2322,7 @@ export class MemStorage implements IStorage {
       houseId: serviceRecord.houseId ?? null,
       customerPhone: serviceRecord.customerPhone ?? null,
       customerEmail: serviceRecord.customerEmail ?? null,
-      cost: serviceRecord.cost ?? "0",
+      cost: serviceRecord.cost ?? null,
       status: serviceRecord.status ?? "completed",
       notes: serviceRecord.notes ?? null,
       materialsUsed: serviceRecord.materialsUsed ?? [],

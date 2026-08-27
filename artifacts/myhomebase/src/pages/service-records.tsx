@@ -13,6 +13,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { PageHero } from "@/components/page-hero";
 import type { House } from "@shared/schema";
+import {
+  getServiceRecordCostInputValue,
+  getServiceRecordCostState,
+} from "@/lib/service-record-cost";
 import { 
   Plus, 
   FileText, 
@@ -42,7 +46,7 @@ interface ServiceRecord {
   houseId?: string;
   serviceDate: string;
   duration: string;
-  cost: number;
+  cost: number | string | null;
   status: 'completed' | 'in-progress' | 'scheduled';
   notes: string;
   materialsUsed: string[];
@@ -180,14 +184,16 @@ export default function ServiceRecords() {
         method,
         body: JSON.stringify({
           ...data,
-          cost: parseFloat(data.cost) || 0,
+          cost: data.cost.trim() === '' ? null : data.cost,
+          followUpDate: data.followUpDate || null,
         }),
         headers: {
           'Content-Type': 'application/json',
         },
       });
       if (!response.ok) {
-        throw new Error('Failed to save service record');
+        const errorBody = await response.json().catch(() => null);
+        throw new Error(errorBody?.message || 'Failed to save service record');
       }
       return response.json();
     },
@@ -200,10 +206,10 @@ export default function ServiceRecords() {
       setIsDialogOpen(false);
       resetForm();
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: "Save Failed",
-        description: "Failed to save service record. Please try again.",
+        description: error.message,
         variant: "destructive",
       });
     },
@@ -380,7 +386,7 @@ export default function ServiceRecords() {
       homeownerId: (record as any).homeownerId || '',
       serviceDate: record.serviceDate,
       duration: record.duration,
-      cost: record.cost.toString(),
+      cost: getServiceRecordCostInputValue(record.cost),
       status: record.status,
       notes: record.notes,
       materialsUsed: record.materialsUsed,
@@ -936,12 +942,10 @@ export default function ServiceRecords() {
                             {record.duration}
                           </div>
                         )}
-                        {record.cost > 0 && (
-                          <div className="flex items-center gap-1">
-                            <DollarSign className="w-4 h-4" />
-                            ${record.cost.toFixed(2)}
-                          </div>
-                        )}
+                        <div className="flex items-center gap-1">
+                          <DollarSign className="w-4 h-4" />
+                          {getServiceRecordCostState(record.cost).label}
+                        </div>
                       </div>
                     </div>
                     <div className="flex gap-2 flex-wrap">

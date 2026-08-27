@@ -721,7 +721,7 @@ export const serviceRecords = pgTable("service_records", {
   homeArea: text("home_area"), // What part of home was serviced (roof, HVAC, plumbing, etc.)
   serviceDate: text("service_date").notNull(),
   duration: text("duration"),
-  cost: decimal("cost", { precision: 10, scale: 2 }).notNull().default("0"),
+  cost: decimal("cost", { precision: 10, scale: 2 }),
   status: text("status").notNull().default("completed"), // completed, in-progress, scheduled
   notes: text("notes"),
   materialsUsed: text("materials_used").array().notNull().default(sql`'{}'::text[]`),
