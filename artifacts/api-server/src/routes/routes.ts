@@ -3719,7 +3719,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Determine base URL for redirect
       const baseUrl = req.headers.origin || `https://${req.headers.host}`;
 
-      const lineItems = [
+      const lineItems: NonNullable<Stripe.Checkout.SessionCreateParams['line_items']> = [
         {
           price_data: {
             currency: 'usd',
@@ -3735,6 +3735,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           quantity: 1,
         },
       ];
+
+      // Phase 2 seat billing: a contractor who already has a team at checkout
+      // time (e.g. re-subscribing after a lapse, or completing signup after
+      // techs were already invited) should start billed correctly rather than
+      // waiting for the next invite/remove event to catch the subscription
+      // up. Uses the same quantity-based, non-metered seat Price as
+      // refreshSeatsForCompany/syncSeatQuantityForSubscription (find-or-create
+      // by lookup_key — see resolveSeatPriceId) so all three call sites always
+      // reference the same underlying Stripe Price.
+      if (userRole === 'contractor' && user.companyId && stripe) {
+        const totalSeatsAtCheckout = await countActiveCompanySeats(user.companyId, db);
+        const billedSeatsAtCheckout = calcBilledSeats(totalSeatsAtCheckout);
+        if (billedSeatsAtCheckout > 0) {
+          const seatPriceId = await resolveSeatPriceId(stripe);
+          lineItems.push({ price: seatPriceId, quantity: billedSeatsAtCheckout });
+        }
+      }
       const sessionMetadata = {
         userId: user.id,
         plan: plan,
@@ -21797,6 +21814,18 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       if (outcome.limitError) return res.status(outcome.limitError.status).json(outcome.limitError.body);
       if (outcome.otherError) return res.status(outcome.otherError.status).json(outcome.otherError.body);
 
+      // Phase 2 seat billing: sync the Stripe seat-item quantity right after the
+      // DB write commits, rather than waiting for startup recovery. A failure
+      // here must NOT roll back or fail this request — the tech was already
+      // successfully added; refreshSeatsForCompany already checkpoints via
+      // pending_seat_syncs before calling Stripe, so a failure here is logged
+      // and left for recoverPendingSeatSyncs to retry.
+      try {
+        await refreshSeatsForCompany(adminUser.companyId, stripe, db, (cid) => countActiveCompanySeats(cid, db), storage, pool);
+      } catch (seatSyncErr: any) {
+        req.log?.error({ err: seatSyncErr, companyId: adminUser.companyId }, '[SEAT_SYNC] Failed to sync Stripe seat quantity after tech invite; queued for retry via pending_seat_syncs');
+      }
+
       const domain = process.env.REPLIT_DOMAINS?.split(',')[0]?.trim() || 'gotohomebase.com';
       const inviteUrl = `https://${domain}/contractor/accept-invite?token=${outcome.inviteToken}`;
       await emailService.sendTechInviteEmail(
@@ -22066,6 +22095,15 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       } as any).where(eq(users.id, userId));
       suspendedUserIds.add(userId);
       invalidateUserSessions(req.sessionStore, userId, req.log);
+
+      // Phase 2 seat billing: a cancelled pending invite frees a seat exactly
+      // like a hard removal — sync now rather than waiting for recovery.
+      try {
+        await refreshSeatsForCompany(adminUser.companyId, stripe, db, (cid) => countActiveCompanySeats(cid, db), storage, pool);
+      } catch (seatSyncErr: any) {
+        req.log?.error({ err: seatSyncErr, companyId: adminUser.companyId }, '[SEAT_SYNC] Failed to sync Stripe seat quantity after invite cancellation; queued for retry via pending_seat_syncs');
+      }
+
       res.json({ message: "Invite cancelled" });
     } catch (error) {
       req.log?.error({ error }, '[ENTERPRISE] Error cancelling invite');
@@ -22164,6 +22202,16 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       // Add to in-memory blocklist so any active session is immediately revoked
       suspendedUserIds.add(userId);
       invalidateUserSessions(req.sessionStore, userId, req.log);
+
+      // Phase 2 seat billing: sync the Stripe seat-item quantity now that a
+      // seat has been freed, rather than waiting for startup recovery. Must
+      // not fail or roll back this request — see invite-tech route comment.
+      try {
+        await refreshSeatsForCompany(adminUser.companyId, stripe, db, (cid) => countActiveCompanySeats(cid, db), storage, pool);
+      } catch (seatSyncErr: any) {
+        req.log?.error({ err: seatSyncErr, companyId: adminUser.companyId }, '[SEAT_SYNC] Failed to sync Stripe seat quantity after team member removal; queued for retry via pending_seat_syncs');
+      }
+
       const actorName = [adminUser.firstName, adminUser.lastName].filter(Boolean).join(' ') || adminUser.email || adminUser.id;
       const actorRole = adminUser.companyRole ?? null;
       const targetName = [(targetUser as any).firstName, (targetUser as any).lastName].filter(Boolean).join(' ') || (targetUser as any).email || userId;
@@ -22622,6 +22670,17 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         errorLog: errors as any,
         completedAt: new Date(),
       }).where(eq(companyBulkImports.id, importRecord.id));
+
+      // Phase 2 seat billing: sync the Stripe seat quantity exactly once for
+      // the whole import (not per row) — reserved.length seats were added
+      // above, regardless of whether their invite email later succeeded.
+      if (reserved.length > 0) {
+        try {
+          await refreshSeatsForCompany(adminUser.companyId, stripe, db, (cid) => countActiveCompanySeats(cid, db), storage, pool);
+        } catch (seatSyncErr: any) {
+          req.log?.error({ err: seatSyncErr, companyId: adminUser.companyId }, '[SEAT_SYNC] Failed to sync Stripe seat quantity after bulk import; queued for retry via pending_seat_syncs');
+        }
+      }
 
       res.json({ importId: importRecord.id, totalRows: rows.length, successRows: successCount, failedRows: errors.length, errors });
     } catch (err) {
