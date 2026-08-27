@@ -17,6 +17,13 @@ Multi-phase plan to expand contractor billing/CRM. Status as of the last session
   ceiling to a much higher soft/abuse-prevention limit (e.g. tens of seats) rather than removing it
   entirely, since some ceiling is still useful for fraud/cost control. Not implemented — needs explicit
   product sign-off since it changes real billing/product behavior.
+- **Pricing clarification**: the intended model is 1 owner + 2 additional people free (3 total), then
+  every additional company member is $5/month regardless of role. The billing counter already counts
+  owner, admin, tech, manager, dispatcher, and pending/suspended non-removed members together, but its
+  formula subtracts only 2; with the owner included, owner + 2 team members currently incurs 1 paid seat.
+- **Role/quota distinction**: the hard limit counts techs only. Separate admin, manager, and dispatcher
+  limits exist as fields and UI controls but do not drive Stripe billing; `lead` is not a stored company
+  role, with `manager` being the closest existing role.
 - **Phase 5+**: pending, not yet scoped in memory.
 
 **Why this file exists:** phase plans that span many sessions drift out of sync with the code if the
