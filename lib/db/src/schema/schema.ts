@@ -257,6 +257,11 @@ export const users = pgTable("users", {
   lastReferralReminderSent: timestamp("last_referral_reminder_sent"), // When the last referral reminder email was sent
   stripeCustomerId: varchar("stripe_customer_id"),
   stripeSubscriptionId: varchar("stripe_subscription_id"),
+  // Stripe event `created` timestamp of the last subscription-status-affecting
+  // webhook event successfully applied (invoice.payment_failed,
+  // customer.subscription.updated/deleted). Used to reject stale/out-of-order
+  // webhook redeliveries that would otherwise overwrite newer state.
+  stripeSubscriptionEventAt: timestamp("stripe_subscription_event_at"),
   stripePriceId: varchar("stripe_price_id"), // Current Stripe price ID for the subscription
   subscriptionStartDate: timestamp("subscription_start_date"),
   subscriptionEndDate: timestamp("subscription_end_date"),

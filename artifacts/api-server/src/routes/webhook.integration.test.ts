@@ -938,9 +938,10 @@ describe("Stripe webhook idempotency — event-type specific (checkout.session.c
       "user_test_sub_01",
       "sub_test_updated_01",
       "price_test_monthly_01",
+      expect.any(Date),
     );
     expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledOnce();
-    expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledWith("user_test_sub_01", "active");
+    expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledWith("user_test_sub_01", "active", expect.any(Date));
     expect(mockClaimStripeEvent).toHaveBeenCalledOnce();
     expect(mockMarkStripeEventCommitted).toHaveBeenCalledOnce();
 
@@ -1280,6 +1281,7 @@ describe("Stripe webhook — incomplete subscription 3DS lifecycle (upgrade and 
       FAKE_USER.id,
       "sub_test_3ds_01",
       "price_test_monthly_3ds",
+      expect.any(Date),
     );
 
     // The user must be upgraded to 'active' — not left in 'incomplete'
@@ -1287,6 +1289,7 @@ describe("Stripe webhook — incomplete subscription 3DS lifecycle (upgrade and 
     expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledWith(
       FAKE_USER.id,
       "active",
+      expect.any(Date),
     );
   });
 
@@ -1318,6 +1321,7 @@ describe("Stripe webhook — incomplete subscription 3DS lifecycle (upgrade and 
     expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledWith(
       FAKE_USER.id,
       "active",
+      expect.any(Date),
     );
   });
 
@@ -1347,10 +1351,12 @@ describe("Stripe webhook — incomplete subscription 3DS lifecycle (upgrade and 
     expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledWith(
       FAKE_USER.id,
       "cancelled",
+      expect.any(Date),
     );
     expect(mockUpdateUserSubscriptionStatus2).not.toHaveBeenCalledWith(
       FAKE_USER.id,
       "active",
+      expect.any(Date),
     );
   });
 
@@ -1375,10 +1381,12 @@ describe("Stripe webhook — incomplete subscription 3DS lifecycle (upgrade and 
     expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledWith(
       FAKE_USER.id,
       "cancelled",
+      expect.any(Date),
     );
     expect(mockUpdateUserSubscriptionStatus2).not.toHaveBeenCalledWith(
       FAKE_USER.id,
       "active",
+      expect.any(Date),
     );
   });
 
@@ -1404,10 +1412,353 @@ describe("Stripe webhook — incomplete subscription 3DS lifecycle (upgrade and 
     expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledWith(
       FAKE_USER.id,
       "past_due",
+      expect.any(Date),
     );
     expect(mockUpdateUserSubscriptionStatus2).not.toHaveBeenCalledWith(
       FAKE_USER.id,
       "active",
+      expect.any(Date),
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Subscription event-ordering guard — out-of-order / stale redelivery
+//
+// Stripe does not guarantee webhook delivery order. A delayed or re-queued
+// `customer.subscription.updated`, `customer.subscription.deleted`, or
+// `invoice.payment_failed` event carrying an OLDER `event.created` timestamp
+// can arrive after a newer event for the same user has already been applied.
+// Without a guard, blindly applying the older event's data would silently
+// clobber the newer, correct state. These tests drive two full webhook
+// deliveries through the real route handler (distinct event IDs, so the
+// exact-duplicate dedup cache does not intervene) and assert the ordering
+// guard — not the dedup cache — is what protects the state.
+// ---------------------------------------------------------------------------
+
+function makeSubscriptionUpdatedEventWithCreated(
+  eventId: string,
+  status: string,
+  createdSeconds: number,
+  subscriptionId: string,
+  customerId: string,
+): Stripe.Event {
+  return {
+    id: eventId,
+    object: "event",
+    type: "customer.subscription.updated",
+    data: {
+      object: {
+        id: subscriptionId,
+        object: "subscription",
+        customer: customerId,
+        status,
+        items: {
+          data: [
+            {
+              price: {
+                id: "price_test_ordering_monthly",
+                recurring: { usage_type: "licensed" },
+              },
+            },
+          ],
+        },
+      },
+      previous_attributes: {},
+    },
+    livemode: false,
+    pending_webhooks: 0,
+    request: null,
+    created: createdSeconds,
+    api_version: "2025-08-27.basil",
+  } as unknown as Stripe.Event;
+}
+
+function makeSubscriptionDeletedEventWithCreated(
+  eventId: string,
+  createdSeconds: number,
+  subscriptionId: string,
+  customerId: string,
+): Stripe.Event {
+  return {
+    id: eventId,
+    object: "event",
+    type: "customer.subscription.deleted",
+    data: {
+      object: {
+        id: subscriptionId,
+        object: "subscription",
+        customer: customerId,
+        status: "canceled",
+        items: { data: [] },
+      },
+    },
+    livemode: false,
+    pending_webhooks: 0,
+    request: null,
+    created: createdSeconds,
+    api_version: "2025-08-27.basil",
+  } as unknown as Stripe.Event;
+}
+
+function makeInvoicePaymentFailedEventWithCreated(
+  eventId: string,
+  createdSeconds: number,
+  subscriptionId: string,
+  customerId: string,
+): Stripe.Event {
+  return {
+    id: eventId,
+    object: "event",
+    type: "invoice.payment_failed",
+    data: {
+      object: {
+        id: "in_test_ordering_failed",
+        object: "invoice",
+        customer: customerId,
+        subscription: subscriptionId,
+        amount_due: 500,
+        period_start: createdSeconds - 3600,
+        period_end: createdSeconds,
+      },
+    },
+    livemode: false,
+    pending_webhooks: 0,
+    request: null,
+    created: createdSeconds,
+    api_version: "2025-08-27.basil",
+  } as unknown as Stripe.Event;
+}
+
+describe("Stripe webhook — subscription event ordering guard (out-of-order / stale redelivery)", () => {
+  let app: express.Express;
+  let currentUser: {
+    id: string;
+    role: string;
+    companyId: string | null;
+    email: string;
+    stripeCustomerId: string;
+    stripeSubscriptionId: string;
+    subscriptionStatus: string;
+    stripeSubscriptionEventAt: Date | null;
+  };
+
+  const USER_ID = "user_test_ordering_01";
+  const CUSTOMER_ID = "cus_test_ordering_01";
+  const SUBSCRIPTION_ID = "sub_test_ordering_01";
+
+  beforeEach(async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test_integration_placeholder";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_integration_placeholder";
+
+    processedWebhookEventIds.clear();
+    inFlightWebhookEventIds.clear();
+
+    mockGetRecentStripeProcessedEventIds.mockReset().mockResolvedValue(new Map());
+    mockClaimStripeEvent.mockReset().mockResolvedValue("claimed");
+    mockMarkStripeEventCommitted.mockReset().mockResolvedValue(true);
+    mockDeleteStripeEventPending.mockReset().mockResolvedValue(undefined);
+    mockPruneOldStripeProcessedEvents.mockReset().mockResolvedValue(undefined);
+
+    currentUser = {
+      id: USER_ID,
+      role: "homeowner",
+      companyId: null,
+      email: "ordering@test.com",
+      stripeCustomerId: CUSTOMER_ID,
+      stripeSubscriptionId: SUBSCRIPTION_ID,
+      subscriptionStatus: "active",
+      stripeSubscriptionEventAt: null,
+    };
+
+    // These mocks act as a tiny in-memory "database row" for currentUser so
+    // that a second webhook delivery in the same test observes whatever the
+    // first delivery's storage calls actually persisted — the same way the
+    // real `users` table would reflect a prior `stripeSubscriptionEventAt`
+    // write on the next `getUserByStripeCustomerId` read.
+    mockGetUserByStripeCustomerId2.mockReset().mockImplementation(async () => ({ ...currentUser }));
+    mockUpdateUserStripeSubscription.mockReset().mockImplementation(
+      async (_id: string, subId: string, _priceId: string, eventAt?: Date) => {
+        currentUser.stripeSubscriptionId = subId;
+        if (eventAt) currentUser.stripeSubscriptionEventAt = eventAt;
+      },
+    );
+    mockUpdateUserSubscriptionStatus2.mockReset().mockImplementation(
+      async (_id: string, status: string, eventAt?: Date) => {
+        currentUser.subscriptionStatus = status;
+        if (eventAt) currentUser.stripeSubscriptionEventAt = eventAt;
+      },
+    );
+
+    app = express();
+    await registerRoutes(app);
+  });
+
+  afterEach(() => {
+    processedWebhookEventIds.clear();
+    inFlightWebhookEventIds.clear();
+    vi.clearAllMocks();
+  });
+
+  it("customer.subscription.updated: a stale redelivery arriving after a newer event was applied is ignored, state is not overwritten", async () => {
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    const newerEvent = makeSubscriptionUpdatedEventWithCreated(
+      "evt_order_updated_newer_001",
+      "past_due",
+      nowSeconds,
+      SUBSCRIPTION_ID,
+      CUSTOMER_ID,
+    );
+    // Older event — a different, earlier `event.created`, and a different
+    // event ID so the exact-duplicate dedup cache does not short-circuit it.
+    const staleEvent = makeSubscriptionUpdatedEventWithCreated(
+      "evt_order_updated_stale_001",
+      "active",
+      nowSeconds - 3600,
+      SUBSCRIPTION_ID,
+      CUSTOMER_ID,
+    );
+
+    // Apply the newer event first — this establishes the baseline timestamp.
+    mockConstructEvent.mockReset().mockReturnValueOnce(newerEvent);
+    const firstRes = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(makeWebhookBody(newerEvent));
+    expect(firstRes.status).toBe(200);
+    expect(currentUser.subscriptionStatus).toBe("past_due");
+    expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledOnce();
+
+    mockUpdateUserSubscriptionStatus2.mockClear();
+    mockUpdateUserStripeSubscription.mockClear();
+
+    // The stale, delayed event now arrives — must be acknowledged (so Stripe
+    // does not keep retrying it) but must NOT touch stored state.
+    mockConstructEvent.mockReset().mockReturnValueOnce(staleEvent);
+    const secondRes = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(makeWebhookBody(staleEvent));
+
+    expect(secondRes.status).toBe(200);
+    expect(secondRes.body).toMatchObject({ received: true });
+    expect(mockUpdateUserSubscriptionStatus2).not.toHaveBeenCalled();
+    expect(mockUpdateUserStripeSubscription).not.toHaveBeenCalled();
+    // Status must remain 'past_due' from the newer event, not reverted to 'active'.
+    expect(currentUser.subscriptionStatus).toBe("past_due");
+  });
+
+  it("customer.subscription.updated: normal in-order delivery is unaffected by the ordering guard", async () => {
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    const event = makeSubscriptionUpdatedEventWithCreated(
+      "evt_order_updated_inorder_001",
+      "past_due",
+      nowSeconds,
+      SUBSCRIPTION_ID,
+      CUSTOMER_ID,
+    );
+    mockConstructEvent.mockReset().mockReturnValueOnce(event);
+
+    const res = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(makeWebhookBody(event));
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ received: true });
+    expect(res.body.duplicate).toBeUndefined();
+    expect(mockUpdateUserStripeSubscription).toHaveBeenCalledWith(
+      USER_ID,
+      SUBSCRIPTION_ID,
+      "price_test_ordering_monthly",
+      expect.any(Date),
+    );
+    expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledWith(
+      USER_ID,
+      "past_due",
+      expect.any(Date),
+    );
+    expect(currentUser.subscriptionStatus).toBe("past_due");
+  });
+
+  it("customer.subscription.deleted: a stale cancellation event does not overwrite a newer status", async () => {
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    const newerEvent = makeSubscriptionUpdatedEventWithCreated(
+      "evt_order_deleted_newer_001",
+      "active",
+      nowSeconds,
+      SUBSCRIPTION_ID,
+      CUSTOMER_ID,
+    );
+    const staleDeletedEvent = makeSubscriptionDeletedEventWithCreated(
+      "evt_order_deleted_stale_001",
+      nowSeconds - 3600,
+      SUBSCRIPTION_ID,
+      CUSTOMER_ID,
+    );
+
+    mockConstructEvent.mockReset().mockReturnValueOnce(newerEvent);
+    await request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(makeWebhookBody(newerEvent));
+    expect(currentUser.subscriptionStatus).toBe("active");
+
+    mockUpdateUserSubscriptionStatus2.mockClear();
+
+    mockConstructEvent.mockReset().mockReturnValueOnce(staleDeletedEvent);
+    const res = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(makeWebhookBody(staleDeletedEvent));
+
+    expect(res.status).toBe(200);
+    expect(mockUpdateUserSubscriptionStatus2).not.toHaveBeenCalled();
+    // Must remain 'active' — the stale cancellation must not win.
+    expect(currentUser.subscriptionStatus).toBe("active");
+  });
+
+  it("invoice.payment_failed: a stale payment-failed event does not overwrite a newer status", async () => {
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    const newerEvent = makeSubscriptionUpdatedEventWithCreated(
+      "evt_order_invoice_newer_001",
+      "active",
+      nowSeconds,
+      SUBSCRIPTION_ID,
+      CUSTOMER_ID,
+    );
+    const staleFailedEvent = makeInvoicePaymentFailedEventWithCreated(
+      "evt_order_invoice_stale_001",
+      nowSeconds - 3600,
+      SUBSCRIPTION_ID,
+      CUSTOMER_ID,
+    );
+
+    mockConstructEvent.mockReset().mockReturnValueOnce(newerEvent);
+    await request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(makeWebhookBody(newerEvent));
+    expect(currentUser.subscriptionStatus).toBe("active");
+
+    mockUpdateUserSubscriptionStatus2.mockClear();
+
+    mockConstructEvent.mockReset().mockReturnValueOnce(staleFailedEvent);
+    const res = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(makeWebhookBody(staleFailedEvent));
+
+    expect(res.status).toBe(200);
+    expect(mockUpdateUserSubscriptionStatus2).not.toHaveBeenCalled();
+    // Must remain 'active' — the stale payment-failure must not mark it past_due.
+    expect(currentUser.subscriptionStatus).toBe("active");
   });
 });

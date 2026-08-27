@@ -591,6 +591,30 @@ export function enforceWebhookDedupCacheCap(
 }
 
 // ---------------------------------------------------------------------------
+// isStaleSubscriptionEvent — pure: out-of-order webhook redelivery guard
+// ---------------------------------------------------------------------------
+//
+// Stripe does not guarantee webhook delivery order, and will redeliver events
+// on retry. Without an ordering check, a delayed/out-of-order event (e.g. an
+// older 'customer.subscription.updated' redelivered after a newer one already
+// applied a status change) can silently overwrite newer, correct state with
+// stale data. We track the Stripe `created` timestamp of the last
+// subscription-status-affecting event successfully applied to a user
+// (stripeSubscriptionEventAt) and reject any incoming event whose timestamp
+// is strictly older than that — regardless of which subscription ID it
+// references, since a stale event for a since-replaced subscription is just
+// as dangerous as a same-subscription redelivery. A newer event always wins
+// and establishes a new baseline, so legitimate resubscription/plan-change
+// flows (which naturally produce newer timestamps) are unaffected.
+export function isStaleSubscriptionEvent(
+  incomingEventCreatedAt: Date,
+  lastProcessedEventAt: Date | null | undefined,
+): boolean {
+  if (!lastProcessedEventAt) return false;
+  return incomingEventCreatedAt.getTime() < lastProcessedEventAt.getTime();
+}
+
+// ---------------------------------------------------------------------------
 // resolveMeteredSeatCount — pure: billing stops on cancellation / past_due
 // ---------------------------------------------------------------------------
 
@@ -2321,7 +2345,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             amount: (invoice.amount_due / 100).toFixed(2),
           });
 
-          await storage.updateUserSubscriptionStatus(user.id, 'past_due');
+          // Out-of-order webhook guard: a redelivered/delayed payment_failed
+          // event should not stomp on a newer status already applied by a
+          // later event (e.g. the subscription already recovered).
+          const paymentFailedEventAt = new Date(event.created * 1000);
+          if (isStaleSubscriptionEvent(paymentFailedEventAt, user.stripeSubscriptionEventAt)) {
+            console.warn(
+              `[STRIPE WEBHOOK] Ignoring out-of-order invoice.payment_failed for user ${user.email}: ` +
+              `event ${event.id} created ${paymentFailedEventAt.toISOString()} is older than last-processed ` +
+              `subscription event at ${new Date(user.stripeSubscriptionEventAt as any).toISOString()}. Skipping status update.`
+            );
+            break;
+          }
+
+          await storage.updateUserSubscriptionStatus(user.id, 'past_due', paymentFailedEventAt);
           console.log('[STRIPE WEBHOOK] Payment failed processed for user:', user.email);
           break;
         }
@@ -2336,8 +2373,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
             break;
           }
 
+          // Out-of-order webhook guard: reject events older than the last one
+          // successfully applied for this user, regardless of subscription ID —
+          // a stale event for a since-replaced subscription is just as dangerous
+          // as a same-subscription redelivery. A newer event (including one for
+          // a brand-new subscription from a legitimate resubscribe/upgrade) always
+          // wins and establishes a new baseline.
+          const subscriptionUpdatedEventAt = new Date(event.created * 1000);
+          if (isStaleSubscriptionEvent(subscriptionUpdatedEventAt, user.stripeSubscriptionEventAt)) {
+            console.warn(
+              `[STRIPE WEBHOOK] Ignoring out-of-order customer.subscription.updated for user ${user.email}: ` +
+              `event ${event.id} (subscription=${subscription.id}) created ${subscriptionUpdatedEventAt.toISOString()} ` +
+              `is older than last-processed subscription event at ${new Date(user.stripeSubscriptionEventAt as any).toISOString()} ` +
+              `(current subscription on file=${user.stripeSubscriptionId}). Skipping to avoid overwriting newer state.`
+            );
+            break;
+          }
+
           const priceId = subscription.items.data[0]?.price.id;
-          await storage.updateUserStripeSubscription(user.id, subscription.id, priceId || '');
+          await storage.updateUserStripeSubscription(user.id, subscription.id, priceId || '', subscriptionUpdatedEventAt);
           
           let status = 'active';
           if (subscription.status === 'canceled') status = 'cancelled';
@@ -2345,7 +2399,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           else if (subscription.status === 'trialing') status = 'trialing';
           else if (subscription.status === 'incomplete_expired') status = 'cancelled';
           
-          await storage.updateUserSubscriptionStatus(user.id, status);
+          await storage.updateUserSubscriptionStatus(user.id, status, subscriptionUpdatedEventAt);
 
           // Phase 6: Recalculate metered seat quantity for Business tier
           if (user.companyId && stripe) {
@@ -2378,7 +2432,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             break;
           }
 
-          await storage.updateUserSubscriptionStatus(user.id, 'cancelled');
+          // Out-of-order webhook guard — see customer.subscription.updated above.
+          const subscriptionDeletedEventAt = new Date(event.created * 1000);
+          if (isStaleSubscriptionEvent(subscriptionDeletedEventAt, user.stripeSubscriptionEventAt)) {
+            console.warn(
+              `[STRIPE WEBHOOK] Ignoring out-of-order customer.subscription.deleted for user ${user.email}: ` +
+              `event ${event.id} (subscription=${subscription.id}) created ${subscriptionDeletedEventAt.toISOString()} ` +
+              `is older than last-processed subscription event at ${new Date(user.stripeSubscriptionEventAt as any).toISOString()} ` +
+              `(current subscription on file=${user.stripeSubscriptionId}). Skipping to avoid overwriting newer state.`
+            );
+            break;
+          }
+
+          await storage.updateUserSubscriptionStatus(user.id, 'cancelled', subscriptionDeletedEventAt);
           console.log('[STRIPE WEBHOOK] Subscription deleted for user:', user.email);
           // In the monthly credit model, credits are only issued on invoice.payment_succeeded.
           // A cancelled subscriber no longer pays, so Stripe will fire no further payment events —
