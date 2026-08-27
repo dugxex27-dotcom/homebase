@@ -28,3 +28,4 @@
 - [Demo account isolation (isDemoAccount)](demo-account-isolation.md) — separate flag from isQaAccount so demo accounts stay interactive but are excluded from real aggregates/notifications
 - [lib/db schema changes need tsc --build](composite-project-schema-changes.md) — run `typecheck:libs` after editing lib/db schema, or consumers typecheck against stale .d.ts
 - [Demo paywall bypass consolidation](demo-paywall-bypass-consolidation.md) — use isDemoAccount only, never ID/email string matching; check test fixtures too, they silently rely on the old bypass strings
+- [Count-based limit race fix pattern](count-based-limit-race-fix.md) — COUNT-based limits need db.transaction+FOR UPDATE row lock, not a plain atomic UPDATE...RETURNING; also notes a TS closure-narrowing gotcha

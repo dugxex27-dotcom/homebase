@@ -11,7 +11,7 @@ import { randomUUID, randomBytes, createHash, timingSafeEqual } from "crypto";
 import rateLimit from "express-rate-limit";
 import { PgRateLimitStore } from "../lib/pg-rate-limit-store";
 import { eq, and, ne, inArray, sql as drizzleSql, isNotNull, isNull, desc, or, gt, gte, lte, ilike } from "drizzle-orm";
-import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertTaskCompletionSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, customMaintenanceTasks, insertSupportTicketSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, insertCrmLeadSchema, insertCrmNoteSchema, notificationPreferences, subscriptionPlans, securitySessions, referralCredits, referralFreeMonths, promoCodes, agentProfiles, users, siteContent, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, insertReviewFlagSchema, homeDocuments, quizResults, crmInvoices, handoffTransfers, demoLeads, insertDemoLeadSchema, type House } from "@workspace/db";
+import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertTaskCompletionSchema, insertCompanySchema, insertCompanyInviteCodeSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, customMaintenanceTasks, insertSupportTicketSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, insertCrmLeadSchema, insertCrmNoteSchema, notificationPreferences, subscriptionPlans, securitySessions, referralCredits, referralFreeMonths, promoCodes, agentProfiles, users, siteContent, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, insertReviewFlagSchema, homeDocuments, quizResults, crmInvoices, handoffTransfers, houseTransfers, demoLeads, insertDemoLeadSchema, type House } from "@workspace/db";
 import { calculateDIYSavingsAmount } from "../shared/cost-helpers";
 import { calculateMechanicalDocumentationBonus } from "../shared/maintenance-scheduler";
 import { createImmediateNotification, createNotificationSafely, notificationCategories, type ImmediateNotificationInput } from "../notification-writers";
@@ -12994,94 +12994,145 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use authenticated user's ID, never trust client input
       const homeownerId = req.session.user.id;
       const user = req.session.user;
-      
-      // Check property limits based on user role
-      const existingHouses = await storage.getHouses(homeownerId);
-      
-      if (user?.role === 'contractor') {
-        // Contractors are limited to 1 home for personal maintenance tracking
-        if (existingHouses.length >= 1) {
-          return res.status(403).json({ 
-            message: "Property limit reached. Contractors can track maintenance for one personal property.",
-            code: "CONTRACTOR_LIMIT_EXCEEDED"
-          });
-        }
-      } else if (user?.role === 'homeowner') {
-        // Check subscription status and house limits
-        const subscriptionStatus = user?.subscriptionStatus;
-        const trialEndsAt = user?.trialEndsAt;
-        
-        // Only grandfathered users or explicitly null maxHousesAllowed get unlimited houses
-        if (subscriptionStatus === 'grandfathered' || user?.maxHousesAllowed === null) {
-          // No limit - allow house creation
-        } else {
-          // Subscription tier limits:
-          // Free: 0 homes (contractor search only)
-          // Base ($5): 1-2 homes
-          // Premium ($20): 3-6 homes
-          // Premium Plus ($40): 7+ (unlimited)
-          const maxHouses = user?.maxHousesAllowed ?? 0; // Default to free plan (0 houses)
-          
-          // Free tier users cannot add any homes
-          if (maxHouses === 0) {
-            return res.status(403).json({ 
-              message: "Free accounts can search for contractors but cannot add properties. Upgrade to Base ($5/month) to add up to 2 homes.",
-              code: "FREE_TIER_LIMIT",
-              currentPlan: 'free',
-              maxHouses: 0,
-              currentHouses: existingHouses.length,
-              upgradeTo: 'base'
-            });
-          }
-          
-          if (existingHouses.length >= maxHouses) {
-            // User has reached their plan limit - determine current plan and upgrade path
-            const isTrialing = subscriptionStatus === 'trialing' && trialEndsAt && new Date(trialEndsAt) > new Date();
-            let currentPlan = 'free';
-            let upgradeTo = 'base';
-            let upgradeMessage = '';
-            
-            if (maxHouses <= 2) {
-              currentPlan = 'base';
-              upgradeTo = 'premium';
-              upgradeMessage = `You've reached the ${maxHouses} home limit on the Base plan ($5/month). Upgrade to Premium ($20/month) for up to 6 homes.`;
-            } else if (maxHouses <= 6) {
-              currentPlan = 'premium';
-              upgradeTo = 'premium_plus';
-              upgradeMessage = `You've reached the ${maxHouses} home limit on the Premium plan ($20/month). Upgrade to Premium Plus ($40/month) for unlimited homes.`;
-            }
-            
-            return res.status(403).json({ 
-              message: upgradeMessage || `Property limit reached. Upgrade to add more properties.`,
-              code: "PLAN_LIMIT_EXCEEDED",
-              currentPlan,
-              maxHouses,
-              currentHouses: existingHouses.length,
-              isTrialing,
-              upgradeTo
-            });
-          }
-        }
-      }
-      
-      // Geocode the address to get coordinates
+
+      // Geocode outside the transaction below — this is a slow external call
+      // and must not run while holding the row lock that serializes the
+      // limit check and insert.
       let geocoded = null;
       if (validatedData.address) {
         geocoded = await geocodeAddress(validatedData.address);
       }
-      
-      // Create house with authenticated user's ID and geocoded coordinates
-      const houseData = {
-        ...validatedData,
-        homeownerId,
-        ...(geocoded && {
-          latitude: geocoded.latitude.toString(),
-          longitude: geocoded.longitude.toString()
-        })
+
+      // Plain `let` locals reassigned only inside the transaction closure
+      // below don't widen back to their declared union type after the
+      // `await` (a TS control-flow quirk), so the outcome is tracked via an
+      // object whose property is read fresh after the transaction settles.
+      const outcome: { limitError: { status: number; body: any } | null; createdHouse: House | null } = {
+        limitError: null,
+        createdHouse: null,
       };
-      
-      const house = await storage.createHouse(houseData);
-      res.status(201).json(house);
+
+      await db.transaction(async (tx) => {
+        // Lock the user row for the duration of this transaction. This
+        // serializes concurrent house-creation (and transfer-accept, which
+        // takes the same lock) requests for the SAME user, closing the race
+        // window between counting their existing houses and inserting the
+        // new one — two concurrent requests can no longer both read the
+        // pre-insert count and both pass the limit check.
+        await tx.execute(drizzleSql`SELECT id FROM users WHERE id = ${homeownerId} FOR UPDATE`);
+
+        // Count is read inside the same locked transaction, so it reflects
+        // any house already committed by a request that was waiting on this
+        // same lock.
+        const [{ count: existingHousesCountRaw }] = await tx
+          .select({ count: drizzleSql<number>`COUNT(*)` })
+          .from(houses)
+          .where(eq(houses.homeownerId, homeownerId));
+        const existingHousesCount = Number(existingHousesCountRaw ?? 0);
+
+        if (user?.role === 'contractor') {
+          // Contractors are limited to 1 home for personal maintenance tracking
+          if (existingHousesCount >= 1) {
+            outcome.limitError = {
+              status: 403,
+              body: {
+                message: "Property limit reached. Contractors can track maintenance for one personal property.",
+                code: "CONTRACTOR_LIMIT_EXCEEDED"
+              }
+            };
+            return;
+          }
+        } else if (user?.role === 'homeowner') {
+          // Check subscription status and house limits
+          const subscriptionStatus = user?.subscriptionStatus;
+          const trialEndsAt = user?.trialEndsAt;
+
+          // Only grandfathered users or explicitly null maxHousesAllowed get unlimited houses
+          if (subscriptionStatus === 'grandfathered' || user?.maxHousesAllowed === null) {
+            // No limit - allow house creation
+          } else {
+            // Subscription tier limits:
+            // Free: 0 homes (contractor search only)
+            // Base ($5): 1-2 homes
+            // Premium ($20): 3-6 homes
+            // Premium Plus ($40): 7+ (unlimited)
+            const maxHouses = user?.maxHousesAllowed ?? 0; // Default to free plan (0 houses)
+
+            // Free tier users cannot add any homes
+            if (maxHouses === 0) {
+              outcome.limitError = {
+                status: 403,
+                body: {
+                  message: "Free accounts can search for contractors but cannot add properties. Upgrade to Base ($5/month) to add up to 2 homes.",
+                  code: "FREE_TIER_LIMIT",
+                  currentPlan: 'free',
+                  maxHouses: 0,
+                  currentHouses: existingHousesCount,
+                  upgradeTo: 'base'
+                }
+              };
+              return;
+            }
+
+            if (existingHousesCount >= maxHouses) {
+              // User has reached their plan limit - determine current plan and upgrade path
+              const isTrialing = subscriptionStatus === 'trialing' && trialEndsAt && new Date(trialEndsAt) > new Date();
+              let currentPlan = 'free';
+              let upgradeTo = 'base';
+              let upgradeMessage = '';
+
+              if (maxHouses <= 2) {
+                currentPlan = 'base';
+                upgradeTo = 'premium';
+                upgradeMessage = `You've reached the ${maxHouses} home limit on the Base plan ($5/month). Upgrade to Premium ($20/month) for up to 6 homes.`;
+              } else if (maxHouses <= 6) {
+                currentPlan = 'premium';
+                upgradeTo = 'premium_plus';
+                upgradeMessage = `You've reached the ${maxHouses} home limit on the Premium plan ($20/month). Upgrade to Premium Plus ($40/month) for unlimited homes.`;
+              }
+
+              outcome.limitError = {
+                status: 403,
+                body: {
+                  message: upgradeMessage || `Property limit reached. Upgrade to add more properties.`,
+                  code: "PLAN_LIMIT_EXCEEDED",
+                  currentPlan,
+                  maxHouses,
+                  currentHouses: existingHousesCount,
+                  isTrialing,
+                  upgradeTo
+                }
+              };
+              return;
+            }
+          }
+        }
+
+        // Still inside the same locked transaction: insert the house before
+        // releasing the user-row lock, so no concurrent request can slip in
+        // between the check above and this insert.
+        const newHouseId = randomUUID();
+        const houseData = {
+          ...validatedData,
+          id: newHouseId,
+          homeownerId,
+          isDefault: (validatedData as any).isDefault ?? false,
+          createdAt: new Date(),
+          ...(geocoded && {
+            latitude: geocoded.latitude.toString(),
+            longitude: geocoded.longitude.toString()
+          })
+        };
+        await tx.insert(houses).values(houseData as any);
+        const createdRows = await tx.select().from(houses).where(eq(houses.id, newHouseId)).limit(1);
+        outcome.createdHouse = createdRows[0] as unknown as House;
+      });
+
+      if (outcome.limitError) {
+        return res.status(outcome.limitError.status).json(outcome.limitError.body);
+      }
+
+      res.status(201).json(outcome.createdHouse);
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid request data", errors: error.issues });
@@ -13463,67 +13514,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (transfer.status !== 'pending') {
         return res.status(400).json({ message: "Transfer is no longer pending" });
       }
-      
-      // Check subscription limits for recipient
-      const housesCount = await storage.getHousesCount(homeownerId);
+
       const subscriptionStatus = user.subscriptionStatus;
-      
-      // Only grandfathered users or explicitly null maxHousesAllowed get unlimited houses
-      if (subscriptionStatus !== 'grandfathered' && user.maxHousesAllowed !== null) {
-        // Subscription tier limits:
-        // Free: 0 homes (contractor search only)
-        // Base ($5): 1-2 homes
-        // Premium ($20): 3-6 homes
-        // Premium Plus ($40): 7+ (unlimited)
-        const maxHouses = user.maxHousesAllowed ?? 0; // Default to free plan (0 houses)
-        
-        // Free tier users cannot accept transfers
-        if (maxHouses === 0) {
-          return res.status(403).json({ 
-            message: "Free accounts cannot own properties. Upgrade to Base ($5/month) to accept this transfer.",
-            code: "FREE_TIER_LIMIT",
-            currentPlan: 'free',
-            maxHouses: 0,
-            currentHouses: housesCount,
-            upgradeTo: 'base'
-          });
-        }
-        
-        if (housesCount >= maxHouses) {
-          const isTrialing = subscriptionStatus === 'trialing' && user.trialEndsAt && new Date(user.trialEndsAt) > new Date();
-          let currentPlan = 'free';
-          let upgradeTo = 'base';
-          let upgradeMessage = '';
-          
-          if (maxHouses <= 2) {
-            currentPlan = 'base';
-            upgradeTo = 'premium';
-            upgradeMessage = `Cannot accept transfer. You have ${housesCount} homes on the Base plan (max ${maxHouses}). Upgrade to Premium ($20/month) for up to 6 homes.`;
-          } else if (maxHouses <= 6) {
-            currentPlan = 'premium';
-            upgradeTo = 'premium_plus';
-            upgradeMessage = `Cannot accept transfer. You have ${housesCount} homes on the Premium plan (max ${maxHouses}). Upgrade to Premium Plus ($40/month) for unlimited homes.`;
+      // Plain `let` locals reassigned only inside the transaction closure
+      // below don't widen back to their declared union type after the
+      // `await` (a TS control-flow quirk), so the outcome is tracked via an
+      // object whose property is read fresh after the transaction settles.
+      const outcome: {
+        limitError: { status: number; body: any } | null;
+        staleTransfer: boolean;
+        updatedTransfer: any;
+      } = {
+        limitError: null,
+        staleTransfer: false,
+        updatedTransfer: null,
+      };
+
+      await db.transaction(async (tx) => {
+        // Lock the recipient's user row for the duration of this transaction.
+        // This serializes concurrent transfer-accepts, and concurrent house
+        // creations via POST /api/houses (which locks the same row), for the
+        // SAME recipient — closing the race window between counting their
+        // existing houses and committing this transfer.
+        await tx.execute(drizzleSql`SELECT id FROM users WHERE id = ${homeownerId} FOR UPDATE`);
+
+        // Check subscription limits for recipient. Count is read inside the
+        // same locked transaction, so it reflects any house/transfer already
+        // committed by a request that was waiting on this same lock.
+        const [{ count: housesCountRaw }] = await tx
+          .select({ count: drizzleSql<number>`COUNT(*)` })
+          .from(houses)
+          .where(eq(houses.homeownerId, homeownerId));
+        const housesCount = Number(housesCountRaw ?? 0);
+
+        // Only grandfathered users or explicitly null maxHousesAllowed get unlimited houses
+        if (subscriptionStatus !== 'grandfathered' && user.maxHousesAllowed !== null) {
+          // Subscription tier limits:
+          // Free: 0 homes (contractor search only)
+          // Base ($5): 1-2 homes
+          // Premium ($20): 3-6 homes
+          // Premium Plus ($40): 7+ (unlimited)
+          const maxHouses = user.maxHousesAllowed ?? 0; // Default to free plan (0 houses)
+
+          // Free tier users cannot accept transfers
+          if (maxHouses === 0) {
+            outcome.limitError = {
+              status: 403,
+              body: {
+                message: "Free accounts cannot own properties. Upgrade to Base ($5/month) to accept this transfer.",
+                code: "FREE_TIER_LIMIT",
+                currentPlan: 'free',
+                maxHouses: 0,
+                currentHouses: housesCount,
+                upgradeTo: 'base'
+              }
+            };
+            return;
           }
-          
-          return res.status(403).json({ 
-            message: upgradeMessage || `Cannot accept transfer. Upgrade to add more properties.`,
-            code: "PLAN_LIMIT_EXCEEDED",
-            currentPlan,
-            maxHouses,
-            currentHouses: housesCount,
-            isTrialing,
-            upgradeTo
-          });
+
+          if (housesCount >= maxHouses) {
+            const isTrialing = subscriptionStatus === 'trialing' && user.trialEndsAt && new Date(user.trialEndsAt) > new Date();
+            let currentPlan = 'free';
+            let upgradeTo = 'base';
+            let upgradeMessage = '';
+
+            if (maxHouses <= 2) {
+              currentPlan = 'base';
+              upgradeTo = 'premium';
+              upgradeMessage = `Cannot accept transfer. You have ${housesCount} homes on the Base plan (max ${maxHouses}). Upgrade to Premium ($20/month) for up to 6 homes.`;
+            } else if (maxHouses <= 6) {
+              currentPlan = 'premium';
+              upgradeTo = 'premium_plus';
+              upgradeMessage = `Cannot accept transfer. You have ${housesCount} homes on the Premium plan (max ${maxHouses}). Upgrade to Premium Plus ($40/month) for unlimited homes.`;
+            }
+
+            outcome.limitError = {
+              status: 403,
+              body: {
+                message: upgradeMessage || `Cannot accept transfer. Upgrade to add more properties.`,
+                code: "PLAN_LIMIT_EXCEEDED",
+                currentPlan,
+                maxHouses,
+                currentHouses: housesCount,
+                isTrialing,
+                upgradeTo
+              }
+            };
+            return;
+          }
         }
-      }
-      
-      // Update transfer status to accepted and set recipient ID
-      const updatedTransfer = await storage.updateHouseTransfer(req.params.id, {
-        status: 'accepted',
-        toHomeownerId: homeownerId
+
+        // Atomic conditional update: only flip status if it is still
+        // 'pending' at this instant (same pattern as the promo-code and
+        // affiliate-payout race fixes). Combined with the user-row lock
+        // above, this closes both the property-limit race and a same-
+        // transfer double-accept race.
+        const claimed = await tx
+          .update(houseTransfers)
+          .set({ status: 'accepted', toHomeownerId: homeownerId })
+          .where(and(eq(houseTransfers.id, req.params.id), eq(houseTransfers.status, 'pending')))
+          .returning();
+
+        if (claimed.length === 0) {
+          outcome.staleTransfer = true;
+          return;
+        }
+        outcome.updatedTransfer = claimed[0];
       });
-      
-      res.json(updatedTransfer);
+
+      if (outcome.limitError) {
+        return res.status(outcome.limitError.status).json(outcome.limitError.body);
+      }
+      if (outcome.staleTransfer) {
+        return res.status(400).json({ message: "Transfer is no longer pending" });
+      }
+
+      res.json(outcome.updatedTransfer);
     } catch (error) {
       res.status(500).json({ message: "Failed to accept house transfer" });
     }
