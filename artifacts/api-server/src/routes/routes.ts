@@ -1690,6 +1690,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`[PLANS] Seeded subscription plan: ${plan.tierName}`);
         }
       }
+
+      // Retire the old Enterprise placeholder without deleting its historical
+      // row. Generic lookups intentionally remain able to resolve it, while
+      // active plan listings hide it through the isActive filter. Only issue
+      // the write when an active legacy row actually exists.
+      const legacyEnterprisePlan = await storage.getSubscriptionPlanByTier('contractor_enterprise');
+      if (legacyEnterprisePlan?.isActive) {
+        await db.update(subscriptionPlans)
+          .set({ isActive: false })
+          .where(eq(subscriptionPlans.tierName, 'contractor_enterprise'));
+      }
     } catch (error) {
       console.error('[PLANS] Error auto-seeding plans:', error);
     }
