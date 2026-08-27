@@ -7241,9 +7241,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Generic webhook format (custom/default)
       if (integration.platform === 'webhook' || integration.platform === 'custom') {
+        const rawFirstName = req.body.first_name || req.body.firstName || req.body.name?.split(' ')[0];
+        const rawLastName = req.body.last_name || req.body.lastName || req.body.name?.split(' ')[1];
+        if (!rawFirstName) {
+          // None of the expected name fields (first_name/firstName/name)
+          // were present or usable — this is almost always a CRM sending an
+          // unexpected payload shape (wrong field mapping, schema change on
+          // their end, etc.). Falling back to 'Unknown' silently would hide
+          // that, so log the actual payload shape for debugging.
+          console.warn(
+            `[WEBHOOK] Integration ${req.params.integrationId}: lead payload missing expected name field(s); defaulting firstName to 'Unknown'. Payload keys: [${Object.keys(req.body).join(', ') || '(empty)'}], payload: ${JSON.stringify(req.body)}`
+          );
+        }
         leadData = {
-          firstName: req.body.first_name || req.body.firstName || req.body.name?.split(' ')[0] || 'Unknown',
-          lastName: req.body.last_name || req.body.lastName || req.body.name?.split(' ')[1] || '',
+          firstName: rawFirstName || 'Unknown',
+          lastName: rawLastName || '',
           email: req.body.email,
           phone: req.body.phone || req.body.phone_number || req.body.phoneNumber,
           address: req.body.address || req.body.street,
@@ -12828,7 +12840,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Notification not found" });
       }
       
-      if (notification.homeownerId !== userId) {
+      // A notification is owned by the homeowner it was created for, but
+      // appointment-linked notifications (category "appointment") are also
+      // surfaced to the contractor on that appointment — e.g. via
+      // getContractorNotifications, which joins notifications to
+      // contractorAppointments on appointmentId. Those contractors need to
+      // be able to mark their own copy read too, even though the
+      // notification row's homeownerId is the homeowner's, not theirs.
+      let isAuthorized = notification.homeownerId === userId;
+      if (!isAuthorized && notification.appointmentId) {
+        const appointment = await storage.getContractorAppointment(notification.appointmentId);
+        isAuthorized = !!appointment && appointment.contractorId === userId;
+      }
+      if (!isAuthorized) {
         return res.status(403).json({ message: "Not authorized to modify this notification" });
       }
       
@@ -22055,21 +22079,44 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         return res.status(400).json({ message: "File must be 10 MB or less" });
       }
 
-      const { notes, amount, invoiceDate, jobId } = req.body;
-      let homeownerId: string | null = req.body.homeownerId || null;
-      // Validate that the homeowner is scoped to this company (has a proposal relationship)
-      if (homeownerId) {
+      const { notes, invoiceDate, jobId } = req.body;
+      const amount = req.body.amount;
+      // homeownerId is legitimately optional (an invoice can be uploaded
+      // before it's linked to a specific homeowner/job), but if the caller
+      // DID supply one, it must resolve to a real proposal relationship
+      // scoping that homeowner to this company — otherwise this is an
+      // invalid/cross-company reference, not "no homeowner", and silently
+      // dropping it to null would hide that error from the caller.
+      const requestedHomeownerId: string | undefined = req.body.homeownerId || undefined;
+      let homeownerId: string | null = null;
+      if (requestedHomeownerId) {
         const [proposal] = await db.select({ id: proposals.id })
           .from(proposals)
           .where(and(
             eq(proposals.companyId, sessionUser.companyId),
-            eq(proposals.homeownerId, homeownerId)
+            eq(proposals.homeownerId, requestedHomeownerId)
           ))
           .limit(1);
         if (!proposal) {
-          homeownerId = null; // silently drop unscoped homeowner reference
+          return res.status(400).json({ message: "Invalid homeowner: no proposal relationship links this homeowner to your company." });
         }
+        homeownerId = requestedHomeownerId;
       }
+
+      // Validate the amount is actually numeric before persisting instead of
+      // stringifying whatever was sent (e.g. "abc" would otherwise be stored
+      // verbatim). Use explicit undefined/null/'' checks rather than a
+      // truthiness check so a real $0 invoice amount is stored as "0", not
+      // silently turned into null.
+      let amountValue: string | null = null;
+      if (amount !== undefined && amount !== null && amount !== '') {
+        const numericAmount = Number(amount);
+        if (!Number.isFinite(numericAmount)) {
+          return res.status(400).json({ message: "Invalid amount: must be a number." });
+        }
+        amountValue = String(numericAmount);
+      }
+
       const objectStorage = new ObjectStorageService();
       const fileKey = `contractor-invoices/${sessionUser.companyId}/${Date.now()}-${req.file.originalname}`;
       await objectStorage.uploadFile(fileKey, req.file.buffer, req.file.mimetype);
@@ -22078,13 +22125,13 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       const [invoice] = await db.insert(contractorInvoiceUploads).values({
         companyId: sessionUser.companyId,
         uploadedByUserId: sessionUser.id,
-        homeownerId: homeownerId || null,
+        homeownerId,
         jobId: jobId || null,
         fileName: req.file.originalname,
         fileUrl,
         storageKey: fileKey,
         notes: notes || null,
-        amount: amount ? String(amount) : null,
+        amount: amountValue,
         invoiceDate: invoiceDate || null,
       } as any).returning();
 
