@@ -267,4 +267,61 @@ describe("POST /api/crm/webhooks/:integrationId — lead name warning on unexpec
     expect(mockCreateCrmLead.mock.calls[0][0]).toMatchObject({ firstName: "John", lastName: "Smith" });
     expect(warnSpy).not.toHaveBeenCalled();
   });
+
+  it("does not truncate a combined 'name' field with 3+ words — the full last name is preserved", async () => {
+    const app = await buildApp();
+    mockGetCrmIntegration.mockResolvedValue(INTEGRATION_FIXTURE);
+    mockCreateCrmLead.mockResolvedValue({ id: "lead-4", firstName: "John", lastName: "Michael Smith" });
+
+    const res = await request(app)
+      .post(`/api/crm/webhooks/${INTEGRATION_ID}`)
+      .send({ name: "John Michael Smith", email: "john@example.com" });
+
+    expect(res.status).toBe(201);
+    // Previously this would have produced lastName: "Michael", dropping "Smith".
+    expect(mockCreateCrmLead.mock.calls[0][0]).toMatchObject({ firstName: "John", lastName: "Michael Smith" });
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it("does not truncate a combined 'name' field with 4 words", async () => {
+    const app = await buildApp();
+    mockGetCrmIntegration.mockResolvedValue(INTEGRATION_FIXTURE);
+    mockCreateCrmLead.mockResolvedValue({ id: "lead-5", firstName: "Maria", lastName: "de la Cruz" });
+
+    const res = await request(app)
+      .post(`/api/crm/webhooks/${INTEGRATION_ID}`)
+      .send({ name: "Maria de la Cruz", email: "maria@example.com" });
+
+    expect(res.status).toBe(201);
+    expect(mockCreateCrmLead.mock.calls[0][0]).toMatchObject({ firstName: "Maria", lastName: "de la Cruz" });
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it("still handles a single-word 'name' field (first name only, empty last name) — no regression", async () => {
+    const app = await buildApp();
+    mockGetCrmIntegration.mockResolvedValue(INTEGRATION_FIXTURE);
+    mockCreateCrmLead.mockResolvedValue({ id: "lead-6", firstName: "Cher", lastName: "" });
+
+    const res = await request(app)
+      .post(`/api/crm/webhooks/${INTEGRATION_ID}`)
+      .send({ name: "Cher", email: "cher@example.com" });
+
+    expect(res.status).toBe(201);
+    expect(mockCreateCrmLead.mock.calls[0][0]).toMatchObject({ firstName: "Cher", lastName: "" });
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it("still prefers explicit first_name/last_name fields over a combined name field when both are present — no regression", async () => {
+    const app = await buildApp();
+    mockGetCrmIntegration.mockResolvedValue(INTEGRATION_FIXTURE);
+    mockCreateCrmLead.mockResolvedValue({ id: "lead-7", firstName: "Explicit", lastName: "Fields" });
+
+    const res = await request(app)
+      .post(`/api/crm/webhooks/${INTEGRATION_ID}`)
+      .send({ first_name: "Explicit", last_name: "Fields", name: "Should Be Ignored Entirely", email: "e@example.com" });
+
+    expect(res.status).toBe(201);
+    expect(mockCreateCrmLead.mock.calls[0][0]).toMatchObject({ firstName: "Explicit", lastName: "Fields" });
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
 });

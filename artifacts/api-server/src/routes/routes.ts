@@ -7241,8 +7241,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Generic webhook format (custom/default)
       if (integration.platform === 'webhook' || integration.platform === 'custom') {
-        const rawFirstName = req.body.first_name || req.body.firstName || req.body.name?.split(' ')[0];
-        const rawLastName = req.body.last_name || req.body.lastName || req.body.name?.split(' ')[1];
+        // For a combined `name` field, everything after the first word is
+        // the last name — using split(' ')[1] alone would keep only the
+        // second word and silently drop the rest (e.g. "John Michael Smith"
+        // would lose "Smith").
+        const nameParts = req.body.name?.trim().split(/\s+/);
+        const rawFirstName = req.body.first_name || req.body.firstName || nameParts?.[0];
+        const rawLastName = req.body.last_name || req.body.lastName || nameParts?.slice(1).join(' ');
         if (!rawFirstName) {
           // None of the expected name fields (first_name/firstName/name)
           // were present or usable — this is almost always a CRM sending an
@@ -12876,7 +12881,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Notification not found" });
       }
       
-      if (notification.homeownerId !== userId) {
+      // Same authorization rule as PATCH /api/notifications/:id/read: a
+      // notification is owned by its homeowner, but appointment-linked
+      // notifications are also surfaced to the legitimately-linked
+      // contractor (via appointmentId -> contractorAppointments.contractorId),
+      // so that contractor must be able to delete their own copy too.
+      let isAuthorized = notification.homeownerId === userId;
+      if (!isAuthorized && notification.appointmentId) {
+        const appointment = await storage.getContractorAppointment(notification.appointmentId);
+        isAuthorized = !!appointment && appointment.contractorId === userId;
+      }
+      if (!isAuthorized) {
         return res.status(403).json({ message: "Not authorized to delete this notification" });
       }
       
