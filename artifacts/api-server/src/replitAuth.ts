@@ -654,7 +654,7 @@ export const requireDivisionAccess = (req: any, res: any, next: any) => {
   next();
 };
 
-// Gates routes that require the Business/Enterprise bulk-import feature.
+// Gates routes that require the Business bulk-import feature.
 export const requireBulkImport = async (req: any, res: any, next: any) => {
   if (!req.session?.isAuthenticated || !req.session?.user) {
     return res.status(401).json({ message: "Unauthorized" });
@@ -666,7 +666,7 @@ export const requireBulkImport = async (req: any, res: any, next: any) => {
     const company = await (storage as any).getCompany(companyId);
     const allowed =
       company?.bulkImportEnabled === true ||
-      ['contractor_business', 'contractor_enterprise'].includes(company?.tier ?? '');
+      company?.tier === 'contractor_business';
     if (!allowed) return res.status(403).json({ code: 'BULK_IMPORT_NOT_AVAILABLE' });
     next();
   } catch {
@@ -674,7 +674,12 @@ export const requireBulkImport = async (req: any, res: any, next: any) => {
   }
 };
 
-// Gates routes that require the Enterprise API-access feature.
+// Gates routes that require API access. The `contractor_enterprise` plan
+// tier (removed — see Contractor Scale-Up seat-billing work) used to grant
+// this automatically; API access is now purely the explicit
+// `apiAccessEnabled` flag set on a company (e.g. via a manually negotiated
+// custom/enterprise arrangement — see EnterpriseContactModal's contact-sales
+// flow, which is unrelated to the removed plan literal).
 export const requireApiAccess = async (req: any, res: any, next: any) => {
   if (!req.session?.isAuthenticated || !req.session?.user) {
     return res.status(401).json({ message: "Unauthorized" });
@@ -684,9 +689,7 @@ export const requireApiAccess = async (req: any, res: any, next: any) => {
   try {
     const { storage } = await import('./storage');
     const company = await (storage as any).getCompany(companyId);
-    const allowed =
-      company?.apiAccessEnabled === true ||
-      company?.tier === 'contractor_enterprise';
+    const allowed = company?.apiAccessEnabled === true;
     if (!allowed) return res.status(403).json({ code: 'API_ACCESS_NOT_AVAILABLE' });
     next();
   } catch {

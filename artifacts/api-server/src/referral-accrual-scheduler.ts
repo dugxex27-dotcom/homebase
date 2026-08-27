@@ -44,7 +44,6 @@ const CREDIT_AMOUNT_CENTS = 100; // $1.00 flat per active referral per month
 const ACTIVE_STATUSES = [
   'active',
   'contractor_business',
-  'contractor_enterprise',
 ] as const;
 
 // ── Period helper ─────────────────────────────────────────────────────────────

@@ -116,9 +116,13 @@ export function useContractorSubscription(): ContractorSubscriptionStatus {
   }
 
   const tier = data.companyTier as string | null ?? null;
-  const hasDivisions = data.hasDivisions ?? ['business', 'contractor_business', 'enterprise', 'contractor_enterprise'].includes(tier ?? '');
+  const hasDivisions = data.hasDivisions ?? ['business', 'contractor_business'].includes(tier ?? '');
   const hasBulkImport = data.bulkImportEnabled ?? hasDivisions;
-  const hasApiAccess = data.apiAccessEnabled ?? tier === 'contractor_enterprise';
+  // API access (and the SSO it gates) is no longer tied to a plan tier — the
+  // `contractor_enterprise` placeholder plan was removed with no real Stripe
+  // billing behind it. It is now purely the explicit apiAccessEnabled flag,
+  // set for manually negotiated custom/enterprise arrangements.
+  const hasApiAccess = data.apiAccessEnabled ?? false;
   const hasSSO = (data.ssoEnabled ?? false) && hasApiAccess;
 
   return {

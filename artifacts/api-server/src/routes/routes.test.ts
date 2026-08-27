@@ -4,15 +4,18 @@ import express from "express";
 import {
   calcBilledSeats,
   countActiveCompanySeats,
-  updateMeteredSeats,
+  syncSeatSubscriptionItem,
+  resolveSeatPriceId,
+  resetSeatPriceCache,
+  TECH_SEAT_PRICE_LOOKUP_KEY,
   refreshSeatsForCompany,
   recoverPendingSeatSyncs,
   processedWebhookEventIds,
   inFlightWebhookEventIds,
   enforceWebhookDedupCacheCap,
   MAX_WEBHOOK_DEDUP_CACHE_SIZE,
-  resolveMeteredSeatCount,
-  updateMeteredSeatsForSubscription,
+  resolveBilledSeatCount,
+  syncSeatQuantityForSubscription,
   checkRemoveTeamMemberGuard,
   checkRoleChangeGuard,
   executeLeaveCompany,
@@ -35,6 +38,10 @@ import { refreshUserSessionRole } from "../replitAuth";
 vi.mock("../db", () => ({
   db: {},
   pool: {
+    // Top-level side effect in ../lib/pg-rate-limit-store.ts calls
+    // pool.query(...) directly at import time, so the mock pool needs its
+    // own .query in addition to .connect().
+    query: vi.fn().mockResolvedValue({ rows: [] }),
     connect: vi.fn().mockResolvedValue({
       query: vi.fn().mockResolvedValue({ rows: [] }),
       release: vi.fn(),
@@ -95,166 +102,157 @@ describe("calcBilledSeats", () => {
 });
 
 // ---------------------------------------------------------------------------
-// updateMeteredSeats — mock-Stripe integration tests
+// syncSeatSubscriptionItem — quantity-based mock-Stripe integration tests
+// (replaces the old metered-usage-record updateMeteredSeats tests)
 // ---------------------------------------------------------------------------
 
-describe("updateMeteredSeats", () => {
-  const COMPANY_ID = "company-abc";
-  const METERED_ITEM_ID = "si_metered_001";
+describe("syncSeatSubscriptionItem", () => {
+  const SUB_ID = "sub_test_001";
+  const SEAT_PRICE_ID = "price_seat_test";
+  const EXISTING_ITEM_ID = "si_seat_001";
 
-  const meteredItem = {
-    id: METERED_ITEM_ID,
-    price: { recurring: { usage_type: "metered" } },
-  };
+  function makeSubItemsStripeMock(existingItem: { id: string; price: { id: string } } | null) {
+    return {
+      subscriptions: {
+        retrieve: vi.fn().mockResolvedValue({
+          items: { data: existingItem ? [existingItem] : [] },
+        }),
+      },
+      subscriptionItems: {
+        create: vi.fn().mockResolvedValue({ id: "si_seat_new" }),
+        update: vi.fn().mockResolvedValue({}),
+        del: vi.fn().mockResolvedValue({}),
+      },
+    };
+  }
 
-  const flatRateItem = {
-    id: "si_flat_001",
-    price: { recurring: { usage_type: "licensed" } },
-  };
+  it("creates a new subscription item when billed seats go from 0 to positive and none exists yet", async () => {
+    const stripeMock = makeSubItemsStripeMock(null);
 
-  let getActiveUserCount: ReturnType<typeof vi.fn<(companyId: string) => Promise<number>>>;
-  let createUsageRecord: ReturnType<typeof vi.fn<(itemId: string, quantity: number) => Promise<void>>>;
+    await syncSeatSubscriptionItem(stripeMock, SUB_ID, 1, SEAT_PRICE_ID);
 
-  beforeEach(() => {
-    getActiveUserCount = vi.fn<(companyId: string) => Promise<number>>();
-    createUsageRecord = vi.fn<(itemId: string, quantity: number) => Promise<void>>().mockResolvedValue(undefined);
-  });
-
-  it("calls createUsageRecord with 0 billed seats for a 2-person company", async () => {
-    getActiveUserCount.mockResolvedValue(2);
-
-    await updateMeteredSeats(
-      COMPANY_ID,
-      [meteredItem],
-      getActiveUserCount,
-      createUsageRecord,
+    expect(stripeMock.subscriptionItems.create).toHaveBeenCalledWith(
+      { subscription: SUB_ID, price: SEAT_PRICE_ID, quantity: 1 },
+      undefined,
     );
-
-    expect(getActiveUserCount).toHaveBeenCalledWith(COMPANY_ID);
-    expect(createUsageRecord).toHaveBeenCalledOnce();
-    expect(createUsageRecord).toHaveBeenCalledWith(METERED_ITEM_ID, 0);
+    expect(stripeMock.subscriptionItems.update).not.toHaveBeenCalled();
+    expect(stripeMock.subscriptionItems.del).not.toHaveBeenCalled();
   });
 
-  it("calls createUsageRecord with 1 billed seat after a third member is added", async () => {
-    getActiveUserCount.mockResolvedValue(3);
+  it("passes an idempotencyKey option to create when provided", async () => {
+    const stripeMock = makeSubItemsStripeMock(null);
 
-    await updateMeteredSeats(
-      COMPANY_ID,
-      [meteredItem],
-      getActiveUserCount,
-      createUsageRecord,
+    await syncSeatSubscriptionItem(stripeMock, SUB_ID, 2, SEAT_PRICE_ID, "evt_123-seats-company-abc");
+
+    expect(stripeMock.subscriptionItems.create).toHaveBeenCalledWith(
+      { subscription: SUB_ID, price: SEAT_PRICE_ID, quantity: 2 },
+      { idempotencyKey: "evt_123-seats-company-abc" },
     );
-
-    expect(createUsageRecord).toHaveBeenCalledWith(METERED_ITEM_ID, 1);
   });
 
-  it("calls createUsageRecord with 0 billed seats when a member is removed and total drops to 2", async () => {
-    getActiveUserCount.mockResolvedValue(2);
+  it("updates the existing item's quantity rather than creating a duplicate", async () => {
+    const existingItem = { id: EXISTING_ITEM_ID, price: { id: SEAT_PRICE_ID } };
+    const stripeMock = makeSubItemsStripeMock(existingItem);
 
-    await updateMeteredSeats(
-      COMPANY_ID,
-      [meteredItem],
-      getActiveUserCount,
-      createUsageRecord,
+    await syncSeatSubscriptionItem(stripeMock, SUB_ID, 3, SEAT_PRICE_ID);
+
+    expect(stripeMock.subscriptionItems.update).toHaveBeenCalledWith(EXISTING_ITEM_ID, { quantity: 3 });
+    expect(stripeMock.subscriptionItems.create).not.toHaveBeenCalled();
+  });
+
+  it("deletes the existing item once billed seats drop back to 0 (Stripe disallows quantity 0)", async () => {
+    const existingItem = { id: EXISTING_ITEM_ID, price: { id: SEAT_PRICE_ID } };
+    const stripeMock = makeSubItemsStripeMock(existingItem);
+
+    await syncSeatSubscriptionItem(stripeMock, SUB_ID, 0, SEAT_PRICE_ID);
+
+    expect(stripeMock.subscriptionItems.del).toHaveBeenCalledWith(EXISTING_ITEM_ID);
+    expect(stripeMock.subscriptionItems.update).not.toHaveBeenCalled();
+    expect(stripeMock.subscriptionItems.create).not.toHaveBeenCalled();
+  });
+
+  it("is a no-op when billed seats is 0 and no item exists yet", async () => {
+    const stripeMock = makeSubItemsStripeMock(null);
+
+    await syncSeatSubscriptionItem(stripeMock, SUB_ID, 0, SEAT_PRICE_ID);
+
+    expect(stripeMock.subscriptionItems.create).not.toHaveBeenCalled();
+    expect(stripeMock.subscriptionItems.update).not.toHaveBeenCalled();
+    expect(stripeMock.subscriptionItems.del).not.toHaveBeenCalled();
+  });
+
+  it("ignores unrelated subscription items when locating the seat item", async () => {
+    const stripeMock = makeSubItemsStripeMock(null);
+    stripeMock.subscriptions.retrieve.mockResolvedValue({
+      items: { data: [{ id: "si_base_plan", price: { id: "price_base_plan" } }] },
+    });
+
+    await syncSeatSubscriptionItem(stripeMock, SUB_ID, 2, SEAT_PRICE_ID);
+
+    expect(stripeMock.subscriptionItems.create).toHaveBeenCalledWith(
+      { subscription: SUB_ID, price: SEAT_PRICE_ID, quantity: 2 },
+      undefined,
     );
-
-    expect(createUsageRecord).toHaveBeenCalledWith(METERED_ITEM_ID, 0);
   });
 
-  it("calls createUsageRecord with correct count for a large team", async () => {
-    getActiveUserCount.mockResolvedValue(10);
-
-    await updateMeteredSeats(
-      COMPANY_ID,
-      [meteredItem],
-      getActiveUserCount,
-      createUsageRecord,
-    );
-
-    expect(createUsageRecord).toHaveBeenCalledWith(METERED_ITEM_ID, 8);
-  });
-
-  it("does nothing when there is no metered item in the subscription", async () => {
-    getActiveUserCount.mockResolvedValue(5);
-
-    await updateMeteredSeats(
-      COMPANY_ID,
-      [flatRateItem],
-      getActiveUserCount,
-      createUsageRecord,
-    );
-
-    expect(getActiveUserCount).not.toHaveBeenCalled();
-    expect(createUsageRecord).not.toHaveBeenCalled();
-  });
-
-  it("does nothing when the subscription has no items at all", async () => {
-    getActiveUserCount.mockResolvedValue(5);
-
-    await updateMeteredSeats(
-      COMPANY_ID,
-      [],
-      getActiveUserCount,
-      createUsageRecord,
-    );
-
-    expect(createUsageRecord).not.toHaveBeenCalled();
-  });
-
-  it("picks the metered item when mixed flat-rate and metered items are present", async () => {
-    getActiveUserCount.mockResolvedValue(4);
-
-    await updateMeteredSeats(
-      COMPANY_ID,
-      [flatRateItem, meteredItem],
-      getActiveUserCount,
-      createUsageRecord,
-    );
-
-    expect(createUsageRecord).toHaveBeenCalledOnce();
-    expect(createUsageRecord).toHaveBeenCalledWith(METERED_ITEM_ID, 2);
-  });
-
-  it("never passes a negative quantity to createUsageRecord (solo contractor)", async () => {
-    getActiveUserCount.mockResolvedValue(1);
-
-    await updateMeteredSeats(
-      COMPANY_ID,
-      [meteredItem],
-      getActiveUserCount,
-      createUsageRecord,
-    );
-
-    const [, qty] = createUsageRecord.mock.calls[0];
-    expect(qty).toBeGreaterThanOrEqual(0);
-    expect(qty).toBe(0);
-  });
-
-  it("propagates errors thrown by createUsageRecord so Stripe can retry", async () => {
-    getActiveUserCount.mockResolvedValue(3);
-    createUsageRecord.mockRejectedValue(new Error("Stripe rate limit"));
+  it("propagates errors thrown by Stripe so callers can log and retry", async () => {
+    const stripeMock = makeSubItemsStripeMock(null);
+    stripeMock.subscriptionItems.create.mockRejectedValue(new Error("Stripe rate limit"));
 
     await expect(
-      updateMeteredSeats(
-        COMPANY_ID,
-        [meteredItem],
-        getActiveUserCount,
-        createUsageRecord,
-      ),
+      syncSeatSubscriptionItem(stripeMock, SUB_ID, 1, SEAT_PRICE_ID),
     ).rejects.toThrow("Stripe rate limit");
   });
+});
 
-  it("propagates errors thrown by getActiveUserCount", async () => {
-    getActiveUserCount.mockRejectedValue(new Error("DB connection lost"));
+describe("resolveSeatPriceId", () => {
+  beforeEach(() => {
+    resetSeatPriceCache();
+  });
 
-    await expect(
-      updateMeteredSeats(
-        COMPANY_ID,
-        [meteredItem],
-        getActiveUserCount,
-        createUsageRecord,
-      ),
-    ).rejects.toThrow("DB connection lost");
+  it("returns the existing Price ID found by lookup_key without creating a new Product/Price", async () => {
+    const stripeMock = {
+      prices: { list: vi.fn().mockResolvedValue({ data: [{ id: "price_existing" }] }) },
+      products: { create: vi.fn() },
+    };
+
+    const id = await resolveSeatPriceId(stripeMock);
+
+    expect(id).toBe("price_existing");
+    expect(stripeMock.prices.list).toHaveBeenCalledWith(
+      expect.objectContaining({ lookup_keys: [TECH_SEAT_PRICE_LOOKUP_KEY], active: true }),
+    );
+    expect(stripeMock.products.create).not.toHaveBeenCalled();
+  });
+
+  it("creates the Product + Price on first use when none exists yet", async () => {
+    const stripeMock = {
+      prices: {
+        list: vi.fn().mockResolvedValue({ data: [] }),
+        create: vi.fn().mockResolvedValue({ id: "price_new" }),
+      },
+      products: { create: vi.fn().mockResolvedValue({ id: "prod_new" }) },
+    };
+
+    const id = await resolveSeatPriceId(stripeMock);
+
+    expect(id).toBe("price_new");
+    expect(stripeMock.products.create).toHaveBeenCalledOnce();
+    expect(stripeMock.prices.create).toHaveBeenCalledWith(
+      expect.objectContaining({ product: "prod_new", lookup_key: TECH_SEAT_PRICE_LOOKUP_KEY }),
+    );
+  });
+
+  it("caches the resolved Price ID across calls without re-querying Stripe", async () => {
+    const stripeMock = {
+      prices: { list: vi.fn().mockResolvedValue({ data: [{ id: "price_cached" }] }) },
+      products: { create: vi.fn() },
+    };
+
+    await resolveSeatPriceId(stripeMock);
+    await resolveSeatPriceId(stripeMock);
+
+    expect(stripeMock.prices.list).toHaveBeenCalledOnce();
   });
 });
 
@@ -337,28 +335,39 @@ function makeOwnerDbMock(stripeSubscriptionId: string | null) {
   return { select, from, where, limit };
 }
 
-/** Build a minimal Stripe mock (subscriptions + subscriptionItems). */
-function makeStripeMock(subStatus = "active", meteredItemId = "si_metered_001") {
-  const meteredItem = {
-    id: meteredItemId,
-    price: { recurring: { usage_type: "metered" } },
-  };
+const TEST_SEAT_PRICE_ID = "price_seat_test_shared";
+
+/** Build a minimal Stripe mock (subscriptions + subscriptionItems + prices). */
+function makeStripeMock(subStatus = "active", existingSeatItemId: string | null = "si_seat_001") {
+  const existingItem = existingSeatItemId
+    ? { id: existingSeatItemId, price: { id: TEST_SEAT_PRICE_ID } }
+    : null;
   return {
     subscriptions: {
       retrieve: vi.fn().mockResolvedValue({
         status: subStatus,
-        items: { data: [meteredItem] },
+        items: { data: existingItem ? [existingItem] : [] },
       }),
     },
     subscriptionItems: {
-      createUsageRecord: vi.fn().mockResolvedValue({}),
+      create: vi.fn().mockResolvedValue({ id: "si_seat_new" }),
+      update: vi.fn().mockResolvedValue({}),
+      del: vi.fn().mockResolvedValue({}),
     },
+    prices: {
+      list: vi.fn().mockResolvedValue({ data: [{ id: TEST_SEAT_PRICE_ID }] }),
+    },
+    products: { create: vi.fn() },
   };
 }
 
 describe("refreshSeatsForCompany — seat count corrects on member removal without a webhook", () => {
   const COMPANY_ID = "company-abc";
   const SUB_ID = "sub_test_001";
+
+  beforeEach(() => {
+    resetSeatPriceCache();
+  });
 
   it("is a no-op when stripeClient is null (Stripe not configured)", async () => {
     const db = makeOwnerDbMock(SUB_ID);
@@ -390,10 +399,11 @@ describe("refreshSeatsForCompany — seat count corrects on member removal witho
 
     expect(stripeMock.subscriptions.retrieve).toHaveBeenCalledWith(SUB_ID);
     expect(getActiveUserCount).not.toHaveBeenCalled();
-    expect(stripeMock.subscriptionItems.createUsageRecord).not.toHaveBeenCalled();
+    expect(stripeMock.subscriptionItems.update).not.toHaveBeenCalled();
+    expect(stripeMock.subscriptionItems.create).not.toHaveBeenCalled();
   });
 
-  it("records 0 billed seats immediately after a removal drops active count to 2", async () => {
+  it("sets quantity to 0 (deletes the item) immediately after a removal drops active count to 2", async () => {
     const db = makeOwnerDbMock(SUB_ID);
     const stripeMock = makeStripeMock();
     // After removal the DB already reports 2 active members (removed one is excluded)
@@ -402,24 +412,17 @@ describe("refreshSeatsForCompany — seat count corrects on member removal witho
     await refreshSeatsForCompany(COMPANY_ID, stripeMock as any, db as any, getActiveUserCount);
 
     expect(getActiveUserCount).toHaveBeenCalledWith(COMPANY_ID);
-    expect(stripeMock.subscriptionItems.createUsageRecord).toHaveBeenCalledOnce();
-    expect(stripeMock.subscriptionItems.createUsageRecord).toHaveBeenCalledWith(
-      "si_metered_001",
-      { quantity: 0, action: "set" },
-    );
+    expect(stripeMock.subscriptionItems.del).toHaveBeenCalledWith("si_seat_001");
   });
 
-  it("records 1 billed seat immediately after a removal drops active count from 4 to 3", async () => {
+  it("updates quantity to 1 billed seat immediately after a removal drops active count from 4 to 3", async () => {
     const db = makeOwnerDbMock(SUB_ID);
     const stripeMock = makeStripeMock();
     const getActiveUserCount = vi.fn().mockResolvedValue(3);
 
     await refreshSeatsForCompany(COMPANY_ID, stripeMock as any, db as any, getActiveUserCount);
 
-    expect(stripeMock.subscriptionItems.createUsageRecord).toHaveBeenCalledWith(
-      "si_metered_001",
-      { quantity: 1, action: "set" },
-    );
+    expect(stripeMock.subscriptionItems.update).toHaveBeenCalledWith("si_seat_001", { quantity: 1 });
   });
 
   it("retrieves the subscription using the owner's stripeSubscriptionId", async () => {
@@ -432,29 +435,23 @@ describe("refreshSeatsForCompany — seat count corrects on member removal witho
     expect(stripeMock.subscriptions.retrieve).toHaveBeenCalledWith(SUB_ID);
   });
 
-  it("does not call createUsageRecord when the subscription has no metered item", async () => {
+  it("creates the seat item when none exists yet and headcount now exceeds the included 2 seats", async () => {
     const db = makeOwnerDbMock(SUB_ID);
-    // Subscription only has a licensed (flat-rate) item, no metered item
-    const flatStripe = {
-      subscriptions: {
-        retrieve: vi.fn().mockResolvedValue({
-          status: "active",
-          items: { data: [{ id: "si_flat_001", price: { recurring: { usage_type: "licensed" } } }] },
-        }),
-      },
-      subscriptionItems: { createUsageRecord: vi.fn() },
-    };
+    const stripeMock = makeStripeMock("active", null);
     const getActiveUserCount = vi.fn().mockResolvedValue(3);
 
-    await refreshSeatsForCompany(COMPANY_ID, flatStripe as any, db as any, getActiveUserCount);
+    await refreshSeatsForCompany(COMPANY_ID, stripeMock as any, db as any, getActiveUserCount);
 
-    expect(flatStripe.subscriptionItems.createUsageRecord).not.toHaveBeenCalled();
+    expect(stripeMock.subscriptionItems.create).toHaveBeenCalledWith(
+      { subscription: SUB_ID, price: TEST_SEAT_PRICE_ID, quantity: 1 },
+      undefined,
+    );
   });
 
   it("propagates Stripe errors so callers can log and handle them", async () => {
     const db = makeOwnerDbMock(SUB_ID);
     const stripeMock = makeStripeMock();
-    (stripeMock.subscriptionItems.createUsageRecord as any).mockRejectedValue(
+    (stripeMock.subscriptionItems.update as any).mockRejectedValue(
       new Error("Stripe rate limit"),
     );
     const getActiveUserCount = vi.fn().mockResolvedValue(3);
@@ -472,15 +469,12 @@ describe("refreshSeatsForCompany — seat count corrects on member removal witho
 describe("processedWebhookEventIds — webhook idempotency guard", () => {
   const EVENT_ID = "evt_test_idempotency_001";
   const COMPANY_ID = "company-idem";
-  const METERED_ITEM_ID = "si_metered_idem";
-
-  const meteredItem = {
-    id: METERED_ITEM_ID,
-    price: { recurring: { usage_type: "metered" } },
-  };
+  const SEAT_ITEM_ID = "si_seat_idem";
+  const SEAT_PRICE_ID = "price_seat_idem";
 
   beforeEach(() => {
     processedWebhookEventIds.clear();
+    resetSeatPriceCache();
   });
 
   afterEach(() => {
@@ -535,77 +529,87 @@ describe("processedWebhookEventIds — webhook idempotency guard", () => {
     }
   });
 
-  it("skips createUsageRecord on a replayed customer.subscription.updated event", async () => {
-    const getActiveUserCount = vi.fn().mockResolvedValue(5);
-    const createUsageRecord = vi.fn().mockResolvedValue(undefined);
+  it("skips the seat sync on a replayed customer.subscription.updated event", async () => {
+    const stripeClient = {
+      subscriptions: { retrieve: vi.fn().mockResolvedValue({ items: { data: [{ id: SEAT_ITEM_ID, price: { id: SEAT_PRICE_ID } }] } }) },
+      subscriptionItems: { create: vi.fn(), update: vi.fn().mockResolvedValue({}), del: vi.fn() },
+      prices: { list: vi.fn().mockResolvedValue({ data: [{ id: SEAT_PRICE_ID }] }) },
+      products: { create: vi.fn() },
+    };
+    const dbMock = makeDbMock(5);
 
     // Simulate first delivery: not a duplicate, so we process and record the event
     const firstIsDuplicate = processedWebhookEventIds.has(EVENT_ID);
     expect(firstIsDuplicate).toBe(false);
 
-    await updateMeteredSeats(
+    await syncSeatQuantityForSubscription(
+      { id: "sub_idem", status: "active" },
       COMPANY_ID,
-      [meteredItem],
-      getActiveUserCount,
-      createUsageRecord,
+      stripeClient,
+      dbMock as any,
     );
     processedWebhookEventIds.set(EVENT_ID, Date.now());
 
-    expect(createUsageRecord).toHaveBeenCalledOnce();
-    expect(createUsageRecord).toHaveBeenCalledWith(METERED_ITEM_ID, 3);
+    expect(stripeClient.subscriptionItems.update).toHaveBeenCalledOnce();
+    expect(stripeClient.subscriptionItems.update).toHaveBeenCalledWith(SEAT_ITEM_ID, { quantity: 3 });
 
     // Simulate Stripe retry: same event ID delivered again
     const retryIsDuplicate = processedWebhookEventIds.has(EVENT_ID);
     expect(retryIsDuplicate).toBe(true);
 
-    // Because it is a duplicate, the handler returns early — updateMeteredSeats
-    // (and therefore createUsageRecord) must NOT be called a second time.
+    // Because it is a duplicate, the handler returns early — syncSeatQuantityForSubscription
+    // (and therefore the Stripe call) must NOT be called a second time.
     if (!retryIsDuplicate) {
-      await updateMeteredSeats(
+      await syncSeatQuantityForSubscription(
+        { id: "sub_idem", status: "active" },
         COMPANY_ID,
-        [meteredItem],
-        getActiveUserCount,
-        createUsageRecord,
+        stripeClient,
+        dbMock as any,
       );
     }
 
-    expect(createUsageRecord).toHaveBeenCalledOnce();
+    expect(stripeClient.subscriptionItems.update).toHaveBeenCalledOnce();
   });
 
-  it("skips createUsageRecord on a replayed customer.subscription.deleted event", async () => {
+  it("skips the seat sync on a replayed customer.subscription.deleted event", async () => {
     const deletedEventId = "evt_test_sub_deleted_replay_001";
-    const getActiveUserCount = vi.fn().mockResolvedValue(0);
-    const createUsageRecord = vi.fn().mockResolvedValue(undefined);
+    const stripeClient = {
+      subscriptions: { retrieve: vi.fn().mockResolvedValue({ items: { data: [{ id: SEAT_ITEM_ID, price: { id: SEAT_PRICE_ID } }] } }) },
+      subscriptionItems: { create: vi.fn(), update: vi.fn(), del: vi.fn().mockResolvedValue({}) },
+      prices: { list: vi.fn().mockResolvedValue({ data: [{ id: SEAT_PRICE_ID }] }) },
+      products: { create: vi.fn() },
+    };
+    const dbMock = makeDbMock(0);
 
     // First delivery: guard is cold — process and record the event
     expect(processedWebhookEventIds.has(deletedEventId)).toBe(false);
 
-    await updateMeteredSeats(
+    await syncSeatQuantityForSubscription(
+      { id: "sub_idem_deleted", status: "canceled" },
       COMPANY_ID,
-      [meteredItem],
-      getActiveUserCount,
-      createUsageRecord,
+      stripeClient,
+      dbMock as any,
     );
     processedWebhookEventIds.set(deletedEventId, Date.now());
 
-    expect(createUsageRecord).toHaveBeenCalledOnce();
+    expect(stripeClient.subscriptionItems.del).toHaveBeenCalledOnce();
 
     // Simulate Stripe retry: same event ID delivered again
     const retryIsDuplicate = processedWebhookEventIds.has(deletedEventId);
     expect(retryIsDuplicate).toBe(true);
 
     // Because it is a duplicate, the handler returns early —
-    // createUsageRecord must NOT be called a second time.
+    // the Stripe call must NOT be made a second time.
     if (!retryIsDuplicate) {
-      await updateMeteredSeats(
+      await syncSeatQuantityForSubscription(
+        { id: "sub_idem_deleted", status: "canceled" },
         COMPANY_ID,
-        [meteredItem],
-        getActiveUserCount,
-        createUsageRecord,
+        stripeClient,
+        dbMock as any,
       );
     }
 
-    expect(createUsageRecord).toHaveBeenCalledOnce();
+    expect(stripeClient.subscriptionItems.del).toHaveBeenCalledOnce();
   });
 
   it("allows reprocessing after the entry is cleared (simulates TTL expiry)", () => {
@@ -1115,38 +1119,38 @@ describe("subscriptionCycleEvent deduplication — cold-restart / post-restart r
   });
 });
 
-describe("resolveMeteredSeatCount — billing stops immediately on company cancellation", () => {
+describe("resolveBilledSeatCount — billing stops immediately on company cancellation", () => {
   it("returns 0 when subscription is canceled, even if the company has many active seats", () => {
     // This is the core billing-stop guarantee: a cancelled subscription must
-    // zero out metered charges regardless of how many seats the DB reports.
-    expect(resolveMeteredSeatCount("canceled", 10)).toBe(0);
+    // zero out seat charges regardless of how many seats the DB reports.
+    expect(resolveBilledSeatCount("canceled", 10)).toBe(0);
   });
 
   it("returns 0 when subscription is canceled with a small team", () => {
-    expect(resolveMeteredSeatCount("canceled", 2)).toBe(0);
+    expect(resolveBilledSeatCount("canceled", 2)).toBe(0);
   });
 
   it("returns 0 when subscription is past_due so at-risk companies are not double-charged", () => {
-    expect(resolveMeteredSeatCount("past_due", 5)).toBe(0);
+    expect(resolveBilledSeatCount("past_due", 5)).toBe(0);
   });
 
   it("returns 0 when subscription is past_due with a minimal team", () => {
-    expect(resolveMeteredSeatCount("past_due", 1)).toBe(0);
+    expect(resolveBilledSeatCount("past_due", 1)).toBe(0);
   });
 
   it("applies normal seat billing (N-2) for an active subscription", () => {
     // 5 active seats → 3 billed (5 - 2 included)
-    expect(resolveMeteredSeatCount("active", 5)).toBe(3);
+    expect(resolveBilledSeatCount("active", 5)).toBe(3);
   });
 
   it("applies normal seat billing for a trialing subscription", () => {
-    // Trials still bill metered seats the same way
-    expect(resolveMeteredSeatCount("trialing", 4)).toBe(2);
+    // Trials still bill seats the same way
+    expect(resolveBilledSeatCount("trialing", 4)).toBe(2);
   });
 
   it("never returns a negative number for an active subscription with a small team", () => {
     // 1 active seat — 2 included seats → max(0, -1) = 0
-    expect(resolveMeteredSeatCount("active", 1)).toBe(0);
+    expect(resolveBilledSeatCount("active", 1)).toBe(0);
   });
 });
 
@@ -1154,93 +1158,92 @@ describe("resolveMeteredSeatCount — billing stops immediately on company cance
 // Helpers shared by the webhook path tests below
 // ---------------------------------------------------------------------------
 
-/** Build a minimal Stripe-client mock that records createUsageRecord calls. */
-function makeStripeClientMock() {
-  const createUsageRecord = vi.fn().mockResolvedValue({});
+/** Build a minimal Stripe-client mock for the quantity-based seat item flow. */
+function makeStripeClientMock(existingSeatItemId: string | null = "si_seat_001") {
+  const create = vi.fn().mockResolvedValue({ id: "si_seat_new" });
+  const update = vi.fn().mockResolvedValue({});
+  const del = vi.fn().mockResolvedValue({});
+  const existingItem = existingSeatItemId
+    ? { id: existingSeatItemId, price: { id: TEST_SEAT_PRICE_ID } }
+    : null;
   return {
-    stripeClient: { subscriptionItems: { createUsageRecord } },
-    createUsageRecord,
-  };
-}
-
-/**
- * Build a minimal Stripe Subscription-shaped object for the webhook tests.
- * Pass `hasMeteredItem: false` to simulate a flat-rate subscription with no
- * metered price.
- */
-function makeSubscription(
-  status: string,
-  { hasMeteredItem = true } = {},
-) {
-  return {
-    status,
-    items: {
-      data: hasMeteredItem
-        ? [{ id: "si_metered_001", price: { recurring: { usage_type: "metered" } } }]
-        : [{ id: "si_flat_001", price: { recurring: { usage_type: "licensed" } } }],
+    stripeClient: {
+      subscriptions: {
+        retrieve: vi.fn().mockResolvedValue({
+          items: { data: existingItem ? [existingItem] : [] },
+        }),
+      },
+      subscriptionItems: { create, update, del },
+      prices: { list: vi.fn().mockResolvedValue({ data: [{ id: TEST_SEAT_PRICE_ID }] }) },
+      products: { create: vi.fn() },
     },
+    create,
+    update,
+    del,
   };
 }
 
-describe("updateMeteredSeatsForSubscription — webhook path: Stripe createUsageRecord called correctly", () => {
-  it("sends quantity 0 to Stripe when subscription status is 'canceled'", async () => {
-    const { stripeClient, createUsageRecord } = makeStripeClientMock();
+/** Build a minimal Stripe Subscription-shaped object for the webhook tests. */
+function makeSubscription(status: string) {
+  return { id: "sub_webhook_001", status };
+}
+
+describe("syncSeatQuantityForSubscription — webhook path: quantity-based Stripe calls", () => {
+  beforeEach(() => {
+    resetSeatPriceCache();
+  });
+
+  it("removes the seat item (quantity 0) when subscription status is 'canceled'", async () => {
+    const { stripeClient, del, update } = makeStripeClientMock();
     const subscription = makeSubscription("canceled");
 
-    const result = await updateMeteredSeatsForSubscription(
+    const result = await syncSeatQuantityForSubscription(
       subscription as any,
       "company-cancel-test",
       stripeClient,
     );
 
     expect(result).toBe(0);
-    expect(createUsageRecord).toHaveBeenCalledOnce();
-    expect(createUsageRecord).toHaveBeenCalledWith("si_metered_001", {
-      quantity: 0,
-      action: "set",
-    });
+    expect(del).toHaveBeenCalledWith("si_seat_001");
+    expect(update).not.toHaveBeenCalled();
   });
 
-  it("sends quantity 0 to Stripe when subscription status is 'past_due'", async () => {
-    const { stripeClient, createUsageRecord } = makeStripeClientMock();
+  it("removes the seat item (quantity 0) when subscription status is 'past_due'", async () => {
+    const { stripeClient, del } = makeStripeClientMock();
     const subscription = makeSubscription("past_due");
 
-    const result = await updateMeteredSeatsForSubscription(
+    const result = await syncSeatQuantityForSubscription(
       subscription as any,
       "company-pastdue-test",
       stripeClient,
     );
 
     expect(result).toBe(0);
-    expect(createUsageRecord).toHaveBeenCalledOnce();
-    expect(createUsageRecord).toHaveBeenCalledWith("si_metered_001", {
-      quantity: 0,
-      action: "set",
-    });
+    expect(del).toHaveBeenCalledWith("si_seat_001");
   });
 
-  it("does NOT call createUsageRecord when there is no metered item on the subscription", async () => {
-    const { stripeClient, createUsageRecord } = makeStripeClientMock();
-    const subscription = makeSubscription("canceled", { hasMeteredItem: false });
+  it("is a no-op delete when canceled and no seat item exists yet", async () => {
+    const { stripeClient, del } = makeStripeClientMock(null);
+    const subscription = makeSubscription("canceled");
 
-    const result = await updateMeteredSeatsForSubscription(
+    const result = await syncSeatQuantityForSubscription(
       subscription as any,
       "company-flat-rate",
       stripeClient,
     );
 
-    expect(result).toBeNull();
-    expect(createUsageRecord).not.toHaveBeenCalled();
+    expect(result).toBe(0);
+    expect(del).not.toHaveBeenCalled();
   });
 
   it("sends correct billed quantity for an active subscription with a large team", async () => {
-    const { stripeClient, createUsageRecord } = makeStripeClientMock();
+    const { stripeClient, update } = makeStripeClientMock();
     const subscription = makeSubscription("active");
 
     // Inject a mock db that reports 7 active seats (7 - 2 included = 5 billed)
     const dbMock = makeDbMock(7);
 
-    const result = await updateMeteredSeatsForSubscription(
+    const result = await syncSeatQuantityForSubscription(
       subscription as any,
       "company-active",
       stripeClient,
@@ -1248,11 +1251,8 @@ describe("updateMeteredSeatsForSubscription — webhook path: Stripe createUsage
     );
 
     expect(result).toBe(5);
-    expect(createUsageRecord).toHaveBeenCalledOnce();
-    expect(createUsageRecord).toHaveBeenCalledWith("si_metered_001", {
-      quantity: 5,
-      action: "set",
-    });
+    expect(update).toHaveBeenCalledOnce();
+    expect(update).toHaveBeenCalledWith("si_seat_001", { quantity: 5 });
   });
 
   it("never queries the DB when a subscription is canceled — avoids stale data", async () => {
@@ -1262,7 +1262,7 @@ describe("updateMeteredSeatsForSubscription — webhook path: Stripe createUsage
     // A mock db that would return seats if queried
     const dbMock = makeDbMock(10);
 
-    await updateMeteredSeatsForSubscription(
+    await syncSeatQuantityForSubscription(
       subscription as any,
       "company-cancel-no-db",
       stripeClient,
@@ -1273,15 +1273,15 @@ describe("updateMeteredSeatsForSubscription — webhook path: Stripe createUsage
     expect(dbMock.select).not.toHaveBeenCalled();
   });
 
-  it("returns null and does NOT call createUsageRecord on reactivation (canceled → active)", async () => {
-    const { stripeClient, createUsageRecord } = makeStripeClientMock();
+  it("returns null and does NOT touch Stripe on reactivation (canceled → active)", async () => {
+    const { stripeClient, update, create, del } = makeStripeClientMock();
     // The subscription is now active (was canceled before reactivation)
     const subscription = makeSubscription("active");
 
     // A mock db that reports seats — should not be queried
     const dbMock = makeDbMock(5);
 
-    const result = await updateMeteredSeatsForSubscription(
+    const result = await syncSeatQuantityForSubscription(
       subscription as any,
       "company-reactivated",
       stripeClient,
@@ -1289,17 +1289,19 @@ describe("updateMeteredSeatsForSubscription — webhook path: Stripe createUsage
       true, // isReactivation
     );
 
-    // No usage record should be reported mid-cycle — defer to next renewal
+    // No item changes mid-cycle — defer to next renewal
     expect(result).toBeNull();
-    expect(createUsageRecord).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+    expect(del).not.toHaveBeenCalled();
   });
 
-  it("does NOT skip seat reporting when previous status was not canceled (normal active update)", async () => {
-    const { stripeClient, createUsageRecord } = makeStripeClientMock();
+  it("does NOT skip seat sync when previous status was not canceled (normal active update)", async () => {
+    const { stripeClient, update } = makeStripeClientMock();
     const subscription = makeSubscription("active");
     const dbMock = makeDbMock(4); // 4 seats → 2 billed
 
-    const result = await updateMeteredSeatsForSubscription(
+    const result = await syncSeatQuantityForSubscription(
       subscription as any,
       "company-normal-update",
       stripeClient,
@@ -1308,19 +1310,16 @@ describe("updateMeteredSeatsForSubscription — webhook path: Stripe createUsage
     );
 
     expect(result).toBe(2);
-    expect(createUsageRecord).toHaveBeenCalledOnce();
-    expect(createUsageRecord).toHaveBeenCalledWith("si_metered_001", {
-      quantity: 2,
-      action: "set",
-    });
+    expect(update).toHaveBeenCalledOnce();
+    expect(update).toHaveBeenCalledWith("si_seat_001", { quantity: 2 });
   });
 
-  it("passes a stable idempotency key derived from the Stripe event ID to createUsageRecord", async () => {
-    const { stripeClient, createUsageRecord } = makeStripeClientMock();
+  it("passes a stable idempotency key derived from the Stripe event ID when creating a new item", async () => {
+    const { stripeClient, create } = makeStripeClientMock(null); // no existing item -> create path
     const subscription = makeSubscription("active");
     const dbMock = makeDbMock(4); // 4 seats -> 2 billed
 
-    await updateMeteredSeatsForSubscription(
+    await syncSeatQuantityForSubscription(
       subscription as any,
       "company-idempotent",
       stripeClient,
@@ -1329,26 +1328,22 @@ describe("updateMeteredSeatsForSubscription — webhook path: Stripe createUsage
       "evt_retry_test_123",
     );
 
-    expect(createUsageRecord).toHaveBeenCalledOnce();
-    expect(createUsageRecord).toHaveBeenCalledWith(
-      "si_metered_001",
-      { quantity: 2, action: "set" },
+    expect(create).toHaveBeenCalledOnce();
+    expect(create).toHaveBeenCalledWith(
+      { subscription: subscription.id, price: TEST_SEAT_PRICE_ID, quantity: 2 },
       { idempotencyKey: expect.stringContaining("evt_retry_test_123") },
     );
   });
 
   it("simulated webhook retry: a duplicate delivery of the same event reuses the same idempotency key, so Stripe would dedupe the second call", async () => {
     // Simulates Stripe redelivering the same `customer.subscription.updated`
-    // event (same event.id) because the first attempt's ack was lost. Our
-    // handler has no other guard here (unlike invoice.paid's DB constraint),
-    // so the only protection against double-reporting metered usage is that
-    // both attempts send Stripe the exact same idempotency key.
-    const { stripeClient, createUsageRecord } = makeStripeClientMock();
+    // event (same event.id) because the first attempt's ack was lost.
+    const { stripeClient, create } = makeStripeClientMock(null);
     const subscription = makeSubscription("active");
     const dbMock = makeDbMock(4);
     const eventId = "evt_duplicate_delivery_1";
 
-    await updateMeteredSeatsForSubscription(
+    await syncSeatQuantityForSubscription(
       subscription as any,
       "company-webhook-retry",
       stripeClient,
@@ -1357,7 +1352,7 @@ describe("updateMeteredSeatsForSubscription — webhook path: Stripe createUsage
       eventId,
     );
     // Stripe redelivers the identical event a second time.
-    await updateMeteredSeatsForSubscription(
+    await syncSeatQuantityForSubscription(
       subscription as any,
       "company-webhook-retry",
       stripeClient,
@@ -1366,18 +1361,18 @@ describe("updateMeteredSeatsForSubscription — webhook path: Stripe createUsage
       eventId,
     );
 
-    expect(createUsageRecord).toHaveBeenCalledTimes(2);
-    const [firstCallKey] = createUsageRecord.mock.calls[0].slice(2);
-    const [secondCallKey] = createUsageRecord.mock.calls[1].slice(2);
-    expect(firstCallKey.idempotencyKey).toBe(secondCallKey.idempotencyKey);
+    expect(create).toHaveBeenCalledTimes(2);
+    const [, firstOptions] = create.mock.calls[0];
+    const [, secondOptions] = create.mock.calls[1];
+    expect(firstOptions.idempotencyKey).toBe(secondOptions.idempotencyKey);
   });
 
   it("uses different idempotency keys for different Stripe events, so legitimate distinct updates are not deduped", async () => {
-    const { stripeClient, createUsageRecord } = makeStripeClientMock();
+    const { stripeClient, create } = makeStripeClientMock(null);
     const subscription = makeSubscription("active");
     const dbMock = makeDbMock(4);
 
-    await updateMeteredSeatsForSubscription(
+    await syncSeatQuantityForSubscription(
       subscription as any,
       "company-distinct-events",
       stripeClient,
@@ -1385,7 +1380,7 @@ describe("updateMeteredSeatsForSubscription — webhook path: Stripe createUsage
       false,
       "evt_first_update",
     );
-    await updateMeteredSeatsForSubscription(
+    await syncSeatQuantityForSubscription(
       subscription as any,
       "company-distinct-events",
       stripeClient,
@@ -1394,9 +1389,9 @@ describe("updateMeteredSeatsForSubscription — webhook path: Stripe createUsage
       "evt_second_update",
     );
 
-    const [firstCallKey] = createUsageRecord.mock.calls[0].slice(2);
-    const [secondCallKey] = createUsageRecord.mock.calls[1].slice(2);
-    expect(firstCallKey.idempotencyKey).not.toBe(secondCallKey.idempotencyKey);
+    const [, firstOptions] = create.mock.calls[0];
+    const [, secondOptions] = create.mock.calls[1];
+    expect(firstOptions.idempotencyKey).not.toBe(secondOptions.idempotencyKey);
   });
 });
 
@@ -1405,41 +1400,41 @@ describe("updateMeteredSeatsForSubscription — webhook path: Stripe createUsage
 // ---------------------------------------------------------------------------
 // Stripe hard-deletes a subscription (distinct from a status change to
 // "canceled" via customer.subscription.updated). The deleted event arrives
-// with subscription.status === "canceled". The handler must zero out metered
-// seats so the company is not charged after the subscription is gone.
+// with subscription.status === "canceled". The handler must remove the seat
+// item so the company is not charged after the subscription is gone.
 
-describe("updateMeteredSeatsForSubscription — customer.subscription.deleted webhook path", () => {
-  it("sends quantity 0 to Stripe when a subscription is hard-deleted (status 'canceled')", async () => {
+describe("syncSeatQuantityForSubscription — customer.subscription.deleted webhook path", () => {
+  beforeEach(() => {
+    resetSeatPriceCache();
+  });
+
+  it("removes the seat item when a subscription is hard-deleted (status 'canceled')", async () => {
     // Stripe delivers customer.subscription.deleted with status "canceled".
-    // The handler calls updateMeteredSeatsForSubscription with that object,
-    // which must zero out the metered seat usage record immediately.
-    const { stripeClient, createUsageRecord } = makeStripeClientMock();
+    // The handler calls syncSeatQuantityForSubscription with that object,
+    // which must remove the seat item immediately.
+    const { stripeClient, del } = makeStripeClientMock();
     const subscription = makeSubscription("canceled");
 
-    const result = await updateMeteredSeatsForSubscription(
+    const result = await syncSeatQuantityForSubscription(
       subscription as any,
       "company-deleted-test",
       stripeClient,
     );
 
     expect(result).toBe(0);
-    expect(createUsageRecord).toHaveBeenCalledOnce();
-    expect(createUsageRecord).toHaveBeenCalledWith("si_metered_001", {
-      quantity: 0,
-      action: "set",
-    });
+    expect(del).toHaveBeenCalledWith("si_seat_001");
   });
 
   it("does not query the DB on deletion — stale seat data cannot cause overcharging", async () => {
     // The DB may still report active seats for a company whose subscription
-    // was just deleted. resolveMeteredSeatCount must short-circuit to 0
+    // was just deleted. resolveBilledSeatCount must short-circuit to 0
     // before any DB call is made.
     const { stripeClient } = makeStripeClientMock();
     const subscription = makeSubscription("canceled");
 
     const dbMock = makeDbMock(15); // 15 seats in DB — must be ignored
 
-    await updateMeteredSeatsForSubscription(
+    await syncSeatQuantityForSubscription(
       subscription as any,
       "company-deleted-no-db",
       stripeClient,
@@ -1449,42 +1444,40 @@ describe("updateMeteredSeatsForSubscription — customer.subscription.deleted we
     expect(dbMock.select).not.toHaveBeenCalled();
   });
 
-  it("does not call createUsageRecord when the deleted subscription has no metered item", async () => {
-    // A flat-rate subscription with no metered price line should be a no-op
-    // even on deletion — there is no usage record to zero out.
-    const { stripeClient, createUsageRecord } = makeStripeClientMock();
-    const subscription = makeSubscription("canceled", { hasMeteredItem: false });
+  it("is a no-op when the deleted subscription has no seat item to remove", async () => {
+    // No seat item existed (company never exceeded the 2 included seats) —
+    // deletion should be a no-op, not an error.
+    const { stripeClient, del } = makeStripeClientMock(null);
+    const subscription = makeSubscription("canceled");
 
-    const result = await updateMeteredSeatsForSubscription(
+    const result = await syncSeatQuantityForSubscription(
       subscription as any,
       "company-deleted-flat-rate",
       stripeClient,
     );
 
-    expect(result).toBeNull();
-    expect(createUsageRecord).not.toHaveBeenCalled();
+    expect(result).toBe(0);
+    expect(del).not.toHaveBeenCalled();
   });
 
-  it("zeroes seats even when the company previously had a large active team", async () => {
+  it("removes the seat item even when the company previously had a large active team", async () => {
     // Guard against a regression where a large pre-cancellation seat count
-    // bleeds through on deletion. The quantity sent to Stripe must be 0.
-    const { stripeClient, createUsageRecord } = makeStripeClientMock();
+    // bleeds through on deletion. The item must still be removed (not
+    // updated to a nonzero quantity).
+    const { stripeClient, del, update } = makeStripeClientMock();
     const subscription = makeSubscription("canceled");
 
     const dbMock = makeDbMock(50); // large team — must not affect the result
 
-    await updateMeteredSeatsForSubscription(
+    await syncSeatQuantityForSubscription(
       subscription as any,
       "company-deleted-large-team",
       stripeClient,
       dbMock as any,
     );
 
-    expect(createUsageRecord).toHaveBeenCalledOnce();
-    expect(createUsageRecord).toHaveBeenCalledWith("si_metered_001", {
-      quantity: 0,
-      action: "set",
-    });
+    expect(del).toHaveBeenCalledWith("si_seat_001");
+    expect(update).not.toHaveBeenCalled();
   });
 });
 
@@ -3625,6 +3618,11 @@ describe("recoverPendingSeatSyncs — startup recovery path", () => {
   const COMPANY_B = "company-recover-b";
   const SUB_ID_A = "sub_recover_001";
   const SUB_ID_B = "sub_recover_002";
+  const RECOVER_SEAT_PRICE_ID = "price_seat_recover";
+
+  beforeEach(() => {
+    resetSeatPriceCache();
+  });
 
   beforeEach(() => {
     seatUpdateLocks.clear();
@@ -3661,10 +3659,16 @@ describe("recoverPendingSeatSyncs — startup recovery path", () => {
       subscriptions: {
         retrieve: vi.fn().mockResolvedValue({
           status: "active",
-          items: { data: [{ id: itemId, price: { recurring: { usage_type: "metered" } } }] },
+          items: { data: [{ id: itemId, price: { id: RECOVER_SEAT_PRICE_ID } }] },
         }),
       },
-      subscriptionItems: { createUsageRecord: vi.fn().mockResolvedValue({}) },
+      subscriptionItems: {
+        create: vi.fn().mockResolvedValue({ id: "si_recover_new" }),
+        update: vi.fn().mockResolvedValue({}),
+        del: vi.fn().mockResolvedValue({}),
+      },
+      prices: { list: vi.fn().mockResolvedValue({ data: [{ id: RECOVER_SEAT_PRICE_ID }] }) },
+      products: { create: vi.fn() },
     };
   }
 
@@ -3705,9 +3709,9 @@ describe("recoverPendingSeatSyncs — startup recovery path", () => {
 
     expect(result.recovered).toEqual([COMPANY_A]);
     expect(result.failed).toEqual([]);
-    expect(stripeMock.subscriptionItems.createUsageRecord).toHaveBeenCalledWith(
+    expect(stripeMock.subscriptionItems.update).toHaveBeenCalledWith(
       "si_recover_001",
-      { quantity: 1, action: "set" }, // 3 seats − 2 included = 1 billed
+      { quantity: 1 }, // 3 seats − 2 included = 1 billed
     );
     // Checkpoint written BEFORE the Stripe retrieve call, cleared AFTER success.
     expect(storageStub.upsertPendingSeatSync).toHaveBeenCalledWith(COMPANY_A);
@@ -3732,14 +3736,20 @@ describe("recoverPendingSeatSyncs — startup recovery path", () => {
               data: [
                 {
                   id: retrieveCount === 1 ? "si_a" : "si_b",
-                  price: { recurring: { usage_type: "metered" } },
+                  price: { id: RECOVER_SEAT_PRICE_ID },
                 },
               ],
             },
           });
         }),
       },
-      subscriptionItems: { createUsageRecord: vi.fn().mockResolvedValue({}) },
+      subscriptionItems: {
+        create: vi.fn().mockResolvedValue({ id: "si_new" }),
+        update: vi.fn().mockResolvedValue({}),
+        del: vi.fn().mockResolvedValue({}),
+      },
+      prices: { list: vi.fn().mockResolvedValue({ data: [{ id: RECOVER_SEAT_PRICE_ID }] }) },
+      products: { create: vi.fn() },
     };
 
     const dbMock = {
@@ -3802,11 +3812,17 @@ describe("recoverPendingSeatSyncs — startup recovery path", () => {
           if (retrieveCount === 1) return Promise.reject(new Error("Stripe timeout"));
           return Promise.resolve({
             status: "active",
-            items: { data: [{ id: "si_b", price: { recurring: { usage_type: "metered" } } }] },
+            items: { data: [{ id: "si_b", price: { id: RECOVER_SEAT_PRICE_ID } }] },
           });
         }),
       },
-      subscriptionItems: { createUsageRecord: vi.fn().mockResolvedValue({}) },
+      subscriptionItems: {
+        create: vi.fn().mockResolvedValue({ id: "si_new" }),
+        update: vi.fn().mockResolvedValue({}),
+        del: vi.fn().mockResolvedValue({}),
+      },
+      prices: { list: vi.fn().mockResolvedValue({ data: [{ id: RECOVER_SEAT_PRICE_ID }] }) },
+      products: { create: vi.fn() },
     };
 
     // Use a single dual-where DB mock; both companies share the same sub structure

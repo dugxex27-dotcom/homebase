@@ -301,7 +301,9 @@ const requireContractorSubscription = async (req: any, res: any, next: any) => {
     }
     
     // Check if active subscription (any paid tier passes)
-    const ACTIVE_STATUSES = ['active', 'contractor_business', 'contractor_enterprise'];
+    // Note: 'contractor_enterprise' removed — the plan tier was a placeholder
+    // with no real Stripe product and no user ever had this status.
+    const ACTIVE_STATUSES = ['active', 'contractor_business'];
     if (ACTIVE_STATUSES.includes(user.subscriptionStatus ?? '')) {
       return next();
     }
@@ -539,6 +541,20 @@ export async function recoverIncompleteStripeEvents(olderThanMinutes: number): P
 // ---------------------------------------------------------------------------
 // Seat billing helpers
 // ---------------------------------------------------------------------------
+//
+// Quantity-based tech-seat billing: the first 2 active seats on a contractor
+// company are included in the base subscription price; each seat beyond that
+// is billed at a flat $5/month via a second, licensed (non-metered) Stripe
+// subscription item whose `quantity` is kept in sync with active headcount.
+//
+// This replaced an earlier metered-usage-record design (createUsageRecord
+// against a `recurring.usage_type === 'metered'` price). That design is not
+// reused here: a licensed item's billed amount is simply `quantity * price`,
+// so there is no usage-record reporting step, and the "find the item by
+// usage_type" lookup is replaced by looking the item up by its known price ID
+// (see resolveSeatPriceId). The pure seat-count math (calcBilledSeats /
+// resolveBilledSeatCount) and the crash-safe checkpointing + advisory-lock
+// machinery below are billing-model-agnostic and are kept as-is.
 
 export function calcBilledSeats(totalSeats: number): number {
   return Math.max(0, totalSeats - 2);
@@ -555,20 +571,96 @@ export async function countActiveCompanySeats(
   return rows[0]?.count ?? 1;
 }
 
-export async function updateMeteredSeats(
-  companyId: string,
-  items: Array<{ id: string; price?: { recurring?: { usage_type?: string } } }>,
-  getActiveUserCount: (companyId: string) => Promise<number>,
-  createUsageRecord: (itemId: string, quantity: number) => Promise<void>,
-): Promise<void> {
-  const meteredItem = items.find(
-    item => item.price?.recurring?.usage_type === 'metered',
-  );
-  if (!meteredItem) return;
+// ---------------------------------------------------------------------------
+// Tech-seat Stripe Price resolution
+// ---------------------------------------------------------------------------
 
-  const totalSeats = await getActiveUserCount(companyId);
-  const billedSeats = calcBilledSeats(totalSeats);
-  await createUsageRecord(meteredItem.id, billedSeats);
+/** Stable lookup_key for the $5/mo additional-tech-seat Price. Stripe enforces
+ *  uniqueness of lookup_key among active Prices, so find-or-create against it
+ *  is safe to call repeatedly (e.g. once per cold start) without ever
+ *  creating a duplicate Price. */
+export const TECH_SEAT_PRICE_LOOKUP_KEY = 'contractor_tech_seat_v1';
+export const TECH_SEAT_MONTHLY_PRICE_CENTS = 500; // $5.00/month per additional seat
+
+let cachedSeatPriceId: string | null = null;
+
+/**
+ * Finds the standard (non-metered, quantity-based) $5/mo tech-seat Price by
+ * its lookup_key, creating the underlying Product + Price on first use if it
+ * doesn't exist yet. Result is cached in-process for the life of the server
+ * (cleared only by resetSeatPriceCache, used in tests).
+ */
+export async function resolveSeatPriceId(stripeClient: any): Promise<string> {
+  if (cachedSeatPriceId) return cachedSeatPriceId;
+
+  const existing = await stripeClient.prices.list({
+    lookup_keys: [TECH_SEAT_PRICE_LOOKUP_KEY],
+    active: true,
+    limit: 1,
+  });
+  if (existing?.data?.[0]?.id) {
+    cachedSeatPriceId = existing.data[0].id;
+    return cachedSeatPriceId as string;
+  }
+
+  const product = await stripeClient.products.create({
+    name: 'Additional Tech Seat',
+    description: 'Per-seat charge for contractor field technicians beyond the 2 included with a Contractor subscription.',
+  });
+  const price = await stripeClient.prices.create({
+    product: product.id,
+    currency: 'usd',
+    unit_amount: TECH_SEAT_MONTHLY_PRICE_CENTS,
+    recurring: { interval: 'month' },
+    lookup_key: TECH_SEAT_PRICE_LOOKUP_KEY,
+  });
+  cachedSeatPriceId = price.id;
+  return cachedSeatPriceId as string;
+}
+
+/** Test-only: clears the in-process Price-ID cache. */
+export function resetSeatPriceCache(): void {
+  cachedSeatPriceId = null;
+}
+
+// ---------------------------------------------------------------------------
+// syncSeatSubscriptionItem — quantity-based item create/update/delete
+// ---------------------------------------------------------------------------
+
+/**
+ * Ensures a Stripe subscription's tech-seat line item quantity matches
+ * `billedSeats`. Unlike metered usage-reporting, a licensed item's quantity
+ * IS the bill, so this creates the item on first need, updates its quantity
+ * on change, and removes it entirely once billedSeats returns to 0 (Stripe
+ * subscription items must have quantity >= 1, so "no billed seats" means "no
+ * item" rather than a zero-quantity item).
+ */
+export async function syncSeatSubscriptionItem(
+  stripeClient: any,
+  subscriptionId: string,
+  billedSeats: number,
+  seatPriceId: string,
+  idempotencyKey?: string,
+): Promise<void> {
+  const subscription = await stripeClient.subscriptions.retrieve(subscriptionId);
+  const items: Array<{ id: string; price?: { id?: string } }> = subscription.items?.data ?? [];
+  const existingItem = items.find(item => item.price?.id === seatPriceId);
+
+  if (billedSeats <= 0) {
+    if (existingItem) {
+      await stripeClient.subscriptionItems.del(existingItem.id);
+    }
+    return;
+  }
+
+  if (existingItem) {
+    await stripeClient.subscriptionItems.update(existingItem.id, { quantity: billedSeats });
+  } else {
+    await stripeClient.subscriptionItems.create(
+      { subscription: subscriptionId, price: seatPriceId, quantity: billedSeats },
+      idempotencyKey ? { idempotencyKey } : undefined,
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -615,10 +707,12 @@ export function isStaleSubscriptionEvent(
 }
 
 // ---------------------------------------------------------------------------
-// resolveMeteredSeatCount — pure: billing stops on cancellation / past_due
+// resolveBilledSeatCount — pure: billing stops on cancellation / past_due
+// (renamed from resolveMeteredSeatCount — logic is unchanged and remains
+// billing-model-agnostic)
 // ---------------------------------------------------------------------------
 
-export function resolveMeteredSeatCount(
+export function resolveBilledSeatCount(
   status: string,
   totalSeats: number,
 ): number {
@@ -700,12 +794,16 @@ export async function withSeatUpdateLock<T>(
 // ---------------------------------------------------------------------------
 
 /**
- * Immediately update metered seat usage for a company after a member change.
- * No-ops if Stripe is not configured or the company has no active subscription.
+ * Immediately syncs the quantity-based tech-seat subscription item for a
+ * company after a member change (invite, remove, bulk import). No-ops if
+ * Stripe is not configured or the company has no active subscription.
  *
  * If `storageInstance` is provided, a durable checkpoint is written to the DB
- * before the Stripe API call and cleared on success.  This ensures a server
- * restart mid-update can detect the un-confirmed sync and re-run it.
+ * before the Stripe API call and cleared on success. This ensures a server
+ * restart (or any uncaught failure) mid-update leaves a record that
+ * recoverPendingSeatSyncs can detect and retry later — callers should treat a
+ * thrown error here as "logged and retryable", never as a reason to roll back
+ * the underlying DB change (e.g. a successful tech invite/removal).
  */
 export async function refreshSeatsForCompany(
   companyId: string,
@@ -732,7 +830,7 @@ export async function refreshSeatsForCompany(
     }
 
     // Write checkpoint BEFORE the first Stripe interaction so any crash
-    // between now and the createUsageRecord call is visible at startup.
+    // between now and the subscription-item update is visible at startup.
     await storageInstance?.upsertPendingSeatSync(companyId);
 
     const subscription = await stripeClient.subscriptions.retrieve(stripeSubscriptionId);
@@ -742,20 +840,10 @@ export async function refreshSeatsForCompany(
       return;
     }
 
-    const items: Array<{ id: string; price?: { recurring?: { usage_type?: string } } }> =
-      subscription.items?.data ?? [];
-
-    await updateMeteredSeats(
-      companyId,
-      items,
-      getActiveUserCount,
-      async (itemId: string, quantity: number) => {
-        await stripeClient.subscriptionItems.createUsageRecord(itemId, {
-          quantity,
-          action: 'set',
-        });
-      },
-    );
+    const totalSeats = await getActiveUserCount(companyId);
+    const billedSeats = calcBilledSeats(totalSeats);
+    const seatPriceId = await resolveSeatPriceId(stripeClient);
+    await syncSeatSubscriptionItem(stripeClient, stripeSubscriptionId, billedSeats, seatPriceId);
 
     // Stripe updated successfully — remove the checkpoint.
     await storageInstance?.deletePendingSeatSync(companyId);
@@ -809,7 +897,7 @@ export async function recoverPendingSeatSyncs(
       // or the company has no active metered subscription to sync.
       failed.push({
         companyId,
-        error: "no active metered subscription or Stripe not configured",
+        error: "no active subscription or Stripe not configured",
       });
     } else {
       recovered.push(companyId);
@@ -820,10 +908,17 @@ export async function recoverPendingSeatSyncs(
 }
 
 // ---------------------------------------------------------------------------
-// updateMeteredSeatsForSubscription — webhook path
+// syncSeatQuantityForSubscription — webhook path
 // ---------------------------------------------------------------------------
+//
+// Renamed from updateMeteredSeatsForSubscription (formerly required an
+// existing metered subscription item to already be present on the payload
+// and reported usage against it). Quantity-based billing manages the item
+// directly by price ID via syncSeatSubscriptionItem, so this no longer
+// depends on the item already existing in `subscription.items.data` — it
+// creates, updates, or removes the item as needed.
 
-export async function updateMeteredSeatsForSubscription(
+export async function syncSeatQuantityForSubscription(
   subscription: any,
   companyId: string,
   stripeClient: any,
@@ -833,42 +928,28 @@ export async function updateMeteredSeatsForSubscription(
   storageInstance?: Pick<IStorage, "upsertPendingSeatSync" | "deletePendingSeatSync">,
   pgPool?: PgPoolLike,
 ): Promise<number | null> {
-  const items: Array<{ id: string; price?: { recurring?: { usage_type?: string } } }> =
-    subscription.items?.data ?? [];
-  const meteredItem = items.find(
-    item => item.price?.recurring?.usage_type === 'metered',
-  );
-  if (!meteredItem) return null;
-
   if (isReactivation) return null;
 
   const status: string = subscription.status;
-
-  let seatCount: number;
-  if (status === 'canceled' || status === 'past_due') {
-    seatCount = 0;
-  } else {
-    const dbInst = dbInstance ?? db;
-    const totalSeats = await countActiveCompanySeats(companyId, dbInst);
-    seatCount = calcBilledSeats(totalSeats);
-  }
+  const seatCount = resolveBilledSeatCount(
+    status,
+    status === 'canceled' || status === 'past_due'
+      ? 0
+      : await countActiveCompanySeats(companyId, dbInstance ?? db),
+  );
 
   return withSeatUpdateLock(companyId, async () => {
     // Write checkpoint before calling Stripe so a crash here is recoverable.
     await storageInstance?.upsertPendingSeatSync(companyId);
 
-    if (eventId) {
-      await stripeClient.subscriptionItems.createUsageRecord(
-        meteredItem.id,
-        { quantity: seatCount, action: 'set' },
-        { idempotencyKey: `${eventId}-seats-${companyId}` },
-      );
-    } else {
-      await stripeClient.subscriptionItems.createUsageRecord(
-        meteredItem.id,
-        { quantity: seatCount, action: 'set' },
-      );
-    }
+    const seatPriceId = await resolveSeatPriceId(stripeClient);
+    await syncSeatSubscriptionItem(
+      stripeClient,
+      subscription.id,
+      seatCount,
+      seatPriceId,
+      eventId ? `${eventId}-seats-${companyId}` : undefined,
+    );
 
     // Stripe updated — clear the checkpoint.
     await storageInstance?.deletePendingSeatSync(companyId);
@@ -1418,36 +1499,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'Priority support',
       ],
       sortOrder: 1
-    },
-    // Enterprise tier — custom pricing; no Stripe product yet.
-    // TODO: Replace grandfathered billing with custom Stripe arrangement when first enterprise customer signed.
-    {
-      tierName: 'contractor_enterprise',
-      displayName: 'Contractor Enterprise',
-      description: 'Unlimited seats, SSO, API access, and a dedicated CSM.',
-      monthlyPrice: '0.00', // custom pricing — $0 placeholder; billing handled via grandfathered/custom Stripe arrangement
-      minHouses: 0,
-      maxHouses: 1,
-      planType: 'contractor',
-      referralCreditCap: null,
-      hasCrmAccess: true,
-      includedTechSeats: null,     // unlimited; custom contract governs
-      additionalSeatPrice: null,
-      maxTechSeats: null,
-      maxAdminSeats: null,
-      maxManagerSeats: null,
-      maxDispatcherSeats: null,
-      features: [
-        'Everything in Business',
-        'Unlimited team members',
-        'SSO / SAML integration',
-        'API access for integrations',
-        'Dedicated customer success manager',
-        'Custom onboarding',
-        'SLA support',
-      ],
-      sortOrder: 2
     }
+    // contractor_enterprise removed: it was a placeholder plan literal
+    // ("unlimited seats", $0 price) with no real Stripe product behind it and
+    // no code path that ever treated its null seat fields as "unlimited" —
+    // see resolveTechSeatLimit's comment. Confirmed via prod + dev DB checks
+    // that no company.tier, user.subscriptionStatus, or user.subscriptionPlanId
+    // referenced it before removal. True custom/negotiated enterprise deals
+    // are still handled manually (see EnterpriseContactModal's "contact
+    // sales" flow), independent of this plan-literal seeding.
   ];
 
   // Get all subscription plans
@@ -2401,20 +2461,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           await storage.updateUserSubscriptionStatus(user.id, status, subscriptionUpdatedEventAt);
 
-          // Phase 6: Recalculate metered seat quantity for Business tier
+          // Recalculate the quantity-based tech-seat subscription item so it
+          // always reflects current active headcount and current subscription
+          // status (billing stops immediately on cancellation/past_due).
+          // See syncSeatQuantityForSubscription for the quantity-based design.
           if (user.companyId && stripe) {
             try {
-              const meteredItem = subscription.items.data.find((item: any) => item.price?.recurring?.usage_type === 'metered');
-              if (meteredItem) {
-                const [seatCount] = await db.select({ count: drizzleSql<number>`cast(count(*) as int)` })
-                  .from(users).where(and(eq(users.companyId, user.companyId), ne(users.status as any, 'removed')));
-                const totalSeats = seatCount?.count ?? 1;
-                const billedSeats = Math.max(0, totalSeats - 5); // Business: 5 included seats
-                await (stripe as any).subscriptionItems.createUsageRecord(meteredItem.id, { quantity: billedSeats, action: 'set' });
-                console.log('[STRIPE WEBHOOK] Metered seats updated:', billedSeats, 'billed for company:', user.companyId);
-              }
+              await syncSeatQuantityForSubscription(
+                subscription,
+                user.companyId,
+                stripe,
+                db,
+                undefined,
+                event.id,
+                storage,
+              );
             } catch (seatErr) {
-              console.error('[STRIPE WEBHOOK] Failed to update metered seats:', seatErr);
+              console.error('[STRIPE WEBHOOK] Failed to sync tech-seat quantity:', seatErr);
             }
           }
 
@@ -15358,17 +15421,20 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
         : 0;
       
       // Has active access if: paid subscription active (any tier), OR still in trial period
-      const PAID_STATUSES = ['active', 'contractor_business', 'contractor_enterprise'];
+      // Note: 'contractor_enterprise' removed — placeholder plan, never had a real user.
+      const PAID_STATUSES = ['active', 'contractor_business'];
       const hasActiveSubscription = PAID_STATUSES.includes(user.subscriptionStatus ?? '') || !!isInTrial;
 
       // If trial expired and no paid subscription, they need to pay - contractors have NO free features after trial
       const needsSubscription = trialExpired || (user.subscriptionStatus === 'inactive' && !isInTrial);
 
       // Determine current plan tier
+      // Note: 'enterprise' plan tier removed — 'contractor_enterprise' was a
+      // placeholder plan literal with no real Stripe product; the type is
+      // kept so custom/negotiated enterprise deals (set manually) still display.
       let currentPlan: 'none' | 'basic' | 'pro' | 'business' | 'enterprise' = 'none';
       if (plan) {
-        if (plan.tierName === 'contractor_enterprise') currentPlan = 'enterprise';
-        else if (plan.tierName === 'contractor_business') currentPlan = 'business';
+        if (plan.tierName === 'contractor_business') currentPlan = 'business';
         else if (plan.tierName === 'contractor_pro') currentPlan = 'pro';
         else if (plan.tierName === 'contractor_basic' || plan.tierName === 'contractor') currentPlan = 'basic';
       }
@@ -15491,15 +15557,10 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
         });
       }
 
-      if (targetTier === 'contractor_enterprise') {
-        return res.json({
-          tier: 'contractor_enterprise',
-          totalSeats: seats,
-          monthlyTotal: null,
-          breakdown: 'Enterprise pricing is custom. Our team will reach out within 1 business day.',
-          contactRequired: true,
-        });
-      }
+      // Note: the 'contractor_enterprise' target tier was removed — it was a
+      // placeholder plan with no real Stripe product and no caller ever sent
+      // it. True enterprise deals go through the manual "contact sales" flow
+      // (EnterpriseContactModal), not this pricing-preview endpoint.
 
       return res.status(400).json({ message: 'Unsupported target tier' });
     } catch (error) {
@@ -21765,7 +21826,9 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     const companyId = req.session?.user?.companyId;
     if (!companyId) { res.status(403).json({ code: 'DIVISION_NOT_AVAILABLE' }); return false; }
     const [co] = await db.select({ tier: companies.tier }).from(companies).where(eq(companies.id, companyId)).limit(1);
-    if (!co || !['business', 'contractor_business', 'enterprise', 'contractor_enterprise'].includes(co.tier ?? '')) {
+    // Note: 'contractor_enterprise' removed from this list — placeholder plan,
+    // never had a real company; 'enterprise' (manual/negotiated deals) kept.
+    if (!co || !['business', 'contractor_business', 'enterprise'].includes(co.tier ?? '')) {
       res.status(403).json({ code: 'DIVISION_NOT_AVAILABLE', message: 'Division management requires Business or Enterprise tier' });
       return false;
     }
