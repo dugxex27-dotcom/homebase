@@ -18,14 +18,23 @@ const {
   HOMEOWNER_ID,
   mockGetUser,
   mockUpsertUser,
+  mockGetUserByEmail,
+  mockCreateUserWithPassword,
   mockDbSelect,
   mockDbUpdate,
   mockDbUpdateSet,
   mockDbUpdateWhere,
+  mockDbUpdateReturning,
   mockStripeCheckoutCreate,
   mockStripeCustomersCreate,
 } = vi.hoisted(() => {
-  const mockDbUpdateWhere = vi.fn().mockResolvedValue([]);
+  // The route now does an atomic conditional UPDATE:
+  //   db.update(promoCodes).set({...}).where(and(id, usesRemaining > 0)).returning()
+  // .returning() resolves to the claimed row (update succeeded) or [] (someone
+  // else already claimed the last use / row didn't match the guard).
+  // Default: claim succeeds, mirroring a normal single redemption.
+  const mockDbUpdateReturning = vi.fn().mockResolvedValue([{ id: "promo-id-001", usesRemaining: 1 }]);
+  const mockDbUpdateWhere = vi.fn().mockReturnValue({ returning: mockDbUpdateReturning });
   const mockDbUpdateSet = vi.fn().mockReturnValue({ where: mockDbUpdateWhere });
   const mockStripeCheckoutCreate = vi.fn();
   const mockStripeCustomersCreate = vi.fn();
@@ -34,10 +43,13 @@ const {
     HOMEOWNER_ID: "promo-test-homeowner-001",
     mockGetUser: vi.fn(),
     mockUpsertUser: vi.fn(),
+    mockGetUserByEmail: vi.fn(),
+    mockCreateUserWithPassword: vi.fn(),
     mockDbSelect: vi.fn(),
     mockDbUpdate: vi.fn().mockReturnValue({ set: mockDbUpdateSet }),
     mockDbUpdateSet,
     mockDbUpdateWhere,
+    mockDbUpdateReturning,
     mockStripeCheckoutCreate,
     mockStripeCustomersCreate,
   };
@@ -123,6 +135,7 @@ vi.mock("../notification-orchestrator", () => ({
     notify: vi.fn(),
     sendMaintenanceReminder: vi.fn(),
     sendWeatherAlert: vi.fn(),
+    sendWelcomeNotifications: vi.fn().mockResolvedValue(undefined),
   },
 }));
 vi.mock("../email-service", () => ({
@@ -208,6 +221,8 @@ vi.mock("../storage", async () => {
     storage: createStorageMock({
       getUser: mockGetUser,
       upsertUser: mockUpsertUser,
+      getUserByEmail: mockGetUserByEmail,
+      createUserWithPassword: mockCreateUserWithPassword,
     }),
   };
 });
@@ -245,6 +260,11 @@ async function buildApp() {
   app.use((req: any, _res: any, next: any) => {
     if (req.headers?.["x-test-user"] === "homeowner" && !req.session) {
       req.session = HOMEOWNER_SESSION;
+    } else if (!req.session) {
+      // Mimic express-session's always-present (but unauthenticated) session
+      // object, e.g. for /api/auth/register which assigns req.session.user
+      // itself once registration succeeds.
+      req.session = {};
     }
     next();
   });
@@ -290,7 +310,9 @@ describe("POST /api/onboarding/promo", () => {
   beforeEach(async () => {
     app = await buildApp();
     mockUpsertUser.mockResolvedValue(undefined);
-    mockDbUpdateWhere.mockResolvedValue([]);
+    // Default: the atomic claim UPDATE succeeds (normal single redemption).
+    mockDbUpdateWhere.mockReturnValue({ returning: mockDbUpdateReturning });
+    mockDbUpdateReturning.mockResolvedValue([{ id: "promo-id-001", usesRemaining: 1 }]);
   });
 
   afterEach(() => {
@@ -406,22 +428,212 @@ describe("POST /api/onboarding/promo", () => {
     expect(res.body.code).toBe("LAUNCH6");
   });
 
-  it("decrements usesRemaining in the DB when a valid code is applied", async () => {
+  it("atomically decrements usesRemaining via a conditional UPDATE ... RETURNING", async () => {
     setupSelectUserThenPromo(
       [{ ...USER_FIXTURE }],
       [{ ...PROMO_FIXTURE, usesRemaining: 2 }],
     );
+    mockDbUpdateReturning.mockResolvedValueOnce([{ id: "promo-id-001", usesRemaining: 1 }]);
 
-    await request(app)
+    const res = await request(app)
       .post("/api/onboarding/promo")
       .set("x-test-user", "homeowner")
       .send({ code: "LAUNCH6" });
 
-    // db.update(...).set({ usesRemaining: 1, ... }) should have been called
+    expect(res.status).toBe(200);
+    // The decrement is expressed as a SQL fragment (usesRemaining - 1), not a
+    // plain number read-then-written — this is what makes the UPDATE atomic.
     expect(mockDbUpdateSet).toHaveBeenCalledWith(
-      expect.objectContaining({ usesRemaining: 1 }),
+      expect.objectContaining({ usesRemaining: expect.anything() }),
     );
+    // The WHERE clause must guard on usesRemaining > 0 so a concurrent request
+    // that already claimed the last use can't also match this row.
     expect(mockDbUpdateWhere).toHaveBeenCalled();
+    expect(mockDbUpdateReturning).toHaveBeenCalled();
+  });
+
+  it("returns the same 'fully redeemed' response when the atomic claim UPDATE returns no row (lost the race)", async () => {
+    // Read sees usesRemaining: 1 (looks available), but by the time the
+    // UPDATE runs, a concurrent request already claimed the last use — the
+    // WHERE guard (usesRemaining > 0) no longer matches, so RETURNING is empty.
+    setupSelectUserThenPromo(
+      [{ ...USER_FIXTURE }],
+      [{ ...PROMO_FIXTURE, usesRemaining: 1 }],
+    );
+    mockDbUpdateReturning.mockResolvedValueOnce([]);
+
+    const res = await request(app)
+      .post("/api/onboarding/promo")
+      .set("x-test-user", "homeowner")
+      .send({ code: "LAUNCH6" });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/fully redeemed/i);
+    // Must not have granted the promo benefit when the claim failed.
+    expect(mockUpsertUser).not.toHaveBeenCalled();
+  });
+
+  it("simulates a real race: two concurrent redemptions on a code with usesRemaining=1 — only one succeeds", async () => {
+    // Both requests' initial SELECT sees usesRemaining: 1 (they race before
+    // either UPDATE commits). Only the first UPDATE's WHERE guard matches;
+    // the second's RETURNING is empty because the row no longer satisfies
+    // usesRemaining > 0. This is what a real Postgres row lock enforces —
+    // here we simulate it by having the atomic claim resolve success once,
+    // then empty for every subsequent racer.
+    let claimed = false;
+    mockDbUpdateReturning.mockImplementation(async () => {
+      if (claimed) return [];
+      claimed = true;
+      return [{ id: "promo-id-001", usesRemaining: 0 }];
+    });
+
+    // Each concurrent request needs its own pair of SELECT results queued in
+    // call order; supertest fires both before either resolves, so queue both
+    // pairs up front.
+    setupSelectUserThenPromo([{ ...USER_FIXTURE }], [{ ...PROMO_FIXTURE, usesRemaining: 1 }]);
+    setupSelectUserThenPromo([{ ...USER_FIXTURE }], [{ ...PROMO_FIXTURE, usesRemaining: 1 }]);
+
+    const [resA, resB] = await Promise.all([
+      request(app).post("/api/onboarding/promo").set("x-test-user", "homeowner").send({ code: "LAUNCH6" }),
+      request(app).post("/api/onboarding/promo").set("x-test-user", "homeowner").send({ code: "LAUNCH6" }),
+    ]);
+
+    const statuses = [resA.status, resB.status].sort();
+    expect(statuses).toEqual([200, 400]);
+    const failed = resA.status === 400 ? resA : resB;
+    expect(failed.body.message).toMatch(/fully redeemed/i);
+    // Exactly one request should have gone on to grant the promo benefit.
+    expect(mockUpsertUser).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/auth/register — promo code applied at signup
+//
+// Verifies the SAME atomic-claim fix is applied consistently on the signup
+// path (not just onboarding). This route reads/decrements promoCodes
+// directly via `db`, exactly like /api/onboarding/promo.
+// ---------------------------------------------------------------------------
+
+describe("POST /api/auth/register — promo code redemption", () => {
+  let app: express.Express;
+
+  const baseRegisterBody = {
+    email: "new-signup@homebase.com",
+    password: "SuperSecret123!",
+    firstName: "New",
+    lastName: "Signup",
+    role: "homeowner",
+    zipCode: "90210",
+  };
+
+  beforeEach(async () => {
+    app = await buildApp();
+    mockGetUserByEmail.mockResolvedValue(undefined); // no existing account
+    mockCreateUserWithPassword.mockImplementation(async (data: any) => ({
+      id: "new-signup-user-001",
+      ...data,
+    }));
+    mockUpsertUser.mockImplementation(async (u: any) => u);
+    // Default: the atomic claim UPDATE succeeds (normal single redemption).
+    mockDbUpdateWhere.mockReturnValue({ returning: mockDbUpdateReturning });
+    mockDbUpdateReturning.mockResolvedValue([{ id: "promo-id-001", usesRemaining: 1 }]);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("registers successfully and grants the promo when a valid code has uses remaining", async () => {
+    selectOnce([{ ...PROMO_FIXTURE, usesRemaining: 2 }]);
+
+    const res = await request(app)
+      .post("/api/auth/register")
+      .send({ ...baseRegisterBody, promoCode: "launch6" });
+
+    expect(res.status).toBe(200);
+    expect(mockDbUpdateWhere).toHaveBeenCalled();
+    expect(mockDbUpdateReturning).toHaveBeenCalled();
+    expect(mockUpsertUser).toHaveBeenCalledWith(
+      expect.objectContaining({ promoCodeApplied: "LAUNCH6", promoFreeMonths: 6 }),
+    );
+  });
+
+  it("rejects with the 'fully redeemed' error when the atomic claim UPDATE returns no row (lost the race)", async () => {
+    // The read sees usesRemaining: 1 (looks available), but the atomic claim
+    // fails because a concurrent request already took the last use.
+    selectOnce([{ ...PROMO_FIXTURE, usesRemaining: 1 }]);
+    mockDbUpdateReturning.mockResolvedValueOnce([]);
+
+    const res = await request(app)
+      .post("/api/auth/register")
+      .send({ ...baseRegisterBody, promoCode: "LAUNCH6" });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/fully redeemed/i);
+    // The account itself may already be created by this point in the handler,
+    // but the promo benefit must NOT be granted when the claim failed.
+    expect(mockUpsertUser).not.toHaveBeenCalledWith(
+      expect.objectContaining({ promoCodeApplied: expect.anything() }),
+    );
+  });
+
+  it("simulates a real race: two concurrent signups redeeming the same code with usesRemaining=1 — only one gets the promo", async () => {
+    let userCounter = 0;
+    mockCreateUserWithPassword.mockImplementation(async (data: any) => ({
+      id: `race-user-${++userCounter}`,
+      ...data,
+    }));
+
+    let claimed = false;
+    mockDbUpdateReturning.mockImplementation(async () => {
+      if (claimed) return [];
+      claimed = true;
+      return [{ id: "promo-id-001", usesRemaining: 0 }];
+    });
+
+    // Each concurrent request needs its own queued promo SELECT result.
+    selectOnce([{ ...PROMO_FIXTURE, usesRemaining: 1 }]);
+    selectOnce([{ ...PROMO_FIXTURE, usesRemaining: 1 }]);
+
+    const [resA, resB] = await Promise.all([
+      request(app).post("/api/auth/register").send({
+        ...baseRegisterBody,
+        email: "racer-a@homebase.com",
+        promoCode: "LAUNCH6",
+      }),
+      request(app).post("/api/auth/register").send({
+        ...baseRegisterBody,
+        email: "racer-b@homebase.com",
+        promoCode: "LAUNCH6",
+      }),
+    ]);
+
+    const statuses = [resA.status, resB.status].sort();
+    expect(statuses).toEqual([200, 400]);
+    const failed = resA.status === 400 ? resA : resB;
+    expect(failed.body.message).toMatch(/fully redeemed/i);
+    // Exactly one of the two concurrent signups should have had the promo
+    // benefit granted — usesRemaining never went negative / over-redeemed.
+    const promoGrantCalls = mockUpsertUser.mock.calls.filter(
+      ([arg]: [any]) => arg?.promoCodeApplied === "LAUNCH6",
+    );
+    expect(promoGrantCalls).toHaveLength(1);
+  });
+});
+
+describe("POST /api/onboarding/promo (continued)", () => {
+  let app: express.Express;
+
+  beforeEach(async () => {
+    app = await buildApp();
+    mockUpsertUser.mockResolvedValue(undefined);
+    mockDbUpdateWhere.mockReturnValue({ returning: mockDbUpdateReturning });
+    mockDbUpdateReturning.mockResolvedValue([{ id: "promo-id-001", usesRemaining: 1 }]);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
   });
 
   it("saves promoCodeApplied and promoFreeMonths on the user via storage.upsertUser", async () => {
@@ -443,7 +655,7 @@ describe("POST /api/onboarding/promo", () => {
     );
   });
 
-  it("works when usesRemaining is null (unlimited code)", async () => {
+  it("works when usesRemaining is null (unlimited code) and skips the decrement entirely", async () => {
     setupSelectUserThenPromo(
       [{ ...USER_FIXTURE }],
       [{ ...PROMO_FIXTURE, usesRemaining: null, maxUses: null }],
@@ -455,9 +667,10 @@ describe("POST /api/onboarding/promo", () => {
       .send({ code: "LAUNCH6" });
 
     expect(res.status).toBe(200);
-    // usesRemaining stays null (null - 1 guard in route)
-    expect(mockDbUpdateSet).toHaveBeenCalledWith(
-      expect.objectContaining({ usesRemaining: null }),
+    // A null usesRemaining means unlimited uses — no UPDATE should even run.
+    expect(mockDbUpdateSet).not.toHaveBeenCalled();
+    expect(mockUpsertUser).toHaveBeenCalledWith(
+      expect.objectContaining({ promoCodeApplied: "LAUNCH6", promoFreeMonths: 6 }),
     );
   });
 });

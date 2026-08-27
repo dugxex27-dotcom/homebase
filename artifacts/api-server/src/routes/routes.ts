@@ -4803,13 +4803,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ message: "This promo code has already been fully redeemed" });
         }
 
-        // Decrement uses and record on the user
-        await db.update(promoCodes)
-          .set({
-            usesRemaining: promo.usesRemaining !== null ? promo.usesRemaining - 1 : null,
-            updatedAt: new Date(),
-          })
-          .where(eq(promoCodes.id, promo.id));
+        // Atomically claim one use: the WHERE guard (usesRemaining > 0) means
+        // concurrent signups racing on the same scarce code can't both pass —
+        // only the request whose UPDATE actually matches a row gets to proceed.
+        // A null usesRemaining means unlimited uses, so it's never decremented.
+        if (promo.usesRemaining !== null) {
+          const [claimed] = await db.update(promoCodes)
+            .set({
+              usesRemaining: drizzleSql`${promoCodes.usesRemaining} - 1`,
+              updatedAt: new Date(),
+            })
+            .where(and(eq(promoCodes.id, promo.id), gt(promoCodes.usesRemaining, 0)))
+            .returning();
+
+          if (!claimed) {
+            return res.status(400).json({ message: "This promo code has already been fully redeemed" });
+          }
+        }
 
         user = await storage.upsertUser({
           ...user,
@@ -6705,9 +6715,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(400).json({ message: 'This promo code has already been fully redeemed' });
     }
 
-    await db.update(promoCodes)
-      .set({ usesRemaining: promo.usesRemaining !== null ? promo.usesRemaining - 1 : null, updatedAt: new Date() })
-      .where(eq(promoCodes.id, promo.id));
+    // Atomically claim one use: the WHERE guard (usesRemaining > 0) means
+    // concurrent redemptions racing on the same scarce code can't both pass —
+    // only the request whose UPDATE actually matches a row gets to proceed.
+    // A null usesRemaining means unlimited uses, so it's never decremented.
+    if (promo.usesRemaining !== null) {
+      const [claimed] = await db.update(promoCodes)
+        .set({
+          usesRemaining: drizzleSql`${promoCodes.usesRemaining} - 1`,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(promoCodes.id, promo.id), gt(promoCodes.usesRemaining, 0)))
+        .returning();
+
+      if (!claimed) {
+        return res.status(400).json({ message: 'This promo code has already been fully redeemed' });
+      }
+    }
 
     await storage.upsertUser({
       ...user,
